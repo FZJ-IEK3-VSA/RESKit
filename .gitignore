@@ -1,0 +1,6 @@
+# ignore folders
+__pycache__/*
+.ipynb_checkpoints/*
+
+# ignore file types
+*.xml
