@@ -2,20 +2,20 @@ import numpy as np
 import netCDF4 as nc
 import glaes as gl
 import ogr
-from os.path import join, isfile
+from os.path import join, isfile, dirname
 from glob import glob
 import pandas as pd
 
 ## Define constants
 class RSError(Exception): pass # this just creates an error that we can use
-MERRA_AVERAGE_50_PATH = join("data","merra_average_50m.tif")
+MERRA_AVERAGE_50_PATH = join(dirname(__file__),"data","merra_average_50m.tif")
 
 ## Function for creating wind data
 def weatherGenWind(loc, year, height=100, MERRA_PATH="D:\Data\weather\merra\slv", GWA_PATH="D:\Data\weather\global_wind_atlas", recalculate_average=False, height_interpolator="power"):
 	
 	###################
 	## Generate file lists and check if they exist
-	merra_files = glob(join(MERRA_PATH,"*Nx.%d*.nc4"%year))
+	merra_files = glob(join(MERRA_PATH,"*slv_Nx.%d*.nc4"%year))
 
 	if not (len(merra_files) == 365 or len(merra_files) == 366):
 		raise RSError("Could not find a complete year of MERRA data at: "+MERRA_PATH)
@@ -66,7 +66,7 @@ def weatherGenWind(loc, year, height=100, MERRA_PATH="D:\Data\weather\merra\slv"
 	# Create the full MERRA time series
 	speeds = []
 	dates = []
-	for f in merra_files[:30]:
+	for f in merra_files:
 		# open file
 		tmpDS = nc.Dataset(f)
 
@@ -113,7 +113,7 @@ def weatherGenWind(loc, year, height=100, MERRA_PATH="D:\Data\weather\merra\slv"
 	elif height_interpolator == "power":
 		if height == 50:
 			gwaAverage = gwaAverage50
-		elif height > 50 and height <100:
+		elif height < 100:
 			alpha = np.log(gwaAverage50/gwaAverage100)/np.log(50.0/100)
 			gwaAverage = gwaAverage50 * np.power(height/50, alpha)
 		elif height == 100:
