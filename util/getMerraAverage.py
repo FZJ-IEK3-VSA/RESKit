@@ -6,7 +6,7 @@ import numpy as np
 import glaes as gl
 
 
-files = glob("D:/Data/weather/merra/slv/*.nc4")[::-1]
+files = glob("D:/Data/weather/merra_world/monthly/*slv_Nx*.nc4")[::-1]
 
 
 windSpeeds = 0
