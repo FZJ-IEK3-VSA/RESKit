@@ -8,10 +8,11 @@ import pandas as pd
 
 ## Define constants
 class RSError(Exception): pass # this just creates an error that we can use
-MERRA_AVERAGE_50_PATH = join(dirname(__file__),"data","merra_average_50m.tif")
+MERRA_AVERAGE_50_PATH = join(dirname(__file__),"data","merra_average_windspeed_50m.tif")
+MERRA_AVERAGE_10_PATH = join(dirname(__file__),"data","merra_average_windspeed_10m.tif")
 
 ## Function for creating wind data
-def weatherGenWind(loc, year, height=100, MERRA_PATH="D:\Data\weather\merra\slv", GWA_PATH="D:\Data\weather\global_wind_atlas", recalculate_average=False, height_interpolator="power"):
+def weatherGenWind(loc, year, height=100, MERRA_PATH="D:\Data\weather\merra\slv", GWA_PATH="D:\Data\weather\global_wind_atlas"):
 	
 	###################
 	## Generate file lists and check if they exist
@@ -106,28 +107,21 @@ def weatherGenWind(loc, year, height=100, MERRA_PATH="D:\Data\weather\merra\slv"
 	gwaAverage200 = gl.valueAtPoints(GWA_files[2], (lon,lat) )[0][0][0][0]
 
 	# Interpolate gwa average to desired height
-	if height_interpolator == "log":
-		# IMPLEMENT ME!!!!!!!!!
-		raise RSError("'log' interpolation not implemented")	
-
-	elif height_interpolator == "power":
-		if height == 50:
-			gwaAverage = gwaAverage50
-		elif height < 100:
-			alpha = np.log(gwaAverage50/gwaAverage100)/np.log(50.0/100)
-			gwaAverage = gwaAverage50 * np.power(height/50, alpha)
-		elif height == 100:
-			gwaAverage = gwaAverage100
-		elif height > 100 and height <200:
-			alpha = np.log(gwaAverage100/gwaAverage200)/np.log(100/200)
-			gwaAverage = gwaAverage100 * np.power(height/100, alpha)
-		elif height == 200:
-			gwaAverage = gwaAverage200
-		else:
-			raise RSError("Wind speed cannot be extrapolated above 200m")
+	if height == 50:
+		gwaAverage = gwaAverage50
+	elif height < 100:
+		alpha = np.log(gwaAverage50/gwaAverage100)/np.log(50.0/100)
+		gwaAverage = gwaAverage50 * np.power(height/50, alpha)
+	elif height == 100:
+		gwaAverage = gwaAverage100
+	elif height > 100 and height <200:
+		alpha = np.log(gwaAverage100/gwaAverage200)/np.log(100/200)
+		gwaAverage = gwaAverage100 * np.power(height/100, alpha)
+	elif height == 200:
+		gwaAverage = gwaAverage200
 	else:
-		raise RSError("Could not understand input for height_interpolator")	
-
+		raise RSError("Wind speed cannot be extrapolated above 200m")
+	
 	# Rescale normalized wind speeds
 	windSpeedScaled = gwaAverage * windSpeedNormalized
 
