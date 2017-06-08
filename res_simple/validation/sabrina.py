@@ -10,8 +10,9 @@ from os.path import basename
 from scipy.stats.stats import pearsonr
 from collections import namedtuple
 
-def fetchDailyAverages(path, MERRA_PATH=r"C:\Users\s.schmitt\master_project\data\merra\slv", 
-                             GWA_PATH=r"C:\Users\s.schmitt\master_project\data\global_wind_atlas"):
+class ValidationError(Exception): pass
+
+def fetchDailyAverages(merraSource, path):
     # define lat/lon for our path
     station = noaa.gsodPathProfile(path)
     lat = station.LAT
@@ -19,7 +20,7 @@ def fetchDailyAverages(path, MERRA_PATH=r"C:\Users\s.schmitt\master_project\data
     year = station.YEAR
     
     # use our wind model
-    windspeed = merra.weatherGenWind(loc=(lat, lon), year=year, height=10, MERRA_PATH=MERRA_PATH, GWA_PATH=GWA_PATH)
+    windspeed = merra.hubWindSpeed( merraSource, lat=lat, lon=lon, height=10)
 
     # reading the station data from gsod
     gsod = noaa.parseGSOD(path, columns=['wind_speed'])
@@ -49,11 +50,17 @@ Errors = namedtuple('Errors', "count abs rabs cum rcum corr")
 def gsodError(res):
     
     sel = (~res.gsod.isnull()) & (res.gsod!=0)
+    if sel.sum() == 0:
+        return Errors(count=0, abs=0.0, rabs=0.0, cum=0.0, rcum=0.0, corr=0.0)
     
     # extract data
     gsod = res.gsod[sel]
-    model = res.model[sel]
-    
+
+    index = gsod.index
+    model = res.model.loc[index]
+
+    if model.isnull().any(): raise ValidationError("The modeled data is not complete")
+
     # total time series results
     cummulativeErrorTS = (gsod - model)
     cummulativeError=cummulativeErrorTS.mean()
@@ -63,16 +70,19 @@ def gsodError(res):
     absError=absErrorTS.mean()
     relAbsError = (100*absErrorTS/gsod).mean()
     
-    corr = pearsonr(model, gsod)
+    if sel.sum()>1:
+        corr = pearsonr(model, gsod)
+    else:
+        corr = (-9999,-9999)
     
     return Errors(count=int(sel.sum()), abs=absError, rabs=relAbsError, cum=cummulativeError, rcum=relCummulativeError, corr=corr[0])
 
 
 ErrorSet = namedtuple('ErrorSet', 'file lat lon year winter spring summer fall')
-def gsodErrorSet(path):
+def gsodErrorSet(path, merraSource):
     # Get modeled and measured dataz
     station = noaa.gsodPathProfile(path)
-    windData = fetchDailyAverages(path)
+    windData = fetchDailyAverages(merraSource, path)
     
     # Define time contexts
     winter = (windData.index.month==1) | (windData.index.month==2) | (windData.index.month==12)

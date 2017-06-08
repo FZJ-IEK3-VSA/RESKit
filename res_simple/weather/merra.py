@@ -35,9 +35,9 @@ class Datasource(object):
 		elif isinstance(start, dict): start = pd.Timestamp(**start)
 		else: start = pd.Timestamp(start)
 
-		if end is None: end = pd.Timestamp(year=start.year+1, month=1, day=1, hour=0)
+		if end is None: end = pd.Timestamp(year=start.year, month=12, day=31, hour=0)
 		elif isinstance(end, pd.Timedelta): end = start+end
-		elif isinstance(end, int): end = pd.Timestamp(year=end, month=1, day=1, hour=0)
+		elif isinstance(end, int): end = start+pd.Timedelta(end, 'D')
 		elif isinstance(end, dict): end = pd.Timestamp(**end)
 		else: end = pd.Timestamp(end)
 
@@ -235,7 +235,7 @@ def hubWindSpeed(source, loc=None, height=100, GWA_DIR=None, MERRA_DIR=None, sub
 
 	# Get the total MERRA average at 50m
 	mlat, mlon = source.nearestLoc(lat,lon)
-	merraAverage50 = gk.raster.extractValues(MERRA_AVERAGE_50_PATH, (mlon, mlat)).data
+	merraAverage50 = gk.raster.extractValues(MERRA_AVERAGE_50_PATH, (mlon, mlat), noDataOkay=False).data
 
 	# Do normalization
 	windSpeedNormalized = windSpeedMerra / merraAverage50
@@ -252,9 +252,15 @@ def hubWindSpeed(source, loc=None, height=100, GWA_DIR=None, MERRA_DIR=None, sub
 		if not isfile(f): 
 			raise MerraError("Could not find file: "+f)
 
-	gwaAverage50 =  gk.raster.extractValues(GWA_files[0], (lon,lat) ).data
-	gwaAverage100 = gk.raster.extractValues(GWA_files[1], (lon,lat) ).data
-	gwaAverage200 = gk.raster.extractValues(GWA_files[2], (lon,lat) ).data
+	try:
+		gwaAverage50 =  gk.raster.extractValues(GWA_files[0], (lon,lat), noDataOkay=False).data
+		gwaAverage100 = gk.raster.extractValues(GWA_files[1], (lon,lat), noDataOkay=False).data
+		gwaAverage200 = gk.raster.extractValues(GWA_files[2], (lon,lat), noDataOkay=False).data
+	except gk.util.GeoKitRasterError as e:
+		if str(e) == "No data values found in extractValues with 'noDataOkay' set to False":
+			raise MerraError("The given point does not appear to have valid data in the Global Wind Atlas dataset")
+		else:
+			raise e
 
 	# Interpolate gwa average to desired height
 	if height == 50:
