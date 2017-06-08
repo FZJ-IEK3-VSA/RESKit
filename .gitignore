@@ -3,7 +3,7 @@ env/*
 *.egg-info/
 .ipynb_checkpoints
 */.ipynb_checkpoints/*
-*/__pycache__/*
+*/__pycache__
 analysis/regions/*
 
 # file types to ignore
