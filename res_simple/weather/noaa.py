@@ -4,22 +4,42 @@ import re
 import numpy as np
 from collections import OrderedDict
 from glob import glob
+from os.path import basename
 
 stations = None
 
 def loadIsdHistory(path):
-	globals()["stations"] = pd.read_excel(path) # load station data
-	globals()["stations"].set_index(["USAF","WBAN"], inplace=True, drop=False) # set index
+    globals()["stations"] = pd.read_csv(path) # load station data
+    globals()["stations"].set_index(["USAF","WBAN"], inplace=True, drop=False) # set index
 
 def wmoStation(USAF, WBAN=99999):
-	# Make sure the isd-history dataset has been created
-	if stations is None:
-		raise RuntimeError("'stations' data has not been loaded properly. Make sure to call noaa.loadIsdHistory(..) with a path pointing to a copy of the latest 'isd-history.xlsx' file")
+    # Make sure the isd-history dataset has been created
+    if stations is None:
+        raise RuntimeError("'stations' data has not been loaded properly. Make sure to call noaa.loadIsdHistory(..) with a path pointing to a copy of the latest 'isd-history.xlsx' file")
 
-	# Return the location we need
-	if not isinstance(USAF, int): USAF = int(USAF)
-	if not isinstance(WBAN, int): WBAN = int(WBAN)
-	return stations.loc[USAF,WBAN]
+    # Return the location we need
+    if not isinstance(USAF, int): USAF = int(USAF)
+    if not isinstance(WBAN, int): WBAN = int(WBAN)
+    return stations.loc[USAF,WBAN]
+
+gsodProfiler = re.compile("(?P<USAF>[0-9]+)-(?P<WBAN>[0-9]+)-(?P<YEAR>[0-9]+).op")
+def gsodPathProfile(path):
+    # Make sure the isd-history dataset has been created
+    if stations is None:
+        raise RuntimeError("'stations' data has not been loaded properly. Make sure to call noaa.loadIsdHistory(..) with a path pointing to a copy of the latest 'isd-history.xlsx' file")
+
+    base = basename(path)
+    p = gsodProfiler.match(base)
+    
+    if p is None: raise RuntimeError('Path is bad :(')
+        
+    USAF = int(p.groupdict()['USAF'])
+    WBAN = int(p.groupdict()['WBAN'])
+    
+    output = stations.loc[USAF, WBAN].copy()
+    output['YEAR'] = int(p.groupdict()['YEAR'])
+
+    return output
 
 #############################################################
 # ISD PARSING
@@ -67,35 +87,36 @@ isdFields["pressure"]=(99,104), "99999", lambda x: x.astype(float)/10
 isdFields["pressure_quality"]=(104,105), None, None
 
 def parseISD(path, columns='measurements'):
-	"""Parses mandatory data from Integrated Surface Data (ISD) files"""
+    """Parses mandatory data from Integrated Surface Data (ISD) files"""
 
-	# Make sure columns list is good
-	if columns == 'all': userColumns = list(isdFields.keys())
-	elif columns == 'measurements': userColumns = ["wind_dir","wind_speed","ceiling","visability","air_temp","dew_temp","pressure"]
-	else: columns = userColumns = list(columns)
+    # Make sure columns list is good
+    if columns == 'all': userColumns = list(isdFields.keys())
+    elif columns == 'measurements': userColumns = ["wind_dir","wind_speed","ceiling","visability","air_temp","dew_temp","pressure"]
+    else: columns = userColumns = list(columns)
 
-	totalColumns = list(set(["year","month","day","hour","minute"]).union(userColumns))
+    totalColumns = list(set(["year","month","day","hour","minute"]).union(userColumns))
 
-	# make raw data
-	raw = pd.read_fwf(path, [isdFields[k][0] for k in totalColumns], header=None, names=totalColumns,
-	                  converters=dict([(k,str) for k in totalColumns]), # make sure everything is read in as strings 
-	                                                                    #  (makes reading no-data easier)
-	                  na_values=dict([(k,v[1]) for k,v in isdFields.items()]))
+    # make raw data
+    raw = pd.read_fwf(path, [isdFields[k][0] for k in totalColumns], header=None, names=totalColumns,
+                      converters=dict([(k,str) for k in totalColumns]), # make sure everything is read in as strings 
+                                                                        #  (makes reading no-data easier)
+                      na_values=dict([(k,v[1]) for k,v in isdFields.items()]))
 
-	# Fix Columns
-	for c in totalColumns:
-		if not isdFields[c][2] is None:
-			try:
-				raw[c] = isdFields[c][2](raw[c])
-			except Exception as e:
-				print(c)
-				raise e
+    # Fix Columns
+    for c in totalColumns:
+        if not isdFields[c][2] is None:
+            try:
+                raw[c] = isdFields[c][2](raw[c])
+            except Exception as e:
+                print(c)
+                raise e
 
-	# create datetime series
-	raw.index = [pd.Timestamp(year=r.year, month=r.month, day=r.day, hour=r.hour, minute=r.minute) for r in raw.itertuples()]
+    # create datetime series
+    raw.index = [pd.Timestamp(year=r.year, month=r.month, day=r.day, hour=r.hour, minute=r.minute) for r in raw.itertuples()]
 
-	# done!
-	return raw[userColumns]
+    # done!
+    if len(userColumns)==1: return raw[userColumns[0]]
+    else: return raw[userColumns]
 
 
 #############################################################
@@ -139,32 +160,33 @@ gsodFields["FRSHTT"]=(132,138), None, None
 
 
 def parseGSOD(path, columns='measurements'):
-	"""Parses mandatory data from Integrated Surface Data (ISD) files"""
+    """Parses mandatory data from Integrated Surface Data (ISD) files"""
 
-	# Make sure columns list is good
-	if columns == 'all': userColumns = list(gsodFields.keys())
-	elif columns == 'measurements': userColumns = ["air_temp","dew_temp","pressure","visibility","wind_speed","wind_speed_max","wind_speed_gust","air_temp_max","air_temp_min","precipitation","snow_depth"]
-	else: columns = userColumns = list(columns)
+    # Make sure columns list is good
+    if columns == 'all': userColumns = list(gsodFields.keys())
+    elif columns == 'measurements': userColumns = ["air_temp","dew_temp","pressure","visibility","wind_speed","wind_speed_max","wind_speed_gust","air_temp_max","air_temp_min","precipitation","snow_depth"]
+    else: columns = userColumns = list(columns)
 
-	totalColumns = list(set(["year","month","day"]).union(userColumns))
+    totalColumns = list(set(["year","month","day"]).union(userColumns))
 
-	# make raw data
-	raw = pd.read_fwf(path, [gsodFields[k][0] for k in totalColumns], header=0, names=totalColumns,
-	                  converters=dict([(k,str) for k in totalColumns]), # make sure everything is read in as strings 
-	                                                                    #  (makes reading no-data easier)
-	                  na_values=dict([(k,v[1]) for k,v in gsodFields.items()]))
+    # make raw data
+    raw = pd.read_fwf(path, [gsodFields[k][0] for k in totalColumns], header=0, names=totalColumns,
+                      converters=dict([(k,str) for k in totalColumns]), # make sure everything is read in as strings 
+                                                                        #  (makes reading no-data easier)
+                      na_values=dict([(k,v[1]) for k,v in gsodFields.items()]))
 
-	# Fix Columns
-	for c in totalColumns:
-		if not gsodFields[c][2] is None:
-			try:
-				raw[c] = gsodFields[c][2](raw[c])
-			except Exception as e:
-				print(c)
-				raise e
+    # Fix Columns
+    for c in totalColumns:
+        if not gsodFields[c][2] is None:
+            try:
+                raw[c] = gsodFields[c][2](raw[c])
+            except Exception as e:
+                print(c)
+                raise e
 
-	# create datetime series
-	raw.index = [pd.Timestamp(year=r.year, month=r.month, day=r.day) for r in raw.itertuples()]
+    # create datetime series
+    raw.index = [pd.Timestamp(year=r.year, month=r.month, day=r.day) for r in raw.itertuples()]
 
-	# done!
-	return raw[userColumns]
+    # done!
+    if len(userColumns)==1: return raw[userColumns[0]]
+    else: return raw[userColumns]

@@ -2,7 +2,7 @@ import numpy as np
 import netCDF4 as nc
 import glaes as gl
 import ogr
-from os.path import join, isfile, dirname
+from os.path import join, isfile, dirname, basename
 from glob import glob
 import pandas as pd
 
