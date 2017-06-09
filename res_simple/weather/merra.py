@@ -98,7 +98,7 @@ class Datasource(object):
 		# fetch data
 		return index, ds.variables[parameter][:,latSelect,lonSelect]
 
-	def loadVar(s, variable, subSource, name=None, subDir=None, level=None, **kwargs):
+	def loadVariable(s, variable, subSource, name=None, subDir=None, level=None):
 		"""generic variable loader"""
 		# search for suitable files
 		searchDir = s.topDir if subDir is None else join(s.topDir, subDir)
@@ -109,7 +109,8 @@ class Datasource(object):
 		tmp = []
 		for dayString in s._days:
 			try:
-				path = next(filter(lambda x: dayString in x, files)) # get the first path which matches our day (there should only be one, anyway)
+				# get the first path which matches our day (there should only be one, anyway)
+				path = next(filter(lambda x: dayString in basename(x), files)) 
 			except:
 				raise MerraError("Could not find path for day:", daystring)
 
@@ -131,6 +132,43 @@ class Datasource(object):
 
 		s.data[name] = values
 
+	def loadRadiation(s, subDir=None):
+		"""GHI/DNI variable loader"""
+
+		# search for suitable files
+		searchDir = s.topDir if subDir is None else join(s.topDir, subDir)
+		files = glob(join(searchDir,"*rad_Nx.*.nc4"))
+		if len(files)==0: raise MerraError("No files found")
+
+		# read data for each day
+		ghiTmp = []
+		dniTmp = []
+		for dayString in s._days:
+			try:
+				# get the first path which matches our day (there should only be one, anyway)
+				path = next(filter(lambda x: dayString in basename(x), files)) 
+			except:
+				raise MerraError("Could not find path for day:", daystring)
+
+			ghiTmp.append(s._read3dData(path, "SWGDN" ))
+			dniTmp.append(s._read3dData(path, "SWGNT" ))
+
+		# Check indicies
+		ghiIndex = np.concatenate([ x[0] for x in ghiTmp])
+		dniIndex = np.concatenate([ x[0] for x in dniTmp])
+
+		# combine into a single time series matrix
+		ghiData = np.vstack( [ x[1] for x in ghiTmp] )
+		dniData = np.vstack( [ x[1] for x in dniTmp] )
+		
+		# make a time series
+		ghiValues = Datasource.DataElement(ghiData,ghiIndex)
+		dniValues = Datasource.DataElement(dniData,dniIndex)
+
+		# done!
+		s.data["ghi"] = ghiValues
+		s.data["dni"] = dniValues
+
 	def loadWindSpeed(s, height=50, subDir=None):
 		# search for suitable files
 		searchDir = s.topDir if subDir is None else join(s.topDir, subDir)
@@ -142,7 +180,8 @@ class Datasource(object):
 		vTmp = []
 		for dayString in s._days:
 			try:
-				path = next(filter(lambda x: dayString in x, files)) # get the first path which matches our day (there should only be one, anyway)
+				# get the first path which matches our day (there should only be one, anyway)
+				path = next(filter(lambda x: dayString in basename(x), files)) 
 			except:
 				raise MerraError("Could not find path for day:", daystring)
 
