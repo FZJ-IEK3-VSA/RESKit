@@ -6,6 +6,8 @@ from os.path import join, isfile, dirname, basename
 from glob import glob
 import pandas as pd
 from collections import namedtuple, OrderedDict
+from scipy.interpolate import RectBivariateSpline
+
 
 ## Define constants
 class MerraError(Exception): pass # this just creates an error that we can use
@@ -69,6 +71,10 @@ class Datasource(object):
 		# make empty data container
 		s.data = OrderedDict()
 
+	@property
+	def bounds(s):
+		return (s.lons.min()-0.625/2, s.lats.min()-0.5/2, s.lats.max()+0.625/2, s.lons.max()+0.5/2)
+
 	def _read3dData(s, path, parameter):
 		# open dataset
 		ds = nc.Dataset(path)
@@ -102,7 +108,7 @@ class Datasource(object):
 		"""generic variable loader"""
 		# search for suitable files
 		searchDir = s.topDir if subDir is None else join(s.topDir, subDir)
-		files = glob(join(searchDir,"*%s_Nx.*.nc4"%subSource))
+		files = glob(join(searchDir,"*%s_Nx.*.nc*"%subSource))
 		if len(files)==0: raise MerraError("No files found")
 
 		# read data for each day
@@ -137,7 +143,7 @@ class Datasource(object):
 
 		# search for suitable files
 		searchDir = s.topDir if subDir is None else join(s.topDir, subDir)
-		files = glob(join(searchDir,"*rad_Nx.*.nc4"))
+		files = glob(join(searchDir,"*rad_Nx.*.nc*"))
 		if len(files)==0: raise MerraError("No files found")
 
 		# read data for each day
@@ -172,7 +178,7 @@ class Datasource(object):
 	def loadWindSpeed(s, height=50, subDir=None):
 		# search for suitable files
 		searchDir = s.topDir if subDir is None else join(s.topDir, subDir)
-		files = glob(join(searchDir,"*slv_Nx.*.nc4"))
+		files = glob(join(searchDir,"*slv_Nx.*.nc*"))
 		if len(files)==0: raise MerraError("No files found")
 
 		# read data for each day
@@ -224,6 +230,40 @@ class Datasource(object):
 		v = s.data[var]
 		return pd.Series(v.data[:,latIndex,lonIndex], index=v.index, name=var)
 
+	def interpolateVar( s, var, lat, lon, mode="cubic"):
+		# get nearest index
+		latIndex, lonIndex = s.nearestIndex(lat, lon)
+
+		# Determine mode
+		if mode=='near':
+			return s.nearestVar(var, lat, lon)
+		elif mode=="cubic": 
+			width=3
+			kwargs = dict()
+		elif mode=="linear": 
+			width=1
+			kwargs = dict(kx=1, ky=1)
+		else: 
+			raise MerraError("'mode' input not recognized")
+
+		# Make sure the contained data is sufficient
+		if latIndex<width or latIndex>s.lats.shape[0]-width or lonIndex<width or lonIndex>s.lons.shape[0]-width:
+			raise MerraError("Insufficient spatial extent")
+
+		# Setup interpolator
+		lats = s.lats[latIndex-width:latIndex+width+1]
+		lons = s.lons[lonIndex-width:lonIndex+width+1]
+
+		def interpolate(timeIndex):
+			data = s.data[var].data[timeIndex, latIndex-width:latIndex+width+1, lonIndex-width:lonIndex+width+1]
+			rbs = RectBivariateSpline(lats,lons,data,**kwargs)
+			return rbs(lat,lon)[0][0]
+
+		# do interpolations
+		values = [interpolate(i) for i in range(s.data[var].index.shape[0])]
+
+		return pd.Series(values, index=s.data[var].index, name=var)
+
 	def nearestSet(s, lat, lon):
 		latIndex, lonIndex = s.nearestIndex(lat,lon)
 
@@ -231,6 +271,24 @@ class Datasource(object):
 		tmpData = {}
 		for k,v in s.data.items():
 			tmpData[k] = pd.Series(v.data[:,latIndex,lonIndex], index=v.index)
+
+		# make into a DataFrame and return
+		return pd.DataFrame(tmpData)
+
+	defaultInterpolatorSchemes = dict( winddir_2=None, winddir_10=None, winddir_50=None,
+									   windspeed_2='cubic', windspeed_10='cubic', windspeed_50='cubic',
+									   ghi='cubic', dni='cubic' )
+
+	def interpolateSet(s, lat, lon, **modes):
+		# make sure all variables have a mode
+		for var in s.data.keys():
+			if not var in modes: modes[var]=s.defaultInterpolatorSchemes.get(var, 'cubic')
+
+		# load a temporary data dictionary time pandas Series objects
+		tmpData = {}
+		for var in s.data.keys():
+			if modes[var] is None: continue
+			tmpData[var] = s.interpolateVar(var, lat, lon, modes[var])
 
 		# make into a DataFrame and return
 		return pd.DataFrame(tmpData)
