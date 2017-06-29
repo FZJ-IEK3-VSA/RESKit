@@ -25,7 +25,7 @@ def setDefaultGwaDir(path): globals()["_DEFAULT_GWA_DIR"] = path
 class Datasource(object):
 	DataElement = namedtuple("DataElement","data index")
 
-	def __init__(s, start, end=None, topDir=None, lat=None, lon=None, bounds=None):
+	def __init__(s, timeframe, topDir=None, lat=None, lon=None, bounds=None):
 
 		# check for default paths
 		s.topDir = topDir if topDir else _DEFAULT_MERRA_DIR
@@ -33,16 +33,21 @@ class Datasource(object):
 			raise MerraError("topDir is None, try setting the default MERRA path using 'setDefaultMerraDir'")
 
 		# Arange start and end date
-		if isinstance(start, int): start = pd.Timestamp(year=start, month=1, day=1, hour=0)
-		elif isinstance(start, dict): start = pd.Timestamp(**start)
-		else: start = pd.Timestamp(start)
+		if isinstance(timeframe, int): # assume a year was given
+			start = pd.Timestamp(year=timeframe, month=1, day=1, hour=0)
+			end = pd.Timestamp(year=timeframe, month=12, day=31, hour=0)
+		elif isinstance(timeframe, tuple): # timeframe must be a tuple of some sort
+			startTmp, endTmp = timeframe
 
-		if end is None: end = pd.Timestamp(year=start.year, month=12, day=31, hour=0)
-		elif isinstance(end, pd.Timedelta): end = start+end
-		elif isinstance(end, int): end = start+pd.Timedelta(end, 'D')
-		elif isinstance(end, dict): end = pd.Timestamp(**end)
-		else: end = pd.Timestamp(end)
+			if isinstance(startTmp, int): start = pd.Timestamp(year=startTmp, month=1, day=1, hour=0)
+			else: start = pd.Timestamp(startTmp)  
 
+			if isinstance(endTmp, int): end = pd.Timestamp(year=endTmp, month=1, day=1, hour=0)
+			else: end = pd.Timestamp(endTmp)
+		else:
+			raise MerraError("Could not interperate the given timeframe")
+
+		# Get the list of days which will be considered	
 		s.days = pd.date_range(start, end, freq='D')
 		s._days = ["%4d%02d%02d"%(day.year,day.month,day.day) for day in s.days]
 
@@ -175,10 +180,17 @@ class Datasource(object):
 		s.data["ghi"] = ghiValues
 		s.data["dni"] = dniValues
 
-	def loadWindSpeed(s, height=50, subDir=None):
+	def loadWindSpeed(s, height=50, subDir=None, context="tavg"):
 		# search for suitable files
 		searchDir = s.topDir if subDir is None else join(s.topDir, subDir)
-		files = glob(join(searchDir,"*slv_Nx.*.nc*"))
+		
+		if context=="tavg":
+			files = glob(join(searchDir,"*slv_Nx.*.nc*"))
+		elif context=="inst":
+			files = glob(join(searchDir,"*asm_Nx.*.nc*"))
+		else:
+			raise MerraError("context not understood")
+
 		if len(files)==0: raise MerraError("No files found")
 
 		# read data for each day
@@ -319,7 +331,7 @@ def hubWindSpeed(source, loc=None, height=100, GWA_DIR=None, MERRA_DIR=None, sub
 	# Ensure we have a MERRA source
 	if isinstance(source, int): # user just gave a year, so try to create the source
 		# try to create a new source
-		source = Datasource(start=source, topDir=MERRA_DIR, lat=lat, lon=lon)
+		source = Datasource(source, topDir=MERRA_DIR, lat=lat, lon=lon)
 
 	# Ensure we have the right data in our MERRA source
 	if not "windspeed_50" in source.data.keys():
@@ -332,7 +344,10 @@ def hubWindSpeed(source, loc=None, height=100, GWA_DIR=None, MERRA_DIR=None, sub
 
 	# Get the total MERRA average at 50m
 	mlat, mlon = source.nearestLoc(lat,lon)
-	merraAverage50 = gk.raster.extractValues(MERRA_AVERAGE_50_PATH, (mlon, mlat), noDataOkay=False).data
+	merraAverage50 = gk.raster.extractValues(MERRA_AVERAGE_50_PATH, (mlon, mlat), noDataOkay=True).data
+	if np.isnan(merraAverage50):
+		print("WARNING: could not find average merra value at the given location, defaulting to the average of the current time series")
+		merraAverage50 = windSpeedMerra.mean()
 
 	# Do normalization
 	windSpeedNormalized = windSpeedMerra / merraAverage50
