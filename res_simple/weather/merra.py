@@ -8,7 +8,6 @@ import pandas as pd
 from collections import namedtuple, OrderedDict
 from scipy.interpolate import RectBivariateSpline
 
-
 ## Define constants
 class MerraError(Exception): pass # this just creates an error that we can use
 
@@ -370,7 +369,18 @@ def hubWindSpeed(source, loc=None, height=100, GWA_DIR=None, MERRA_DIR=None, sub
 		gwaAverage200 = gk.raster.extractValues(GWA_files[2], (lon,lat), noDataOkay=False).data
 	except gk.util.GeoKitRasterError as e:
 		if str(e) == "No data values found in extractValues with 'noDataOkay' set to False":
-			raise MerraError("The given point does not appear to have valid data in the Global Wind Atlas dataset")
+			# Try to get the surrounding points and average
+			gwaAverage50 =  gk.raster.extractValues(GWA_files[0], (lon,lat), noDataOkay=True, winRange=3).data.mean()
+			if np.isnan(gwaAverage50):
+				# the point is likely an offshore location, therefor using the Merra Average is probably okay
+				print("Could not extract from GlobalWindAtlas, assuming its far offshore, using the MERRA average with a roughness of 0.0005")
+				gwaAverage50 = merraAverage50
+				gwaAverage100 = merraAverage50 * np.log(100/0.0005)/np.log(50/0.0005)
+				gwaAverage200 = merraAverage50 * np.log(200/0.0005)/np.log(50/0.0005)
+			else:
+				gwaAverage100 = gk.raster.extractValues(GWA_files[1], (lon,lat), noDataOkay=True, winRange=3).data.mean()
+				gwaAverage200 = gk.raster.extractValues(GWA_files[2], (lon,lat), noDataOkay=True, winRange=3).data.mean()
+			#raise MerraError("The given point does not appear to have valid data in the Global Wind Atlas dataset")
 		else:
 			raise e
 
