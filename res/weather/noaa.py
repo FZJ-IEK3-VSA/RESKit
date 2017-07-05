@@ -2,31 +2,58 @@ import pandas as pd
 import geokit as gk
 import re
 import numpy as np
-from collections import OrderedDict
+from collections import OrderedDict, namedtuple
 from glob import glob
 from os.path import basename
 
-stations = None
+isdStations = None
+igraStations = None
 
-def loadIsdHistory(path):
-    globals()["stations"] = pd.read_csv(path) # load station data
-    globals()["stations"].set_index(["USAF","WBAN"], inplace=True, drop=False) # set index
+def loadIsdStations(path):
+    globals()["isdStations"] = pd.read_csv(path) # load station data
+    globals()["isdStations"].set_index(["USAF","WBAN"], inplace=True, drop=False) # set index
+
+def loadIGRAStations(path):
+    colSpecs = OrderedDict()
+
+    colSpecs["ID"] = (0,11)
+    colSpecs["lat"] = (12,20)
+    colSpecs["lon"] = (21,30)
+    colSpecs["elev"] = (31,37)
+    colSpecs["name"] = (38,71)
+    colSpecs["startYear"] = (72,76)
+    colSpecs["endYear"] = (77,81)
+    colSpecs["count"] = (82,88)
+
+    # load station data
+    globals()["igraStations"] = pd.read_fwf(path, colSpecs=[v for k,v in colSpecs.items()], names=[k for k in colSpecs.keys()])
+    globals()["igraStations"].set_index("ID", inplace=True, drop=False) # set index
 
 def wmoStation(USAF, WBAN=99999):
     # Make sure the isd-history dataset has been created
-    if stations is None:
-        raise RuntimeError("'stations' data has not been loaded properly. Make sure to call noaa.loadIsdHistory(..) with a path pointing to a copy of the latest 'isd-history.xlsx' file")
+    if isdStations is None:
+        raise RuntimeError("'isdStations' data has not been loaded properly. Make sure to call noaa.loadIsdHistory(..) with a path pointing to a copy of the latest 'isd-history.xlsx' file")
 
     # Return the location we need
     if not isinstance(USAF, int): USAF = int(USAF)
     if not isinstance(WBAN, int): WBAN = int(WBAN)
-    return stations.loc[USAF,WBAN]
+    return isdStations.loc[USAF,WBAN]
 
+def igraStation(ID):
+    # Make sure the isd-history dataset has been created
+    if isdStations is None:
+        raise RuntimeError("'igraStations' data has not been loaded properly. Make sure to call noaa.loadIGRAHistory(..) with a path pointing to a copy of the latest 'isd-history.xlsx' file")
+
+    # Return the location we need
+    return igraStations.loc[USAF,WBAN]
+
+#########################################
+# Handel GSOD files
 gsodProfiler = re.compile("(?P<USAF>[0-9]+)-(?P<WBAN>[0-9]+)-(?P<YEAR>[0-9]+).op")
 def gsodPathProfile(path):
     # Make sure the isd-history dataset has been created
-    if stations is None:
-        raise RuntimeError("'stations' data has not been loaded properly. Make sure to call noaa.loadIsdHistory(..) with a path pointing to a copy of the latest 'isd-history.xlsx' file")
+    if isdStations is None:
+        raise RuntimeError("'isdStations' data has not been loaded properly. Make sure to call noaa.loadIsdHistory(..) with a path pointing to a copy of the latest 'isd-history.xlsx' file")
 
     base = basename(path)
     p = gsodProfiler.match(base)
@@ -36,14 +63,81 @@ def gsodPathProfile(path):
     USAF = int(p.groupdict()['USAF'])
     WBAN = int(p.groupdict()['WBAN'])
     
-    output = stations.loc[USAF, WBAN].copy()
+    output = isdStations.loc[USAF, WBAN].copy()
     output['YEAR'] = int(p.groupdict()['YEAR'])
 
     return output
 
-#############################################################
-# ISD PARSING
+# make gsod fields definitions
+gsodFields = OrderedDict()
+gsodFields["usaf"]=(0,6), None, lambda x: x.astype(int)
+gsodFields["wban"]=(7,12), None, lambda x: x.astype(int)
+gsodFields["year"]=(14,18), None, lambda x: x.astype(int)
+gsodFields["month"]=(18,20), None, lambda x: x.astype(int)
+gsodFields["day"]=(20,22), None, lambda x: x.astype(int)
 
+gsodFields["air_temp"]=(24,30), "9999.9", lambda x: (x.astype(float) - 32) / 1.8 # F -> C
+gsodFields["air_temp_count"]=(31,33), None, lambda x: x.astype(int)
+
+gsodFields["dew_temp"]=(35,41), "9999.9", lambda x: (x.astype(float) - 32) / 1.8 # F -> C
+gsodFields["dew_temp_count"]=(42,44), None, lambda x: x.astype(int)
+
+gsodFields["pressure"]=(57,63), "9999.9", lambda x: x.astype(float) # mbar
+gsodFields["pressure_count"]=(64,66), None, lambda x: x.astype(int)
+
+gsodFields["visibility"]=(68,73), "999.9", lambda x: x.astype(float) * 1609.34 # miles -> meters
+gsodFields["visibility_count"]=(74,76), None, lambda x: x.astype(int)
+
+gsodFields["wind_speed"]=(78,83), "999.9", lambda x: x.astype(float) * 0.514444 # knots -> m/s
+gsodFields["wind_speed_count"]=(84,86), None, lambda x: x.astype(int)
+gsodFields["wind_speed_max"]=(88,93), "999.9", lambda x: x.astype(float) * 0.514444 # knots -> m/s
+gsodFields["wind_speed_gust"]=(95,100), "999.9", lambda x: x.astype(float) * 0.514444 # knots -> m/s
+
+gsodFields["air_temp_max"]=(102,108), "9999.9", lambda x: (x.astype(float) - 32) / 1.8 # F -> C
+gsodFields["air_temp_max_flag"]=(108,109), None, None
+gsodFields["air_temp_min"]=(110,116), "9999.9", lambda x: (x.astype(float) - 32) / 1.8 # F -> C
+gsodFields["air_temp_min_flag"]=(116,117), None, None
+
+gsodFields["precipitation"]=(118,123), "99.99", lambda x: x.astype(float) * 2.54 # inches -> cm
+gsodFields["precipication_flag"]=(123,124), None, None
+
+gsodFields["snow_depth"]=(125,130), "999.9", lambda x: x.astype(float) * 2.54 # inches -> cm
+gsodFields["FRSHTT"]=(132,138), None, None
+
+def parseGSOD(path, columns='measurements'):
+    """Parses mandatory data from Integrated Surface Data (ISD) files"""
+
+    # Make sure columns list is good
+    if columns == 'all': userColumns = list(gsodFields.keys())
+    elif columns == 'measurements': userColumns = ["air_temp","dew_temp","pressure","visibility","wind_speed","wind_speed_max","wind_speed_gust","air_temp_max","air_temp_min","precipitation","snow_depth"]
+    else: columns = userColumns = list(columns)
+
+    totalColumns = list(set(["year","month","day"]).union(userColumns))
+
+    # make raw data
+    raw = pd.read_fwf(path, [gsodFields[k][0] for k in totalColumns], header=0, names=totalColumns,
+                      converters=dict([(k,str) for k in totalColumns]), # make sure everything is read in as strings 
+                                                                        #  (makes reading no-data easier)
+                      na_values=dict([(k,v[1]) for k,v in gsodFields.items()]))
+
+    # Fix Columns
+    for c in totalColumns:
+        if not gsodFields[c][2] is None:
+            try:
+                raw[c] = gsodFields[c][2](raw[c])
+            except Exception as e:
+                print(c)
+                raise e
+
+    # create datetime series
+    raw.index = [pd.Timestamp(year=r.year, month=r.month, day=r.day) for r in raw.itertuples()]
+
+    # done!
+    if len(userColumns)==1: return raw[userColumns[0]]
+    else: return raw[userColumns]
+
+#############################################################
+# Handel ISD files
 # make isd fields definitions
 isdFields = OrderedDict()
 isdFields["chars"]=(0,4), None, lambda x: x.astype(int)
@@ -119,74 +213,153 @@ def parseISD(path, columns='measurements'):
     else: return raw[userColumns]
 
 
+
 #############################################################
-# GSOD PARSING
-
+# Handel IGRA files
 # make isd fields definitions
-gsodFields = OrderedDict()
-gsodFields["usaf"]=(0,6), None, lambda x: x.astype(int)
-gsodFields["wban"]=(7,12), None, lambda x: x.astype(int)
-gsodFields["year"]=(14,18), None, lambda x: x.astype(int)
-gsodFields["month"]=(18,20), None, lambda x: x.astype(int)
-gsodFields["day"]=(20,22), None, lambda x: x.astype(int)
+IGRAHeaderLine = namedtuple("HeaderLine", "HEADREC ID YEAR MONTH DAY HOUR RELTIME_HOUR RELTIME_MIN NUMLEV P_SRC NP_SRC LAT LON")
+def splitIGRAHeaderLine(line):
+    HEADREC = line[0]
+    ID = line[1:12]
+    YEAR = int(line[13:17])
+    MONTH = int(line[18:20])
+    DAY = int(line[21:23])
+    HOUR = int(line[24:26])
+    RELTIME_HOUR = int(line[27:29]) 
+    RELTIME_MIN = int(line[29:31])
+    NUMLEV = int(line[32:36])
+    P_SRC = line[37:45]
+    NP_SRC = line[46:54]
+    LAT = int(line[55:62])/10000.0
+    LON = int(line[63:71])/10000.0
 
-gsodFields["air_temp"]=(24,30), "9999.9", lambda x: (x.astype(float) - 32) / 1.8 # F -> C
-gsodFields["air_temp_count"]=(31,33), None, lambda x: x.astype(int)
+    return IGRAHeaderLine( HEADREC, ID, YEAR, MONTH, DAY, HOUR, RELTIME_HOUR, RELTIME_MIN, NUMLEV, P_SRC, NP_SRC, LAT, LON )
 
-gsodFields["dew_temp"]=(35,41), "9999.9", lambda x: (x.astype(float) - 32) / 1.8 # F -> C
-gsodFields["dew_temp_count"]=(42,44), None, lambda x: x.astype(int)
+IGRADataLine = namedtuple("DataLine", "LVLTYP1 LVLTYP2 ETIME_MIN ETIME_SEC PRESS PFLAG GPH ZFLAG TEMP TFLAG RH DPDP WDIR WSPD")
+def splitIGRADataLine(line):
+    LVLTYP1 = int(line[0])
+    LVLTYP2 = int(line[1])
 
-gsodFields["pressure"]=(57,63), "9999.9", lambda x: x.astype(float) # mbar
-gsodFields["pressure_count"]=(64,66), None, lambda x: x.astype(int)
+    tmp = line[3:6]
+    ETIME_MIN = int(tmp) if tmp != "   " else 0
+    ETIME_SEC = int(line[6:8])
+    PRESS = int(line[9:15]) # Pa
+    PFLAG = line[15]
+    GPH = int(line[16:21]) # m
+    ZFLAG = line[21]
+    TEMP = int(line[22:27])/10.0 # deg. C
+    TFLAG = line[27]
+    RH = int(line[28:33])/10.0 # percent
+    DPDP = int(line[34:39])/10.0 # deg. C
+    WDIR = int(line[40:45]) # degrees
+    WSPD = int(line[46:51])/10.0 # m/s
 
-gsodFields["visibility"]=(68,73), "999.9", lambda x: x.astype(float) * 1609.34 # miles -> meters
-gsodFields["visibility_count"]=(74,76), None, lambda x: x.astype(int)
+    return IGRADataLine(LVLTYP1,LVLTYP2,ETIME_MIN,ETIME_SEC,PRESS,PFLAG,GPH,ZFLAG,TEMP,TFLAG,RH,DPDP,WDIR,WSPD)
 
-gsodFields["wind_speed"]=(78,83), "999.9", lambda x: x.astype(float) * 0.514444 # knots -> m/s
-gsodFields["wind_speed_count"]=(84,86), None, lambda x: x.astype(int)
-gsodFields["wind_speed_max"]=(88,93), "999.9", lambda x: x.astype(float) * 0.514444 # knots -> m/s
-gsodFields["wind_speed_gust"]=(95,100), "999.9", lambda x: x.astype(float) * 0.514444 # knots -> m/s
-
-gsodFields["air_temp_max"]=(102,108), "9999.9", lambda x: (x.astype(float) - 32) / 1.8 # F -> C
-gsodFields["air_temp_max_flag"]=(108,109), None, None
-gsodFields["air_temp_min"]=(110,116), "9999.9", lambda x: (x.astype(float) - 32) / 1.8 # F -> C
-gsodFields["air_temp_min_flag"]=(116,117), None, None
-
-gsodFields["precipitation"]=(118,123), "99.99", lambda x: x.astype(float) * 2.54 # inches -> cm
-gsodFields["precipication_flag"]=(123,124), None, None
-
-gsodFields["snow_depth"]=(125,130), "999.9", lambda x: x.astype(float) * 2.54 # inches -> cm
-gsodFields["FRSHTT"]=(132,138), None, None
-
-
-def parseGSOD(path, columns='measurements'):
+Sounding = namedtuple("Sounding","header data")
+def parseIGRA(path):
     """Parses mandatory data from Integrated Surface Data (ISD) files"""
 
-    # Make sure columns list is good
-    if columns == 'all': userColumns = list(gsodFields.keys())
-    elif columns == 'measurements': userColumns = ["air_temp","dew_temp","pressure","visibility","wind_speed","wind_speed_max","wind_speed_gust","air_temp_max","air_temp_min","precipitation","snow_depth"]
-    else: columns = userColumns = list(columns)
+    # make empty data container
+    data = OrderedDict()
+    data["time"] = []
+    data["lat"] = []
+    data["lon"] = []
+    data["ID"] = []
+    data["pres"] = []
+    data["gph"] = []
+    data["temp"] = []
+    data["rh"] = []
+    data["wspd"] = []
+    data["wdir"] = []
+    data["pres_flag"] = []
+    data["gph_flag"] = []
+    data["temp_flag"] = []
+    data["etime_flag"] = []
 
-    totalColumns = list(set(["year","month","day"]).union(userColumns))
+    # split into sounding groups
+    f = open(path)
 
-    # make raw data
-    raw = pd.read_fwf(path, [gsodFields[k][0] for k in totalColumns], header=0, names=totalColumns,
-                      converters=dict([(k,str) for k in totalColumns]), # make sure everything is read in as strings 
-                                                                        #  (makes reading no-data easier)
-                      na_values=dict([(k,v[1]) for k,v in gsodFields.items()]))
+    while True:
+        line = f.readline()
+        if line == "": break
+        if not line[0] == "#": raise RuntimeError("Expected a header line")
+        h = splitIGRAHeaderLine(line)
 
-    # Fix Columns
-    for c in totalColumns:
-        if not gsodFields[c][2] is None:
+        # Check for bad values
+        if h.RELTIME_HOUR == 99: releaseHour = h.HOUR
+        else: releaseHour = h.RELTIME_HOUR
+        
+        if h.RELTIME_MIN == 99: releaseMin = 0
+        else: releaseMin = h.RELTIME_MIN
+        
+        for i in range(h.NUMLEV):
+            dataLine = f.readline()
+
+            # parse the data line
             try:
-                raw[c] = gsodFields[c][2](raw[c])
+                d = splitIGRADataLine(dataLine)
+            except ValueError as e:
+                print(dataLine)
+                raise e 
+
+            # check for bad values
+            eFlag = False
+            if d.ETIME_MIN == -88 or d.ETIME_MIN == -99: 
+                elapsedMin = 0
+                eFlag=True
+            else: 
+                elapsedMin = d.ETIME_MIN
+
+            if d.ETIME_SEC == 88 or d.ETIME_SEC == 99: 
+                elapsedSec = 0 
+                eFlag=True
+            else:
+                elapsedSec = d.ETIME_SEC
+
+            if d.PRESS == -9999: pressure = np.nan
+            else: pressure = d.PRESS
+
+            if d.GPH == -8888 or d.GPH == -9999: continue # dont bother with data we dont have a height for
+
+            if d.TEMP < 0: temperature = np.nan
+            else: temperature = d.TEMP
+
+            if d.RH < 0: relHumidity = np.nan
+            else: relHumidity = d.RH
+
+            if d.WDIR == -8888 or d.WDIR == -9999: wdir = np.nan
+            else: wdir = d.WDIR
+
+            if d.WSPD < 0: wspd = np.nan
+            else: wspd = d.WSPD
+
+            # append to container
+            try:
+                data["time"].append(pd.Timestamp(year=h.YEAR, month=h.MONTH, day=h.DAY, hour=h.HOUR+elapsedMin//60, minute=np.mod(elapsedMin,60), second=elapsedSec))
             except Exception as e:
-                print(c)
+                print(dataLine)
+                print(h)
+                print(d)
                 raise e
 
-    # create datetime series
-    raw.index = [pd.Timestamp(year=r.year, month=r.month, day=r.day) for r in raw.itertuples()]
-
-    # done!
-    if len(userColumns)==1: return raw[userColumns[0]]
-    else: return raw[userColumns]
+            data["lat"].append(h.LAT)
+            data["lon"].append(h.LON)
+            data["ID"].append(h.ID)
+            data["pres"].append(pressure)
+            data["gph"].append(d.GPH)
+            data["temp"].append(temperature)
+            data["rh"].append(relHumidity)
+            data["wspd"].append(wspd)
+            data["wdir"].append(wdir)
+            data["pres_flag"].append(d.PFLAG)
+            data["gph_flag"].append(d.ZFLAG)
+            data["temp_flag"].append(d.TFLAG)
+            data["etime_flag"].append(eFlag)
+    f.close()
+    
+    # output as dataframe
+    output = pd.DataFrame(data)
+    output.set_index("time", inplace=True, drop=True)
+    
+    return output
