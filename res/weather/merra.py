@@ -86,8 +86,8 @@ class MerraSource( GenericSource ):
             np.logical_and(lonSelect, lons<=s._lonMax, lonSelect)
 
             # Be sure lats and lons lineup with the other datasets
-            if not (s.lats == lats[latSelect]).all(): raise ResMerraError("Coordinate mismatch")
-            if not (s.lons == lons[lonSelect]).all(): raise ResMerraError("Coordinate mismatch")
+            if not (np.abs(s.lats - lats[latSelect]) < 1e-8).all(): raise ResMerraError("Lat mismatch in %s"%path)
+            if not (np.abs(s.lons - lons[lonSelect]) < 1e-8).all(): raise ResMerraError("Lon mismatch in %s"%path)
 
             # fetch and save data
             rawdata.append( ds.variables[varname][:,latSelect,lonSelect])
