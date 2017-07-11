@@ -8,6 +8,9 @@ import pandas as pd
 from collections import namedtuple, OrderedDict
 from scipy.interpolate import RectBivariateSpline, interp2d
 
+Index = namedtuple("Index", "yi xi")
+Location = namedtuple("Location", "x y")
+
 # making an error
 class ResWeatherError(Exception): pass # this just creates an error that we can use
 
@@ -58,12 +61,12 @@ class GenericElement(object):
             y = loc.GetY()
 
         else: # input should be a tuple in the correct SRS
-            x = loc[1]
-            y = loc[0]
+            x = loc[0]
+            y = loc[1]
             
         # make sure we're in range
-        if not (x>=s._xMin and x<=s._xMax): raise ResWeatherError("Input exceeds X boundary")
-        if not (y>=s._yMin and y<=s._yMax): raise ResWeatherError("Input exceeds Y boundary")
+        if not (x>s._xMin and x<s._xMax): raise ResWeatherError("Input exceeds X boundary")
+        if not (y>s._yMin and y<s._yMax): raise ResWeatherError("Input exceeds Y boundary")
 
         # Compute the best indicies
         xDist = x - s.xCoords
@@ -108,9 +111,13 @@ class GenericElement(object):
 
         return pd.Series(outdata, index=s.times, name=s.name)
         
-
 # make a generic datasource
 class GenericSource(object):
+    _GWA50_AVERAGE_SOURCE = None
+    _GWA100_AVERAGE_SOURCE = None
+    _WINDSPEED_NORMALIZER_SOURCE = None
+    _WINDSPEED_NORMALIZER_VAR = None
+
     def __init__(s, timeframe, xCoords, yCoords, coordSRS='latlon'):
         s.source = "unknown"
 
@@ -131,9 +138,57 @@ class GenericSource(object):
         if len(xCoords.shape) == 1: # make it two dimensional
             s.xCoords, s.yCoords = np.meshgrid(s.xCoords, s.yCoords)
 
+        s._xMin = s.xCoords.min()
+        s._xMax = s.xCoords.max()
+        s._yMin = s.yCoords.min()
+        s._yMax = s.yCoords.max()
+
         # initialize an empty data container
         s.data = OrderedDict()
         s.dataShape = xCoords.shape
+
+    def loc2Index(s, loc):
+        # Check if the location input is a point geometry
+        if isinstance(loc, ogr.Geometry):
+            if not loc.GetGeometryName()=="POINT":
+                raise ResWeatherError("location geometry is not a Point object")
+            
+            # make sure the input is in the correct reference system
+            locSRS = loc.GetSpatialReference()
+            if not locSRS is None: 
+                if not locSRS.IsSame(s.coordSRS):
+                    loc.TransformTo(s.coordSRS)
+
+            # Get x and y coordinates
+            x = loc.GetX()
+            y = loc.GetY()
+
+        else: # input should be a tuple in the correct SRS
+            x = loc[0]
+            y = loc[1]
+            
+        # make sure we're in range
+        if not (x>=s._xMin and x<=s._xMax): raise ResWeatherError("Input exceeds X boundary")
+        if not (y>=s._yMin and y<=s._yMax): raise ResWeatherError("Input exceeds Y boundary")
+
+        # Compute the best indicies
+        xDist = x - s.xCoords
+        yDist = y - s.yCoords
+
+        totalDist2 = xDist*xDist + yDist*yDist
+
+        yi,xi = np.argwhere(totalDist2 == np.min(totalDist2))[0]
+
+        # done!
+        return Index(yi,xi)
+
+    def gwaContextAverage(s, loc, height=50):
+        if height == 50:
+            return gk.raster.extractValues(s._GWA50_AVERAGE_SOURCE, loc).data
+        elif height == 100:
+            return gk.raster.extractValues(s._GWA100_AVERAGE_SOURCE, loc).data
+        else:
+            raise ResWeatherError("height is not 50 or 100")
 
     def setInterpolationMode(s, mode=None):
         for k,v in s.data.items():

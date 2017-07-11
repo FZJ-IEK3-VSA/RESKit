@@ -257,7 +257,7 @@ def splitIGRADataLine(line):
     return IGRADataLine(LVLTYP1,LVLTYP2,ETIME_MIN,ETIME_SEC,PRESS,PFLAG,GPH,ZFLAG,TEMP,TFLAG,RH,DPDP,WDIR,WSPD)
 
 Sounding = namedtuple("Sounding","header data")
-def parseIGRA(path):
+def parseIGRA(path, minYear=1900, maxYear=100000):
     """Parses mandatory data from Integrated Surface Data (ISD) files"""
 
     # make empty data container
@@ -292,10 +292,12 @@ def parseIGRA(path):
         
         if h.RELTIME_MIN == 99: releaseMin = 0
         else: releaseMin = h.RELTIME_MIN
+
+        release = pd.Timestamp(year=h.YEAR, month=h.MONTH, day=h.DAY, hour=releaseHour, minute=releaseMin)
         
         for i in range(h.NUMLEV):
             dataLine = f.readline()
-
+            if h.YEAR < minYear or h.YEAR>maxYear: continue
             # parse the data line
             try:
                 d = splitIGRADataLine(dataLine)
@@ -336,7 +338,7 @@ def parseIGRA(path):
 
             # append to container
             try:
-                data["time"].append(pd.Timestamp(year=h.YEAR, month=h.MONTH, day=h.DAY, hour=h.HOUR+elapsedMin//60, minute=np.mod(elapsedMin,60), second=elapsedSec))
+                data["time"].append(release + (pd.Timedelta(minutes=elapsedMin)+pd.Timedelta(seconds=elapsedSec)))
             except Exception as e:
                 print(dataLine)
                 print(h)
@@ -360,6 +362,6 @@ def parseIGRA(path):
     
     # output as dataframe
     output = pd.DataFrame(data)
-    output.set_index("time", inplace=True, drop=True)
+    #output.set_index("time", inplace=True, drop=True)
     
     return output

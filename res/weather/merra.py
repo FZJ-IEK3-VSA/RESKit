@@ -7,10 +7,13 @@ class MerraSource( GenericSource ):
 
     _LONS_MASTER = np.arange(-180, 180, 0.625)
     _LATS_MASTER = np.arange(-90, 90, 0.5)
+
+    _GWA50_AVERAGE_SOURCE = join(dirname(__file__),"..","..","data","gwa50_mean_over_merra.tif")
+    _GWA100_AVERAGE_SOURCE = join(dirname(__file__),"..","..","data","gwa100_mean_over_merra.tif")
     _WINDSPEED_NORMALIZER_SOURCE = join(dirname(__file__),"..","..","data","merra_average_windspeed_50m.tif")
     _WINDSPEED_NORMALIZER_VAR = "wspd_50"
 
-    def __init__(s, timeframe, topDir, lat=None, lon=None, bounds=None):
+    def __init__(s, timeframe, topDir, lat=None, lon=None, bounds=(-27.5, 25.0, 47.5, 80.0)):
         # set some useful attributes
         s.topDir = topDir
         s.source = "MERRA"
