@@ -93,7 +93,7 @@ gsodFields["wind_speed_count"]=(84,86), None, lambda x: x.astype(int)
 gsodFields["wind_speed_max"]=(88,93), "999.9", lambda x: x.astype(float) * 0.514444 # knots -> m/s
 gsodFields["wind_speed_gust"]=(95,100), "999.9", lambda x: x.astype(float) * 0.514444 # knots -> m/s
 
-gsodFields["air_temp_max"]=(102,108), "9999.9", lambda x: (x.astype(float) - 32) / 1.8 # F -> C
+gsodFields["air_temp_max"]=(102,108), "999.9", lambda x: (x.astype(float) - 32) / 1.8 # F -> C
 gsodFields["air_temp_max_flag"]=(108,109), None, None
 gsodFields["air_temp_min"]=(110,116), "9999.9", lambda x: (x.astype(float) - 32) / 1.8 # F -> C
 gsodFields["air_temp_min_flag"]=(116,117), None, None
