@@ -15,6 +15,10 @@ class MerraSource (NCSource):
         s.load("U%dM"%height)
         s.load("V%dM"%height)
 
+        # read the data
+        uData = s.data["U%dM"%height]
+        vData = s.data["V%dM"%height]
+
         # combine into a single time series matrix
         speed = np.sqrt(uData*uData+vData*vData) # total speed
         direction = np.arctan2(vData,uData)*(180/np.pi)# total direction

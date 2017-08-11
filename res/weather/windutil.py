@@ -5,7 +5,7 @@ from .util import *
 
 def adjustLraToGwa( windspeed, targetLoc, gwa, longRunAverage):
     ## Ensure location is okay
-    targetLoc = _ensureList(_ensureGeom(targetLoc))
+    targetLoc = ensureList(ensureGeom(targetLoc))
 
     # Get the local gwa value
     gwaLocValue = np.array([x.data for x in gk.raster.extractValues(gwa, targetLoc)])
@@ -16,13 +16,13 @@ def adjustLraToGwa( windspeed, targetLoc, gwa, longRunAverage):
 
     # apply adjustment
     if isinstance(windspeed, NCSource):
-        windspeed = NCSource.get("windspeed", targetloc)
+        windspeed = windspeed.get("windspeed", targetLoc)
 
     return windspeed * (gwaLocValue / longRunAverage)
 
-def adjustContextMeanToGwa( windspeed, targetLoc, gwa, contextMean=None):
+def adjustContextMeanToGwa( windspeed, targetLoc, gwa, contextMean=None, **kwargs):
     ## Ensure location is okay
-    targetLoc = _ensureList(_ensureGeom(targetLoc))
+    targetLoc = ensureList(ensureGeom(targetLoc))
 
     # Get the local gwa value
     gwaLocValue = np.array([x.data for x in gk.raster.extractValues(gwa, targetLoc)])
@@ -30,16 +30,18 @@ def adjustContextMeanToGwa( windspeed, targetLoc, gwa, contextMean=None):
     # Get the gwa contextual mean value
     if contextMean is None: # the contexts needs to be computed
         # this only works when windspeed is an NCSource object
-        contextMean = np.array([windspeed.contextAreaAt(loc) for loc in targetLoc])
+        if not isinstance(windspeed, NCSource):
+            raise ResError("contextMean must be provided when windspeed is not a Source")
+        contextMean = np.array([computeContextMean(gwa, windspeed.contextAreaAt(loc), **kwargs) for loc in targetLoc])
 
-    elif isinstance(context, str): # A path to a raster dataset has been given to read the means from
-        contextMean = np.array([x.data for x in gk.raster.extractValues(context, targetLoc)])
+    elif isinstance(contextMean, str): # A path to a raster dataset has been given to read the means from
+        contextMean = np.array([x.data for x in gk.raster.extractValues(contextMean, targetLoc)])
 
     # apply adjustment    
     if isinstance(windspeed, NCSource):
-        windspeed = NCSource.get("windspeed", targetloc)
+        windspeed = windspeed.get("windspeed", targetLoc)
 
-    return windspeed * (gwaLocValue / context)
+    return windspeed * (gwaLocValue / contextMean)
 
 ################################################################################
 ## Vertical projection methods
@@ -56,9 +58,9 @@ def projectByPowerLaw( windspeed, measuredHeight, targetHeight, alpha):
 def alphaFromLevels( lowWindSpeed, lowHeight, highWindSpeed, highHeight):
     return np.log(lowWindSpeed/highWindSpeed)/np.log(lowHeight/highHeight)
 
-def alphaFromGWA( gwaDir, loc, pairID=2):
+def alphaFromGWA( gwaDir, loc, pairID=1):
     ## Ensure location is okay
-    loc = _ensureList(_ensureGeom(loc))
+    loc = ensureList(ensureGeom(loc))
 
     # Get the GWA averages
     GWA_files = [join(gwaDir, "WS_050m_global_wgs84_mean_trimmed.tif"),
@@ -67,23 +69,16 @@ def alphaFromGWA( gwaDir, loc, pairID=2):
 
     for f in GWA_files: 
         if not isfile(f): 
-            raise ResWeatherError("Could not find file: "+f)
+            raise ResError("Could not find file: "+f)
 
-    try:
-        if pairID==0 or pairID==1: gwaAverage50  = np.array([x.data for x in gk.raster.extractValues(GWA_files[0], loc, noDataOkay=False)])
-        if pairID==1 or pairID==2: gwaAverage100 = np.array([x.data for x in gk.raster.extractValues(GWA_files[1], loc, noDataOkay=False)])
-        if pairID==0 or pairID==2: gwaAverage200 = np.array([x.data for x in gk.raster.extractValues(GWA_files[2], loc, noDataOkay=False)])
-
-    except gk.util.GeoKitRasterError as e:
-        if str(e) == "No data values found in extractValues with 'noDataOkay' set to False":
-            raise ResWeatherError("The given point does not appear to have valid data in the Global Wind Atlas dataset")
-        else:
-            raise e
+    if pairID==0 or pairID==2: gwaAverage50  = np.array([x.data for x in gk.raster.extractValues(GWA_files[0], loc)])
+    if pairID==0 or pairID==1: gwaAverage100 = np.array([x.data for x in gk.raster.extractValues(GWA_files[1], loc)])
+    if pairID==1 or pairID==2: gwaAverage200 = np.array([x.data for x in gk.raster.extractValues(GWA_files[2], loc)])
 
     # Interpolate gwa average to desired height
-    if pairID==0 or pairID==1: out = alphaFromLevels(gwaAverage50,50,gwaAverage100,100)
-    if pairID==1 or pairID==2: out = alphaFromLevels(gwaAverage100,100,gwaAverage200,200)
-    if pairID==0 or pairID==2: out = alphaFromLevels(gwaAverage50,50,gwaAverage200,200)
+    if pairID==0: out = alphaFromLevels(gwaAverage50,50,gwaAverage100,100)
+    if pairID==1: out = alphaFromLevels(gwaAverage100,100,gwaAverage200,200)
+    if pairID==2: out = alphaFromLevels(gwaAverage50,50,gwaAverage200,200)
        
     # done!
     if out.size==1: return out[0]
@@ -95,9 +90,9 @@ def alphaFromGWA( gwaDir, loc, pairID=2):
 def roughnessFromLevels(lowWindSpeed, lowHeight, highWindSpeed, highHeight):
     return np.exp( (highWindSpeed * np.log(lowHeight) - lowWindSpeed * np.log(highHeight) )/(highWindSpeed - lowWindSpeed) )
 
-def roughnessFromGWA(gwaDir, loc, pairID=2):
+def roughnessFromGWA(gwaDir, loc, pairID=1):
     ## Ensure location is okay
-    loc = _ensureList(_ensureGeom(loc))
+    loc = ensureList(ensureGeom(loc))
 
     # Get the GWA averages
     GWA_files = [join(gwaDir, "WS_050m_global_wgs84_mean_trimmed.tif"),
@@ -108,22 +103,14 @@ def roughnessFromGWA(gwaDir, loc, pairID=2):
         if not isfile(f): 
             raise ResWeatherError("Could not find file: "+f)
 
-    try:
-        if pairID==0 or pairID==1: gwaAverage50  = np.array([x.data for x in gk.raster.extractValues(GWA_files[0], loc, noDataOkay=False)])
-        if pairID==1 or pairID==2: gwaAverage100 = np.array([x.data for x in gk.raster.extractValues(GWA_files[1], loc, noDataOkay=False)])
-        if pairID==0 or pairID==2: gwaAverage200 = np.array([x.data for x in gk.raster.extractValues(GWA_files[2], loc, noDataOkay=False)])
-
-
-    except gk.util.GeoKitRasterError as e:
-        if str(e) == "No data values found in extractValues with 'noDataOkay' set to False":
-            raise ResWeatherError("The given point does not appear to have valid data in the Global Wind Atlas dataset")
-        else:
-            raise e
+    if pairID==0 or pairID==2: gwaAverage50  = np.array([x.data for x in gk.raster.extractValues(GWA_files[0], loc)])
+    if pairID==0 or pairID==1: gwaAverage100 = np.array([x.data for x in gk.raster.extractValues(GWA_files[1], loc)])
+    if pairID==1 or pairID==2: gwaAverage200 = np.array([x.data for x in gk.raster.extractValues(GWA_files[2], loc)])
 
     # Interpolate gwa average to desired height
-    if pairID==0 or pairID==1: out = roughnessFromLevels(gwaAverage50,50,gwaAverage100,100)
-    if pairID==1 or pairID==2: out = roughnessFromLevels(gwaAverage100,100,gwaAverage200,200)
-    if pairID==0 or pairID==2: out = roughnessFromLevels(gwaAverage50,50,gwaAverage200,200)
+    if pairID==0: out = roughnessFromLevels(gwaAverage50,50,gwaAverage100,100)
+    if pairID==1: out = roughnessFromLevels(gwaAverage100,100,gwaAverage200,200)
+    if pairID==2: out = roughnessFromLevels(gwaAverage50,50,gwaAverage200,200)
 
     # done!
     if out.size==1: return out[0]
@@ -226,15 +213,15 @@ _clcGridToCode_v2006[42] = 521
 _clcGridToCode_v2006[43] = 522
 _clcGridToCode_v2006[44] = 523
 
-def roughnessFromCLC(loc, clcPath):
+def roughnessFromCLC(clcPath, loc):
     ## Ensure location is okay
-    loc = _ensureList(_ensureGeom(loc))
+    loc = ensureList(ensureGeom(loc))
 
     ## Get pixels values from clc
     clcGridValues = np.array([x.data for x in gk.raster.extractValues(clcPath, loc, noDataOkay=False)])
 
     ## Get the associated
-    outputs = [clcCodeToRoughess[_clcGridToCode_v2006[ val ]] for val in clcGridValue]
+    outputs = [clcCodeToRoughess[_clcGridToCode_v2006[ val ]] for val in clcGridValues]
 
     ## Done!
     if len(outputs)==1: return outputs[0]

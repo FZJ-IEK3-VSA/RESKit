@@ -14,15 +14,16 @@ import types
 # making an error
 class ResError(Exception): pass # this just creates an error that we can use
 
-
 # Make some type-helpers
 Index = namedtuple("Index", "yi xi")
 Location = namedtuple("Location", "x y")
+def LatLonLocation(lat, lon):
+        return Location(x=lon, y=lat)
 Bounds = namedtuple("Bounds","lonMin latMin lonMax latMax")
 
-def _ensureList(locations):
+def ensureList(locations):
     # Ensure loc is a list
-    if isinstance(locations, types.ListType):
+    if isinstance(locations, list) or isinstance(locations, np.ndarray):
         pass    
     elif isinstance(locations, types.GeneratorType):
         locations = list(locations)
@@ -31,8 +32,8 @@ def _ensureList(locations):
     # Done!
     return locations
 
-def _ensureGeom(locations):
-    if isinstance(locations,types.ListType):
+def ensureGeom(locations):
+    if isinstance(locations, list) or isinstance(locations, np.ndarray):
         if isinstance(locations[0], ogr.Geometry): # Check if loc is a list of point
             if not locations[0].GetSpatialReference().IsSame(gk.srs.EPSG4326):
                 locations = gk.geom.transform(locations, toSRS=gk.srs.EPSG4326)
@@ -42,7 +43,7 @@ def _ensureGeom(locations):
             raise ResError("Cannot understand location input. Use either a Location or an ogr.Geometry object")
 
     elif isinstance(locations, types.GeneratorType):
-        locations = _ensureGeom(list(locations))
+        locations = ensureGeom(list(locations))
 
     elif isinstance(locations, ogr.Geometry): # Check if loc is a single point
         if not locations.GetSpatialReference().IsSame(gk.srs.EPSG4326):
@@ -51,14 +52,17 @@ def _ensureGeom(locations):
 
     elif isinstance(locations, Location):
         locations = gk.geom.point(locations.x, locations.y, srs=gk.srs.EPSG4326)
+    elif isinstance(locations, tuple) and len(locations)==2:
+        locations = gk.geom.point(locations[0], locations[1], srs=gk.srs.EPSG4326)
+        print("Consider using a Location object. It is safer!")
     else:
         raise ResError("Cannot understand location input. Use either a Location or an ogr.Geometry object")
 
     # Done!
     return locations
 
-def _ensureLoc(locations):
-    if isinstance(locations,types.ListType):
+def ensureLoc(locations):
+    if isinstance(locations, list) or isinstance(locations, np.ndarray):
         if isinstance(locations[0], ogr.Geometry): # Check if loc is a list of point
             if not locations[0].GetSpatialReference().IsSame(gk.srs.EPSG4326):
                 locations = gk.geom.transform(locations, toSRS=gk.srs.EPSG4326)
@@ -69,7 +73,7 @@ def _ensureLoc(locations):
             raise ResError("Cannot understand location input. Use either a Location or an ogr.Geometry object")
 
     elif isinstance(locations, types.GeneratorType):
-        locations = _ensureLoc(list(locations))
+        locations = ensureLoc(list(locations))
 
     elif isinstance(locations, ogr.Geometry): # Check if loc is a single point
         if not locations.GetSpatialReference().IsSame(gk.srs.EPSG4326):
@@ -79,6 +83,9 @@ def _ensureLoc(locations):
 
     elif isinstance(locations, Location):
         pass
+    elif isinstance(locations, tuple) and len(locations)==2:
+        locations = Location(*locations)
+        print("Consider using a Location object. It is safer!")
     else:
         raise ResError("Cannot understand location input. Use either a Location or an ogr.Geometry object")
 
@@ -88,7 +95,7 @@ def _ensureLoc(locations):
 # context mean
 def computeContextMean(source, contextArea, fillnan=True, pixelSize=None, srs=None):
     if pixelSize is None and srs is None:
-        ras = gk.raster.describe(source)
+        ras = gk.raster.rasterInfo(source)
         pixelSize=(ras.dx, ras.dy)
         srs=ras.srs
 
@@ -112,7 +119,7 @@ def computeContextMean(source, contextArea, fillnan=True, pixelSize=None, srs=No
                     tmp[yi,xi] = np.nanmean(vals)
             values = tmp
     # done!
-    return np.nanmean(gvalues[rm.mask])
+    return np.nanmean(values[rm.mask])
 
 
 # make a data handler
@@ -120,19 +127,20 @@ class NCSource(object):
     def __init__(s, path, bounds=None, timeName="time", latName="lat", lonName="lon"):
         # set basic vairables 
         s.path = path
-        s.ds = nc.dataset
+        s.ds = nc.Dataset(path)
         s._allLats = s.ds[latName][:]
         s._allLons = s.ds[lonName][:]
+        s.variables = s.ds.variables.keys()
 
         # set lat and lon selections
         if not bounds is None:
-            if not isinstance(bounds, bounds):
+            if not isinstance(bounds, Bounds):
                 bounds = Bounds(*bounds)
                 print("bounds input is not a 'Bounds' type. Using it is safer!")
             
             # find slices
-            s._lonSel = s.allLons >= bounds.lonMin and s.allLons <= bounds.lonMax
-            s._latSel = s.allLats >= bounds.latMin and s.allLats <= bounds.latMax
+            s._lonSel = np.logical_and(s._allLons >= bounds.lonMin, s._allLons <= bounds.lonMax)
+            s._latSel = np.logical_and(s._allLats >= bounds.latMin, s._allLats <= bounds.latMax)
         else:
             s._latSel = np.s_[:]
             s._lonSel = np.s_[:]
@@ -144,7 +152,6 @@ class NCSource(object):
         s.timeindex = nc.num2date(s.ds[timeName][:], s.ds[timeName].units)
 
         # initialize some variables
-        s._transformCount
         s.data = OrderedDict()
 
     def load(s, variable, name=None, processor=None):
@@ -161,46 +168,60 @@ class NCSource(object):
         if name is None: name = variable
         s.data[variable] = tmp
 
-    def get(s, variable, locations, interpolation='near'):
+    def loc2Index(s, loc):
         # Ensure loc is a list
-        locations = _ensureLoc(_ensureList(locations))
+        locations = ensureLoc(ensureList(loc))
 
-        # Do interpolation
+        # Get coordinates
         lonCoords = np.array([loc.x for loc in locations])
         latCoords = np.array([loc.y for loc in locations])
+
+        # get closest indecies
+        lonIndecies = [np.argmin(np.abs(lon-s.lons)) for lon in lonCoords]
+        latIndecies = [np.argmin(np.abs(lat-s.lats)) for lat in latCoords]
+
+        # Make output
+        if len(locations)==1:
+            return Index(yi=latIndecies[0], xi=lonIndecies[0])
+        else:
+            return [Index(yi=latIndex, xi=lonIndex) for latIndex,lonIndex in zip(latIndecies, lonIndecies)]
+
+    def get(s, variable, locations, interpolation='near'):
+        # Ensure loc is a list
+        locations = ensureLoc(ensureList(locations))
+
+        # Do interpolation
         if interpolation == 'near':
             # compute the closest indecies
-            lonIndecies = [np.argmin(np.abs(lon-s.lons)) for lon in lonCoords]
-            latIndecies = [np.argmin(np.abs(lat-s.lats)) for lat in latCoords]
+            indecies = s.loc2Index(locations)
+            if isinstance(indecies, Index): indecies = [indecies, ]
 
             # arrange the output data
-            output = [s.Data[:, latIndex, lonIndex] for latIndex, lonIndex in zip (latIndecies, lonIndecies)]
+            output = [s.data[variable][:, i.yi, i.xi] for i in indecies]
 
         else:
             raise ResError("No other interpolation schemes are implemented at this time :(")
 
         # Make output as Series objects
         if len(output) == 1:
-            return pd.Series(output[0], index=s.times, name=variable)
+            return pd.Series(output[0], index=s.timeindex, name=locations[0])
         else: 
-            return pd.DataFrame(np.column_stack(output), index=s.times, columns=locations)
+            return pd.DataFrame(np.column_stack(output), index=s.timeindex, columns=locations)
 
-    def contextArea(s,location):
+    def contextAreaAt(s,location):
         # Ensure we have a Location
         if isinstance(location, ogr.Geometry):
             # test if location is in lat & lon coordinates
             if not location.GetSpatialReference().IsSame(gk.srs.EPSG4326):
                 location.TransformTo(gk.srs.EPSG4326)
-            location = [Location(x=loc.GetX(), y=loc.GetY()) for loc in locations]
-        elif not isinstance(locations, Location):
+            location = Location(x=location.GetX(), y=location.GetY())
+        elif not isinstance(location, Location):
             raise ResError("Cannot understand location input. Use either a Location or an ogr.Geometry object")
 
         # Get closest indexes
-        lonI = np.argmin(np.abs(location.x-s.lons))
-        latI = np.argmin(np.abs(location.y-s.lats))
-
+        index = s.loc2Index(location)
         # get area
-        return s._contextAreaAt(latI, lonI)
+        return s._contextAreaAt(index.yi, index.xi)
 
     def _contextAreaAt(s, latI, lonI):
 
@@ -210,7 +231,7 @@ class NCSource(object):
         lowLon = (s.lons[lonI]+s.lons[lonI-1])/2
         highLon = (s.lons[lonI]+s.lons[lonI+1])/2
         
-        return gk.box( lowLon, lowLat, highLon, highLat, srs=gk.srs.EPSG4326 )
+        return gk.geom.box( lowLon, lowLat, highLon, highLat, srs=gk.srs.EPSG4326 )
 
     def computeContextMeans(s, source, output=None, fillnan=True):
         # get rastr info
