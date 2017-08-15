@@ -217,11 +217,13 @@ def roughnessFromCLC(clcPath, loc):
     ## Ensure location is okay
     loc = ensureList(ensureGeom(loc))
 
-    ## Get pixels values from clc
-    clcGridValues = np.array([x.data for x in gk.raster.extractValues(clcPath, loc, noDataOkay=False)])
+    ## Get pixels values from clc (assume nodata is ocean)
+    clcGridValues = np.array([x.data for x in gk.raster.extractValues(clcPath, loc, noDataOkay=True)])
+    clcGridValues[np.isnan(clcGridValues)] = 42
+    clcGridValues = clcGridValues.astype(int)
 
     ## Get the associated
-    outputs = [clcCodeToRoughess[clcGridToCode_v2006[ val ]] for val in clcGridValues]
+    outputs = [clcCodeToRoughess[clcGridToCode_v2006[ int(val) ]] for val in clcGridValues]
 
     ## Done!
     if len(outputs)==1: return outputs[0]
