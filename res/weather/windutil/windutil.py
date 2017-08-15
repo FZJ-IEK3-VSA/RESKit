@@ -1,4 +1,4 @@
-from .util import *
+from ..util import *
 
 ################################################################################
 ## Spatial adjustment methods
@@ -167,51 +167,51 @@ clcCodeToRoughess[523] = 0.0005 # Costal lagoons # SUSPISCIOUS
 clcCodeToRoughess[522] = 0.0008 # Estuaries # SUSPISCIOUS
 clcCodeToRoughess[521] = 0.0002 # Sea and ocean # SUSPISCIOUS
 
-_clcGridToCode_v2006 = OrderedDict()
-_clcGridToCode_v2006[1] = 111
-_clcGridToCode_v2006[2] = 112
-_clcGridToCode_v2006[3] = 121
-_clcGridToCode_v2006[4] = 122
-_clcGridToCode_v2006[5] = 123
-_clcGridToCode_v2006[6] = 124
-_clcGridToCode_v2006[7] = 131
-_clcGridToCode_v2006[8] = 132
-_clcGridToCode_v2006[9] = 133
-_clcGridToCode_v2006[10] = 141
-_clcGridToCode_v2006[11] = 142
-_clcGridToCode_v2006[12] = 211
-_clcGridToCode_v2006[13] = 212
-_clcGridToCode_v2006[14] = 213
-_clcGridToCode_v2006[15] = 221
-_clcGridToCode_v2006[16] = 222
-_clcGridToCode_v2006[17] = 223
-_clcGridToCode_v2006[18] = 231
-_clcGridToCode_v2006[19] = 241
-_clcGridToCode_v2006[20] = 242
-_clcGridToCode_v2006[21] = 243
-_clcGridToCode_v2006[22] = 244
-_clcGridToCode_v2006[23] = 311
-_clcGridToCode_v2006[24] = 312
-_clcGridToCode_v2006[25] = 313
-_clcGridToCode_v2006[26] = 321
-_clcGridToCode_v2006[27] = 322
-_clcGridToCode_v2006[28] = 323
-_clcGridToCode_v2006[29] = 324
-_clcGridToCode_v2006[30] = 331
-_clcGridToCode_v2006[31] = 332
-_clcGridToCode_v2006[32] = 333
-_clcGridToCode_v2006[33] = 334
-_clcGridToCode_v2006[34] = 335
-_clcGridToCode_v2006[35] = 411
-_clcGridToCode_v2006[36] = 412
-_clcGridToCode_v2006[37] = 421
-_clcGridToCode_v2006[38] = 422
-_clcGridToCode_v2006[39] = 423
-_clcGridToCode_v2006[40] = 511
-_clcGridToCode_v2006[41] = 512
-_clcGridToCode_v2006[42] = 521
-_clcGridToCode_v2006[43] = 522
-_clcGridToCode_v2006[44] = 523
+clcGridToCode_v2006 = OrderedDict()
+clcGridToCode_v2006[1] = 111
+clcGridToCode_v2006[2] = 112
+clcGridToCode_v2006[3] = 121
+clcGridToCode_v2006[4] = 122
+clcGridToCode_v2006[5] = 123
+clcGridToCode_v2006[6] = 124
+clcGridToCode_v2006[7] = 131
+clcGridToCode_v2006[8] = 132
+clcGridToCode_v2006[9] = 133
+clcGridToCode_v2006[10] = 141
+clcGridToCode_v2006[11] = 142
+clcGridToCode_v2006[12] = 211
+clcGridToCode_v2006[13] = 212
+clcGridToCode_v2006[14] = 213
+clcGridToCode_v2006[15] = 221
+clcGridToCode_v2006[16] = 222
+clcGridToCode_v2006[17] = 223
+clcGridToCode_v2006[18] = 231
+clcGridToCode_v2006[19] = 241
+clcGridToCode_v2006[20] = 242
+clcGridToCode_v2006[21] = 243
+clcGridToCode_v2006[22] = 244
+clcGridToCode_v2006[23] = 311
+clcGridToCode_v2006[24] = 312
+clcGridToCode_v2006[25] = 313
+clcGridToCode_v2006[26] = 321
+clcGridToCode_v2006[27] = 322
+clcGridToCode_v2006[28] = 323
+clcGridToCode_v2006[29] = 324
+clcGridToCode_v2006[30] = 331
+clcGridToCode_v2006[31] = 332
+clcGridToCode_v2006[32] = 333
+clcGridToCode_v2006[33] = 334
+clcGridToCode_v2006[34] = 335
+clcGridToCode_v2006[35] = 411
+clcGridToCode_v2006[36] = 412
+clcGridToCode_v2006[37] = 421
+clcGridToCode_v2006[38] = 422
+clcGridToCode_v2006[39] = 423
+clcGridToCode_v2006[40] = 511
+clcGridToCode_v2006[41] = 512
+clcGridToCode_v2006[42] = 521
+clcGridToCode_v2006[43] = 522
+clcGridToCode_v2006[44] = 523
 
 def roughnessFromCLC(clcPath, loc):
     ## Ensure location is okay
@@ -221,8 +221,75 @@ def roughnessFromCLC(clcPath, loc):
     clcGridValues = np.array([x.data for x in gk.raster.extractValues(clcPath, loc, noDataOkay=False)])
 
     ## Get the associated
-    outputs = [clcCodeToRoughess[_clcGridToCode_v2006[ val ]] for val in clcGridValues]
+    outputs = [clcCodeToRoughess[clcGridToCode_v2006[ val ]] for val in clcGridValues]
 
     ## Done!
     if len(outputs)==1: return outputs[0]
     else: return np.array(outputs)
+
+
+############################################################################
+## Defined primarily from :
+## Title -- ROUGHNESS LENGTH CLASSIFICATION OF Global Wind Atlas
+## Authors -- DTU
+globCoverCodeToRoughess = OrderedDict()
+# GlobCover Number
+globCoverCodeToRoughess[210] = 0.0 # Water Bodies
+globCoverCodeToRoughess[220] = 0.0004 # Permanant Snow and ice
+globCoverCodeToRoughess[200] = 0.005 # Bare areas
+globCoverCodeToRoughess[140] = 0.03 # Grasslands, savannas or lichens/mosses
+globCoverCodeToRoughess[150] = 0.05 # Sparse vegetation
+globCoverCodeToRoughess[11] = 0.1 # Croplands
+globCoverCodeToRoughess[14] = 0.1 # Croplands
+globCoverCodeToRoughess[130] = 0.1 # Shrubland
+globCoverCodeToRoughess[180] = 0.2 # Wetlands
+globCoverCodeToRoughess[20] = 0.3 # Mosaic natural vegetation/cropland
+globCoverCodeToRoughess[30] = 0.3 # Mosaic natural vegetation/cropland
+globCoverCodeToRoughess[160] = 0.5 # Flooded forest
+globCoverCodeToRoughess[120] = 0.5 # Mosaic grassland/forest
+globCoverCodeToRoughess[170] = 0.6 # Flooded forest or shrubland
+globCoverCodeToRoughess[190] = 1.0 # Urban Areas
+globCoverCodeToRoughess[40] = 1.5 # Forests
+globCoverCodeToRoughess[50] = 1.5 # Forests
+globCoverCodeToRoughess[60] = 1.5 # Forests
+globCoverCodeToRoughess[70] = 1.5 # Forests
+globCoverCodeToRoughess[90] = 1.5 # Forests
+globCoverCodeToRoughess[100] = 1.5 # Forests
+globCoverCodeToRoughess[110] = 1.5 # Forests
+
+# Modis Number for "no data" points of GlobCover (mostly in areas North of 60°)
+modisCodeToRoughess = OrderedDict()
+modisCodeToRoughess[0] = 0.0 # Water Bodies
+modisCodeToRoughess[15] = 0.0004 # Permanant Snow and ice
+modisCodeToRoughess[16] = 0.005 # Bare areas
+modisCodeToRoughess[10] = 0.03 # Grasslands, savannas or lichens/mosses
+modisCodeToRoughess[12] = 0.1 # Croplands
+modisCodeToRoughess[6] = 0.1 # Shrubland
+modisCodeToRoughess[7] = 0.1 # Shrubland
+modisCodeToRoughess[11] = 0.2 # Wetlands
+modisCodeToRoughess[14] = 0.3 # Mosaic natural vegetation/cropland
+modisCodeToRoughess[9] = 0.5 # Mosaic grassland/forest
+modisCodeToRoughess[13] = 1.0 # Urban Areas
+modisCodeToRoughess[1] = 1.5 # Forests
+modisCodeToRoughess[2] = 1.5 # Forests
+modisCodeToRoughess[3] = 1.5 # Forests
+modisCodeToRoughess[4] = 1.5 # Forests
+modisCodeToRoughess[5] = 1.5 # Forests
+modisCodeToRoughess[8] = 1.5 # Forests
+
+def roughnessFromLandCover(num, landCover='clc'):
+    """
+    landCover can be 'clc', 'globCover', or 'modis'
+    """
+    if landCover=='clc': source = clcGridToCode_v2006
+    elif landCover=='globCover': source = globCoverCodeToRoughess
+    elif landCover=='modis': source = modisCodeToRoughess
+
+    if isinstance(num,int):
+        return source[num]
+    if isinstance(num, np.ndarray) or isinstance(num,list):
+        return np.array([source[int(x)] for x in num])
+    if isinstance(num, pd.Series) or isinstance(num, pd.DataFrame):
+        return num.apply( lambda x: source[int(x)])
+    else: 
+        raise ResError("invalid input")

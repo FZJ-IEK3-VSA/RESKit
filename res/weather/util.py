@@ -10,9 +10,7 @@ from collections import namedtuple, OrderedDict
 from scipy.interpolate import RectBivariateSpline, interp2d
 import types
 
-
-# making an error
-class ResError(Exception): pass # this just creates an error that we can use
+from res.util import *
 
 # Make some type-helpers
 Index = namedtuple("Index", "yi xi")
@@ -21,16 +19,16 @@ def LatLonLocation(lat, lon):
         return Location(x=lon, y=lat)
 Bounds = namedtuple("Bounds","lonMin latMin lonMax latMax")
 
-def ensureList(locations):
+def ensureList(a):
     # Ensure loc is a list
-    if isinstance(locations, list) or isinstance(locations, np.ndarray):
+    if isinstance(a, list) or isinstance(a, np.ndarray):
         pass    
-    elif isinstance(locations, types.GeneratorType):
-        locations = list(locations)
+    elif isinstance(a, types.GeneratorType):
+        a = list(a)
     else:
-        locations = [locations, ]
+        a = [a, ]
     # Done!
-    return locations
+    return a
 
 def ensureGeom(locations):
     if isinstance(locations, list) or isinstance(locations, np.ndarray):
@@ -134,9 +132,13 @@ class NCSource(object):
 
         # set lat and lon selections
         if not bounds is None:
-            if not isinstance(bounds, Bounds):
+            if isinstance(bounds, gk.Extent):
+                if not bounds.srs.IsSame(gk.srs.EPSG4326):
+                    bounds = bounds.castTo(gk.srs.EPSG4326)
+                bounds = Bounds(lonMin=bounds.xMin, latMin=bounds.yMin, lonMax=bounds.xMax, latMax=bounds.yMax )
+            elif not isinstance(bounds, Bounds):
                 bounds = Bounds(*bounds)
-                print("bounds input is not a 'Bounds' type. Using it is safer!")
+                print("bounds input is not a 'Bounds' or a 'geokit.Extent' type. Using one of these is safer!")
             
             # find slices
             s._lonSel = np.logical_and(s._allLons >= bounds.lonMin, s._allLons <= bounds.lonMax)
