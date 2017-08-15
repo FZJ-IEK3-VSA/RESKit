@@ -2,33 +2,45 @@ import numpy as np
 import pandas as pd
 from scipy.interpolate import splrep, splev
 from collections import namedtuple, OrderedDict
+from glob import glob
+from os.path import join, dirname
 
 from res.util import *
 from res.weather import windutil
 
 ##################################################
 ## Make a turbine model library
-TurbineLibrary = OrderedDict()
-TurbineLibrary["Enercon_E115"] = performance=np.array([
-    (0.0, 0.0),
-    (1.0, 0.0),
-    (2.0, 0.0),
-    (3.0, 45),
-    (4.0, 122),
-    (5.0, 326),
-    (6.0, 632),
-    (7.0, 1053),
-    (8.0, 1524),
-    (9.0, 2123),
-    (10.0, 2569),
-    (11.0, 2938),
-    (12.0, 3000.0),
-    (13.0, 3000.0),
-    (24.0, 3000.0),
-    (25.0, 3000.0),])
+TurbineInfo = namedtuple('TurbineInfo','profile meta')
+def parse_turbine(path):
+    meta = OrderedDict()
+    with open(path) as fin:
+        # Meta extraction mode
+        while True:
+            line = fin.readline()[:-1]
+            if line == "" or line[0]=="#": continue # skip blank lines and comment lines
+            if 'power curve' in line.lower(): break
+            sLine = line.split(',')
+            try:
+                meta[sLine[0].title()] = float(sLine[1])
+            except:
+                meta[sLine[0].title()] = sLine[1]
+        
+        # Extract power profile
+        tmp = pd.read_csv(fin)
+        power = [(ws,output) for i,ws,output in tmp.iloc[:,:2].itertuples()]
+    
+    return TurbineInfo(power, meta)     
 
+turbineFiles = glob(join(dirname(__file__),"..","..","..","data","turbines","*.csv"))
+tmp = [parse_turbine(f) for f in turbineFiles]
+TurbineLibrary = pd.DataFrame([i.meta for i in tmp])
+TurbineLibrary.set_index('Model', inplace=True)
+TurbineLibrary['Performance'] = [x.profile for x in tmp]
+
+####################################################
+## Simulation for a single turbine
 TurbinePerformance = namedtuple("TurbinPerformance", "production capacityFactor")
-def simulateTurbine( windspeed, performance='Enercon_E115', measuredHeight=None, roughness=None, alpha=None, hubHeight=None, loss=0.08):
+def simulateTurbine( windspeed, performance='E115 3.0MW', measuredHeight=None, roughness=None, alpha=None, hubHeight=None, loss=0.08):
     """
     Perform simple windpower simulation for a single turbine. Can also project to a hubheight before
     simulating.
@@ -109,7 +121,7 @@ def simulateTurbine( windspeed, performance='Enercon_E115', measuredHeight=None,
     ############################################
     # Set performance
     if isinstance(performance,str): 
-        performance = TurbineLibrary[performance]
+        performance = np.array(TurbineLibrary.ix[performance].Performance)
     elif isinstance(performance, list):
         performance = np.array(performance)
 
