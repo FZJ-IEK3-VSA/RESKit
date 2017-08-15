@@ -188,7 +188,7 @@ class NCSource(object):
         else:
             return [Index(yi=latIndex, xi=lonIndex) for latIndex,lonIndex in zip(latIndecies, lonIndecies)]
 
-    def get(s, variable, locations, interpolation='near'):
+    def get(s, variable, locations, interpolation='near', forceDataFrame=False):
         # Ensure loc is a list
         locations = ensureLoc(ensureList(locations))
 
@@ -205,10 +205,10 @@ class NCSource(object):
             raise ResError("No other interpolation schemes are implemented at this time :(")
 
         # Make output as Series objects
-        if len(output) == 1:
-            return pd.Series(output[0], index=s.timeindex, name=locations[0])
-        else: 
+        if forceDataFrame or len(output) > 1:
             return pd.DataFrame(np.column_stack(output), index=s.timeindex, columns=locations)
+        else: 
+            return pd.Series(output[0], index=s.timeindex, name=locations[0])
 
     def contextAreaAt(s,location):
         # Ensure we have a Location
