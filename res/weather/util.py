@@ -201,9 +201,9 @@ class NCSource(object):
             # arrange the output data
             output = np.column_stack([s.data[variable][:, i.yi, i.xi] for i in indecies])
         
-        elif interpolation == "spline" or interpolation == "bilinear":
+        elif interpolation == "cubic" or interpolation == "bilinear":
             # set some arguments for later use
-            if interpolation == "spline":
+            if interpolation == "cubic":
                 win = 4
                 rbsArgs = dict()
             else:
@@ -211,36 +211,38 @@ class NCSource(object):
                 rbsArgs = dict(kx=1, ky=1)
 
             # Find the minimal indexes needed
-            yiMin = min([i.yi for i in indecies])
-            yiMax = max([i.yi for i in indecies])
-            xiMin = min([i.xi for i in indecies])
-            xiMax = max([i.xi for i in indecies])
+            yiMin = min([i.yi for i in indecies])-win
+            yiMax = max([i.yi for i in indecies])+win
+            xiMin = min([i.xi for i in indecies])-win
+            xiMax = max([i.xi for i in indecies])+win
 
-            ySel = yiMin-win:yiMax+win+1
-            xSel = xiMin-win:xiMax+win+1
+            # ensure boundaries are okay
+            if yiMin < 0 or xiMin < 0 or yiMax > s.lats.size or xiMax > s.lons.size: 
+                raise ResError("Insuffecient data. Try expanding the boundary of the extracted data")
 
-            gridLats = s.lats[ySel]
-            gridLlons = s.lons[xSel]
-
+            # Set up grid
+            gridLats = s.lats[yiMin:yiMax+1]
+            gridLons = s.lons[xiMin:xiMax+1]
+            
             # build output
-            lats = [loc.lat for loc in locations]
-            lons = [loc.lon for loc in locations]
-
+            lats = [loc.y for loc in locations]
+            lons = [loc.x for loc in locations]
+            
             output = []
             for ts in range(s.data[variable].shape[0]):
                 # set up interpolator
-                rbs = RectBivariateSpline(gridLats,gridLons,v.data[variable][ts, ySel, xSel], **rbsArgs)
-                
-                # interpolate for each locations
-                output.append(rbs(lats, lons)) # lat/lon order switched to match index order
+                rbs = RectBivariateSpline(gridLats,gridLons,s.data[variable][ts, yiMin:yiMax+1, xiMin:xiMax+1], **rbsArgs)
 
+                # interpolate for each location
+                output.append(rbs(lats, lons, grid=False)) # lat/lon order switched to match index order
+     
             output = np.stack(output)
 
         else:
-            raise ResError("No other interpolation schemes are implemented at this time :(")
+            raise ResError("Interpolation scheme not one of: 'near', 'cubic', or 'bilinear'")
 
         # Make output as Series objects
-        if forceDataFrame or len(output.shape)>1:
+        if forceDataFrame or (len(output.shape)>1 and output.shape[1]>1):
             return pd.DataFrame(output, index=s.timeindex, columns=locations)
         else: 
             try:
