@@ -192,23 +192,61 @@ class NCSource(object):
         # Ensure loc is a list
         locations = ensureLoc(ensureList(locations))
 
-        # Do interpolation
-        if interpolation == 'near':
-            # compute the closest indecies
-            indecies = s.loc2Index(locations)
-            if isinstance(indecies, Index): indecies = [indecies, ]
+        # compute the closest indecies
+        indecies = s.loc2Index(locations)
+        if isinstance(indecies, Index): indecies = [indecies, ]
 
+        # Do interpolation
+        if interpolation == 'near':            
             # arrange the output data
-            output = [s.data[variable][:, i.yi, i.xi] for i in indecies]
+            output = np.column_stack([s.data[variable][:, i.yi, i.xi] for i in indecies])
+        
+        elif interpolation == "spline" or interpolation == "bilinear":
+            # set some arguments for later use
+            if interpolation == "spline":
+                win = 4
+                rbsArgs = dict()
+            else:
+                win = 2
+                rbsArgs = dict(kx=1, ky=1)
+
+            # Find the minimal indexes needed
+            yiMin = min([i.yi for i in indecies])
+            yiMax = max([i.yi for i in indecies])
+            xiMin = min([i.xi for i in indecies])
+            xiMax = max([i.xi for i in indecies])
+
+            ySel = yiMin-win:yiMax+win+1
+            xSel = xiMin-win:xiMax+win+1
+
+            gridLats = s.lats[ySel]
+            gridLlons = s.lons[xSel]
+
+            # build output
+            lats = [loc.lat for loc in locations]
+            lons = [loc.lon for loc in locations]
+
+            output = []
+            for ts in range(s.data[variable].shape[0]):
+                # set up interpolator
+                rbs = RectBivariateSpline(gridLats,gridLons,v.data[variable][ts, ySel, xSel], **rbsArgs)
+                
+                # interpolate for each locations
+                output.append(rbs(lats, lons)) # lat/lon order switched to match index order
+
+            output = np.stack(output)
 
         else:
             raise ResError("No other interpolation schemes are implemented at this time :(")
 
         # Make output as Series objects
-        if forceDataFrame or len(output) > 1:
-            return pd.DataFrame(np.column_stack(output), index=s.timeindex, columns=locations)
+        if forceDataFrame or len(output.shape)>1:
+            return pd.DataFrame(output, index=s.timeindex, columns=locations)
         else: 
-            return pd.Series(output[0], index=s.timeindex, name=locations[0])
+            try:
+                return pd.Series(output[:,0], index=s.timeindex, name=locations[0])
+            except:
+                return pd.Series(output, index=s.timeindex, name=locations[0])
 
     def contextAreaAt(s,location):
         # Ensure we have a Location
