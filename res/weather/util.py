@@ -261,9 +261,9 @@ class NCSource(object):
         # Get closest indexes
         index = s.loc2Index(location)
         # get area
-        return s._contextAreaAt(index.yi, index.xi)
+        return s.contextAreaAtIndex(index.yi, index.xi)
 
-    def _contextAreaAt(s, latI, lonI):
+    def contextAreaAtIndex(s, latI, lonI):
 
         # Make and return a box
         lowLat = (s.lats[latI]+s.lats[latI-1])/2

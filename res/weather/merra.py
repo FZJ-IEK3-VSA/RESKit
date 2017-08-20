@@ -10,6 +10,17 @@ class MerraSource (NCSource):
     def __init__(s, path, bounds=None,):
         NCSource.__init__(s, path=path, bounds=bounds, timeName="time", latName="lat", lonName="lon")
 
+    def contextAreaAtIndex(s, latI, lonI):
+        print("USING MERRA VERSION!")
+
+        # Make and return a box
+        lowLat = s.lats[latI]-0.25
+        highLat = s.lats[latI]+0.25
+        lowLon = s.lons[lonI]-0.3125
+        highLon = s.lons[lonI]+0.3125
+        
+        return gk.geom.box( lowLon, lowLat, highLon, highLat, srs=gk.srs.EPSG4326 )
+
     def loadWindSpeed(s, height=50 ):
         # read raw data
         s.load("U%dM"%height)

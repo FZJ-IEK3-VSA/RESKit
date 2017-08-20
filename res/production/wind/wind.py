@@ -6,7 +6,7 @@ from glob import glob
 from os.path import join, dirname
 
 from res.util import *
-from res.weather import windutil
+from res.weather import windutil, NCSource
 
 ##################################################
 ## Make a turbine model library
@@ -211,3 +211,49 @@ def simulateTurbine( windspeed, performance='E115 3.0MW', measuredHeight=None, r
 def singleTurbine(**kwargs):
     print( "Forwarding to 'simulateTurbine'" )
     return simulateTurbine(**kwargs)
+
+####################################################
+## Simulation for a single turbine
+TurbinePerformance = namedtuple("TurbinPerformance", "production capacityFactor")
+def simulateArea( source, area, performance='E115 3.0MW', measuredHeight=None, hubHeight=None, loss=0.08, leSource=None, gwaSource=None, **kwargs):
+    """
+    Perform wind power simulation for an area. A statistical distribution of expected wind speeds will be generated
+    which will then be used to convolve the wind turbine's power-curve. A projection from a measure height to 
+    a hub height can also be incorporated.
+
+    Notes:
+        * In order to project to a hub height, the measuredHeight, hubHeight and either roughness or 
+          alpha must be provided
+            - weather.windutil.roughnessFromCLC, .roughnessFromGWA, and .alphaFromGWA can help 
+              provide these factors
+        * If no projection factors are given, wind speeds are assumed to already be at the desired 
+          hub height
+    """
+    ############################################
+
+    ## Ensure source is okay
+    if isinstance(source, NCSource):
+        if not "windspeed" in source.data:
+            source.loadWindspeed()
+    else:
+        raise ResError("Source is not an NCSource type")
+
+    ## Ensure the area input is a geokit RegionMask
+    rmKwargs = {}
+    rmKwargs["srs"] = kwargs.pop("srs","europe_m")
+    rmKwargs["pixelSize"] = kwargs.pop("pixelSize",100)
+
+    area = rm.RegionMask.load(area)
+
+    ## Evaluate eligibility if given (otherwise just use the area's mask)
+    if not leSource is None:
+        le = area.warp(leSource) > 0.5 # greater than 0.5 ensure we have a boolean mask
+    else:
+        le = area.mask
+
+    ## Break the surviving areas into contexts from the wind speed source
+    # Find the range of indexes which the region falls into
+    lonMin, latMin, lonMax, latMax = area.extent.castTo(gk.srs.EPSG4326).xyXY
+
+    extentIdx = source
+
