@@ -1,5 +1,5 @@
 Manufacturer,Vestas
-Model,V112-3MW
+Model,V112-3000
 Capacity,3000
 Usage,Offshore
 Power curve,
@@ -44,4 +44,3 @@ windspeed(m/s),power(kW)
 23,3075
 24,3075
 25,3075
-25,0

@@ -1,5 +1,5 @@
 Manufacturer,Gamesa
-Model,Gamesa G97
+Model,G97
 Capacity,2000
 Usage,Onshore
 Power curve,
@@ -28,5 +28,4 @@ windspeed(m/s),power(kW)
 22,2000
 23,2000
 24,1676
-24.999,1234
-25.001,0
+25,1234

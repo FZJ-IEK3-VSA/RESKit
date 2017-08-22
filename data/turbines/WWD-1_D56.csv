@@ -1,5 +1,5 @@
 Manufacturer,WinWind
-Model,WWD-1 D56
+Model,WWD-1D56
 Capacity,1000
 Usage,Onshore
 Power curve,
@@ -27,5 +27,4 @@ windspeed(m/s),power(kW)
 22,1019
 23,1019
 24,1019
-24.999,1019
-25.001,0
+25,1019

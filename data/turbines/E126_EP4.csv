@@ -1,5 +1,5 @@
 Manufacturer,Enercon
-Model,E-126 EP4
+Model,E-126_EP4
 Capacity,4200
 Usage,Onshore
 Power curve,
@@ -28,5 +28,4 @@ windspeed(m/s),power(kW)
 22,4200
 23,4200
 24,4200
-24.999,4200
-25.001,0
+25,4200

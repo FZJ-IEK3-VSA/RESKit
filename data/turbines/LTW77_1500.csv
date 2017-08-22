@@ -1,5 +1,5 @@
 Manufacturer,Leitwind 
-Model,LTW77 1500
+Model,LTW77_1500
 Capacity,1500
 Usage,Onshore
 Power curve,
@@ -28,5 +28,4 @@ windspeed(m/s),power(kW)
 22,1500
 23,1500
 24,1500
-24.999,1500
-25.001,0
+25,1500

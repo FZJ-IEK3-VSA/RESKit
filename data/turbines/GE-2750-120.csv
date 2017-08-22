@@ -1,5 +1,5 @@
 Manufacturer,General Electric
-Model,GE 2.75-120
+Model,GE_2750_120
 Capacity,2750
 Usage,Onshore
 Power curve,
@@ -34,5 +34,4 @@ windspeed(m/s),power(kW)
 22,2780
 23,2780
 24,2780
-24.999,2780
-25.001,0
+25,2780

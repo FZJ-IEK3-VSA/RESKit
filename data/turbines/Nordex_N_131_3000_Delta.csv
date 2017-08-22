@@ -1,5 +1,5 @@
 Manufacturer,Nordex
-Model,Nordex N 131/3000 Delta
+Model,N131/3000_Delta
 Capacity,3000
 Usage,Onshore
 Power curve,
@@ -47,5 +47,3 @@ windspeed(m/s),power(kW)
 22.5,3000
 23,3000
 24,3000
-24.999,0
-25.001,0

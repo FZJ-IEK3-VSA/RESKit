@@ -1,5 +1,5 @@
 Manufacturer,Nordex
-Model,Nordex N 131/3300 Delta
+Model,N131/3300_Delta
 Capacity,3300
 Usage,Onshore
 Power curve,
@@ -47,5 +47,3 @@ windspeed(m/s),power(kW)
 22.5,3300
 23,3300
 24,3300
-24.999,0
-25.001,0

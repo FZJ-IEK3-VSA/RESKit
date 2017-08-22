@@ -1,5 +1,5 @@
 Manufacturer,Nordex
-Model,Nordex N 117 Delta
+Model,N117_Delta
 Capacity,3000
 Usage,Onshore
 Power curve,
@@ -47,5 +47,4 @@ windspeed(m/s),power(kW)
 22.5,3000
 23,3000
 24,3000
-24.999,0
-25.001,0
+25,0

@@ -1,5 +1,5 @@
 Manufacturer,Gamesa
-Model,G1700.84
+Model,G1700_84
 Capacity,1700
 Usage,Onshore
 Power curve,
@@ -28,5 +28,4 @@ windspeed(m/s),power(kW)
 22,1700
 23,1700
 24,1700
-24.999,1700
-25.001,0
+25,1700

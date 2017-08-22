@@ -1,5 +1,5 @@
 Manufacturer,Suzlon
-Model,S.88-2100
+Model,S88-2100
 Capacity,2100
 Usage,Onshore
 Power curve,
@@ -34,5 +34,4 @@ windspeed(m/s),power(kW)
 22,2100
 23,2100
 24,2100
-24.999,2100
-25.001,0
+25,2100

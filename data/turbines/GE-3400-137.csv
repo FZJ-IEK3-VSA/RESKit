@@ -1,5 +1,5 @@
 Manufacturer,General Electric
-Model,GE 3.4-137
+Model,GE_3400_137
 Capacity,3400
 Usage,Onshore
 Power curve,
@@ -34,5 +34,4 @@ windspeed(m/s),power(kW)
 22,3430
 23,3430
 24,3430
-24.999,3430
-25.001,0
+25,3430

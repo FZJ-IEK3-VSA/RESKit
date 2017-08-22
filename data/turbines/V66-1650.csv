@@ -1,5 +1,5 @@
 Manufacturer,Vestas
-Model,V66-1.65
+Model,V66-1650
 Capacity,1650
 Usage,Onshore
 Power curve,
@@ -34,5 +34,4 @@ windspeed(m/s),power(kW)
 17,1650
 19,1650
 21,1650
-24.999,1650
-25.001,0
+25,1650

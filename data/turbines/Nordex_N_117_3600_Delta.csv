@@ -1,5 +1,5 @@
 Manufacturer,Nordex
-Model,Nordex N 117/3600 Delta
+Model,N117/3600_Delta
 Capacity,3600
 Usage,Onshore
 Power curve,
@@ -47,5 +47,4 @@ windspeed(m/s),power(kW)
 22.5,3600
 23,3600
 24,3600
-24.999,3600
-25.001,0
+25,3600

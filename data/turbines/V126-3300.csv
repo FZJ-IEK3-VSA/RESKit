@@ -1,5 +1,5 @@
 Manufacturer,Vestas
-Model,V126-3.3
+Model,V126-3300
 Capacity,3300
 Usage,Onshore
 Power curve,
@@ -34,5 +34,4 @@ windspeed(m/s),power(kW)
 22,3300
 23,3300
 24,3300
-24.999,3300
-25.001,0
+25,3300
