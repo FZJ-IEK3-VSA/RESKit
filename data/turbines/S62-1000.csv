@@ -1,5 +1,5 @@
 Manufacturer,Suzlon
-Model,S.62-1000
+Model,S62-1000
 Capacity,1000
 Usage,Onshore
 Power curve,
@@ -34,5 +34,4 @@ windspeed(m/s),power(kW)
 22,1000
 23,1000
 24,1000
-24.999,1000
-25.001,0
+25,1000

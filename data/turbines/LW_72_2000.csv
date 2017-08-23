@@ -1,5 +1,5 @@
 Manufacturer,Lagerwey
-Model,LW 72/2000
+Model,LW72/2000
 Capacity,2000
 Usage,Onshore
 Power curve,
@@ -34,5 +34,4 @@ windspeed(m/s),power(kW)
 16,1997
 18,2000
 22,2000
-24.999,2000
-25.001,0
+25,2000

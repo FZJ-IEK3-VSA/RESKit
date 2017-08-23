@@ -1,5 +1,5 @@
 Manufacturer,Gamesa
-Model,G126-2.5MW
+Model,G126-2500
 Capacity,2500
 Usage,Onshore
 Power curve,
@@ -28,5 +28,4 @@ windspeed(m/s),power(kW)
 22,2299
 23,2099
 24,1899
-24.999,1699
-25.001,0
+25,1699

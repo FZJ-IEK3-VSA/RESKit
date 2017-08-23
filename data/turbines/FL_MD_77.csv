@@ -1,5 +1,5 @@
 Manufacturer,Fuhrlaender
-Model,FL MD 77
+Model,FL_MD_77
 Capacity,1525
 Usage,Onshore
 Power curve,
@@ -28,5 +28,4 @@ windspeed(m/s),power(kW)
 22,1525
 23,1525
 24,1525
-24.999,1525
-25.001,0
+25,1525

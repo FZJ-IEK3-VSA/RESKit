@@ -1,5 +1,5 @@
 Manufacturer,FWT Trade GmbH
-Model,FWT 120/3000
+Model,FWT120/3000
 Capacity,3000
 Usage,Onshore
 Power curve,
@@ -28,5 +28,4 @@ windspeed(m/s),power(kW)
 22,3000
 23,3000
 24,3000
-24.999,3000
-25.001,0
+25,3000

@@ -1,5 +1,5 @@
 Manufacturer,Vestas
-Model,V80-1.8
+Model,V80-1800
 Capacity,1800
 Usage,Onshore
 Power curve,
@@ -35,5 +35,4 @@ windspeed(m/s),power(kW)
 20,1800
 22,1800
 24,1800
-24.999,1800
-25.001,0
+25,1800

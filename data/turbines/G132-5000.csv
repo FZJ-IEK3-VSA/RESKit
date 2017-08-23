@@ -1,5 +1,5 @@
 Manufacturer,Gamesa
-Model,G132-5.0MW
+Model,G132-5000
 Capacity,5000
 Usage,Onshore
 Power curve,
@@ -31,5 +31,4 @@ windspeed(m/s),power(kW)
 27,3309
 28,3114
 29,2952
-29.999,2828
-30.001,0
+30,2828

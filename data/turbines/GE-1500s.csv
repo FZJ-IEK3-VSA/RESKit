@@ -1,5 +1,5 @@
 Manufacturer,General Electric
-Model,GE 1.5s
+Model,GE_1500s
 Capacity,1500
 Usage,Onshore
 Power curve,
@@ -34,5 +34,4 @@ windspeed(m/s),power(kW)
 17,1500
 20,1500
 23,1500
-24.999,1500
-25.001,0
+25,1500

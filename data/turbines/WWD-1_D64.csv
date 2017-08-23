@@ -1,5 +1,5 @@
 Manufacturer,WinWind
-Model,WWD-1 D64
+Model,WWD-1D64
 Capacity,1000
 Usage,Onshore
 Power curve,
@@ -22,5 +22,4 @@ windspeed(m/s),power(kW)
 17,1012.97
 18,1012.97
 19,1012.97
-19.999,1012.97
-20.001,0
+20,1012.97

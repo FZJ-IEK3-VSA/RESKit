@@ -1,5 +1,5 @@
 Manufacturer,FWT Trade GmbH
-Model,FWT 93/2000
+Model,FWT93/2000
 Capacity,2050
 Usage,Onshore
 Power curve,
@@ -28,5 +28,4 @@ windspeed(m/s),power(kW)
 22,2050
 23,2050
 24,2050
-24.999,2050
-25.001,0
+25,2050

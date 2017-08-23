@@ -1,5 +1,5 @@
 Manufacturer,Gamesa
-Model,G128-5.0MW
+Model,G128-5000
 Capacity,5000
 Usage,Onshore
 Power curve,
@@ -31,5 +31,4 @@ windspeed(m/s),power(kW)
 27,3247
 28,3068
 29,2919
-29.999,2803
-30.001,0
+30,2803

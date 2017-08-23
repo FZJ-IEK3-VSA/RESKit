@@ -1,5 +1,5 @@
 Manufacturer,Senvion
-Model,Senvion 3.0M122
+Model,3000M122
 Capacity,3000
 Usage,Onshore
 Power curve,
@@ -26,7 +26,3 @@ windspeed(m/s),power(kW)
 20,3000
 21,3000
 22,3000
-22.1,0
-24,0
-24.999,0
-25.001,0

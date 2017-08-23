@@ -1,5 +1,5 @@
 Manufacturer,Vestas
-Model,V90 Gridstreamer
+Model,V90_Gridstreamer
 Capacity,2030
 Usage,Onshore
 Power curve,
@@ -34,5 +34,4 @@ windspeed(m/s),power(kW)
 20,2030
 22,2030
 23,2030
-24.999,2030
-25.001,0
+25,2030

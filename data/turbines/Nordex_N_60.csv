@@ -1,5 +1,5 @@
 Manufacturer,Nordex
-Model,Nordex N 60
+Model,N60
 Capacity,1300
 Usage,Onshore
 Power curve,
@@ -47,5 +47,4 @@ windspeed(m/s),power(kW)
 23.5,1295.35
 24,1292
 24.5,1292
-24.999,1292
-25.001,0
+25,1292

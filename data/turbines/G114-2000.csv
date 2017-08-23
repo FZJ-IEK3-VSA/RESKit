@@ -1,5 +1,5 @@
 Manufacturer,Gamesa
-Model,G114-2MW
+Model,G114-2000
 Capacity,2000
 Usage,Onshore
 Power curve,
@@ -28,5 +28,4 @@ windspeed(m/s),power(kW)
 22,1906
 23,1681
 24,1455
-24.999,1230
-25.001,0
+25,1230

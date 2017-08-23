@@ -1,5 +1,5 @@
 Manufacturer,Eno Energy
-Model,Eno 126 3.5
+Model,Eno_126_3500
 Capacity,3500
 Usage,Onshore
 Power curve,
@@ -28,5 +28,4 @@ windspeed(m/s),power(kW)
 22,3500
 23,3500
 24,3500
-24.999,3500
-25.001,0
+25,3500

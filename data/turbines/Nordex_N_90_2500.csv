@@ -1,5 +1,5 @@
 Manufacturer,Nordex
-Model,Nordex N 90/2500
+Model,N90/2500
 Capacity,2500
 Usage,Onshore
 Power curve,
@@ -47,5 +47,4 @@ windspeed(m/s),power(kW)
 22.5,2500
 23,2500
 24,2500
-24.999,0
-25.001,0
+25,0

@@ -1,5 +1,5 @@
 Manufacturer,Suzlon
-Model,S.66-1250
+Model,S66-1250
 Capacity,1250
 Usage,Onshore
 Power curve,
@@ -35,4 +35,3 @@ windspeed(m/s),power(kW)
 20,1250
 21,1250
 22,1250
-22.5,0

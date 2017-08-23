@@ -1,5 +1,5 @@
 Manufacturer,Vensys
-Model,Vensys 77/1500
+Model,Vensys77/1500
 Capacity,1500
 Usage,Onshore
 Power curve,
@@ -35,4 +35,3 @@ windspeed(m/s),power(kW)
 20,1500
 21,1500
 22,1500
-22.5,0

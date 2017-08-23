@@ -1,5 +1,5 @@
 Manufacturer,General Electric
-Model,GE 1.6
+Model,GE_1600
 Capacity,1600
 Usage,Onshore
 Power curve,
@@ -34,5 +34,4 @@ windspeed(m/s),power(kW)
 20,1620
 21,1620
 23,1620
-24.999,1620
-25.001,0
+25,1620

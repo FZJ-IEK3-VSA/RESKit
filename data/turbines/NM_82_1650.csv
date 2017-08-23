@@ -1,5 +1,5 @@
 Manufacturer,NEG Micon
-Model,NM 82/1650
+Model,NM82/1650
 Capacity,1650
 Usage,Onshore
 Power curve,
@@ -38,14 +38,3 @@ windspeed(m/s),power(kW)
 19,1650
 19.5,1650
 20,1650
-20.5,0
-21,0
-21.5,0
-22,0
-22.5,0
-23,0
-23.5,0
-24,0
-24.5,0
-24.999,0
-25.001,0

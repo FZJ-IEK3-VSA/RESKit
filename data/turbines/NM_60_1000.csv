@@ -1,5 +1,5 @@
 Manufacturer,NEG Micon
-Model,NM 60/1000
+Model,NM60/1000
 Capacity,1000
 Usage,Onshore
 Power curve,
@@ -47,5 +47,4 @@ windspeed(m/s),power(kW)
 23.5,830.27
 24,822.2
 24.5,810
-24.999,796.25
-25.001,0
+25,796.25
