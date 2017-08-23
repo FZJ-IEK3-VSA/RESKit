@@ -1,11 +1,6 @@
-import numpy as np
-import netCDF4 as nc
-import geokit as gk
-import ogr, osr
 from os import listdir
 from os.path import join, isfile, dirname, basename
 from glob import glob
-import pandas as pd
 from collections import namedtuple, OrderedDict
 from scipy.interpolate import RectBivariateSpline, interp2d
 import types

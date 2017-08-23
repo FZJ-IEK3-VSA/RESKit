@@ -218,7 +218,7 @@ def roughnessFromCLC(clcPath, loc):
     loc = ensureList(ensureGeom(loc))
 
     ## Get pixels values from clc (assume nodata is ocean)
-    clcGridValues = np.array([x.data for x in gk.raster.extractValues(clcPath, loc, noDataOkay=True)])
+    clcGridValues = gk.raster.extractValues(clcPath, loc, noDataOkay=True).data
     clcGridValues[np.isnan(clcGridValues)] = 42
     clcGridValues = clcGridValues.astype(int)
 
