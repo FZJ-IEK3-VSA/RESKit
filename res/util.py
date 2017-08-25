@@ -3,9 +3,89 @@ import netCDF4 as nc
 import geokit as gk
 import ogr, osr
 import pandas as pd
+from collections import namedtuple, OrderedDict
+import types
 
 # making an error
 class ResError(Exception): pass # this just creates an error that we can use
+
+# Make some type-helpers
+Index = namedtuple("Index", "yi xi")
+Location = namedtuple("Location", "x y")
+def LatLonLocation(lat, lon):
+        return Location(x=lon, y=lat)
+Bounds = namedtuple("Bounds","lonMin latMin lonMax latMax")
+
+def ensureList(a):
+    # Ensure loc is a list
+    if isinstance(a, list) or isinstance(a, np.ndarray):
+        pass    
+    elif isinstance(a, types.GeneratorType):
+        a = list(a)
+    else:
+        a = [a, ]
+    # Done!
+    return a
+
+def ensureGeom(locations):
+    if isinstance(locations, list) or isinstance(locations, np.ndarray):
+        if isinstance(locations[0], ogr.Geometry): # Check if loc is a list of point
+            if not locations[0].GetSpatialReference().IsSame(gk.srs.EPSG4326):
+                locations = gk.geom.transform(locations, toSRS=gk.srs.EPSG4326)
+        elif isinstance(locations[0], Location):
+            locations = [gk.geom.point(loc.x, loc.y, srs=gk.srs.EPSG4326) for loc in locations]
+        else:
+            raise ResError("Cannot understand location input. Use either a Location or an ogr.Geometry object")
+
+    elif isinstance(locations, types.GeneratorType):
+        locations = ensureGeom(list(locations))
+
+    elif isinstance(locations, ogr.Geometry): # Check if loc is a single point
+        if not locations.GetSpatialReference().IsSame(gk.srs.EPSG4326):
+            locations = locations.Clone()
+            locations.TransformTo(gk.srs.EPSG4326)
+
+    elif isinstance(locations, Location):
+        locations = gk.geom.point(locations.x, locations.y, srs=gk.srs.EPSG4326)
+    elif isinstance(locations, tuple) and len(locations)==2:
+        locations = gk.geom.point(locations[0], locations[1], srs=gk.srs.EPSG4326)
+        print("Consider using a Location object. It is safer!")
+    else:
+        raise ResError("Cannot understand location input. Use either a Location or an ogr.Geometry object")
+
+    # Done!
+    return locations
+
+def ensureLoc(locations):
+    if isinstance(locations, list) or isinstance(locations, np.ndarray):
+        if isinstance(locations[0], ogr.Geometry): # Check if loc is a list of point
+            if not locations[0].GetSpatialReference().IsSame(gk.srs.EPSG4326):
+                locations = gk.geom.transform(locations, toSRS=gk.srs.EPSG4326)
+            locations = [Location(x=l.GetX(), y=l.GetY()) for l in locations]
+        elif isinstance(locations[0], Location):
+            pass
+        else:
+            raise ResError("Cannot understand location input. Use either a Location or an ogr.Geometry object")
+
+    elif isinstance(locations, types.GeneratorType):
+        locations = ensureLoc(list(locations))
+
+    elif isinstance(locations, ogr.Geometry): # Check if loc is a single point
+        if not locations.GetSpatialReference().IsSame(gk.srs.EPSG4326):
+            locations = locations.Clone()
+            locations.TransformTo(gk.srs.EPSG4326)
+            locations = Location(x=locations.GetX(), y=locations.GetY())
+
+    elif isinstance(locations, Location):
+        pass
+    elif isinstance(locations, tuple) and len(locations)==2:
+        locations = Location(*locations)
+        print("Consider using a Location object. It is safer!")
+    else:
+        raise ResError("Cannot understand location input. Use either a Location or an ogr.Geometry object")
+
+    # Done!
+    return locations
 
 ## STAN
 def storeTimeseriesAsNc(output, timedata, varmeta={}, keydata=None, keydatameta={}, timeunit="minutes since 1900-01-01 00:00:00"):

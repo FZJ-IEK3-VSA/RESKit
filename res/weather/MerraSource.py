@@ -1,4 +1,4 @@
-from .util import *
+from .NCSource import *
 
 ## Define constants
 class MerraSource (NCSource):
@@ -9,6 +9,9 @@ class MerraSource (NCSource):
 
     def __init__(s, path, bounds=None,):
         NCSource.__init__(s, path=path, bounds=bounds, timeName="time", latName="lat", lonName="lon")
+
+        s._maximal_lon_difference=0.3125
+        s._maximal_lat_difference=0.25
 
     def loadWindSpeed(s, height=50 ):
         # read raw data
