@@ -1,5 +1,5 @@
 Manufacturer,Nordex
-Model,Nordex N 117 Gamma
+Model,N117_Gamma
 Capacity,2400
 Usage,Onshore
 Power curve,
@@ -47,5 +47,3 @@ windspeed(m/s),power(kW)
 22.5,2400
 23,2400
 24,2400
-24.999,0
-25.001,0

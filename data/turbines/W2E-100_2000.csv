@@ -1,5 +1,5 @@
 Manufacturer,W2E Wind to Energy
-Model,W2E-100/2.0
+Model,W2E-100/2000
 Capacity,2000
 Usage,Onshore
 Power curve,
@@ -27,5 +27,4 @@ windspeed(m/s),power(kW)
 22,2050
 23,2050
 24,2050
-24.999,2050
-25.001,0
+25,2050

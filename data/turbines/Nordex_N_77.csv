@@ -1,5 +1,5 @@
 Manufacturer,Nordex
-Model,Nordex N 77
+Model,N77
 Capacity,1500
 Usage,Onshore
 Power curve,
@@ -47,5 +47,3 @@ windspeed(m/s),power(kW)
 22.5,1500
 23,1500
 24,1500
-24.999,0
-25.001,0

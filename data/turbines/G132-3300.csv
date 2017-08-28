@@ -1,5 +1,5 @@
 Manufacturer,Gamesa
-Model,G132-3.3MW
+Model,G132-3300
 Capacity,3300
 Usage,Onshore
 Power curve,
@@ -28,5 +28,4 @@ windspeed(m/s),power(kW)
 22,2876
 23,2691
 24,2520
-24.999,2381
-25.001,0
+25,2381

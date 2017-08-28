@@ -1,5 +1,5 @@
 Manufacturer,Eno Energy
-Model,Eno 100
+Model,Eno_100
 Capacity,2200
 Usage,Onshore
 Power curve,
@@ -28,5 +28,4 @@ windspeed(m/s),power(kW)
 22,2200
 23,2200
 24,2200
-24.999,2200
-25.001,0
+25,2200

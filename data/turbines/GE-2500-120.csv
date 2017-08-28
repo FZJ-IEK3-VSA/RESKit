@@ -1,5 +1,5 @@
 Manufacturer,General Electric
-Model,GE 2.5-120
+Model,GE_2500_120
 Capacity,2500
 Usage,Onshore
 Power curve,
@@ -34,5 +34,4 @@ windspeed(m/s),power(kW)
 20,2530
 22,2530
 24,2530
-24.999,2530
-25.001,0
+25,2530

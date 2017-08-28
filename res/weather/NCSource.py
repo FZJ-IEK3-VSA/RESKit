@@ -1,94 +1,9 @@
-import numpy as np
-import netCDF4 as nc
-import geokit as gk
-import ogr, osr
 from os import listdir
 from os.path import join, isfile, dirname, basename
 from glob import glob
-import pandas as pd
-from collections import namedtuple, OrderedDict
 from scipy.interpolate import RectBivariateSpline, interp2d
-import types
 
 from res.util import *
-
-# Make some type-helpers
-Index = namedtuple("Index", "yi xi")
-Location = namedtuple("Location", "x y")
-def LatLonLocation(lat, lon):
-        return Location(x=lon, y=lat)
-Bounds = namedtuple("Bounds","lonMin latMin lonMax latMax")
-
-def ensureList(a):
-    # Ensure loc is a list
-    if isinstance(a, list) or isinstance(a, np.ndarray):
-        pass    
-    elif isinstance(a, types.GeneratorType):
-        a = list(a)
-    else:
-        a = [a, ]
-    # Done!
-    return a
-
-def ensureGeom(locations):
-    if isinstance(locations, list) or isinstance(locations, np.ndarray):
-        if isinstance(locations[0], ogr.Geometry): # Check if loc is a list of point
-            if not locations[0].GetSpatialReference().IsSame(gk.srs.EPSG4326):
-                locations = gk.geom.transform(locations, toSRS=gk.srs.EPSG4326)
-        elif isinstance(locations[0], Location):
-            locations = [gk.geom.point(loc.x, loc.y, srs=gk.srs.EPSG4326) for loc in locations]
-        else:
-            raise ResError("Cannot understand location input. Use either a Location or an ogr.Geometry object")
-
-    elif isinstance(locations, types.GeneratorType):
-        locations = ensureGeom(list(locations))
-
-    elif isinstance(locations, ogr.Geometry): # Check if loc is a single point
-        if not locations.GetSpatialReference().IsSame(gk.srs.EPSG4326):
-            locations = locations.Clone()
-            locations.TransformTo(gk.srs.EPSG4326)
-
-    elif isinstance(locations, Location):
-        locations = gk.geom.point(locations.x, locations.y, srs=gk.srs.EPSG4326)
-    elif isinstance(locations, tuple) and len(locations)==2:
-        locations = gk.geom.point(locations[0], locations[1], srs=gk.srs.EPSG4326)
-        print("Consider using a Location object. It is safer!")
-    else:
-        raise ResError("Cannot understand location input. Use either a Location or an ogr.Geometry object")
-
-    # Done!
-    return locations
-
-def ensureLoc(locations):
-    if isinstance(locations, list) or isinstance(locations, np.ndarray):
-        if isinstance(locations[0], ogr.Geometry): # Check if loc is a list of point
-            if not locations[0].GetSpatialReference().IsSame(gk.srs.EPSG4326):
-                locations = gk.geom.transform(locations, toSRS=gk.srs.EPSG4326)
-            locations = [Location(x=l.GetX(), y=l.GetY()) for l in locations]
-        elif isinstance(locations[0], Location):
-            pass
-        else:
-            raise ResError("Cannot understand location input. Use either a Location or an ogr.Geometry object")
-
-    elif isinstance(locations, types.GeneratorType):
-        locations = ensureLoc(list(locations))
-
-    elif isinstance(locations, ogr.Geometry): # Check if loc is a single point
-        if not locations.GetSpatialReference().IsSame(gk.srs.EPSG4326):
-            locations = locations.Clone()
-            locations.TransformTo(gk.srs.EPSG4326)
-            locations = Location(x=locations.GetX(), y=locations.GetY())
-
-    elif isinstance(locations, Location):
-        pass
-    elif isinstance(locations, tuple) and len(locations)==2:
-        locations = Location(*locations)
-        print("Consider using a Location object. It is safer!")
-    else:
-        raise ResError("Cannot understand location input. Use either a Location or an ogr.Geometry object")
-
-    # Done!
-    return locations
 
 # context mean
 def computeContextMean(source, contextArea, fillnan=True, pixelSize=None, srs=None):
@@ -104,6 +19,7 @@ def computeContextMean(source, contextArea, fillnan=True, pixelSize=None, srs=No
 
     # fill all no data with the closest values
     if fillnan:
+        yN,xN = values.shape
         while np.isnan(values[rm.mask]).any():
             tmp = values.copy()
             for yi,xi in np.argwhere(np.isnan(values)):
@@ -129,6 +45,8 @@ class NCSource(object):
         s._allLats = s.ds[latName][:]
         s._allLons = s.ds[lonName][:]
         s.variables = s.ds.variables.keys()
+        s._maximal_lon_difference=10000000
+        s._maximal_lat_difference=10000000
 
         # set lat and lon selections
         if not bounds is None:
@@ -159,7 +77,7 @@ class NCSource(object):
     def load(s, variable, name=None, processor=None):
         # read the data
         if not variable in s.ds.variables.keys():
-            raise ResError(variable+" not is source")
+            raise ResError(variable+" not in source")
         tmp = s.ds[variable][:,s._latSel,s._lonSel]
 
         # process, maybe?
@@ -168,9 +86,10 @@ class NCSource(object):
 
         # save the data
         if name is None: name = variable
-        s.data[variable] = tmp
+        s.data[name] = tmp
 
-    def loc2Index(s, loc):
+
+    def loc2Index(s, loc, outsideOkay=False):
         # Ensure loc is a list
         locations = ensureLoc(ensureList(loc))
 
@@ -179,29 +98,58 @@ class NCSource(object):
         latCoords = np.array([loc.y for loc in locations])
 
         # get closest indecies
-        lonIndecies = [np.argmin(np.abs(lon-s.lons)) for lon in lonCoords]
-        latIndecies = [np.argmin(np.abs(lat-s.lats)) for lat in latCoords]
+        idx = []
+        for lat,lon in zip(latCoords, lonCoords):
+            # get lat index
+            tmp = np.abs(lat-s.lats)
+            if tmp.min() > s._maximal_lat_difference: 
+                if not outsideOkay:
+                    raise ResError("(%f,%f) are outside the boundaries"%(lat,lon))
+                else:
+                    idx.append(None)
+                    continue
+            latI = np.argmin(tmp)
+
+            # get lon index
+            tmp = np.abs(lon-s.lons)
+            if tmp.min() > s._maximal_lon_difference: 
+                if not outsideOkay:
+                    raise ResError("(%f,%f) are outside the boundaries"%(lat,lon))
+                else:
+                    idx.append(None)
+                    continue
+            lonI = np.argmin(tmp)
+            
+            # append
+            idx.append( Index(yi=latI,xi=lonI) )
 
         # Make output
         if len(locations)==1:
-            return Index(yi=latIndecies[0], xi=lonIndecies[0])
+            return idx[0]
         else:
-            return [Index(yi=latIndex, xi=lonIndex) for latIndex,lonIndex in zip(latIndecies, lonIndecies)]
+            return idx
 
-    def get(s, variable, locations, interpolation='near', forceDataFrame=False):
+    def get(s, variable, locations, interpolation='near', forceDataFrame=False, outsideOkay=False):
         # Ensure loc is a list
         locations = ensureLoc(ensureList(locations))
 
         # compute the closest indecies
-        indecies = s.loc2Index(locations)
+        indecies = s.loc2Index(locations, outsideOkay)
         if isinstance(indecies, Index): indecies = [indecies, ]
 
         # Do interpolation
         if interpolation == 'near':            
             # arrange the output data
-            output = np.column_stack([s.data[variable][:, i.yi, i.xi] for i in indecies])
+            tmp = []
+            for i in indecies:
+                if not i is None: tmp.append(s.data[variable][:, i.yi, i.xi])
+                else: tmp.append( np.array([np.nan,]*s.timeindex.size) ) 
+            output = np.column_stack(tmp)
         
         elif interpolation == "cubic" or interpolation == "bilinear":
+            ##########
+            ## TODO: Update interpolation schemes to handle out-of-bounds indecies 
+            ##########
             # set some arguments for later use
             if interpolation == "cubic":
                 win = 4
@@ -275,14 +223,16 @@ class NCSource(object):
         
         return gk.geom.box( lowLon, lowLat, highLon, highLat, srs=gk.srs.EPSG4326 )
 
-    def computeContextMeans(s, source, output=None, fillnan=True):
+    def computeContextMeans(s, source, fillnan=True):
         # get rastr info
-        ras = gk.raster.describe(source)
+        ras = gk.raster.rasterInfo(source)
 
         # compute all means
         means = np.zeros((s.lats.size, s.lons.size))
-        for latI,lat in enumerate(s.lats):
-            for lonI,lon in enumerate(s.lons):        
+        means[:] = np.nan
+
+        for latI in range(1,s.lats.size-1):
+            for lonI in range(1,s.lons.size-1):        
                 means[latI,lonI] = computeContextMean(source=source, contextArea=s._contextAreaAt(latI,lonI), 
                                                       pixelSize=(ras.dx, ras.dy), srs=ras.srs, 
                                                       fillnan=fillnan)

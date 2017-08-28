@@ -1,5 +1,5 @@
 Manufacturer,Fuhrlaender
-Model,LLC WTU2.0-100
+Model,LLC_WTU2000-100
 Capacity,2000
 Usage,Onshore
 Power curve,
@@ -28,5 +28,4 @@ windspeed(m/s),power(kW)
 21,2050
 22,2050
 23,2050
-24.999,2050
-25.001,0
+25,2050

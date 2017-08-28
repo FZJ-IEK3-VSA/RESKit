@@ -1,5 +1,5 @@
 Manufacturer,Vestas
-Model,V164-9.5MW
+Model,V164-9500
 Capacity,9500
 Usage,Offshore
 Power curve,
@@ -43,5 +43,4 @@ windspeed(m/s),power(kW)
 20.74,9500
 22.25,9500
 24.28,9500
-24.999,9500
-25,0
+25,9500

@@ -214,7 +214,6 @@ def singleTurbine(**kwargs):
 
 ####################################################
 ## Simulation for a single turbine
-TurbinePerformance = namedtuple("TurbinPerformance", "production capacityFactor")
 def simulateArea( source, area, performance='E115 3.0MW', measuredHeight=None, hubHeight=None, loss=0.08, leSource=None, gwaSource=None, **kwargs):
     """
     Perform wind power simulation for an area. A statistical distribution of expected wind speeds will be generated
@@ -256,4 +255,3 @@ def simulateArea( source, area, performance='E115 3.0MW', measuredHeight=None, h
     lonMin, latMin, lonMax, latMax = area.extent.castTo(gk.srs.EPSG4326).xyXY
 
     extentIdx = source
-

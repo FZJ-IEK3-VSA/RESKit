@@ -1,5 +1,5 @@
 Manufacturer,Siemens
-Model,SWT-2.3-113
+Model,SWT-2300-113
 Capacity,2300
 Usage,Onshore
 Power curve,
@@ -28,5 +28,4 @@ windspeed(m/s),power(kW)
 22,2300
 23,2300
 24,2300
-24.999,2300
-25.001,0
+25,2300

@@ -1,5 +1,5 @@
 Manufacturer,General Electric
-Model,GE 3.2-130
+Model,GE_3200_130
 Capacity,3200
 Usage,Onshore
 Power curve,
@@ -34,5 +34,4 @@ windspeed(m/s),power(kW)
 22,3230
 23,3230
 24,3230
-24.999,3230
-25.001,0
+25,3230

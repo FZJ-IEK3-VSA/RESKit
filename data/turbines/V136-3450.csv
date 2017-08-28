@@ -1,5 +1,5 @@
 Manufacturer,Vestas
-Model,V136-3.45
+Model,V136-3450
 Capacity,3450
 Usage,Onshore
 Power curve,
@@ -34,5 +34,4 @@ windspeed(m/s),power(kW)
 20,3450
 22,3450
 24,3450
-24.999,3450
-25.001,0
+25,3450

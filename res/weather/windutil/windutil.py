@@ -1,4 +1,4 @@
-from ..util import *
+from ..NCSource import *
 
 ################################################################################
 ## Spatial adjustment methods
@@ -58,22 +58,22 @@ def projectByPowerLaw( windspeed, measuredHeight, targetHeight, alpha):
 def alphaFromLevels( lowWindSpeed, lowHeight, highWindSpeed, highHeight):
     return np.log(lowWindSpeed/highWindSpeed)/np.log(lowHeight/highHeight)
 
-def alphaFromGWA( gwaDir, loc, pairID=1):
+def alphaFromGWA( gwaDir, loc, pairID=1, _structure="WS_%03dm_global_wgs84_mean_trimmed.tif"):
     ## Ensure location is okay
     loc = ensureList(ensureGeom(loc))
 
     # Get the GWA averages
-    GWA_files = [join(gwaDir, "WS_050m_global_wgs84_mean_trimmed.tif"),
-                 join(gwaDir, "WS_100m_global_wgs84_mean_trimmed.tif"),
-                 join(gwaDir, "WS_200m_global_wgs84_mean_trimmed.tif")]
+    GWA_files = [join(gwaDir, _structure%(50)),
+                 join(gwaDir, _structure%(100)),
+                 join(gwaDir, _structure%(200))]
 
     for f in GWA_files: 
         if not isfile(f): 
             raise ResError("Could not find file: "+f)
 
-    if pairID==0 or pairID==2: gwaAverage50  = np.array([x.data for x in gk.raster.extractValues(GWA_files[0], loc)])
-    if pairID==0 or pairID==1: gwaAverage100 = np.array([x.data for x in gk.raster.extractValues(GWA_files[1], loc)])
-    if pairID==1 or pairID==2: gwaAverage200 = np.array([x.data for x in gk.raster.extractValues(GWA_files[2], loc)])
+    if pairID==0 or pairID==2: gwaAverage50  = gk.raster.extractValues(GWA_files[0], loc).data
+    if pairID==0 or pairID==1: gwaAverage100 = gk.raster.extractValues(GWA_files[1], loc).data
+    if pairID==1 or pairID==2: gwaAverage200 = gk.raster.extractValues(GWA_files[2], loc).data
 
     # Interpolate gwa average to desired height
     if pairID==0: out = alphaFromLevels(gwaAverage50,50,gwaAverage100,100)
@@ -86,26 +86,25 @@ def alphaFromGWA( gwaDir, loc, pairID=1):
 
 ################################################################################
 ## Roughness computers
-
 def roughnessFromLevels(lowWindSpeed, lowHeight, highWindSpeed, highHeight):
     return np.exp( (highWindSpeed * np.log(lowHeight) - lowWindSpeed * np.log(highHeight) )/(highWindSpeed - lowWindSpeed) )
 
-def roughnessFromGWA(gwaDir, loc, pairID=1):
+def roughnessFromGWA(gwaDir, loc, pairID=1, _structure="WS_%03dm_global_wgs84_mean_trimmed.tif"):
     ## Ensure location is okay
     loc = ensureList(ensureGeom(loc))
 
     # Get the GWA averages
-    GWA_files = [join(gwaDir, "WS_050m_global_wgs84_mean_trimmed.tif"),
-                 join(gwaDir, "WS_100m_global_wgs84_mean_trimmed.tif"),
-                 join(gwaDir, "WS_200m_global_wgs84_mean_trimmed.tif")]
+    GWA_files = [join(gwaDir, _structure%(50)),
+                 join(gwaDir, _structure%(100)),
+                 join(gwaDir, _structure%(200))]
 
     for f in GWA_files: 
         if not isfile(f): 
             raise ResWeatherError("Could not find file: "+f)
 
-    if pairID==0 or pairID==2: gwaAverage50  = np.array([x.data for x in gk.raster.extractValues(GWA_files[0], loc)])
-    if pairID==0 or pairID==1: gwaAverage100 = np.array([x.data for x in gk.raster.extractValues(GWA_files[1], loc)])
-    if pairID==1 or pairID==2: gwaAverage200 = np.array([x.data for x in gk.raster.extractValues(GWA_files[2], loc)])
+    if pairID==0 or pairID==2: gwaAverage50  = gk.raster.extractValues(GWA_files[0], loc).data
+    if pairID==0 or pairID==1: gwaAverage100 = gk.raster.extractValues(GWA_files[1], loc).data
+    if pairID==1 or pairID==2: gwaAverage200 = gk.raster.extractValues(GWA_files[2], loc).data
 
     # Interpolate gwa average to desired height
     if pairID==0: out = roughnessFromLevels(gwaAverage50,50,gwaAverage100,100)
@@ -218,7 +217,7 @@ def roughnessFromCLC(clcPath, loc):
     loc = ensureList(ensureGeom(loc))
 
     ## Get pixels values from clc (assume nodata is ocean)
-    clcGridValues = np.array([x.data for x in gk.raster.extractValues(clcPath, loc, noDataOkay=True)])
+    clcGridValues = gk.raster.extractValues(clcPath, loc, noDataOkay=True).data
     clcGridValues[np.isnan(clcGridValues)] = 42
     clcGridValues = clcGridValues.astype(int)
 

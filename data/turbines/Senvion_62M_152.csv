@@ -1,5 +1,5 @@
 Manufacturer,Senvion
-Model,6.2M-152
+Model,6200M-152
 Capacity,6150
 Usage,Offshore
 Power curve,
@@ -42,5 +42,4 @@ windspeed(m/s),power(kW)
 22,6150
 25,6150
 28,6150
-29.9999,6150
-30.001,0
+30,6150

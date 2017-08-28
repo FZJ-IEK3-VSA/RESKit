@@ -1,5 +1,5 @@
 Manufacturer,Senvion
-Model,Senvion 3.4M140
+Model,3400M140
 Capacity,3400
 Usage,Onshore
 Power curve,
@@ -28,5 +28,4 @@ windspeed(m/s),power(kW)
 22,3400
 23,3400
 24,3400
-24.999,3400
-25.001,0
+25,3400

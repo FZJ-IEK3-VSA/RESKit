@@ -1,5 +1,5 @@
 Manufacturer,Enercon
-Model,E-126 7.580
+Model,E-126_7580
 Capacity,7580
 Usage,Onshore
 Power curve,
@@ -28,5 +28,4 @@ windspeed(m/s),power(kW)
 22,7580
 23,7580
 24,7580
-24.999,7580
-25.001,0
+25,7580

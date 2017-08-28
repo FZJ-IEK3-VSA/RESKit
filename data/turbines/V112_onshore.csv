@@ -1,5 +1,5 @@
 Manufacturer,Vestas
-Model,V112 Onshore
+Model,V112_Onshore
 Capacity,3075
 Usage,Onshore
 Power curve,
@@ -34,5 +34,4 @@ windspeed(m/s),power(kW)
 22,3075
 23,3075
 24,3075
-24.999,3075
-25.001,0
+25,3075

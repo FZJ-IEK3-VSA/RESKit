@@ -1,4 +1,4 @@
-from .merra import MerraSource
-from .util import Location, Bounds, LatLonLocation, NCSource
+from .MerraSource import MerraSource
+from .NCSource import computeContextMean, NCSource
 import res.weather.noaa 
 import res.weather.windutil
