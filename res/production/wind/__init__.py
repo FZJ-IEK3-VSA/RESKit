@@ -1,1 +1,1 @@
-from .wind import (TurbineLibrary, simulateTurbine, singleTurbine, windutil)
+from .wind import (TurbineLibrary, simulateTurbine, singleTurbine, windutil, convolutePowerCurveByGuassian)

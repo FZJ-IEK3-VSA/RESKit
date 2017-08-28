@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from scipy.interpolate import splrep, splev
+from scipy.stats import norm
 from collections import namedtuple, OrderedDict
 from glob import glob
 from os.path import join, dirname
@@ -255,3 +256,44 @@ def simulateArea( source, area, performance='E115 3.0MW', measuredHeight=None, h
     lonMin, latMin, lonMax, latMax = area.extent.castTo(gk.srs.EPSG4326).xyXY
 
     extentIdx = source
+
+###########################################################
+## Convolute Power Curve
+def convolutePowerCurveByGuassian(stdScaling=0.2, stdBase=0.6, performance='E115 3.0MW', minSpeed=0.01, maxSpeed=40, steps=4000, outputResolution=0.1):
+    # Set performance
+    if isinstance(performance,str): 
+        performance = np.array(TurbineLibrary.ix[performance].Performance)
+    elif isinstance(performance, list):
+        performance = np.array(performance)
+
+    # Initialize windspeed axis
+    ws = np.linspace(minSpeed, maxSpeed, steps)
+    dws = ws[1]-ws[0]
+
+    # check if we have enough resolution
+    tmp = (stdScaling*5+stdBase)/dws
+    if  tmp < 1.0: # manually checked threshold
+        if tmp < 0.25: # manually checked threshold
+            raise ResError("Insufficient number of 'steps'")
+        else:
+            print("WARNING: 'steps' may not be high enough to properly compute the convoluted power curve. Check results or use a higher number of steps")
+    
+    # Initialize vanilla power curve
+    powerCurve = splrep(performance[:,0], performance[:,1])
+
+    perf = np.zeros(steps)
+    perf[ws<performance[:,0].max()] = splev(ws[ws<performance[:,0].max()], powerCurve)
+
+    perf[ws<performance[:,0].min()] = 0 # set all windspeed less than cut-in speed to 0
+    perf[ws>performance[:,0].max()] = 0 # set all windspeed greater than cut-out speed to 0 (just in case)
+    perf[perf<0] = 0 # force a floor of 0
+    perf[perf>performance[:,1].max()] = performance[:,1].max() # force a ceiling of the max capacity
+    
+    # Begin convolution
+    cPerf = np.zeros(steps)
+    for i,ws_ in enumerate(ws):
+        cPerf[i] = (norm.pdf(ws, loc=ws_, scale=stdScaling*ws_+stdBase)*perf).sum()*dws
+        
+    # Done!
+    return np.column_stack([ws,cPerf])
+
