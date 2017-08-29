@@ -2,6 +2,8 @@ Manufacturer,Eno Energy
 Model,Eno_126_3500
 Capacity,3500
 Usage,Onshore
+HubHeight,"117,137"
+RotorDiameter,126
 Power curve,
 windspeed(m/s),power(kW)
 1,0

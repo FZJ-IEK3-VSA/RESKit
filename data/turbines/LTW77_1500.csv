@@ -2,6 +2,8 @@ Manufacturer,Leitwind
 Model,LTW77_1500
 Capacity,1500
 Usage,Onshore
+HubHeight,"61.5,65,80"
+RotorDiameter,76.7
 Power curve,
 windspeed(m/s),power(kW)
 1,0

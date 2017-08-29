@@ -2,6 +2,9 @@ Manufacturer,Senvion
 Model,6200M-152
 Capacity,6150
 Usage,Offshore
+HubHeight,"95,110"
+RotorDiameter,152
+Source,https://en.wind-turbine-models.com/turbines/887-senvion-6.2m152-offshore
 Power curve,
 windspeed(m/s),power(kW)
 1.9,0

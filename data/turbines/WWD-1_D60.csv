@@ -2,6 +2,9 @@ Manufacturer,WinWind
 Model,WWD-1D60
 Capacity,1000
 Usage,Onshore
+HubHeight,"50,70"
+RotorDiameter,60
+Source,https://en.wind-turbine-models.com/turbines/486-winwind-wwd-1-d60
 Power curve,
 windspeed(m/s),power(kW)
 2,0

@@ -2,6 +2,8 @@ Manufacturer,General Electric
 Model,GE_2500_103
 Capacity,2500
 Usage,Onshore
+HubHeight,"85,100"
+RotorDiameter,103
 Power curve,
 windspeed(m/s),power(kW)
 2,0

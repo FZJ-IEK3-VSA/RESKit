@@ -2,6 +2,8 @@ Manufacturer,Nordex
 Model,N80_alpha
 Capacity,2500
 Usage,Onshore
+HubHeight,"60,80,100,105"
+RotorDiameter,80
 Power curve,
 windspeed(m/s),power(kW)
 2,0

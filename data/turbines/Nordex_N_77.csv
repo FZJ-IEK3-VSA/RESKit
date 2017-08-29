@@ -2,6 +2,8 @@ Manufacturer,Nordex
 Model,N77
 Capacity,1500
 Usage,Onshore
+HubHeight,"62,85,90,111.5"
+RotorDiameter,77
 Power curve,
 windspeed(m/s),power(kW)
 2,0

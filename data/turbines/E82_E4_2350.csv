@@ -2,6 +2,8 @@ Manufacturer,Enercon
 Model,E-82_E4_2350
 Capacity,2350
 Usage,Onshore
+HubHeight,"59,69,78,84"
+RotorDiameter,82
 Power curve,
 windspeed(m/s),power(kW)
 1,0

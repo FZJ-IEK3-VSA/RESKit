@@ -2,6 +2,8 @@ Manufacturer,Gamesa
 Model,G83
 Capacity,2000
 Usage,Onshore
+HubHeight,"67,78"
+RotorDiameter,83
 Power curve,
 windspeed(m/s),power(kW)
 3.5,0
@@ -22,7 +24,7 @@ windspeed(m/s),power(kW)
 11,1673.4
 11.5,1770.45
 12,1867.5
-12.5,1914-56
+12.5,1914.56
 13,1957.7
 13.5,1973.4
 14,1989.1

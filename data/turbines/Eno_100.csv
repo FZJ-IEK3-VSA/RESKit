@@ -2,6 +2,8 @@ Manufacturer,Eno Energy
 Model,Eno_100
 Capacity,2200
 Usage,Onshore
+HubHeight,99
+RotorDiameter,100.5
 Power curve,
 windspeed(m/s),power(kW)
 1,0

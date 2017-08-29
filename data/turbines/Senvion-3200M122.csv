@@ -2,6 +2,9 @@ Manufacturer,Senvion
 Model,3200M122
 Capacity,3200
 Usage,Onshore
+HubHeight,139
+RotorDiameter,122
+Source,https://en.wind-turbine-models.com/turbines/1184-senvion-3.2m122
 Power curve,
 windspeed(m/s),power(kW)
 1,0

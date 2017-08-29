@@ -2,6 +2,8 @@ Manufacturer,HEAG
 Model,HW3/S2500(103)
 Capacity,2500
 Usage,Onshore
+HubHeight,"80,90"
+RotorDiameter,103
 Power curve,
 windspeed(m/s),power(kW)
 1,0

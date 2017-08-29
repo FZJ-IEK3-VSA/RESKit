@@ -2,6 +2,9 @@ Manufacturer,Senvion
 Model,MM100
 Capacity,2000
 Usage,Onshore
+HubHeight,"76.5,80,100"
+RotorDiameter,100
+Source,https://en.wind-turbine-models.com/turbines/890-senvion-mm100
 Power curve,
 windspeed(m/s),power(kW)
 1,0

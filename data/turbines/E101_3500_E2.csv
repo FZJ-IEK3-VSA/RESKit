@@ -1,7 +1,9 @@
 Manufacturer,Enercon
 Model,E-101_3500_E2
-Capacity,3050
+Capacity,3500
 Usage,Onshore
+HubHeight,74
+RotorDiameter,101
 Power curve,
 windspeed(m/s),power(kW)
 1,0

@@ -2,6 +2,9 @@ Manufacturer,Siemens
 Model,SWT-3300-130
 Capacity,3300
 Usage,Onshore
+HubHeight,"85,110,120,135"
+RotorDiameter,130
+Source,https://en.wind-turbine-models.com/turbines/1004-siemens-swt-3.3-130#datasheet
 Power curve,
 windspeed(m/s),power(kW)
 1,0

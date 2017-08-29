@@ -2,6 +2,8 @@ Manufacturer,Gamesa
 Model,G97
 Capacity,2000
 Usage,Onshore
+HubHeight,"78,90,100,120"
+RotorDiameter,97
 Power curve,
 windspeed(m/s),power(kW)
 1,0

@@ -2,6 +2,8 @@ Manufacturer,Gamesa
 Model,G128-5000
 Capacity,5000
 Usage,Onshore
+HubHeight,"81,95,120,140"
+RotorDiameter,128
 Power curve,
 windspeed(m/s),power(kW)
 3,59
