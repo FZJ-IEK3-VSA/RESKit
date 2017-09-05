@@ -4,7 +4,7 @@ from os.path import join
 import geokit as gk
 
 from res.weather import MerraSource, computeContextMean
-from res.util import ResError, LatLonLocation
+from res.util import ResError, LatLonLocation, Bounds
 
 ## Make testing globals
 raw = nc.Dataset(join("data","merra-like.nc4"))
@@ -129,9 +129,8 @@ def get_index_from_location():
 
 	# testing bounded
 	ms = MerraSource(join("data","merra-like.nc4"), bounds=aachenExt)
-
 	try:
-		idx = ms.loc2Index(locOutsideAachen)
+		idx = ms.loc2Index(LatLonLocation(lat=51.6, lon=6.2))
 		caught = False
 	except ResError as e:
 		caught = True
@@ -182,6 +181,7 @@ def computeContextMeans():
 	print(gk.raster.extractValues(ms.GWA100_CONTEXT_MEAN_SOURCE, locInAachen, pointSRS="latlon"))
 
 if __name__ == "__main__":
+
 	unbounded_initialization()
 	load_variable()
 	load_windspeed()

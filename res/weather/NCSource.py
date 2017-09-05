@@ -57,11 +57,12 @@ class NCSource(object):
             elif not isinstance(bounds, Bounds):
                 bounds = Bounds(*bounds)
                 print("bounds input is not a 'Bounds' or a 'geokit.Extent' type. Using one of these is safer!")
-            
+            s.bounds = bounds
             # find slices
             s._lonSel = np.logical_and(s._allLons >= bounds.lonMin, s._allLons <= bounds.lonMax)
             s._latSel = np.logical_and(s._allLats >= bounds.latMin, s._allLats <= bounds.latMax)
         else:
+            s.bounds = None
             s._latSel = np.s_[:]
             s._lonSel = np.s_[:]
 
