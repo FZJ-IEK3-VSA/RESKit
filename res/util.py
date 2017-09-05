@@ -10,6 +10,7 @@ import types
 class ResError(Exception): pass # this just creates an error that we can use
 
 # Make some type-helpers
+LATLONSRS = gk.srs.EPSG4326
 Index = namedtuple("Index", "yi xi")
 Location = namedtuple("Location", "x y")
 def LatLonLocation(lat, lon):
@@ -30,10 +31,10 @@ def ensureList(a):
 def ensureGeom(locations):
     if isinstance(locations, list) or isinstance(locations, np.ndarray):
         if isinstance(locations[0], ogr.Geometry): # Check if loc is a list of point
-            if not locations[0].GetSpatialReference().IsSame(gk.srs.EPSG4326):
-                locations = gk.geom.transform(locations, toSRS=gk.srs.EPSG4326)
+            if not locations[0].GetSpatialReference().IsSame(LATLONSRS):
+                locations = gk.geom.transform(locations, toSRS=LATLONSRS)
         elif isinstance(locations[0], Location):
-            locations = [gk.geom.point(loc.x, loc.y, srs=gk.srs.EPSG4326) for loc in locations]
+            locations = [gk.geom.point(loc.x, loc.y, srs=LATLONSRS) for loc in locations]
         else:
             raise ResError("Cannot understand location input. Use either a Location or an ogr.Geometry object")
 
@@ -41,14 +42,14 @@ def ensureGeom(locations):
         locations = ensureGeom(list(locations))
 
     elif isinstance(locations, ogr.Geometry): # Check if loc is a single point
-        if not locations.GetSpatialReference().IsSame(gk.srs.EPSG4326):
+        if not locations.GetSpatialReference().IsSame(LATLONSRS):
             locations = locations.Clone()
-            locations.TransformTo(gk.srs.EPSG4326)
+            locations.TransformTo(LATLONSRS)
 
     elif isinstance(locations, Location):
-        locations = gk.geom.point(locations.x, locations.y, srs=gk.srs.EPSG4326)
+        locations = gk.geom.point(locations.x, locations.y, srs=LATLONSRS)
     elif isinstance(locations, tuple) and len(locations)==2:
-        locations = gk.geom.point(locations[0], locations[1], srs=gk.srs.EPSG4326)
+        locations = gk.geom.point(locations[0], locations[1], srs=LATLONSRS)
         print("Consider using a Location object. It is safer!")
     else:
         raise ResError("Cannot understand location input. Use either a Location or an ogr.Geometry object")
@@ -59,8 +60,8 @@ def ensureGeom(locations):
 def ensureLoc(locations):
     if isinstance(locations, list) or isinstance(locations, np.ndarray):
         if isinstance(locations[0], ogr.Geometry): # Check if loc is a list of point
-            if not locations[0].GetSpatialReference().IsSame(gk.srs.EPSG4326):
-                locations = gk.geom.transform(locations, toSRS=gk.srs.EPSG4326)
+            if not locations[0].GetSpatialReference().IsSame(LATLONSRS):
+                locations = gk.geom.transform(locations, toSRS=LATLONSRS)
             locations = [Location(x=l.GetX(), y=l.GetY()) for l in locations]
         elif isinstance(locations[0], Location):
             pass
@@ -71,9 +72,9 @@ def ensureLoc(locations):
         locations = ensureLoc(list(locations))
 
     elif isinstance(locations, ogr.Geometry): # Check if loc is a single point
-        if not locations.GetSpatialReference().IsSame(gk.srs.EPSG4326):
+        if not locations.GetSpatialReference().IsSame(LATLONSRS):
             locations = locations.Clone()
-            locations.TransformTo(gk.srs.EPSG4326)
+            locations.TransformTo(LATLONSRS)
             locations = Location(x=locations.GetX(), y=locations.GetY())
 
     elif isinstance(locations, Location):
