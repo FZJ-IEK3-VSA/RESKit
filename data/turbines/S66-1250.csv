@@ -2,6 +2,9 @@ Manufacturer,Suzlon
 Model,S66-1250
 Capacity,1250
 Usage,Onshore
+HubHeight,74.5
+RotorDiameter,66
+Source,https://en.wind-turbine-models.com/turbines/97-suzlon-s.66-1250
 Power curve,
 windspeed(m/s),power(kW)
 2,0

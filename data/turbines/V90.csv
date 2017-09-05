@@ -2,6 +2,9 @@ Manufacturer,Vestas
 Model,V90
 Capacity,2000
 Usage,Onshore
+HubHeight,"80,95,105"
+RotorDiameter,90
+Source,https://en.wind-turbine-models.com/turbines/16-vestas-v-90#datasheet
 Power curve,
 windspeed(m/s),power(kW)
 2.5,0

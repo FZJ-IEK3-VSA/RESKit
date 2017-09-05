@@ -2,6 +2,8 @@ Manufacturer,Gamesa
 Model,G80
 Capacity,2000
 Usage,Onshore
+HubHeight,"60,67,78,100"
+RotorDiameter,80
 Power curve,
 windspeed(m/s),power(kW)
 3.5,0

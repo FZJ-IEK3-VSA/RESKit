@@ -2,6 +2,8 @@ Manufacturer,Enercon
 Model,E-66/1870
 Capacity,1800
 Usage,Onshore
+HubHeight,"65,80,86,98,114"
+RotorDiameter,70
 Power curve,
 windspeed(m/s),power(kW)
 1,0

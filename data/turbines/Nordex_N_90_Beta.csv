@@ -1,7 +1,9 @@
 Manufacturer,Nordex
-Model,N90
-Capacity,2500
+Model,N90_Beta
+Capacity,2300
 Usage,Onshore
+HubHeight,"80,100,104"
+RotorDiameter,90
 Power curve,
 windspeed(m/s),power(kW)
 2,0
@@ -47,3 +49,4 @@ windspeed(m/s),power(kW)
 22.5,2300
 23,2300
 24,2300
+25,2300

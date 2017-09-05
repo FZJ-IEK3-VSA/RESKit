@@ -2,6 +2,8 @@ Manufacturer,Nordex
 Model, N62
 Capacity,1300
 Usage,Onshore
+HubHeight,"60,69,80,69"
+RotorDiameter,62
 Power curve,
 windspeed(m/s),power(kW)
 3.5,0

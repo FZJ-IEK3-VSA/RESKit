@@ -2,6 +2,8 @@ Manufacturer,Bonus
 Model,B76/2000
 Capacity,2000
 Usage,Offshore
+HubHeight,"60,80"
+RotorDiameter,76
 Power curve,
 windspeed(m/s),power(kW)
 0,0

@@ -2,6 +2,8 @@ Manufacturer,Enercon
 Model,E-92_2350
 Capacity,2350
 Usage,Onshore
+HubHeight,"78,84,85,98,104,108,138 "
+RotorDiameter,92
 Power curve,
 windspeed(m/s),power(kW)
 1,0

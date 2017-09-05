@@ -2,6 +2,8 @@ Manufacturer,Nordex
 Model,N117/3600_Delta
 Capacity,3600
 Usage,Onshore
+HubHeight,"91,106"
+RotorDiameter,116.8
 Power curve,
 windspeed(m/s),power(kW)
 2,0

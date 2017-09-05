@@ -2,6 +2,8 @@ Manufacturer,Enercon
 Model,E-126_7580
 Capacity,7580
 Usage,Onshore
+HubHeight,135
+RotorDiameter,127
 Power curve,
 windspeed(m/s),power(kW)
 1,0

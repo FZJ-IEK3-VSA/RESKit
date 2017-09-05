@@ -2,6 +2,8 @@ Manufacturer,Gamesa
 Model,G132-3300
 Capacity,3300
 Usage,Onshore
+HubHeight,"84,97,114,134"
+RotorDiameter,132
 Power curve,
 windspeed(m/s),power(kW)
 1,0

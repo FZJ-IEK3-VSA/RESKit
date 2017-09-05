@@ -2,6 +2,8 @@ Manufacturer,NEG Micon
 Model,NM60/1000
 Capacity,1000
 Usage,Onshore
+HubHeight,"70,80"
+RotorDiameter,60
 Power curve,
 windspeed(m/s),power(kW)
 3.5,0

@@ -2,6 +2,9 @@ Manufacturer,Suzlon
 Model,S64-1000
 Capacity,1000
 Usage,Onshore
+HubHeight,65
+RotorDiameter,64
+Source,https://en.wind-turbine-models.com/turbines/471-suzlon-s.64-1000
 Power curve,
 windspeed(m/s),power(kW)
 2,0

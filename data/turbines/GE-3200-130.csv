@@ -2,6 +2,8 @@ Manufacturer,General Electric
 Model,GE_3200_130
 Capacity,3200
 Usage,Onshore
+HubHeight,"85,110"
+RotorDiameter,130
 Power curve,
 windspeed(m/s),power(kW)
 2,0

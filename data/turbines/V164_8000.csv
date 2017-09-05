@@ -2,6 +2,9 @@ Manufacturer,Vestas
 Model,V164-8000
 Capacity,8000
 Usage,Offshore
+HubHeight,0
+RotorDiameter,164
+Source,https://en.wind-turbine-models.com/turbines/318-vestas-v-164-8.0
 Power curve,
 windspeed(m/s),power(kW)
 4,0

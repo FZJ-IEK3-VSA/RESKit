@@ -2,6 +2,8 @@ Manufacturer,General Electric
 Model,GE_3400_137
 Capacity,3400
 Usage,Onshore
+HubHeight,"85,110,131,134,155"
+RotorDiameter,137
 Power curve,
 windspeed(m/s),power(kW)
 2,0

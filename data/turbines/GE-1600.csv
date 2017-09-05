@@ -2,6 +2,8 @@ Manufacturer,General Electric
 Model,GE_1600
 Capacity,1600
 Usage,Onshore
+HubHeight,"80,100"
+RotorDiameter,100
 Power curve,
 windspeed(m/s),power(kW)
 3,1

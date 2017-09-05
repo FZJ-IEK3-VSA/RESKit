@@ -2,6 +2,9 @@ Manufacturer,Vestas
 Model,V80-1800
 Capacity,1800
 Usage,Onshore
+HubHeight," 60,67,78"
+RotorDiameter,80
+Source,https://en.wind-turbine-models.com/turbines/1350-vestas-v-80-1.8
 Power curve,
 windspeed(m/s),power(kW)
 2.5,0

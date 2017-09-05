@@ -2,6 +2,8 @@ Manufacturer,Nordex
 Model,N70
 Capacity,1500
 Usage,Onshore
+HubHeight,0
+RotorDiameter,70
 Power curve,
 windspeed(m/s),power(kW)
 3.5,0
