@@ -6,13 +6,22 @@ from ..NCSource import *
 def adjustLraToGwa( windspeed, targetLoc, gwa, longRunAverage):
     ## Ensure location is okay
     targetLoc = ensureList(ensureGeom(targetLoc))
+    multi = len(targetLoc)>1
 
     # Get the local gwa value
-    gwaLocValue = np.array([x.data for x in gk.raster.extractValues(gwa, targetLoc)])
+    gwaLocValue = np.array(gk.raster.extractValues(gwa, targetLoc).data)
+    if multi: gwaLocValue = gwaLocValue.reshape((1,gwaLocValue.size))
+    else: gwaLocValue = gwaLocValue[0]
     
     # Get the long run average value
     if isinstance(longRunAverage, str): # A path to a raster dataset has been given
-        longRunAverage = np.array([x.data for x in gk.raster.extractValues(longRunAverage, targetLoc)])
+        longRunAverage = np.array(gk.raster.extractValues(longRunAverage, targetLoc).data)
+        if multi: longRunAverage = longRunAverage.reshape((1,longRunAverage.size))
+        else: longRunAverage = longRunAverage[0]
+    else: # A simple number or array has been given
+        if multi: # expect an array
+            longRunAverage = np.array(longRunAverage) # turns longRunAverage into an array or a scalar
+            longRunAverage = longRunAverage.reshape((1,longRunAverage.size))
 
     # apply adjustment
     if isinstance(windspeed, NCSource):
@@ -23,19 +32,32 @@ def adjustLraToGwa( windspeed, targetLoc, gwa, longRunAverage):
 def adjustContextMeanToGwa( windspeed, targetLoc, gwa, contextMean=None, **kwargs):
     ## Ensure location is okay
     targetLoc = ensureList(ensureGeom(targetLoc))
+    multi = len(targetLoc)>1
 
     # Get the local gwa value
-    gwaLocValue = np.array([x.data for x in gk.raster.extractValues(gwa, targetLoc)])
+    gwaLocValue = np.array(gk.raster.extractValues(gwa, targetLoc).data) # results in a (1 X number_of_locations) matrix
+    if multi: gwaLocValue = gwaLocValue.reshape((1,gwaLocValue.size))
+    else: gwaLocValue = gwaLocValue[0]
 
     # Get the gwa contextual mean value
     if contextMean is None: # the contexts needs to be computed
         # this only works when windspeed is an NCSource object
         if not isinstance(windspeed, NCSource):
             raise ResError("contextMean must be provided when windspeed is not a Source")
+        print("Autocomputation of contextual mean is currently untested")
         contextMean = np.array([computeContextMean(gwa, windspeed.contextAreaAt(loc), **kwargs) for loc in targetLoc])
+        if multi: contextMean = contextMean.reshape((1,contextMean.size))
+        else: contextMean = contextMean[0]
 
     elif isinstance(contextMean, str): # A path to a raster dataset has been given to read the means from
-        contextMean = np.array([x.data for x in gk.raster.extractValues(contextMean, targetLoc)])
+        contextMean = np.array(gk.raster.extractValues(contextMean, targetLoc).data) # results in a (1 X number_of_locations) matrix
+        if multi: contextMean = contextMean.reshape((1,contextMean.size))
+        else: contextMean = contextMean[0]
+
+    else: # A simple number or array has been given
+        if multi: # expect an array
+            contextMean = np.array(contextMean) # turns contextMean into an array or a scalar
+            contextMean = contextMean.reshape((1,contextMean.size))
 
     # apply adjustment    
     if isinstance(windspeed, NCSource):
@@ -278,19 +300,28 @@ modisCodeToRoughess[4] = 1.5 # Forests
 modisCodeToRoughess[5] = 1.5 # Forests
 modisCodeToRoughess[8] = 1.5 # Forests
 
+def clcGridToRough(grid):
+    if grid <= 0 or grid > 44: grid = 42 # assume ocean if grid value is unknown
+    code = clcGridToCode_v2006[grid]
+    rough = clcCodeToRoughess[code]
+    return rough
+
 def roughnessFromLandCover(num, landCover='clc'):
     """
     landCover can be 'clc', 'globCover', or 'modis'
     """
-    if landCover=='clc': source = clcGridToCode_v2006
-    elif landCover=='globCover': source = globCoverCodeToRoughess
-    elif landCover=='modis': source = modisCodeToRoughess
+    if landCover=='clc': source = lambda x: clcCodeToRoughess[x]
+    elif landCover=='clc-grid': source = clcGridToRough
+    elif landCover=='globCover': source = lambda x: globCoverCodeToRoughess[x]
+    elif landCover=='modis': source = lambda x: modisCodeToRoughess[x]
+    else: 
+        raise ResError("invalid input")
 
     if isinstance(num,int):
-        return source[num]
+        return source(num)
     if isinstance(num, np.ndarray) or isinstance(num,list):
-        return np.array([source[int(x)] for x in num])
+        return np.array([source(int(x)) for x in num])
     if isinstance(num, pd.Series) or isinstance(num, pd.DataFrame):
-        return num.apply( lambda x: source[int(x)])
+        return num.apply( lambda x: source(int(x)))
     else: 
         raise ResError("invalid input")
