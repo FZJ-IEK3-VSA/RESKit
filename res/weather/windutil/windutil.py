@@ -3,7 +3,7 @@ from ..NCSource import *
 ################################################################################
 ## Spatial adjustment methods
 
-def adjustLraToGwa( windspeed, targetLoc, gwa, longRunAverage):
+def adjustLraToGwa( windspeed, targetLoc, gwa, longRunAverage, windspeedSourceName="windspeed"):
     ## Ensure location is okay
     targetLoc = ensureList(ensureGeom(targetLoc))
     multi = len(targetLoc)>1
@@ -25,11 +25,11 @@ def adjustLraToGwa( windspeed, targetLoc, gwa, longRunAverage):
 
     # apply adjustment
     if isinstance(windspeed, NCSource):
-        windspeed = windspeed.get("windspeed", targetLoc)
+        windspeed = windspeed.get(windspeedSourceName, targetLoc)
 
     return windspeed * (gwaLocValue / longRunAverage)
 
-def adjustContextMeanToGwa( windspeed, targetLoc, gwa, contextMean=None, **kwargs):
+def adjustContextMeanToGwa( windspeed, targetLoc, gwa, contextMean=None, windspeedSourceName="windspeed", **kwargs):
     ## Ensure location is okay
     targetLoc = ensureList(ensureGeom(targetLoc))
     multi = len(targetLoc)>1
@@ -61,7 +61,7 @@ def adjustContextMeanToGwa( windspeed, targetLoc, gwa, contextMean=None, **kwarg
 
     # apply adjustment    
     if isinstance(windspeed, NCSource):
-        windspeed = windspeed.get("windspeed", targetLoc)
+        windspeed = windspeed.get(windspeedSourceName, targetLoc)
 
     return windspeed * (gwaLocValue / contextMean)
 

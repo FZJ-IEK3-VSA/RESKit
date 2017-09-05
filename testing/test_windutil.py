@@ -242,16 +242,18 @@ def test_roughnessFromCLC():
     else: raise RuntimeError("Multiple locations: Fail")
 
 def test_roughnessFromLandCover():
+    print("#####################")
     print("MAKE TEST FOR: roughnessFromLandCover()")
+    print("#####################")
 
 if __name__ == '__main__':
     test_adjustLraToGwa(); print("")
-    #test_adjustContextMeanToGwa(); print("")
-    #test_projectByLogLaw(); print("")
-    #test_projectByPowerLaw(); print("")
-    #test_alphaFromLevels(); print("")
-    #test_alphaFromGWA(); print("")
-    #test_roughnessFromLevels(); print("")
-    #test_roughnessFromGWA(); print("")
-    #test_roughnessFromCLC(); print("")
-    #test_roughnessFromLandCover(); print("")
+    test_adjustContextMeanToGwa(); print("")
+    test_projectByLogLaw(); print("")
+    test_projectByPowerLaw(); print("")
+    test_alphaFromLevels(); print("")
+    test_alphaFromGWA(); print("")
+    test_roughnessFromLevels(); print("")
+    test_roughnessFromGWA(); print("")
+    test_roughnessFromCLC(); print("")
+    test_roughnessFromLandCover(); print("")
