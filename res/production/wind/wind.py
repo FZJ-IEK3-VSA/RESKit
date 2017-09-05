@@ -41,7 +41,7 @@ TurbineLibrary['Performance'] = [x.profile for x in tmp]
 ####################################################
 ## Simulation for a single turbine
 TurbinePerformance = namedtuple("TurbinPerformance", "production capacityFactor")
-def simulateTurbine( windspeed, performance='E115 3.0MW', measuredHeight=None, roughness=None, alpha=None, hubHeight=None, loss=0.08):
+def simulateTurbine( windspeed, performance='E115 3.0MW', measuredHeight=None, roughness=None, alpha=None, hubHeight=None, loss=0.08, capacity=None):
     """
     Perform simple windpower simulation for a single turbine. Can also project to a hubheight before
     simulating.
@@ -86,6 +86,13 @@ def simulateTurbine( windspeed, performance='E115 3.0MW', measuredHeight=None, r
 
         loss - float
             * A constant loss rate to apply to the simulated turbine(s)
+
+        capacity - floar
+            * The maximal capacity of the turbine being simulated
+            * If 'None' is given, then the following occurs:
+                - When performance is the name of a turbine, the capacity is read from the TurbineLibrary
+                - When the performance is a list of windspeed-power_output pairs, then the capacity is 
+                  taken as the maximum power output
     
     Returns: ( performance, hub-wind-speeds )
         performance - A numpy array of performance values
@@ -122,9 +129,11 @@ def simulateTurbine( windspeed, performance='E115 3.0MW', measuredHeight=None, r
     ############################################
     # Set performance
     if isinstance(performance,str): 
+        if capacity is None: capacity = TurbineLibrary.ix[performance].Capacity
         performance = np.array(TurbineLibrary.ix[performance].Performance)
     elif isinstance(performance, list):
         performance = np.array(performance)
+        if capacity is None: capacity = performance[:,1].max()
 
     ############################################
     # Convert to wind speeds at hub height
@@ -204,7 +213,7 @@ def simulateTurbine( windspeed, performance='E115 3.0MW', measuredHeight=None, r
             powerGen = pd.Series(powerGen, index=windspeed.index, name='production')
         else:
             powerGen = pd.DataFrame(powerGen, columns=windspeed.columns, index=windspeed.index)
-    capFactor = powerGen.mean(axis=0)/maxPower
+    capFactor = powerGen.mean(axis=0)/capacity
 
     # Done!
     return TurbinePerformance(powerGen, capFactor)
@@ -215,7 +224,7 @@ def singleTurbine(**kwargs):
 
 ####################################################
 ## Simulation for a single turbine
-def simulateArea( source, area, performance='E115 3.0MW', measuredHeight=None, hubHeight=None, loss=0.08, leSource=None, gwaSource=None, **kwargs):
+def simulateArea( source, area, performance='E115_3200', measuredHeight=None, hubHeight=None, loss=0.08, leSource=None, gwaSource=None, **kwargs):
     """
     Perform wind power simulation for an area. A statistical distribution of expected wind speeds will be generated
     which will then be used to convolve the wind turbine's power-curve. A projection from a measure height to 

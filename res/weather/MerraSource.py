@@ -8,10 +8,20 @@ class MerraSource (NCSource):
     LONG_RUN_AVERAGE_50M_SOURCE = join(dirname(__file__),"..","..","data","merra_average_windspeed_50m.tif")
 
     def __init__(s, path, bounds=None,):
-        NCSource.__init__(s, path=path, bounds=bounds, timeName="time", latName="lat", lonName="lon")
-
         s._maximal_lon_difference=0.3125
         s._maximal_lat_difference=0.25
+
+        try:
+            bounds.pad( (s._maximal_lon_difference, s._maximal_lat_difference) )
+        except:
+            bounds = (
+                bounds[0] - s._maximal_lon_difference,
+                bounds[1] - s._maximal_lat_difference,
+                bounds[2] + s._maximal_lon_difference,
+                bounds[3] + s._maximal_lat_difference,
+                )
+
+        NCSource.__init__(s, path=path, bounds=bounds, timeName="time", latName="lat", lonName="lon")
 
     def contextAreaAtIndex(s, latI, lonI):
         print("USING MERRA VERSION!")

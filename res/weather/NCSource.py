@@ -41,10 +41,10 @@ class NCSource(object):
     def __init__(s, path, bounds=None, timeName="time", latName="lat", lonName="lon"):
         # set basic vairables 
         s.path = path
-        s.ds = nc.Dataset(path)
-        s._allLats = s.ds[latName][:]
-        s._allLons = s.ds[lonName][:]
-        s.variables = s.ds.variables.keys()
+        ds = nc.Dataset(s.path)
+        s._allLats = ds[latName][:]
+        s._allLons = ds[lonName][:]
+        s.variables = list(ds.variables.keys())
         s._maximal_lon_difference=10000000
         s._maximal_lat_difference=10000000
 
@@ -69,16 +69,17 @@ class NCSource(object):
         s.lons = s._allLons[s._lonSel]
 
         # compute time index
-        s.timeindex = nc.num2date(s.ds[timeName][:], s.ds[timeName].units)
+        s.timeindex = nc.num2date(ds[timeName][:], ds[timeName].units)
 
         # initialize some variables
         s.data = OrderedDict()
 
     def load(s, variable, name=None, processor=None):
         # read the data
-        if not variable in s.ds.variables.keys():
+        ds = nc.Dataset(s.path)
+        if not variable in ds.variables.keys():
             raise ResError(variable+" not in source")
-        tmp = s.ds[variable][:,s._latSel,s._lonSel]
+        tmp = ds[variable][:,s._latSel,s._lonSel]
 
         # process, maybe?
         if not processor is None:
