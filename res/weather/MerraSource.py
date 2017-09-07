@@ -1,7 +1,7 @@
 from .NCSource import *
 
 ## Define constants
-class MerraSource (NCSource):
+class MerraSource(NCSource):
     
     GWA50_CONTEXT_MEAN_SOURCE = join(dirname(__file__),"..","..","data","gwa50_mean_over_merra.tif")
     GWA100_CONTEXT_MEAN_SOURCE = join(dirname(__file__),"..","..","data","gwa100_mean_over_merra.tif")
@@ -35,6 +35,10 @@ class MerraSource (NCSource):
         # set maximal differences
         s._maximal_lon_difference=s.MAX_LON_DIFFERENCE
         s._maximal_lat_difference=s.MAX_LAT_DIFFERENCE
+
+    def __add__(s,o):
+        out = MerraSource(None)
+        return NCSource.__add__(s, o, _shell=out)
 
     def contextAreaAtIndex(s, latI, lonI):
         print("USING MERRA VERSION!")

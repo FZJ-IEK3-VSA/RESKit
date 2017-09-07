@@ -2,6 +2,7 @@ from os import listdir
 from os.path import join, isfile, dirname, basename
 from glob import glob
 from scipy.interpolate import RectBivariateSpline, interp2d
+from pickle import load, dump
 
 from res.util import *
 
@@ -38,49 +39,124 @@ def computeContextMean(source, contextArea, fillnan=True, pixelSize=None, srs=No
 
 # make a data handler
 class NCSource(object):
-    def __init__(s, path, bounds=None, timeName="time", latName="lat", lonName="lon"):
-        # set basic vairables 
+    def __init__(s, path, bounds=None, timeName="time", latName="lat", lonName="lon", dependent_coordinates=False):
+        # set basic variables 
         s.path = path
-        ds = nc.Dataset(s.path)
-        s._allLats = ds[latName][:]
-        s._allLons = ds[lonName][:]
-        s.variables = list(ds.variables.keys())
-        s._maximal_lon_difference=10000000
-        s._maximal_lat_difference=10000000
+        if not path is None:
+            ds = nc.Dataset(s.path)
+        
+            s._allLats = ds[latName][:]
+            s._allLons = ds[lonName][:]
 
-        # set lat and lon selections
-        if not bounds is None:
-            if isinstance(bounds, gk.Extent):
-                if not bounds.srs.IsSame(gk.srs.EPSG4326):
-                    bounds = bounds.castTo(gk.srs.EPSG4326)
-                bounds = Bounds(lonMin=bounds.xMin, latMin=bounds.yMin, lonMax=bounds.xMax, latMax=bounds.yMax )
-            elif not isinstance(bounds, Bounds):
-                bounds = Bounds(*bounds)
-                print("bounds input is not a 'Bounds' or a 'geokit.Extent' type. Using one of these is safer!")
-            s.bounds = bounds
-            # find slices
-            s._lonSel = np.logical_and(s._allLons >= bounds.lonMin, s._allLons <= bounds.lonMax)
-            s._latSel = np.logical_and(s._allLats >= bounds.latMin, s._allLats <= bounds.latMax)
+            s.variables = list(ds.variables.keys())
+            s._maximal_lon_difference=10000000
+            s._maximal_lat_difference=10000000
+
+            s.dependent_coordinates = dependent_coordinates
+
+            # set lat and lon selections
+            if not bounds is None:
+                if isinstance(bounds, gk.Extent):
+                    if not bounds.srs.IsSame(gk.srs.EPSG4326):
+                        bounds = bounds.castTo(gk.srs.EPSG4326)
+                    bounds = Bounds(lonMin=bounds.xMin, latMin=bounds.yMin, lonMax=bounds.xMax, latMax=bounds.yMax )
+                elif not isinstance(bounds, Bounds):
+                    bounds = Bounds(*bounds)
+                    print("bounds input is not a 'Bounds' or a 'geokit.Extent' type. Using one of these is safer!")
+                s.bounds = bounds
+
+                # find slices
+                s._lonSel = (s._allLons >= bounds.lonMin) & (s._allLons <= bounds.lonMax)
+                s._latSel = (s._allLats >= bounds.latMin) & (s._allLats <= bounds.latMax)
+
+                if s.dependent_coordinates:
+                    selTmp = s._latSel&s._lonSel
+                    s._latSel = selTmp.any(axis=1)
+                    s._lonSel = selTmp.any(axis=0)
+
+                s._lonStart = np.argmax(s._lonSel)
+                s._lonStop = s._lonSel.size-np.argmax(s._lonSel[::-1])
+                s._latStart = np.argmax(s._latSel)
+                s._latStop = s._latSel.size-np.argmax(s._latSel[::-1])
+
+            else:
+                s.bounds = None
+                s._lonStart = 0
+                s._latStart = 0
+
+                if dependent_coordinates:
+                    s._lonStop = s._allLons.shape[1]
+                    s._latStop = s._allLons.shape[0]
+                else:
+                    s._lonStop = s._allLons.size
+                    s._latStop = s._allLats.size
+
+            if s.dependent_coordinates:
+                s.lats = s._allLats[s._latStart:s._latStop,s._lonStart:s._lonStop]
+                s.lons = s._allLons[s._latStart:s._latStop,s._lonStart:s._lonStop]
+            else:
+                s.lats = s._allLats[s._latStart:s._latStop]
+                s.lons = s._allLons[s._lonStart:s._lonStop]
+
+            # compute time index
+            s.timeindex = nc.num2date(ds[timeName][:], ds[timeName].units)
+
+            # initialize some variables
+            s.data = OrderedDict()
+
+    def __add__(s,o, _shell=None):
+        # ensure self and other have the same indexes
+        if (s.lats != o.lats).any(): raise ResError("Latitude indexes to not match")
+        if (s.lons != o.lons).any(): raise ResError("Longitude indexes to not match")
+        #if (s.timeindex != o.timeindex).any(): raise ResError("Longitude indexes to not match")
+
+        # Create an empty NCSource and fill top-level information
+        if _shell is None:
+            out = NCSource(None)
         else:
-            s.bounds = None
-            s._latSel = np.s_[:]
-            s._lonSel = np.s_[:]
+            out = _shell
 
-        s.lats = s._allLats[s._latSel]
-        s.lons = s._allLons[s._lonSel]
+        out.bounds = s.bounds
+        out.lats = s.lats
+        out.lons = s.lons
+        out.timeindex = s.timeindex
+        out._maximal_lon_difference = s._maximal_lon_difference
+        out._maximal_lat_difference = s._maximal_lat_difference
+        out.dependent_coordinates = s.dependent_coordinates
 
-        # compute time index
-        s.timeindex = nc.num2date(ds[timeName][:], ds[timeName].units)
+        # Join variables in each object
+        out.data = OrderedDict()
+        for name,data in s.data.items():
+            out.data[name] = data.copy()
+        for name,data in o.data.items():
+            out.data[name] = data.copy()
+        
+        out.variables = list(out.data.keys())
 
-        # initialize some variables
-        s.data = OrderedDict()
+        # Done!
+        return out
+    
+    def pickle(s, path):
+        with open(path, 'wb') as fo:
+            dump(s, fo)
 
-    def load(s, variable, name=None, processor=None):
+    @staticmethod
+    def fromPickle(path):
+        with open(path, 'rb') as fo:
+            out = load(fo)
+        return out
+
+    def load(s, variable, name=None, heightIdx=None, processor=None):
+        if s.path is None: raise ResError("Cannot load new variables when path is None")
         # read the data
         ds = nc.Dataset(s.path)
         if not variable in ds.variables.keys():
             raise ResError(variable+" not in source")
-        tmp = ds[variable][:,s._latSel,s._lonSel]
+
+        if heightIdx is None:
+            tmp = ds[variable][:,s._latStart:s._latStop,s._lonStart:s._lonStop]
+        else:
+            tmp = ds[variable][:,heightIdx,s._latStart:s._latStop,s._lonStart:s._lonStop]
 
         # process, maybe?
         if not processor is None:
@@ -90,6 +166,18 @@ class NCSource(object):
         if name is None: name = variable
         s.data[name] = tmp
 
+    def addData(s, name, data):
+        # test shape
+        if data.shape[0] != s.timeindex.shape[0]: raise ResError("Input data's first dimension does not match the time index")
+        if s.dependent_coordinates:
+            if data.shape[1] != s.lats.shape[0]: raise ResError("Input data's second dimension does not match the latitude dimension")
+            if data.shape[2] != s.lons.shape[1]: raise ResError("Input data's second dimension does not match the longitude dimension")
+        else:
+            if data.shape[1] != s.lats.shape[0]: raise ResError("Input data's second dimension does not match the latitude dimension")
+            if data.shape[2] != s.lons.shape[0]: raise ResError("Input data's second dimension does not match the longitude dimension")
+
+        # Add to data
+        s.data[name] = data
 
     def loc2Index(s, loc, outsideOkay=False):
         # Ensure loc is a list
@@ -99,28 +187,34 @@ class NCSource(object):
         lonCoords = np.array([loc.x for loc in locations])
         latCoords = np.array([loc.y for loc in locations])
 
-        # get closest indecies
+        # get closest indices
         idx = []
         for lat,lon in zip(latCoords, lonCoords):
-            # get lat index
-            tmp = np.abs(lat-s.lats)
-            if tmp.min() > s._maximal_lat_difference: 
+            # Check the lat distance
+            tmpLat = np.abs(lat-s.lats)
+            if tmpLat.min() > s._maximal_lat_difference: 
                 if not outsideOkay:
                     raise ResError("(%f,%f) are outside the boundaries"%(lat,lon))
                 else:
                     idx.append(None)
                     continue
-            latI = np.argmin(tmp)
 
-            # get lon index
-            tmp = np.abs(lon-s.lons)
-            if tmp.min() > s._maximal_lon_difference: 
+            # Check the lon distance
+            tmpLon = np.abs(lon-s.lons)
+            if tmpLon.min() > s._maximal_lon_difference: 
                 if not outsideOkay:
                     raise ResError("(%f,%f) are outside the boundaries"%(lat,lon))
                 else:
                     idx.append(None)
                     continue
-            lonI = np.argmin(tmp)
+            
+            # Get the best indices 
+            if s.dependent_coordinates:
+                dist = np.sqrt(tmpLon*tmpLon+tmpLat*tmpLat)
+                latI,lonI = np.unravel_index(np.argmin(dist),dist.shape)
+            else:
+                lonI = np.argmin(tmpLon)
+                latI = np.argmin(tmpLat)
             
             # append
             idx.append( Index(yi=latI,xi=lonI) )
@@ -130,12 +224,12 @@ class NCSource(object):
             return idx[0]
         else:
             return idx
-
+    #def addData
     def get(s, variable, locations, interpolation='near', forceDataFrame=False, outsideOkay=False):
         # Ensure loc is a list
         locations = ensureLoc(ensureList(locations))
 
-        # compute the closest indecies
+        # compute the closest indices
         indecies = s.loc2Index(locations, outsideOkay)
         if isinstance(indecies, Index): indecies = [indecies, ]
 
@@ -149,8 +243,11 @@ class NCSource(object):
             output = np.column_stack(tmp)
         
         elif interpolation == "cubic" or interpolation == "bilinear":
+            if s.dependent_coordinates:
+                raise ResError("Interpolation not setup for datasets with dependent lat/lon coordinates")
+
             ##########
-            ## TODO: Update interpolation schemes to handle out-of-bounds indecies 
+            ## TODO: Update interpolation schemes to handle out-of-bounds indices 
             ##########
             # set some arguments for later use
             if interpolation == "cubic":
@@ -168,7 +265,7 @@ class NCSource(object):
 
             # ensure boundaries are okay
             if yiMin < 0 or xiMin < 0 or yiMax > s.lats.size or xiMax > s.lons.size: 
-                raise ResError("Insuffecient data. Try expanding the boundary of the extracted data")
+                raise ResError("Insufficient data. Try expanding the boundary of the extracted data")
 
             # Set up grid
             gridLats = s.lats[yiMin:yiMax+1]
@@ -180,7 +277,7 @@ class NCSource(object):
             
             output = []
             for ts in range(s.data[variable].shape[0]):
-                # set up interpolator
+                # set up interpolation
                 rbs = RectBivariateSpline(gridLats,gridLons,s.data[variable][ts, yiMin:yiMax+1, xiMin:xiMax+1], **rbsArgs)
 
                 # interpolate for each location
@@ -216,17 +313,43 @@ class NCSource(object):
         return s.contextAreaAtIndex(index.yi, index.xi)
 
     def contextAreaAtIndex(s, latI, lonI):
+        if s.dependent_coordinates:
+            ctr = np.array([s.lons[latI,lonI],s.lats[latI,lonI]])
+            up = np.array([s.lons[latI+1,lonI],s.lats[latI+1,lonI]])
+            dw = np.array([s.lons[latI-1,lonI],s.lats[latI-1,lonI]])
+            rt = np.array([s.lons[latI,lonI+1],s.lats[latI,lonI+1]])
+            lt = np.array([s.lons[latI,lonI-1],s.lats[latI,lonI-1]])
 
-        # Make and return a box
-        lowLat = (s.lats[latI]+s.lats[latI-1])/2
-        highLat = (s.lats[latI]+s.lats[latI+1])/2
-        lowLon = (s.lons[lonI]+s.lons[lonI-1])/2
-        highLon = (s.lons[lonI]+s.lons[lonI+1])/2
+            up_rt = np.array([s.lons[latI+1,lonI+1],s.lats[latI+1,lonI+1]])
+            dw_rt = np.array([s.lons[latI-1,lonI+1],s.lats[latI-1,lonI+1]])
+            up_lt = np.array([s.lons[latI+1,lonI-1],s.lats[latI+1,lonI-1]])
+            dw_lt = np.array([s.lons[latI-1,lonI-1],s.lats[latI-1,lonI-1]])
+
+            # compute points in context
+            mid_up_rt = (ctr + up + rt + up_rt)/4
+            mid_dw_rt = (ctr + dw + rt + dw_rt)/4
+            mid_up_lt = (ctr + up + lt + up_lt)/4
+            mid_dw_lt = (ctr + dw + lt + dw_lt)/4
+
+            # return polygon
+            return gk.geom.polygon([mid_up_rt, 
+                                    mid_dw_rt,
+                                    mid_dw_lt,
+                                    mid_up_lt,
+                                    mid_up_rt], srs=gk.srs.EPSG4326)
+
+        else:
+            # Make and return a box
+            lowLat = (s.lats[latI]+s.lats[latI-1])/2
+            highLat = (s.lats[latI]+s.lats[latI+1])/2
+            lowLon = (s.lons[lonI]+s.lons[lonI-1])/2
+            highLon = (s.lons[lonI]+s.lons[lonI+1])/2
         
-        return gk.geom.box( lowLon, lowLat, highLon, highLat, srs=gk.srs.EPSG4326 )
+            # return box
+            return gk.geom.box( lowLon, lowLat, highLon, highLat, srs=gk.srs.EPSG4326 )
 
     def computeContextMeans(s, source, fillnan=True):
-        # get rastr info
+        # get raster info
         ras = gk.raster.rasterInfo(source)
 
         # compute all means

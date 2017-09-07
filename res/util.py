@@ -12,9 +12,17 @@ class ResError(Exception): pass # this just creates an error that we can use
 # Make some type-helpers
 LATLONSRS = gk.srs.EPSG4326
 Index = namedtuple("Index", "yi xi")
-Location = namedtuple("Location", "x y")
+LocationNT = namedtuple("Location", "x y")
+class Location(LocationNT):
+    def __str__(s):
+        return "%8f,%8f"%(s.x,s.y)
+
+    @staticmethod
+    def latlon(lat,lon):
+        return Location(lon,lat)
+
 def LatLonLocation(lat, lon):
-        return Location(x=lon, y=lat)
+    return Location(x=lon, y=lat)
 
 BoundsNT = namedtuple("Bounds","lonMin latMin lonMax latMax")
 class Bounds(BoundsNT):
