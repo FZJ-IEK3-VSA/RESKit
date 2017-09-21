@@ -26,6 +26,9 @@ def adjustLraToGwa( windspeed, targetLoc, gwa, longRunAverage, windspeedSourceNa
     # apply adjustment
     if isinstance(windspeed, NCSource):
         windspeed = windspeed.get(windspeedSourceName, targetLoc)
+        if multi: # reshape so that pandas will distribute properly
+            gwaLocValue = gwaLocValue[0,:]
+            longRunAverage = longRunAverage[0,:]
 
     return windspeed * (gwaLocValue / longRunAverage)
 
@@ -62,6 +65,9 @@ def adjustContextMeanToGwa( windspeed, targetLoc, gwa, contextMean=None, windspe
     # apply adjustment    
     if isinstance(windspeed, NCSource):
         windspeed = windspeed.get(windspeedSourceName, targetLoc)
+        if multi: # reshape so that pandas will distribute properly
+            gwaLocValue = gwaLocValue[0,:]
+            longRunAverage = longRunAverage[0,:]
 
     return windspeed * (gwaLocValue / contextMean)
 
