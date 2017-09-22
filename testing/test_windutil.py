@@ -4,6 +4,7 @@ from os.path import join, dirname
 import geokit as gk
 
 from res.weather.windutil import *
+from res.weather import MerraSource
 from res.util import ResError, LatLonLocation
 
 ## setup some common inputs
@@ -14,6 +15,14 @@ locs = [loc, locOutsideAachen, LatLonLocation(lat=50.605, lon=6.605)]
 
 windspeed = np.arange(30)
 windspeeds = np.column_stack( [windspeed, windspeed+0.3333, windspeed+0.6667] )
+
+try:
+    wsSrc = MerraSource("data\merra-like.nc4")
+    wsSrc.loadWindSpeed()
+except Exception as e:
+    print("Loading MerraSource failed somewhere. Investigate by running the MerraSource unit tests...")
+    raise e
+
 
 ## Make testing functions!!
 def test_adjustLraToGwa():
@@ -60,6 +69,25 @@ def test_adjustLraToGwa():
             raise RuntimeError("  Multi loc, given long run average: Fail")
     else: print("  Multi loc, given long run average: Success")
 
+    # Use a MerraSoure with a single locations
+    wsOut = adjustLraToGwa( wsSrc, targetLoc=locInAachen, 
+                            gwa=join("data","gwa50-like.tif"), 
+                            longRunAverage=wsSrc.LONG_RUN_AVERAGE_50M_SOURCE)
+    if  not (abs(wsOut.sum()-4428.88769531) < 1e-6 and\
+             abs(wsOut.std()-2.42754483223) < 1e-6): 
+            raise RuntimeError("  Single loc, MerraSource: Fail")
+    else: print("  Single loc, MerraSource: Success")
+
+    # Use a MerraSoure with multiple locations
+    wsOut = adjustLraToGwa( wsSrc, targetLoc=locs, 
+                            gwa=join("data","gwa50-like.tif"), 
+                            longRunAverage=wsSrc.LONG_RUN_AVERAGE_50M_SOURCE)
+    
+    if  not (abs(wsOut.values.sum()-14244.9913174) < 1e-6 and\
+             abs(wsOut.values.std()-2.57847289055) < 1e-6): 
+            raise RuntimeError("  Multi loc, MerraSource: Fail")
+    else: print("  Multi loc, MerraSource: Success")
+
 def test_adjustContextMeanToGwa():
     print("testing adjustContextMeanToGwa...")
     contextSource = join(dirname(__file__), "..", "data","gwa50_mean_over_merra.tif")
@@ -104,10 +132,26 @@ def test_adjustContextMeanToGwa():
             raise RuntimeError("  Multi loc, given context: Fail")
     else: print("  Multi loc, given context: Success")
 
-    # Autocompute the mean from an NC source
-    print("#####################")
-    print("Test automatic computation of a contextual mean from a generic NC source!!!! (Like a MerraSource)")
-    print("#####################")
+    # Use a MerraSoure with a single locations
+    wsOut = adjustContextMeanToGwa( wsSrc, targetLoc=locInAachen, 
+                                    gwa=join("data","gwa50-like.tif"), 
+                                    contextMean=wsSrc.GWA50_CONTEXT_MEAN_SOURCE)
+
+    if  not (abs(wsOut.sum()-5702.04931641 ) < 1e-6 and\
+             abs(wsOut.std()-3.12538552 ) < 1e-6): 
+            raise RuntimeError("  Single loc, MerraSource: Fail")
+    else: print("  Single loc, MerraSource: Success")
+
+    # Use a MerraSoure with multiple locations
+    wsOut = adjustContextMeanToGwa( wsSrc, targetLoc=locs, 
+                                    gwa=join("data","gwa50-like.tif"), 
+                                    contextMean=wsSrc.GWA50_CONTEXT_MEAN_SOURCE)
+
+    if  not (abs(wsOut.values.sum()-19443.73842715) < 1e-6 and\
+             abs(wsOut.values.std()-3.52234571) < 1e-6): 
+            raise RuntimeError("  Multi loc, MerraSource: Fail")
+    else: print("  Multi loc, MerraSource: Success")
+
 
 def test_projectByLogLaw():
     print("Testing projectByLogLaw...")

@@ -14,6 +14,13 @@ LATLONSRS = gk.srs.EPSG4326
 Index = namedtuple("Index", "yi xi")
 LocationNT = namedtuple("Location", "x y")
 class Location(LocationNT):
+    def __hash__(s): return hash((s.x,s.y)) # I need this to make pandas indexing work when location objects are used as columns and indexes
+    def __eq__(s,o):
+        return s.x==o.x and s.y==o.y
+
+    def __ne__(s,o):
+        return not(s==o)
+
     def __str__(s):
         return "%8f,%8f"%(s.x,s.y)
 
@@ -24,6 +31,7 @@ class Location(LocationNT):
 def LatLonLocation(lat, lon):
     return Location(x=lon, y=lat)
 
+def extentFromFile(*args, **kwargs): return gk.Extent.fromVector(*args, **kwargs)
 BoundsNT = namedtuple("Bounds","lonMin latMin lonMax latMax")
 class Bounds(BoundsNT):
     #def __init__(s, lonMin, latMin, lonMax, latMax):
