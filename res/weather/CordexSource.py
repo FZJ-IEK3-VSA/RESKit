@@ -27,12 +27,8 @@ class CordexSource(NCSource):
     
     GWA50_CONTEXT_MEAN_SOURCE = None
     GWA100_CONTEXT_MEAN_SOURCE = None
-    LONG_RUN_AVERAGE_50M_SOURCE = None
 
-    MAX_LON_DIFFERENCE=0.0625
-    MAX_LAT_DIFFERENCE=0.0625
-
-    def __init__(s, path, bounds=None,):
+    def __init__(s, path, bounds=None, domain="EUR11"):
 
         if not bounds is None:
             if isinstance(bounds, gk.Extent):
@@ -55,8 +51,11 @@ class CordexSource(NCSource):
         NCSource.__init__(s, path=path, bounds=bounds, timeName="time", latName="lat", lonName="lon", dependent_coordinates=True)
 
         # set maximal differences
-        s._maximal_lon_difference=s.MAX_LON_DIFFERENCE
-        s._maximal_lat_difference=s.MAX_LAT_DIFFERENCE
+        if domain=="EUR11":
+            s._maximal_lon_difference=0.0625
+            s._maximal_lat_difference=0.0625
+        else:
+            raise ResError("Domain not understood")
 
     def __add__(s,o):
         out = CordexSource(None)
