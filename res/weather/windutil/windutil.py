@@ -74,11 +74,22 @@ def adjustContextMeanToGwa( windspeed, targetLoc, gwa, contextMean=None, windspe
 ################################################################################
 ## Vertical projection methods
 
-def projectByLogLaw( windspeed, measuredHeight, targetHeight, roughness):
-    return windspeed * np.log(targetHeight/roughness) / np.log(measuredHeight/roughness)
+def projectByLogLaw( measuredWindspeed, measuredHeight, targetHeight, roughness, displacement=0, stability=0):
+    """Estimates windspeed at target height ($h_t$) based off a measured windspeed ($u_m$) at a known measurement height ($h_m$) subject to the surface roughness ($z$), displacement height ($d$), and stability ($S$)
 
-def projectByPowerLaw( windspeed, measuredHeight, targetHeight, alpha):
-    return windspeed * np.power(targetHeight/measuredHeight, alpha)
+    * Begins with the semi-empirical log wind profile ($a$ stands for any height):
+        $ u_a = \frac{u_*}{\kappa}[ln(\frac{h_a - d}{z}) + S]$
+
+    * Solves for $u_t$ based off known values:
+        $ u_t = u_m * \frac{ln((h_t - d)/z}) + S]}{ln((h_m - d)/z}) + S]}
+    
+    * Simplifications:
+        - stability -> 0 under "neutral stability conditions"
+    """
+    return measuredWindspeed * (np.log( (targetHeight-displacement)/roughness)+stability) / (np.log((measuredHeight-displacement)/roughness)+stability)
+
+def projectByPowerLaw( measuredWindspeed, measuredHeight, targetHeight, alpha):
+    return measuredWindspeed * np.power(targetHeight/measuredHeight, alpha)
 
 ################################################################################
 ## Alpha computers
