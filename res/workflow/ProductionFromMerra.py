@@ -9,25 +9,28 @@ from datetime import datetime as dt
 ##################################################################
 ## Make some typical simulator functions
 Result = namedtuple("Result", "count output")
-def simulateLocations(locations, extent, wsSource, clcSource, turbine, hubHeight, extract, verbose=True, **kwargs):
+def simulateLocations(locations, extent, wsSource, clcSource, gwaSource, turbine, hubHeight, extract, verbose=True, **kwargs):
     if verbose: 
         startTime = dt.now()
         gid = kwargs.get("gid",extent)
         globalStart = kwargs.get("globalStart", startTime)
         print(" %s: Starting at +%.2fs"%(str(gid), (startTime-globalStart).total_seconds()))
 
-    extent = gk.Extent(extent, srs=LATLONSRS)
+    if not extent is None:
+        extent = gk.Extent(extent, srs=LATLONSRS)
+    
     # make merra source and load data
     if not isinstance(wsSource, MerraSource):
         print(" building new source")
+        if extent is None: raise ResError("extent cannot be None when building a new source")
         wsSource = MerraSource(path=wsSource, bounds=extent.pad(1))
         wsSource.loadWindSpeed(height=50)
 
     # read windspeeds
     if isinstance(locations, str): # locations points to a point-type shapefile
-        locations = [g for g,a in gk.vector.extractFeatures( locations, geom=extent.box, outputSRS=LATLONSRS )]
+        locations = Location.ensureLocation([g for g,a in gk.vector.extractFeatures( locations, geom=extent.box, outputSRS=LATLONSRS )])
     else:
-        locations = ensureGeom(locations)
+        locations = Location.ensureLocation(locations)
 
     if len(locations) == 0 : 
         if verbose: print( " %s: No locations found"%(str(gid)))
@@ -36,7 +39,7 @@ def simulateLocations(locations, extent, wsSource, clcSource, turbine, hubHeight
 
     # adjust ws 
     ws = windutil.adjustContextMeanToGwa( ws, locations, contextMean=wsSource.GWA50_CONTEXT_MEAN_SOURCE, 
-            gwa=r"D:\Data\weather\global_wind_atlas\WS_050m_global_wgs84_mean_trimmed_europe.tif")
+            gwa=gwaSource)
 
     # Get roughnesses from clc
     roughnesses = windutil.roughnessFromCLC(clcSource, locations)
@@ -61,7 +64,7 @@ def simulateLocations(locations, extent, wsSource, clcSource, turbine, hubHeight
 
 ##################################################################
 ## Distributed Wind production from a Merra wind source
-def windProductionFromMerraSource(placements, merraSource, turbine, clcSource, hubHeight, jobs=1, batchSize=None, extract="production", verbose=True, **kwargs):
+def windProductionFromMerraSource(placements, merraSource, turbine, clcSource, gwaSource, hubHeight, jobs=1, batchSize=None, extract="production", verbose=True, **kwargs):
     if verbose: 
         startTime = dt.now()
         print("Starting at: %s"%str(startTime))
@@ -74,12 +77,16 @@ def windProductionFromMerraSource(placements, merraSource, turbine, clcSource, h
         lonMin = totalExtent.xMin
         lonMax = totalExtent.xMax
     else:
-        placements = np.array(ensureLoc(ensureList(placements))) # ensure placements are a list of locations
 
-        latMin = placements[:,1].min()
-        latMax = placements[:,1].max()
-        lonMin = placements[:,0].min()
-        lonMax = placements[:,0].max()
+        placements = Location.ensureLocation(placements, forceAsArray=True)
+
+        allLats = np.array([p.lat for p in placements])
+        allLons = np.array([p.lon for p in placements])
+
+        latMin = allLats.min()
+        latMax = allLats.max()
+        lonMin = allLons.min()
+        lonMax = allLons.max()
 
     if verbose: print("Loading windspeed at +%.2fs"%((dt.now()-startTime).total_seconds()))
     totalExtent = gk.Extent((lonMin,latMin,lonMax,latMax,), srs=LATLONSRS)
@@ -100,20 +107,15 @@ def windProductionFromMerraSource(placements, merraSource, turbine, clcSource, h
     if batchSize is None: # do everything in one big batch
         simGroups.append( (placements, (lonMin, latMin, lonMax, latMax)) )
     else: # split the area in to eual size extent boxes, and simulate one box at a time
+        if isinstance(placements, str):
+            for lat in np.arange(latMin,latMax, batchSize):
+                for lon in np.arange(lonMin,lonMax, batchSize):
+                    simExtent = (lon, lat, lon+batchSize, lat+batchSize)
         
-        for lat in np.arange(latMin,latMax, batchSize):
-            for lon in np.arange(lonMin,lonMax, batchSize):
-                simExtent = (lon, lat, lon+batchSize, lat+batchSize)
-                if isinstance(placements, str):
-                    simPlacements = placements
-                else:
-                    sel = placements[:,0] >= lon
-                    sel = sel & (placements[:,0] < lon+batchSize)
-                    sel = sel & (placements[:,1] >= lat)
-                    sel = sel & (placements[:,1] < lat+batchSize)
-                    simPlacements = placements[:,sel]
-
-                simGroups.append( (simPlacements, simExtent))
+                    simGroups.append( ( placements, simExtent))
+        else:
+            for simPlacements in np.array_split(placements, placements.size/batchSize):
+                simGroups.append( (simPlacements, None))
 
     ### Do simulations
     totalC = 0
@@ -131,8 +133,8 @@ def windProductionFromMerraSource(placements, merraSource, turbine, clcSource, h
                 _kwargs = kwargs
             
             tmp = simulateLocations(locations=locs, extent=ext, wsSource=wsSource, clcSource=clcSource, 
-                                    turbine=turbine, hubHeight=hubHeight, extract=extract, verbose=verbose, 
-                                    **_kwargs)
+                                    gwaSource=gwaSource, turbine=turbine, hubHeight=hubHeight, 
+                                    extract=extract, verbose=verbose, **_kwargs)
 
             if tmp is None:continue
             totalC += tmp.count
@@ -157,7 +159,7 @@ def windProductionFromMerraSource(placements, merraSource, turbine, clcSource, h
             results_.append( 
                 pool.apply_async(
                     simulateLocations, (
-                        locs, ext, wsSource, clcSource, turbine, hubHeight, extract, verbose
+                        locs, ext, wsSource, clcSource, gwaSource, turbine, hubHeight, extract, verbose
                     ), _kwargs
                 )
             )

@@ -181,11 +181,11 @@ class NCSource(object):
 
     def loc2Index(s, loc, outsideOkay=False):
         # Ensure loc is a list
-        locations = ensureLoc(ensureList(loc))
+        locations = Location.ensureLocation(loc, forceAsArray=True)
 
         # Get coordinates
-        lonCoords = np.array([loc.x for loc in locations])
-        latCoords = np.array([loc.y for loc in locations])
+        lonCoords = np.array([loc.lon for loc in locations])
+        latCoords = np.array([loc.lat for loc in locations])
 
         # get closest indices
         idx = []
@@ -224,10 +224,10 @@ class NCSource(object):
             return idx[0]
         else:
             return idx
-    #def addData
+
     def get(s, variable, locations, interpolation='near', forceDataFrame=False, outsideOkay=False):
         # Ensure loc is a list
-        locations = ensureLoc(ensureList(locations))
+        locations = Location.ensureLocation(locations, forceAsArray=True)
 
         # compute the closest indices
         indecies = s.loc2Index(locations, outsideOkay)
@@ -298,15 +298,6 @@ class NCSource(object):
                 return pd.Series(output, index=s.timeindex, name=locations[0])
 
     def contextAreaAt(s,location):
-        # Ensure we have a Location
-        if isinstance(location, ogr.Geometry):
-            # test if location is in lat & lon coordinates
-            if not location.GetSpatialReference().IsSame(gk.srs.EPSG4326):
-                location.TransformTo(gk.srs.EPSG4326)
-            location = Location(x=location.GetX(), y=location.GetY())
-        elif not isinstance(location, Location):
-            raise ResError("Cannot understand location input. Use either a Location or an ogr.Geometry object")
-
         # Get closest indexes
         index = s.loc2Index(location)
         # get area

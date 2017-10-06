@@ -1,6 +1,7 @@
 import numpy as np
 import netCDF4 as nc
 import geokit as gk
+from geokit import Location, Extent
 import ogr, osr
 import pandas as pd
 from collections import namedtuple, OrderedDict
@@ -12,24 +13,10 @@ class ResError(Exception): pass # this just creates an error that we can use
 # Make some type-helpers
 LATLONSRS = gk.srs.EPSG4326
 Index = namedtuple("Index", "yi xi")
-LocationNT = namedtuple("Location", "x y")
-class Location(LocationNT):
-    def __hash__(s): return hash((s.x,s.y)) # I need this to make pandas indexing work when location objects are used as columns and indexes
-    def __eq__(s,o):
-        return s.x==o.x and s.y==o.y
 
-    def __ne__(s,o):
-        return not(s==o)
-
-    def __str__(s):
-        return "%8f,%8f"%(s.x,s.y)
-
-    @staticmethod
-    def latlon(lat,lon):
-        return Location(lon,lat)
-
-def LatLonLocation(lat, lon):
-    return Location(x=lon, y=lat)
+def LatLonLocation(lat, lon): 
+    print("LatLonLocation is depreciated. Just use Location")
+    return Location(lon=lon, lat=lat)
 
 def extentFromFile(*args, **kwargs): return gk.Extent.fromVector(*args, **kwargs)
 BoundsNT = namedtuple("Bounds","lonMin latMin lonMax latMax")
@@ -40,78 +27,6 @@ class Bounds(BoundsNT):
         out =  "Lat: %.4f  -  %.4f\n"%(s.latMin, s.latMax)
         out += "Lon: %.4f  -  %.4f"%(s.lonMin, s.lonMax)
         return out
-
-
-def ensureList(a):
-    # Ensure loc is a list
-    if isinstance(a, list) or isinstance(a, np.ndarray):
-        pass    
-    elif isinstance(a, types.GeneratorType):
-        a = list(a)
-    else:
-        a = [a, ]
-    # Done!
-    return a
-
-def ensureGeom(locations):
-    if isinstance(locations, list) or isinstance(locations, np.ndarray):
-        if isinstance(locations[0], ogr.Geometry): # Check if loc is a list of point
-            if not locations[0].GetSpatialReference().IsSame(LATLONSRS):
-                locations = gk.geom.transform(locations, toSRS=LATLONSRS)
-        elif isinstance(locations[0], Location):
-            locations = [gk.geom.point(loc.x, loc.y, srs=LATLONSRS) for loc in locations]
-        else:
-            raise ResError("Cannot understand location input. Use either a Location or an ogr.Geometry object")
-
-    elif isinstance(locations, types.GeneratorType):
-        locations = ensureGeom(list(locations))
-
-    elif isinstance(locations, ogr.Geometry): # Check if loc is a single point
-        if not locations.GetSpatialReference().IsSame(LATLONSRS):
-            locations = locations.Clone()
-            locations.TransformTo(LATLONSRS)
-
-    elif isinstance(locations, Location):
-        locations = gk.geom.point(locations.x, locations.y, srs=LATLONSRS)
-    elif isinstance(locations, tuple) and len(locations)==2:
-        locations = gk.geom.point(locations[0], locations[1], srs=LATLONSRS)
-        print("Consider using a Location object. It is safer!")
-    else:
-        raise ResError("Cannot understand location input. Use either a Location or an ogr.Geometry object")
-
-    # Done!
-    return locations
-
-def ensureLoc(locations):
-    if isinstance(locations, list) or isinstance(locations, np.ndarray):
-        if isinstance(locations[0], ogr.Geometry): # Check if loc is a list of point
-            if not locations[0].GetSpatialReference().IsSame(LATLONSRS):
-                locations = gk.geom.transform(locations, toSRS=LATLONSRS)
-            locations = [Location(x=l.GetX(), y=l.GetY()) for l in locations]
-        elif isinstance(locations[0], Location):
-            pass
-        else:
-            raise ResError("Cannot understand location input. Use either a Location or an ogr.Geometry object")
-
-    elif isinstance(locations, types.GeneratorType):
-        locations = ensureLoc(list(locations))
-
-    elif isinstance(locations, ogr.Geometry): # Check if loc is a single point
-        if not locations.GetSpatialReference().IsSame(LATLONSRS):
-            locations = locations.Clone()
-            locations.TransformTo(LATLONSRS)
-            locations = Location(x=locations.GetX(), y=locations.GetY())
-
-    elif isinstance(locations, Location):
-        pass
-    elif isinstance(locations, tuple) and len(locations)==2:
-        locations = Location(*locations)
-        print("Consider using a Location object. It is safer!")
-    else:
-        raise ResError("Cannot understand location input. Use either a Location or an ogr.Geometry object")
-
-    # Done!
-    return locations
 
 ## STAN
 def storeTimeseriesAsNc(output, timedata, varmeta={}, keydata=None, keydatameta={}, timeunit="minutes since 1900-01-01 00:00:00"):

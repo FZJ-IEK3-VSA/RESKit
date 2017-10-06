@@ -5,7 +5,7 @@ from ..NCSource import *
 
 def adjustLraToGwa( windspeed, targetLoc, gwa, longRunAverage, windspeedSourceName="windspeed"):
     ## Ensure location is okay
-    targetLoc = ensureList(ensureGeom(targetLoc))
+    targetLoc = Location.ensureLocation(targetLoc, forceAsArray=True)
     multi = len(targetLoc)>1
 
     # Get the local gwa value
@@ -26,15 +26,16 @@ def adjustLraToGwa( windspeed, targetLoc, gwa, longRunAverage, windspeedSourceNa
     # apply adjustment
     if isinstance(windspeed, NCSource):
         windspeed = windspeed.get(windspeedSourceName, targetLoc)
-        if multi: # reshape so that pandas will distribute properly
-            gwaLocValue = gwaLocValue[0,:]
-            longRunAverage = longRunAverage[0,:]
+
+    if multi and  isinstance(windspeed, pd.DataFrame): # reshape so that pandas will distribute properly
+        gwaLocValue = gwaLocValue[0,:]
+        longRunAverage = longRunAverage[0,:]
 
     return windspeed * (gwaLocValue / longRunAverage)
 
 def adjustContextMeanToGwa( windspeed, targetLoc, gwa, contextMean=None, windspeedSourceName="windspeed", **kwargs):
     ## Ensure location is okay
-    targetLoc = ensureList(ensureGeom(targetLoc))
+    targetLoc = Location.ensureLocation(targetLoc, forceAsArray=True)
     multi = len(targetLoc)>1
 
     # Get the local gwa value
@@ -65,9 +66,10 @@ def adjustContextMeanToGwa( windspeed, targetLoc, gwa, contextMean=None, windspe
     # apply adjustment    
     if isinstance(windspeed, NCSource):
         windspeed = windspeed.get(windspeedSourceName, targetLoc)
-        if multi: # reshape so that pandas will distribute properly
-            gwaLocValue = gwaLocValue[0,:]
-            contextMean = contextMean[0,:]
+
+    if multi and isinstance(windspeed, pd.DataFrame):
+        gwaLocValue = gwaLocValue[0,:]
+        contextMean = contextMean[0,:]
 
     return windspeed * (gwaLocValue / contextMean)
 
@@ -99,8 +101,7 @@ def alphaFromLevels( lowWindSpeed, lowHeight, highWindSpeed, highHeight):
 
 def alphaFromGWA( gwaDir, loc, pairID=1, _structure="WS_%03dm_global_wgs84_mean_trimmed.tif"):
     ## Ensure location is okay
-    loc = ensureList(loc)
-    locGeoms = ensureGeom(loc)
+    loc = Location.ensureLocation(loc)
 
     # Get the GWA averages
     GWA_files = [join(gwaDir, _structure%(50)),
@@ -111,9 +112,9 @@ def alphaFromGWA( gwaDir, loc, pairID=1, _structure="WS_%03dm_global_wgs84_mean_
         if not isfile(f): 
             raise ResError("Could not find file: "+f)
 
-    if pairID==0 or pairID==2: gwaAverage50  = gk.raster.extractValues(GWA_files[0], locGeoms).data.values
-    if pairID==0 or pairID==1: gwaAverage100 = gk.raster.extractValues(GWA_files[1], locGeoms).data.values
-    if pairID==1 or pairID==2: gwaAverage200 = gk.raster.extractValues(GWA_files[2], locGeoms).data.values
+    if pairID==0 or pairID==2: gwaAverage50  = gk.raster.extractValues(GWA_files[0], loc).data.values
+    if pairID==0 or pairID==1: gwaAverage100 = gk.raster.extractValues(GWA_files[1], loc).data.values
+    if pairID==1 or pairID==2: gwaAverage200 = gk.raster.extractValues(GWA_files[2], loc).data.values
 
     # Compute alpha
     if pairID==0: out = alphaFromLevels(gwaAverage50,50,gwaAverage100,100)
@@ -131,8 +132,7 @@ def roughnessFromLevels(lowWindSpeed, lowHeight, highWindSpeed, highHeight):
 
 def roughnessFromGWA(gwaDir, loc, pairID=1, _structure="WS_%03dm_global_wgs84_mean_trimmed.tif"):
     ## Ensure location is okay
-    loc = ensureList(loc)
-    locGeoms = ensureGeom(loc)
+    loc = Location.ensureLocation(loc)
 
     # Get the GWA averages
     GWA_files = [join(gwaDir, _structure%(50)),
@@ -143,9 +143,9 @@ def roughnessFromGWA(gwaDir, loc, pairID=1, _structure="WS_%03dm_global_wgs84_me
         if not isfile(f): 
             raise ResWeatherError("Could not find file: "+f)
 
-    if pairID==0 or pairID==2: gwaAverage50  = gk.raster.extractValues(GWA_files[0], locGeoms).data.values
-    if pairID==0 or pairID==1: gwaAverage100 = gk.raster.extractValues(GWA_files[1], locGeoms).data.values
-    if pairID==1 or pairID==2: gwaAverage200 = gk.raster.extractValues(GWA_files[2], locGeoms).data.values
+    if pairID==0 or pairID==2: gwaAverage50  = gk.raster.extractValues(GWA_files[0], loc).data.values
+    if pairID==0 or pairID==1: gwaAverage100 = gk.raster.extractValues(GWA_files[1], loc).data.values
+    if pairID==1 or pairID==2: gwaAverage200 = gk.raster.extractValues(GWA_files[2], loc).data.values
 
     # Interpolate gwa average to desired height
     if pairID==0: out = roughnessFromLevels(gwaAverage50,50,gwaAverage100,100)
@@ -255,11 +255,10 @@ clcGridToCode_v2006[44] = 523
 
 def roughnessFromCLC(clcPath, loc):
     ## Ensure location is okay
-    loc = ensureList(loc)
-    locGeoms = ensureGeom(loc)
+    loc = Location.ensureLocation(loc)
 
     ## Get pixels values from clc (assume nodata is ocean)
-    clcGridValues = gk.raster.extractValues(clcPath, locGeoms, noDataOkay=True).data.values
+    clcGridValues = gk.raster.extractValues(clcPath, loc, noDataOkay=True).data.values
     clcGridValues[np.isnan(clcGridValues)] = 42
     clcGridValues = clcGridValues.astype(int)
 

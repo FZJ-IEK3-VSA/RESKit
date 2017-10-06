@@ -14,7 +14,7 @@ class MerraSource(NCSource):
 
         if not bounds is None:
             if isinstance(bounds, gk.Extent):
-                bounds.pad( (s.MAX_LON_DIFFERENCE, s.MAX_LAT_DIFFERENCE) )
+                bounds.castTo(LATLONSRS).pad( (s.MAX_LON_DIFFERENCE, s.MAX_LAT_DIFFERENCE) )
             else:
                 if isinstance(bounds, Bounds):
                     lonMin = bounds.lonMin
