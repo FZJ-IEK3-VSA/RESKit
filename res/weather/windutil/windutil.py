@@ -255,7 +255,7 @@ clcGridToCode_v2006[44] = 523
 
 def roughnessFromCLC(clcPath, loc):
     ## Ensure location is okay
-    loc = Location.ensureLocation(loc)
+    loc = Location.ensureLocation(loc, forceAsArray=True)
 
     ## Get pixels values from clc (assume nodata is ocean)
     clcGridValues = gk.raster.extractValues(clcPath, loc, noDataOkay=True).data.values

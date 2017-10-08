@@ -59,34 +59,30 @@ def simulateLocations(locations, extent, wsSource, clcSource, gwaSource, turbine
         return Result(count=len(locations), output=res.production)
     elif extract=="cf" or extract == "capacityFactor":
         return Result(count=len(locations), output=res.capacityFactor)
+    elif extract=="wa" or extract == "weightedAverage":
+        return Result(count=len(locations), output=res.production.mean(axis=1))
     else:
-        raise ResError("Don't know extraction type. Try using 'production' (or just 'p') or 'capacityFactor' (or just 'cf')")
+        raise ResError("Don't know extraction type. Try using 'production' (or just 'p'), 'capacityFactor' (or just 'cf'), or 'weightedAverage' ('wa')")
 
 ##################################################################
 ## Distributed Wind production from a Merra wind source
-def windProductionFromMerraSource(placements, merraSource, turbine, clcSource, gwaSource, hubHeight, jobs=1, batchSize=None, extract="production", verbose=True, **kwargs):
+def windProductionFromMerraSource(placements, merraSource, turbine, clcSource, gwaSource, hubHeight, jobs=1, batchSize=None, extract="weightedAverage", verbose=True, **kwargs):
     if verbose: 
         startTime = dt.now()
         print("Starting at: %s"%str(startTime))
     ### Determine the total extent which will be simulated (also make sure the placements input is okay)
     if isinstance(placements, str): # placements is a path to a point-type shapefile
-        totalExtent = gk.Extent.fromVector(placements).castTo(LATLONSRS)
-        
-        latMin = totalExtent.yMin
-        latMax = totalExtent.yMax
-        lonMin = totalExtent.xMin
-        lonMax = totalExtent.xMax
-    else:
+        placements = gk.vector.extractFeatures(placements, onlyGeom=True)
 
-        placements = Location.ensureLocation(placements, forceAsArray=True)
+    placements = Location.ensureLocation(placements, forceAsArray=True)
 
-        allLats = np.array([p.lat for p in placements])
-        allLons = np.array([p.lon for p in placements])
+    allLats = np.array([p.lat for p in placements])
+    allLons = np.array([p.lon for p in placements])
 
-        latMin = allLats.min()
-        latMax = allLats.max()
-        lonMin = allLons.min()
-        lonMax = allLons.max()
+    latMin = allLats.min()
+    latMax = allLats.max()
+    lonMin = allLons.min()
+    lonMax = allLons.max()
 
     if verbose: print("Loading windspeed at +%.2fs"%((dt.now()-startTime).total_seconds()))
     totalExtent = gk.Extent((lonMin,latMin,lonMax,latMax,), srs=LATLONSRS)
@@ -95,7 +91,7 @@ def windProductionFromMerraSource(placements, merraSource, turbine, clcSource, g
 
     ### initialize simulations
     if verbose: print("Initializing simulations at +%.2fs"%((dt.now()-startTime).total_seconds()))
-    result = None
+
     if jobs==1: # use only a single process
         pass
     elif jobs > 1: # uses multiple processes (equal to jobs)
@@ -105,26 +101,41 @@ def windProductionFromMerraSource(placements, merraSource, turbine, clcSource, g
     
     simGroups = []
     if batchSize is None: # do everything in one big batch
-        simGroups.append( (placements, (lonMin, latMin, lonMax, latMax)) )
+        simGroups.append( placements )
     else: # split the area in to eual size extent boxes, and simulate one box at a time
-        if isinstance(placements, str):
-            for lat in np.arange(latMin,latMax, batchSize):
-                for lon in np.arange(lonMin,lonMax, batchSize):
-                    simExtent = (lon, lat, lon+batchSize, lat+batchSize)
+        for simPlacements in np.array_split(placements, placements.size/batchSize):
+            simGroups.append( simPlacements )
+
+    ### Set up combiner 
+
+    if extract=="p" or extract == "production":
+        def combiner(result, newResult):
+            if result is None: return newResult.output
+            else: return pd.concat([result.output, newResult.output], axis=1)
+
+    elif extract=="cf" or extract == "capacityFactor":
+        def combiner(result, newResult):
+            if result is None: return newResult.output
+            else: return pd.concat([result.output, newResult.output], axis=0)
         
-                    simGroups.append( ( placements, simExtent))
-        else:
-            for simPlacements in np.array_split(placements, placements.size/batchSize):
-                simGroups.append( (simPlacements, None))
+    elif extract=="wa" or extract == "weightedAverage":
+        def combiner(result, newResult):
+            if result is None: return newResult
+            else: 
+                return Result( count=result.count+newResult.count,
+                               output=(result.count*result.output + newResult.count*newResult.output)/(result.count+newResult.count))
+    else:
+        raise ResError("Don't know extraction type. Try using 'production' (or just 'p'), 'capacityFactor' (or just 'cf'), or 'weightedAverage' ('wa')")
+
 
     ### Do simulations
     totalC = 0
     if verbose: 
         print("Simulating %d groups at +%.2fs"%(len(simGroups), (dt.now()-startTime).total_seconds() ))
 
+    result = None
     if jobs==1:
-        for i,sg in enumerate(simGroups):
-            locs,ext = sg
+        for i,locs in enumerate(simGroups):
 
             if verbose:
                 _kwargs = dict(globalStart=startTime, gid=i)
@@ -132,7 +143,7 @@ def windProductionFromMerraSource(placements, merraSource, turbine, clcSource, g
             else:
                 _kwargs = kwargs
             
-            tmp = simulateLocations(locations=locs, extent=ext, wsSource=wsSource, clcSource=clcSource, 
+            tmp = simulateLocations(locations=locs, extent=None, wsSource=wsSource, clcSource=clcSource, 
                                     gwaSource=gwaSource, turbine=turbine, hubHeight=hubHeight, 
                                     extract=extract, verbose=verbose, **_kwargs)
 
@@ -147,8 +158,7 @@ def windProductionFromMerraSource(placements, merraSource, turbine, clcSource, g
     else:
         results_ = []
         # submit all jobs to the queue
-        for i,sg in enumerate(simGroups):
-            locs,ext = sg
+        for i,locs in enumerate(simGroups):
 
             if verbose:
                 _kwargs = dict(globalStart=startTime, gid=i)
@@ -159,7 +169,7 @@ def windProductionFromMerraSource(placements, merraSource, turbine, clcSource, g
             results_.append( 
                 pool.apply_async(
                     simulateLocations, (
-                        locs, ext, wsSource, clcSource, gwaSource, turbine, hubHeight, extract, verbose
+                        locs, None, wsSource, clcSource, gwaSource, turbine, hubHeight, extract, verbose
                     ), _kwargs
                 )
             )
@@ -167,15 +177,8 @@ def windProductionFromMerraSource(placements, merraSource, turbine, clcSource, g
         # Read each result as it becomes available
         for r in results_:
             tmp = r.get()
-        
             if tmp is None: continue
-            totalC += tmp.count
-
-            if result is None: 
-                result = tmp.output
-                axis = 0 if isinstance(result, pd.Series) else 1
-            else: 
-                result = pd.concat( [result, tmp.output], axis=axis )
+            result = combiner(result, tmp)
 
         # Do some cleanup
         pool.close()
