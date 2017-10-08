@@ -148,13 +148,7 @@ def windProductionFromMerraSource(placements, merraSource, turbine, clcSource, g
                                     extract=extract, verbose=verbose, **_kwargs)
 
             if tmp is None:continue
-            totalC += tmp.count
-
-            if result is None: 
-                result = tmp.output
-                axis = 0 if isinstance(result, pd.Series) else 1
-            else: 
-                result = pd.concat( [result, tmp.output], axis=axis )
+            result = combiner(result, tmp)
     else:
         results_ = []
         # submit all jobs to the queue
