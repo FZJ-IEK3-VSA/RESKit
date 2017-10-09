@@ -131,8 +131,7 @@ def windProductionFromMerraSource(placements, merraSource, turbine, clcSource, g
             'production' (or just 'p')
             'capacityFactor' (or just 'cf')
             'weightedAverage' ('wa')"
-            '''
-
+            ''')
 
     ### Do simulations
     totalC = 0
