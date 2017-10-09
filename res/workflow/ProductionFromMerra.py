@@ -110,13 +110,15 @@ def windProductionFromMerraSource(placements, merraSource, turbine, clcSource, g
 
     if extract=="p" or extract == "production":
         def combiner(result, newResult):
-            if result is None: return newResult.output
-            else: return pd.concat([result.output, newResult.output], axis=1)
+            if result is None: return newResult
+            else: return Result(count=result.count+newResult.count,
+                                output=pd.concat([result.output, newResult.output], axis=1))
 
     elif extract=="cf" or extract == "capacityFactor":
         def combiner(result, newResult):
-            if result is None: return newResult.output
-            else: return pd.concat([result.output, newResult.output], axis=0)
+            if result is None: return newResult
+            else: return Result(count=result.count+newResult.count,
+                                output=pd.concat([result.output, newResult.output], axis=0))
         
     elif extract=="wa" or extract == "weightedAverage":
         def combiner(result, newResult):
@@ -125,7 +127,11 @@ def windProductionFromMerraSource(placements, merraSource, turbine, clcSource, g
                 return Result( count=result.count+newResult.count,
                                output=(result.count*result.output + newResult.count*newResult.output)/(result.count+newResult.count))
     else:
-        raise ResError("Don't know extraction type. Try using 'production' (or just 'p'), 'capacityFactor' (or just 'cf'), or 'weightedAverage' ('wa')")
+        raise ResError('''Don't know extraction type. Try using... 
+            'production' (or just 'p')
+            'capacityFactor' (or just 'cf')
+            'weightedAverage' ('wa')"
+            '''
 
 
     ### Do simulations
@@ -148,6 +154,7 @@ def windProductionFromMerraSource(placements, merraSource, turbine, clcSource, g
                                     extract=extract, verbose=verbose, **_kwargs)
 
             if tmp is None:continue
+            totalC+=tmp.count
             result = combiner(result, tmp)
     else:
         results_ = []
@@ -172,6 +179,7 @@ def windProductionFromMerraSource(placements, merraSource, turbine, clcSource, g
         for r in results_:
             tmp = r.get()
             if tmp is None: continue
+            totalC+=tmp.count
             result = combiner(result, tmp)
 
         # Do some cleanup
