@@ -306,3 +306,59 @@ def convolutePowerCurveByGuassian(stdScaling=0.2, stdBase=0.6, performance='E115
     # Done!
     return np.column_stack([ws,cPerf])
 
+
+class TerrainComplexityConvoluter(object):
+    def __init__(s, terrainComplexityFile, turbine, tcStep=5, tcMax=400):
+        s.terrainComplexityFile = terrainComplexityFile
+        s.turbine = turbine
+        s.tcStep = int(tcStep)
+        s.tcMax = int(tcMax)
+
+        s.N = 4000
+        s._ws = np.linspace(0,40, s.N)
+        s.originalCapacity = TurbineLibrary.ix[turbine].Capacity
+
+        s.evaluationTCs = np.arange(0, tcMax+0.01, tcStep)
+        s.convolutedPowerCurves = pd.Series([None]*s.evaluationTCs.size, index=s.evaluationTCs)
+
+        # make unconvoluted perfomrance
+        performance = np.array(TurbineLibrary.ix[turbine].Performance)
+        powerCurve = splrep(performance[:,0], performance[:,1])
+
+        perf = np.zeros(s._ws.size)
+        perf[s._ws<performance[:,0].max()] = splev(s._ws[s._ws<performance[:,0].max()], powerCurve)
+
+        perf[s._ws<performance[:,0].min()] = 0 # set all windspeed less than cut-in speed to 0
+        perf[s._ws>performance[:,0].max()] = 0 # set all windspeed greater than cut-out speed to 0 (just in case)
+        perf[perf<0] = 0 # force a floor of 0
+        perf[perf>performance[:,1].max()] = performance[:,1].max() # force a ceiling of the max capacity
+
+        s.unconvolutedPowerCurve = perf
+
+    def A(tc): return 0.25*(1-np.exp(-tc/10))+0.4
+    def B(tc): return tc*0+0.525
+    def C(tc): return 0.9 - tc/300*0.4
+    def D(tc): return 0.085*(1-np.exp(-tc/150))+0.009
+
+    def relativeSig(ws, tc): 
+        return A(tc)*np.exp( -np.power(ws,B(tc))*C(tc)) + D(tc)
+
+    def preEvaluateAll(s):
+        for tc in s.evaluationTCs: s.evaluateComplexity(tc)
+
+    def evaluateComplexity(s,tc):
+        convolutedPowerCurve = np.zeros(s._ws.size)
+
+        for ws, rsig in zip(s._ws, s.relativeSig(s._ws, tc)):
+            convolutedPowerCurve += s.unconvolutedPowerCurve*norm.pdf(s._ws, scale=ws*rsig, loc=ws)/s.N
+
+        s.convolutedPowerCurves.set_value(tc, convolutedPowerCurve)
+
+    def __getitem__(s,tc):
+        tc = s.tcStep*(int(tc)//s.tcStep)
+        if s.convolutedPowerCurves.ix[tc] is None:
+            s.evaluateComplexity(tc)
+
+        return s.convolutedPowerCurves.ix[tc]
+
+
