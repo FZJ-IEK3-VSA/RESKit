@@ -9,50 +9,40 @@ from datetime import datetime as dt
 ##################################################################
 ## Make some typical simulator functions
 Result = namedtuple("Result", "count output")
-def simulateLocations(locations, extent, wsSource, clcSource, gwaSource, turbine, hubHeight, extract, verbose=True, **kwargs):
+def simulateLocations(locations, wsSource, clcSource, gwaSource, performance, capacity, hubHeight, extract, verbose=True, **kwargs):
     if verbose: 
         startTime = dt.now()
-        gid = kwargs.get("gid",extent)
+        gid = kwargs["gid"]
         globalStart = kwargs.get("globalStart", startTime)
         print(" %s: Starting at +%.2fs"%(str(gid), (startTime-globalStart).total_seconds()))
 
-    if not extent is None:
-        extent = gk.Extent(extent, srs=LATLONSRS)
-    
-    # make merra source and load data
-    if not isinstance(wsSource, MerraSource):
-        print(" building new source")
-        if extent is None: raise ResError("extent cannot be None when building a new source")
-        wsSource = MerraSource(path=wsSource, bounds=extent.pad(1))
-        wsSource.loadWindSpeed(height=50)
-
-    # read windspeeds
-    if isinstance(locations, str): # locations points to a point-type shapefile
-        locations = Location.ensureLocation([g for g,a in gk.vector.extractFeatures( locations, geom=extent.box, outputSRS=LATLONSRS )])
-    else:
-        locations = Location.ensureLocation(locations)
+    # read wind speeds
+    locations = Location.ensureLocation(locations)
 
     if len(locations) == 0 : 
         if verbose: print( " %s: No locations found"%(str(gid)))
         return None
     ws = wsSource.get("windspeed", locations)
 
-    # adjust ws 
-    ws = windutil.adjustContextMeanToGwa( ws, locations, contextMean=wsSource.GWA50_CONTEXT_MEAN_SOURCE, 
-            gwa=gwaSource)
+    # spatially adjust windspeeds
+    ws = windutil.adjustLraToGwa( ws, locations, longRunAverage=wsSource.LONG_RUN_AVERAGE_50M_SOURCE, gwa=gwaSource)
 
-    # Get roughnesses from clc
+    # apply wind speed corrections to account (somewhat) for local effects not captured on the MERRA context
+    factors = (1-0.3)*(1-np.exp(-0.2*ws))+0.3 # dampens lower wind speeds
+    ws = factors*ws
+
+    # Get roughnesses from CLC
     roughnesses = windutil.roughnessFromCLC(clcSource, locations)
 
     # do simulations
-    res = wind.simulateTurbine(ws, performance=turbine, measuredHeight=50, hubHeight=hubHeight, roughness=roughnesses)
+    res = wind.simulateTurbine(ws, performance=performance, capacity=capacity, measuredHeight=50, hubHeight=hubHeight, roughness=roughnesses, loss=0.04)
 
     if verbose:
         endTime = dt.now()
         simSecs = (endTime - startTime).total_seconds()
         globalSecs = (endTime - globalStart).total_seconds()
-
         print(" %s: Finished %d turbines +%.2fs (%.2f turbines/sec)"%(str(gid), len(locations), globalSecs, len(locations)/simSecs))
+
 
     # Done!
     if extract=="p" or extract == "production":
@@ -70,6 +60,7 @@ def windProductionFromMerraSource(placements, merraSource, turbine, clcSource, g
     if verbose: 
         startTime = dt.now()
         print("Starting at: %s"%str(startTime))
+
     ### Determine the total extent which will be simulated (also make sure the placements input is okay)
     if isinstance(placements, str): # placements is a path to a point-type shapefile
         placements = gk.vector.extractFeatures(placements, onlyGeom=True)
@@ -84,7 +75,7 @@ def windProductionFromMerraSource(placements, merraSource, turbine, clcSource, g
     lonMin = allLons.min()
     lonMax = allLons.max()
 
-    if verbose: print("Loading windspeed at +%.2fs"%((dt.now()-startTime).total_seconds()))
+    if verbose: print("Pre-loading windspeeds at +%.2fs"%((dt.now()-startTime).total_seconds()))
     totalExtent = gk.Extent((lonMin,latMin,lonMax,latMax,), srs=LATLONSRS)
     wsSource = MerraSource(path=merraSource, bounds=totalExtent.pad(1))
     wsSource.loadWindSpeed(height=50)
@@ -97,17 +88,18 @@ def windProductionFromMerraSource(placements, merraSource, turbine, clcSource, g
     elif jobs > 1: # uses multiple processes (equal to jobs)
         pool = Pool(jobs)
     else: # uses multiple processes (equal to the number of available processors - jobs)
-        pool = Pool( cpu_count()-jobs )
+        cpus = cpu_count()-jobs
+        if cpus <=0: raise ResError("Bad jobs count")
+        pool = Pool( cpus )
     
     simGroups = []
     if batchSize is None: # do everything in one big batch
         simGroups.append( placements )
-    else: # split the area in to eual size extent boxes, and simulate one box at a time
+    else: # split the area in to equal size groups, and simulate one group at a time
         for simPlacements in np.array_split(placements, placements.size/batchSize):
             simGroups.append( simPlacements )
 
     ### Set up combiner 
-
     if extract=="p" or extract == "production":
         def combiner(result, newResult):
             if result is None: return newResult
@@ -133,24 +125,48 @@ def windProductionFromMerraSource(placements, merraSource, turbine, clcSource, g
             'weightedAverage' ('wa')"
             ''')
 
+    ### Convolute turbine
+    if verbose: print("Convolving power curve at +%.2fs"%( (dt.now()-startTime).total_seconds()) )
+
+    if isinstance(turbine, str):
+        performance = np.array(wind.TurbineLibrary.ix[turbine].Performance)
+        capacity = wind.TurbineLibrary.ix[turbine].Capacity
+    else:
+        performance = np.array(turbine)
+        capacity = performance[:,1].max()
+
+    performance = wind.convolutePowerCurveByGuassian(stdScaling=0.1, stdBase=0.6, performance=performance )
+
     ### Do simulations
     totalC = 0
     if verbose: 
         print("Simulating %d groups at +%.2fs"%(len(simGroups), (dt.now()-startTime).total_seconds() ))
+
+    # Construct arguments
+    staticKwargs = OrderedDict()
+    staticKwargs["wsSource"]=wsSource
+    staticKwargs["clcSource"]=clcSource
+
+    staticKwargs["gwaSource"]=gwaSource
+    staticKwargs["performance"]=performance
+    staticKwargs["capacity"]=capacity
+    staticKwargs["hubHeight"]=hubHeight
+
+    staticKwargs["extract"]=extract
+    staticKwargs["verbose"]=verbose
+
+    staticKwargs.update(kwargs)
 
     result = None
     if jobs==1:
         for i,locs in enumerate(simGroups):
 
             if verbose:
-                _kwargs = dict(globalStart=startTime, gid=i)
-                _kwargs.update(kwargs)
-            else:
-                _kwargs = kwargs
-            
-            tmp = simulateLocations(locations=locs, extent=None, wsSource=wsSource, clcSource=clcSource, 
-                                    gwaSource=gwaSource, turbine=turbine, hubHeight=hubHeight, 
-                                    extract=extract, verbose=verbose, **_kwargs)
+                staticKwargs["globalStart"]=startTime
+                staticKwargs["gid"]=i
+
+            staticKwargs["locations"] = locs
+            tmp = simulateLocations(**staticKwargs)
 
             if tmp is None:continue
             totalC+=tmp.count
@@ -161,17 +177,13 @@ def windProductionFromMerraSource(placements, merraSource, turbine, clcSource, g
         for i,locs in enumerate(simGroups):
 
             if verbose:
-                _kwargs = dict(globalStart=startTime, gid=i)
-                _kwargs.update(kwargs)
-            else:
-                _kwargs = kwargs
+                staticKwargs["globalStart"]=startTime
+                staticKwargs["gid"]=i
+            
+            staticKwargs["locations"] = locs
 
             results_.append( 
-                pool.apply_async(
-                    simulateLocations, (
-                        locs, None, wsSource, clcSource, gwaSource, turbine, hubHeight, extract, verbose
-                    ), _kwargs
-                )
+                pool.apply_async( simulateLocations, (), staticKwargs.copy() )
             )
 
         # Read each result as it becomes available
@@ -184,6 +196,7 @@ def windProductionFromMerraSource(placements, merraSource, turbine, clcSource, g
         # Do some cleanup
         pool.close()
         pool.join()
+
 
     if verbose:
         endTime = dt.now()

@@ -1,2 +1,1 @@
-from .ProductionFromMerra import (simulateLocations, 
-	                              windProductionFromMerraSource)
+from .ProductionFromMerra import windProductionFromMerraSource
