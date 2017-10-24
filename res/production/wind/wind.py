@@ -33,7 +33,16 @@ def parse_turbine(path):
     return TurbineInfo(power, meta)     
 
 turbineFiles = glob(join(dirname(__file__),"..","..","..","data","turbines","*.csv"))
-tmp = [parse_turbine(f) for f in turbineFiles]
+
+
+tmp = []
+for f in turbineFiles:
+    try:
+        tmp.append(parse_turbine(f))
+    except:
+        print("failed to parse:", f)
+
+
 TurbineLibrary = pd.DataFrame([i.meta for i in tmp])
 TurbineLibrary.set_index('Model', inplace=True)
 TurbineLibrary['Performance'] = [x.profile for x in tmp]

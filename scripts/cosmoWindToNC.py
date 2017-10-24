@@ -160,7 +160,7 @@ var.setncatts(dict(
 var[:] = heights
 
 # set windspeed
-var = ods.createVariable("wspd", "f", ("time", "height", "latI", "lonI"))
+var = ods.createVariable("wspd", "f", ("time", "height", "latI", "lonI"), zlib=True)
 var.setncatts(dict(
     name="Wind speed",
     units="m/s",

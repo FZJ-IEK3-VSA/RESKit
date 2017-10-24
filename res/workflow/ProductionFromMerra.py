@@ -15,9 +15,10 @@ def simulateLocations(locations, wsSource, clcSource, gwaSource, performance, ca
         gid = kwargs["gid"]
         globalStart = kwargs.get("globalStart", startTime)
         print(" %s: Starting at +%.2fs"%(str(gid), (startTime-globalStart).total_seconds()))
-
+    
     # read wind speeds
     locations = Location.ensureLocation(locations)
+
 
     if len(locations) == 0 : 
         if verbose: print( " %s: No locations found"%(str(gid)))
@@ -42,17 +43,26 @@ def simulateLocations(locations, wsSource, clcSource, gwaSource, performance, ca
         simSecs = (endTime - startTime).total_seconds()
         globalSecs = (endTime - globalStart).total_seconds()
         print(" %s: Finished %d turbines +%.2fs (%.2f turbines/sec)"%(str(gid), len(locations), globalSecs, len(locations)/simSecs))
-
-
+    
     # Done!
+
     if extract=="p" or extract == "production":
-        return Result(count=len(locations), output=res.production)
+        output = res.production
+        output.columns = [str(v) for v in output.columns]
+
     elif extract=="cf" or extract == "capacityFactor":
-        return Result(count=len(locations), output=res.capacityFactor)
+        output = res.capacityFactor
+        output.index = [str(v) for v in output.index]
+
     elif extract=="wa" or extract == "weightedAverage":
-        return Result(count=len(locations), output=res.production.mean(axis=1))
+        output = res.production.mean(axis=1)
+        output.columns = [str(v) for v in output.columns]
+
     else:
         raise ResError("Don't know extraction type. Try using 'production' (or just 'p'), 'capacityFactor' (or just 'cf'), or 'weightedAverage' ('wa')")
+
+    
+    return Result(count=len(locations), output=output)
 
 ##################################################################
 ## Distributed Wind production from a Merra wind source
@@ -62,13 +72,17 @@ def windProductionFromMerraSource(placements, merraSource, turbine, clcSource, g
         print("Starting at: %s"%str(startTime))
 
     ### Determine the total extent which will be simulated (also make sure the placements input is okay)
+    if verbose: print("Arranging placements at +%.2fs"%((dt.now()-startTime).total_seconds()))
     if isinstance(placements, str): # placements is a path to a point-type shapefile
-        placements = gk.vector.extractFeatures(placements, onlyGeom=True)
+        placements = np.array([ (placement.GetX(), placement.GetY()) for placement in gk.vector.extractFeatures(placements, onlyGeom=True, outputSRS='latlon')])
 
-    placements = Location.ensureLocation(placements, forceAsArray=True)
+    #placements = Location.ensureLocation(placements, forceAsArray=True)
 
-    allLats = np.array([p.lat for p in placements])
-    allLons = np.array([p.lon for p in placements])
+    #allLats = np.array([p.lat for p in placements])
+    #allLons = np.array([p.lon for p in placements])
+
+    allLons = placements[:,0] 
+    allLats = placements[:,1]
 
     latMin = allLats.min()
     latMax = allLats.max()
@@ -95,9 +109,13 @@ def windProductionFromMerraSource(placements, merraSource, turbine, clcSource, g
     simGroups = []
     if batchSize is None: # do everything in one big batch
         simGroups.append( placements )
+
     else: # split the area in to equal size groups, and simulate one group at a time
-        for simPlacements in np.array_split(placements, placements.size/batchSize):
-            simGroups.append( simPlacements )
+        for simPlacements in np.array_split(placements, len(placements)//batchSize+1):
+            tmp = []
+            for i in simPlacements:
+                tmp.append( (i[0], i[1]) )
+            simGroups.append( tmp )
 
     ### Set up combiner 
     if extract=="p" or extract == "production":
