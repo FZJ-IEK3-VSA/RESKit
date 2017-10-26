@@ -10,7 +10,7 @@ class MerraSource(NCSource):
     MAX_LON_DIFFERENCE=0.3125
     MAX_LAT_DIFFERENCE=0.25
 
-    def __init__(s, path, bounds=None,):
+    def __init__(s, path, bounds=None, **kwargs):
 
         if not bounds is None:
             if isinstance(bounds, gk.Extent):
@@ -30,7 +30,7 @@ class MerraSource(NCSource):
                                 lonMax = lonMax + s.MAX_LON_DIFFERENCE,
                                 latMax = latMax + s.MAX_LAT_DIFFERENCE,)
 
-        NCSource.__init__(s, path=path, bounds=bounds, timeName="time", latName="lat", lonName="lon")
+        NCSource.__init__(s, path=path, bounds=bounds, timeName="time", latName="lat", lonName="lon", **kwargs)
 
         # set maximal differences
         s._maximal_lon_difference=s.MAX_LON_DIFFERENCE

@@ -39,7 +39,7 @@ def computeContextMean(source, contextArea, fillnan=True, pixelSize=None, srs=No
 
 # make a data handler
 class NCSource(object):
-    def __init__(s, path, bounds=None, timeName="time", latName="lat", lonName="lon", dependent_coordinates=False, constantsPath=None):
+    def __init__(s, path, bounds=None, timeName="time", latName="lat", lonName="lon", dependent_coordinates=False, constantsPath=None, timeBounds=None):
         # set basic variables 
         s.path = path
         if not path is None:
@@ -104,7 +104,16 @@ class NCSource(object):
                 s.lons = s._allLons[s._lonStart:s._lonStop]
 
             # compute time index
-            s.timeindex = nc.num2date(ds[timeName][:], ds[timeName].units)
+            timeindex = nc.num2date(ds[timeName][:], ds[timeName].units)
+            
+            if timeBounds is None:
+                s._timeSel = np.s_[:]
+            else:
+                timeStart = pd.Timestamp(timeBounds[0])
+                timeEnd = pd.Timestamp(timeBounds[1])
+                s._timeSel = (timeindex >= timeStart) & (timeindex <= timeEnd)
+
+            s.timeindex = timeindex[s._timeSel]
 
             # initialize some variables
             s.data = OrderedDict()
@@ -159,9 +168,9 @@ class NCSource(object):
             raise ResError(variable+" not in source")
 
         if heightIdx is None:
-            tmp = ds[variable][:,s._latStart:s._latStop,s._lonStart:s._lonStop]
+            tmp = ds[variable][s._timeSel,s._latStart:s._latStop,s._lonStart:s._lonStop]
         else:
-            tmp = ds[variable][:,heightIdx,s._latStart:s._latStop,s._lonStart:s._lonStop]
+            tmp = ds[variable][s._timeSel,heightIdx,s._latStart:s._latStop,s._lonStart:s._lonStop]
 
         # process, maybe?
         if not processor is None:
