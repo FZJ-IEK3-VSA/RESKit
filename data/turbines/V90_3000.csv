@@ -1,8 +1,8 @@
 Manufacturer,Vestas
-Model,V90_3000
+Model,V90-3000
 Capacity,3000
 Usage,Onshore
-"HubHeight,""65,80,105"""
+"HubHeight,""65,80,105""",
 RotorDiameter,90
 Source,http://www.gov.pe.ca/photos/sites/envengfor/file/950010R1_V90-GeneralSpecification.pdf
 Power curve,
