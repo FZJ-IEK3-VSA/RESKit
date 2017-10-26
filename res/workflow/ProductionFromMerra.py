@@ -1,5 +1,6 @@
 from res.util import *
-from res.weather import MerraSource, windutil
+from res.weather import windutil
+from res.weather.sources import MerraSource
 from res.production import wind
 
 from collections import namedtuple

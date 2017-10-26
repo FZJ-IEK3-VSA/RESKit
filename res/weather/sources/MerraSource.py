@@ -1,4 +1,4 @@
-from .NCSource import *
+from ..NCSource import *
 
 ## Define constants
 class MerraSource(NCSource):
