@@ -317,57 +317,81 @@ def convolutePowerCurveByGuassian(stdScaling=0.2, stdBase=0.6, performance='E115
 
 
 class TerrainComplexityConvoluter(object):
-    def __init__(s, terrainComplexityFile, turbine, tcStep=5, tcMax=400):
+    def __init__(s, terrainComplexityFile, turbine, tcStep=5, tcMax=400, preEvaluate=True):
         s.terrainComplexityFile = terrainComplexityFile
         s.turbine = turbine
-        s.tcStep = int(tcStep)
-        s.tcMax = int(tcMax)
+        s._tcStep = int(tcStep)
+        s._tcMax = int(tcMax)
 
-        s.N = 4000
-        s._ws = np.linspace(0,40, s.N)
-        s.originalCapacity = TurbineLibrary.ix[turbine].Capacity
+        s.ws = np.linspace(0, 40, 4001)[1:]
+        s._dws = s.ws[1]-s.ws[0]
+        s.Capacity = TurbineLibrary.ix[turbine].Capacity
 
         s.evaluationTCs = np.arange(0, tcMax+0.01, tcStep)
-        s.convolutedPowerCurves = pd.Series([None]*s.evaluationTCs.size, index=s.evaluationTCs)
+        s._convolutedPowerCurves = pd.Series([None]*s.evaluationTCs.size, index=s.evaluationTCs)
 
         # make unconvoluted perfomrance
         performance = np.array(TurbineLibrary.ix[turbine].Performance)
         powerCurve = splrep(performance[:,0], performance[:,1])
 
-        perf = np.zeros(s._ws.size)
-        perf[s._ws<performance[:,0].max()] = splev(s._ws[s._ws<performance[:,0].max()], powerCurve)
+        perf = np.zeros(s.ws.size)
+        perf[s.ws<performance[:,0].max()] = splev(s.ws[s.ws<performance[:,0].max()], powerCurve)
 
-        perf[s._ws<performance[:,0].min()] = 0 # set all windspeed less than cut-in speed to 0
-        perf[s._ws>performance[:,0].max()] = 0 # set all windspeed greater than cut-out speed to 0 (just in case)
+        perf[s.ws<performance[:,0].min()] = 0 # set all windspeed less than cut-in speed to 0
+        perf[s.ws>performance[:,0].max()] = 0 # set all windspeed greater than cut-out speed to 0 (just in case)
         perf[perf<0] = 0 # force a floor of 0
         perf[perf>performance[:,1].max()] = performance[:,1].max() # force a ceiling of the max capacity
 
         s.unconvolutedPowerCurve = perf
 
-    def A(tc): return 0.25*(1-np.exp(-tc/10))+0.4
-    def B(tc): return tc*0+0.525
-    def C(tc): return 0.9 - tc/300*0.4
-    def D(tc): return 0.085*(1-np.exp(-tc/150))+0.009
+        # Setup all, maybe
+        if preEvaluate:
+            s._preEvaluateAll()
 
-    def relativeSig(ws, tc): 
-        return A(tc)*np.exp( -np.power(ws,B(tc))*C(tc)) + D(tc)
+    @staticmethod
+    def _A(tc): return 0.25*(1-np.exp(-tc/10))+0.4
 
-    def preEvaluateAll(s):
-        for tc in s.evaluationTCs: s.evaluateComplexity(tc)
+    @staticmethod
+    def _B(tc): return tc*0+0.525
 
-    def evaluateComplexity(s,tc):
-        convolutedPowerCurve = np.zeros(s._ws.size)
+    @staticmethod
+    def _C(tc): return 0.9 - tc/300*0.4
 
-        for ws, rsig in zip(s._ws, s.relativeSig(s._ws, tc)):
-            convolutedPowerCurve += s.unconvolutedPowerCurve*norm.pdf(s._ws, scale=ws*rsig, loc=ws)/s.N
+    @staticmethod
+    def _D(tc): return 0.085*(1-np.exp(-tc/150))+0.009
 
-        s.convolutedPowerCurves.set_value(tc, convolutedPowerCurve)
+    def relativeSig(s, tc): 
+        return s._A(tc)*np.exp( -np.power(s.ws,s._B(tc))*s._C(tc)) + s._D(tc)
+
+    def _preEvaluateAll(s):
+        for tc in s.evaluationTCs: s._evaluateComplexity(tc)
+
+    def _evaluateComplexity(s,tc):
+        convolutedPowerCurve = np.zeros(s.ws.size)
+
+        for i, ws, rsig in zip(range(s.ws.size), s.ws, s.relativeSig(tc)):
+            convolutedPowerCurve[i] = (s.unconvolutedPowerCurve*norm.pdf(s.ws, scale=ws*rsig, loc=ws)).sum()*s._dws
+
+        s._convolutedPowerCurves.set_value(tc, convolutedPowerCurve)
+
+    def performance(s,tc):
+        return np.column_stack(s.ws,s[tc])
 
     def __getitem__(s,tc):
-        tc = s.tcStep*(int(tc)//s.tcStep)
-        if s.convolutedPowerCurves.ix[tc] is None:
-            s.evaluateComplexity(tc)
+        tc = s._tcStep*(int(tc)//s._tcStep)
+        if tc > s._tcMax: tc = s._tcMax
+        if s._convolutedPowerCurves.ix[tc] is None:
+            s._evaluateComplexity(tc)
 
-        return s.convolutedPowerCurves.ix[tc]
+        return s._convolutedPowerCurves.ix[tc]
+
+    def convolutedPowerCurveAtLocation(s, loc):
+        loc = Location.ensureLocation(loc, forceAsArray=True)
+        tcVals = gk.raster.extractValues(s.terrainComplexityFile, loc, noDataOkay=False).data.values
+
+        if len(loc)==1:
+            return s[tcVals[0]]
+        else:
+            for v in tcVals: yield s[v]
 
 

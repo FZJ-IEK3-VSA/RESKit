@@ -203,9 +203,9 @@ clcCodeToRoughess[423] = 0.0005 # Intertidal flats
 clcCodeToRoughess[331] = 0.0003 # Beaches, dunes, and sand plains
 clcCodeToRoughess[511] = 0.001 # Water courses # SUSPICIOUS
 clcCodeToRoughess[512] = 0.0005 # Water bodies # SUSPISCIOUS
-clcCodeToRoughess[523] = 0.0005 # Costal lagoons # SUSPISCIOUS
+clcCodeToRoughess[521] = 0.0005 # Costal lagoons # SUSPISCIOUS
 clcCodeToRoughess[522] = 0.0008 # Estuaries # SUSPISCIOUS
-clcCodeToRoughess[521] = 0.0002 # Sea and ocean # SUSPISCIOUS
+clcCodeToRoughess[523] = 0.0002 # Sea and ocean # SUSPISCIOUS
 
 clcGridToCode_v2006 = OrderedDict()
 clcGridToCode_v2006[1] = 111
@@ -253,17 +253,37 @@ clcGridToCode_v2006[42] = 521
 clcGridToCode_v2006[43] = 522
 clcGridToCode_v2006[44] = 523
 
-def roughnessFromCLC(clcPath, loc):
+def roughnessFromCLC(clcPath, loc, winRange=0):
     ## Ensure location is okay
     loc = Location.ensureLocation(loc, forceAsArray=True)
 
-    ## Get pixels values from clc (assume nodata is ocean)
-    clcGridValues = gk.raster.extractValues(clcPath, loc, noDataOkay=True).data.values
-    clcGridValues[np.isnan(clcGridValues)] = 42
-    clcGridValues = clcGridValues.astype(int)
+    ## Get pixels values from clc
+    clcGridValues = gk.raster.extractValues(clcPath, loc, winRange=winRange, noDataOkay=True).data.values
 
-    ## Get the associated
-    outputs = [clcCodeToRoughess[clcGridToCode_v2006[ int(val) ]] for val in clcGridValues]
+    ## make output array
+    if winRange>0:
+        outputs = []
+        for v in clcGridValues:
+            # Treat nodata as ocean
+            v[np.isnan(v)] = 44
+            v[ v>44 ] = 44 
+            v = v.astype(int)
+        
+            values, counts = np.unique( v, return_counts=True )
+            
+            total = 0
+            for val,cnt in zip(values,counts):
+                total += cnt * clcCodeToRoughess[clcGridToCode_v2006[ val ]]
+
+            outputs.append(total/counts.sum())
+    else:
+        # Treat nodata as ocean
+        clcGridValues[np.isnan(clcGridValues)] = 44
+        clcGridValues[ clcGridValues>44 ] = 44 
+        clcGridValues = clcGridValues.astype(int)
+
+        ## Get the associated
+        outputs = [clcCodeToRoughess[clcGridToCode_v2006[ val ]] for val in clcGridValues]
 
     ## Done!
     if len(outputs)==1: return outputs[0]
