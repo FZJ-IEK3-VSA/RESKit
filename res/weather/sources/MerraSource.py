@@ -3,9 +3,9 @@ from ..NCSource import *
 ## Define constants
 class MerraSource(NCSource):
     
-    GWA50_CONTEXT_MEAN_SOURCE = join(dirname(__file__),"..","..","data","gwa50_mean_over_merra.tif")
-    GWA100_CONTEXT_MEAN_SOURCE = join(dirname(__file__),"..","..","data","gwa100_mean_over_merra.tif")
-    LONG_RUN_AVERAGE_50M_SOURCE = join(dirname(__file__),"..","..","data","merra_average_windspeed_50m-shifted.tif")
+    GWA50_CONTEXT_MEAN_SOURCE = join(dirname(__file__),"..","..","..","data","gwa50_mean_over_merra.tif")
+    GWA100_CONTEXT_MEAN_SOURCE = join(dirname(__file__),"..","..","..","data","gwa100_mean_over_merra.tif")
+    LONG_RUN_AVERAGE_50M_SOURCE = join(dirname(__file__),"..","..","..","data","merra_average_windspeed_50m-shifted.tif")
 
     MAX_LON_DIFFERENCE=0.3125
     MAX_LAT_DIFFERENCE=0.25

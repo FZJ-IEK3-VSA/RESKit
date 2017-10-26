@@ -66,7 +66,7 @@ def simulateLocations(locations, wsSource, clcSource, gwaSource, performance, ca
 
     elif extract=="wa" or extract == "weightedAverage":
         output = res.production.mean(axis=1)
-        output.columns = [str(v) for v in output.columns]
+        #output.columns = [str(v) for v in output.columns]
 
     else:
         raise ResError("Don't know extraction type. Try using 'production' (or just 'p'), 'capacityFactor' (or just 'cf'), or 'weightedAverage' ('wa')")
