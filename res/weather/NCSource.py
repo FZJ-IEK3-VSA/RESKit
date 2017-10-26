@@ -39,15 +39,20 @@ def computeContextMean(source, contextArea, fillnan=True, pixelSize=None, srs=No
 
 # make a data handler
 class NCSource(object):
-    def __init__(s, path, bounds=None, timeName="time", latName="lat", lonName="lon", dependent_coordinates=False):
+    def __init__(s, path, bounds=None, timeName="time", latName="lat", lonName="lon", dependent_coordinates=False, constantsPath=None):
         # set basic variables 
         s.path = path
         if not path is None:
-            ds = nc.Dataset(s.path)
+            if constantsPath is None:
+                dsC = nc.Dataset(s.path)
+                ds = dsC
+            else:
+                dsC = nc.Dataset(constantsPath)
+                ds = nc.Dataset(s.path)
         
-            s._allLats = ds[latName][:]
-            s._allLons = ds[lonName][:]
-
+            s._allLats = dsC[latName][:]
+            s._allLons = dsC[lonName][:]
+            
             s.variables = list(ds.variables.keys())
             s._maximal_lon_difference=10000000
             s._maximal_lat_difference=10000000
@@ -323,12 +328,11 @@ class NCSource(object):
             mid_dw_lt = (ctr + dw + lt + dw_lt)/4
 
             # return polygon
-            return gk.geom.polygon([mid_up_rt, 
-                                    mid_dw_rt,
-                                    mid_dw_lt,
-                                    mid_up_lt,
-                                    mid_up_rt], srs=gk.srs.EPSG4326)
-
+            return gk.geom.polygon([(mid_up_rt), 
+                                    (mid_dw_rt),
+                                    (mid_dw_lt),
+                                    (mid_up_lt),
+                                    (mid_up_rt)], srs=gk.srs.EPSG4326)
         else:
             # Make and return a box
             lowLat = (s.lats[latI]+s.lats[latI-1])/2
