@@ -344,6 +344,8 @@ class TerrainComplexityConvoluter(object):
 
         s.unconvolutedPowerCurve = perf
 
+        s.storage = []
+
         # Setup all, maybe
         if preEvaluate:
             s._preEvaluateAll()
@@ -375,7 +377,7 @@ class TerrainComplexityConvoluter(object):
         s._convolutedPowerCurves.set_value(tc, convolutedPowerCurve)
 
     def performance(s,tc):
-        return np.column_stack(s.ws,s[tc])
+        return np.column_stack( [s.ws,s[tc]] )
 
     def __getitem__(s,tc):
         tc = s._tcStep*(int(tc)//s._tcStep)
@@ -393,6 +395,9 @@ class TerrainComplexityConvoluter(object):
             return s[tcVals[0]]
         else:
             for v in tcVals: yield s[v]
+
+    def getTerrainComplexityAtLocation(s,loc):
+        return gk.raster.extractValues(s.terrainComplexityFile, loc, noDataOkay=False).data.values
 
 
 def costModelNrelBaseline(capacity, hubHeight, rotorDiameter, gearBox="direct", gdpEscalator=1, bladeMaterialEscalator=1, blades=3):
@@ -513,3 +518,4 @@ def costModelNrelBaseline(capacity, hubHeight, rotorDiameter, gearBox="direct", 
     # Done!
     return totalCost
 
+    
