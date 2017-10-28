@@ -286,8 +286,8 @@ class NCSource(object):
             gridLons = s.lons[xiMin:xiMax+1]
             
             # build output
-            lats = [loc.y for loc in locations]
-            lons = [loc.x for loc in locations]
+            lats = [loc.lat for loc in locations]
+            lons = [loc.lon for loc in locations]
             
             output = []
             for ts in range(s.data[variable].shape[0]):
