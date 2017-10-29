@@ -397,7 +397,9 @@ class TerrainComplexityConvoluter(object):
             for v in tcVals: yield s[v]
 
     def getTerrainComplexityAtLocation(s,loc):
-        return gk.raster.extractValues(s.terrainComplexityFile, loc, noDataOkay=False).data.values
+        a = gk.raster.extractValues(s.terrainComplexityFile, loc, noDataOkay=False).data.values
+        a[a==0] = 5
+        return a
 
 
 def costModelNrelBaseline(capacity, hubHeight, rotorDiameter, gearBox="direct", gdpEscalator=1, bladeMaterialEscalator=1, blades=3):
