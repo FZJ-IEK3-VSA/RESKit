@@ -12,7 +12,7 @@ class SevCosmoREA6Source(NCSource):
     MAX_LON_DIFFERENCE = 0.125 # a LARGE ooverestimate of how much space should be inbetween a given point and the nearest index
     MAX_LAT_DIFFERENCE = 0.125 # a LARGE ooverestimate of how much space should be inbetween a given point and the nearest index
 
-    def __init__(s, path, constantsPath, bounds=None):
+    def __init__(s, path, constantsPath, bounds=None, **kwargs):
 
         if not bounds is None:
             if isinstance(bounds, gk.Extent):
@@ -33,7 +33,7 @@ class SevCosmoREA6Source(NCSource):
                                 latMax = latMax + s.MAX_LAT_DIFFERENCE,)
 
         NCSource.__init__(s, path=path, bounds=bounds, timeName="time", constantsPath=constantsPath,
-                          latName="lat", lonName="lon", dependent_coordinates=True)
+                          latName="lat", lonName="lon", dependent_coordinates=True, **kwargs)
 
         # set maximal differences
         s._maximal_lon_difference=s.MAX_LON_DIFFERENCE
