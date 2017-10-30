@@ -403,7 +403,7 @@ def costModelNrelBaseline(capacity, hubHeight, rotorDiameter, gearBox="direct", 
 
     rr = rotorDiameter/2
     hh = hubHeight
-    cp = capacity/1000
+    cp = capacity*1000
 
     totalCost = 0 
     
