@@ -401,7 +401,6 @@ class TerrainComplexityConvoluter(object):
         a[a==0] = 5
         return a
 
-
 def costModelNrelBaseline(capacity, hubHeight, rotorDiameter, gearBox="direct", gdpEscalator=1, bladeMaterialEscalator=1, blades=3):
     """Cost model built following the NREL report
 
@@ -521,3 +520,27 @@ def costModelNrelBaseline(capacity, hubHeight, rotorDiameter, gearBox="direct", 
     return totalCost
 
     
+def NormalizedCostModel(baseModel=costModelNrelBaseline, normalizedCapacity=3.6, normalizedHubHeight=90, normalizedRotorDiameter=120, normalizedCost=3600000, **kwargs):
+    """Normalize a given cost model based on the expected cost of a particular set of turbine parameters
+
+     * The default setup normalizes the following turbine parameters to the basic assumption of 1000 Euros/kW:
+        - Capacity: 3.6 MW
+        - Hub Height: 90 meters
+        - Rotor Diameter: 120 meters
+     * Returns a function which provides cost estimates based on the inputs of the base model
+     * All executions of the returned function will be scaled around the given normalized cost
+    """
+    baseCost = baseModel(capacity=normalizedCapacity, hubHeight=normalizedHubHeight, rotorDiameter=normalizedRotorDiameter, **kwargs)
+    scaling = normalizedCost / baseCost
+
+    def outputFunc(capacity, hubHeight, rotorDiameter, **kwargs):
+        """Normalized cost model. Returns cost in Euros
+
+        inputs:
+            capacity - float : The wind turbine capcity in MW
+            hubHeight - int : The hub height in meters
+            rotorDiameter - int : The rotor diameter in meters
+        """
+        return scaling*baseModel(capacity=capacity, hubHeight=hubHeight, rotorDiameter=rotorDiameter, **kwargs)
+
+    return outputFunc

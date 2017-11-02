@@ -4,4 +4,5 @@ from .wind import (TurbineLibrary,
 	               windutil, 
 	               convolutePowerCurveByGuassian,
 	               TerrainComplexityConvoluter,
-	               costModelNrelBaseline)
+	               costModelNrelBaseline,
+	               NormalizedCostModel)
