@@ -397,7 +397,7 @@ class TerrainComplexityConvoluter(object):
             for v in tcVals: yield s[v]
 
     def getTerrainComplexityAtLocation(s,loc):
-        a = gk.raster.extractValues(s.terrainComplexityFile, loc, noDataOkay=False).data.values
+        a = gk.raster.extractValues(s.terrainComplexityFile, loc, noDataOkay=True).data.values
         a[a==0] = 5
         return a
 
@@ -508,7 +508,7 @@ def costModelNrelBaseline(capacity, hubHeight, rotorDiameter, gearBox="direct", 
     foundationCost = 303.24 * np.power( hh*np.pi * np.power(rr,2), 0.4037)
     totalCost += foundationCost
 
-    # Assembly & Insstallation
+    # Assembly & Installation
     assInCost = 1.965 * np.power( hh * 2 * rr, 1.1736)
     totalCost += assInCost
 

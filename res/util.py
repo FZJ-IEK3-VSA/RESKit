@@ -119,3 +119,8 @@ def storeTimeseriesAsNc(output, timedata, varmeta={}, keydata=None, keydatameta=
 
     # All done!
     return
+
+def simpleLCOE(capex, meanProduction, opexPerCapex=0.02, lifetime=20, discountRate=0.08):
+    r = discountRate
+    N = lifetime
+    return capex * ( r /(1-np.power(1+r,-N)) + opexPerCapex ) / (meanProduction*N)
