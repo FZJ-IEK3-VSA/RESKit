@@ -317,18 +317,19 @@ def convolutePowerCurveByGuassian(stdScaling=0.2, stdBase=0.6, performance='E115
 
 
 class TerrainComplexityConvoluter(object):
-    def __init__(s, terrainComplexityFile, turbine, tcStep=5, tcMax=400, preEvaluate=True):
+    def __init__(s, terrainComplexityFile, turbine, tcStep=5, tcMax=800, preEvaluate=False, mode="MERRA_20kTC"):
         s.terrainComplexityFile = terrainComplexityFile
         s.turbine = turbine
         s._tcStep = int(tcStep)
         s._tcMax = int(tcMax)
+        s.mode=mode
 
         s.ws = np.linspace(0, 40, 4001)[1:]
         s._dws = s.ws[1]-s.ws[0]
         s.Capacity = TurbineLibrary.ix[turbine].Capacity
 
-        s.evaluationTCs = np.arange(0, tcMax+0.01, tcStep)
-        s._convolutedPowerCurves = pd.Series([None]*s.evaluationTCs.size, index=s.evaluationTCs)
+        s.evaluationTCs = np.arange(tcStep, tcMax+0.01, tcStep)
+        s._convolutedPowerCurves = OrderedDict()
 
         # make unconvoluted perfomrance
         performance = np.array(TurbineLibrary.ix[turbine].Performance)
@@ -351,41 +352,56 @@ class TerrainComplexityConvoluter(object):
             s._preEvaluateAll()
 
     @staticmethod
-    def _A(tc): return 0.25*(1-np.exp(-tc/10))+0.4
+    def _params_REA6_5kTC(tc):
+        a = 0.25*(1-np.exp(-tc/10))+0.4
+        b = tc*0+0.525
+        c = 0.9 - tc/300*0.4
+        d = 0.085*(1-np.exp(-tc/150))+0.009
+        return a,b,c,d
 
     @staticmethod
-    def _B(tc): return tc*0+0.525
-
-    @staticmethod
-    def _C(tc): return 0.9 - tc/300*0.4
-
-    @staticmethod
-    def _D(tc): return 0.085*(1-np.exp(-tc/150))+0.009
+    def _params_MERRA_20kTC(tc):
+        a = 0.25*(1-np.exp(-tc/100))+0.49
+        b = 0.55*np.exp(-tc/150)+0.5
+        c = 0.25 + tc/685*0.20
+        d = 0.06+0.25/650 * tc
+        return a,b,c,d
 
     def relativeSig(s, tc): 
-        return s._A(tc)*np.exp( -np.power(s.ws,s._B(tc))*s._C(tc)) + s._D(tc)
+        
+        tc = np.array(tc)
+        tc[tc<5] = 5
+
+        if s.mode=="MERRA_20kTC":
+            a,b,c,d = s._params_MERRA_20kTC(tc)
+        elif s.mode=="REA6_5kTC":
+            a,b,c,d = s._params_REA6_5kTC(tc)
+        else:
+            raise ResError("mode not recognized")
+
+        return a*np.exp( -np.power(s.ws,b)*c) + d
 
     def _preEvaluateAll(s):
         for tc in s.evaluationTCs: s._evaluateComplexity(tc)
 
-    def _evaluateComplexity(s,tc):
+    def _evaluateComplexity(s, tc):
         convolutedPowerCurve = np.zeros(s.ws.size)
 
         for i, ws, rsig in zip(range(s.ws.size), s.ws, s.relativeSig(tc)):
             convolutedPowerCurve[i] = (s.unconvolutedPowerCurve*norm.pdf(s.ws, scale=ws*rsig, loc=ws)).sum()*s._dws
 
-        s._convolutedPowerCurves.set_value(tc, convolutedPowerCurve)
+        s._convolutedPowerCurves[tc] = convolutedPowerCurve
 
     def performance(s,tc):
         return np.column_stack( [s.ws,s[tc]] )
 
-    def __getitem__(s,tc):
+    def __getitem__(s, tc):
         tc = s._tcStep*(int(tc)//s._tcStep)
         if tc > s._tcMax: tc = s._tcMax
-        if s._convolutedPowerCurves.ix[tc] is None:
+        if not tc in s._convolutedPowerCurves:
             s._evaluateComplexity(tc)
 
-        return s._convolutedPowerCurves.ix[tc]
+        return s._convolutedPowerCurves[tc]
 
     def convolutedPowerCurveAtLocation(s, loc):
         loc = Location.ensureLocation(loc, forceAsArray=True)
@@ -398,7 +414,6 @@ class TerrainComplexityConvoluter(object):
 
     def getTerrainComplexityAtLocation(s,loc):
         a = gk.raster.extractValues(s.terrainComplexityFile, loc, noDataOkay=True).data.values
-        a[a==0] = 5
         return a
 
 def costModelNrelBaseline(capacity, hubHeight, rotorDiameter, gearBox="direct", gdpEscalator=1, bladeMaterialEscalator=1, blades=3):
