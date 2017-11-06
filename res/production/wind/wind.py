@@ -535,7 +535,7 @@ def costModelNrelBaseline(capacity, hubHeight, rotorDiameter, gearBox="direct", 
     return totalCost
 
     
-def NormalizedCostModel(baseModel=costModelNrelBaseline, normalizedCapacity=3.6, normalizedHubHeight=90, normalizedRotorDiameter=120, normalizedCost=3600000, **kwargs):
+def NormalizedCostModel(baseModel=costModelNrelBaseline, normalizedCapacity=3.6, normalizedHubHeight=90, normalizedRotorDiameter=120, normalizedCost=3600000, constantCost=0, **kwargs):
     """Normalize a given cost model based on the expected cost of a particular set of turbine parameters
 
      * The default setup normalizes the following turbine parameters to the basic assumption of 1000 Euros/kW:
@@ -556,6 +556,6 @@ def NormalizedCostModel(baseModel=costModelNrelBaseline, normalizedCapacity=3.6,
             hubHeight - int : The hub height in meters
             rotorDiameter - int : The rotor diameter in meters
         """
-        return scaling*baseModel(capacity=capacity, hubHeight=hubHeight, rotorDiameter=rotorDiameter, **kwargs)
+        return scaling*baseModel(capacity=capacity, hubHeight=hubHeight, rotorDiameter=rotorDiameter, **kwargs) + constantCost
 
     return outputFunc

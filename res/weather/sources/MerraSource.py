@@ -31,6 +31,7 @@ class MerraSource(NCSource):
                                 latMax = latMax + s.MAX_LAT_DIFFERENCE,)
 
         NCSource.__init__(s, path=path, bounds=bounds, timeName="time", latName="lat", lonName="lon", **kwargs)
+        s.timeindex=pd.Index(s.timeindex, tz="GMT")
 
         # set maximal differences
         s._maximal_lon_difference=s.MAX_LON_DIFFERENCE
