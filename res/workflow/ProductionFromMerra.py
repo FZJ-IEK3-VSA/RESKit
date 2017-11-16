@@ -7,6 +7,7 @@ from collections import namedtuple
 from multiprocessing import Pool, cpu_count, Manager
 from multiprocessing.managers import BaseManager
 from datetime import datetime as dt
+from types import FunctionType
 
 
 class WSManager(BaseManager): pass
@@ -15,7 +16,7 @@ WSManager.register('MerraSource', MerraSource, exposed=["get", "loadWindSpeed"] 
 ##################################################################
 ## Make some typical simulator functions
 Result = namedtuple("Result", "count output")
-def simulateLocations(locations, wsSource, clcSource, gwaSource, performance, capacity, hubHeight, extract, verbose=True, **kwargs):
+def simulateLocations(locations, wsSource, lcSource, lcType, gwaSource, performance, capacity, hubHeight, extract, pickleable=False, verbose=True, **kwargs):
     if verbose: 
         startTime = dt.now()
         gid = kwargs["gid"]
@@ -29,21 +30,26 @@ def simulateLocations(locations, wsSource, clcSource, gwaSource, performance, ca
         if verbose: print( " %s: No locations found"%(str(gid)))
         return None
 
+    if pickleable:
+        Location.makePickleable(locations)
     ws = wsSource.get("windspeed", locations)
 
     # spatially adjust windspeeds
     ws = windutil.adjustLraToGwa( ws, locations, longRunAverage=MerraSource.LONG_RUN_AVERAGE_50M_SOURCE, gwa=gwaSource)
     #ws = windutil.adjustContextMeanToGwa( ws, locations, contextMean=MerraSource.GWA50_CONTEXT_MEAN_SOURCE , gwa=gwaSource)
 
-
     # apply wind speed corrections to account (somewhat) for local effects not captured on the MERRA context
     factors = (1-0.3)*(1-np.exp(-0.2*ws))+0.3 # dampens lower wind speeds
     ws = factors*ws
     factors = None
 
-    # Get roughnesses from CLC
-    winRange = int(kwargs.get("clcRange",0)/100)
-    roughnesses = windutil.roughnessFromCLC(clcSource, locations, winRange=winRange)
+    # Get roughnesses from Land Cover
+    if lcType == "clc":
+        winRange = int(kwargs.get("lcRange",0))
+        roughnesses = windutil.roughnessFromCLC(lcSource, locations, winRange=winRange)
+    else:
+        lcVals = gk.raster.extractValues(lcSource, locations).data
+        roughnesses = windutil.roughnessFromLandCover(lcVals, lcType)
 
     # do simulations
     res = wind.simulateTurbine(ws, performance=performance, capacity=capacity, measuredHeight=50, hubHeight=hubHeight, roughness=roughnesses, loss=0.04)
@@ -55,6 +61,9 @@ def simulateLocations(locations, wsSource, clcSource, gwaSource, performance, ca
         print(" %s: Finished %d turbines +%.2fs (%.2f turbines/sec)"%(str(gid), len(locations), globalSecs, len(locations)/simSecs))
     
     # Done!
+
+    if isinstance(extract, FunctionType):
+        output = extract(res)
 
     if extract=="p" or extract == "production":
         output = res.production
@@ -71,12 +80,57 @@ def simulateLocations(locations, wsSource, clcSource, gwaSource, performance, ca
     else:
         raise ResError("Don't know extraction type. Try using 'production' (or just 'p'), 'capacityFactor' (or just 'cf'), or 'weightedAverage' ('wa')")
 
-    
     return Result(count=len(locations), output=output)
 
 ##################################################################
 ## Distributed Wind production from a Merra wind source
-def windProductionFromMerraSource(placements, merraSource, turbine, clcSource, gwaSource, hubHeight, jobs=1, batchSize=None, extract="weightedAverage", verbose=True, **kwargs):
+def windProductionFromMerraSource(placements, merraSource, turbine, lcSource, gwaSource, hubHeight, lcType="clc", extract="weightedAverage", jobs=1, batchSize=None, verbose=True, **kwargs):
+    """
+    Apply the wind simulation method developed by Severin Ryberg, Dilara Caglayan, and Sabrina Schmitt. This method 
+    works as follows for a given simulation point:
+        1. The nearest time-series in the provided MERRA climate data is extracted
+            * reads windspeeds at 50 meters
+        2. The time series is adjusted so that the long-run-average (all MERRA data at this point) matches the value
+           given by the Global Wind Atlas at the simulation point
+        3. A roughness factor is assumed from the land cover and is used to project the wind speeds to the indicated
+           hub height
+        4. Low windspeeds are depressed slightly, ending around 10 m/s
+        5. The wind speeds are fed through the power-curve of the indicated turbine
+            * The power curve has been convoluted to incorporate a stochastic spread of windspeeds using
+        6. A 4% loss is applied
+
+    inputs:
+        placements: a list of (lon,lat) coordinates to simulate
+
+        merraSource - str : A path to the MERRA data which will be used for the simulation
+            * MUST have the fields 'U50M' and 'V50M'
+
+        turbine: The turbine to simulate
+            str : An indicator from the TurbineLibrary (res.production.wind.TurbineLibrary)
+            [(float, float), ...] : An explicit performance curve given as (windspeed, power output) pairs
+
+        lcSource - str : The path to the land cover source
+
+        gwaSource - str : The path to the global wind atlas mean windspeeds (at 50 meters)
+
+        hubHeight - float : The hub height to simulate at
+
+        lcType - str: The land cover type to use
+            * Options are "clc", "globCover", and "modis"
+
+        extract - str: Determines the extraction method and the form of the returned information
+            * Options are:
+                "production" - returns the timeseries production for each location
+                "capacityFactor" - returns only the resulting capacity factor for each location
+                "weightedAverage" - returns the average time series of all locations
+
+        jobs - int : The number of parallel jobs
+
+        batchSize - int : The number of placements to simulate in each job
+            * Use this to tune performance to your specific machine
+
+        verbose - bool : False means silent, True means noisy
+    """
     if verbose: 
         startTime = dt.now()
         print("Starting at: %s"%str(startTime))
@@ -98,13 +152,13 @@ def windProductionFromMerraSource(placements, merraSource, turbine, clcSource, g
     if isinstance(placements, str): # placements is a path to a point-type shapefile
         placements = np.array([ (placement.GetX(), placement.GetY()) for placement in gk.vector.extractFeatures(placements, onlyGeom=True, outputSRS='latlon')])
 
-    #placements = Location.ensureLocation(placements, forceAsArray=True)
+    placements = Location.ensureLocation(placements, forceAsArray=True)
 
-    #allLats = np.array([p.lat for p in placements])
-    #allLons = np.array([p.lon for p in placements])
+    allLats = np.array([p.lat for p in placements])
+    allLons = np.array([p.lon for p in placements])
 
-    allLons = placements[:,0] 
-    allLats = placements[:,1]
+    #allLons = placements[:,0] 
+    #allLats = placements[:,1]
 
     latMin = allLats.min()
     latMax = allLats.max()
@@ -136,9 +190,11 @@ def windProductionFromMerraSource(placements, merraSource, turbine, clcSource, g
         else: # split the area in to equal size groups, and simulate one group at a time
             for simPlacements in np.array_split(placements, len(placements)//batchSize+1):
                 tmp = []
-                for i in simPlacements:
-                    tmp.append( (i[0], i[1]) )
-                simGroups.append( tmp )
+                #for i in simPlacements:
+                #    tmp.append( (i[0], i[1]) )
+                #simGroups.append( tmp )
+
+                simGroups.append( simPlacements )
     
         ### Set up combiner 
         if extract=="p" or extract == "production":
@@ -186,7 +242,8 @@ def windProductionFromMerraSource(placements, merraSource, turbine, clcSource, g
         # Construct arguments
         staticKwargs = OrderedDict()
         staticKwargs["wsSource"]=wsSource
-        staticKwargs["clcSource"]=clcSource
+        staticKwargs["lcSource"]=lcSource
+        staticKwargs["lcType"]=lcType
     
         staticKwargs["gwaSource"]=gwaSource
         staticKwargs["performance"]=performance
@@ -205,8 +262,10 @@ def windProductionFromMerraSource(placements, merraSource, turbine, clcSource, g
                 if verbose:
                     staticKwargs["globalStart"]=startTime
                     staticKwargs["gid"]=i
-    
+                
+                staticKwargs["pickleable"]=False
                 staticKwargs["locations"] = locs
+
                 tmp = simulateLocations(**staticKwargs)
     
                 if tmp is None:continue
@@ -221,6 +280,9 @@ def windProductionFromMerraSource(placements, merraSource, turbine, clcSource, g
                     staticKwargs["globalStart"]=startTime
                     staticKwargs["gid"]=i
                 
+                staticKwargs["pickleable"]=True
+
+                Location.makePickleable(locs)
                 staticKwargs["locations"] = locs
     
                 results_.append( 

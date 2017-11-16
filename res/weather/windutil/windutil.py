@@ -296,7 +296,7 @@ def roughnessFromCLC(clcPath, loc, winRange=0):
 ## Authors -- DTU
 globCoverCodeToRoughess = OrderedDict()
 # GlobCover Number
-globCoverCodeToRoughess[210] = 0.0 # Water Bodies
+globCoverCodeToRoughess[210] = 0.0002 # Water Bodies # changed by Me from 0.0 to 0.0002
 globCoverCodeToRoughess[220] = 0.0004 # Permanant Snow and ice
 globCoverCodeToRoughess[200] = 0.005 # Bare areas
 globCoverCodeToRoughess[140] = 0.03 # Grasslands, savannas or lichens/mosses
@@ -380,11 +380,11 @@ def roughnessFromLandCover(num, landCover='clc'):
     converter = np.vectorize(source)
     return converter(num)
 
-    if isinstance(num,int):
-        return source(num)
-    if isinstance(num, np.ndarray) or isinstance(num,list):
-        return np.array([source(int(x)) for x in num])
-    if isinstance(num, pd.Series) or isinstance(num, pd.DataFrame):
-        return num.apply( lambda x: source(int(x)))
-    else: 
-        raise ResError("invalid input")
+    #if isinstance(num,int):
+    #    return source(num)
+    #if isinstance(num, np.ndarray) or isinstance(num,list):
+    #    return np.array([source(int(x)) for x in num])
+    #if isinstance(num, pd.Series) or isinstance(num, pd.DataFrame):
+    #    return num.apply( lambda x: source(int(x)))
+    #else: 
+    #    raise ResError("invalid input")
