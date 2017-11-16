@@ -63,7 +63,7 @@ def simulateLocations(locations, wsSource, lcSource, lcType, gwaSource, performa
     
     # Apply Capacity Factor Filter
     sel = capacityFactor >= cfMin
-    if cfMin > 0:
+    if not sel.all():
         capacityFactor = capacityFactor[sel]
         production = production.ix[:,sel]
 
