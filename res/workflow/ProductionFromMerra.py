@@ -9,7 +9,6 @@ from multiprocessing.managers import BaseManager
 from datetime import datetime as dt
 from types import FunctionType
 
-
 class WSManager(BaseManager): pass
 WSManager.register('MerraSource', MerraSource, exposed=["get", "loadWindSpeed"] )
 
@@ -64,8 +63,9 @@ def simulateLocations(locations, wsSource, lcSource, lcType, gwaSource, performa
     
     # Apply Capacity Factor Filter
     sel = capacityFactor >= cfMin
-    capacityFactor = capacityFactor[sel]
-    production = production.ix[:,sel]
+    if cfMin > 0:
+        capacityFactor = capacityFactor[sel]
+        production = production.ix[:,sel]
 
     # Done!
     if extract=="p" or extract == "production":
