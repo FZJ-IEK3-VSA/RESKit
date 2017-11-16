@@ -16,7 +16,7 @@ WSManager.register('MerraSource', MerraSource, exposed=["get", "loadWindSpeed"] 
 ##################################################################
 ## Make some typical simulator functions
 Result = namedtuple("Result", "count output")
-def simulateLocations(locations, wsSource, lcSource, lcType, gwaSource, performance, capacity, hubHeight, extract, pickleable=False, verbose=True, **kwargs):
+def simulateLocations(locations, wsSource, lcSource, lcType, gwaSource, performance, capacity, hubHeight, extract, cfMin=0, pickleable=False, verbose=True, **kwargs):
     if verbose: 
         startTime = dt.now()
         gid = kwargs["gid"]
@@ -53,6 +53,8 @@ def simulateLocations(locations, wsSource, lcSource, lcType, gwaSource, performa
 
     # do simulations
     res = wind.simulateTurbine(ws, performance=performance, capacity=capacity, measuredHeight=50, hubHeight=hubHeight, roughness=roughnesses, loss=0.04)
+    capacityFactor = res.capacityFactor
+    production = res.production
 
     if verbose:
         endTime = dt.now()
@@ -60,31 +62,32 @@ def simulateLocations(locations, wsSource, lcSource, lcType, gwaSource, performa
         globalSecs = (endTime - globalStart).total_seconds()
         print(" %s: Finished %d turbines +%.2fs (%.2f turbines/sec)"%(str(gid), len(locations), globalSecs, len(locations)/simSecs))
     
+    # Apply Capacity Factor Filter
+    sel = capacityFactor >= cfMin
+    capacityFactor = capacityFactor[sel]
+    production = production.ix[:,sel]
+
     # Done!
-
-    if isinstance(extract, FunctionType):
-        output = extract(res)
-
     if extract=="p" or extract == "production":
-        output = res.production
+        output = production
         output.columns = [str(v) for v in output.columns]
 
     elif extract=="cf" or extract == "capacityFactor":
-        output = res.capacityFactor
+        output = capacityFactor
         output.index = [str(v) for v in output.index]
 
-    elif extract=="wa" or extract == "weightedAverage":
-        output = res.production.mean(axis=1)
+    elif extract=="ap" or extract == "averageProduction":
+        output = production.mean(axis=1)
         #output.columns = [str(v) for v in output.columns]
 
     else:
-        raise ResError("Don't know extraction type. Try using 'production' (or just 'p'), 'capacityFactor' (or just 'cf'), or 'weightedAverage' ('wa')")
-
-    return Result(count=len(locations), output=output)
+        raise ResError("Don't know extraction type. Try using 'production' (or just 'p'), 'capacityFactor' (or just 'cf'), or 'averageProduction' ('ap')")
+    print(sel.sum())
+    return Result(count=sel.sum(), output=output)
 
 ##################################################################
 ## Distributed Wind production from a Merra wind source
-def windProductionFromMerraSource(placements, merraSource, turbine, lcSource, gwaSource, hubHeight, lcType="clc", extract="weightedAverage", jobs=1, batchSize=None, verbose=True, **kwargs):
+def windProductionFromMerraSource(placements, merraSource, turbine, lcSource, gwaSource, hubHeight, lcType="clc", extract="averageProduction", cfMin=0, jobs=1, batchSize=None, verbose=True, **kwargs):
     """
     Apply the wind simulation method developed by Severin Ryberg, Dilara Caglayan, and Sabrina Schmitt. This method 
     works as follows for a given simulation point:
@@ -122,7 +125,10 @@ def windProductionFromMerraSource(placements, merraSource, turbine, lcSource, gw
             * Options are:
                 "production" - returns the timeseries production for each location
                 "capacityFactor" - returns only the resulting capacity factor for each location
-                "weightedAverage" - returns the average time series of all locations
+                "averageProduction" - returns the average time series of all locations
+
+        cfMin - float : The minimum capacity factor to accept
+            * Must be between 0..1
 
         jobs - int : The number of parallel jobs
 
@@ -209,7 +215,7 @@ def windProductionFromMerraSource(placements, merraSource, turbine, lcSource, gw
                 else: return Result(count=result.count+newResult.count,
                                     output=pd.concat([result.output, newResult.output], axis=0))
             
-        elif extract=="wa" or extract == "weightedAverage":
+        elif extract=="ap" or extract == "averageProduction":
             def combiner(result, newResult):
                 if result is None: return newResult
                 else: 
@@ -219,7 +225,7 @@ def windProductionFromMerraSource(placements, merraSource, turbine, lcSource, gw
             raise ResError('''Don't know extraction type. Try using... 
                 'production' (or just 'p')
                 'capacityFactor' (or just 'cf')
-                'weightedAverage' ('wa')"
+                'averageProduction' ('wa')"
                 ''')
     
         ### Convolute turbine
@@ -251,6 +257,7 @@ def windProductionFromMerraSource(placements, merraSource, turbine, lcSource, gw
         staticKwargs["hubHeight"]=hubHeight
     
         staticKwargs["extract"]=extract
+        staticKwargs["cfMin"]=cfMin
         staticKwargs["verbose"]=verbose
     
         staticKwargs.update(kwargs)
@@ -304,7 +311,7 @@ def windProductionFromMerraSource(placements, merraSource, turbine, lcSource, gw
     if verbose:
         endTime = dt.now()
         totalSecs = (endTime - startTime).total_seconds()
-        print("Finished simulating %d turbines at +%.2fs (%.2f turbines/sec)"%(totalC, totalSecs, totalC/totalSecs))
+        print("Finished simulating %d turbines (%d surviving) at +%.2fs (%.2f turbines/sec)"%(len(placements), totalC, totalSecs, len(placements)/totalSecs))
 
 
     ### Give the results
