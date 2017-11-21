@@ -70,6 +70,8 @@ def simulateLocations(locations, wsSource, lcSource, lcType, gwaSource, performa
     # Done!
     if extract=="p" or extract == "production":
         output = production
+        if isinstance(output, pd.Series):
+            output = output.to_frame()
         output.columns = [str(v) for v in output.columns]
 
     elif extract=="cf" or extract == "capacityFactor":
