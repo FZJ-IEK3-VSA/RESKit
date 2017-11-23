@@ -177,8 +177,9 @@ def windProductionFromMerraSource(placements, merraSource, turbine, lcSource, gw
 
     # Setup manager if needed
     if useManager:
+        manager = WSManager()
+        manager.start()
         wsSource = manager.MerraSource(path=merraSource, bounds=Bounds(*totalExtent.pad(1).xyXY))
-        wsSource.start()
     else:
         wsSource = MerraSource(path=merraSource, bounds=totalExtent.pad(1))
 
