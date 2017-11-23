@@ -143,7 +143,7 @@ def windProductionFromMerraSource(placements, merraSource, turbine, lcSource, gw
 
     if jobs==1: # use only a single process
         pool = None
-        useManager = True
+        useManager = False
     elif jobs > 1: # uses multiple processes (equal to jobs)
         pool = Pool(jobs)
         useManager = True
@@ -151,7 +151,7 @@ def windProductionFromMerraSource(placements, merraSource, turbine, lcSource, gw
         cpus = cpu_count()-jobs
         if cpus <=0: raise ResError("Bad jobs count")
         pool = Pool( cpus )
-        useManager = False
+        useManager = True
     
     ### Determine the total extent which will be simulated (also make sure the placements input is okay)
     if verbose: print("Arranging placements at +%.2fs"%((dt.now()-startTime).total_seconds()))
@@ -174,138 +174,140 @@ def windProductionFromMerraSource(placements, merraSource, turbine, lcSource, gw
     if verbose: print("Pre-loading windspeeds at +%.2fs"%((dt.now()-startTime).total_seconds()))
     totalExtent = gk.Extent((lonMin,latMin,lonMax,latMax,), srs=LATLONSRS)
     
-    with WSManager() as manager:
 
+    # Setup manager if needed
+    if useManager:
         wsSource = manager.MerraSource(path=merraSource, bounds=Bounds(*totalExtent.pad(1).xyXY))
-        #else:
-        #    wsSource = MerraSource(path=merraSource, bounds=totalExtent.pad(1))
-    
-        wsSource.loadWindSpeed(height=50)
-    
-        #del wsSource.data["winddir"]
-        #del wsSource.data["U50M"]
-        #del wsSource.data["V50M"]
-    
-        ### initialize simulations
-        if verbose: print("Initializing simulations at +%.2fs"%((dt.now()-startTime).total_seconds()))
-    
-        simGroups = []
-        if batchSize is None: # do everything in one big batch
-            simGroups.append( placements )
-    
-        else: # split the area in to equal size groups, and simulate one group at a time
-            for simPlacements in np.array_split(placements, len(placements)//batchSize+1):
-                tmp = []
-                #for i in simPlacements:
-                #    tmp.append( (i[0], i[1]) )
-                #simGroups.append( tmp )
+        wsSource.start()
+    else:
+        wsSource = MerraSource(path=merraSource, bounds=totalExtent.pad(1))
 
-                simGroups.append( simPlacements )
-    
-        ### Set up combiner 
-        if extract=="p" or extract == "production":
-            def combiner(result, newResult):
-                if result is None: return newResult
-                else: return Result(count=result.count+newResult.count,
-                                    output=pd.concat([result.output, newResult.output], axis=1))
-    
-        elif extract=="cf" or extract == "capacityFactor":
-            def combiner(result, newResult):
-                if result is None: return newResult
-                else: return Result(count=result.count+newResult.count,
-                                    output=pd.concat([result.output, newResult.output], axis=0))
+    wsSource.loadWindSpeed(height=50)
+
+    #del wsSource.data["winddir"]
+    #del wsSource.data["U50M"]
+    #del wsSource.data["V50M"]
+
+    ### initialize simulations
+    if verbose: print("Initializing simulations at +%.2fs"%((dt.now()-startTime).total_seconds()))
+
+    simGroups = []
+    if batchSize is None: # do everything in one big batch
+        simGroups.append( placements )
+
+    else: # split the area in to equal size groups, and simulate one group at a time
+        for simPlacements in np.array_split(placements, len(placements)//batchSize+1):
+            tmp = []
+            #for i in simPlacements:
+            #    tmp.append( (i[0], i[1]) )
+            #simGroups.append( tmp )
+
+            simGroups.append( simPlacements )
+
+    ### Set up combiner 
+    if extract=="p" or extract == "production":
+        def combiner(result, newResult):
+            if result is None: return newResult
+            else: return Result(count=result.count+newResult.count,
+                                output=pd.concat([result.output, newResult.output], axis=1))
+
+    elif extract=="cf" or extract == "capacityFactor":
+        def combiner(result, newResult):
+            if result is None: return newResult
+            else: return Result(count=result.count+newResult.count,
+                                output=pd.concat([result.output, newResult.output], axis=0))
+        
+    elif extract=="ap" or extract == "averageProduction":
+        def combiner(result, newResult):
+            if result is None: return newResult
+            else: 
+                return Result( count=result.count+newResult.count,
+                               output=(result.count*result.output + newResult.count*newResult.output)/(result.count+newResult.count))
+    else:
+        raise ResError('''Don't know extraction type. Try using... 
+            'production' (or just 'p')
+            'capacityFactor' (or just 'cf')
+            'averageProduction' ('wa')"
+            ''')
+
+    ### Convolute turbine
+    if verbose: print("Convolving power curve at +%.2fs"%( (dt.now()-startTime).total_seconds()) )
+
+    if isinstance(turbine, str):
+        performance = np.array(wind.TurbineLibrary.ix[turbine].Performance)
+        capacity = wind.TurbineLibrary.ix[turbine].Capacity
+    else:
+        performance = np.array(turbine)
+        capacity = performance[:,1].max()
+
+    performance = wind.convolutePowerCurveByGuassian(stdScaling=0.1, stdBase=0.6, performance=performance )
+
+    ### Do simulations
+    totalC = 0
+    if verbose: 
+        print("Simulating %d groups at +%.2fs"%(len(simGroups), (dt.now()-startTime).total_seconds() ))
+
+    # Construct arguments
+    staticKwargs = OrderedDict()
+    staticKwargs["wsSource"]=wsSource
+    staticKwargs["lcSource"]=lcSource
+    staticKwargs["lcType"]=lcType
+
+    staticKwargs["gwaSource"]=gwaSource
+    staticKwargs["performance"]=performance
+    staticKwargs["capacity"]=capacity
+    staticKwargs["hubHeight"]=hubHeight
+
+    staticKwargs["extract"]=extract
+    staticKwargs["cfMin"]=cfMin
+    staticKwargs["verbose"]=verbose
+
+    staticKwargs.update(kwargs)
+
+    result = None
+    if jobs==1:
+        for i,locs in enumerate(simGroups):
+
+            if verbose:
+                staticKwargs["globalStart"]=startTime
+                staticKwargs["gid"]=i
             
-        elif extract=="ap" or extract == "averageProduction":
-            def combiner(result, newResult):
-                if result is None: return newResult
-                else: 
-                    return Result( count=result.count+newResult.count,
-                                   output=(result.count*result.output + newResult.count*newResult.output)/(result.count+newResult.count))
-        else:
-            raise ResError('''Don't know extraction type. Try using... 
-                'production' (or just 'p')
-                'capacityFactor' (or just 'cf')
-                'averageProduction' ('wa')"
-                ''')
-    
-        ### Convolute turbine
-        if verbose: print("Convolving power curve at +%.2fs"%( (dt.now()-startTime).total_seconds()) )
-    
-        if isinstance(turbine, str):
-            performance = np.array(wind.TurbineLibrary.ix[turbine].Performance)
-            capacity = wind.TurbineLibrary.ix[turbine].Capacity
-        else:
-            performance = np.array(turbine)
-            capacity = performance[:,1].max()
-    
-        performance = wind.convolutePowerCurveByGuassian(stdScaling=0.1, stdBase=0.6, performance=performance )
-    
-        ### Do simulations
-        totalC = 0
-        if verbose: 
-            print("Simulating %d groups at +%.2fs"%(len(simGroups), (dt.now()-startTime).total_seconds() ))
-    
-        # Construct arguments
-        staticKwargs = OrderedDict()
-        staticKwargs["wsSource"]=wsSource
-        staticKwargs["lcSource"]=lcSource
-        staticKwargs["lcType"]=lcType
-    
-        staticKwargs["gwaSource"]=gwaSource
-        staticKwargs["performance"]=performance
-        staticKwargs["capacity"]=capacity
-        staticKwargs["hubHeight"]=hubHeight
-    
-        staticKwargs["extract"]=extract
-        staticKwargs["cfMin"]=cfMin
-        staticKwargs["verbose"]=verbose
-    
-        staticKwargs.update(kwargs)
-    
-        result = None
-        if jobs==1:
-            for i,locs in enumerate(simGroups):
-    
-                if verbose:
-                    staticKwargs["globalStart"]=startTime
-                    staticKwargs["gid"]=i
-                
-                staticKwargs["pickleable"]=False
-                staticKwargs["locations"] = locs
+            staticKwargs["pickleable"]=False
+            staticKwargs["locations"] = locs
 
-                tmp = simulateLocations(**staticKwargs)
-    
-                if tmp is None:continue
-                totalC+=tmp.count
-                result = combiner(result, tmp)
-        else:
-            results_ = []
-            # submit all jobs to the queue
-            for i,locs in enumerate(simGroups):
-    
-                if verbose:
-                    staticKwargs["globalStart"]=startTime
-                    staticKwargs["gid"]=i
-                
-                staticKwargs["pickleable"]=True
+            tmp = simulateLocations(**staticKwargs)
 
-                Location.makePickleable(locs)
-                staticKwargs["locations"] = locs
-    
-                results_.append( 
-                    pool.apply_async( simulateLocations, (), staticKwargs.copy() )
-                )
-    
-            # Read each result as it becomes available
-            for r in results_:
-                tmp = r.get()
-                if tmp is None: continue
-                totalC+=tmp.count
-                result = combiner(result, tmp)
-    
-            # Do some cleanup
-            pool.close()
-            pool.join()
+            if tmp is None:continue
+            totalC+=tmp.count
+            result = combiner(result, tmp)
+    else:
+        results_ = []
+        # submit all jobs to the queue
+        for i,locs in enumerate(simGroups):
+
+            if verbose:
+                staticKwargs["globalStart"]=startTime
+                staticKwargs["gid"]=i
+            
+            staticKwargs["pickleable"]=True
+
+            Location.makePickleable(locs)
+            staticKwargs["locations"] = locs
+
+            results_.append( 
+                pool.apply_async( simulateLocations, (), staticKwargs.copy() )
+            )
+
+        # Read each result as it becomes available
+        for r in results_:
+            tmp = r.get()
+            if tmp is None: continue
+            totalC+=tmp.count
+            result = combiner(result, tmp)
+
+        # Do some cleanup
+        pool.close()
+        pool.join()
 
 
     if verbose:
