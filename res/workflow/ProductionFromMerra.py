@@ -138,15 +138,18 @@ def windProductionFromMerraSource(placements, merraSource, turbine, lcSource, gw
 
         verbose - bool : False means silent, True means noisy
     """
+
     if verbose: 
         startTime = dt.now()
         print("Starting at: %s"%str(startTime))
 
     if jobs==1: # use only a single process
+        cpus = 1
         pool = None
         useManager = False
     elif jobs > 1: # uses multiple processes (equal to jobs)
-        pool = Pool(jobs)
+        cpus = jobs
+        pool = Pool(cpus)
         useManager = True
     else: # uses multiple processes (equal to the number of available processors - jobs)
         cpus = cpu_count()-jobs
@@ -194,10 +197,14 @@ def windProductionFromMerraSource(placements, merraSource, turbine, lcSource, gw
     if verbose: print("Initializing simulations at +%.2fs"%((dt.now()-startTime).total_seconds()))
 
     simGroups = []
-    if batchSize is None: # do everything in one big batch
+    if batchSize is None and cpus==1: # do everything in one big batch
         simGroups.append( placements )
+    elif batchSize is None and cpus>1: # Split evenly to all cpus
+        for simPlacements in np.array_split(placements, cpus):
+            simGroups.append( simPlacements )
 
     else: # split the area in to equal size groups, and simulate one group at a time
+        batchSize = batchSize//cpus
         for simPlacements in np.array_split(placements, len(placements)//batchSize+1):
             tmp = []
             #for i in simPlacements:
@@ -423,6 +430,5 @@ def windProductionFromMerraSource(placements, merraSource, turbine, lcSource, gw
         else:
             raise RuntimeError("File type '%s' not understood"%ext)
 
-    else:
-        return result
+    return result
     
