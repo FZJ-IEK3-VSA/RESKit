@@ -3,7 +3,7 @@ Model,6200M126
 Capacity,6150
 Usage,Offshore
 HubHeight,126
-RotorDiameter,"85,95"
+RotorDiameter,90
 Source,https://en.wind-turbine-models.com/turbines/885-senvion-6.2m126-offshore#datasheet
 Power curve,
 windspeed(m/s),power(kW)
