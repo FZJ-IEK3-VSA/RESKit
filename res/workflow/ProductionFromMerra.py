@@ -329,9 +329,97 @@ def windProductionFromMerraSource(placements, merraSource, turbine, lcSource, gw
 
             gk.vector.createVector([l.geom for l in locs], fieldVals={"capfac":result.output}, output=output)
         elif ext == ".csv":
-            result.output.to_csv(output)
-        elif ext == ".xlsx":
-            result.output.to_excel(output)
+            with open(output,"w") as fo:
+                fo.write("merra_file:%s\n"%merraSource)
+                fo.write("turbine:%s\n"%str(turbine))
+                fo.write("capacity:%s\n"%str(capacity))
+                fo.write("count:%d\n"%result.count )
+
+                if extract == 'cf' or extract == 'capacityFactor':
+                    fo.write("extract:%s\n"%"capacityFactor" )
+                    fo.write("units:%s\n"%"\% of max capacity")
+
+                    fo.write("location,capfac\n")
+                    result.output.to_csv(fo)
+
+                elif extract == 'ap' or extract == 'averageProduction':
+                    fo.write("extract:%s\n"%"averageProduction" )
+                    fo.write("units:%s\n"%"kWh")
+
+                    fo.write("time,production\n")
+                    result.output.to_csv(fo)
+
+                elif extract == 'p' or extract == 'production':
+                    fo.write("extract:%s\n"%"production" )
+                    fo.write("units:%s\n"%"kWh")
+
+                    result.output.to_csv(fo)
+
+        elif ext == ".nc" or ext=="nc4":
+            ds = nc.Dataset(output, mode="w")
+
+            meta = OrderedDict()
+            meta["merra_file"] = merraSource
+            meta["turbine"] = str(turbine)
+            meta["capacity"] = int(capacity)
+            meta["count"] = int(result.count)
+            meta["cfMin"] = cfMin
+            ds.setncatts(meta)
+
+            if extract == 'cf' or extract == 'capacityFactor':
+                locs = gk.Location.ensureLocation(result.output.index, forceAsArray=True)
+                ds.createDimension("locationID", len(locs))
+
+                lon = ds.createVariable("lon", "f", dimensions=("locationID",))
+                lon.setncatts({"longname":"latitude","units":"degrees-W"})
+                lon[:] = [l.lon for l in locs]
+
+                lat = ds.createVariable("lat", "f", dimensions=("locationID",))
+                lat.setncatts({"longname":"longitude","units":"degrees-N"})
+                lat[:] = [l.lat for l in locs]
+
+                capfac = ds.createVariable("capfac", "f", dimensions=("locationID",))
+                capfac.setncatts({"longname":"capacity-factor","units":""})
+                capfac[:] = result.output.values
+
+            elif extract == 'ap' or extract == 'averageProduction':
+                ds.createDimension("time", len(result.output.index))
+                timeV = ds.createVariable("time", "u4", dimensions=("time",), contiguous=True)
+                timeV.units = "minutes since 1900-01-01 00:00:00"
+                timeV.timezone = "GMT"
+                times = result.output.index.tz_localize(None)
+
+                timeV[:] = nc.date2num(times.to_pydatetime(), timeV.units)
+
+                production = ds.createVariable("avgProduction", "f", dimensions=("time",))
+                production.setncatts({"longname":"average energy production per turbine","units":"kWh"})
+                production[:] = result.output.values
+
+            elif extract == 'p' or extract == 'production':
+                ds.createDimension("time", len(result.output.index))
+                timeV = ds.createVariable("time", "u4", dimensions=("time",), contiguous=True)
+                timeV.units = "minutes since 1900-01-01 00:00:00"
+                timeV.timezone = "GMT"
+                times = result.output.index.tz_localize(None)
+                timeV[:] = nc.date2num(times.to_pydatetime(), timeV.units)
+
+                locs = gk.Location.ensureLocation(result.output.columns, forceAsArray=True)
+                ds.createDimension("locationID", len(locs))
+
+                lon = ds.createVariable("lon", "f", dimensions=("locationID",))
+                lon.setncatts({"longname":"latitude","units":"degrees-W"})
+                lon[:] = [l.lon for l in locs]
+
+                lat = ds.createVariable("lat", "f", dimensions=("locationID",))
+                lat.setncatts({"longname":"longitude","units":"degrees-N"})
+                lat[:] = [l.lat for l in locs]
+
+                production = ds.createVariable("production", "f", dimensions=("time","locationID",))
+                production.setncatts({"longname":"energy production","units":"kWh"})
+                production[:] = result.output.values
+
+            ds.close()
+
         else:
             raise RuntimeError("File type '%s' not understood"%ext)
 
