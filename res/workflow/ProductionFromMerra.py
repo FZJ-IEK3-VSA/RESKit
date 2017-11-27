@@ -8,6 +8,7 @@ from multiprocessing import Pool, cpu_count, Manager
 from multiprocessing.managers import BaseManager
 from datetime import datetime as dt
 from types import FunctionType
+from os.path import basename,splitext
 
 class WSManager(BaseManager): pass
 WSManager.register('MerraSource', MerraSource, exposed=["get", "loadWindSpeed"] )
@@ -87,7 +88,7 @@ def simulateLocations(locations, wsSource, lcSource, lcType, gwaSource, performa
 
 ##################################################################
 ## Distributed Wind production from a Merra wind source
-def windProductionFromMerraSource(placements, merraSource, turbine, lcSource, gwaSource, hubHeight, lcType="clc", extract="averageProduction", cfMin=0, jobs=1, batchSize=None, verbose=True, **kwargs):
+def windProductionFromMerraSource(placements, merraSource, turbine, lcSource, gwaSource, hubHeight, lcType="clc", extract="averageProduction", output=None, cfMin=0, jobs=1, batchSize=None, verbose=True, **kwargs):
     """
     Apply the wind simulation method developed by Severin Ryberg, Dilara Caglayan, and Sabrina Schmitt. This method 
     works as follows for a given simulation point:
@@ -318,5 +319,22 @@ def windProductionFromMerraSource(placements, merraSource, turbine, lcSource, gw
 
 
     ### Give the results
-    return result
+    if not output is None:
+        name,ext = splitext(basename(output))
+        if ext == ".shp": # output should be a shape file
+            if not (extract == "cf" or extract == "capacityFactor"):
+                raise RuntimeError("Shapefile output only accessible when extract is 'capacityFactor'")
+            
+            locs = gk.Location.ensureLocation(result.output.index, forceAsArray=True)
+
+            gk.vector.createVector([l.geom for l in locs], fieldVals={"capfac":result.output}, output=output)
+        elif ext == ".csv":
+            result.output.to_csv(output)
+        elif ext == ".xlsx":
+            result.output.to_excel(output)
+        else:
+            raise RuntimeError("File type '%s' not understood"%ext)
+
+    else:
+        return result
     
