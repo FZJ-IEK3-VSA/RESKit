@@ -83,7 +83,6 @@ def simulateLocations(locations, wsSource, lcSource, lcType, gwaSource, performa
 
     else:
         raise ResError("Don't know extraction type. Try using 'production' (or just 'p'), 'capacityFactor' (or just 'cf'), or 'averageProduction' ('ap')")
-    print(sel.sum())
     return Result(count=sel.sum(), output=output)
 
 ##################################################################
