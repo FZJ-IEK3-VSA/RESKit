@@ -33,7 +33,6 @@ def simulateLocations(locations, wsSource, lcSource, lcType, gwaSource, performa
     if pickleable:
         Location.makePickleable(locations)
     ws = wsSource.get("windspeed", locations, forceDataFrame=True)
-    print(type(ws))
 
     # spatially adjust windspeeds
     ws = windutil.adjustLraToGwa( ws, locations, longRunAverage=MerraSource.LONG_RUN_AVERAGE_50M_SOURCE, gwa=gwaSource)
