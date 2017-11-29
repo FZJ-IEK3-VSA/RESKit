@@ -32,7 +32,8 @@ def simulateLocations(locations, wsSource, lcSource, lcType, gwaSource, performa
 
     if pickleable:
         Location.makePickleable(locations)
-    ws = wsSource.get("windspeed", locations)
+    ws = wsSource.get("windspeed", locations, forceDataFrame=True)
+    print(type(ws))
 
     # spatially adjust windspeeds
     ws = windutil.adjustLraToGwa( ws, locations, longRunAverage=MerraSource.LONG_RUN_AVERAGE_50M_SOURCE, gwa=gwaSource)
@@ -71,8 +72,6 @@ def simulateLocations(locations, wsSource, lcSource, lcType, gwaSource, performa
     # Done!
     if extract=="p" or extract == "production":
         output = production
-        if isinstance(output, pd.Series):
-            output = output.to_frame()
         output.columns = [str(v) for v in output.columns]
 
     elif extract=="cf" or extract == "capacityFactor":
