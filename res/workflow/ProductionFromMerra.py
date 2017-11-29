@@ -35,7 +35,8 @@ def simulateLocations(locations, wsSource, lcSource, lcType, gwaSource, performa
     ws = wsSource.get("windspeed", locations, forceDataFrame=True)
 
     # spatially adjust windspeeds
-    ws = windutil.adjustLraToGwa( ws, locations, longRunAverage=MerraSource.LONG_RUN_AVERAGE_50M_SOURCE, gwa=gwaSource)
+    if not kwargs.get("skipLRA",False):
+        ws = windutil.adjustLraToGwa( ws, locations, longRunAverage=MerraSource.LONG_RUN_AVERAGE_50M_SOURCE, gwa=gwaSource)
     #ws = windutil.adjustContextMeanToGwa( ws, locations, contextMean=MerraSource.GWA50_CONTEXT_MEAN_SOURCE , gwa=gwaSource)
 
     # apply wind speed corrections to account (somewhat) for local effects not captured on the MERRA context
