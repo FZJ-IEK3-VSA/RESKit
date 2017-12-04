@@ -5,19 +5,19 @@ import geokit as gk
 
 from res.weather.windutil import *
 from res.weather import MerraSource
-from res.util import ResError, LatLonLocation
+from res.util import ResError, Location
 
 ## setup some common inputs
-loc = LatLonLocation(lat=50.105, lon=6.005)
-locInAachen = LatLonLocation(lat=50.763, lon=6.202)
-locOutsideAachen = LatLonLocation(lat=51.255, lon=5.605)
-locs = [loc, locOutsideAachen, LatLonLocation(lat=50.605, lon=6.605)]
+loc = Location(lat=50.105, lon=6.005)
+locInAachen = Location(lat=50.763, lon=6.202)
+locOutsideAachen = Location(lat=51.255, lon=5.605)
+locs = [loc, locOutsideAachen, Location(lat=50.605, lon=6.605)]
 
 windspeed = np.arange(30)
 windspeeds = np.column_stack( [windspeed, windspeed+0.3333, windspeed+0.6667] )
 
 try:
-    wsSrc = MerraSource("data\merra-like.nc4")
+    wsSrc = MerraSource(join("data","merra-like.nc4"))
     wsSrc.loadWindSpeed()
 except Exception as e:
     print("Loading MerraSource failed somewhere. Investigate by running the MerraSource unit tests...")
@@ -272,9 +272,9 @@ def test_roughnessFromGWA():
 
 def test_roughnessFromCLC():
     print("Testing roughnessFromCLC...")
-    loc1 = LatLonLocation(lat=50.370680, lon=5.752684) # grid value: 24 -> code: 312 -> rough: 0.75
-    loc2 = LatLonLocation(lat=50.52603, lon=6.10476) # grid value: 36 -> code: 412 -> rough: 0.0005
-    loc3 = LatLonLocation(lat=50.59082, lon=5.86483) # grid value: 1 -> code: 111 -> rough: 1.2
+    loc1 = Location(lat=50.370680, lon=5.752684) # grid value: 24 -> code: 312 -> rough: 0.75
+    loc2 = Location(lat=50.52603, lon=6.10476) # grid value: 36 -> code: 412 -> rough: 0.0005
+    loc3 = Location(lat=50.59082, lon=5.86483) # grid value: 1 -> code: 111 -> rough: 1.2
 
     r = roughnessFromCLC(clcPath=join("data","clc-aachen_clipped.tif"), loc=loc1)
     if r-0.75 < 1e-6: print("  Single location: Success")
@@ -284,6 +284,11 @@ def test_roughnessFromCLC():
     if abs(r[0]-0.75) < 1e-6 and abs(r[1]-0.0005) < 1e-6 and abs(r[2]-1.2) < 1e-6: 
         print("  Multiple locations: Success")
     else: raise RuntimeError("Multiple locations: Fail")
+
+    r = roughnessFromCLC(clcPath=join("data","clc-aachen_clipped.tif"), loc=[loc1,loc2,loc3], winRange=2)
+    if abs(r[0]-0.7380) < 1e-6 and abs(r[1]-0.0005) < 1e-6 and abs(r[2]-1.0040) < 1e-6: 
+        print("  Multiple locations with range: Success")
+    else: raise RuntimeError("Multiple locations with range: Fail")
 
 def test_roughnessFromLandCover():
     print("#####################")

@@ -1,27 +1,28 @@
 import netCDF4 as nc
 import numpy as np
+import pandas as pd
 from os.path import join
 import geokit as gk
 
 from res.weather import MerraSource, computeContextMean
-from res.util import ResError, LatLonLocation, Bounds
+from res.util import ResError, Location, Bounds
 
 ## Make testing globals
 raw = nc.Dataset(join("data","merra-like.nc4"))
 rawLats = raw["lat"][:]
 rawLons = raw["lon"][:]
-rawTimes = nc.num2date(raw["time"][:], raw["time"].units)
+rawTimes = pd.Index(nc.num2date(raw["time"][:], raw["time"].units), tz="GMT")
 
-aachenExt = gk.Extent.fromVector(join("data","aachenShapeFile.shp")).pad(0.5).fit(0.01)
-aachenLats = np.array([50.0, 50.5, 51.0])
+aachenExt = gk.Extent.fromVector(join("data","aachenShapefile.shp")).pad(0.5).fit(0.01)
+aachenLats = np.array([50.0, 50.5, 51.0, 51.5])
 aachenLons = np.array([5.625, 6.250, 6.875])
-aacehnLatSel = np.s_[2:5]
+aacehnLatSel = np.s_[2:6]
 aacehnLonSel = np.s_[1:4]
 
-loc = LatLonLocation(lat=50.1, lon=6.0)
-locInAachen = LatLonLocation(lat=50.763, lon=6.202)
-locOutsideAachen = LatLonLocation(lat=51.6, lon=5.6)
-locs = [loc, locOutsideAachen,LatLonLocation(lat=50.6, lon=6.6)]
+loc = Location(lat=50.1, lon=6.0)
+locInAachen = Location(lat=50.763, lon=6.202)
+locOutsideAachen = Location(lat=50.8, lon=7.6)
+locs = [loc, locOutsideAachen,Location(lat=50.6, lon=6.6)]
 
 ## Make testing scripts
 def unbounded_initialization():
@@ -40,15 +41,15 @@ def unbounded_initialization():
 	if (ms.timeindex==rawTimes).all(): print("  times match: Success")
 	else: raise RuntimeError("times match: Fail")
 
-	#### Initialize a MerraSource with no boundaries
+	#### Initialize a MerraSource with Aachen boundaries
 	print("Testing bounded initialization...")
 	ms = MerraSource(join("data","merra-like.nc4"), bounds=aachenExt)
 
 	## ensure lats, lons and times are okay
-	if (ms.lats==aachenLats).all(): print("  lat match: Success")
+	if (not ms.lats.size==aachenLats.size) or (ms.lats==aachenLats).all(): print("  lat match: Success")
 	else: raise RuntimeError("lat match: Fail")
 
-	if (ms.lons==aachenLons).all(): print("  lon match: Success")
+	if (not ms.lons.size==aachenLons.size) or (ms.lons==aachenLons).all(): print("  lon match: Success")
 	else: raise RuntimeError("lon match: Fail")
 
 	if (ms.timeindex==rawTimes).all(): print("  times match: Success")
@@ -122,7 +123,7 @@ def get_index_from_location():
 	else: raise RuntimeError("  Unbounded single access: Fail")
 
 	idx = ms.loc2Index(locs)
-	if idx[0] == (2,2) and idx[1] == (5,1) and idx[2] == (3,3): 
+	if idx[0] == (2,2) and idx[1] == (4,4) and idx[2] == (3,3): 
 	    print("  Unbounded multiple access: Success")
 	else: 
 		raise RuntimeError("  Unbounded multiple access: Fail")
@@ -130,7 +131,7 @@ def get_index_from_location():
 	# testing bounded
 	ms = MerraSource(join("data","merra-like.nc4"), bounds=aachenExt)
 	try:
-		idx = ms.loc2Index(LatLonLocation(lat=51.6, lon=6.2))
+		idx = ms.loc2Index(Location(lat=52.1, lon=6.2))
 		caught = False
 	except ResError as e:
 		caught = True
@@ -177,8 +178,10 @@ def computeContextMeans():
 		print("  Context mean computation: Success")
 	else: raise RuntimeError("  Context mean computation: Fail")
 
-	# Compare against the precomputed value...
-	print(gk.raster.extractValues(ms.GWA100_CONTEXT_MEAN_SOURCE, locInAachen, pointSRS="latlon"))
+	# Compare against the precomputed value
+	precomputed = gk.raster.extractValues(ms.GWA100_CONTEXT_MEAN_SOURCE, locInAachen, pointSRS="latlon").data
+	if abs(contextMean-precomputed) > 1e-2:
+		raise RuntimeError("  Comparison against precomputed value: Fail")
 
 if __name__ == "__main__":
 

@@ -42,8 +42,6 @@ class MerraSource(NCSource):
         return NCSource.__add__(s, o, _shell=out)
 
     def contextAreaAtIndex(s, latI, lonI):
-        print("USING MERRA VERSION!")
-
         # Make and return a box
         lowLat = s.lats[latI]-0.25
         highLat = s.lats[latI]+0.25

@@ -38,6 +38,7 @@ def computeContextMean(source, contextArea, fillnan=True, pixelSize=None, srs=No
 
 
 # make a data handler
+Index = namedtuple("Index", "yi xi")
 class NCSource(object):
     def __init__(s, path, bounds=None, timeName="time", latName="lat", lonName="lon", dependent_coordinates=False, constantsPath=None, timeBounds=None):
         # set basic variables 

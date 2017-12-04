@@ -1,15 +1,12 @@
-from res.util import *
-from res.weather import windutil
+from ._util import *
+from ._simulator import *
+from ._powerCurveConvoluter import *
 from res.weather.sources import MerraSource
-from res.production import wind
 
-from collections import namedtuple
 from multiprocessing import Pool, cpu_count, Manager
 from multiprocessing.managers import BaseManager
-from datetime import datetime as dt
-from types import FunctionType
-from os.path import basename,splitext
 
+## Make data managers
 class WSManager(BaseManager): pass
 WSManager.register('MerraSource', MerraSource, exposed=["get", "loadWindSpeed"] )
 
@@ -88,7 +85,7 @@ def simulateLocations(locations, wsSource, lcSource, lcType, gwaSource, performa
 
 ##################################################################
 ## Distributed Wind production from a Merra wind source
-def windProductionFromMerraSource(placements, merraSource, turbine, lcSource, gwaSource, hubHeight, lcType="clc", extract="averageProduction", output=None, cfMin=0, jobs=1, batchSize=None, verbose=True, **kwargs):
+def WindWorkflow(placements, merraSource, turbine, lcSource, gwaSource, hubHeight, lcType="clc", extract="averageProduction", output=None, cfMin=0, jobs=1, batchSize=None, verbose=True, **kwargs):
     """
     Apply the wind simulation method developed by Severin Ryberg, Dilara Caglayan, and Sabrina Schmitt. This method 
     works as follows for a given simulation point:

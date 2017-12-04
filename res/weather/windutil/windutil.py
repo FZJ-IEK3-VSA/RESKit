@@ -101,7 +101,7 @@ def alphaFromLevels( lowWindSpeed, lowHeight, highWindSpeed, highHeight):
 
 def alphaFromGWA( gwaDir, loc, pairID=1, _structure="WS_%03dm_global_wgs84_mean_trimmed.tif"):
     ## Ensure location is okay
-    loc = Location.ensureLocation(loc)
+    loc = Location.ensureLocation(loc, forceAsArray=True)
 
     # Get the GWA averages
     GWA_files = [join(gwaDir, _structure%(50)),
@@ -132,7 +132,7 @@ def roughnessFromLevels(lowWindSpeed, lowHeight, highWindSpeed, highHeight):
 
 def roughnessFromGWA(gwaDir, loc, pairID=1, _structure="WS_%03dm_global_wgs84_mean_trimmed.tif"):
     ## Ensure location is okay
-    loc = Location.ensureLocation(loc)
+    loc = Location.ensureLocation(loc, forceAsArray=True)
 
     # Get the GWA averages
     GWA_files = [join(gwaDir, _structure%(50)),

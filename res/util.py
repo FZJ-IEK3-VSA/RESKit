@@ -5,18 +5,20 @@ from geokit import Location, Extent
 import ogr, osr
 import pandas as pd
 from collections import namedtuple, OrderedDict
+from scipy.interpolate import splrep, splev
+from scipy.stats import norm
+from glob import glob
+import re
+from os.path import join, dirname, basename, splitext
 import types
+from types import FunctionType
+from datetime import datetime as dt
 
 # making an error
 class ResError(Exception): pass # this just creates an error that we can use
 
 # Make some type-helpers
 LATLONSRS = gk.srs.EPSG4326
-Index = namedtuple("Index", "yi xi")
-
-def LatLonLocation(lat, lon): 
-    print("LatLonLocation is depreciated. Just use Location")
-    return Location(lon=lon, lat=lat)
 
 def extentFromFile(*args, **kwargs): return gk.Extent.fromVector(*args, **kwargs)
 BoundsNT = namedtuple("Bounds","lonMin latMin lonMax latMax")

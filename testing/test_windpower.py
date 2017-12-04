@@ -5,9 +5,9 @@ from os.path import join
 import geokit as gk
 import matplotlib.pyplot as plt
 
-from res.production.wind import *
+from res.windpower import *
 from res.weather import MerraSource, computeContextMean
-from res.util import ResError, LatLonLocation
+from res.util import ResError, Location
 
 ## make some constants
 windspeed = np.linspace(0,35,351)
@@ -107,9 +107,9 @@ def test_singleTurbineWorkflow():
     ms = MerraSource(join("data","merra-like.nc4"))
     ms.loadWindSpeed()
 
-    loc1 = LatLonLocation(lat=50.370680, lon=5.752684) 
-    loc2 = LatLonLocation(lat=50.52603, lon=6.10476) 
-    loc3 = LatLonLocation(lat=50.59082, lon=5.86483) 
+    loc1 = Location(lat=50.370680, lon=5.752684) 
+    loc2 = Location(lat=50.52603, lon=6.10476) 
+    loc3 = Location(lat=50.59082, lon=5.86483) 
 
     #### single turbine workflow
     # Get windspeeds
@@ -155,6 +155,6 @@ def test_singleTurbineWorkflow():
 
     
 if __name__ == '__main__':
-    #test_turbineReading()
-    #test_simulateTurbine()
+    test_turbineReading()
+    test_simulateTurbine()
     test_singleTurbineWorkflow()
