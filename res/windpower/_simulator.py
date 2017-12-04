@@ -2,8 +2,10 @@ from ._util import *
 
 ####################################################
 ## Simulation for a single turbine
-TurbinePerformance = namedtuple("TurbinPerformance", "production capacityFactor")
-def simulateTurbine( windspeed, performance=None, capacity=None, rotordiam=None, measuredHeight=None, roughness=None, alpha=None, hubHeight=None, loss=0.08):
+class TurbinePerformance(np.ndarray):
+    pass
+
+def simulateTurbine( windspeed, performance=None, capacity=None, rotordiam=None, measuredHeight=None, roughness=None, alpha=None, hubHeight=None, loss=0.08, **kwargs):
     """
     Perform simple windpower simulation for a single turbine. Can also project to a hubheight before
     simulating.
@@ -64,32 +66,38 @@ def simulateTurbine( windspeed, performance=None, capacity=None, rotordiam=None,
     # make sure we have numpy types or pandas types
     if isinstance(windspeed, pd.Series):
         pdindex = windspeed.index
-        pdcolumns = False
+        pdcolumns = None
     elif isinstance(windspeed, pd.DataFrame):
         pdindex = windspeed.index
         pdcolumns = windspeed.columns
     else:
-        pdindex = False
-        pdcolumns = False
+        pdindex = None
+        pdcolumns = None
+
 
     windspeed = np.array(windspeed)
+    try:
+        N = windspeed.shape[1]
+    except IndexError:
+        N = 1
 
     ############################################
     # Set performance
     if performance is None: # Assume a synthetic turbine is meant to be calculated
         if capacity is None or rotordiam is None:
             raise ResError("capacity and rotordiam must be given when generating a synthetic power curve")
-        performance = 
-    elif isinstance(performance,str): 
+        cutoutWindSpeed = kwargs.pop("cutout", None)
+        performance = SyntheticPowerCurve(capacity, rotordiam, cutoutWindSpeed)
+    elif isinstance(performance,str):
         if capacity is None: capacity = TurbineLibrary.ix[performance].Capacity
         performance = np.array(TurbineLibrary.ix[performance].Performance)
     elif isinstance(performance, list):
         performance = np.array(performance)
-        if capacity is None: capacity = performance[:,1].max()
+    
+    if capacity is None: capacity = performance[:,1].max()
 
     ############################################
     # Convert to wind speeds at hub height
-    #  * Follows the "log-wind profile" assumption
     if not (measuredHeight is None and hubHeight is None and roughness is None and alpha is None):
         # check inputs
         if measuredHeight is None or hubHeight is None:
@@ -103,23 +111,25 @@ def simulateTurbine( windspeed, performance=None, capacity=None, rotordiam=None,
                 if len(val)==N: val = np.array(val)
                 else: raise ResError(name + " does not have an appropriate length")
             elif isinstance(val, np.ndarray):
-                if val.shape == (N,): val = val
+                if val.shape == (1,) or val.shape == (N,): pass
                 elif val.shape == (N,1): val = val[:,0]
                 else: raise ResError(name + " does not have an appropriate shape")
-            elif isinstance(val, pd.Series) or isinstance(val, pd.DataFrame):
-                if val.shape == (N,): val = val
-                elif val.shape == (N,1): val = val.iloc[:,0]
-                else: raise ResError(name + " does not have an appropriate shape")
-
-                if isNumpy: val = val.values
-                else:
-                    if not val.index.equals(windspeed.columns):
-                        raise ResError("%s indexes do not match windspeed columns"%name)
+            elif isinstance(val, pd.Series):
+                try:
+                    val = val[pdcolumns]
+                except:
+                    raise ResError(name + " windspeed column names not found in " + name)
+                val = np.array(val)
+            elif isinstance(val, pd.DataFrame):
+                try:
+                    val = val[pdcolumns,1]
+                except:
+                    raise ResError(name + " windspeed column names not found in " + name)
+                val = np.array(val)
             elif val is None: val = None
             else: raise ResError(name+" is not appropriate. (must be a numeric type, or a one-dimensionsal set of numeric types (one for each windspeed time series)")
 
             return val
-
 
         measuredHeight = fixVal(measuredHeight,"measuredHeight")
         hubHeight      = fixVal(hubHeight,"hubHeight")
@@ -139,11 +149,8 @@ def simulateTurbine( windspeed, performance=None, capacity=None, rotordiam=None,
     ############################################
     # map wind speeds to power curve using a spline
     powerCurve = splrep(performance[:,0], performance[:,1])
-    if isNumpy:
-        powerGen = splev(windspeed, powerCurve)*(1-loss)
-    else:
-        powerGen = splev(windspeed.values, powerCurve)*(1-loss)
-
+    powerGen = splev(windspeed, powerCurve)*(1-loss)
+    
     # Do some "just in case" clean-up
     maxPower = performance[:,1].max() # use the max power as as ceiling
     cutin = performance[:,0].min() # use the first defined windspeed as the cut in
@@ -151,22 +158,26 @@ def simulateTurbine( windspeed, performance=None, capacity=None, rotordiam=None,
 
     powerGen[powerGen<0]=0 # floor to zero
     powerGen[powerGen>maxPower]=maxPower # ceiling at max
-    if isNumpy:
-        powerGen[windspeed<cutin]=0 # Drop power to zero before cutin
-        powerGen[windspeed>cutout]=0 # Drop power to zero after cutout
-    else:
-        powerGen[windspeed.values<cutin]=0 # Drop power to zero before cutin
-        powerGen[windspeed.values>cutout]=0 # Drop power to zero after cutout
+
+    powerGen[windspeed<cutin]=0 # Drop power to zero before cutin
+    powerGen[windspeed>cutout]=0 # Drop power to zero after cutout
     
     ############################################
     # make outputs
-    if not isNumpy:
-        if isSeries:
-            powerGen = pd.Series(powerGen, index=windspeed.index, name='production')
-        else:
-            powerGen = pd.DataFrame(powerGen, columns=windspeed.columns, index=windspeed.index)
-    capFactor = powerGen.mean(axis=0)/capacity
+    capacityFactor = powerGen.mean(axis=0)/capacity
 
+    if pdindex is None and pdcolumns is None:
+        try:
+            powerGen = pd.Series(powerGen)
+        except:
+            powerGen = pd.DataFrame(powerGen)
+            capacityFactor = pd.Series(capacityFactor, index=pdcolumns)
+    elif not pdindex is None and pdcolumns is None:
+        powerGen = pd.Series(powerGen, index=pdindex)
+    else:
+        powerGen = pd.DataFrame(powerGen,index=pdindex,columns=pdcolumns)
+        capacityFactor = pd.Series(capacityFactor, index=pdcolumns)
+        
+    powerGen.capacityFactor = capacityFactor
     # Done!
-    return TurbinePerformance(powerGen, capFactor)
-
+    return powerGen
