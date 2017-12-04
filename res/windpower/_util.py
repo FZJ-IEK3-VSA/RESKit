@@ -66,3 +66,22 @@ TurbineLibrary = pd.DataFrame([i.meta for i in tmp])
 TurbineLibrary.set_index('Model', inplace=True)
 TurbineLibrary['Performance'] = [x.profile for x in tmp]
 
+#### Create a synthetic turbine power curve
+synthTurbData = pd.read_csv(join(dirname(__file__),"..","..","data","synthetic_turbine_params.csv"), header=1)
+def SyntheticPowerCurve( capacity, rotordiam=140, cutout=25 ):
+    specCap = capacity*1000/(np.pi*rotordiam**2/4)
+    
+    # Create ws
+    ws = [0,]
+    ws.extend( np.exp(synthTurbData.const + synthTurbData.scale*np.log(specCap)) )
+    ws.append(cutout)
+    ws = np.array(ws)
+    
+    # create power curve
+    pc = [0,]
+    pc.extend( synthTurbData.perc_capacity/100*capacity )
+    pc.append(capacity)
+    pc = np.array(pc)
+    
+    # Done!
+    return ws, pc
