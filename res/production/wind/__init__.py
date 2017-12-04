@@ -1,4 +1,5 @@
 from .wind import (TurbineLibrary, 
+				   SyntheticPowerCurve,
 	               simulateTurbine, 
 	               singleTurbine, 
 	               windutil, 
