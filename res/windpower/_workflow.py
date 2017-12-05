@@ -6,18 +6,319 @@ from res.weather.sources import MerraSource
 from multiprocessing import Pool, cpu_count, Manager
 from multiprocessing.managers import BaseManager
 
-## Make data managers
+## Make helpers
 class WSManager(BaseManager): pass
 WSManager.register('MerraSource', MerraSource, exposed=["get", "loadWindSpeed"] )
 
+Result = namedtuple("Result", "c o")
+ncattr = {
+    "time":{"longname":"time","units":"minutes since 1900-01-01 00:00:00","timezone":"GMT"},
+    "locationID":{},
+    "lat":{"longname":"latitude","units":"degrees-N"},
+    "lon":{"longname":"longitude","units":"degrees-W"},
+    "capfac":{"longname":"capacity-factor","units":""},
+    "capacity":{"longname":"turbine-capacity","units":"kW"},
+    "rotordiam":{"longname":"turbine-rotor-diameter","units":"m"},
+    "hubHeight":{"longname":"turbine-hub-height","units":"m"},
+    "pcKey":{"longname":"power-curve-key","units":""},
+    "cutout":{"longname":"cutout-wind-speed","units":"m s-1"},
+}
+
+class PoollikeResult(object):
+    def __init__(s, obj): s.obj = obj
+    def get(s): return s.obj
+
+##############################
+## Extractor functions
+def production_combiner(r1, r2):
+    if r1 is None and not r2 is None: return r2
+    elif not r1 is None and r2 is None: return r1
+    else: 
+        output = pd.concat([r1.o, r2.o], axis=1)
+        count = r1.c+r2.c
+        return Result(count, output)
+
+def capacityFactor_combiner(r1, r2):
+    if r1 is None and not r2 is None: return r2
+    elif not r1 is None and r2 is None: return r1
+    else: 
+        output = pd.concat([r1.o, r2.o], axis=0)
+        count = r1.c+r2.c
+        return Result(count, output)
+
+def averageProduction_combiner(r1, r2):
+    if r1 is None and not r2 is None: return r2
+    elif not r1 is None and r2 is None: return r1
+    else: 
+        output = (r1.c*r1.o + r2.c*r2.o)/(r1.c+r2.c)
+        count = r1.c+r2.c
+        return Result(count, output)
+
+def ncFull_combiner(r1, r2):
+    if r1 is None and not r2 is None: return r2
+    elif not r1 is None and r2 is None: return r1
+    else: 
+        output = pd.Series([])
+        count = r1.c+r2.c
+        return Result(count, output)
+
+def production_finalizer(production, capacityFactor, **kwargs):
+    output = production
+    output.columns = [str(v) for v in output.columns]
+    count = capacityFactor.size        
+    return Result(count, output)
+
+def capacityFactor_finalizer(production, capacityFactor, **kwargs):
+    output = capacityFactor
+    output.index = [str(v) for v in output.index]
+    count = capacityFactor.size        
+    return Result(count, output)
+    
+def averageProduction_finalizer(production, capacityFactor, **kwargs):
+    output = production.mean(axis=1)
+    count = capacityFactor.size
+    return Result(count, output)
+
+def writeCSV(output, const, mainData, **kwargs):
+    fo = open(output,"w")
+    if len(const)>0:
+        fo.write("#### CONSTANTS ####\n")
+        for k,v in const.items(): fo.write("%s,%s\n"%(k,str(v)))
+
+    fo.write("#### RESULT-OUTPUT ####\n")
+    mainData.to_csv(fo, **kwargs)
+
+    fo.close()
+
+def output_function(func):
+    def wrapped(output, result, k):
+        name,ext = splitext(basename(output))
+        
+        const = OrderedDict()
+        const["TurbineCount"]=result.c
+        dim1 = OrderedDict()
+        dim2 = OrderedDict()
+        extras = OrderedDict()
+
+        if len(result.o.shape)==1:
+            N1 = result.o.shape[0]
+            N2 = -1
+        elif len(result.o.shape)==2:
+            N1,N2 = result.o.shape
+
+        for key,v in k.items(): 
+            if v is None: continue
+            if isinstance(v, str) or isinstance(v, int) or isinstance(v, float) or (isinstance(v, np.ndarray) and v.shape==(1,)):
+                const[key] = str(v)
+            elif (isinstance(v, np.ndarray)) and v.shape == (N1,):
+                dim1[key] = v
+            elif (isinstance(v, np.ndarray)) and v.shape == (N2,):
+                dim2[key] = v
+            else:
+                extras[key] = v
+
+        func(output, result.o, ext=ext, const=const, dim1=dim1, dim2=dim2, extras=extras)
+    return wrapped
+
+def ncFull_finalizer(s, production, capacityFactor, **kwargs):
+    ds.createDimension("time", len(result.index))
+    timeV = ds.createVariable("time", "u4", dimensions=("time",), contiguous=True)
+    timeV.units = "minutes since 1900-01-01 00:00:00"
+    timeV.timezone = "GMT"
+    times = result.index.tz_localize(None)
+    timeV[:] = nc.date2num(times.to_pydatetime(), timeV.units)
+
+    locs = gk.Location.ensureLocation(result.columns, forceAsArray=True)
+    ds.createDimension("locationID", len(locs))
+
+    lon = ds.createVariable("lon", "f", dimensions=("locationID",))
+    lon.setncatts({"longname":"latitude","units":"degrees-W"})
+    lon[:] = [l.lon for l in locs]
+
+    lat = ds.createVariable("lat", "f", dimensions=("locationID",))
+    lat.setncatts({"longname":"longitude","units":"degrees-N"})
+    lat[:] = [l.lat for l in locs]
+
+    production = ds.createVariable("production", "f", dimensions=("time","locationID",))
+    production.setncatts({"longname":"energy production","units":"kWh"})
+    production[:] = result.values
+    return func
+
+@output_function
+def production_output(output, result, ext, const, dim1, dim2, extras):
+    const["extract"]="production"
+    const["units"]="kWh"
+
+    if ext == ".csv":
+        writeCSV(output, const, result)
+
+    elif ext == ".nc" or ext=="nc4":
+        ds = nc.Dataset(output, mode="w")
+        
+        var = ds.createVariable("constants", "i4")
+        var.setncatts(const)
+        var[:] = len(const)
+
+        # Set time dimension variables
+        ds.createDimension("time", len(result.index))
+        timeV = ds.createVariable("time", "u4", dimensions=("time",), contiguous=True)
+        timeV.setncatts(ncattr["time"])
+        times = result.index.tz_localize(None)
+        timeV[:] = nc.date2num(times.to_pydatetime(), timeV.units)
+
+        for k,v in dim1.items():
+            var = ds.createVariable(k, v.dtype, dimensions=("time",))
+            var.setncatts(ncattr[k])
+            var[:] = v
+
+        # Set location dimension variables
+        locs = gk.Location.ensureLocation(result.columns, forceAsArray=True)
+        ds.createDimension("locationID", len(locs))
+
+        lon = ds.createVariable("lon", "f", dimensions=("locationID",))
+        lon.setncatts(ncattr["lon"])
+        lon[:] = [l.lon for l in locs]
+
+        lat = ds.createVariable("lat", "f", dimensions=("locationID",))
+        lat.setncatts(ncattr["lat"])
+        lat[:] = [l.lat for l in locs]
+
+        for k,v in dim2.items():
+            var = ds.createVariable(k, v.dtype, dimensions=("locationID",))
+            var.setncatts(ncattr[k])
+            var[:] = v
+
+        # Write main data
+        production = ds.createVariable("production", "f", dimensions=("time","locationID",))
+        production.setncatts({"longname":"energy production","units":"kWh"})
+        production[:] = result.values
+
+        ds.close()
+    else:
+        raise RuntimeError("Extensions unknown or unavailable for this extraction")
+
+@output_function
+def capacityFactor_output(output, result, ext, const, dim1, dim2, extras):
+    const["extract"]="capacityFactor"
+    const["units"]="\% of max capacity"
+
+    locs = gk.Location.ensureLocation(result.index, forceAsArray=True)
+    
+    finalResult = OrderedDict()
+    finalResult["lat"] = [l.lat for l in locs]
+    finalResult["lon"] = [l.lon for l in locs]
+    finalResult["capfac"] = result.values
+    for k,v in dim1.items():
+        finalResult[k]=v
+
+    # Do writing
+    if ext == ".shp":
+        gk.vector.createVector([l.geom for l in locs], fieldVals=finalResult, output=output)
+
+    elif ext == ".csv":
+        writeCSV(output, const, pd.DataFrame(finalResult), index=False)
+
+    elif ext == ".nc" or ext=="nc4":
+        ds = nc.Dataset(output, mode="w")
+        
+        var = ds.createVariable("constants", "i4")
+        var.setncatts(const)
+        var[:] = len(const)
+
+        locs = gk.Location.ensureLocation(result.index, forceAsArray=True)
+        ds.createDimension("locationID", len(locs))
+
+        for k,v in dim1.items():
+            var = ds.createVariable(k, v.dtype, dimensions=("time",))
+            var.setncatts(ncattr[k])
+            var[:] = v
+
+        ds.close()
+    else:
+        raise RuntimeError("Extensions unknown or unavailable for this extraction")
+
+@output_function
+def averageProduction_output(output, result, ext, const, dim1, dim2, extras):
+    const["extract"]="averageProduction"
+    const["units"]="kWh"
+
+    if ext == ".csv":
+        writeCSV(output, const, result)
+
+    elif ext==".nc" or ext==".nc4":
+        ds = nc.Dataset(output, mode="w")
+
+        var = ds.createVariable("constants", "i4")
+        var.setncatts(const)
+        var[:] = len(const)
+
+        ds.createDimension("time", len(result.index))
+        timeV = ds.createVariable("time", "u4", dimensions=("time",), contiguous=True)
+        timeV.setncatts(ncattr["time"])
+        times = result.index.tz_localize(None)
+
+        timeV[:] = nc.date2num(times.to_pydatetime(), timeV.units)
+
+        production = ds.createVariable("avgProduction", "f", dimensions=("time",))
+        production.setncatts({"longname":"average energy production per turbine","units":"kWh"})
+        production[:] = result.values
+
+        ds.close()
+
+class Extractor(object):
+    def __init__(s, method, **kwargs):
+        s.method = method
+        if method=="p" or method == "production":
+            s._combine = "production_combiner"
+            s._finalize = "production_finalizer"
+            s._output = "production_output"
+        elif method=="cf" or method == "capacityFactor":
+            s._combine = "capacityFactor_combiner"
+            s._finalize = "capacityFactor_finalizer"
+            s._output = "capacityFactor_output"
+        elif method=="ap" or method == "averageProduction":
+            s._combine = "averageProduction_combiner"
+            s._finalize = "averageProduction_finalizer"
+            s._output = "averageProduction_output"
+        elif method=="nc" or method == "ncFull":
+            s._combine = "ncFull_combiner"
+            s._finalize = "ncFull_finalizer"
+            s._output = "ncFull_output"
+        else:
+            raise ResError('''Don't know extraction type. Try using... 
+                'production' (or just 'p')
+                'capacityFactor' (or just 'cf')
+                'averageProduction' ('wa')"
+                ''')
+
+    def combine(s, *a,**k): return globals()[s._combine](*a,**k)
+    def finalize(s, *a,**k): return globals()[s._finalize](*a,**k)
+    def output(s, *a,**k): return globals()[s._output](*a,**k)
+
 ##################################################################
-## Make some typical simulator functions
-Result = namedtuple("Result", "count output")
-def simulateLocations(locations, wsSource, lcSource, lcType, gwaSource, performance, capacity, hubHeight, extract, cfMin=0, pickleable=False, verbose=True, **kwargs):
+## Make a typical simulator function
+def simulateLocations(**k):
+    # Unpack inputs
+    pickleable = k.pop('pickleable')
+    hubHeight = k.pop('hubHeight')
+    lctype = k.pop('lctype')
+    pcKey = k.pop('pcKey')
+    capacity = k.pop('capacity')
+    landcover = k.pop('landcover')
+    locations = k.pop('locations')
+    rotordiam = k.pop('rotordiam')
+    cutout = k.pop('cutout')
+    gwa = k.pop('gwa')
+    minCF = k.pop("minCF")
+    wsSource = k.pop('wsSource')
+    powerCurve = k.pop('powerCurve')
+    verbose = k.pop('verbose')
+    extractor = k.pop('extractor')
+                            
     if verbose: 
         startTime = dt.now()
-        gid = kwargs["gid"]
-        globalStart = kwargs.get("globalStart", startTime)
+        gid = k["gid"]
+        globalStart = k.get("globalStart", startTime)
         print(" %s: Starting at +%.2fs"%(str(gid), (startTime-globalStart).total_seconds()))
     
     # read wind speeds
@@ -27,14 +328,12 @@ def simulateLocations(locations, wsSource, lcSource, lcType, gwaSource, performa
         if verbose: print( " %s: No locations found"%(str(gid)))
         return None
 
-    if pickleable:
-        Location.makePickleable(locations)
+    if pickleable: Location.makePickleable(locations)
     ws = wsSource.get("windspeed", locations, forceDataFrame=True)
 
     # spatially adjust windspeeds
-    if not kwargs.get("skipLRA",False):
-        ws = windutil.adjustLraToGwa( ws, locations, longRunAverage=MerraSource.LONG_RUN_AVERAGE_50M_SOURCE, gwa=gwaSource)
-    #ws = windutil.adjustContextMeanToGwa( ws, locations, contextMean=MerraSource.GWA50_CONTEXT_MEAN_SOURCE , gwa=gwaSource)
+    if not k.get("skipLRA",False):
+        ws = windutil.adjustLraToGwa( ws, locations, longRunAverage=MerraSource.LONG_RUN_AVERAGE_50M_SOURCE, gwa=gwa)
 
     # apply wind speed corrections to account (somewhat) for local effects not captured on the MERRA context
     factors = (1-0.3)*(1-np.exp(-0.2*ws))+0.3 # dampens lower wind speeds
@@ -42,17 +341,31 @@ def simulateLocations(locations, wsSource, lcSource, lcType, gwaSource, performa
     factors = None
 
     # Get roughnesses from Land Cover
-    if lcType == "clc":
-        winRange = int(kwargs.get("lcRange",0))
-        roughnesses = windutil.roughnessFromCLC(lcSource, locations, winRange=winRange)
+    if lctype == "clc":
+        winRange = int(k.get("lcRange",0))
+        roughnesses = windutil.roughnessFromCLC(landcover, locations, winRange=winRange)
     else:
-        lcVals = gk.raster.extractValues(lcSource, locations).data
-        roughnesses = windutil.roughnessFromLandCover(lcVals, lcType)
+        lcVals = gk.raster.extractValues(landcover, locations).data
+        roughnesses = windutil.roughnessFromLandCover(lcVals, lctype)
+
+    # Project WS to hub height
+    ws = windutil.projectByLogLaw(ws, measuredHeight=50, targetHeight=hubHeight, roughness=roughnesses)
 
     # do simulations
-    res = wind.simulateTurbine(ws, performance=performance, capacity=capacity, measuredHeight=50, hubHeight=hubHeight, roughness=roughnesses, loss=0.04)
-    capacityFactor = res.capacityFactor
-    production = res.production
+    loss = 0.04
+    if pcKey is None:
+        capacityGeneration = simulateTurbine(ws, powerCurve=powerCurve, loss=loss)
+    else:
+        capacityGeneration = []
+        for key in np.unique(pcKey):
+            tmp = simulateTurbine(ws.iloc[:,pcKey==key], powerCurve[key], loss=loss)
+            capacityGeneration.append( tmp )
+
+        capacityGeneration = pd.concat(capacityGeneration)
+        capacityGeneration = capacityGeneration[ws.columns]
+
+    capacityFactor = capacityGeneration.mean(axis=0)
+    production = capacityGeneration*capacity
 
     if verbose:
         endTime = dt.now()
@@ -61,31 +374,18 @@ def simulateLocations(locations, wsSource, lcSource, lcType, gwaSource, performa
         print(" %s: Finished %d turbines +%.2fs (%.2f turbines/sec)"%(str(gid), len(locations), globalSecs, len(locations)/simSecs))
     
     # Apply Capacity Factor Filter
-    sel = capacityFactor >= cfMin
-    if not sel.all():
+    if minCF > 0:
+        sel = capacityFactor >= minCF
         capacityFactor = capacityFactor[sel]
         production = production.ix[:,sel]
 
     # Done!
-    if extract=="p" or extract == "production":
-        output = production
-        output.columns = [str(v) for v in output.columns]
-
-    elif extract=="cf" or extract == "capacityFactor":
-        output = capacityFactor
-        output.index = [str(v) for v in output.index]
-
-    elif extract=="ap" or extract == "averageProduction":
-        output = production.mean(axis=1)
-        #output.columns = [str(v) for v in output.columns]
-
-    else:
-        raise ResError("Don't know extraction type. Try using 'production' (or just 'p'), 'capacityFactor' (or just 'cf'), or 'averageProduction' ('ap')")
-    return Result(count=sel.sum(), output=output)
+    output = extractor.finalize(production, capacityFactor)
+    return output
 
 ##################################################################
 ## Distributed Wind production from a Merra wind source
-def WindWorkflow(placements, merraSource, turbine, lcSource, gwaSource, hubHeight, lcType="clc", extract="averageProduction", output=None, cfMin=0, jobs=1, batchSize=None, verbose=True, **kwargs):
+def WindWorkflow(placements, merra, landcover, gwa, hubHeight=None, powerCurve=None, capacity=None, rotordiam=None, cutout=None, lctype="clc", extract="averageProduction", output=None, minCF=0, jobs=1, batchSize=None, verbose=True, **kwargs):
     """
     Apply the wind simulation method developed by Severin Ryberg, Dilara Caglayan, and Sabrina Schmitt. This method 
     works as follows for a given simulation point:
@@ -107,16 +407,16 @@ def WindWorkflow(placements, merraSource, turbine, lcSource, gwaSource, hubHeigh
             * MUST have the fields 'U50M' and 'V50M'
 
         turbine: The turbine to simulate
-            str : An indicator from the TurbineLibrary (res.production.wind.TurbineLibrary)
+            str : An indicator from the TurbineLibrary (res.windpower.TurbineLibrary)
             [(float, float), ...] : An explicit performance curve given as (windspeed, power output) pairs
 
-        lcSource - str : The path to the land cover source
+        landcover - str : The path to the land cover source
 
-        gwaSource - str : The path to the global wind atlas mean windspeeds (at 50 meters)
+        gwa - str : The path to the global wind atlas mean windspeeds (at 50 meters)
 
         hubHeight - float : The hub height to simulate at
 
-        lcType - str: The land cover type to use
+        lctype - str: The land cover type to use
             * Options are "clc", "globCover", and "modis"
 
         extract - str: Determines the extraction method and the form of the returned information
@@ -135,7 +435,6 @@ def WindWorkflow(placements, merraSource, turbine, lcSource, gwaSource, hubHeigh
 
         verbose - bool : False means silent, True means noisy
     """
-
     if verbose: 
         startTime = dt.now()
         print("Starting at: %s"%str(startTime))
@@ -143,29 +442,42 @@ def WindWorkflow(placements, merraSource, turbine, lcSource, gwaSource, hubHeigh
     if jobs==1: # use only a single process
         cpus = 1
         pool = None
-        useManager = False
+        useMulti = False
     elif jobs > 1: # uses multiple processes (equal to jobs)
         cpus = jobs
-        pool = Pool(cpus)
-        useManager = True
+        useMulti = True
     else: # uses multiple processes (equal to the number of available processors - jobs)
         cpus = cpu_count()-jobs
         if cpus <=0: raise ResError("Bad jobs count")
-        pool = Pool( cpus )
-        useManager = True
+        useMulti = True
     
+    extractor = Extractor(extract)
+
     ### Determine the total extent which will be simulated (also make sure the placements input is okay)
     if verbose: print("Arranging placements at +%.2fs"%((dt.now()-startTime).total_seconds()))
     if isinstance(placements, str): # placements is a path to a point-type shapefile
-        placements = np.array([ (placement.GetX(), placement.GetY()) for placement in gk.vector.extractFeatures(placements, onlyGeom=True, outputSRS='latlon')])
+        placements = gk.vector.extractToDataFrame(placements, outputSRS='latlon')
+        placements["lat"] = placements.geom.apply(lambda x: x.GetY())
+        placements["lon"] = placements.geom.apply(lambda x: x.GetX())
+    
+    if isinstance(placements, pd.DataFrame):
+        if "turbine" in placements.columns and powerCurve is None: powerCurve = placements.turbine.values
+        if "hubHeight" in placements.columns and hubHeight is None: hubHeight = placements.hubHeight.values
+        if "capacity" in placements.columns and capacity is None: capacity = placements.capacity.values
+        if "rotordiam" in placements.columns and rotordiam is None: rotordiam = placements.rotordiam.values
+        if "cutout" in placements.columns and cutout is None: cutout = placements.cutout.values
+
+        placements = placements[["lon","lat"]].values
 
     placements = Location.ensureLocation(placements, forceAsArray=True)
 
+    hubHeight = None if hubHeight is None else np.array(hubHeight)
+    capacity = None if capacity is None else np.array(capacity)
+    rotordiam = None if rotordiam is None else np.array(rotordiam)
+    cutout = None if cutout is None else np.array(cutout)
+
     allLats = np.array([p.lat for p in placements])
     allLons = np.array([p.lon for p in placements])
-
-    #allLons = placements[:,0] 
-    #allLats = placements[:,1]
 
     latMin = allLats.min()
     latMax = allLats.max()
@@ -175,257 +487,188 @@ def WindWorkflow(placements, merraSource, turbine, lcSource, gwaSource, hubHeigh
     if verbose: print("Pre-loading windspeeds at +%.2fs"%((dt.now()-startTime).total_seconds()))
     totalExtent = gk.Extent((lonMin,latMin,lonMax,latMax,), srs=LATLONSRS)
     
-
     # Setup manager if needed
-    if useManager:
+    if useMulti:
         manager = WSManager()
         manager.start()
-        wsSource = manager.MerraSource(path=merraSource, bounds=Bounds(*totalExtent.pad(1).xyXY))
+        wsSource = manager.MerraSource(path=merra, bounds=Bounds(*totalExtent.pad(1).xyXY))
     else:
-        wsSource = MerraSource(path=merraSource, bounds=totalExtent.pad(1))
+        wsSource = MerraSource(path=merra, bounds=totalExtent.pad(1))
 
     wsSource.loadWindSpeed(height=50)
 
-    #del wsSource.data["winddir"]
-    #del wsSource.data["U50M"]
-    #del wsSource.data["V50M"]
+    ### Convolute turbine
+    if verbose: print("Convolving power curves at +%.2fs"%( (dt.now()-startTime).total_seconds()) )
+    
+    pcKey = None
+    if powerCurve is None: # no turbine given, so a synthetic turbine will need to be constructed
+        if capacity is None and rotordiam is None:
+            raise RuntimeError("powerCurve, capacity, and rotordiam cannot all be None")
+
+        # Compute specific capacity
+        #  - Round to the nearest 10 to save memory and time for convolution
+        specificCapacity = np.array(capacity*1000/(np.pi*rotordiam**2/4))
+        specificCapacity = np.round(specificCapacity, -1).astype(int)
+
+        if specificCapacity.size == 1:
+            powerCurve = SyntheticPowerCurve( specificCapacity=specificCapacity, cutout=cutout)
+            pcKey = "%d:%d"%(specificCapacity,25 if cutout is None else cutout)
+        else:
+            powerCurve = dict()
+            pcKey = []
+            if isinstance(cutout, int) or isinstance(cutout, float) or cutout is None: 
+                cutout = [cutout]*specificCapacity.size
+            for sp,co in zip(specificCapacity,cutout):
+                key = "%d:%d"%(sp,25 if co is None else co)
+                pcKey.append( key )
+                if not key in powerCurve.keys():
+                    powerCurve[key] = SyntheticPowerCurve( sp, co)
+
+    elif isinstance(powerCurve, str):
+        pcKey = powerCurve
+        capacity = TurbineLibrary.ix[powerCurve].Capacity
+        powerCurve = TurbineLibrary.ix[powerCurve].PowerCurve
+
+    else: # powerCurve is either a (ws,power) list or is a list of turbine names
+        if isinstance(powerCurve[0],str): # assume entire list is a list of names
+            pcKey = powerCurve
+            powerCurve = dict()
+            capacity = []
+
+            for name in pcKey:
+                capacity.append(TurbineLibrary.ix[name].Capacity)
+                if not name in powerCurve.keys():
+                    powerCurve[name] = TurbineLibrary.ix[name].PowerCurve
+        
+        else: # powerCurve is a single power curve definition
+            tmp = np.array(powerCurve)
+            powerCurve = PowerCurve(tmp[:,0], tmp[:,1])
+            pcKey = None
+
+        turbine = None # remove turbine so it doesn't show up in output
+    pcKey = pcKey if pcKey is None or isinstance(pcKey, str) else np.array(pcKey)
+
+    if isinstance(powerCurve, dict):
+        if verbose: 
+            print("   Convolving %d power curves..."%(len(powerCurve)))
+
+        if useMulti:
+            pool = Pool(cpus)
+            res = []
+        
+            for k,v in powerCurve.items():
+                kwargs = dict(stdScaling=0.1, stdBase=0.6, powerCurve=v)
+                res.append((k,pool.apply_async(convolutePowerCurveByGuassian, (), kwargs)))
+
+            for k,r in res:
+                powerCurve[k] = r.get()
+            
+            pool.close()
+            pool.join()
+            pool = None
+        else:
+            powerCurve[k] = convolutePowerCurveByGuassian(**k)
+    else:
+        powerCurve = convolutePowerCurveByGuassian(stdScaling=0.1, stdBase=0.6, powerCurve=powerCurve )
+
+    ### Do simulations
+    # Check inputs
+    if hubHeight is None:
+        raise RuntimeError("hubHeight has not been provided")
 
     ### initialize simulations
     if verbose: print("Initializing simulations at +%.2fs"%((dt.now()-startTime).total_seconds()))
-
+    if useMulti: pool = Pool(cpus)
     simGroups = []
+    I = np.arange(placements.shape[0])
     if batchSize is None and cpus==1: # do everything in one big batch
-        simGroups.append( placements )
-    elif batchSize is None and cpus>1: # Split evenly to all cpus
-        for simPlacements in np.array_split(placements, cpus):
+        simGroups.append( I )
+    elif cpus>1 and (batchSize is None or placements.shape[0] < batchSize): # Split evenly to all cpus
+        for simPlacements in np.array_split( I, cpus):
             simGroups.append( simPlacements )
-
     else: # split the area in to equal size groups, and simulate one group at a time
-        batchSize = batchSize//cpus
-        for simPlacements in np.array_split(placements, len(placements)//batchSize+1):
-            tmp = []
-            #for i in simPlacements:
-            #    tmp.append( (i[0], i[1]) )
-            #simGroups.append( tmp )
-
+        for simPlacements in np.array_split(I, len(placements)//(batchSize/cpus)):
             simGroups.append( simPlacements )
 
-    ### Set up combiner 
-    if extract=="p" or extract == "production":
-        def combiner(result, newResult):
-            if result is None: return newResult
-            else: return Result(count=result.count+newResult.count,
-                                output=pd.concat([result.output, newResult.output], axis=1))
-
-    elif extract=="cf" or extract == "capacityFactor":
-        def combiner(result, newResult):
-            if result is None: return newResult
-            else: return Result(count=result.count+newResult.count,
-                                output=pd.concat([result.output, newResult.output], axis=0))
-        
-    elif extract=="ap" or extract == "averageProduction":
-        def combiner(result, newResult):
-            if result is None: return newResult
-            else: 
-                return Result( count=result.count+newResult.count,
-                               output=(result.count*result.output + newResult.count*newResult.output)/(result.count+newResult.count))
-    else:
-        raise ResError('''Don't know extraction type. Try using... 
-            'production' (or just 'p')
-            'capacityFactor' (or just 'cf')
-            'averageProduction' ('wa')"
-            ''')
-
-    ### Convolute turbine
-    if verbose: print("Convolving power curve at +%.2fs"%( (dt.now()-startTime).total_seconds()) )
-
-    if isinstance(turbine, str):
-        performance = np.array(wind.TurbineLibrary.ix[turbine].Performance)
-        capacity = wind.TurbineLibrary.ix[turbine].Capacity
-    else:
-        performance = np.array(turbine)
-        capacity = performance[:,1].max()
-
-    performance = wind.convolutePowerCurveByGuassian(stdScaling=0.1, stdBase=0.6, performance=performance )
-
-    ### Do simulations
-    totalC = 0
     if verbose: 
         print("Simulating %d groups at +%.2fs"%(len(simGroups), (dt.now()-startTime).total_seconds() ))
 
-    # Construct arguments
-    staticKwargs = OrderedDict()
-    staticKwargs["wsSource"]=wsSource
-    staticKwargs["lcSource"]=lcSource
-    staticKwargs["lcType"]=lcType
+    results = []
+    if useMulti: Location.makePickleable(placements)
+    for i,sel in enumerate(simGroups):
+        # Construct arguments for each submission
+        inputs = {}
+        inputs["wsSource"]=wsSource
+        inputs["landcover"]=landcover
+        inputs["lctype"]=lctype
+        inputs["gwa"]=gwa
+        inputs["minCF"]=minCF
+        inputs["verbose"]=verbose
+        inputs["extractor"]=extractor
+        inputs["powerCurve"] = powerCurve
+        inputs["pcKey"] = None if (pcKey is None or isinstance(pcKey, str)) else pcKey[sel]
 
-    staticKwargs["gwaSource"]=gwaSource
-    staticKwargs["performance"]=performance
-    staticKwargs["capacity"]=capacity
-    staticKwargs["hubHeight"]=hubHeight
+        def add(val,name):
+            if isinstance(val , np.ndarray) and val.size>1: inputs[name] = val[sel]
+            else: inputs[name] = val
 
-    staticKwargs["extract"]=extract
-    staticKwargs["cfMin"]=cfMin
-    staticKwargs["verbose"]=verbose
+        add(placements, "locations")
+        add(capacity, "capacity")
+        add(hubHeight, "hubHeight")
+        add(rotordiam, "rotordiam")
+        add(cutout, "cutout")
+        
+        if verbose:
+            inputs["globalStart"]=startTime
+            inputs["gid"]=i
+        
+        if useMulti:
+            inputs["pickleable"]=True
+            results.append( pool.apply_async( simulateLocations, (), inputs ))
+        else:    
+            inputs["pickleable"]=False
+            results.append( PoollikeResult(simulateLocations(**inputs)) )
 
-    staticKwargs.update(kwargs)
-
-    result = None
-    if jobs==1:
-        for i,locs in enumerate(simGroups):
-
-            if verbose:
-                staticKwargs["globalStart"]=startTime
-                staticKwargs["gid"]=i
-            
-            staticKwargs["pickleable"]=False
-            staticKwargs["locations"] = locs
-
-            tmp = simulateLocations(**staticKwargs)
-
-            if tmp is None:continue
-            totalC+=tmp.count
-            result = combiner(result, tmp)
-    else:
-        results_ = []
-        # submit all jobs to the queue
-        for i,locs in enumerate(simGroups):
-
-            if verbose:
-                staticKwargs["globalStart"]=startTime
-                staticKwargs["gid"]=i
-            
-            staticKwargs["pickleable"]=True
-
-            Location.makePickleable(locs)
-            staticKwargs["locations"] = locs
-
-            results_.append( 
-                pool.apply_async( simulateLocations, (), staticKwargs.copy() )
-            )
-
-        # Read each result as it becomes available
-        for r in results_:
-            tmp = r.get()
-            if tmp is None: continue
-            totalC+=tmp.count
-            result = combiner(result, tmp)
-
+    # Read each result as it becomes available
+    finalResult = None
+    for r in results:
+        tmp = r.get()
+        if tmp is None: continue
+        finalResult = extractor.combine(finalResult, r.get())
+       
+    if useMulti:
         # Do some cleanup
         pool.close()
         pool.join()
 
-
     if verbose:
         endTime = dt.now()
         totalSecs = (endTime - startTime).total_seconds()
-        print("Finished simulating %d turbines (%d surviving) at +%.2fs (%.2f turbines/sec)"%(len(placements), totalC, totalSecs, len(placements)/totalSecs))
-
+        print("Finished simulating %d turbines (%d surviving) at +%.2fs (%.2f turbines/sec)"%(len(placements), finalResult.c, totalSecs, len(placements)/totalSecs))
 
     ### Give the results
     if not output is None:
-        name,ext = splitext(basename(output))
-        if ext == ".shp": # output should be a shape file
-            if not (extract == "cf" or extract == "capacityFactor"):
-                raise RuntimeError("Shapefile output only accessible when extract is 'capacityFactor'")
-            
-            locs = gk.Location.ensureLocation(result.output.index, forceAsArray=True)
+        if verbose:
+            endTime = dt.now()
+            totalSecs = (endTime - startTime).total_seconds()
+            print("Writing output at +%.2fs"%totalSecs)
+        outputVars = OrderedDict()
+        outputVars["lctype"] = lctype
+        outputVars["minCF"] = minCF
+        outputVars["pcKey"] = pcKey
+        outputVars["hubHeight"] = hubHeight
+        outputVars["capacity"] = capacity
+        outputVars["rotordiam"] = rotordiam
+        outputVars["cutout"] = cutout
+        
+        extractor.output(output, finalResult, outputVars)
 
-            gk.vector.createVector([l.geom for l in locs], fieldVals={"capfac":result.output}, output=output)
-        elif ext == ".csv":
-            with open(output,"w") as fo:
-                fo.write("merra_file:%s\n"%merraSource)
-                fo.write("turbine:%s\n"%str(turbine))
-                fo.write("capacity:%s\n"%str(capacity))
-                fo.write("count:%d\n"%result.count )
-
-                if extract == 'cf' or extract == 'capacityFactor':
-                    fo.write("extract:%s\n"%"capacityFactor" )
-                    fo.write("units:%s\n"%"\% of max capacity")
-
-                    fo.write("location,capfac\n")
-                    result.output.to_csv(fo)
-
-                elif extract == 'ap' or extract == 'averageProduction':
-                    fo.write("extract:%s\n"%"averageProduction" )
-                    fo.write("units:%s\n"%"kWh")
-
-                    fo.write("time,production\n")
-                    result.output.to_csv(fo)
-
-                elif extract == 'p' or extract == 'production':
-                    fo.write("extract:%s\n"%"production" )
-                    fo.write("units:%s\n"%"kWh")
-
-                    result.output.to_csv(fo)
-
-        elif ext == ".nc" or ext=="nc4":
-            ds = nc.Dataset(output, mode="w")
-
-            meta = OrderedDict()
-            meta["merra_file"] = merraSource
-            meta["turbine"] = str(turbine)
-            meta["capacity"] = int(capacity)
-            meta["count"] = int(result.count)
-            meta["cfMin"] = cfMin
-            ds.setncatts(meta)
-
-            if extract == 'cf' or extract == 'capacityFactor':
-                locs = gk.Location.ensureLocation(result.output.index, forceAsArray=True)
-                ds.createDimension("locationID", len(locs))
-
-                lon = ds.createVariable("lon", "f", dimensions=("locationID",))
-                lon.setncatts({"longname":"latitude","units":"degrees-W"})
-                lon[:] = [l.lon for l in locs]
-
-                lat = ds.createVariable("lat", "f", dimensions=("locationID",))
-                lat.setncatts({"longname":"longitude","units":"degrees-N"})
-                lat[:] = [l.lat for l in locs]
-
-                capfac = ds.createVariable("capfac", "f", dimensions=("locationID",))
-                capfac.setncatts({"longname":"capacity-factor","units":""})
-                capfac[:] = result.output.values
-
-            elif extract == 'ap' or extract == 'averageProduction':
-                ds.createDimension("time", len(result.output.index))
-                timeV = ds.createVariable("time", "u4", dimensions=("time",), contiguous=True)
-                timeV.units = "minutes since 1900-01-01 00:00:00"
-                timeV.timezone = "GMT"
-                times = result.output.index.tz_localize(None)
-
-                timeV[:] = nc.date2num(times.to_pydatetime(), timeV.units)
-
-                production = ds.createVariable("avgProduction", "f", dimensions=("time",))
-                production.setncatts({"longname":"average energy production per turbine","units":"kWh"})
-                production[:] = result.output.values
-
-            elif extract == 'p' or extract == 'production':
-                ds.createDimension("time", len(result.output.index))
-                timeV = ds.createVariable("time", "u4", dimensions=("time",), contiguous=True)
-                timeV.units = "minutes since 1900-01-01 00:00:00"
-                timeV.timezone = "GMT"
-                times = result.output.index.tz_localize(None)
-                timeV[:] = nc.date2num(times.to_pydatetime(), timeV.units)
-
-                locs = gk.Location.ensureLocation(result.output.columns, forceAsArray=True)
-                ds.createDimension("locationID", len(locs))
-
-                lon = ds.createVariable("lon", "f", dimensions=("locationID",))
-                lon.setncatts({"longname":"latitude","units":"degrees-W"})
-                lon[:] = [l.lon for l in locs]
-
-                lat = ds.createVariable("lat", "f", dimensions=("locationID",))
-                lat.setncatts({"longname":"longitude","units":"degrees-N"})
-                lat[:] = [l.lat for l in locs]
-
-                production = ds.createVariable("production", "f", dimensions=("time","locationID",))
-                production.setncatts({"longname":"energy production","units":"kWh"})
-                production[:] = result.output.values
-
-            ds.close()
-
-        else:
-            raise RuntimeError("File type '%s' not understood"%ext)
-
-    return result
+    #### Formulate result
+    if verbose:
+        endTime = dt.now()
+        totalSecs = (endTime - startTime).total_seconds()
+        print("Done at +%.2fs!"%totalSecs)
+    outputResult = finalResult.o
+    outputResult.TurbineCount = finalResult.c
+    return outputResult
     

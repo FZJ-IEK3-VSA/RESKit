@@ -2,10 +2,7 @@ from ._util import *
 
 ####################################################
 ## Simulation for a single turbine
-class TurbinePerformance(np.ndarray):
-    pass
-
-def simulateTurbine( windspeed, performance=None, capacity=None, rotordiam=None, measuredHeight=None, roughness=None, alpha=None, hubHeight=None, loss=0.08, **kwargs):
+def simulateTurbine( windspeed, powerCurve=None, capacity=None, rotordiam=None, measuredHeight=None, roughness=None, alpha=None, hubHeight=None, loss=0.08, **kwargs):
     """
     Perform simple windpower simulation for a single turbine. Can also project to a hubheight before
     simulating.
@@ -15,17 +12,17 @@ def simulateTurbine( windspeed, performance=None, capacity=None, rotordiam=None,
           alpha must be provided
             - weather.windutil.roughnessFromCLC, .roughnessFromGWA, and .alphaFromGWA can help 
               provide these factors
-        * If no projection factors are given, windspeeds are assumed to already be at teh desired 
+        * If no projection factors are given, windspeeds are assumed to already be at the desired 
           hub height
     Inputs:
         windspeed - np-array, list of np-arrays, pd-Series, or pd-DataFrame
             * Time series of measured wind speeds
 
-        performance 
+        powerCurve 
             [ (float, float), ... ]
                 * An array of "wind speed" to "power output" pairs, as two-member tuples, maping the 
                   power profile of the turbine to be simulated
-                * The performance pairs must contain the boundary benhavior:
+                * The powerCurve pairs must contain the boundary benhavior:
                     - The first (after sorting by wind speed) pair will be used as the 
                       "cut in"
                     - The last (after sorting) pair will be used as the "cut out" 
@@ -74,7 +71,6 @@ def simulateTurbine( windspeed, performance=None, capacity=None, rotordiam=None,
         pdindex = None
         pdcolumns = None
 
-
     windspeed = np.array(windspeed)
     try:
         N = windspeed.shape[1]
@@ -83,19 +79,18 @@ def simulateTurbine( windspeed, performance=None, capacity=None, rotordiam=None,
 
     ############################################
     # Set performance
-    if performance is None: # Assume a synthetic turbine is meant to be calculated
+    if powerCurve is None: # Assume a synthetic turbine is meant to be calculated
         if capacity is None or rotordiam is None:
             raise ResError("capacity and rotordiam must be given when generating a synthetic power curve")
         cutoutWindSpeed = kwargs.pop("cutout", None)
-        performance = SyntheticPowerCurve(capacity, rotordiam, cutoutWindSpeed)
-    elif isinstance(performance,str):
-        if capacity is None: capacity = TurbineLibrary.ix[performance].Capacity
-        performance = np.array(TurbineLibrary.ix[performance].Performance)
-    elif isinstance(performance, list):
-        performance = np.array(performance)
+        powerCurve = SyntheticPowerCurve(capacity, rotordiam, cutoutWindSpeed)
+    elif isinstance(powerCurve,str): # Load a turbine from the TurbineLibrary
+        if capacity is None: capacity = TurbineLibrary.ix[powerCurve].Capacity
+        powerCurve = TurbineLibrary.ix[powerCurve].PowerCurve
+    elif isinstance(powerCurve, list):
+        tmp = np.array(powerCurve)
+        powerCurve = PowerCurve(tmp[:,0], tmp[:,1])
     
-    if capacity is None: capacity = performance[:,1].max()
-
     ############################################
     # Convert to wind speeds at hub height
     if not (measuredHeight is None and hubHeight is None and roughness is None and alpha is None):
@@ -148,36 +143,30 @@ def simulateTurbine( windspeed, performance=None, capacity=None, rotordiam=None,
 
     ############################################
     # map wind speeds to power curve using a spline
-    powerCurve = splrep(performance[:,0], performance[:,1])
-    powerGen = splev(windspeed, powerCurve)*(1-loss)
+    powerCurveInterp = splrep(powerCurve.ws, powerCurve.cf)
+    gen = splev(windspeed, powerCurveInterp)*(1-loss)
     
     # Do some "just in case" clean-up
-    maxPower = performance[:,1].max() # use the max power as as ceiling
-    cutin = performance[:,0].min() # use the first defined windspeed as the cut in
-    cutout = performance[:,0].max() # use the last defined windspeed as the cut out 
+    cutin = powerCurve.ws.min() # use the first defined windspeed as the cut in
+    cutout = powerCurve.ws.max() # use the last defined windspeed as the cut out 
 
-    powerGen[powerGen<0]=0 # floor to zero
-    powerGen[powerGen>maxPower]=maxPower # ceiling at max
-
-    powerGen[windspeed<cutin]=0 # Drop power to zero before cutin
-    powerGen[windspeed>cutout]=0 # Drop power to zero after cutout
+    gen[gen<0]=0 # floor to zero
+    
+    gen[windspeed<cutin]=0 # Drop power to zero before cutin
+    gen[windspeed>cutout]=0 # Drop power to zero after cutout
     
     ############################################
     # make outputs
-    capacityFactor = powerGen.mean(axis=0)/capacity
-
     if pdindex is None and pdcolumns is None:
         try:
-            powerGen = pd.Series(powerGen)
+            gen = pd.Series(gen)
         except:
-            powerGen = pd.DataFrame(powerGen)
+            gen = pd.DataFrame(gen)
             capacityFactor = pd.Series(capacityFactor, index=pdcolumns)
     elif not pdindex is None and pdcolumns is None:
-        powerGen = pd.Series(powerGen, index=pdindex)
+        gen = pd.Series(gen, index=pdindex)
     else:
-        powerGen = pd.DataFrame(powerGen,index=pdindex,columns=pdcolumns)
-        capacityFactor = pd.Series(capacityFactor, index=pdcolumns)
+        gen = pd.DataFrame(gen,index=pdindex,columns=pdcolumns)
         
-    powerGen.capacityFactor = capacityFactor
     # Done!
-    return powerGen
+    return gen

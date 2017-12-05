@@ -5,6 +5,39 @@ from res.weather.sources import loadWeatherSource
 ##################################################
 ## Make a turbine model library
 TurbineInfo = namedtuple('TurbineInfo','profile meta')
+_P = namedtuple('PowerCurve','ws cf')
+class PowerCurve(_P):
+    """ 
+    A wind turbine's power curve represented by a set of (wind-speed,capacty-factor) pairs:
+      ws ->  "wind speed" 
+      cf ->  "capacity factor" 
+    """
+    def __str__(s):
+        out = ""
+        for ws,cf in zip(s.ws, s.cf):
+            out += "%6.2f - %4.2f\n"%(ws,cf)
+        return out
+
+    def _repr_svg_(s): 
+        #return str(s)
+
+        import matplotlib.pyplot as plt
+        from io import BytesIO
+
+        plt.figure(figsize=(7,3))
+        plt.plot(s.ws,s.cf, color=(0,91/255,130/255), linewidth=3)
+        plt.tick_params(labelsize=12)
+        plt.xlabel("wind speed [m/s]",fontsize=13)
+        plt.ylabel("capacity output",fontsize=13)
+        plt.tight_layout()
+        plt.grid()
+        
+        f = BytesIO()
+        plt.savefig(f, format="svg", dpi=100)
+        f.seek(0)
+        return f.read().decode('ascii')
+
+
 rangeRE = re.compile("([0-9.]{1,})-([0-9.]{1,})")
 def parse_turbine(path):
     meta = OrderedDict()
@@ -47,12 +80,11 @@ def parse_turbine(path):
         
         # Extract power profile
         tmp = pd.read_csv(fin)
-        power = np.array([(ws,output) for i,ws,output in tmp.iloc[:,:2].itertuples()])
-    
+        tmp = np.array([(ws,output) for i,ws,output in tmp.iloc[:,:2].itertuples()])
+        power = PowerCurve( tmp[:,0], tmp[:,1]/meta["Capacity"] )
     return TurbineInfo(power, meta)     
 
 turbineFiles = glob(join(dirname(__file__),"..","..","data","turbines","*.csv"))
-
 
 tmp = []
 for f in turbineFiles:
@@ -61,28 +93,31 @@ for f in turbineFiles:
     except:
         print("failed to parse:", f)
 
-
 TurbineLibrary = pd.DataFrame([i.meta for i in tmp])
 TurbineLibrary.set_index('Model', inplace=True)
-TurbineLibrary['Performance'] = [x.profile for x in tmp]
+TurbineLibrary['PowerCurve'] = [x.profile for x in tmp]
 
 #######################################################
 #### Create a synthetic turbine power curve
 synthTurbData = pd.read_csv(join(dirname(__file__),"..","..","data","synthetic_turbine_params.csv"), header=1)
-def SyntheticPowerCurve( capacity, rotordiam=140, cutout=25 ):
-    specifitCapacity = capacity*1000/(np.pi*rotordiam**2/4)
-    
+
+def SyntheticPowerCurve( specificCapacity=None, capacity=None, rotordiam=None, cutout=25 ):
+    if cutout is None: cutout=25
+    if specificCapacity is None:
+        specificCapacity = capacity*1000/(np.pi*rotordiam**2/4)
+        
+    specificCapacity = int(specificCapacity)
     # Create ws
     ws = [0,]
-    ws.extend( np.exp(synthTurbData.const + synthTurbData.scale*np.log(specifitCapacity)) )
+    ws.extend( np.exp(synthTurbData.const + synthTurbData.scale*np.log(specificCapacity)) )
     ws.append(cutout)
     ws = np.array(ws)
     
-    # create power curve
-    pc = [0,]
-    pc.extend( synthTurbData.perc_capacity/100*capacity )
-    pc.append(capacity)
-    pc = np.array(pc)
+    # create capacity factor output
+    cf = [0,]
+    cf.extend( synthTurbData.perc_capacity/100 )
+    cf.append(1)
+    cf = np.array(cf)
     
     # Done!
-    return np.column_stack([ws, pc])
+    return PowerCurve(ws, cf)
