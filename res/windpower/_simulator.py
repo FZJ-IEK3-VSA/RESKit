@@ -162,7 +162,6 @@ def simulateTurbine( windspeed, powerCurve=None, capacity=None, rotordiam=None, 
             gen = pd.Series(gen)
         except:
             gen = pd.DataFrame(gen)
-            capacityFactor = pd.Series(capacityFactor, index=pdcolumns)
     elif not pdindex is None and pdcolumns is None:
         gen = pd.Series(gen, index=pdindex)
     else:

@@ -1,5 +1,6 @@
-from res.windpower import *
+from res.workflow import WindWorkflow
 
+from res.windpower import *
 import netCDF4 as nc
 import geokit as gk
 import numpy as np
