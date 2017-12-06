@@ -55,6 +55,14 @@ def averageProduction_combiner(r1, r2):
         count = r1.c+r2.c
         return Result(count, output)
 
+def batch_combiner(r1, r2):
+    if r1 is None and not r2 is None: return r2
+    elif not r1 is None and r2 is None: return r1
+    else: 
+        output = 0
+        count = r1.c+r2.c
+        return Result(count, output)
+
 def raw_finalizer(production, capacityFactor, **kwargs):
     output = production
     output.columns = [str(v) for v in output.columns]
@@ -69,6 +77,11 @@ def capacityFactor_finalizer(production, capacityFactor, **kwargs):
     
 def averageProduction_finalizer(production, capacityFactor, **kwargs):
     output = production.mean(axis=1)
+    count = capacityFactor.size
+    return Result(count, output)
+
+def batch_finalizer(production, capacityFactor, **kwargs):
+    output = 0
     count = capacityFactor.size
     return Result(count, output)
 
@@ -255,12 +268,15 @@ class Extractor(object):
             try:
                 r = outputPath%10
             except:
-                raise RuntimeError("output path string should handle integer formating")
+                try:
+                    r = outputPath.format(10)
+                except:
+                    raise RuntimeError("output path string should handle integer formating")
 
             s.outputPath = outputPath
             s.skipFinalOutput=True
-            s._combine = "passfunc"
-            s._finalize = "passfunc"
+            s._combine = "batch_combiner"
+            s._finalize = "batch_finalizer"
             s._output = "passfunc"
         else:
             raise ResError('''Don't know extraction type. Try using... 

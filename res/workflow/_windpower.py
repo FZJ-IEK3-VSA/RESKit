@@ -40,6 +40,9 @@ def simulateLocations(**k):
     # spatially adjust windspeeds
     if not k.get("skipLRA",False):
         ws = windutil.adjustLraToGwa( ws, locations, longRunAverage=MerraSource.LONG_RUN_AVERAGE_50M_SOURCE, gwa=gwa)
+    
+    if np.isnan(ws).any().any():
+        raise RuntimeError("%d locations have invalid wind speed values"%np.isnan(ws).any().sum())
 
     # apply wind speed corrections to account (somewhat) for local effects not captured on the MERRA context
     factors = (1-0.3)*(1-np.exp(-0.2*ws))+0.3 # dampens lower wind speeds
@@ -49,10 +52,13 @@ def simulateLocations(**k):
     # Get roughnesses from Land Cover
     if lctype == "clc":
         winRange = int(k.get("lcRange",0))
-        roughnesses = windutil.roughnessFromCLC(landcover, locations, winRange=winRange)
+        roughnesses = windutil.roughnessFromCLC(landcover, locations, winRange=winRange, )
     else:
         lcVals = gk.raster.extractValues(landcover, locations).data
         roughnesses = windutil.roughnessFromLandCover(lcVals, lctype)
+
+    if np.isnan(roughnesses).any():
+        raise RuntimeError("%d locations are outside the given landcover file"%np.isnan(roughnesses).sum())
 
     # Project WS to hub height
     ws = windutil.projectByLogLaw(ws, measuredHeight=50, targetHeight=hubHeight, roughness=roughnesses)
@@ -62,10 +68,11 @@ def simulateLocations(**k):
     if pcKey is None:
         capacityGeneration = simulateTurbine(ws, powerCurve=powerCurve, loss=loss)
     else:
-        capacityGeneration = pd.DataFrame(-1*np.ones(ws.shape),index=ws.index, columns=ws.columns)
+        capacityGeneration = pd.DataFrame(-1*np.ones(ws.shape), index=ws.index, columns=ws.columns)
         for key in np.unique(pcKey):
             tmp = simulateTurbine(ws.iloc[:,pcKey==key], powerCurve[key], loss=loss)
             capacityGeneration.update( tmp )
+
         if (capacityGeneration.values<0).any(): raise RuntimeError("Some placements were not evaluated")
 
     capacityFactor = capacityGeneration.mean(axis=0)
@@ -95,15 +102,23 @@ def simulateLocations(**k):
         outputVars["cutout"] = cutout
         
         result = raw_finalizer(production, capacityFactor)
-        raw_output(extractor.outputPath%gid, result, outputVars)
-        output = None
-    else:
-        output = extractor.finalize(production, capacityFactor)
+
+        try:
+            outputPath = extractor.outputPath%gid
+        except:
+            outputPath = extractor.outputPath.format(gid)
+
+        raw_output(outputPath, result, outputVars)
+    
+    output = extractor.finalize(production, capacityFactor)
     return output
 
 ##################################################################
 ## Distributed Wind production from a Merra wind source
-def WindWorkflow(placements, merra, landcover, gwa, hubHeight=None, powerCurve=None, capacity=None, rotordiam=None, cutout=None, lctype="clc", extract="averageProduction", output=None, minCF=0, jobs=1, batchSize=None, verbose=True, **kwargs):
+def WindOffshoreWorkflow():
+    pass
+
+def WindOnshoreWorkflow(placements, merra, landcover, gwa, hubHeight=None, powerCurve=None, capacity=None, rotordiam=None, cutout=None, lctype="clc", extract="averageProduction", output=None, minCF=0, jobs=1, batchSize=None, verbose=True, **kwargs):
     """
     Apply the wind simulation method developed by Severin Ryberg, Dilara Caglayan, and Sabrina Schmitt. This method 
     works as follows for a given simulation point:
@@ -220,7 +235,10 @@ def WindWorkflow(placements, merra, landcover, gwa, hubHeight=None, powerCurve=N
         if "rotordiam" in placements.columns and rotordiam is None: rotordiam = placements.rotordiam.values
         if "cutout" in placements.columns and cutout is None: cutout = placements.cutout.values
 
-        placements = placements[["lon","lat"]].values
+        try:
+            placements = placements[["lon","lat"]].values
+        except:
+            placements = placements["geom"].values
 
     placements = Location.ensureLocation(placements, forceAsArray=True)
 
@@ -343,7 +361,7 @@ def WindWorkflow(placements, merra, landcover, gwa, hubHeight=None, powerCurve=N
         for simPlacements in np.array_split( I, cpus):
             simGroups.append( simPlacements )
     else: # split the area in to equal size groups, and simulate one group at a time
-        for simPlacements in np.array_split(I, len(placements)//(batchSize/cpus)):
+        for simPlacements in np.array_split(I, max(1,len(placements)//(batchSize/cpus))):
             simGroups.append( simPlacements )
 
     if verbose: 
