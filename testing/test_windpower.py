@@ -128,14 +128,7 @@ def test_singleTurbineWorkflow():
         print("  Basic workflow with multiple turbines: Success")
     else: raise RuntimeError("Basic workflow with multiple turbines: Fail")
 
-def test_WindWorkflow():
-    print("##################################")
-    print("## Make test for WindWorkflow!!!")
-    print("##################################")
-
-
 if __name__ == '__main__':
     test_SyntheticPowerCurve()
     test_simulateTurbine()
     test_singleTurbineWorkflow()
-    test_WindWorkflow()

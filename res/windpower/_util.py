@@ -34,6 +34,7 @@ class PowerCurve(_P):
         
         f = BytesIO()
         plt.savefig(f, format="svg", dpi=100)
+        plt.close()
         f.seek(0)
         return f.read().decode('ascii')
 

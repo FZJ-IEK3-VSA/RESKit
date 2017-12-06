@@ -103,10 +103,8 @@ def simulateLocations(**k):
 
 ##################################################################
 ## Distributed Wind production from a Merra wind source
-def WindWorkflow(placements, merra, landcover, gwa, hubHeight=None, powerCurve=None, turbine=None, capacity=None, rotordiam=None, cutout=None, lctype="clc", extract="averageProduction", output=None, minCF=0, jobs=1, batchSize=None, verbose=True, **kwargs):
+def WindWorkflow(placements, merra, landcover, gwa, hubHeight=None, powerCurve=None, capacity=None, rotordiam=None, cutout=None, lctype="clc", extract="averageProduction", output=None, minCF=0, jobs=1, batchSize=None, verbose=True, **kwargs):
     """
-    WARNING: DOC STRING NEEDS UPDATING!!
-
     Apply the wind simulation method developed by Severin Ryberg, Dilara Caglayan, and Sabrina Schmitt. This method 
     works as follows for a given simulation point:
         1. The nearest time-series in the provided MERRA climate data is extracted
@@ -117,43 +115,77 @@ def WindWorkflow(placements, merra, landcover, gwa, hubHeight=None, powerCurve=N
            hub height
         4. Low windspeeds are depressed slightly, ending around 10 m/s
         5. The wind speeds are fed through the power-curve of the indicated turbine
-            * The power curve has been convoluted to incorporate a stochastic spread of windspeeds using
-        6. A 4% loss is applied
+            * The power curve has been convoluted to incorporate a stochastic spread of windspeeds
+        6. An additional 4% loss is applied
+    
+    Notes:
+        * hubHeight must always be given, either as an argument or contained within the placements object (see below)
+        * When giving a user-defined power curve, the capacity must also be given 
+        * When powerCurve isn't given, capacity, rotordiam and cutout are used to generate a synthetic power curve 
+          using res.windpower.SyntheticPowerCurve. In this case, rotordiam and capacity must be given, but cutout can
+          be left as None (implying the default of 25 m/s)
+        * Be careful about writing raw production data to csv files. It takes long and output is big big big. I 
+          suggest using a netCDF4 (.nc) file instead
 
-    inputs:
-        placements: a list of (lon,lat) coordinates to simulate
+    Inputs:
+        placements: 
+            [ (lon,lat), ] : a list of (lon,lat) coordinates to simulate
+            str : A path to a point-type shapefile indicating the turbines to simulate
+            DataFrame : A datafrom containing per-turbine characteristics, must include a 'lon' and 'lat' column
+            * When plaements is given as a shapefile path or a DataFrame, the following can also be defined as 
+              attributes/columns for each turbine (but are not necessary):
+              [turbine, powerCurve, capacity, rotordiam, hubHeight, cutout]
 
-        merraSource - str : A path to the MERRA data which will be used for the simulation
+        merra - str : A path to the MERRA data which will be used for the simulation
             * MUST have the fields 'U50M' and 'V50M'
-
-        turbine: The turbine to simulate
-            str : An indicator from the TurbineLibrary (res.windpower.TurbineLibrary)
-            [(float, float), ...] : An explicit performance curve given as (windspeed, power output) pairs
 
         landcover - str : The path to the land cover source
 
         gwa - str : The path to the global wind atlas mean windspeeds (at 50 meters)
 
-        hubHeight - float : The hub height to simulate at
+        powerCurve: The turbine to simulate
+            str : An indicator from the TurbineLibrary (res.windpower.TurbineLibrary)
+            [(float, float), ...] : An explicit performance curve given as (windspeed, capacity-factor-output) pairs
+            * Giving this will overload the turbine/powerCurve definition from the placements shapefile/DataFrame
 
+        hubHeight - float : The hub height to simulate at
+            * Giving this will overload the hubHeight definition from the placements shapefile/DataFrame
+
+        capacity - float : The turbine capacity in kW
+            * Giving this will overload the capacity definition from the placements shapefile/DataFrame
+
+        rotordiam - float : The turbine rotor diameter in m
+            * Giving this will overload the rotordiam definition from the placements shapefile/DataFrame
+            * Using this is only useful when generating a synthetic power curve
+        
+        cutout - float : The turbine cutout windspeed in m/s
+            * Giving this will overload the cutout definition from the placements shapefile/DataFrame
+            * Using this is only useful when generating a synthetic power curve
+        
         lctype - str: The land cover type to use
             * Options are "clc", "globCover", and "modis"
 
         extract - str: Determines the extraction method and the form of the returned information
             * Options are:
-                "production" - returns the timeseries production for each location
+                "raw" - returns the timeseries production for each location
                 "capacityFactor" - returns only the resulting capacity factor for each location
                 "averageProduction" - returns the average time series of all locations
+                "batch" - returns nothing, but the full production data is written independently for each batch
 
-        cfMin - float : The minimum capacity factor to accept
+        minCF - float : The minimum capacity factor to accept
             * Must be between 0..1
 
         jobs - int : The number of parallel jobs
 
-        batchSize - int : The number of placements to simulate in each job
+        batchSize - int : The number of placements to simulate across all concurrent jobs
             * Use this to tune performance to your specific machine
 
         verbose - bool : False means silent, True means noisy
+
+        output - str : The path of the output file to create
+            * File type options are ".shp", ".csv", and ".nc"
+            * When using the "batch" extract option, output must be able to handle an integer when formatting.
+                - ex: output="somepath\outputData_%02d.nc"
     """
     if verbose: 
         startTime = dt.now()
@@ -172,7 +204,6 @@ def WindWorkflow(placements, merra, landcover, gwa, hubHeight=None, powerCurve=N
         useMulti = True
     
     extractor = Extractor(extract, outputPath=output)
-    if not turbine is None: powerCurve=turbine
 
     ### Determine the total extent which will be simulated (also make sure the placements input is okay)
     if verbose: print("Arranging placements at +%.2fs"%((dt.now()-startTime).total_seconds()))
@@ -263,6 +294,8 @@ def WindWorkflow(placements, merra, landcover, gwa, hubHeight=None, powerCurve=N
                     powerCurve[name] = TurbineLibrary.ix[name].PowerCurve
         
         else: # powerCurve is a single power curve definition
+            if capacity is None:
+                raise RuntimeError("capacity cannot be None when giving a user-defined power curve")
             tmp = np.array(powerCurve)
             powerCurve = PowerCurve(tmp[:,0], tmp[:,1])
             pcKey = None

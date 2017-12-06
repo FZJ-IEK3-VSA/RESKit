@@ -4,9 +4,6 @@ import pvlib
 #from scipy.interpolate import splrep, splev
 #from scipy.stats import norm
 from collections import namedtuple, OrderedDict
-#from glob import glob
-#from os.path import join, dirname
-
 from res.util import *
 from res.weather import NCSource
 
