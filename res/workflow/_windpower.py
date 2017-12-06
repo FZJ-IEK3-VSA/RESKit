@@ -118,7 +118,7 @@ def simulateLocations(**k):
 def WindOffshoreWorkflow():
     pass
 
-def WindOnshoreWorkflow(placements, merra, landcover, gwa, hubHeight=None, powerCurve=None, capacity=None, rotordiam=None, cutout=None, lctype="clc", extract="averageProduction", output=None, minCF=0, jobs=1, batchSize=None, verbose=True, **kwargs):
+def WindOnshoreWorkflow(placements, merra, landcover, gwa, hubHeight=None, powerCurve=None, capacity=None, rotordiam=None, cutout=None, lctype="clc", extract="totalProduction", output=None, minCF=0, jobs=1, batchSize=None, verbose=True, **kwargs):
     """
     Apply the wind simulation method developed by Severin Ryberg, Dilara Caglayan, and Sabrina Schmitt. This method 
     works as follows for a given simulation point:
@@ -447,6 +447,7 @@ def WindOnshoreWorkflow(placements, merra, landcover, gwa, hubHeight=None, power
     if extract == "batch":  return
 
     outputResult = finalResult.o
+    outputResult.name = extractor.title
     outputResult.TurbineCount = finalResult.c
     return outputResult
     
