@@ -15,7 +15,7 @@ class OptimalTurbine(namedtuple("OptimalTurbine","capacity rotordiam hubHeight o
         return out
     def __repr__(s): return str(s)
 
-def determineBestTurbine(weibK=2, weibL=7, capacity=(3000,9000), rotordiam=(90,180), hubHeight=(80,200), roughness=0.02, costModel=nrelCostModel, measuredHeight=50, minSpecificCapacity=200, tol=1e-5, **kwargs):
+def determineBestTurbine(weibK=2, weibL=7, capacity=(3000,9000), rotordiam=(90,180), hubHeight=(80,200), roughness=0.02, costModel=nrelCostModel, measuredHeight=50, minSpecificCapacity=200, groundClearance=25, tol=1e-5, **kwargs):
     """
     Determine the best turbine characteristics (capacity, rotor diameter, and hub height) for a location defined by a 
     weibul distribution of windspeeds and a roughness length
@@ -52,6 +52,8 @@ def determineBestTurbine(weibK=2, weibL=7, capacity=(3000,9000), rotordiam=(90,1
 
         minSpecificCapacity : float - The minimal specific-capacity value to allow during the optimization
             * Can be 'None', implying no minimum
+
+        groundClearance : float - The minimal height above ground which the rotor tip should reach
 
         tol : float - The tolerance to use during the optimization
             * See scipy.optimize.differential_evolution for more information
@@ -115,8 +117,8 @@ def determineBestTurbine(weibK=2, weibL=7, capacity=(3000,9000), rotordiam=(90,1
                 lcoe += np.power(minSpecificCapacity-specificCapacity,3)
 
         # Dissuade against too-low hub height compared to the rotor diameter
-        tmp = h-(25+r/2)
-        if tmp<0: lcoe += np.power(tmp,3)
+        tmp = (groundClearance+r/2)-h
+        if tmp>0: lcoe += np.power(tmp,3)
 
         # Done!
         return lcoe
