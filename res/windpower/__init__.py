@@ -5,3 +5,4 @@ from ._util import windutil, PowerCurve, TurbineLibrary, SyntheticPowerCurve
 from ._powerCurveConvoluter import convolutePowerCurveByGuassian, TerrainComplexityConvoluter
 from ._costModel import nrelCostModel, NormalizedCostModel
 from ._simulator import simulateTurbine
+from ._best_turbine import determineBestTurbine

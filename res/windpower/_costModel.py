@@ -1,14 +1,14 @@
 from ._util import *
 
-def nrelCostModel(capacity, hubHeight, rotorDiameter, gearBox="direct", gdpEscalator=1, bladeMaterialEscalator=1, blades=3):
+def nrelCostModel(capacity, hubHeight, rotordiam, gearBox="direct", gdpEscalator=1, bladeMaterialEscalator=1, blades=3):
     """Cost model built following the NREL report
 
-    - capacity in MW
+    - capacity in kW
     """
 
-    rr = rotorDiameter/2
+    rr = rotordiam/2
     hh = hubHeight
-    cp = capacity*1000
+    cp = capacity
 
     totalCost = 0 
     
@@ -119,27 +119,27 @@ def nrelCostModel(capacity, hubHeight, rotorDiameter, gearBox="direct", gdpEscal
     return totalCost
 
     
-def NormalizedCostModel(baseModel=nrelCostModel, normalizedCapacity=3.6, normalizedHubHeight=90, normalizedRotorDiameter=120, normalizedCost=3600000, constantCost=0, **kwargs):
+def NormalizedCostModel(baseModel=nrelCostModel, normalizedCapacity=3600, normalizedHubHeight=90, normalizedRotordiam=120, normalizedCost=3600000, constantCost=0, **kwargs):
     """Normalize a given cost model based on the expected cost of a particular set of turbine parameters
 
      * The default setup normalizes the following turbine parameters to the basic assumption of 1000 Euros/kW:
-        - Capacity: 3.6 MW
+        - Capacity: 3600 kW
         - Hub Height: 90 meters
         - Rotor Diameter: 120 meters
      * Returns a function which provides cost estimates based on the inputs of the base model
      * All executions of the returned function will be scaled around the given normalized cost
     """
-    baseCost = baseModel(capacity=normalizedCapacity, hubHeight=normalizedHubHeight, rotorDiameter=normalizedRotorDiameter, **kwargs)
+    baseCost = baseModel(capacity=normalizedCapacity, hubHeight=normalizedHubHeight, rotordiam=normalizedRotordiam, **kwargs)
     scaling = normalizedCost / baseCost
 
-    def outputFunc(capacity, hubHeight, rotorDiameter, **kwargs):
+    def outputFunc(capacity, hubHeight, rotordiam, **kwargs):
         """Normalized cost model. Returns cost in Euros
 
         inputs:
             capacity - float : The wind turbine capcity in MW
             hubHeight - int : The hub height in meters
-            rotorDiameter - int : The rotor diameter in meters
+            rotordiam - int : The rotor diameter in meters
         """
-        return scaling*baseModel(capacity=capacity, hubHeight=hubHeight, rotorDiameter=rotorDiameter, **kwargs) + constantCost
+        return scaling*baseModel(capacity=capacity, hubHeight=hubHeight, rotordiam=rotordiam, **kwargs) + constantCost
 
     return outputFunc
