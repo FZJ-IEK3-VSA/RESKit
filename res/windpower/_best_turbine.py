@@ -114,6 +114,10 @@ def determineBestTurbine(weibK=2, weibL=7, capacity=(3000,9000), rotordiam=(90,1
             if specificCapacity<minSpecificCapacity:
                 lcoe += np.power(minSpecificCapacity-specificCapacity,3)
 
+        # Dissuade against too-low hub height compared to the rotor diameter
+        tmp = h-(25+r/2)
+        if tmp<0: lcoe += np.power(tmp,3)
+
         # Done!
         return lcoe
 
