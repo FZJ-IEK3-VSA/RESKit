@@ -55,6 +55,22 @@ def averageProduction_combiner(r1, r2):
         count = r1.c+r2.c
         return Result(count, output)
 
+def totalProduction_combiner(r1, r2):
+    if r1 is None and not r2 is None: return r2
+    elif not r1 is None and r2 is None: return r1
+    else: 
+        output = r1.o+r2.o
+        count = r1.c+r2.c
+        return Result(count, output)
+
+def batch_combiner(r1, r2):
+    if r1 is None and not r2 is None: return r2
+    elif not r1 is None and r2 is None: return r1
+    else: 
+        output = 0
+        count = r1.c+r2.c
+        return Result(count, output)
+
 def raw_finalizer(production, capacityFactor, **kwargs):
     output = production
     output.columns = [str(v) for v in output.columns]
@@ -69,6 +85,16 @@ def capacityFactor_finalizer(production, capacityFactor, **kwargs):
     
 def averageProduction_finalizer(production, capacityFactor, **kwargs):
     output = production.mean(axis=1)
+    count = capacityFactor.size
+    return Result(count, output)
+
+def totalProduction_finalizer(production, capacityFactor, **kwargs):
+    output = production.sum(axis=1)
+    count = capacityFactor.size
+    return Result(count, output)
+
+def batch_finalizer(production, capacityFactor, **kwargs):
+    output = 0
     count = capacityFactor.size
     return Result(count, output)
 
@@ -235,32 +261,76 @@ def averageProduction_output(output, result, ext, const, dim1, dim2):
 
         ds.close()
 
+@output_function
+def totalProduction_output(output, result, ext, const, dim1, dim2):
+    const["extract"]="totalProduction"
+    const["units"]="kWh"
+
+    if ext == ".csv":
+        result.name="production"
+        writeCSV(output, const, result, header=True, index_label="time")
+
+    elif ext==".nc" or ext==".nc4":
+        ds = nc.Dataset(output, mode="w")
+
+        var = ds.createVariable("constants", "i4")
+        var.setncatts(const)
+        var[:] = len(const)
+
+        ds.createDimension("time", len(result.index))
+        timeV = ds.createVariable("time", "u4", dimensions=("time",), contiguous=True)
+        timeV.setncatts(ncattr["time"])
+        times = result.index.tz_localize(None)
+
+        timeV[:] = nc.date2num(times.to_pydatetime(), timeV.units)
+
+        production = ds.createVariable("production", "f", dimensions=("time",))
+        production.setncatts({"longname":"total energy production","units":"kWh"})
+        production[:] = result.values
+
+        ds.close()
+
 class Extractor(object):
     def __init__(s, method, outputPath=None):
-        s.method = method
         s.skipFinalOutput=False
+
         if method=="p" or method == "production" or method == "raw":
+            s.title = "production"
+            s.method = "raw"
             s._combine = "raw_combiner"
             s._finalize = "raw_finalizer"
             s._output = "raw_output"
         elif method=="cf" or method == "capacityFactor":
+            s.title = "capacityFactor"
+            s.method = "capacityFactor"
             s._combine = "capacityFactor_combiner"
             s._finalize = "capacityFactor_finalizer"
             s._output = "capacityFactor_output"
         elif method=="ap" or method == "averageProduction":
+            s.title = "avgProduction"
+            s.method = "averageProduction"
             s._combine = "averageProduction_combiner"
             s._finalize = "averageProduction_finalizer"
             s._output = "averageProduction_output"
+        elif method=="tp" or method == "totalProduction":
+            s.title = "production"
+            s.method = "totalProduction"
+            s._combine = "totalProduction_combiner"
+            s._finalize = "totalProduction_finalizer"
+            s._output = "totalProduction_output"
         elif method=="batch":
             try:
                 r = outputPath%10
             except:
-                raise RuntimeError("output path string should handle integer formating")
+                try:
+                    r = outputPath.format(10)
+                except:
+                    raise RuntimeError("output path string should handle integer formating")
 
             s.outputPath = outputPath
             s.skipFinalOutput=True
-            s._combine = "passfunc"
-            s._finalize = "passfunc"
+            s._combine = "batch_combiner"
+            s._finalize = "batch_finalizer"
             s._output = "passfunc"
         else:
             raise ResError('''Don't know extraction type. Try using... 
