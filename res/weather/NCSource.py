@@ -40,16 +40,25 @@ def computeContextMean(source, contextArea, fillnan=True, pixelSize=None, srs=No
 # make a data handler
 Index = namedtuple("Index", "yi xi")
 class NCSource(object):
+    def _loadDS(s, path):
+        if isinstance(path, str):
+            return nc.Dataset(path)
+        elif isinstance(path, list):
+            return nc.MFDataset( path, aggdim=s.timeName)
+        else:
+            raise ResError("Could not understand data source input. Must be a path or a list of paths")
+
     def __init__(s, path, bounds=None, timeName="time", latName="lat", lonName="lon", dependent_coordinates=False, constantsPath=None, timeBounds=None):
         # set basic variables 
         s.path = path
+        s.timeName = timeName
         if not path is None:
             if constantsPath is None:
-                dsC = nc.Dataset(s.path)
+                dsC = s._loadDS(s.path)
                 ds = dsC
             else:
-                dsC = nc.Dataset(constantsPath)
-                ds = nc.Dataset(s.path)
+                dsC = s._loadDS(constantsPath)
+                ds = s._loadDS(s.path)
         
             s._allLats = dsC[latName][:]
             s._allLons = dsC[lonName][:]
@@ -105,7 +114,7 @@ class NCSource(object):
                 s.lons = s._allLons[s._lonStart:s._lonStop]
 
             # compute time index
-            timeindex = nc.num2date(ds[timeName][:], ds[timeName].units)
+            timeindex = nc.num2date(ds[s.timeName][:], ds[s.timeName].units)
             
             if timeBounds is None:
                 s._timeSel = np.s_[:]
@@ -164,7 +173,7 @@ class NCSource(object):
     def load(s, variable, name=None, heightIdx=None, processor=None):
         if s.path is None: raise ResError("Cannot load new variables when path is None")
         # read the data
-        ds = nc.Dataset(s.path)
+        ds = s._loadDS(s.path)
         if not variable in ds.variables.keys():
             raise ResError(variable+" not in source")
 
