@@ -8,6 +8,32 @@ from res.util import *
 
 # context mean
 def computeContextMean(source, contextArea, fillnan=True, pixelSize=None, srs=None):
+    """Compute the mean of raster data found in the context of an area. Usually this is used for one of the weather data sources in order to compute the, for example, mean elevation around each grid cell.
+
+    Inputs:
+        source : 
+            str - The path to a raster file to read from
+            gdal.Dataset - The raster file to read from in memory
+            * Must contain the entire context area (nan values are okay)
+
+        contextArea : 
+            ogr.Geometry - The context area
+
+        fillnan : 
+            T/F - Dictates whether nan values are filled using the 'closest real value' approach
+
+        pixelSize : 
+            float - The pixel size to use wile sampling the raster file
+            * Normally this should be left as 'None', indicating that the raster's inherent resolution should be used
+
+        srs : The spatial reference system to use while processing
+            int - A EPSG reference integer
+            str - One of GeoKit's common srs keys 
+            osr.SpatialReference - An SRS object
+            * Normally this should be left as 'None', indicating that the raster's inherent SRS should be used
+    """
+
+
     if pixelSize is None and srs is None:
         ras = gk.raster.rasterInfo(source)
         pixelSize=(ras.dx, ras.dy)
@@ -152,16 +178,33 @@ class NCSource(object):
         return out
     
     def pickle(s, path):
+        """Save the source as a pickle file, so it can be quickly reopened later"""
         with open(path, 'wb') as fo:
             dump(s, fo)
 
     @staticmethod
     def fromPickle(path):
+        """Load a source from a pickle file"""
         with open(path, 'rb') as fo:
             out = load(fo)
         return out
 
     def load(s, variable, name=None, heightIdx=None, processor=None):
+        """Load a variable into the source's data container
+
+        Inputs:
+            variable : str - The variable within the original NC file to load
+            
+            name : str - The name to give this variable in the data container
+                * If left as 'None', the original variable name is maintained
+
+            heightIdx : idx - The height index to use
+                * If the variable is 4D (time, height, lat, lon), use this to select the level which is extracted
+
+            processor : function - An optional processing function to, for example, convert units
+                * Ex. If the NC file has temperature in Kelvin and you need degrees C:
+                    processor = lambda x: x+273.15
+        """
         if s.path is None: raise ResError("Cannot load new variables when path is None")
         # read the data
         ds = nc.Dataset(s.path)
@@ -182,6 +225,13 @@ class NCSource(object):
         s.data[name] = tmp
 
     def addData(s, name, data):
+        """Manually add a variable to the data container
+
+        Inputs:
+            name : str - The name of the new variable
+
+            data : np.ndarray - A 3 dimensional matrix with shape (timeN, latN, lonN)
+        """
         # test shape
         if data.shape[0] != s.timeindex.shape[0]: raise ResError("Input data's first dimension does not match the time index")
         if s.dependent_coordinates:
@@ -195,6 +245,20 @@ class NCSource(object):
         s.data[name] = data
 
     def loc2Index(s, loc, outsideOkay=False):
+        """Returns the closest X and Y indexes corresponding to a given location or set of locations
+
+        * If a single location is given, a single index is returned
+        * If multiple locations are given, a list of indexes is returned which match to the order of locations
+
+        Inputs:
+            loc : The location(s) to search for
+                - geokit.Location - Preferred location identifier for a single location
+                - [ geokit.location, ] - Preferred location identifier for a multiple locations
+                * Can be anything else which is understood by goekit.Location.ensureLocation
+
+            outsideOkay : T/F - Determines if points which are outside the source's lat/lon grid are allowed
+                * If True, points outside this space will return as None
+        """
         # Ensure loc is a list
         locations = Location.ensureLocation(loc, forceAsArray=True)
 
@@ -241,6 +305,35 @@ class NCSource(object):
             return idx
 
     def get(s, variable, locations, interpolation='near', forceDataFrame=False, outsideOkay=False):
+        """
+        Retrieve a variable from the source's data container at the given location(s)
+
+        * Fetches the complete time series corresponding to the given location(s)
+        * If a single location is given, a pandas.Series object is returned (index is time)
+        * If multiple locations are given, a pandas.DataFrame object is returned (index is time, columns are locations)
+            - Column order will always match the order of locations
+
+        Inputs:
+            variable : str - The variable within the data container to extract
+
+            locations : The location(s) to search for
+                - geokit.Location - Preferred location identifier for a single location
+                - [ geokit.location, ] - Preferred location identifier for a multiple locations
+                * Can be anything else which is understood by goekit.Location.ensureLocation
+
+            interpolation : str - The interpolation method to use
+                * 'near' => For each location, extract the time series at the closest lat/lon index
+                * 'bilinear' => For each location, use the time series of the surrounding four index locations to create an estimated time series at the given location
+                    - Uses the bilinear interpolation scheme
+                * 'cubic' => For each location, use the time series of the surrounding 16 index locations to create an estimated time series at the given location
+                    - Uses the cubic interpolation scheme
+
+            forceDataFrame : T/F - Instructs the returned value to take the form of a DataFrame regardless of how many locations are specified
+
+            outsideOkay : T/F - Determines if points which are outside the source's lat/lon grid are allowed
+                * If True, points outside this space will a time series of NaN values
+
+        """
         # Ensure loc is a list
         locations = Location.ensureLocation(locations, forceAsArray=True)
 
@@ -312,13 +405,19 @@ class NCSource(object):
             except:
                 return pd.Series(output, index=s.timeindex, name=locations[0])
 
+    def __getattr__(s, v):
+        var, locs = v
+        return s.get(var, locs)
+
     def contextAreaAt(s,location):
+        """Compute the sources-index's context area surrounding the given location"""
         # Get closest indexes
         index = s.loc2Index(location)
         # get area
         return s.contextAreaAtIndex(index.yi, index.xi)
 
     def contextAreaAtIndex(s, latI, lonI):
+        """Compute the context area surrounding the a specified index"""
         if s.dependent_coordinates:
             ctr = np.array([s.lons[latI,lonI],s.lats[latI,lonI]])
             up = np.array([s.lons[latI+1,lonI],s.lats[latI+1,lonI]])
@@ -354,6 +453,7 @@ class NCSource(object):
             return gk.geom.box( lowLon, lowLat, highLon, highLat, srs=gk.srs.EPSG4326 )
 
     def computeContextMeans(s, source, fillnan=True):
+        """Compute the context means of a source at all lat/lon indexes"""
         # get raster info
         ras = gk.raster.rasterInfo(source)
 
@@ -363,77 +463,7 @@ class NCSource(object):
 
         for latI in range(1,s.lats.size-1):
             for lonI in range(1,s.lons.size-1):        
-                means[latI,lonI] = computeContextMean(source=source, contextArea=s._contextAreaAt(latI,lonI), 
-                                                      pixelSize=(ras.dx, ras.dy), srs=ras.srs, 
-                                                      fillnan=fillnan)
+                means[latI,lonI] = computeContextMean(source=source, contextArea=s._contextAreaAt(latI,lonI), pixelSize=(ras.dx, ras.dy), srs=ras.srs, 
+                    fillnan=fillnan)
 
         return means
-
-'''
-    def __getitem__(s,loc):
-        # Check if the location input is a point geometry
-        if isinstance(loc, ogr.Geometry):
-            if not loc.GetGeometryName()=="POINT":
-                raise ResWeatherError("location geometry is not a Point object")
-            
-            # make sure the input is in the correct reference system
-            locSRS = loc.GetSpatialReference()
-            if not locSRS is None: 
-                if not locSRS.IsSame(s.coordSRS):
-                    loc.TransformTo(s.coordSRS)
-
-            # Get x and y coordinates
-            x = loc.GetX()
-            y = loc.GetY()
-
-        else: # input should be a tuple in the correct SRS
-            x = loc[0]
-            y = loc[1]
-            
-        # make sure we're in range
-        if not (x>s._xMin and x<s._xMax): raise ResWeatherError("Input exceeds X boundary")
-        if not (y>s._yMin and y<s._yMax): raise ResWeatherError("Input exceeds Y boundary")
-
-        # Compute the best indicies
-        xDist = x - s.xCoords
-        yDist = y - s.yCoords
-
-        totalDist2 = xDist*xDist + yDist*yDist
-
-        yi,xi = np.argwhere(totalDist2 == np.min(totalDist2))[0]
-
-        # Interpolate and return
-        if s._interpolation=='near':
-            outdata = s.data[:,yi,xi]
-        else:
-            if s._interpolation=="cubic": 
-                width=3
-                kwargs = dict()
-            elif s._interpolation=="linear": 
-                width=1
-                kwargs = dict(kx=1, ky=1)
-            else:
-                raise ResWeatherError("Bad interpolation scheme")
-
-            # Make sure the contained data is sufficient
-            if yi<width or yi>s.yCoords.shape[0]-width or xi<width or xi>s.xCoords.shape[0]-width:
-                raise ResWeatherError("Insufficient spatial extents for interpolation")
-
-            # Setup interpolator
-            yVals = s.yCoords[yi-width:yi+width+1, xi-width:xi+width+1]
-            xVals = s.xCoords[yi-width:yi+width+1, xi-width:xi+width+1]
-
-            def interpolate(timeIndex):
-                data = s.data[timeIndex, yi-width:yi+width+1, xi-width:xi+width+1]
-                
-                # THIS CAN BE MADE MUCH FASTER IF I USE RectBivariateSpline, BUT I NEED TO 
-                #  FIGURE OUT HOW BEST TO IMPLEMENT IT
-                #rbs = RectBivariateSpline(yVals, xVals, data, **kwargs)
-                rbs = interp2d( yVals, xVals, data, kind=s._interpolation) # I NEED TO IMPROVE THIS!!!
-                return rbs(y,x)[0]
-
-            # do interpolations
-            outdata = [interpolate(i) for i in range(s.times.shape[0])]
-
-        return pd.Series(outdata, index=s.times, name=s.name)
-'''

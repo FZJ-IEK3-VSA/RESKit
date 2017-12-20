@@ -53,7 +53,7 @@ def determineBestTurbine(weibK=2, weibL=7, capacity=(3000,9000), rotordiam=(90,1
         minSpecificCapacity : float - The minimal specific-capacity value to allow during the optimization
             * Can be 'None', implying no minimum
 
-        groundClearance : float - The minimal height above ground which the rotor tip should reach
+        groundClearance : float - The minimal height in meters above ground which the rotor tip should reach
 
         tol : float - The tolerance to use during the optimization
             * See scipy.optimize.differential_evolution for more information
@@ -65,7 +65,7 @@ def determineBestTurbine(weibK=2, weibL=7, capacity=(3000,9000), rotordiam=(90,1
     dws = ws[1]-ws[0]
     _s = np.log(measuredHeight/roughness)
 
-    # Determine unpacking and boundary structure
+    # Determine unpacking, boundary, and finalization structure
     if isinstance(capacity,tuple) and isinstance(rotordiam,tuple) and isinstance(hubHeight,tuple):
         unpack = lambda x: (x[0], x[1], x[2])
         bounds = [capacity, rotordiam, hubHeight, ]
