@@ -84,4 +84,19 @@ class MerraSource(NCSource):
 
     def loadPressure(s): s.load("PS", name='pressure')
 
+    def loadSet_PV(s):
+        """Load basic PV power simulation variables"""
+        s.loadWindSpeed(height=2)
+        del s.data["U2M"]
+        del s.data["V2M"]
+
+        s.loadRadiation()
+        s.loadTemperature('air', height=2)
+        s.loadPressure()
+
+    def loadSet_Wind(s):
+        """Load basic wind power simulation variables"""
+        s.loadWindSpeed(height=50)
+        del s.data["U50M"]
+        del s.data["V50M"]
 
