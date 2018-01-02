@@ -10,7 +10,18 @@ from res.weather import NCSource
 sandia_modules = pvlib.pvsystem.retrieve_sam('SandiaMod')
 sapm_inverters = pvlib.pvsystem.retrieve_sam('cecinverter')
 
-def simulatePVModule(source, locs, elev, module="Canadian_Solar_CS5P_220M___2009_", inverter="ABB__MICRO_0_25_I_OUTD_US_208_208V__CEC_2014_", extract="capacity-factor"):
+def simulatePVModule(source, locs, elev, module="Canadian_Solar_CS5P_220M___2009_", inverter="ABB__MICRO_0_25_I_OUTD_US_208_208V__CEC_2014_", extract="capacity-factor", interpolation="bilinear"):
+	"""
+	Performs a simple PV simulation
+
+	For module options, see: res.solarpower.ModuleLibrary
+	For inverter options, see: res.solarpower.InverterLibrary
+
+	interpolation options are:
+		- near
+		- bilinear
+		- cubic
+	"""
 	# normalize location
 	locs = Location.ensureLocation(locs, forceAsArray=True)
 	if isinstance(elev, str):
@@ -48,7 +59,7 @@ def simulatePVModule(source, locs, elev, module="Canadian_Solar_CS5P_220M___2009
 		# Compute solar angles
 		solpos = pvlib.solarposition.get_solarposition(source.timeindex, loc.lat, loc.lon)
 		airmass = pvlib.atmosphere.relativeairmass( solpos['apparent_zenith'] )
-		pressure = source.get("pressure", loc, interpolation="bilinear")
+		pressure = source.get("pressure", loc, interpolation=interpolation)
 
 		am_abs = pvlib.atmosphere.absoluteairmass(airmass, pressure)
 
@@ -57,8 +68,8 @@ def simulatePVModule(source, locs, elev, module="Canadian_Solar_CS5P_220M___2009
 		# Compute irradiances
 		dni_extra = pd.Series(pvlib.irradiance.extraradiation(source.timeindex), index=source.timeindex)
 
-		dni = source.get("dni", loc, interpolation="bilinear")
-		ghi = source.get("ghi", loc, interpolation="bilinear")
+		dni = source.get("dni", loc, interpolation=interpolation)
+		ghi = source.get("ghi", loc, interpolation=interpolation)
 		dhi = ghi - dni*np.sin(solpos.apparent_elevation*np.pi/180)
 		dhi[dhi<0] = 0
 
@@ -70,8 +81,8 @@ def simulatePVModule(source, locs, elev, module="Canadian_Solar_CS5P_220M___2009
 		                                                                am_abs, aoi, module)
 
 		# Compute cell temperature
-		wspd = source.get("windspeed", loc, interpolation="bilinear")
-		airT = source.get("air_temp", loc, interpolation="bilinear")-273.15
+		wspd = source.get("windspeed", loc, interpolation=interpolation)
+		airT = source.get("air_temp", loc, interpolation=interpolation)-273.15
 		temps = pvlib.pvsystem.sapm_celltemp(total_irrad['poa_global'], wspd, airT)
 
 
