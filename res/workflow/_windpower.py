@@ -41,8 +41,11 @@ def simulateLocations(**k):
     if not k.get("skipLRA",False):
         ws = windutil.adjustLraToGwa( ws, locations, longRunAverage=MerraSource.LONG_RUN_AVERAGE_50M_SOURCE, gwa=gwa)
     
-    if np.isnan(ws).any().any():
-        raise RuntimeError("%d locations have invalid wind speed values"%np.isnan(ws).any().sum())
+    badVals = np.isnan(ws)
+    if badVals.any().any():
+        print("%d locations have invalid wind speed values:"%badVals.any().sum())
+        sel = badVals.any()
+        for loc in locations[sel]: print("  ", loc)
 
     # apply wind speed corrections to account (somewhat) for local effects not captured on the MERRA context
     factors = (1-0.3)*(1-np.exp(-0.2*ws))+0.3 # dampens lower wind speeds
