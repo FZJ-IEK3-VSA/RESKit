@@ -339,6 +339,50 @@ modisCodeToRoughess[4] = 1.5 # Forests
 modisCodeToRoughess[5] = 1.5 # Forests
 modisCodeToRoughess[8] = 1.5 # Forests
 
+############################################################################
+## CCI Landcover  classification by ESA and the Climate Change Initiative 
+## ABOUT: https://www.esa-landcover-cci.org/?q=node/1
+## Roughnesses defined due to the comparison with CLC and globCover
+cciCodeToRoughess = OrderedDict()
+# CCI LC Number
+cciCodeToRoughess [210] = 0.0002 # Water bodies
+cciCodeToRoughess [220] = 0.001 # Permanent snow and ice
+cciCodeToRoughess [200] = 0.005 # Bare areas
+cciCodeToRoughess [201] = 0.005 # Consolidated bare areas
+cciCodeToRoughess [202] = 0.005 # Unconsolidated bare areas
+cciCodeToRoughess [150] = 0.005 # Sparse vegetation (tree, shrub, herbaceous cover) (<15%)
+cciCodeToRoughess [152] = 0.005 # Sparse shrub (<15%)
+cciCodeToRoughess [153] = 0.005 # Sparse herbaceous cover (<15%)
+cciCodeToRoughess [10] = 0.03 # Cropland, rainfed
+cciCodeToRoughess [11] = 0.03 # Herbaceous cover
+cciCodeToRoughess [120] = 0.03 # Shrubland
+cciCodeToRoughess [121] = 0.03 # Shrubland evergreen #barely exists, only near water bodies, ocean
+cciCodeToRoughess [122] = 0.03 # Shrubland deciduous #barely exists, only near water bodies, ocean
+cciCodeToRoughess [12] = 0.3 # Tree or shrub cover
+cciCodeToRoughess [110] = 0.03 # Mosaic herbaceous cover (>50%) / tree and shrub (<50%)
+cciCodeToRoughess [40] = 0.03 # Mosaic natural vegetation (tree, shrub, herbaceous cover) (>50%) / cropland (<50%)
+cciCodeToRoughess [180] = 0.03 # Shrub or herbaceous cover, flooded, fresh/saline/brakish water
+cciCodeToRoughess [130] = 0.03 # Grassland
+cciCodeToRoughess [140] = 0.03 # Lichens and mosses
+cciCodeToRoughess [170] = 0.1 # Tree cover, flooded, saline water (areas around river deltas and ocean) 
+cciCodeToRoughess [20] = 0.1 # Cropland, irrigated or post-flooding
+cciCodeToRoughess [30] = 0.1 # Mosaic cropland (>50%) / natural vegetation (tree, shrub, herbaceous cover) (<50%)
+cciCodeToRoughess [160] = 0.5 # Tree cover, flooded, fresh or brakish water, barely exists
+cciCodeToRoughess [100] = 0.75 # Mosaic tree and shrub (>50%) / herbaceous cover (<50%)
+cciCodeToRoughess [50] = 0.75 # Tree cover, broadleaved, evergreen, closed to open (>15%)
+cciCodeToRoughess [60] = 0.75 # Tree cover, broadleaved, deciduous, closed to open (>15%)
+cciCodeToRoughess [61] = 0.75 # Tree cover, broadleaved, deciduous, closed (>40%)
+cciCodeToRoughess [62] = 0.75 # Tree cover, broadleaved, deciduous, open (15-40%)
+cciCodeToRoughess [70] = 0.75 # Tree cover, needleleaved, evergreen, closed to open (>15%)
+cciCodeToRoughess [71] = 0.75 # Tree cover, needleleaved, evergreen, closed (>40%)
+cciCodeToRoughess [72] = 0.75 # Tree cover, needleleaved, evergreen, open (15-40%)
+cciCodeToRoughess [80] = 0.75 # Tree cover, needleleaved, deciduous, closed to open (>15%)
+cciCodeToRoughess [81] = 0.75 # Tree cover, needleleaved, deciduous, closed (>40%)
+cciCodeToRoughess [82] = 0.75 # Tree cover, needleleaved, deciduous, open (15-40%)
+cciCodeToRoughess [90] = 0.75 # Tree cover, mixed leaf type (broadleaved and needleleaved)
+cciCodeToRoughess [190] = 1.2 # Urban areas
+
+
 def clcGridToRough(grid):
     if grid <= 0 or grid > 44: grid = 42 # assume ocean if grid value is unknown
     code = clcGridToCode_v2006[grid]
@@ -368,12 +412,13 @@ def roughnessFromCLCValues( num, gridValues=True ):
 
 def roughnessFromLandCover(num, landCover='clc'):
     """
-    landCover can be 'clc', 'globCover', or 'modis'
+    landCover can be 'clc', 'globCover', 'modis', or 'cci'
     """
     if landCover=='clc': source = lambda x: clcCodeToRoughess[x]
     elif landCover=='clc-grid': source = clcGridToRough
     elif landCover=='globCover': source = lambda x: globCoverCodeToRoughess[x]
     elif landCover=='modis': source = lambda x: modisCodeToRoughess[x]
+    elif landCover=='cci' : source = lambda x: cciCodeToRoughess[x]
     else: 
         raise ResError("invalid input")
 
