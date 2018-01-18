@@ -21,6 +21,7 @@ def simulateLocations(**k):
     verbose = k.pop('verbose')
     extractor = k.pop('extractor')
     gid = k.pop("gid")
+    lid = k.pop("locationID")
                             
     if verbose: 
         startTime = dt.now()
@@ -103,6 +104,7 @@ def simulateLocations(**k):
         outputVars["capacity"] = capacity
         outputVars["rotordiam"] = rotordiam
         outputVars["cutout"] = cutout
+        outputVars["locationID"] = lid
         
         result = raw_finalizer(production, capacityFactor)
 
@@ -385,6 +387,7 @@ def WindOnshoreWorkflow(placements, merra, landcover, gwa, hubHeight=None, power
         inputs["powerCurve"] = powerCurve
         inputs["pcKey"] = None if (pcKey is None or isinstance(pcKey, str)) else pcKey[sel]
         inputs["gid"]=i
+        inputs["locationID"]=sel
 
         if verbose:
             inputs["globalStart"]=startTime

@@ -115,12 +115,14 @@ def output_function(func):
         
         const = OrderedDict()
         const["UnitCount"]=result.c
+
         dim1 = OrderedDict()
         dim2 = OrderedDict()
 
         if len(result.o.shape)==1:
             N1 = result.o.shape[0]
             N2 = -1
+
         elif len(result.o.shape)==2:
             N1,N2 = result.o.shape
 
@@ -292,6 +294,7 @@ def totalProduction_output(output, result, ext, const, dim1, dim2):
 
 class Extractor(object):
     def __init__(s, method, outputPath=None):
+        s.method=method
         s.skipFinalOutput=False
 
         if method=="p" or method == "production" or method == "raw":
