@@ -488,5 +488,5 @@ def WindOnshoreWorkflow(placements, merra, landcover, gwa, hubHeight=None, power
                                 wscorr_b=0.2,)
                          
                                                   
-def WindOffshoreWorkflow():
-    pass
+def WindOffshoreWorkflow(**k):
+    return WindWorkflowTemplate(**k)
