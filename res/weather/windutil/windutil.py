@@ -382,54 +382,24 @@ cciCodeToRoughess [82] = 0.75 # Tree cover, needleleaved, deciduous, open (15-40
 cciCodeToRoughess [90] = 0.75 # Tree cover, mixed leaf type (broadleaved and needleleaved)
 cciCodeToRoughess [190] = 1.2 # Urban areas
 
-
-def clcGridToRough(grid):
-    if grid <= 0 or grid > 44: grid = 42 # assume ocean if grid value is unknown
-    code = clcGridToCode_v2006[grid]
-    rough = clcCodeToRoughess[code]
-    return rough
-
-clcGridToCodeFunc = np.vectorize( lambda x: clcGridToCode_v2006[x] )
-clcCodeToRoughFunc = np.vectorize( lambda x: clcCodeToRoughess[x] )
-def roughnessFromCLCValues( num, gridValues=True ):
-    num = np.array(num) # be sure we have an array
-
-    # convert to grid values, if needed
-    if gridValues:
-        # assume unknown data means ocean
-        num[num<=0] = 44
+def roughnessFromLandCover(num, lctype='clc'):
+    """
+    landCover can be 'clc', 'clc-code', globCover', 'modis', or 'cci'
+    """
+    if lctype=='clc': 
+        # fix no data values
+        num[num<0] = 44
         num[num>44] = 44
         num[np.isnan(num)] = 44
 
-        num = clcGridToCodeFunc(num)
-
-    # convert to roughness
-    rough - clcCodeToRoughFunc(num)
-
-    # done
-    return rough
-
-
-def roughnessFromLandCover(num, landCover='clc'):
-    """
-    landCover can be 'clc', 'globCover', 'modis', or 'cci'
-    """
-    if landCover=='clc': source = lambda x: clcCodeToRoughess[x]
-    elif landCover=='clc-grid': source = clcGridToRough
-    elif landCover=='globCover': source = lambda x: globCoverCodeToRoughess[x]
-    elif landCover=='modis': source = lambda x: modisCodeToRoughess[x]
-    elif landCover=='cci' : source = lambda x: cciCodeToRoughess[x]
+        # set source
+        source = lambda x: clcCodeToRoughess[clcGridToCode_v2006[x]]
+    elif lctype=='clc-code': source = lambda x: clcCodeToRoughess[x]
+    elif lctype=='globCover': source = lambda x: globCoverCodeToRoughess[x]
+    elif lctype=='modis': source = lambda x: modisCodeToRoughess[x]
+    elif lctype=='cci' : source = lambda x: cciCodeToRoughess[x]
     else: 
         raise ResError("invalid input")
 
     converter = np.vectorize(source)
     return converter(num)
-
-    #if isinstance(num,int):
-    #    return source(num)
-    #if isinstance(num, np.ndarray) or isinstance(num,list):
-    #    return np.array([source(int(x)) for x in num])
-    #if isinstance(num, pd.Series) or isinstance(num, pd.DataFrame):
-    #    return num.apply( lambda x: source(int(x)))
-    #else: 
-    #    raise ResError("invalid input")

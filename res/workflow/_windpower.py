@@ -3,32 +3,15 @@ from res.windpower import *
 
 ##################################################################
 ## Make a typical simulator function
-def simulateLocations(**k):
-    # Unpack inputs
-    pickleable = k.pop('pickleable')
-    hubHeight = k.pop('hubHeight')
-    lctype = k.pop('lctype')
-    pcKey = k.pop('pcKey')
-    capacity = k.pop('capacity')
-    landcover = k.pop('landcover')
-    locations = k.pop('locations')
-    rotordiam = k.pop('rotordiam')
-    cutout = k.pop('cutout')
-    gwa = k.pop('gwa')
-    minCF = k.pop("minCF")
-    wsSource = k.pop('wsSource')
-    powerCurve = k.pop('powerCurve')
-    verbose = k.pop('verbose')
-    extractor = k.pop('extractor')
-    gid = k.pop("gid")
-    lid = k.pop("locationID")
-                            
+def simulateLocations(wsSource, landcover, adjustMethod, gwa, roughness, loss, wscorr_a, wscorr_b, lctype, minCF, verbose, 
+                      extractor, powerCurve, pcKey, gid, locationID, globalStart, locations, capacity, conv_stdBase, 
+                      conv_stdScale, hubHeight, rotordiam, cutout, pickleable):
     if verbose: 
         startTime = dt.now()
-        globalStart = k.get("globalStart", startTime)
+        globalStart = globalStart
         print(" %s: Starting at +%.2fs"%(str(gid), (startTime-globalStart).total_seconds()))
     
-    # read wind speeds
+    # prepare wind speed loader
     locations = Location.ensureLocation(locations)
 
     if len(locations) == 0 : 
@@ -36,12 +19,21 @@ def simulateLocations(**k):
         return None
 
     if pickleable: Location.makePickleable(locations)
-    ws = wsSource.get("windspeed", locations, forceDataFrame=True)
 
-    # spatially adjust windspeeds
-    if not k.get("skipLRA",False):
+    # read and spatially adjust windspeeds
+    if adjustMethod == "lra":
+        ws = wsSource.get("windspeed", locations, forceDataFrame=True)
         ws = windutil.adjustLraToGwa( ws, locations, longRunAverage=MerraSource.LONG_RUN_AVERAGE_50M_SOURCE, gwa=gwa)
+
+    elif adjustMethod == "near" or adjustMethod == "bilinear" or adjustMethod == "cubic":
+        ws = wsSource.get("windspeed", locations, interpolation=adjustMethod, forceDataFrame=True)
+
+    elif adjustMethod is None:
+        ws = wsSource.get("windspeed", locations, forceDataFrame=True)
+
+    else: raise ResError("adjustMethod not recognized")
     
+    # Look for bad values
     badVals = np.isnan(ws)
     if badVals.any().any():
         print("%d locations have invalid wind speed values:"%badVals.any().sum())
@@ -49,26 +41,28 @@ def simulateLocations(**k):
         for loc in locations[sel]: print("  ", loc)
 
     # apply wind speed corrections to account (somewhat) for local effects not captured on the MERRA context
-    factors = (1-0.3)*(1-np.exp(-0.2*ws))+0.3 # dampens lower wind speeds
-    ws = factors*ws
-    factors = None
+    if not wscorr_a is None and wscorr_b is None:
+        factors = (1-wscorr_a)*(1-np.exp(-wscorr_b*ws))+wscorr_a # dampens lower wind speeds
+        ws = factors*ws
+        factors = None
 
     # Get roughnesses from Land Cover
-    if lctype == "clc":
-        winRange = int(k.get("lcRange",0))
-        roughnesses = windutil.roughnessFromCLC(landcover, locations, winRange=winRange, )
-    else:
+    if roughness is None and not lctype is None:
         lcVals = gk.raster.extractValues(landcover, locations).data
         roughnesses = windutil.roughnessFromLandCover(lcVals, lctype)
 
-    if np.isnan(roughnesses).any():
-        raise RuntimeError("%d locations are outside the given landcover file"%np.isnan(roughnesses).sum())
+        if np.isnan(roughnesses).any():
+            raise RuntimeError("%d locations are outside the given landcover file"%np.isnan(roughnesses).sum())
+
+    elif not roughness is None and lctype is None:
+        roughnesses = roughness
+    else:
+        raise ResError("roughness and lctype are both given or are both None")
 
     # Project WS to hub height
     ws = windutil.projectByLogLaw(ws, measuredHeight=50, targetHeight=hubHeight, roughness=roughnesses)
 
     # do simulations
-    loss = 0.04
     if pcKey is None:
         capacityGeneration = simulateTurbine(ws, powerCurve=powerCurve, loss=loss)
     else:
@@ -100,17 +94,26 @@ def simulateLocations(**k):
         outputVars["lctype"] = lctype
         outputVars["minCF"] = minCF
         outputVars["pcKey"] = pcKey
+        outputVars["adjustMethod"] = adjustMethod
+        outputVars["roughness"] = roughness
+        outputVars["loss"] = loss
+        outputVars["wscorr_a"] = wscorr_a
+        outputVars["wscorr_b"] = wscorr_b
+        outputVars["conv_stdBase"] = conv_stdBase
+        outputVars["conv_stdScale"] = conv_stdScale
         outputVars["hubHeight"] = hubHeight
         outputVars["capacity"] = capacity
         outputVars["rotordiam"] = rotordiam
         outputVars["cutout"] = cutout
-        outputVars["locationID"] = lid
+        outputVars["locationID"] = locationID
         
         result = raw_finalizer(production, capacityFactor)
 
         try:
             outputPath = extractor.outputPath%gid
         except:
+            if extractor.outputPath.format(0) == extractor.outputPath.format(2):
+                raise ResError("output is not integer-formatable. Be sure there is a single %d or a {}")
             outputPath = extractor.outputPath.format(gid)
 
         raw_output(outputPath, result, outputVars)
@@ -120,93 +123,9 @@ def simulateLocations(**k):
 
 ##################################################################
 ## Distributed Wind production from a Merra wind source
-def WindOffshoreWorkflow():
-    pass
-
-def WindOnshoreWorkflow(placements, merra, landcover, gwa, hubHeight=None, powerCurve=None, capacity=None, rotordiam=None, cutout=None, lctype="clc", extract="totalProduction", output=None, minCF=0, jobs=1, batchSize=None, verbose=True, **kwargs):
-    """
-    Apply the wind simulation method developed by Severin Ryberg, Dilara Caglayan, and Sabrina Schmitt. This method 
-    works as follows for a given simulation point:
-        1. The nearest time-series in the provided MERRA climate data is extracted
-            * reads windspeeds at 50 meters
-        2. The time series is adjusted so that the long-run-average (all MERRA data at this point) matches the value
-           given by the Global Wind Atlas at the simulation point
-        3. A roughness factor is assumed from the land cover and is used to project the wind speeds to the indicated
-           hub height
-        4. Low windspeeds are depressed slightly, ending around 10 m/s
-        5. The wind speeds are fed through the power-curve of the indicated turbine
-            * The power curve has been convoluted to incorporate a stochastic spread of windspeeds
-        6. An additional 4% loss is applied
-    
-    Notes:
-        * hubHeight must always be given, either as an argument or contained within the placements object (see below)
-        * When giving a user-defined power curve, the capacity must also be given 
-        * When powerCurve isn't given, capacity, rotordiam and cutout are used to generate a synthetic power curve 
-          using res.windpower.SyntheticPowerCurve. In this case, rotordiam and capacity must be given, but cutout can
-          be left as None (implying the default of 25 m/s)
-        * Be careful about writing raw production data to csv files. It takes long and output is big big big. I 
-          suggest using a netCDF4 (.nc) file instead
-
-    Inputs:
-        placements: 
-            [ (lon,lat), ] : a list of (lon,lat) coordinates to simulate
-            str : A path to a point-type shapefile indicating the turbines to simulate
-            DataFrame : A datafrom containing per-turbine characteristics, must include a 'lon' and 'lat' column
-            * When plaements is given as a shapefile path or a DataFrame, the following can also be defined as 
-              attributes/columns for each turbine (but are not necessary):
-              [turbine, powerCurve, capacity, rotordiam, hubHeight, cutout]
-
-        merra - str : A path to the MERRA data which will be used for the simulation
-            * MUST have the fields 'U50M' and 'V50M'
-
-        landcover - str : The path to the land cover source
-
-        gwa - str : The path to the global wind atlas mean windspeeds (at 50 meters)
-
-        powerCurve: The turbine to simulate
-            str : An indicator from the TurbineLibrary (res.windpower.TurbineLibrary)
-            [(float, float), ...] : An explicit performance curve given as (windspeed, capacity-factor-output) pairs
-            * Giving this will overload the turbine/powerCurve definition from the placements shapefile/DataFrame
-
-        hubHeight - float : The hub height to simulate at
-            * Giving this will overload the hubHeight definition from the placements shapefile/DataFrame
-
-        capacity - float : The turbine capacity in kW
-            * Giving this will overload the capacity definition from the placements shapefile/DataFrame
-
-        rotordiam - float : The turbine rotor diameter in m
-            * Giving this will overload the rotordiam definition from the placements shapefile/DataFrame
-            * Using this is only useful when generating a synthetic power curve
-        
-        cutout - float : The turbine cutout windspeed in m/s
-            * Giving this will overload the cutout definition from the placements shapefile/DataFrame
-            * Using this is only useful when generating a synthetic power curve
-        
-        lctype - str: The land cover type to use
-            * Options are "clc", "globCover", and "modis"
-
-        extract - str: Determines the extraction method and the form of the returned information
-            * Options are:
-                "raw" - returns the timeseries production for each location
-                "capacityFactor" - returns only the resulting capacity factor for each location
-                "averageProduction" - returns the average time series of all locations
-                "batch" - returns nothing, but the full production data is written independently for each batch
-
-        minCF - float : The minimum capacity factor to accept
-            * Must be between 0..1
-
-        jobs - int : The number of parallel jobs
-
-        batchSize - int : The number of placements to simulate across all concurrent jobs
-            * Use this to tune performance to your specific machine
-
-        verbose - bool : False means silent, True means noisy
-
-        output - str : The path of the output file to create
-            * File type options are ".shp", ".csv", and ".nc"
-            * When using the "batch" extract option, output must be able to handle an integer when formatting.
-                - ex: output="somepath\outputData_%02d.nc"
-    """
+def WindWorkflowTemplate(placements, merra, hubHeight, powerCurve, capacity, rotordiam, cutout, extract, output, 
+                         roughness, landcover, adjustMethod, gwa, lctype, conv_stdBase, conv_stdScale, loss, wscorr_a, wscorr_b, 
+                         minCF, jobs, batchSize, verbose, ):
     if verbose: 
         startTime = dt.now()
         print("Starting at: %s"%str(startTime))
@@ -335,7 +254,7 @@ def WindOnshoreWorkflow(placements, merra, landcover, gwa, hubHeight=None, power
             res = []
         
             for k,v in powerCurve.items():
-                kwargs = dict(stdScaling=0.1, stdBase=0.6, powerCurve=v)
+                kwargs = dict(stdScaling=conv_stdScale, stdBase=conv_stdBase, powerCurve=v)
                 res.append((k,pool.apply_async(convolutePowerCurveByGuassian, (), kwargs)))
 
             for k,r in res:
@@ -346,9 +265,9 @@ def WindOnshoreWorkflow(placements, merra, landcover, gwa, hubHeight=None, power
             pool = None
         else:
             for k,v in powerCurve.items():
-                powerCurve[k] = convolutePowerCurveByGuassian(stdScaling=0.1, stdBase=0.6, powerCurve=v)
+                powerCurve[k] = convolutePowerCurveByGuassian(stdScaling=conv_stdScale, stdBase=conv_stdBase, powerCurve=v)
     else:
-        powerCurve = convolutePowerCurveByGuassian(stdScaling=0.1, stdBase=0.6, powerCurve=powerCurve )
+        powerCurve = convolutePowerCurveByGuassian(stdScaling=conv_stdScale, stdBase=conv_stdBase, powerCurve=powerCurve )
 
     ### Do simulations
     # Check inputs
@@ -379,8 +298,15 @@ def WindOnshoreWorkflow(placements, merra, landcover, gwa, hubHeight=None, power
         inputs = {}
         inputs["wsSource"]=wsSource
         inputs["landcover"]=landcover
-        inputs["lctype"]=lctype
         inputs["gwa"]=gwa
+        inputs["adjustMethod"]=adjustMethod
+        inputs["roughness"]=roughness
+        inputs["loss"]=loss
+        inputs["wscorr_a"]=wscorr_a
+        inputs["wscorr_b"]=wscorr_b
+        inputs["conv_stdBase"]=conv_stdBase
+        inputs["conv_stdScale"]=conv_stdScale
+        inputs["lctype"]=lctype
         inputs["minCF"]=minCF
         inputs["verbose"]=verbose
         inputs["extractor"]=extractor
@@ -433,10 +359,18 @@ def WindOnshoreWorkflow(placements, merra, landcover, gwa, hubHeight=None, power
             endTime = dt.now()
             totalSecs = (endTime - startTime).total_seconds()
             print("Writing output at +%.2fs"%totalSecs)
+
         outputVars = OrderedDict()
         outputVars["lctype"] = lctype
         outputVars["minCF"] = minCF
         outputVars["pcKey"] = pcKey
+        outputVars["adjustMethod"] = adjustMethod
+        outputVars["roughness"] = roughness
+        outputVars["loss"] = loss
+        outputVars["wscorr_a"] = wscorr_a
+        outputVars["wscorr_b"] = wscorr_b
+        outputVars["conv_stdBase"] = conv_stdBase
+        outputVars["conv_stdScale"] = conv_stdScale
         outputVars["hubHeight"] = hubHeight
         outputVars["capacity"] = capacity
         outputVars["rotordiam"] = rotordiam
@@ -457,3 +391,102 @@ def WindOnshoreWorkflow(placements, merra, landcover, gwa, hubHeight=None, power
     outputResult.TurbineCount = finalResult.c
     return outputResult
     
+def WindOnshoreWorkflow(placements, merra, landcover, gwa, hubHeight=None, powerCurve=None, capacity=None, rotordiam=None, cutout=None, lctype="clc", extract="totalProduction", output=None, minCF=0, jobs=1, batchSize=None, verbose=True, **kwargs):
+    """
+    Apply the wind simulation method developed by Severin Ryberg, Dilara Caglayan, and Sabrina Schmitt. This method 
+    works as follows for a given simulation point:
+        1. The nearest time-series in the provided MERRA climate data is extracted
+            * reads windspeeds at 50 meters
+        2. The time series is adjusted so that the long-run-average (all MERRA data at this point) matches the value
+           given by the Global Wind Atlas at the simulation point
+        3. A roughness factor is assumed from the land cover and is used to project the wind speeds to the indicated
+           hub height
+        4. Low windspeeds are depressed slightly, ending around 10 m/s
+        5. The wind speeds are fed through the power-curve of the indicated turbine
+            * The power curve has been convoluted to incorporate a stochastic spread of windspeeds
+        6. An additional 4% loss is applied
+    
+    Notes:
+        * hubHeight must always be given, either as an argument or contained within the placements object (see below)
+        * When giving a user-defined power curve, the capacity must also be given 
+        * When powerCurve isn't given, capacity, rotordiam and cutout are used to generate a synthetic power curve 
+          using res.windpower.SyntheticPowerCurve. In this case, rotordiam and capacity must be given, but cutout can
+          be left as None (implying the default of 25 m/s)
+        * Be careful about writing raw production data to csv files. It takes long and output is big big big. I 
+          suggest using a netCDF4 (.nc) file instead
+
+    Inputs:
+        placements: 
+            [ (lon,lat), ] : a list of (lon,lat) coordinates to simulate
+            str : A path to a point-type shapefile indicating the turbines to simulate
+            DataFrame : A datafrom containing per-turbine characteristics, must include a 'lon' and 'lat' column
+            * When plaements is given as a shapefile path or a DataFrame, the following can also be defined as 
+              attributes/columns for each turbine (but are not necessary):
+              [turbine, powerCurve, capacity, rotordiam, hubHeight, cutout]
+
+        merra - str : A path to the MERRA data which will be used for the simulation
+            * MUST have the fields 'U50M' and 'V50M'
+
+        landcover - str : The path to the land cover source
+
+        gwa - str : The path to the global wind atlas source
+
+        powerCurve: The turbine to simulate
+            str : An indicator from the TurbineLibrary (res.windpower.TurbineLibrary)
+            [(float, float), ...] : An explicit performance curve given as (windspeed, capacity-factor-output) pairs
+            * Giving this will overload the turbine/powerCurve definition from the placements shapefile/DataFrame
+
+        hubHeight - float : The hub height to simulate at
+            * Giving this will overload the hubHeight definition from the placements shapefile/DataFrame
+
+        capacity - float : The turbine capacity in kW
+            * Giving this will overload the capacity definition from the placements shapefile/DataFrame
+
+        rotordiam - float : The turbine rotor diameter in m
+            * Giving this will overload the rotordiam definition from the placements shapefile/DataFrame
+            * Using this is only useful when generating a synthetic power curve
+        
+        cutout - float : The turbine cutout windspeed in m/s
+            * Giving this will overload the cutout definition from the placements shapefile/DataFrame
+            * Using this is only useful when generating a synthetic power curve
+        
+        lctype - str: The land cover type to use
+            * Options are "clc", "globCover", and "modis"
+
+        extract - str: Determines the extraction method and the form of the returned information
+            * Options are:
+                "raw" - returns the timeseries production for each location
+                "capacityFactor" - returns only the resulting capacity factor for each location
+                "averageProduction" - returns the average time series of all locations
+                "batch" - returns nothing, but the full production data is written independently for each batch
+
+        minCF - float : The minimum capacity factor to accept
+            * Must be between 0..1
+
+        jobs - int : The number of parallel jobs
+
+        batchSize - int : The number of placements to simulate across all concurrent jobs
+            * Use this to tune performance to your specific machine
+
+        verbose - bool : False means silent, True means noisy
+
+        output - str : The path of the output file to create
+            * File type options are ".shp", ".csv", and ".nc"
+            * When using the "batch" extract option, output must be able to handle an integer when formatting.
+                - ex: output="somepath\outputData_%02d.nc"
+    """
+    return WindWorkflowTemplate(placements=placements, merra=merra, hubHeight=hubHeight, powerCurve=powerCurve, 
+                                capacity=capacity, rotordiam=rotordiam, cutout=cutout, extract=extract, 
+                                output=output, landcover=landcover, gwa=gwa, lctype=lctype, minCF=minCF, jobs=jobs, 
+                                batchSize=batchSize, verbose=verbose,
+                                roughness=None,
+                                adjustMethod="lra",
+                                conv_stdBase=0.6,
+                                conv_stdScale=0.1,
+                                loss=0.04,
+                                wscorr_a=0.3,
+                                wscorr_b=0.2,)
+                         
+                                                  
+def WindOffshoreWorkflow():
+    pass
