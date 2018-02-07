@@ -1,2 +1,2 @@
 from ._windpower import WindOnshoreWorkflow, WindOffshoreWorkflow
-from ._solarpower import PVWorkflow
+from ._solarpower import PVOpenFieldWorkflow

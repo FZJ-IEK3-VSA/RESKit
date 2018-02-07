@@ -41,7 +41,7 @@ def simulateLocations(wsSource, landcover, adjustMethod, gwa, roughness, loss, w
         for loc in locations[sel]: print("  ", loc)
 
     # apply wind speed corrections to account (somewhat) for local effects not captured on the MERRA context
-    if not wscorr_a is None and wscorr_b is None:
+    if not (wscorr_a is None and wscorr_b is None):
         factors = (1-wscorr_a)*(1-np.exp(-wscorr_b*ws))+wscorr_a # dampens lower wind speeds
         ws = factors*ws
         factors = None
@@ -63,7 +63,7 @@ def simulateLocations(wsSource, landcover, adjustMethod, gwa, roughness, loss, w
     ws = windutil.projectByLogLaw(ws, measuredHeight=50, targetHeight=hubHeight, roughness=roughnesses)
 
     # do simulations
-    if pcKey is None:
+    if not isinstance(powerCurve, dict):
         capacityGeneration = simulateTurbine(ws, powerCurve=powerCurve, loss=loss)
     else:
         capacityGeneration = pd.DataFrame(-1*np.ones(ws.shape), index=ws.index, columns=ws.columns)
@@ -311,7 +311,7 @@ def WindWorkflowTemplate(placements, merra, hubHeight, powerCurve, capacity, rot
         inputs["verbose"]=verbose
         inputs["extractor"]=extractor
         inputs["powerCurve"] = powerCurve
-        inputs["pcKey"] = None if (pcKey is None or isinstance(pcKey, str)) else pcKey[sel]
+        inputs["pcKey"] = pcKey if (pcKey is None or isinstance(pcKey, str)) else pcKey[sel]
         inputs["gid"]=i
         inputs["locationID"]=sel
 

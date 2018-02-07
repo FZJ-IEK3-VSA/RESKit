@@ -1,33 +1,16 @@
 from ._util import *
-from res.windpower import *
+from res.solarpower import *
 
 ##################################################################
 ## Make a typical simulator function
-def simulateLocations(**k):
-    # Unpack inputs
-    pickleable = k.pop('pickleable')
-    hubHeight = k.pop('hubHeight')
-    lctype = k.pop('lctype')
-    pcKey = k.pop('pcKey')
-    capacity = k.pop('capacity')
-    landcover = k.pop('landcover')
-    locations = k.pop('locations')
-    rotordiam = k.pop('rotordiam')
-    cutout = k.pop('cutout')
-    gwa = k.pop('gwa')
-    minCF = k.pop("minCF")
-    wsSource = k.pop('wsSource')
-    powerCurve = k.pop('powerCurve')
-    verbose = k.pop('verbose')
-    extractor = k.pop('extractor')
-    gid = k.pop("gid")
-                            
+def simulateLocations(source, elev, loss, minCF, verbose, extractor, module, inverter, capacity, azimuth, tilt, interpolation, gid, 
+                      locationID, globalStart, locations, pickleable):
     if verbose: 
         startTime = dt.now()
-        globalStart = k.get("globalStart", startTime)
+        globalStart = globalStart
         print(" %s: Starting at +%.2fs"%(str(gid), (startTime-globalStart).total_seconds()))
     
-    # read wind speeds
+    # prepare locations
     locations = Location.ensureLocation(locations)
 
     if len(locations) == 0 : 
@@ -35,47 +18,17 @@ def simulateLocations(**k):
         return None
 
     if pickleable: Location.makePickleable(locations)
-    ws = wsSource.get("windspeed", locations, forceDataFrame=True)
-
-    # spatially adjust windspeeds
-    if not k.get("skipLRA",False):
-        ws = windutil.adjustLraToGwa( ws, locations, longRunAverage=MerraSource.LONG_RUN_AVERAGE_50M_SOURCE, gwa=gwa)
-
-    # apply wind speed corrections to account (somewhat) for local effects not captured on the MERRA context
-    factors = (1-0.3)*(1-np.exp(-0.2*ws))+0.3 # dampens lower wind speeds
-    ws = factors*ws
-    factors = None
-
-    # Get roughnesses from Land Cover
-    if lctype == "clc":
-        winRange = int(k.get("lcRange",0))
-        roughnesses = windutil.roughnessFromCLC(landcover, locations, winRange=winRange)
-    else:
-        lcVals = gk.raster.extractValues(landcover, locations).data
-        roughnesses = windutil.roughnessFromLandCover(lcVals, lctype)
-
-    # Project WS to hub height
-    ws = windutil.projectByLogLaw(ws, measuredHeight=50, targetHeight=hubHeight, roughness=roughnesses)
-
+    
     # do simulations
-    loss = 0.04
-    if pcKey is None:
-        capacityGeneration = simulateTurbine(ws, powerCurve=powerCurve, loss=loss)
-    else:
-        capacityGeneration = pd.DataFrame(-1*np.ones(ws.shape),index=ws.index, columns=ws.columns)
-        for key in np.unique(pcKey):
-            tmp = simulateTurbine(ws.iloc[:,pcKey==key], powerCurve[key], loss=loss)
-            capacityGeneration.update( tmp )
-        if (capacityGeneration.values<0).any(): raise RuntimeError("Some placements were not evaluated")
-
-    capacityFactor = capacityGeneration.mean(axis=0)
+    capacityGeneration = simulatePVModule(locations, elev, source, module=module, azimuth=azimuth, tilt=tilt, inverter=inverter, extract="capacity-production", interpolation=interpolation, loss=loss)
+    capacityFactor = generation.mean(0)
     production = capacityGeneration*capacity
-
+    
     if verbose:
         endTime = dt.now()
         simSecs = (endTime - startTime).total_seconds()
         globalSecs = (endTime - globalStart).total_seconds()
-        print(" %s: Finished %d turbines +%.2fs (%.2f turbines/sec)"%(str(gid), len(locations), globalSecs, len(locations)/simSecs))
+        print(" %s: Finished %d locations +%.2fs (%.2f locations/sec)"%(str(gid), len(locations), globalSecs, len(locations)/simSecs))
     
     # Apply Capacity Factor Filter
     if minCF > 0:
@@ -86,27 +39,34 @@ def simulateLocations(**k):
     # Done!
     if extractor.method == "batch":
         outputVars = OrderedDict()
-        outputVars["lctype"] = lctype
         outputVars["minCF"] = minCF
-        outputVars["pcKey"] = pcKey
-        outputVars["hubHeight"] = hubHeight
+        outputVars["module"] = module
+        outputVars["azimuth"] = azimuth
+        outputVars["tilt"] = tilt
         outputVars["capacity"] = capacity
-        outputVars["rotordiam"] = rotordiam
-        outputVars["cutout"] = cutout
+        outputVars["inverter"] = inverter
+        outputVars["interpolation"] = interpolation
+        outputVars["loss"] = loss
+        outputVars["locationID"] = locationID
         
         result = raw_finalizer(production, capacityFactor)
-        raw_output(extractor.outputPath%gid, result, outputVars)
-        output = None
-    else:
-        output = extractor.finalize(production, capacityFactor)
+
+        try:
+            outputPath = extractor.outputPath%gid
+        except:
+            if extractor.outputPath.format(0) == extractor.outputPath.format(2):
+                raise ResError("output is not integer-formatable. Be sure there is a single %d or a {}")
+            outputPath = extractor.outputPath.format(gid)
+
+        raw_output(outputPath, result, outputVars)
+    
+    output = extractor.finalize(production, capacityFactor)
     return output
 
 ##################################################################
-## Distributed Wind production from a Merra wind source
-def PVWorkflow(placements, merra, landcover, gwa, hubHeight=None, powerCurve=None, turbine=None, capacity=None, rotordiam=None, cutout=None, lctype="clc", extract="averageProduction", output=None, minCF=0, jobs=1, batchSize=None, verbose=True, **kwargs):
-    """
-    REPLACE THIS WITH A PV VERSION!!
-    """
+## Distributed PV production from a weather source
+def PVWorkflowTemplate(placements, source, elev, module, azimuth, tilt, inverter, interpolation, 
+                       capacity, extract, output, loss, minCF, jobs, batchSize, verbose, ):
     if verbose: 
         startTime = dt.now()
         print("Starting at: %s"%str(startTime))
@@ -124,7 +84,6 @@ def PVWorkflow(placements, merra, landcover, gwa, hubHeight=None, powerCurve=Non
         useMulti = True
     
     extractor = Extractor(extract, outputPath=output)
-    if not turbine is None: powerCurve=turbine
 
     ### Determine the total extent which will be simulated (also make sure the placements input is okay)
     if verbose: print("Arranging placements at +%.2fs"%((dt.now()-startTime).total_seconds()))
@@ -134,21 +93,20 @@ def PVWorkflow(placements, merra, landcover, gwa, hubHeight=None, powerCurve=Non
         placements["lon"] = placements.geom.apply(lambda x: x.GetX())
     
     if isinstance(placements, pd.DataFrame):
-        if "powerCurve" in placements.columns and powerCurve is None: powerCurve = placements.powerCurve.values
-        if "turbine" in placements.columns and powerCurve is None: powerCurve = placements.turbine.values
-        if "hubHeight" in placements.columns and hubHeight is None: hubHeight = placements.hubHeight.values
+        if "elev" in placements.columns and elev is None: elev = placements.elev.values
         if "capacity" in placements.columns and capacity is None: capacity = placements.capacity.values
-        if "rotordiam" in placements.columns and rotordiam is None: rotordiam = placements.rotordiam.values
-        if "cutout" in placements.columns and cutout is None: cutout = placements.cutout.values
+        if "azimuth" in placements.columns and azimuth is None: azimuth = placements.azimuth.values
+        if "tilt" in placements.columns and tilt is None: tilt = placements.tilt.values
 
-        placements = placements[["lon","lat"]].values
+        try:
+            placements = placements[["lon","lat"]].values
+        except:
+            placements = placements["geom"].values
 
     placements = Location.ensureLocation(placements, forceAsArray=True)
 
-    hubHeight = None if hubHeight is None else np.array(hubHeight)
+    elev = elev if isinstance(elev, str) else np.array(elev)
     capacity = None if capacity is None else np.array(capacity)
-    rotordiam = None if rotordiam is None else np.array(rotordiam)
-    cutout = None if cutout is None else np.array(cutout)
 
     allLats = np.array([p.lat for p in placements])
     allLons = np.array([p.lon for p in placements])
@@ -158,100 +116,21 @@ def PVWorkflow(placements, merra, landcover, gwa, hubHeight=None, powerCurve=Non
     lonMin = allLons.min()
     lonMax = allLons.max()
 
-    if verbose: print("Pre-loading windspeeds at +%.2fs"%((dt.now()-startTime).total_seconds()))
+    if verbose: print("Pre-loading weather data at +%.2fs"%((dt.now()-startTime).total_seconds()))
     totalExtent = gk.Extent((lonMin,latMin,lonMax,latMax,), srs=LATLONSRS)
     
     # Setup manager if needed
     if useMulti:
         manager = WSManager()
         manager.start()
-        wsSource = manager.MerraSource(path=merra, bounds=Bounds(*totalExtent.pad(1).xyXY))
+        weatherSource = manager.MerraSource(path=source, bounds=Bounds(*totalExtent.pad(1).xyXY))
     else:
-        wsSource = MerraSource(path=merra, bounds=totalExtent.pad(1))
+        weatherSource = MerraSource(path=source, bounds=totalExtent.pad(1))
 
-    wsSource.loadWindSpeed(height=50)
-
-    ### Convolute turbine
-    if verbose: print("Convolving power curves at +%.2fs"%( (dt.now()-startTime).total_seconds()) )
-    
-    pcKey = None
-    if powerCurve is None: # no turbine given, so a synthetic turbine will need to be constructed
-        if capacity is None and rotordiam is None:
-            raise RuntimeError("powerCurve, capacity, and rotordiam cannot all be None")
-
-        # Compute specific capacity
-        #  - Round to the nearest 10 to save memory and time for convolution
-        specificCapacity = np.array(capacity*1000/(np.pi*rotordiam**2/4))
-        specificCapacity = np.round(specificCapacity, -1).astype(int)
-
-        if specificCapacity.size == 1:
-            powerCurve = SyntheticPowerCurve( specificCapacity=specificCapacity, cutout=cutout)
-            pcKey = "%d:%d"%(specificCapacity,25 if cutout is None else cutout)
-        else:
-            powerCurve = dict()
-            pcKey = []
-            if isinstance(cutout, int) or isinstance(cutout, float) or cutout is None: 
-                cutout = [cutout]*specificCapacity.size
-            for sp,co in zip(specificCapacity,cutout):
-                key = "%d:%d"%(sp,25 if co is None else co)
-                pcKey.append( key )
-                if not key in powerCurve.keys():
-                    powerCurve[key] = SyntheticPowerCurve( sp, co)
-
-    elif isinstance(powerCurve, str):
-        pcKey = powerCurve
-        capacity = TurbineLibrary.ix[powerCurve].Capacity
-        powerCurve = TurbineLibrary.ix[powerCurve].PowerCurve
-
-    else: # powerCurve is either a (ws,power) list or is a list of turbine names
-        if isinstance(powerCurve[0],str): # assume entire list is a list of names
-            pcKey = powerCurve
-            powerCurve = dict()
-            capacity = []
-
-            for name in pcKey:
-                capacity.append(TurbineLibrary.ix[name].Capacity)
-                if not name in powerCurve.keys():
-                    powerCurve[name] = TurbineLibrary.ix[name].PowerCurve
-        
-        else: # powerCurve is a single power curve definition
-            tmp = np.array(powerCurve)
-            powerCurve = PowerCurve(tmp[:,0], tmp[:,1])
-            pcKey = None
-
-        turbine = None # remove turbine so it doesn't show up in output
-    pcKey = pcKey if pcKey is None or isinstance(pcKey, str) else np.array(pcKey)
-
-    if isinstance(powerCurve, dict):
-        if verbose: 
-            print("   Convolving %d power curves..."%(len(powerCurve)))
-
-        if useMulti:
-            pool = Pool(cpus)
-            res = []
-        
-            for k,v in powerCurve.items():
-                kwargs = dict(stdScaling=0.1, stdBase=0.6, powerCurve=v)
-                res.append((k,pool.apply_async(convolutePowerCurveByGuassian, (), kwargs)))
-
-            for k,r in res:
-                powerCurve[k] = r.get()
-            
-            pool.close()
-            pool.join()
-            pool = None
-        else:
-            for k,v in powerCurve.items():
-                powerCurve[k] = convolutePowerCurveByGuassian(stdScaling=0.1, stdBase=0.6, powerCurve=v)
-    else:
-        powerCurve = convolutePowerCurveByGuassian(stdScaling=0.1, stdBase=0.6, powerCurve=powerCurve )
+    weatherSource.loadSet_PV()
 
     ### Do simulations
-    # Check inputs
-    if hubHeight is None:
-        raise RuntimeError("hubHeight has not been provided")
-
-    ### initialize simulations
+    # initialize simulations
     if verbose: print("Initializing simulations at +%.2fs"%((dt.now()-startTime).total_seconds()))
     if useMulti: pool = Pool(cpus)
     simGroups = []
@@ -262,7 +141,7 @@ def PVWorkflow(placements, merra, landcover, gwa, hubHeight=None, powerCurve=Non
         for simPlacements in np.array_split( I, cpus):
             simGroups.append( simPlacements )
     else: # split the area in to equal size groups, and simulate one group at a time
-        for simPlacements in np.array_split(I, len(placements)//(batchSize/cpus)):
+        for simPlacements in np.array_split(I, max(1,len(placements)//(batchSize/cpus))):
             simGroups.append( simPlacements )
 
     if verbose: 
@@ -273,16 +152,17 @@ def PVWorkflow(placements, merra, landcover, gwa, hubHeight=None, powerCurve=Non
     for i,sel in enumerate(simGroups):
         # Construct arguments for each submission
         inputs = {}
-        inputs["wsSource"]=wsSource
-        inputs["landcover"]=landcover
-        inputs["lctype"]=lctype
-        inputs["gwa"]=gwa
-        inputs["minCF"]=minCF
-        inputs["verbose"]=verbose
-        inputs["extractor"]=extractor
-        inputs["powerCurve"] = powerCurve
-        inputs["pcKey"] = None if (pcKey is None or isinstance(pcKey, str)) else pcKey[sel]
-        inputs["gid"]=i
+        inputs["source"] = weatherSource
+        inputs["loss"] = loss
+        inputs["minCF"] = minCF
+        inputs["verbose"] = verbose
+        inputs["extractor"] = extractor
+        inputs["module"] = module
+        inputs["inverter"] = inverter
+        inputs["capacity"] = capacity
+        inputs["interpolation"] = interpolation
+        inputs["gid"] = i
+        inputs["locationID"] = sel
 
         if verbose:
             inputs["globalStart"]=startTime
@@ -294,10 +174,10 @@ def PVWorkflow(placements, merra, landcover, gwa, hubHeight=None, powerCurve=Non
 
         add(placements, "locations")
         add(capacity, "capacity")
-        add(hubHeight, "hubHeight")
-        add(rotordiam, "rotordiam")
-        add(cutout, "cutout")
-        
+        add(azimuth, "azimuth")
+        add(tilt, "tilt")
+        add(elev, "elev")
+
         if useMulti:
             inputs["pickleable"]=True
             results.append( pool.apply_async( simulateLocations, (), inputs ))
@@ -320,7 +200,7 @@ def PVWorkflow(placements, merra, landcover, gwa, hubHeight=None, powerCurve=Non
     if verbose:
         endTime = dt.now()
         totalSecs = (endTime - startTime).total_seconds()
-        print("Finished simulating %d turbines (%d surviving) at +%.2fs (%.2f turbines/sec)"%(len(placements), finalResult.c, totalSecs, len(placements)/totalSecs))
+        print("Finished simulating %d locations (%d surviving) at +%.2fs (%.2f locations/sec)"%(len(placements), finalResult.c, totalSecs, len(placements)/totalSecs))
 
     ### Give the results
     if not output is None and not extractor.skipFinalOutput:
@@ -328,14 +208,16 @@ def PVWorkflow(placements, merra, landcover, gwa, hubHeight=None, powerCurve=Non
             endTime = dt.now()
             totalSecs = (endTime - startTime).total_seconds()
             print("Writing output at +%.2fs"%totalSecs)
+
         outputVars = OrderedDict()
-        outputVars["lctype"] = lctype
         outputVars["minCF"] = minCF
-        outputVars["pcKey"] = pcKey
-        outputVars["hubHeight"] = hubHeight
+        outputVars["module"] = module
         outputVars["capacity"] = capacity
-        outputVars["rotordiam"] = rotordiam
-        outputVars["cutout"] = cutout
+        outputVars["inverter"] = inverter
+        outputVars["azimuth"] = azimuth
+        outputVars["tilt"] = tilt
+        outputVars["interpolation"] = interpolation
+        outputVars["loss"] = loss
         
         extractor.output(output, finalResult, outputVars)
 
@@ -348,6 +230,14 @@ def PVWorkflow(placements, merra, landcover, gwa, hubHeight=None, powerCurve=Non
     if extract == "batch":  return
 
     outputResult = finalResult.o
+    outputResult.name = extractor.title
     outputResult.TurbineCount = finalResult.c
     return outputResult
     
+def PVOpenFieldWorkflow(placements, source, elev, capacity=None, module="Canadian_Solar_CS5P_220M___2009_", azimuth=180, tilt="latitude", inverter=None, interpolation="bilinear", extract="totalProduction", loss=0.00, output=None, minCF=0, jobs=1, batchSize=None, verbose=True):
+    return PVWorkflowTemplate(placements=placements, source=source, elev=elev, module=module, azimuth=azimuth, 
+                              tilt=tilt, inverter=inverter, interpolation=interpolation, extract=extract, 
+                              output=output, loss=loss, minCF=minCF, jobs=jobs, batchSize=batchSize, 
+                              verbose=verbose, capacity=capacity)
+                         
+                                                  
