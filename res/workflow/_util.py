@@ -6,7 +6,7 @@ from multiprocessing.managers import BaseManager
 
 ## Make helpers
 class WSManager(BaseManager): pass
-WSManager.register('MerraSource', MerraSource, exposed=["get", "loadWindSpeed", "loadSet_PV"] )
+WSManager.register('MerraSource', MerraSource, exposed=["get", "loadWindSpeed", "loadSet_PV", "_timeindex"] )
 
 Result = namedtuple("Result", "c o")
 ncattr = {

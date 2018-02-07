@@ -32,7 +32,7 @@ def simulatePVModule(locs, elev, source=None, capacity=None, module="Canadian_So
 
     # Ensure the source contains the correct data
     if timeindex is None:
-        timeindex = source.timeindex
+        timeindex = source._timeindex()
 
     if ghi is None: ghi = source.get("ghi", locs, interpolation=interpolation)
     if dni is None: dni = source.get("dni", locs, interpolation=interpolation)
@@ -63,13 +63,17 @@ def simulatePVModule(locs, elev, source=None, capacity=None, module="Canadian_So
         else:
             azimuth = pd.Series(azimuth, index=locs)
 
-    if tilt=="latitude": pd.Series([l.lat for l in locs], index=locs)
-    elif tilt=="half-latitude": pd.Series([l.lat/2 for l in locs], index=locs)
-    if not isinstance(tilt, pd.Series):
-        if isinstance(tilt, float) or isinstance(tilt, int):
-            tilt = pd.Series([tilt,]*len(locs), index=locs)
+    if isinstance(tilt,str):
+        if tilt=="latitude": tilt=pd.Series([l.lat for l in locs], index=locs)
+        elif tilt=="half-latitude": tilt=pd.Series([l.lat/2 for l in locs], index=locs)
         else:
-            tilt = pd.Series(tilt, index=locs)
+            return ResError("tilt directive '%s' not recognized"%tilt)
+    else:
+        if not isinstance(tilt, pd.Series):
+            if isinstance(tilt, float) or isinstance(tilt, int):
+                tilt = pd.Series([tilt,]*len(locs), index=locs)
+            else:
+                tilt = pd.Series(tilt, index=locs)
 
     ### Begin simulations with basic pvlib workflow
     if extract=="capacity-factor": getCF = True
@@ -89,11 +93,11 @@ def simulatePVModule(locs, elev, source=None, capacity=None, module="Canadian_So
         airmass = pvlib.atmosphere.relativeairmass( solpos['apparent_zenith'] )
 
         am_abs = pvlib.atmosphere.absoluteairmass(airmass, pressure[loc])
-
+        #return system['surface_tilt'], system['surface_azimuth'], solpos['apparent_zenith'], solpos['azimuth']
         aoi = pvlib.irradiance.aoi(system['surface_tilt'], system['surface_azimuth'], solpos['apparent_zenith'], solpos['azimuth'])
 
         # Compute irradiances
-        dni_extra = pd.Series(pvlib.irradiance.extraradiation(source.timeindex), index=source.timeindex)
+        dni_extra = pd.Series(pvlib.irradiance.extraradiation(timeindex), index=timeindex)
 
         dhi = ghi[loc] - dni[loc]*np.sin(solpos.apparent_elevation*np.pi/180)
         dhi[dhi<0] = 0

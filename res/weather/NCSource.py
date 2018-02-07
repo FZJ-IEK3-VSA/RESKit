@@ -313,6 +313,7 @@ class NCSource(object):
         else:
             return idx
 
+    def _timeindex(s): return s.timeindex
     def get(s, variable, locations, interpolation='near', forceDataFrame=False, outsideOkay=False):
         """
         Retrieve a variable from the source's data container at the given location(s)

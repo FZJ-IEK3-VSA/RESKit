@@ -21,7 +21,9 @@ def simulateLocations(source, elev, loss, minCF, verbose, extractor, module, inv
     
     # do simulations
     capacityGeneration = simulatePVModule(locations, elev, source, module=module, azimuth=azimuth, tilt=tilt, inverter=inverter, extract="capacity-production", interpolation=interpolation, loss=loss)
-    capacityFactor = generation.mean(0)
+    capacityFactor = capacityGeneration.mean(0)
+    
+    if capacity is None: capacity=1
     production = capacityGeneration*capacity
     
     if verbose:
@@ -66,7 +68,7 @@ def simulateLocations(source, elev, loss, minCF, verbose, extractor, module, inv
 ##################################################################
 ## Distributed PV production from a weather source
 def PVWorkflowTemplate(placements, source, elev, module, azimuth, tilt, inverter, interpolation, 
-                       capacity, extract, output, loss, minCF, jobs, batchSize, verbose, ):
+                       capacity, extract, output, loss, minCF, jobs, batchSize, verbose, padding=1):
     if verbose: 
         startTime = dt.now()
         print("Starting at: %s"%str(startTime))
@@ -111,10 +113,10 @@ def PVWorkflowTemplate(placements, source, elev, module, azimuth, tilt, inverter
     allLats = np.array([p.lat for p in placements])
     allLons = np.array([p.lon for p in placements])
 
-    latMin = allLats.min()
-    latMax = allLats.max()
-    lonMin = allLons.min()
-    lonMax = allLons.max()
+    latMin = allLats.min()-padding
+    latMax = allLats.max()+padding
+    lonMin = allLons.min()-padding
+    lonMax = allLons.max()+padding
 
     if verbose: print("Pre-loading weather data at +%.2fs"%((dt.now()-startTime).total_seconds()))
     totalExtent = gk.Extent((lonMin,latMin,lonMax,latMax,), srs=LATLONSRS)
@@ -123,9 +125,9 @@ def PVWorkflowTemplate(placements, source, elev, module, azimuth, tilt, inverter
     if useMulti:
         manager = WSManager()
         manager.start()
-        weatherSource = manager.MerraSource(path=source, bounds=Bounds(*totalExtent.pad(1).xyXY))
+        weatherSource = manager.MerraSource(path=source, bounds=Bounds(*totalExtent.xyXY))
     else:
-        weatherSource = MerraSource(path=source, bounds=totalExtent.pad(1))
+        weatherSource = MerraSource(path=source, bounds=totalExtent)
 
     weatherSource.loadSet_PV()
 
