@@ -68,7 +68,7 @@ def simulateLocations(source, elev, loss, minCF, verbose, extractor, module, inv
 ##################################################################
 ## Distributed PV production from a weather source
 def PVWorkflowTemplate(placements, source, elev, module, azimuth, tilt, inverter, interpolation, 
-                       capacity, extract, output, loss, minCF, jobs, batchSize, verbose, padding=1):
+                       capacity, extract, output, loss, minCF, jobs, batchSize, verbose, padding=2):
     if verbose: 
         startTime = dt.now()
         print("Starting at: %s"%str(startTime))
