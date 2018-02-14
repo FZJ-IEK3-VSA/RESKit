@@ -488,5 +488,9 @@ def WindOnshoreWorkflow(placements, merra, landcover, gwa, hubHeight=None, power
                                 wscorr_b=0.2,)
                          
                                                   
-def WindOffshoreWorkflow(**k):
-    return WindWorkflowTemplate(**k)
+def WindOffshoreWorkflow(placements, merra, landcover, adjustMethod="bilinear", loss=0.08, conv_stdBase=0.6, conv_stdScale=0.1, wscorr_a=0.3, wscorr_b=0.2,hubHeight=None, powerCurve=None, capacity=None, rotordiam=None, cutout=None, lctype="clc", extract="averageProduction", output=None, minCF=0, jobs=1, batchSize=None, verbose=True, **kwargs):
+    return WindWorkflowTemplate(placements=placements, merra=merra, hubHeight=hubHeight, powerCurve=powerCurve, capacity=capacity, 
+                                rotordiam=rotordiam, cutout=cutout, extract=extract, output=output, landcover=landcover, gwa=None, 
+                                lctype=lctype, minCF=minCF, jobs=jobs,batchSize=batchSize, verbose=verbose, roughness=None,
+                                adjustMethod=adjustMethod,conv_stdBase=conv_stdBase,conv_stdScale=conv_stdScale,loss=loss,
+                                wscorr_a=wscorr_a, wscorr_b=wscorr_b,)
