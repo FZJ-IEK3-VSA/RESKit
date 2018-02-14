@@ -125,7 +125,7 @@ def simulateLocations(wsSource, landcover, adjustMethod, gwa, roughness, loss, w
 ## Distributed Wind production from a Merra wind source
 def WindWorkflowTemplate(placements, merra, hubHeight, powerCurve, capacity, rotordiam, cutout, extract, output, 
                          roughness, landcover, adjustMethod, gwa, lctype, conv_stdBase, conv_stdScale, loss, wscorr_a, wscorr_b, 
-                         minCF, jobs, batchSize, verbose, ):
+                         minCF, jobs, batchSize, verbose, padding=2):
     if verbose: 
         startTime = dt.now()
         print("Starting at: %s"%str(startTime))
@@ -174,10 +174,10 @@ def WindWorkflowTemplate(placements, merra, hubHeight, powerCurve, capacity, rot
     allLats = np.array([p.lat for p in placements])
     allLons = np.array([p.lon for p in placements])
 
-    latMin = allLats.min()
-    latMax = allLats.max()
-    lonMin = allLons.min()
-    lonMax = allLons.max()
+    latMin = allLats.min()-padding
+    latMax = allLats.max()+padding
+    lonMin = allLons.min()-padding
+    lonMax = allLons.max()+padding
 
     if verbose: print("Pre-loading windspeeds at +%.2fs"%((dt.now()-startTime).total_seconds()))
     totalExtent = gk.Extent((lonMin,latMin,lonMax,latMax,), srs=LATLONSRS)
