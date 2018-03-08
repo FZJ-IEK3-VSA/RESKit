@@ -1,145 +1,175 @@
 from ._util import *
 
-def nrelCostModel(capacity, hubHeight, rotordiam, gearBox="direct", gdpEscalator=1, bladeMaterialEscalator=1, blades=3):
-    """Cost model built following the NREL report
-
-    - capacity in kW
+def onshoreCSM(capacity=4200, hubHeight=129, rotorDiam=141, normalization=0.708365390407, tccShare=0.673):
     """
-
-    rr = rotordiam/2
-    hh = hubHeight
-    cp = capacity
-
-    totalCost = 0 
+    Onshore wind turbine cost and scaling model (csm) built following [1] and update following [2]. 
+    Considers only the turbine capital cost estimations for a 3-bladed, direct drive turbine.
+    Claimed to be derived from real cost data and valid (for costs at the time) up until 10 MW capacity.
     
-    # Blade costs
-    singleBladeMass = 0.1452 * np.power(rr, 2.9158)
-    singleBladeCost = ((0.4019*np.power(rr, 3)-955.24)*bladeMaterialEscalator + 2.7445*np.power(rr, 2.5025)*gdpEscalator)*(1-0.28)
-    totalCost += singleBladeCost*blades
+    Base-line (default) turbine characteristics correspond to the expected typical onshore turbine in 2050.
+    The normalization value adjusts the output to match 1000 Eur/kW including all costs. 
+    Only the turbine capital cost (tcc) is adjusted according to capacity, rotor diameter, and hub height.
+    Balance of system costs and other financial costs are added as fixed percentages according to [3].
 
-    # Hub cost
-    hubMass = 0.954 * singleBladeMass + 5680.3
-    hubCost = hubMass * 4.25
-    totalCost += hubCost
+    Summary equation:
+        cost = originalNrelCSM(capacity, hubheight, rotorDiam ) * normalization / tccShare
 
-    # Pitch system costs
-    pitchBearingMass = 0.1295*singleBladeMass*blades + 491.3
-    pitchSystemMass = pitchBearingMass * 1.328 + 555
-    pitchSystemCost = 2.28 * (0.2106 * np.power(2*rr, 2.6578))
-    totalCost += pitchSystemCost
+    Inputs:
+        capacity : Turbine nameplate capacity in kW
+            float - Single value
+            np.ndarray - multidimensional values 
 
-    # Spinner/Nose cone
-    noseConeMass = 18.5 * 2 * rr -520.5
-    noseConeCost = noseConeMass * 5.57
-    totalCost += noseConeCost
+        hubHeight : Turbine hub height in meters
+            float - Single value
+            np.ndarray - multidimensional values
 
-    # Low speed shaft
-    lowSpeedShaftMass = 0.0142 * np.power(2 * rr, 2.888)
-    lowSpeedShaftCost = 0.01 * np.power(2*rr, 2.887)
-    totalCost += lowSpeedShaftCost
+        rotorDiam : Turbine rotor diameter in meters
+            float - Single value
+            np.ndarray - multidimensional values
 
-    # Main bearing
-    bearingMass = (2*rr*8/600 - 0.033) * 0.0092 * np.power(2*rr, 2.5)
+        normalization - float : A normalization value to adjust the output to a desired context
+
+        tccShare - float : The share of turbine capital cost in the total cost
+    
+    Sources:
+    [1] L. Fingersh, M. Hand, and A. Laxson 
+        "Wind Turbine Design Cost and Scaling Model"
+        2006. NREL
+
+    [2] B. Maples, M. Hand, and W. Musial
+        "Comparative Assessment of Direct Drive High Temperature Superconducting Generators in Multi-Megawatt Class Wind Turbines"
+        2010. NREL
+
+    [3] Tyler Stehly, Donna Heimiller, and George Scott
+        "2016 Cost of Wind Energy Review"
+        2017. NREL
+
+    """
+    gdpEscalator=2.5 # Chosen to match example given in [1]
+    bladeMaterialEscalator=1
+    blades = 3    
+    
+    rd = np.array(rotorDiam)
+    rr = np.array(rotorDiam/2)
+    hh = np.array(hubHeight)
+    cp = np.array(capacity)
+    sa = np.array((np.pi*rr*rr))
+    
+    # Blade Cost
+    singleBladeMass = 0.4948 * np.power(rr,2.53)
+    singleBladeCost = ((0.4019*np.power(rr, 3)-21051)*bladeMaterialEscalator + 2.7445*np.power(rr, 2.5025)*gdpEscalator)*(1-0.28)
+
+    # Hub 
+    hubMass = 0.954*singleBladeMass+5680.3
+    hubCost = hubMass*4.25
+
+    # Pitch and bearings
+    pitchBearingMass = 0.1295*(singleBladeMass*blades)+491.31
+    pitchSystemMass = pitchBearingMass*1.328+555
+    pitchSystemCost = 2.28*(0.2106*np.power(rd,2.6578))
+
+    # Spinner and nosecone
+    noseConeMass = 18.5*rd - 520.5
+    noseConeCost = noseConeMass*5.57
+
+    # Low Speed Shaft
+    lowSpeedShaftMass = 0.0142 * np.power(rd, 2.888)
+    lowSpeedShaftCost = 0.01 * np.power(rd,2.887)
+
+    # Main bearings
+    bearingMass = (rd*8/600 - 0.033) * 0.0092 * np.power(rd,2.5)
     bearingCost = 2*bearingMass * 17.6
-    totalCost += bearingCost
 
     # Gearbox
-    if gearBox=="direct":
-        gearBoxCost = 0
-    else:
-        raise RuntimeError("implement the others!")
+    ## Gearbox not included for direct drive turbines
 
-    totalCost += gearBoxCost
+    # Break, coupling, and others
+    breakCouplingCost = 1.9894 * cp - 0.1141
+    breakCouplingMass = breakCouplingCost/10
 
-    # Brakes, Coupling, and others
-    brakesAndCouplingCost = 1.9894 * cp - 0.1141
-    brakesAndCouplingMass = brakesAndCouplingCost/10
-    totalCost = brakesAndCouplingCost
-
-    # Generator 
-    if gearBox=="direct":
-        generatorCost = cp * 219.33    
-    else:
-        raise RuntimeError("implement the others!")
-
-    totalCost += generatorCost
+    # Generator (Assuming direct drive)
+    # generatorMass = 6661.25 * np.power(lowSpeedShaftTorque, 0.606) # wtf is the torque?
+    generatorCost = cp*219.33
 
     # Electronics
     electronicsCost = cp * 79
-    totalCost += electronicsCost
 
     # Yaw drive and bearing
-    ydabCost = 2*(0.0339*np.power(2*rr, 2.964))
-    totalCost += ydabCost
+    yawSystemMass = 1.6*(0.0009*np.power(rd, 3.314))
+    yawSystemCost = 2*(0.0339*np.power(rd,2.964))
 
-    # Mainframe
-    if gearBox=="direct":
-        mainframeMass = 1.228 * np.power(2*rr, 1.953)
-        mainframeCost = 627.28 * np.power(2*rr, 0.85)
-    else:
-        raise RuntimeError("implement the others!")
-
-    totalCost += mainframeCost
+    # Mainframe (Assume direct drive)
+    mainframeMass = 1.228*np.power(rd, 1.953)
+    mainframeCost = 627.28 * np.power(rd, 0.85)
 
     # Platform and railings
-    pfrlMass = 0.125*mainframeMass
-    pfrlCost = pfrlMass * 8.7
-    totalCost += pfrlCost
+    platformAndRailingMass = 0.125 * mainframeMass
+    platformAndRailingCost = platformAndRailingMass * 8.7
 
     # Electrical Connections
-    connectionCost = cp * 40
-    totalCost += connectionCost
+    electricalConnectionCost = cp*40
 
-    # Hydraulic and cooling systems
-    hyCoCost = cp * 12
-    totalCost += hyCoCost
+    # Hydraulic and Cooling systems
+    hydraulicAndCoolingSystemMass = 0.08 * cp
+    hydraulicAndCoolingSystemCost = cp * 12
 
     # Nacelle Cover
     nacelleCost = 11.537*cp + 3849.7
-    totalCost += nacelleCost
+    nacelleMass = nacelleCost/10
 
     # Tower
-    towerMass = 0.3973 * np.pi * np.power(rr,2) * hh - 1414
-    towerCost = towerMass * 1.5
-    totalCost += towerCost
-
-    # Foundation
-    foundationCost = 303.24 * np.power( hh*np.pi * np.power(rr,2), 0.4037)
-    totalCost += foundationCost
-
-    # Assembly & Installation
-    assInCost = 1.965 * np.power( hh * 2 * rr, 1.1736)
-    totalCost += assInCost
-
-    # Electrical interfaces 
-    elecIntCost = cp*(3.49E-6 * cp**2 - 0.0221 * cp + 109.7)
-    totalCost += elecIntCost
-
-    # Done!
-    return totalCost
-
-    
-def NormalizedCostModel(baseModel=nrelCostModel, normalizedCapacity=3600, normalizedHubHeight=90, normalizedRotordiam=120, normalizedCost=3600000, constantCost=0, **kwargs):
-    """Normalize a given cost model based on the expected cost of a particular set of turbine parameters
-
-     * The default setup normalizes the following turbine parameters to the basic assumption of 1000 Euros/kW:
-        - Capacity: 3600 kW
-        - Hub Height: 90 meters
-        - Rotor Diameter: 120 meters
-     * Returns a function which provides cost estimates based on the inputs of the base model
-     * All executions of the returned function will be scaled around the given normalized cost
+    towerMass = 0.2694*sa*hh + 1779
+    towerCost = towerMass*1.5
     """
-    baseCost = baseModel(capacity=normalizedCapacity, hubHeight=normalizedHubHeight, rotordiam=normalizedRotordiam, **kwargs)
-    scaling = normalizedCost / baseCost
+    # Foundation
+    foundationCost = 303.24*np.power((hh*sa), 0.4037)
 
-    def outputFunc(capacity, hubHeight, rotordiam, **kwargs):
-        """Normalized cost model. Returns cost in Euros
+    # Transportation
+    transporationCostFactor = 1.581E-5 * np.power(cp,2) - 0.0375 * cp + 54.7
+    transporationCost = transporationCostFactor * cp
 
-        inputs:
-            capacity - float : The wind turbine capcity in MW
-            hubHeight - int : The hub height in meters
-            rotordiam - int : The rotor diameter in meters
-        """
-        return scaling*baseModel(capacity=capacity, hubHeight=hubHeight, rotordiam=rotordiam, **kwargs) + constantCost
+    # Roads and civil work
+    roadsAndCivilWorkFactor = 2.17E-6 * np.power(cp,2) - 0.0145 * cp + 69.54
+    roadsAndCivilWorkCost = roadsAndCivilWorkFactor * cp
 
-    return outputFunc
+    # Assembly and installation
+    assemblyAndInstallationCost = 1.965 * np.power((hh*rd), 1.1736)
+
+    # Electrical Interface and connections
+    electricalInterfaceAndConnectionFactor = (3.49E-6 * np.power(cp,2)) - (0.0221 * cp) + 109.7
+    electricalInterfaceAndConnectionCost = electricalInterfaceAndConnectionFactor * cp
+
+    # Engineering and permit factor
+    engineeringAndPermitCostFactor = 9.94E-4 * cp + 20.31
+    engineeringAndPermitCost = engineeringAndPermitCostFactor * cp
+
+    # Levelized Replacement Cost
+    ## Not included here
+    """
+    # Get total cost
+    totalCost = singleBladeCost*blades + \
+                hubCost + \
+                pitchSystemCost + \
+                noseConeCost + \
+                lowSpeedShaftCost + \
+                bearingCost + \
+                breakCouplingCost + \
+                generatorCost + \
+                electronicsCost+ \
+                yawSystemCost + \
+                mainframeCost + \
+                platformAndRailingCost + \
+                electricalConnectionCost + \
+                hydraulicAndCoolingSystemCost + \
+                nacelleCost + \
+                towerCost 
+                ### Balance of system costs not included....
+                #foundationCost + \
+                #transporationCost + \
+                #roadsAndCivilWorkCost + \
+                #assemblyAndInstallationCost + \
+                #electricalInterfaceAndConnectionCost + \
+                #engineeringAndPermitCost 
+
+    return totalCost*normalization/tccShare
+

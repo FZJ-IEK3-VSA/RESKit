@@ -15,7 +15,7 @@ class OptimalTurbine(namedtuple("OptimalTurbine","capacity rotordiam hubHeight o
         return out
     def __repr__(s): return str(s)
 
-def determineBestTurbine(weibK=2, weibL=7, capacity=(3000,9000), rotordiam=(90,180), hubHeight=(80,200), roughness=0.02, costModel=nrelCostModel, measuredHeight=50, minSpecificCapacity=200, groundClearance=25, tol=1e-5, **kwargs):
+def determineBestTurbine(weibK=2, weibL=7, capacity=(3000,9000), rotordiam=(90,180), hubHeight=(80,200), roughness=0.02, costModel=onshoreCSM, measuredHeight=50, minSpecificCapacity=200, groundClearance=25, tol=1e-5, **kwargs):
     """
     Determine the best turbine characteristics (capacity, rotor diameter, and hub height) for a location defined by a 
     weibul distribution of windspeeds and a roughness length
