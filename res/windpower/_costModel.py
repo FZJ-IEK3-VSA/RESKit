@@ -1,18 +1,23 @@
 from ._util import *
 
-def onshoreCSM(capacity=4200, hubHeight=129, rotorDiam=141, normalization=0.708365390407, tccShare=0.673):
+class _BaselineOnshoreTurbine(dict):
     """
+    The baseline onshore turbine is chosen to reflect future trends in wind turbine characteristics.
+    """
+
+baselineOnshoreTurbine = _BaselineOnshoreTurbine(capacity=4200, hubHeight=129, rotordiam=141)
+
+def turbineCostCalculator(capacity, hubHeight, rotordiam, depth=None, shoreDistance=None, busDistance=None, offshore=False, ):
+    """
+    **NEEDS UPDATE**
     Onshore wind turbine cost and scaling model (csm) built following [1] and update following [2]. 
     Considers only the turbine capital cost estimations for a 3-bladed, direct drive turbine.
     Claimed to be derived from real cost data and valid (for costs at the time) up until 10 MW capacity.
     
     Base-line (default) turbine characteristics correspond to the expected typical onshore turbine in 2050.
-    The normalization value adjusts the output to match 1000 Eur/kW including all costs. 
-    Only the turbine capital cost (tcc) is adjusted according to capacity, rotor diameter, and hub height.
-    Balance of system costs and other financial costs are added as fixed percentages according to [3].
-
-    Summary equation:
-        cost = originalNrelCSM(capacity, hubheight, rotorDiam ) * normalization / tccShare
+    Output values are adjusted such that the the baseline onshore turbine matches 1100 Eur/kW including all costs.
+    Only the turbine capital cost (tcc), amounting to 67.3% [3], is adjusted according to capacity, rotor diameter, and hub height.
+    Balance of system costs and other financial costs are added as fixed percentages.
 
     Inputs:
         capacity : Turbine nameplate capacity in kW
@@ -23,13 +28,9 @@ def onshoreCSM(capacity=4200, hubHeight=129, rotorDiam=141, normalization=0.7083
             float - Single value
             np.ndarray - multidimensional values
 
-        rotorDiam : Turbine rotor diameter in meters
+        rotordiam : Turbine rotor diameter in meters
             float - Single value
             np.ndarray - multidimensional values
-
-        normalization - float : A normalization value to adjust the output to a desired context
-
-        tccShare - float : The share of turbine capital cost in the total cost
     
     Sources:
     [1] L. Fingersh, M. Hand, and A. Laxson 
@@ -44,23 +45,34 @@ def onshoreCSM(capacity=4200, hubHeight=129, rotorDiam=141, normalization=0.7083
         "2016 Cost of Wind Energy Review"
         2017. NREL
 
+    [4] Lixuan Hong and Bernd Moeller.
+        "Offshore wind energy potential in China: Under technical, spatial and economic constraints"
+        2011. Energy
+
     """
-    gdpEscalator=2.5 # Chosen to match example given in [1]
+    gdpEscalator=1#2.5 # Chosen to match example given in [1]
     bladeMaterialEscalator=1
-    blades = 3    
+    blades = 3
     
-    rd = np.array(rotorDiam)
-    rr = np.array(rotorDiam/2)
+    rd = np.array(rotordiam)
     hh = np.array(hubHeight)
     cp = np.array(capacity)
-    sa = np.array((np.pi*rr*rr))
+    rr = rd/2
+    sa = np.pi*rr*rr
+
+    if offshore:
+        depth = np.array(depth)
+        busD = np.array(busDistance)
+        shoreD = np.array(shoreDistance)
+    
+    turbineCapitalCostNormalization = 0.874035081173
     
     # Blade Cost
     singleBladeMass = 0.4948 * np.power(rr,2.53)
     singleBladeCost = ((0.4019*np.power(rr, 3)-21051)*bladeMaterialEscalator + 2.7445*np.power(rr, 2.5025)*gdpEscalator)*(1-0.28)
 
     # Hub 
-    hubMass = 0.954*singleBladeMass+5680.3
+    hubMass = 0.945*singleBladeMass+5680.3
     hubCost = hubMass*4.25
 
     # Pitch and bearings
@@ -120,56 +132,85 @@ def onshoreCSM(capacity=4200, hubHeight=129, rotorDiam=141, normalization=0.7083
     # Tower
     towerMass = 0.2694*sa*hh + 1779
     towerCost = towerMass*1.5
-    """
-    # Foundation
-    foundationCost = 303.24*np.power((hh*sa), 0.4037)
+    
+    # Add up the turbine capital cost
+    turbineCapitalCost= singleBladeCost*blades + \
+                        hubCost + \
+                        pitchSystemCost + \
+                        noseConeCost + \
+                        lowSpeedShaftCost + \
+                        bearingCost + \
+                        breakCouplingCost + \
+                        generatorCost + \
+                        electronicsCost+ \
+                        yawSystemCost + \
+                        mainframeCost + \
+                        platformAndRailingCost + \
+                        electricalConnectionCost + \
+                        hydraulicAndCoolingSystemCost + \
+                        nacelleCost + \
+                        towerCost
 
-    # Transportation
-    transporationCostFactor = 1.581E-5 * np.power(cp,2) - 0.0375 * cp + 54.7
-    transporationCost = transporationCostFactor * cp
+    turbineCapitalCost *= turbineCapitalCostNormalization
 
-    # Roads and civil work
-    roadsAndCivilWorkFactor = 2.17E-6 * np.power(cp,2) - 0.0145 * cp + 69.54
-    roadsAndCivilWorkCost = roadsAndCivilWorkFactor * cp
+    if not offshore:
+        # Foundation
+        foundationCost = 303.24*np.power((hh*sa), 0.4037)
 
-    # Assembly and installation
-    assemblyAndInstallationCost = 1.965 * np.power((hh*rd), 1.1736)
+        # Transportation
+        transporationCostFactor = 1.581E-5 * np.power(cp,2) - 0.0375 * cp + 54.7
+        transporationCost = transporationCostFactor * cp
 
-    # Electrical Interface and connections
-    electricalInterfaceAndConnectionFactor = (3.49E-6 * np.power(cp,2)) - (0.0221 * cp) + 109.7
-    electricalInterfaceAndConnectionCost = electricalInterfaceAndConnectionFactor * cp
+        # Roads and civil work
+        roadsAndCivilWorkFactor = 2.17E-6 * np.power(cp,2) - 0.0145 * cp + 69.54
+        roadsAndCivilWorkCost = roadsAndCivilWorkFactor * cp
 
-    # Engineering and permit factor
-    engineeringAndPermitCostFactor = 9.94E-4 * cp + 20.31
-    engineeringAndPermitCost = engineeringAndPermitCostFactor * cp
+        # Assembly and installation
+        assemblyAndInstallationCost = 1.965 * np.power((hh*rd), 1.1736)
 
-    # Levelized Replacement Cost
-    ## Not included here
-    """
-    # Get total cost
-    totalCost = singleBladeCost*blades + \
-                hubCost + \
-                pitchSystemCost + \
-                noseConeCost + \
-                lowSpeedShaftCost + \
-                bearingCost + \
-                breakCouplingCost + \
-                generatorCost + \
-                electronicsCost+ \
-                yawSystemCost + \
-                mainframeCost + \
-                platformAndRailingCost + \
-                electricalConnectionCost + \
-                hydraulicAndCoolingSystemCost + \
-                nacelleCost + \
-                towerCost 
-                ### Balance of system costs not included....
-                #foundationCost + \
-                #transporationCost + \
-                #roadsAndCivilWorkCost + \
-                #assemblyAndInstallationCost + \
-                #electricalInterfaceAndConnectionCost + \
-                #engineeringAndPermitCost 
+        # Electrical Interface and connections
+        electricalInterfaceAndConnectionFactor = (3.49E-6 * np.power(cp,2)) - (0.0221 * cp) + 109.7
+        electricalInterfaceAndConnectionCost = electricalInterfaceAndConnectionFactor * cp
 
-    return totalCost*normalization/tccShare
+        # Engineering and permit factor
+        engineeringAndPermitCostFactor = 9.94E-4 * cp + 20.31
+        engineeringAndPermitCost = engineeringAndPermitCostFactor * cp
 
+        # Add up other costs 
+        otherCosts= foundationCost + \
+                    transporationCost + \
+                    roadsAndCivilWorkCost + \
+                    assemblyAndInstallationCost + \
+                    electricalInterfaceAndConnectionCost + \
+                    engineeringAndPermitCost 
+
+
+        # Get total cost
+        totalCost = turbineCapitalCost + otherCosts*turbineCapitalCostNormalization
+
+    else: # Offshore, following [4]
+
+        turbineCapitalCost *= 1.135 # Marinization of turbine [1]
+
+        # Get Foundation Cost
+        foundationCost = np.zeros(depth.shape)
+
+        lt25 = depth < 25
+        if lt25.any(): foundationCost[lt25] = 1.4*((499*np.power(depth[lt25],2))+(6219*depth[lt25])+311810)
+
+        gt25 = depth >= 25
+        if gt25.any(): foundationCost[gt25] = 1.4*((440*np.power(depth[gt25],2))+(19695*depth[gt25])+901691)
+
+        foundationCost *= cp/1000 # Make into Eur
+
+        # Get grid cost
+        gridCost = (0.38*busD+0.4*shoreD+76.6)*1e6/600
+        gridCost *= cp/1000 # Make into Eur
+
+        # Other Costs
+        otherCosts = (turbineCapitalCost + foundationCost + gridCost) * 0.10
+
+        # Some all costs
+        totalCost = turbineCapitalCost + foundationCost + gridCost + otherCosts
+
+    return totalCost
