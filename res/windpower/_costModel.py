@@ -199,7 +199,7 @@ def turbineCostCalculator(capacity, hubHeight, rotordiam, depth=None, shoreDista
         if lt25.any(): foundationCost[lt25] = 1.4*((499*np.power(depth[lt25],2))+(6219*depth[lt25])+311810)
 
         gt25 = depth >= 25
-        if gt25.any(): foundationCost[gt25] = 1.4*((440*np.power(depth[gt25],2))+(19695*depth[gt25])+901691)
+        if gt25.any(): foundationCost[gt25] = 1.4*((440*np.power(depth[gt25],2))+(19695*depth[gt25])+11785)
 
         foundationCost *= cp/1000 # Make into Eur
 
@@ -214,3 +214,230 @@ def turbineCostCalculator(capacity, hubHeight, rotordiam, depth=None, shoreDista
         totalCost = turbineCapitalCost + foundationCost + gridCost + otherCosts
 
     return totalCost
+
+def offshoreBOS(capacity, rotordiam, hubHeight, depth, foundation="monopile", anchor="DEA", turbineNumber = 80, turbineSpacing = 5, rowSpacing=9):
+    # [1] https://www.nrel.gov/docs/fy17osti/66874.pdf
+    # [2] Anders Mhyr, Catho Bjerkseter, Anders Agotnes and Tor A. Nygaard (2014) Levelised costs of energy for offshore floating wind turbines in a life cycle perspective
+    # [3] Catho Bjerkseter and Anders Agotnes(2013) Levelised costs of energy for offshore floating wind turbine concenpts
+    # [4] www.rpgcables.com/images/product/EHV-catalogue.pdf
+    # [5] https://www.nrel.gov/docs/fy16osti/66262.pdf
+
+    cp = np.array(capacity/1000)
+    rr = np.array(rotordiam/2)
+    rd = np.array(rotordiam)
+    hh = np.array(hh)
+    depth = np.array(depth)
+    foundation = foundation.lower()
+
+    embedmentDepth = 30 #meters
+    #the unit of capacity should be in kW
+
+    monopileCostRate = 2250 #dollars/tonne
+    monopileTPCostRate = 3230 #dollars/tonne
+    sparSCCostRate = 3120 #dollars/tonne
+    sparTCCostRate = 4222 #dollars/tonne
+    sparBallCostRate = 100 #dollars/tonne
+    jacketMLCostRate = 4680 #dollars/tonne
+    jacketTPCostRate = 4500 #dollars/tonne
+    jacketPileCostRate = 2250 #dollars/tonne
+    semiSubmersibleSCCostRate = 3120 #dollars/tonne
+    semiSubmersibleTCostRate = 6250 #dollars/tonne
+    semiSubmersibleHPCostRate = 6250 #dollars/tonne
+    mooringCostRate = 721 #dollars/tonne -- 0.12m diameter is chosen since it is the median in [1]
+    outfittingSteelCost = 7250 #dollars/tonne
+
+    #the values of anchor cost is calculated from Table8 in [2] by assuming a euro to dollar rate of 1.35
+    DEA_anchorCost = 154 #dollars [2]
+    SPA_anchorCost = 692 #dollars [2]
+
+    #GENERAL (APEENDIX B in NREL BOS MODEL)
+    hubDiam = cp/4 +2
+    bladeLength = (rotordiam-hubDiam)/2
+
+    nacelleWidth = hubDiam + 1.5
+    nacelleLength = 2 * nacelleWidth
+
+    #RNAMass is rotor nacelle assembly
+    RNAMass = 2.082 * cp * cp + 44.59 * cp +22.48
+
+    towerDiam = cp/2 + 4
+    towerMass = (0.4 * np.pi * np.power(rr, 2) * hh -1500)/1000
+
+    #STRUCTURE AND FOUNDATION
+    if foundation == 'monopile':
+        monopileLength = depth + embedmentDepth + 5
+
+        monopileMass = (np.power((cp*1000), 1.5) + (np.power(hh, 3.7)/10) + 2100 * np.power(depth, 2.25) + np.power((RNAMass*1000), 1.13))/10000
+        monopileCost = monopileMass * monopileCostRate
+
+        #monopile transition piece mass is called as monopileTPMass
+
+        monopileTPMass =  np.exp(2.77 + 1.04*np.power(cp, 0.5) + 0.00127 * np.power(depth, 1.5))
+        monopileTPCost = monopileTPMass * monopileTPCostRate
+
+        foundationCost = monopileCost + monopileTPCost
+
+    elif foundation == 'jacket':
+        #jacket main lattice mass is called as jacketMLMass
+        jacketMLMass = np.exp(3.71 + 0.00176 * np.power(cp , 2.5) + 0.645 * np.log(np.power(depth, 1.5)))
+        jacketMLCost = jacketMLMass * jacketMLCostRate
+
+        #jacket transition piece mass is called as jacketTPMass
+        jacketTPMass = 1/(((-0.0131+0.0381)/np.log(cp))-0.00000000227*np.power(depth,3))
+        jacketTPCost = jacketTPMass * jacketTPCostRate
+
+        #jacket pile mass is called as jacketPileMass
+        jacketPileMass = 8 * np.power(jacketMLMass, 0.5574)
+        jacketPileCost = jacketPileMass * jacketPileCostRate
+
+        foundationCost = jacketMLCost + jacketTPCost + jacketPileCost
+
+    elif foundation == 'spar':
+        #spar stiffened column mass is called as sparSCMass
+        sparSCMass = 535.93 + 17.664 * np.power(cp, 2) + 0.02328 * depth * np.log(depth)
+        sparSCCost = sparSCMass * sparSCCostRate
+
+        #spar tapered column mass is called as sparTCMass
+        sparTCMass = 125.81 * np.log(cp) + 58.712
+        sparTCCost = sparTCMass * sparTCCostRate
+
+        #spar ballast mass is called as sparBallMass
+        sparBallMass = -16.536 * np.power(cp,2) + 1261.8*cp - 1554.6
+        sparBallCost = sparBallMass * sparBallCostRate
+
+        foundationCost = sparSCCost + sparTCCost + sparBallCost
+
+        if anchor == 'DEA': 
+            anchorCost = DEA_anchorCost
+            #the equation is derived from [3]
+            mooringLength = 1.5 * depth + 350
+
+        elif anchor == 'SPA':
+            anchorCost = SPA_anchorCost
+            #since it is assumed to have an angle of 45 degrees it is multiplied by 1.41 which is squareroot of 2 [3]
+            mooringLength = 1.41 * depth
+
+        else: raise ValueError("Please choose an anchor type!")
+
+        mooringAndAnchorCost = mooringLength * mooringCostRate + anchorCost
+
+    elif foundation == 'semisubmersible':
+        #semiSubmersible stiffened column mass is called as semiSubmersibleSCMass
+        semiSubmersibleSCMass = -0.9571 * np.power(cp , 2) + 40.89 * cp + 802.09
+        semiSubmersibleSCCost = semiSubmersibleSCMass * semiSubmersibleSCCostRate
+
+        #semiSubmersible truss mass is called as semiSubmersibleTMass
+        semiSubmersibleTMass = 2.7894 * np.power(cp , 2) + 15.591 * cp + 266.03
+        semiSubmersibleTCost = semiSubmersibleTMass * semiSubmersibleTCostRate
+
+        #semiSubmersible heavy plate mass is called as semiSubmersibleHPMass
+        semiSubmersibleHPMass = -0.4397 * np.power(cp , 2) + 21.145 * cp + 177.42
+        semiSubmersibleHPCost = semiSubmersibleHPMass * semiSubmersibleHPCostRate
+
+        foundationCost = semiSubmersibleSCCost + semiSubmersibleTCost + semiSubmersibleHPCost
+
+        if anchor == 'DEA': 
+            anchorCost = DEA_anchorCost
+            #the equation is derived from [3]
+            mooringLength = 1.5 * depth + 350
+
+        elif anchor == 'SPA':
+            anchorCost = SPA_anchorCost
+            #since it is assumed to have an angle of 45 degrees it is multiplied by 1.41 which is squareroot of 2 [3]
+            mooringLength = 1.41 * depth
+
+        else: raise ValueError("Please choose an anchor type!")
+
+        mooringAndAnchorCost = mooringLength * mooringCostRate + anchorCost
+
+    else: raise ValueError("Please choose one of the four foundation types!")
+
+    if foundation == 'monopile' or  foundation == 'jacket' :
+        secondarySteelSubstructureMass = np.zeros(depth.shape)
+        gt4 = cp>4
+        if gt4.any(): secondarySteelSubstructureMass[gt4] = 40 + (0.8 * (18 + depth[gt4]))
+        lte4 = cp<=4
+        if lte4.any(): secondarySteelSubstructureMass[lte4] = 40 + (0.8 * (18 + depth[lte4]))
+
+    elif foundation == 'spar':
+        secondarySteelSubstructureMass = np.exp(3.58+0.196*np.power(cp, 0.5)*np.log(cp) + 0.00001*depth*np.log(depth))
+
+    elif foundation == 'semiSubmersible':
+        secondarySteelSubstructureMass = -0.153 * np.power(cp,2) + 6.54 * cp + 128.34
+    
+    secondarySteelSubstructureCost = secondarySteelSubstructureMass * outfittingSteelCost
+
+    #ELECTRICAL INFRASTRUCTURE
+    #current rating values are taken from source an approximate number is chosen from tables[4]
+    cable1CurrentRating = 400
+    cable2CurrentRating = 600
+    exportCableCurrentRating = 1000
+    arrayVoltage = 33
+    powerFactor = 0.95
+    buriedDepth = 1 #this value is chosen from [5] IF THIS CHANGES FROM ONE "singleStringPower1" needs to be updated
+    catenaryLengthFactor = 0.04
+    excessCableFactor = 0.1
+    numberOfSubStations = 1 # From the example used in [5]
+
+    singleStringPower1 =  np.sqrt(3)*cable1CurrentRating*arrayVoltage*powerFactor/1000
+    singleStringPower2 =  np.sqrt(3)*cable2CurrentRating*arrayVoltage*powerFactor/1000
+
+    numberofStrings = np.floor_divide(turbineNumber*cp , singleStringPower2)
+
+    numberofTurbinesperPartialString = np.remainder((turbineNumber*cp) , singleStringPower2)
+
+    numberofTurbinesperArrayCable1 = np.floor_divide(singleStringPower1 , turbineNumber*cp)
+
+    numberofTurbinesperArrayCable2 = np.floor_divide(singleStringPower2 , turbineNumber*cp)
+
+    if numberofTurbinesperPartialString == 0:
+        numberofTurbineInterfacesPerArrayCable1 = numberofTurbinesperArrayCable1 * numberofStrings * 2
+
+        max1_Cable1 = np.maximum(numberofTurbinesperArrayCable1-numberofTurbinesperArrayCable2, 0)
+        max2_Cable1 = 0
+        numberofTurbineInterfacesPerArrayCable2 = (max1_Cable_Cable11 * numberofStrings + max2) * 2
+
+    else:
+        numberofTurbineInterfacesPerArrayCable1 = (numberofTurbinesperArrayCable1 * numberofStrings + np.minimum((numberofTurbinesperPartialString-1),numberofTurbinesperArrayCable1)) * 2
+
+        max1_Cable1 = np.max(numberofTurbinesperArrayCable1-numberofTurbinesperArrayCable2, 0)
+        max2_Cable1 = 0 #due to the no partial string assumption
+        numberofTurbineInterfacesPerArrayCable2 = (max1_Cable_Cable11 * numberofStrings + max2) * 2 + 1
+
+
+    numberofArrayCableSubstationInterfaces = numberofStrings
+
+    if foundation == 'monopile' or  foundation == 'jacket' :
+        arrayCable1Length = (turbineSpacing*rd + depth *2)*(numberofTurbineInterfacesPerArrayCable1/2)*(1+excessCableFactor)
+
+    else:
+        systemAngle = -0.0047 * depth + 18.743
+
+        freeHangingCableLength = (depth/np.cos(systemAngle*np.pi/180)*(catenaryLengthFactor+1))+ 190
+
+        fixedCableLength =(turbineSpacing * rd) - (2*np.tan(systemAngle*np.pi/180)*depth)-70
+
+        arrayCable1Length = (2 * freeHangingCableLength) * (numberofTurbineInterfacesPerArrayCable1/2)*(1+excessCableFactor)
+
+    if foundation == 'monopile' or  foundation == 'jacket' :
+
+    max1_Cable2 = np.maximum(numberofTurbinesperArrayCable2-1, 0)
+    max2_Cable2 = np.maximum( numberofTurbinesperPartialString - numberofTurbinesperArrayCable2 -1, 0 )
+
+    if numberofTurbinesperPartialString == 0:
+        strFac = numberofStrings / numberOfSubStations
+    else:
+        strFac = numberofStrings / numberOfSubStations + 1
+
+    if foundation == 'monopile' or  foundation == 'jacket' :
+        arrayCable2Length = (turbineSpacing*rd+2*depth)*(max1_Cable2*numberofStrings=max2_Cable2) +\
+                            numberOfSubStations*(strFac*(rd*rowSpacing)+\
+                            (np.sqrt(np.power((rd*turbineSpacing*(strFac-1)),2)+np.power((rd*rowSpacing), 2))/2) +\
+                            strFac*depth)*(excessCableFactor+1)
+
+    else: 
+        arrayCable2Length = (fixedCableLength +2*freeHangingCableLength)*(max1_Cable2*numberofStrings+max2_Cable2) +\
+                            numberOfSubStations*(strFac*(rd*rowSpacing)+\
+                            np.sqrt(np.power(( (2*freeHangingCableLength)*(strFac-1)+(rd*rowSpacing)-(2*np.tan(systemAngle*np.pi/180)*depth)-70), 2) +\
+                                    np.power(fixedCableLength+2*freeHangingCableLength, 2))/2)*(excessCableFactor+1)
+
