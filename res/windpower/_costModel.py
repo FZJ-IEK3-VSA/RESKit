@@ -391,11 +391,8 @@ def offshoreBOS(capacity, rotordiam, hubHeight, depth, distanceToShore, distance
         mooringAndAnchorCost = mooringLength * mooringCostRate + anchorCost
 
     if fixedType:
-        secondarySteelSubstructureMass = np.zeros(depth.shape)
-        gt4 = cp>4
-        if gt4.any(): secondarySteelSubstructureMass[gt4] = 40 + (0.8 * (18 + depth[gt4]))
-        lte4 = cp<=4
-        if lte4.any(): secondarySteelSubstructureMass[lte4] = 40 + (0.8 * (18 + depth[lte4]))
+        # Only greater than 4 implemented
+        secondarySteelSubstructureMass = 40 + (0.8 * (18 + depth))
 
     elif foundation == 'spar':
         secondarySteelSubstructureMass = np.exp(3.58+0.196*np.power(cp, 0.5)*np.log(cp) + 0.00001*depth*np.log(depth))
@@ -415,55 +412,42 @@ def offshoreBOS(capacity, rotordiam, hubHeight, depth, distanceToShore, distance
 
     numberofStrings = np.floor_divide(turbineNumber*cp , singleStringPower2)
 
-    numberofTurbinesperPartialString = np.round(np.remainder((turbineNumber*cp) , singleStringPower2))
+    # Only no partial string will be implemented
+    numberofTurbinesperPartialString = 0 #np.round(np.remainder((turbineNumber*cp) , singleStringPower2))
 
     numberofTurbinesperArrayCable1 = np.floor_divide(singleStringPower1 , cp)
 
     numberofTurbinesperArrayCable2 = np.floor_divide(singleStringPower2 , cp)
 
-    if numberofTurbinesperPartialString == 0:
-        numberofTurbineInterfacesPerArrayCable1 = numberofTurbinesperArrayCable1 * numberofStrings * 2
+    numberofTurbineInterfacesPerArrayCable1 = numberofTurbinesperArrayCable1 * numberofStrings * 2
 
-        max1_Cable1 = np.maximum(numberofTurbinesperArrayCable1-numberofTurbinesperArrayCable2, 0)
-        max2_Cable1 = 0
-        numberofTurbineInterfacesPerArrayCable2 = (max1_Cable1 * numberofStrings + max2_Cable1) * 2
-
-    else:
-        numberofTurbineInterfacesPerArrayCable1 = (numberofTurbinesperArrayCable1 * numberofStrings + np.minimum((numberofTurbinesperPartialString-1),numberofTurbinesperArrayCable1)) * 2
-
-        max1_Cable1 = np.maximum(numberofTurbinesperArrayCable1-numberofTurbinesperArrayCable2, 0)
-        max2_Cable1 = 0 #due to the no partial string assumption
-        numberofTurbineInterfacesPerArrayCable2 = (max1_Cable1 * numberofStrings + max2_Cable1) * 2 + 1
-
+    max1_Cable1 = np.maximum(numberofTurbinesperArrayCable1-numberofTurbinesperArrayCable2, 0)
+    max2_Cable1 = 0
+    numberofTurbineInterfacesPerArrayCable2 = (max1_Cable1 * numberofStrings + max2_Cable1) * 2
 
     numberofArrayCableSubstationInterfaces = numberofStrings
     
     if fixedType:
         arrayCable1Length = (turbineSpacing*rd+depth*2)*(numberofTurbineInterfacesPerArrayCable1/2)*(1+excessCableFactor)
         arrayCable1Length /= 1000 # convert to km
-
+        #print("arrayCable1Length:", arrayCable1Length)
     else:
         systemAngle = -0.0047 * depth + 18.743
 
         freeHangingCableLength = (depth/np.cos(systemAngle*np.pi/180)*(catenaryLengthFactor+1))+ 190
-        freeHangingCableLength /= 1000 # convert to km
-        print("freeHangingCableLength:", freeHangingCableLength)
+        #freeHangingCableLength /= 1000 # convert to km
 
         fixedCableLength =(turbineSpacing * rd) - (2*np.tan(systemAngle*np.pi/180)*depth)-70
-        fixedCableLength /= 1000 # convert to km
-        print("fixedCableLength:", fixedCableLength)
+        #fixedCableLength /= 1000 # convert to km
 
         arrayCable1Length = (2 * freeHangingCableLength) * (numberofTurbineInterfacesPerArrayCable1/2)*(1+excessCableFactor)
         arrayCable1Length /= 1000 # convert to km
-        print("arrayCable1Length:", arrayCable1Length)
+        #print("arrayCable1Length:", arrayCable1Length)
 
-    max1_Cable2 = np.maximum(numberofTurbinesperArrayCable2-1, 0)
+    max1_Cable2 = np.maximum( numberofTurbinesperArrayCable2-1, 0)
     max2_Cable2 = np.maximum( numberofTurbinesperPartialString - numberofTurbinesperArrayCable2 -1, 0 )
 
-    if numberofTurbinesperPartialString == 0:
-        strFac = numberofStrings / numberOfSubStations
-    else:
-        strFac = numberofStrings / numberOfSubStations + 1
+    strFac = numberofStrings / numberOfSubStations
 
     if fixedType:
         arrayCable2Length = (turbineSpacing*rd+2*depth)*(max1_Cable2*numberofStrings+max2_Cable2) +\
@@ -512,7 +496,7 @@ def offshoreBOS(capacity, rotordiam, hubHeight, depth, distanceToShore, distance
 
     numberOfSubStations = numberOfSubStations
 
-    numberOfMainPowerTransformers = np.floor_divide(turbineNumber*cp,250)
+    numberOfMainPowerTransformers = np.floor_divide(turbineNumber*cp,250)+1
 
     singleMptRating = np.round(turbineNumber*cp*1.15/numberOfMainPowerTransformers, -1)
 
@@ -552,7 +536,7 @@ def offshoreBOS(capacity, rotordiam, hubHeight, depth, distanceToShore, distance
             semiSubmersibleHPMass = -0.4397 * np.power(cp , 2) + 21.145 * cp + 177.42
             semiSubmersibleHPCost = semiSubmersibleHPMass * semiSubmersibleHPCostRate
 
-        semisubmersibleMass = semiSubmersibleSCMass + semiSubmersibleTMass + semiSubmersibleHPMass
+        semiSubmersibleMass = semiSubmersibleSCMass + semiSubmersibleTMass + semiSubmersibleHPMass
 
         offshoreSubstationSubstructureMass = 2*(semiSubmersibleMass + secondarySteelSubstructureMass)
 
@@ -584,7 +568,7 @@ def offshoreBOS(capacity, rotordiam, hubHeight, depth, distanceToShore, distance
                                          overheadTransmissionLineCost +\
                                          switchyardCost
     totalElectricalInfrastructureCosts /= turbineNumber
-    
+
     ## ASSEMBLY AND INSTALLATION
 
 
