@@ -215,23 +215,30 @@ def turbineCostCalculator(capacity, hubHeight, rotordiam, depth=None, shoreDista
 
     return totalCost
 
-def offshoreBOS(capacity, rotordiam, hubHeight, depth, foundation="monopile", anchor="DEA", turbineNumber = 80, turbineSpacing = 5, rowSpacing=9):
+def offshoreBOS(capacity, rotordiam, hubHeight, depth, distanceToShore, distanceToBus, foundation="monopile", mooringCount=3, anchor="DEA", turbineNumber=80, turbineSpacing=5, rowSpacing=9):
     # [1] https://www.nrel.gov/docs/fy17osti/66874.pdf
     # [2] Anders Mhyr, Catho Bjerkseter, Anders Agotnes and Tor A. Nygaard (2014) Levelised costs of energy for offshore floating wind turbines in a life cycle perspective
     # [3] Catho Bjerkseter and Anders Agotnes(2013) Levelised costs of energy for offshore floating wind turbine concenpts
     # [4] www.rpgcables.com/images/product/EHV-catalogue.pdf
     # [5] https://www.nrel.gov/docs/fy16osti/66262.pdf
 
+    ## PREPROCESS INPUTS
+    foundation = foundation.lower()
+    if foundation=="monopile" or foundation=="jacket": fixedType = True
+    elif foundation=="spar" or foundation=="semisubmersible": fixedType = False
+    else: raise ValueError("Please choose one of the four foundation types: monopile, jacket, spar, or semisubmersible")
+
     cp = np.array(capacity/1000)
     rr = np.array(rotordiam/2)
     rd = np.array(rotordiam)
-    hh = np.array(hh)
+    hh = np.array(hubHeight)
     depth = np.array(depth)
-    foundation = foundation.lower()
-
+    shoreD = np.array(distanceToShore)
+    busD = np.array(distanceToBus)
+    
+    ## CONSTANTS AND ASSUMPTIONS (all from [1] except where noted)
+    # Stucture are foundation
     embedmentDepth = 30 #meters
-    #the unit of capacity should be in kW
-
     monopileCostRate = 2250 #dollars/tonne
     monopileTPCostRate = 3230 #dollars/tonne
     sparSCCostRate = 3120 #dollars/tonne
@@ -250,20 +257,51 @@ def offshoreBOS(capacity, rotordiam, hubHeight, depth, foundation="monopile", an
     DEA_anchorCost = 154 #dollars [2]
     SPA_anchorCost = 692 #dollars [2]
 
-    #GENERAL (APEENDIX B in NREL BOS MODEL)
+    # Electrical
+    #current rating values are taken from source an approximate number is chosen from tables[4]
+    cable1CurrentRating = 400 # [4]
+    cable2CurrentRating = 600 # [4]
+    exportCableCurrentRating = 1000 # [4]
+    arrayVoltage = 33
+    exportCableVoltage = 220
+    powerFactor = 0.95
+    buriedDepth = 1 #this value is chosen from [5] IF THIS CHANGES FROM ONE "singleStringPower1" needs to be updated
+    catenaryLengthFactor = 0.04
+    excessCableFactor = 0.1
+    numberOfSubStations = 1 # From the example used in [5]
+    arrayCableCost = 281000*1.35 # dollars/km (converted from EUR) [3]
+    externalCableCost = 443000*1.35 # dollars/km (converted from EUR) [3]
+    singleTurbineInterfaceCost = 0 # Could not find a number...
+    substationInterfaceCost = 0 # Could not find a number...
+    dynamicCableFactor = 2
+    mainPowerTransformerCostRate = 12500 # dollers/MVA
+    highVoltageSwitchgearCost = 950000 # dollars
+    mediumVoltageSwitchgearCost = 500000 # dollars
+    shuntReactorCostRate = 35000 # dollars/MVA
+    dieselGeneratorBackupCost = 1000000 # dollars
+    workspaceCost = 2000000 # dollars
+    otherAncillaryCosts = 3000000 # dollars
+    fabricationCostRate = 14500 # dollars/tonne
+    topsideDesignCost = 4500000 # dollars
+    assemblyFactor = 1 # could not find a number...
+    offshoreSubstationSubstructureCostRate = 6250 # dollars/tonne
+    substationSubstructurePileCostRate = 2250 # dollars/tonne
+    interconnectVoltage = 345 # kV
+
+    ## GENERAL (APEENDIX B in NREL BOS MODEL)
     hubDiam = cp/4 +2
     bladeLength = (rotordiam-hubDiam)/2
 
     nacelleWidth = hubDiam + 1.5
     nacelleLength = 2 * nacelleWidth
 
-    #RNAMass is rotor nacelle assembly
+    # RNAMass is rotor nacelle assembly
     RNAMass = 2.082 * cp * cp + 44.59 * cp +22.48
 
     towerDiam = cp/2 + 4
     towerMass = (0.4 * np.pi * np.power(rr, 2) * hh -1500)/1000
 
-    #STRUCTURE AND FOUNDATION
+    ## STRUCTURE AND FOUNDATION
     if foundation == 'monopile':
         monopileLength = depth + embedmentDepth + 5
 
@@ -276,6 +314,7 @@ def offshoreBOS(capacity, rotordiam, hubHeight, depth, foundation="monopile", an
         monopileTPCost = monopileTPMass * monopileTPCostRate
 
         foundationCost = monopileCost + monopileTPCost
+        mooringAndAnchorCost = 0
 
     elif foundation == 'jacket':
         #jacket main lattice mass is called as jacketMLMass
@@ -291,6 +330,7 @@ def offshoreBOS(capacity, rotordiam, hubHeight, depth, foundation="monopile", an
         jacketPileCost = jacketPileMass * jacketPileCostRate
 
         foundationCost = jacketMLCost + jacketTPCost + jacketPileCost
+        mooringAndAnchorCost=0
 
     elif foundation == 'spar':
         #spar stiffened column mass is called as sparSCMass
@@ -350,9 +390,7 @@ def offshoreBOS(capacity, rotordiam, hubHeight, depth, foundation="monopile", an
 
         mooringAndAnchorCost = mooringLength * mooringCostRate + anchorCost
 
-    else: raise ValueError("Please choose one of the four foundation types!")
-
-    if foundation == 'monopile' or  foundation == 'jacket' :
+    if fixedType:
         secondarySteelSubstructureMass = np.zeros(depth.shape)
         gt4 = cp>4
         if gt4.any(): secondarySteelSubstructureMass[gt4] = 40 + (0.8 * (18 + depth[gt4]))
@@ -367,59 +405,57 @@ def offshoreBOS(capacity, rotordiam, hubHeight, depth, foundation="monopile", an
     
     secondarySteelSubstructureCost = secondarySteelSubstructureMass * outfittingSteelCost
 
-    #ELECTRICAL INFRASTRUCTURE
-    #current rating values are taken from source an approximate number is chosen from tables[4]
-    cable1CurrentRating = 400
-    cable2CurrentRating = 600
-    exportCableCurrentRating = 1000
-    arrayVoltage = 33
-    powerFactor = 0.95
-    buriedDepth = 1 #this value is chosen from [5] IF THIS CHANGES FROM ONE "singleStringPower1" needs to be updated
-    catenaryLengthFactor = 0.04
-    excessCableFactor = 0.1
-    numberOfSubStations = 1 # From the example used in [5]
+    totalStructureAndFoundationCosts = foundationCost +\
+                                       mooringAndAnchorCost*mooringCount +\
+                                       secondarySteelSubstructureCost
 
-    singleStringPower1 =  np.sqrt(3)*cable1CurrentRating*arrayVoltage*powerFactor/1000
-    singleStringPower2 =  np.sqrt(3)*cable2CurrentRating*arrayVoltage*powerFactor/1000
+    ##ELECTRICAL INFRASTRUCTURE
+    singleStringPower1 = np.sqrt(3)*cable1CurrentRating*arrayVoltage*powerFactor/1000
+    singleStringPower2 = np.sqrt(3)*cable2CurrentRating*arrayVoltage*powerFactor/1000
 
     numberofStrings = np.floor_divide(turbineNumber*cp , singleStringPower2)
 
-    numberofTurbinesperPartialString = np.remainder((turbineNumber*cp) , singleStringPower2)
+    numberofTurbinesperPartialString = np.round(np.remainder((turbineNumber*cp) , singleStringPower2))
 
-    numberofTurbinesperArrayCable1 = np.floor_divide(singleStringPower1 , turbineNumber*cp)
+    numberofTurbinesperArrayCable1 = np.floor_divide(singleStringPower1 , cp)
 
-    numberofTurbinesperArrayCable2 = np.floor_divide(singleStringPower2 , turbineNumber*cp)
+    numberofTurbinesperArrayCable2 = np.floor_divide(singleStringPower2 , cp)
 
     if numberofTurbinesperPartialString == 0:
         numberofTurbineInterfacesPerArrayCable1 = numberofTurbinesperArrayCable1 * numberofStrings * 2
 
         max1_Cable1 = np.maximum(numberofTurbinesperArrayCable1-numberofTurbinesperArrayCable2, 0)
         max2_Cable1 = 0
-        numberofTurbineInterfacesPerArrayCable2 = (max1_Cable_Cable11 * numberofStrings + max2) * 2
+        numberofTurbineInterfacesPerArrayCable2 = (max1_Cable1 * numberofStrings + max2_Cable1) * 2
 
     else:
         numberofTurbineInterfacesPerArrayCable1 = (numberofTurbinesperArrayCable1 * numberofStrings + np.minimum((numberofTurbinesperPartialString-1),numberofTurbinesperArrayCable1)) * 2
 
-        max1_Cable1 = np.max(numberofTurbinesperArrayCable1-numberofTurbinesperArrayCable2, 0)
+        max1_Cable1 = np.maximum(numberofTurbinesperArrayCable1-numberofTurbinesperArrayCable2, 0)
         max2_Cable1 = 0 #due to the no partial string assumption
-        numberofTurbineInterfacesPerArrayCable2 = (max1_Cable_Cable11 * numberofStrings + max2) * 2 + 1
+        numberofTurbineInterfacesPerArrayCable2 = (max1_Cable1 * numberofStrings + max2_Cable1) * 2 + 1
 
 
     numberofArrayCableSubstationInterfaces = numberofStrings
-
-    if foundation == 'monopile' or  foundation == 'jacket' :
-        arrayCable1Length = (turbineSpacing*rd + depth *2)*(numberofTurbineInterfacesPerArrayCable1/2)*(1+excessCableFactor)
+    
+    if fixedType:
+        arrayCable1Length = (turbineSpacing*rd+depth*2)*(numberofTurbineInterfacesPerArrayCable1/2)*(1+excessCableFactor)
+        arrayCable1Length /= 1000 # convert to km
 
     else:
         systemAngle = -0.0047 * depth + 18.743
 
         freeHangingCableLength = (depth/np.cos(systemAngle*np.pi/180)*(catenaryLengthFactor+1))+ 190
+        freeHangingCableLength /= 1000 # convert to km
+        print("freeHangingCableLength:", freeHangingCableLength)
 
         fixedCableLength =(turbineSpacing * rd) - (2*np.tan(systemAngle*np.pi/180)*depth)-70
+        fixedCableLength /= 1000 # convert to km
+        print("fixedCableLength:", fixedCableLength)
 
         arrayCable1Length = (2 * freeHangingCableLength) * (numberofTurbineInterfacesPerArrayCable1/2)*(1+excessCableFactor)
-
-    if foundation == 'monopile' or  foundation == 'jacket' :
+        arrayCable1Length /= 1000 # convert to km
+        print("arrayCable1Length:", arrayCable1Length)
 
     max1_Cable2 = np.maximum(numberofTurbinesperArrayCable2-1, 0)
     max2_Cable2 = np.maximum( numberofTurbinesperPartialString - numberofTurbinesperArrayCable2 -1, 0 )
@@ -429,15 +465,129 @@ def offshoreBOS(capacity, rotordiam, hubHeight, depth, foundation="monopile", an
     else:
         strFac = numberofStrings / numberOfSubStations + 1
 
-    if foundation == 'monopile' or  foundation == 'jacket' :
-        arrayCable2Length = (turbineSpacing*rd+2*depth)*(max1_Cable2*numberofStrings=max2_Cable2) +\
+    if fixedType:
+        arrayCable2Length = (turbineSpacing*rd+2*depth)*(max1_Cable2*numberofStrings+max2_Cable2) +\
                             numberOfSubStations*(strFac*(rd*rowSpacing)+\
                             (np.sqrt(np.power((rd*turbineSpacing*(strFac-1)),2)+np.power((rd*rowSpacing), 2))/2) +\
                             strFac*depth)*(excessCableFactor+1)
+        arrayCable2Length /= 1000 # convert to km
+        
+        arrayCable1AndAncillaryCost = arrayCable1Length*arrayCableCost + singleTurbineInterfaceCost *\
+            (numberofTurbineInterfacesPerArrayCable1+numberofTurbineInterfacesPerArrayCable2)
+
+        arrayCable2AndAncillaryCost = arrayCable2Length*arrayCableCost +\
+            singleTurbineInterfaceCost * (numberofTurbineInterfacesPerArrayCable1+numberofTurbineInterfacesPerArrayCable2) +\
+            substationInterfaceCost * numberofArrayCableSubstationInterfaces
 
     else: 
         arrayCable2Length = (fixedCableLength +2*freeHangingCableLength)*(max1_Cable2*numberofStrings+max2_Cable2) +\
                             numberOfSubStations*(strFac*(rd*rowSpacing)+\
                             np.sqrt(np.power(( (2*freeHangingCableLength)*(strFac-1)+(rd*rowSpacing)-(2*np.tan(systemAngle*np.pi/180)*depth)-70), 2) +\
                                     np.power(fixedCableLength+2*freeHangingCableLength, 2))/2)*(excessCableFactor+1)
+        arrayCable2Length /= 1000 # convert to km
 
+        arrayCable1AndAncillaryCost = dynamicCableFactor *(arrayCable1Length*arrayCableCost +\
+            singleTurbineInterfaceCost*(numberofTurbineInterfacesPerArrayCable1+numberofTurbineInterfacesPerArrayCable2))
+
+
+        arrayCable2AndAncillaryCost = dynamicCableFactor *(arrayCable2Length*arrayCableCost +\
+            singleTurbineInterfaceCost * (numberofTurbineInterfacesPerArrayCable1+numberofTurbineInterfacesPerArrayCable2) +\
+            substationInterfaceCost * numberofArrayCableSubstationInterfaces)
+
+    singleExportCablePower =  np.sqrt(3)*cable2CurrentRating*arrayVoltage*powerFactor/1000
+    numberOfExportCables = np.floor_divide( cp*turbineNumber, singleExportCablePower)+1
+
+    if fixedType:
+        exportCableLength = (shoreD*1000+depth)*numberOfExportCables*1.1
+        exportCableLength /= 1000 # convert to km
+
+        exportCableandAncillaryCost = exportCableLength*externalCableCost + numberOfExportCables*substationInterfaceCost
+    else:
+        exportCableLength = (shoreD*1000+freeHangingCableLength+500)*numberOfExportCables*1.1
+        exportCableLength /= 1000 # convert to km
+
+        exportCableandAncillaryCost = externalCableCost +\
+            ((exportCableLength - freeHangingCableLength -500)+dynamicCableFactor*(500+freeHangingCableLength)) +\
+            numberOfExportCables*substationInterfaceCost
+
+    numberOfSubStations = numberOfSubStations
+
+    numberOfMainPowerTransformers = np.floor_divide(turbineNumber*cp,250)
+
+    singleMptRating = np.round(turbineNumber*cp*1.15/numberOfMainPowerTransformers, -1)
+
+    mainPowerTransformerCost = numberOfMainPowerTransformers*singleMptRating*mainPowerTransformerCostRate
+
+    switchgearCost = numberOfMainPowerTransformers*(highVoltageSwitchgearCost+mediumVoltageSwitchgearCost)
+
+    shuntReactorCost = singleMptRating * numberOfMainPowerTransformers * shuntReactorCostRate * 0.5
+
+    ancillarySystemsCost = dieselGeneratorBackupCost + workspaceCost + otherAncillaryCosts
+
+    offshoreSubstationTopsideMass = 3.85 * (singleMptRating*numberOfMainPowerTransformers) + 285
+    offshoreSubstationTopsideCost = offshoreSubstationTopsideMass * fabricationCostRate + topsideDesignCost
+    assemblyFactor = 1 # could not find a number...
+
+    offshoreSubstationTopsideLandAssemblyCost = (switchgearCost+shuntReactorCost+mainPowerTransformerCost)*assemblyFactor
+
+    if fixedType:
+        offshoreSubstationSubstructureMass = 0.4*offshoreSubstationTopsideMass
+
+        substationSubstructurePileMass = 8*np.power(offshoreSubstationSubstructureMass, 0.5574)
+
+        offshoreSubstationSubstructureCost = offshoreSubstationSubstructureMass * offshoreSubstationSubstructureCostRate +\
+                                             substationSubstructurePileMass * substationSubstructurePileCostRate
+    else:
+
+        # copied from above in case of spar
+        if foundation == 'spar':
+            semiSubmersibleSCMass = -0.9571 * np.power(cp , 2) + 40.89 * cp + 802.09
+            semiSubmersibleSCCost = semiSubmersibleSCMass * semiSubmersibleSCCostRate
+
+            #semiSubmersible truss mass is called as semiSubmersibleTMass
+            semiSubmersibleTMass = 2.7894 * np.power(cp , 2) + 15.591 * cp + 266.03
+            semiSubmersibleTCost = semiSubmersibleTMass * semiSubmersibleTCostRate
+
+            #semiSubmersible heavy plate mass is called as semiSubmersibleHPMass
+            semiSubmersibleHPMass = -0.4397 * np.power(cp , 2) + 21.145 * cp + 177.42
+            semiSubmersibleHPCost = semiSubmersibleHPMass * semiSubmersibleHPCostRate
+
+        semisubmersibleMass = semiSubmersibleSCMass + semiSubmersibleTMass + semiSubmersibleHPMass
+
+        offshoreSubstationSubstructureMass = 2*(semiSubmersibleMass + secondarySteelSubstructureMass)
+
+        substationSubstructurePileMass = 0
+        
+        semiSubmersibleCost = semiSubmersibleSCCost + semiSubmersibleTCost + semiSubmersibleHPCost
+        offshoreSubstationSubstructureCost = 2*(semiSubmersibleTCostRate + mooringAndAnchorCost)
+
+    onshoreSubstationCost = 11652 * (interconnectVoltage + cp*turbineNumber) + 1200000
+
+    onshoreSubstationMiscCost = 11795 * np.power(cp*turbineNumber, 0.3549) + 350000
+
+    overheadTransmissionLineCost = (1176*interconnectVoltage+218257) * np.power(busD,-0.1063)*busD
+
+    switchyardCost = 18115*interconnectVoltage+165944
+
+    totalElectricalInfrastructureCosts = arrayCable1AndAncillaryCost +\
+                                         arrayCable2AndAncillaryCost +\
+                                         exportCableandAncillaryCost +\
+                                         mainPowerTransformerCost +\
+                                         switchgearCost +\
+                                         shuntReactorCost +\
+                                         ancillarySystemsCost +\
+                                         offshoreSubstationTopsideCost +\
+                                         offshoreSubstationTopsideLandAssemblyCost +\
+                                         offshoreSubstationSubstructureCost +\
+                                         onshoreSubstationCost +\
+                                         onshoreSubstationMiscCost +\
+                                         overheadTransmissionLineCost +\
+                                         switchyardCost
+    totalElectricalInfrastructureCosts /= turbineNumber
+    
+    ## ASSEMBLY AND INSTALLATION
+
+
+    ## TOTAL COST
+    totalCost = totalStructureAndFoundationCosts + totalElectricalInfrastructureCosts
+    return totalCost
