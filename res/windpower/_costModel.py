@@ -7,7 +7,7 @@ class _BaselineOnshoreTurbine(dict):
 
 baselineOnshoreTurbine = _BaselineOnshoreTurbine(capacity=4200, hubHeight=129, rotordiam=141)
 
-def turbineCostCalculator(capacity, hubHeight, rotordiam, depth=None, shoreDistance=None, busDistance=None, offshore=False, ):
+def onshoreTurbineCost(capacity, hubHeight, rotordiam,):
     """
     **NEEDS UPDATE**
     Onshore wind turbine cost and scaling model (csm) built following [1] and update following [2]. 
@@ -44,29 +44,27 @@ def turbineCostCalculator(capacity, hubHeight, rotordiam, depth=None, shoreDista
     [3] Tyler Stehly, Donna Heimiller, and George Scott
         "2016 Cost of Wind Energy Review"
         2017. NREL
-
-    [4] Lixuan Hong and Bernd Moeller.
-        "Offshore wind energy potential in China: Under technical, spatial and economic constraints"
-        2011. Energy
-
     """
-    gdpEscalator=1#2.5 # Chosen to match example given in [1]
-    bladeMaterialEscalator=1
-    blades = 3
-    
+
+    ## PREPROCESS INPUTS
     rd = np.array(rotordiam)
     hh = np.array(hubHeight)
     cp = np.array(capacity)
     rr = rd/2
+
+    ## COMPUTE COSTS 
+    # normalizations chosen to make the default turbine (4200-cap, 129-hub, 141-rot) match both a total
+    # cost of 1100 EUR/kW as well as matching the percentages given in [3]     
+    tcc = onshoreTurbineCapitalCost(cp=cp, hh=hh, rd=rd) * 0.86025295906448673 
+    bos = onshoreTurbineBOSCost(cp=cp, hh=hh, rd=rd) * 0.63296245771197779
+    other = (tcc + bos)*0.098/(1-0.098)
+
+    return tcc + bos + other
+
+def onshoreTurbineCapitalCost(cp, hh, rd, gdpEscalator=1, bladeMaterialEscalator=1, blades = 3):
+    rr = rd/2
     sa = np.pi*rr*rr
 
-    if offshore:
-        depth = np.array(depth)
-        busD = np.array(busDistance)
-        shoreD = np.array(shoreDistance)
-    
-    turbineCapitalCostNormalization = 0.874035081173
-    
     # Blade Cost
     singleBladeMass = 0.4948 * np.power(rr,2.53)
     singleBladeCost = ((0.4019*np.power(rr, 3)-21051)*bladeMaterialEscalator + 2.7445*np.power(rr, 2.5025)*gdpEscalator)*(1-0.28)
@@ -151,83 +149,55 @@ def turbineCostCalculator(capacity, hubHeight, rotordiam, depth=None, shoreDista
                         nacelleCost + \
                         towerCost
 
-    turbineCapitalCost *= turbineCapitalCostNormalization
+    return turbineCapitalCost
 
-    if not offshore:
-        # Foundation
-        foundationCost = 303.24*np.power((hh*sa), 0.4037)
+def onshoreTurbineBOSCost(cp, hh, rd):
+    rr=rd/2
+    sa = np.pi*rr*rr
 
-        # Transportation
-        transporationCostFactor = 1.581E-5 * np.power(cp,2) - 0.0375 * cp + 54.7
-        transporationCost = transporationCostFactor * cp
+    # Foundation
+    foundationCost = 303.24*np.power((hh*sa), 0.4037)
 
-        # Roads and civil work
-        roadsAndCivilWorkFactor = 2.17E-6 * np.power(cp,2) - 0.0145 * cp + 69.54
-        roadsAndCivilWorkCost = roadsAndCivilWorkFactor * cp
+    # Transportation
+    transporationCostFactor = 1.581E-5 * np.power(cp,2) - 0.0375 * cp + 54.7
+    transporationCost = transporationCostFactor * cp
 
-        # Assembly and installation
-        assemblyAndInstallationCost = 1.965 * np.power((hh*rd), 1.1736)
+    # Roads and civil work
+    roadsAndCivilWorkFactor = 2.17E-6 * np.power(cp,2) - 0.0145 * cp + 69.54
+    roadsAndCivilWorkCost = roadsAndCivilWorkFactor * cp
 
-        # Electrical Interface and connections
-        electricalInterfaceAndConnectionFactor = (3.49E-6 * np.power(cp,2)) - (0.0221 * cp) + 109.7
-        electricalInterfaceAndConnectionCost = electricalInterfaceAndConnectionFactor * cp
+    # Assembly and installation
+    assemblyAndInstallationCost = 1.965 * np.power((hh*rd), 1.1736)
 
-        # Engineering and permit factor
-        engineeringAndPermitCostFactor = 9.94E-4 * cp + 20.31
-        engineeringAndPermitCost = engineeringAndPermitCostFactor * cp
+    # Electrical Interface and connections
+    electricalInterfaceAndConnectionFactor = (3.49E-6 * np.power(cp,2)) - (0.0221 * cp) + 109.7
+    electricalInterfaceAndConnectionCost = electricalInterfaceAndConnectionFactor * cp
 
-        # Add up other costs 
-        otherCosts= foundationCost + \
-                    transporationCost + \
-                    roadsAndCivilWorkCost + \
-                    assemblyAndInstallationCost + \
-                    electricalInterfaceAndConnectionCost + \
-                    engineeringAndPermitCost 
+    # Engineering and permit factor
+    engineeringAndPermitCostFactor = 9.94E-4 * cp + 20.31
+    engineeringAndPermitCost = engineeringAndPermitCostFactor * cp
 
+    # Add up other costs 
+    bosCosts= foundationCost + \
+              transporationCost + \
+              roadsAndCivilWorkCost + \
+              assemblyAndInstallationCost + \
+              electricalInterfaceAndConnectionCost +\
+              engineeringAndPermitCost 
 
-        # Get total cost
-        totalCost = turbineCapitalCost + otherCosts*turbineCapitalCostNormalization
+    return bosCosts
 
-    else: # Offshore, following [4]
-
-        turbineCapitalCost *= 1.135 # Marinization of turbine [1]
-
-        # Get Foundation Cost
-        foundationCost = np.zeros(depth.shape)
-
-        lt25 = depth < 25
-        if lt25.any(): foundationCost[lt25] = 1.4*((499*np.power(depth[lt25],2))+(6219*depth[lt25])+311810)
-
-        gt25 = depth >= 25
-        if gt25.any(): foundationCost[gt25] = 1.4*((440*np.power(depth[gt25],2))+(19695*depth[gt25])+11785)
-
-        foundationCost *= cp/1000 # Make into Eur
-
-        # Get grid cost
-        gridCost = (0.38*busD+0.4*shoreD+76.6)*1e6/600
-        gridCost *= cp/1000 # Make into Eur
-
-        # Other Costs
-        otherCosts = (turbineCapitalCost + foundationCost + gridCost) * 0.10
-
-        # Some all costs
-        totalCost = turbineCapitalCost + foundationCost + gridCost + otherCosts
-
-    return totalCost
-
-def offshoreBOS(capacity, rotordiam, hubHeight, depth, distanceToShore, distanceToBus, foundation="monopile", mooringCount=3, anchor="DEA", turbineNumber=80, turbineSpacing=5, rowSpacing=9):
+def offshoreTurbineCost(capacity, hubHeight, rotordiam, depth, distanceToShore, distanceToBus=3, foundation="monopile", mooringCount=3, anchor="DEA", turbineNumber=80, turbineSpacing=5, rowSpacing=9):
+    # Defaults from [1] or [5]
     # [1] https://www.nrel.gov/docs/fy17osti/66874.pdf
     # [2] Anders Mhyr, Catho Bjerkseter, Anders Agotnes and Tor A. Nygaard (2014) Levelised costs of energy for offshore floating wind turbines in a life cycle perspective
     # [3] Catho Bjerkseter and Anders Agotnes(2013) Levelised costs of energy for offshore floating wind turbine concenpts
     # [4] www.rpgcables.com/images/product/EHV-catalogue.pdf
     # [5] https://www.nrel.gov/docs/fy16osti/66262.pdf
+    # [6] L. Fingersh, M. Hand, and A. Laxson. "Wind Turbine Design Cost and Scaling Model". 2006. NREL
+    # [7] Tyler Stehly, Donna Heimiller, and George Scott. "2016 Cost of Wind Energy Review". 2017. NREL. https://www.nrel.gov/docs/fy18osti/70363.pdf
 
     ## PREPROCESS INPUTS
-    foundation = foundation.lower()
-    if foundation=="monopile" or foundation=="jacket": fixedType = True
-    elif foundation=="spar" or foundation=="semisubmersible": fixedType = False
-    else: raise ValueError("Please choose one of the four foundation types: monopile, jacket, spar, or semisubmersible")
-
     cp = np.array(capacity/1000)
     rr = np.array(rotordiam/2)
     rd = np.array(rotordiam)
@@ -235,7 +205,30 @@ def offshoreBOS(capacity, rotordiam, hubHeight, depth, distanceToShore, distance
     depth = np.array(depth)
     shoreD = np.array(distanceToShore)
     busD = np.array(distanceToBus)
-    
+
+    ## COMPUTE COSTS    
+    tcc = onshoreTurbineCapitalCost(cp=cp*1000, hh=hh, rd=rd)
+    tcc *= 1.05317975
+
+    bos = offshoreBOS(cp=cp, rd=rd, hh=hh, depth=depth, shoreD=shoreD, busD=busD, foundation=foundation, 
+                      mooringCount=mooringCount, anchor=anchor, turbineNumber=turbineNumber, 
+                      turbineSpacing=turbineSpacing, rowSpacing=rowSpacing, )
+    bos *= 0.44322409
+
+    fin = tcc * 20.9/32.9 # Scaled according to tcc
+
+    return tcc+bos+fin
+    #return np.array([tcc,bos,fin])
+
+def offshoreBOS(cp, rd, hh, depth, shoreD, busD, foundation, mooringCount, anchor, turbineNumber, turbineSpacing, rowSpacing):
+    rr = rd/2
+
+    foundation = foundation.lower()
+    anchor = anchor.lower()
+    if foundation=="monopile" or foundation=="jacket": fixedType = True
+    elif foundation=="spar" or foundation=="semisubmersible": fixedType = False
+    else: raise ValueError("Please choose one of the four foundation types: monopile, jacket, spar, or semisubmersible")
+
     ## CONSTANTS AND ASSUMPTIONS (all from [1] except where noted)
     # Stucture are foundation
     embedmentDepth = 30 #meters
@@ -290,7 +283,7 @@ def offshoreBOS(capacity, rotordiam, hubHeight, depth, distanceToShore, distance
 
     ## GENERAL (APEENDIX B in NREL BOS MODEL)
     hubDiam = cp/4 +2
-    bladeLength = (rotordiam-hubDiam)/2
+    bladeLength = (rd-hubDiam)/2
 
     nacelleWidth = hubDiam + 1.5
     nacelleLength = 2 * nacelleWidth
@@ -347,12 +340,12 @@ def offshoreBOS(capacity, rotordiam, hubHeight, depth, distanceToShore, distance
 
         foundationCost = sparSCCost + sparTCCost + sparBallCost
 
-        if anchor == 'DEA': 
+        if anchor == 'dea': 
             anchorCost = DEA_anchorCost
             #the equation is derived from [3]
             mooringLength = 1.5 * depth + 350
 
-        elif anchor == 'SPA':
+        elif anchor == 'spa':
             anchorCost = SPA_anchorCost
             #since it is assumed to have an angle of 45 degrees it is multiplied by 1.41 which is squareroot of 2 [3]
             mooringLength = 1.41 * depth
@@ -435,14 +428,11 @@ def offshoreBOS(capacity, rotordiam, hubHeight, depth, distanceToShore, distance
         systemAngle = -0.0047 * depth + 18.743
 
         freeHangingCableLength = (depth/np.cos(systemAngle*np.pi/180)*(catenaryLengthFactor+1))+ 190
-        #freeHangingCableLength /= 1000 # convert to km
 
         fixedCableLength =(turbineSpacing * rd) - (2*np.tan(systemAngle*np.pi/180)*depth)-70
-        #fixedCableLength /= 1000 # convert to km
 
         arrayCable1Length = (2 * freeHangingCableLength) * (numberofTurbineInterfacesPerArrayCable1/2)*(1+excessCableFactor)
         arrayCable1Length /= 1000 # convert to km
-        #print("arrayCable1Length:", arrayCable1Length)
 
     max1_Cable2 = np.maximum( numberofTurbinesperArrayCable2-1, 0)
     max2_Cable2 = np.maximum( numberofTurbinesperPartialString - numberofTurbinesperArrayCable2 -1, 0 )
@@ -490,7 +480,7 @@ def offshoreBOS(capacity, rotordiam, hubHeight, depth, distanceToShore, distance
         exportCableLength = (shoreD*1000+freeHangingCableLength+500)*numberOfExportCables*1.1
         exportCableLength /= 1000 # convert to km
 
-        exportCableandAncillaryCost = externalCableCost +\
+        exportCableandAncillaryCost = exportCableLength*externalCableCost +\
             ((exportCableLength - freeHangingCableLength -500)+dynamicCableFactor*(500+freeHangingCableLength)) +\
             numberOfExportCables*substationInterfaceCost
 
@@ -570,8 +560,62 @@ def offshoreBOS(capacity, rotordiam, hubHeight, depth, distanceToShore, distance
     totalElectricalInfrastructureCosts /= turbineNumber
 
     ## ASSEMBLY AND INSTALLATION
+    """
+    assembly and installation could not be implemented due to the excessive number of unspecified 
+    constants in [1]. Therefore empirical equations were derived which fit the sensitivities to
+    the baseline plants shown in [1]. These ended up being linear equations in turbine capacity and 
+    sea depth (only for floating turbines).
+    """
+    assemblyAndInstallationCost = np.ones(totalElectricalInfrastructureCosts.shape)
 
+    if fixedType:
+        assemblyAndInstallationCost *= 4200000
+    else:
+        assemblyAndInstallationCost *= 5500000
+
+    # depth depedance
+    if fixedType:
+        pass
+    else:
+        # Normalized to 1 at 250m depth
+        assemblyAndInstallationCost *= 0.00041757917648320338*depth + 0.89560520587919934
+
+    # Capacity dependance
+    # Normalized to 1 at 6 MW 
+    assemblyAndInstallationCost *= 0.05947387*cp+0.64371944
+    
+    ## OTHER THINGS
+    # Again, many constants were used in [1] but not defined. Also, many of the costs were given in the 
+    # context of the USA. Therefore the other groups were are simply treated as percentages which 
+    # fit the examples shown in [1] or [7]
+
+    #########################################
+    ## The below corresponds to other costs in [1]
+    #tot = (assemblyAndInstallationCost + totalElectricalInfrastructureCosts + totalStructureAndFoundationCosts)/(1-0.06)
+    
+    #commissioning = tot*0.015
+    #portAndStaging = tot*0.005
+    #engineeringAndManagement = tot*0.02
+    #developement = tot*0.02
+
+    #########################################
+    ## The below cooresponds to cost percentages in [7] for the fixed-monopile example
+    tot = (assemblyAndInstallationCost*19.0 + 
+           totalElectricalInfrastructureCosts*9.00 + 
+           totalStructureAndFoundationCosts*13.9)/46.2
+
+    commissioning = tot*(0.8/46.2)
+    portAndStaging = tot*(0.5/46.2)
+    engineeringAndManagement = tot*(1.6/46.2)
+    developement = tot*(1.4/46.2)
 
     ## TOTAL COST
-    totalCost = totalStructureAndFoundationCosts + totalElectricalInfrastructureCosts
+    totalCost = commissioning +\
+                assemblyAndInstallationCost +\
+                totalElectricalInfrastructureCosts +\
+                totalStructureAndFoundationCosts +\
+                portAndStaging +\
+                engineeringAndManagement +\
+                developement
+
     return totalCost
