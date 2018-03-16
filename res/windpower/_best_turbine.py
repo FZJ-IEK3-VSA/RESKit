@@ -110,7 +110,7 @@ def determineBestTurbine(weibK=2, weibL=7, capacity=(3000,9000), rotordiam=(90,1
         capex = costModel(capacity=c, hubHeight=h, rotordiam=r)
         lcoe = simpleLCOE(capex, expectedCapFac*8760*c)
         
-        # Dissuade against too-low specific capacity values
+        # Dissuade against too low specific-capacity values
         if not minSpecificCapacity is None:
             specificCapacity = 1000*c/(np.pi*r*r/4)
             if specificCapacity<minSpecificCapacity:
