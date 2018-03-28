@@ -410,12 +410,12 @@ def offshoreBOS(cp, rd, hh, depth, shoreD, busD, foundation, mooringCount, ancho
 
         foundationCost = semiSubmersibleSCCost + semiSubmersibleTCost + semiSubmersibleHPCost
 
-        if anchor == 'DEA': 
+        if anchor == 'dea': 
             anchorCost = DEA_anchorCost
             #the equation is derived from [3]
             mooringLength = 1.5 * depth + 350
 
-        elif anchor == 'SPA':
+        elif anchor == 'spa':
             anchorCost = SPA_anchorCost
             #since it is assumed to have an angle of 45 degrees it is multiplied by 1.41 which is squareroot of 2 [3]
             mooringLength = 1.41 * depth
@@ -431,7 +431,7 @@ def offshoreBOS(cp, rd, hh, depth, shoreD, busD, foundation, mooringCount, ancho
     elif foundation == 'spar':
         secondarySteelSubstructureMass = np.exp(3.58+0.196*np.power(cp, 0.5)*np.log(cp) + 0.00001*depth*np.log(depth))
 
-    elif foundation == 'semiSubmersible':
+    elif foundation == 'semisubmersible':
         secondarySteelSubstructureMass = -0.153 * np.power(cp,2) + 6.54 * cp + 128.34
     
     secondarySteelSubstructureCost = secondarySteelSubstructureMass * outfittingSteelCost
