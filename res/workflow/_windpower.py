@@ -319,9 +319,7 @@ def WindWorkflowTemplate(placements, merra, hubHeight, powerCurve, capacity, rot
         inputs["pcKey"] = pcKey if (pcKey is None or isinstance(pcKey, str)) else pcKey[sel]
         inputs["gid"]=i
         inputs["locationID"]=sel
-
-        if verbose:
-            inputs["globalStart"]=startTime
+        inputs["globalStart"]=startTime
 
         def add(val,name):
             if isinstance(val, list): val = np.array(val)
