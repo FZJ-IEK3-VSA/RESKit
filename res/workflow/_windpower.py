@@ -126,8 +126,8 @@ def simulateLocations(wsSource, landcover, adjustMethod, gwa, roughness, loss, w
 def WindWorkflowTemplate(placements, merra, hubHeight, powerCurve, capacity, rotordiam, cutout, extract, output, 
                          roughness, landcover, adjustMethod, gwa, lctype, conv_stdBase, conv_stdScale, loss, wscorr_a, wscorr_b, 
                          minCF, jobs, batchSize, verbose, padding=2):
-    if verbose: 
-        startTime = dt.now()
+    startTime = dt.now()
+    if verbose:
         print("Starting at: %s"%str(startTime))
 
     if jobs==1: # use only a single process
