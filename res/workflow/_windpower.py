@@ -183,6 +183,7 @@ def WindWorkflowTemplate(placements, merra, hubHeight, powerCurve, capacity, rot
     totalExtent = gk.Extent((lonMin,latMin,lonMax,latMax,), srs=LATLONSRS)
     
     # Setup manager if needed
+    doload=True
     if useMulti:
         manager = WSManager()
         manager.start()
@@ -192,8 +193,9 @@ def WindWorkflowTemplate(placements, merra, hubHeight, powerCurve, capacity, rot
             wsSource = MerraSource(path=merra, bounds=totalExtent.pad(2))
         elif isinstance(merra, MerraSource):
             wsSource = merra
-
-    wsSource.loadWindSpeed(height=50)
+            doload=False
+    if doload:
+        wsSource.loadWindSpeed(height=50)
 
     ### Convolute turbine
     if verbose: print("Convolving power curves at +%.2fs"%( (dt.now()-startTime).total_seconds()) )
