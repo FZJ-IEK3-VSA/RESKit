@@ -12,30 +12,9 @@ class MerraSource(NCSource):
 
     def __init__(s, path, bounds=None, **kwargs):
 
-        if not bounds is None:
-            if isinstance(bounds, gk.Extent):
-                bounds = bounds.castTo(LATLONSRS).pad( (s.MAX_LON_DIFFERENCE, s.MAX_LAT_DIFFERENCE) )
-            else:
-                if isinstance(bounds, Bounds):
-                    lonMin = bounds.lonMin
-                    latMin = bounds.latMin
-                    lonMax = bounds.lonMax
-                    latMax = bounds.latMax
-                else:
-                    print("Consider using a Bounds object or a gk.Extent object. They are safer!")
-                    lonMin,latMin,lonMax,latMax = bounds
-                    
-                bounds = Bounds(lonMin = lonMin - s.MAX_LON_DIFFERENCE,
-                                latMin = latMin - s.MAX_LAT_DIFFERENCE,
-                                lonMax = lonMax + s.MAX_LON_DIFFERENCE,
-                                latMax = latMax + s.MAX_LAT_DIFFERENCE,)
-
-        NCSource.__init__(s, path=path, bounds=bounds, timeName="time", latName="lat", lonName="lon", **kwargs)
+        NCSource.__init__(s, path=path, bounds=bounds, timeName="time", latName="lat", lonName="lon", 
+                          _maxLonDiff=s.MAX_LON_DIFFERENCE, _maxLatDiff=s.MAX_LON_DIFFERENCE, **kwargs)
         s.timeindex=pd.Index(s.timeindex, tz="GMT")
-
-        # set maximal differences
-        s._maximal_lon_difference=s.MAX_LON_DIFFERENCE
-        s._maximal_lat_difference=s.MAX_LAT_DIFFERENCE
 
     def __add__(s,o):
         out = MerraSource(None)

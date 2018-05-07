@@ -74,7 +74,7 @@ class NCSource(object):
         else:
             raise ResError("Could not understand data source input. Must be a path or a list of paths")
 
-    def __init__(s, path, bounds=None, timeName="time", latName="lat", lonName="lon", dependent_coordinates=False, constantsPath=None, timeBounds=None):
+    def __init__(s, path, bounds=None, timeName="time", latName="lat", lonName="lon", dependent_coordinates=False, constantsPath=None, timeBounds=None, _maxLonDiff=10000000, _maxLatDiff=10000000):
         # set basic variables 
         s.path = path
         s.timeName = timeName
@@ -90,25 +90,48 @@ class NCSource(object):
             s._allLons = dsC[lonName][:]
             
             s.variables = list(ds.variables.keys())
-            s._maximal_lon_difference=10000000
-            s._maximal_lat_difference=10000000
+            s._maximal_lon_difference=_maxLonDiff
+            s._maximal_lat_difference=_maxLatDiff
 
             s.dependent_coordinates = dependent_coordinates
 
             # set lat and lon selections
             if not bounds is None:
                 if isinstance(bounds, gk.Extent):
-                    if not bounds.srs.IsSame(gk.srs.EPSG4326):
-                        bounds = bounds.castTo(gk.srs.EPSG4326)
-                    bounds = Bounds(lonMin=bounds.xMin, latMin=bounds.yMin, lonMax=bounds.xMax, latMax=bounds.yMax )
-                elif not isinstance(bounds, Bounds):
-                    bounds = Bounds(*bounds)
-                    print("bounds input is not a 'Bounds' or a 'geokit.Extent' type. Using one of these is safer!")
-                s.bounds = bounds
+                    lonMin,latMin,lonMax,latMax = bounds.castTo(LATLONSRS).xyXY
+
+                elif isinstance(bounds, gk.Location):
+                    lonMin=bounds.lon-s._maximal_lon_difference
+                    latMin=bounds.lat-s._maximal_lat_difference
+                    lonMax=bounds.lon+s._maximal_lon_difference
+                    latMax=bounds.lat+s._maximal_lat_difference
+
+                elif isinstance(bounds, Bounds):
+                    lonMin = bounds.lonMin
+                    latMin = bounds.latMin
+                    lonMax = bounds.lonMax
+                    latMax = bounds.latMax
+                else:
+                    try:
+                        lon,lat = bounds
+
+                        lonMin=lon-s._maximal_lon_difference
+                        latMin=lat-s._maximal_lat_difference
+                        lonMax=lon+s._maximal_lon_difference
+                        latMax=lat+s._maximal_lat_difference
+
+                    except:
+                        lonMin,latMin,lonMax,latMax = bounds
+                
+                # Always pad the boundary to be safe                    
+                s.bounds = Bounds(lonMin = lonMin - s._maximal_lon_difference,
+                                  latMin = latMin - s._maximal_lat_difference,
+                                  lonMax = lonMax + s._maximal_lon_difference,
+                                  latMax = latMax + s._maximal_lat_difference,)
 
                 # find slices
-                s._lonSel = (s._allLons >= bounds.lonMin) & (s._allLons <= bounds.lonMax)
-                s._latSel = (s._allLats >= bounds.latMin) & (s._allLats <= bounds.latMax)
+                s._lonSel = (s._allLons >= s.bounds.lonMin) & (s._allLons <= s.bounds.lonMax)
+                s._latSel = (s._allLats >= s.bounds.latMin) & (s._allLats <= s.bounds.latMax)
 
                 if s.dependent_coordinates:
                     selTmp = s._latSel&s._lonSel
