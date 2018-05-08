@@ -126,8 +126,8 @@ def simulateLocations(wsSource, landcover, adjustMethod, gwa, roughness, loss, w
 def WindWorkflowTemplate(placements, merra, hubHeight, powerCurve, capacity, rotordiam, cutout, extract, output, 
                          roughness, landcover, adjustMethod, gwa, lctype, conv_stdBase, conv_stdScale, loss, wscorr_a, wscorr_b, 
                          minCF, jobs, batchSize, verbose, padding=2):
-    if verbose: 
-        startTime = dt.now()
+    startTime = dt.now()
+    if verbose:
         print("Starting at: %s"%str(startTime))
 
     if jobs==1: # use only a single process
@@ -181,14 +181,19 @@ def WindWorkflowTemplate(placements, merra, hubHeight, powerCurve, capacity, rot
     totalExtent = gk.Extent((lonMin,latMin,lonMax,latMax,), srs=LATLONSRS)
     
     # Setup manager if needed
+    doload=True
     if useMulti:
         manager = WSManager()
         manager.start()
-        wsSource = manager.MerraSource(path=merra, bounds=Bounds(*totalExtent.pad(1).xyXY))
+        wsSource = manager.MerraSource(path=merra, bounds=Bounds(*totalExtent.pad(2).xyXY))
     else:
-        wsSource = MerraSource(path=merra, bounds=totalExtent.pad(1))
-
-    wsSource.loadWindSpeed(height=50)
+        if isinstance(merra,str):
+            wsSource = MerraSource(path=merra, bounds=totalExtent.pad(2))
+        elif isinstance(merra, MerraSource):
+            wsSource = merra
+            doload=False
+    if doload:
+        wsSource.loadWindSpeed(height=50)
 
     ### Convolute turbine
     if verbose: print("Convolving power curves at +%.2fs"%( (dt.now()-startTime).total_seconds()) )
@@ -312,9 +317,7 @@ def WindWorkflowTemplate(placements, merra, hubHeight, powerCurve, capacity, rot
         inputs["pcKey"] = pcKey if (pcKey is None or isinstance(pcKey, str)) else pcKey[sel]
         inputs["gid"]=i
         inputs["locationID"]=sel
-
-        if verbose:
-            inputs["globalStart"]=startTime
+        inputs["globalStart"]=startTime
 
         def add(val,name):
             if isinstance(val, list): val = np.array(val)
@@ -486,8 +489,8 @@ def WindOnshoreWorkflow(placements, merra, landcover, gwa, hubHeight=None, power
                                 wscorr_b=0.2,)
                          
                                                   
-def WindOffshoreWorkflow(placements, merra, landcover, adjustMethod="bilinear", loss=0.03, conv_stdBase=0.2, conv_stdScale=0.05, wscorr_a=0.45, wscorr_b=0.2,hubHeight=None, powerCurve=None, capacity=None, rotordiam=None, cutout=None, lctype="clc", extract="averageProduction", output=None, minCF=0, jobs=1, batchSize=None, verbose=True, **kwargs):
+def WindOffshoreWorkflow(placements, merra, adjustMethod="bilinear", loss=0.03, conv_stdBase=0.2, conv_stdScale=0.05, wscorr_a=0.45, wscorr_b=0.2,hubHeight=None, powerCurve=None, capacity=None, rotordiam=None, cutout=None, roughness=0.0002, extract="averageProduction", output=None, minCF=0, jobs=1, batchSize=None, verbose=True, **kwargs):
     return WindWorkflowTemplate(placements=placements, merra=merra, hubHeight=hubHeight, powerCurve=powerCurve, capacity=capacity, 
-                                rotordiam=rotordiam, cutout=cutout, extract=extract, output=output, landcover=landcover, gwa=None, 
-                                lctype=lctype, minCF=minCF, jobs=jobs,batchSize=batchSize, verbose=verbose, roughness=None,
+                                rotordiam=rotordiam, cutout=cutout, extract=extract, output=output, landcover=None, gwa=None, 
+                                roughness=roughness, minCF=minCF, jobs=jobs,batchSize=batchSize, verbose=verbose, lctype=None,
                                 adjustMethod=adjustMethod,conv_stdBase=conv_stdBase,conv_stdScale=conv_stdScale,loss=loss, wscorr_a=wscorr_a, wscorr_b=wscorr_b,)
