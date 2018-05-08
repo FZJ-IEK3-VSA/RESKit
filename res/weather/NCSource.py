@@ -106,6 +106,9 @@ class NCSource(object):
                     lonMax=bounds.lon+s._maximal_lon_difference
                     latMax=bounds.lat+s._maximal_lat_difference
 
+                elif isinstance(bounds, gk.LocationSet):
+                    bounds = bounds.getBounds()
+
                 elif isinstance(bounds, Bounds):
                     lonMin = bounds.lonMin
                     latMin = bounds.latMin
@@ -286,17 +289,17 @@ class NCSource(object):
             loc : The location(s) to search for
                 - geokit.Location - Preferred location identifier for a single location
                 - [ geokit.location, ] - Preferred location identifier for a multiple locations
-                * Can be anything else which is understood by goekit.Location.ensureLocation
+                * Can be anything else which is understood by goekit.Location.load
 
             outsideOkay : T/F - Determines if points which are outside the source's lat/lon grid are allowed
                 * If True, points outside this space will return as None
         """
         # Ensure loc is a list
-        locations = Location.ensureLocation(loc, forceAsArray=True)
+        locations = LocationSet(loc)
 
         # Get coordinates
-        lonCoords = np.array([loc.lon for loc in locations])
-        latCoords = np.array([loc.lat for loc in locations])
+        lonCoords = locations.lons
+        latCoords = locations.lats
 
         # get closest indices
         idx = []
@@ -331,7 +334,7 @@ class NCSource(object):
             idx.append( Index(yi=latI,xi=lonI) )
 
         # Make output
-        if len(locations)==1:
+        if locations.count==1:
             return idx[0]
         else:
             return idx
@@ -352,7 +355,7 @@ class NCSource(object):
             locations : The location(s) to search for
                 - geokit.Location - Preferred location identifier for a single location
                 - [ geokit.location, ] - Preferred location identifier for a multiple locations
-                * Can be anything else which is understood by goekit.Location.ensureLocation
+                * Can be anything else which is understood by geokit.Location.load
 
             interpolation : str - The interpolation method to use
                 * 'near' => For each location, extract the time series at the closest lat/lon index
@@ -368,7 +371,7 @@ class NCSource(object):
 
         """
         # Ensure loc is a list
-        locations = Location.ensureLocation(locations, forceAsArray=True)
+        locations = LocationSet(locations)
 
         # compute the closest indices
         indecies = s.loc2Index(locations, outsideOkay)

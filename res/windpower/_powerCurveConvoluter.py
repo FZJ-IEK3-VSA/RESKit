@@ -132,7 +132,7 @@ class TerrainComplexityConvoluter(object):
         return s._convolutedPowerCurves[tc]
 
     def convolutedPowerCurveAtLocation(s, loc):
-        loc = Location.ensureLocation(loc, forceAsArray=True)
+        loc = LocationSet(loc)
         tcVals = gk.raster.extractValues(s.terrainComplexityFile, loc, noDataOkay=False).data.values
 
         if len(loc)==1:

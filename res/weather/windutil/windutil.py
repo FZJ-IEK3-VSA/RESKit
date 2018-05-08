@@ -5,8 +5,8 @@ from ..NCSource import *
 
 def adjustLraToGwa( windspeed, targetLoc, gwa, longRunAverage, windspeedSourceName="windspeed"):
     ## Ensure location is okay
-    targetLoc = Location.ensureLocation(targetLoc, forceAsArray=True)
-    multi = len(targetLoc)>1
+    targetLoc = LocationSet(targetLoc)
+    multi = targetLoc.count>1
 
     # Get the local gwa value
     gwaLocValue = np.array(gk.raster.extractValues(gwa, targetLoc).data)
@@ -35,8 +35,8 @@ def adjustLraToGwa( windspeed, targetLoc, gwa, longRunAverage, windspeedSourceNa
 
 def adjustContextMeanToGwa( windspeed, targetLoc, gwa, contextMean=None, windspeedSourceName="windspeed", **kwargs):
     ## Ensure location is okay
-    targetLoc = Location.ensureLocation(targetLoc, forceAsArray=True)
-    multi = len(targetLoc)>1
+    targetLoc = LocationSet(targetLoc)
+    multi = targetLoc.count>1
 
     # Get the local gwa value
     gwaLocValue = np.array(gk.raster.extractValues(gwa, targetLoc).data) # results in a (1 X number_of_locations) matrix
@@ -101,7 +101,7 @@ def alphaFromLevels( lowWindSpeed, lowHeight, highWindSpeed, highHeight):
 
 def alphaFromGWA( gwaDir, loc, pairID=1, _structure="WS_%03dm_global_wgs84_mean_trimmed.tif"):
     ## Ensure location is okay
-    loc = Location.ensureLocation(loc, forceAsArray=True)
+    loc = LocationSet(loc)
 
     # Get the GWA averages
     GWA_files = [join(gwaDir, _structure%(50)),
@@ -132,7 +132,7 @@ def roughnessFromLevels(lowWindSpeed, lowHeight, highWindSpeed, highHeight):
 
 def roughnessFromGWA(gwaDir, loc, pairID=1, _structure="WS_%03dm_global_wgs84_mean_trimmed.tif"):
     ## Ensure location is okay
-    loc = Location.ensureLocation(loc, forceAsArray=True)
+    loc = LocationSet(loc)
 
     # Get the GWA averages
     GWA_files = [join(gwaDir, _structure%(50)),
@@ -255,7 +255,7 @@ clcGridToCode_v2006[44] = 523
 
 def roughnessFromCLC(clcPath, loc, winRange=0):
     ## Ensure location is okay
-    loc = Location.ensureLocation(loc, forceAsArray=True)
+    loc = LocationSet(loc)
 
     ## Get pixels values from clc
     clcGridValues = gk.raster.extractValues(clcPath, loc, winRange=winRange, noDataOkay=True).data.values

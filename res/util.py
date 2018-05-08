@@ -1,7 +1,7 @@
 import numpy as np
 import netCDF4 as nc
 import geokit as gk
-from geokit import Location, Extent
+from geokit import Location, LocationSet, Extent
 import ogr, osr
 import pandas as pd
 from collections import namedtuple, OrderedDict

@@ -169,7 +169,7 @@ def raw_output(output, result, ext, const, dim1, dim2):
             var[:] = v
 
         # Set location dimension variables
-        locs = gk.Location.ensureLocation(result.columns, forceAsArray=True)
+        locs = gk.LocationSet(result.columns)
         ds.createDimension("locationID", len(locs))
 
         lon = ds.createVariable("lon", "f", dimensions=("locationID",))
@@ -199,7 +199,7 @@ def capacityFactor_output(output, result, ext, const, dim1, dim2):
     const["extract"]="capacityFactor"
     const["units"]="% of max capacity"
 
-    locs = gk.Location.ensureLocation(result.index, forceAsArray=True)
+    locs = gk.LocationSet(result.index)
     
     finalResult = OrderedDict()
     finalResult["lat"] = np.array([l.lat for l in locs])
@@ -222,7 +222,7 @@ def capacityFactor_output(output, result, ext, const, dim1, dim2):
         var.setncatts(const)
         var[:] = len(const)
 
-        locs = gk.Location.ensureLocation(result.index, forceAsArray=True)
+        locs = gk.LocationSet(result.index)
         ds.createDimension("locationID", len(locs))
 
         for k,v in finalResult.items():

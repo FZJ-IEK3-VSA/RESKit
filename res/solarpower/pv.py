@@ -23,10 +23,9 @@ def simulatePVModule(locs, elev, source=None, capacity=None, module="Canadian_So
         - cubic
     """
     # normalize location
-    locs = Location.ensureLocation(locs, forceAsArray=True)
+    locs = LocationSet(locs)
     if isinstance(elev, str): elev = gk.raster.extractValues(elev, locs).data.values
     else: elev = np.array(elev)
-
 
     pvLibLocs = [ pvlib.location.Location(l.lat, l.lon, tz='GMT', altitude=e) for l,e in zip(locs,elev) ]
 

@@ -11,13 +11,13 @@ def simulateLocations(source, elev, loss, minCF, verbose, extractor, module, inv
         print(" %s: Starting at +%.2fs"%(str(gid), (startTime-globalStart).total_seconds()))
     
     # prepare locations
-    locations = Location.ensureLocation(locations)
+    locations = LocationSet(locations)
 
     if len(locations) == 0 : 
         if verbose: print( " %s: No locations found"%(str(gid)))
         return None
 
-    if pickleable: Location.makePickleable(locations)
+    if pickleable: locations.makePickleable()
     
     # do simulations
     capacityGeneration = simulatePVModule(locations, elev, source, module=module, azimuth=azimuth, tilt=tilt, inverter=inverter, extract="capacity-production", interpolation=interpolation, loss=loss)
@@ -105,18 +105,16 @@ def PVWorkflowTemplate(placements, source, elev, module, azimuth, tilt, inverter
         except:
             placements = placements["geom"].values
 
-    placements = Location.ensureLocation(placements, forceAsArray=True)
+    placements = LocationSet(placements)
+
+    lonMin, latMin, lonMax, latMax = placements.getBounds()
+    latMin = latMin -padding
+    latMax = latMax +padding
+    lonMin = lonMin -padding
+    lonMax = lonMax +padding
 
     elev = elev if isinstance(elev, str) else np.array(elev)
     capacity = None if capacity is None else np.array(capacity)
-
-    allLats = np.array([p.lat for p in placements])
-    allLons = np.array([p.lon for p in placements])
-
-    latMin = allLats.min()-padding
-    latMax = allLats.max()+padding
-    lonMin = allLons.min()-padding
-    lonMax = allLons.max()+padding
 
     if verbose: print("Pre-loading weather data at +%.2fs"%((dt.now()-startTime).total_seconds()))
     totalExtent = gk.Extent((lonMin,latMin,lonMax,latMax,), srs=LATLONSRS)
@@ -150,7 +148,7 @@ def PVWorkflowTemplate(placements, source, elev, module, azimuth, tilt, inverter
         print("Simulating %d groups at +%.2fs"%(len(simGroups), (dt.now()-startTime).total_seconds() ))
 
     results = []
-    if useMulti: Location.makePickleable(placements)
+    if useMulti: placements.makePickleable()
     for i,sel in enumerate(simGroups):
         # Construct arguments for each submission
         inputs = {}
