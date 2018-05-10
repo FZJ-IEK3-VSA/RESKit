@@ -74,7 +74,7 @@ class NCSource(object):
         else:
             raise ResError("Could not understand data source input. Must be a path or a list of paths")
 
-    def __init__(s, path, bounds=None, timeName="time", latName="lat", lonName="lon", dependent_coordinates=False, constantsPath=None, timeBounds=None, _maxLonDiff=10000000, _maxLatDiff=10000000):
+    def __init__(s, path, bounds=None, padFactor=0, timeName="time", latName="lat", lonName="lon", dependent_coordinates=False, constantsPath=None, timeBounds=None, _maxLonDiff=10000000, _maxLatDiff=10000000):
         # set basic variables 
         s.path = path
         s.timeName = timeName
@@ -101,10 +101,10 @@ class NCSource(object):
                     lonMin,latMin,lonMax,latMax = bounds.castTo(LATLONSRS).xyXY
 
                 elif isinstance(bounds, gk.Location):
-                    lonMin=bounds.lon-s._maximal_lon_difference
-                    latMin=bounds.lat-s._maximal_lat_difference
-                    lonMax=bounds.lon+s._maximal_lon_difference
-                    latMax=bounds.lat+s._maximal_lat_difference
+                    lonMin=bounds.lon
+                    latMin=bounds.lat
+                    lonMax=bounds.lon
+                    latMax=bounds.lat
 
                 elif isinstance(bounds, gk.LocationSet):
                     bounds = bounds.getBounds()
@@ -118,19 +118,19 @@ class NCSource(object):
                     try:
                         lon,lat = bounds
 
-                        lonMin=lon-s._maximal_lon_difference
-                        latMin=lat-s._maximal_lat_difference
-                        lonMax=lon+s._maximal_lon_difference
-                        latMax=lat+s._maximal_lat_difference
+                        lonMin=lon
+                        latMin=lat
+                        lonMax=lon
+                        latMax=lat
 
                     except:
                         lonMin,latMin,lonMax,latMax = bounds
                 
-                # Always pad the boundary to be safe                    
-                s.bounds = Bounds(lonMin = lonMin - s._maximal_lon_difference,
-                                  latMin = latMin - s._maximal_lat_difference,
-                                  lonMax = lonMax + s._maximal_lon_difference,
-                                  latMax = latMax + s._maximal_lat_difference,)
+                # Add padding to the boundaries
+                s.bounds = Bounds(lonMin = lonMin - s._maximal_lon_difference*padFactor,
+                                  latMin = latMin - s._maximal_lat_difference*padFactor,
+                                  lonMax = lonMax + s._maximal_lon_difference*padFactor,
+                                  latMax = latMax + s._maximal_lat_difference*padFactor,)
 
                 # find slices
                 s._lonSel = (s._allLons >= s.bounds.lonMin) & (s._allLons <= s.bounds.lonMax)

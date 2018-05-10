@@ -144,3 +144,19 @@ def lcoe( expenditures, productions, discountRate=0.08 ):
     lcoe = (exp/np.power(1+r, yr)).sum() / (pro/np.power(1+r, yr)).sum()
 
     return lcoe
+
+def removeLeapDay(x):
+    if isinstance(x, pd.Series) or isinstance(s, pd.DataFrame):
+        times = x.index
+        sel = np.logical_and((times.day==29), (times.month==2))
+        if isinstance(x, pd.Series): return x[~sel]
+        else: return x.loc[~sel]
+
+    elif isinstance(x, np.ndarray) and x.shape[0] == 8784:
+        times = pd.date_range("01-01-2000 00:00:00", "12-31-2000 23:00:00", freq="H")
+        sel = np.logical_and((times.day==29), (times.month==2))
+        if len(x.shape)==1: return x[~sel]
+        else: return x[~sel,:]
+
+    else:
+        return removeLeapDay(np.array(x))

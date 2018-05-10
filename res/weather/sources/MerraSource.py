@@ -3,17 +3,18 @@ from ..NCSource import *
 ## Define constants
 class MerraSource(NCSource):
     
-    GWA50_CONTEXT_MEAN_SOURCE = join(dirname(__file__),"..","..","..","data","gwa50_mean_over_merra.tif")
-    GWA100_CONTEXT_MEAN_SOURCE = join(dirname(__file__),"..","..","..","data","gwa100_mean_over_merra.tif")
+    GWA50_CONTEXT_MEAN_SOURCE =   join(dirname(__file__),"..","..","..","data","gwa50_mean_over_merra.tif")
+    GWA100_CONTEXT_MEAN_SOURCE =  join(dirname(__file__),"..","..","..","data","gwa100_mean_over_merra.tif")
     LONG_RUN_AVERAGE_50M_SOURCE = join(dirname(__file__),"..","..","..","data","merra_average_windspeed_50m-shifted.tif")
 
     MAX_LON_DIFFERENCE=0.3125
     MAX_LAT_DIFFERENCE=0.25
 
-    def __init__(s, path, bounds=None, **kwargs):
+    def __init__(s, path, bounds=None, padFactor=5, **kwargs):
 
         NCSource.__init__(s, path=path, bounds=bounds, timeName="time", latName="lat", lonName="lon", 
-                          _maxLonDiff=s.MAX_LON_DIFFERENCE, _maxLatDiff=s.MAX_LON_DIFFERENCE, **kwargs)
+                          padFactor=padFactor, _maxLonDiff=s.MAX_LON_DIFFERENCE, _maxLatDiff=s.MAX_LAT_DIFFERENCE,
+                          **kwargs)
         s.timeindex=pd.Index(s.timeindex, tz="GMT")
 
     def __add__(s,o):
