@@ -1,5 +1,5 @@
-import res.util
-import res.weather
-import res.windpower
-import res.solarpower
-import res.workflow
+from res import util
+from res import weather
+from res import windpower
+from res import solarpower
+from res import workflow
