@@ -98,11 +98,6 @@ def storeTimeseriesAsNc(output, timedata, varmeta={}, keydata=None, keydatameta=
 
         timeV[:] = nc.date2num(times.to_pydatetime(), timeunit)
 
-        # Make the Key variable
-        keyV = ds.createVariable("keyID", "u4", dimensions=("key",), contiguous=True)
-        keyV.units = ""
-        keyV[:] = np.arange(timedata[cols[0]].shape[1])
-
         # Make the data variables
         for varN, tab in timedata.items():
             var = ds.createVariable(varN, tab.iloc[0,0].dtype, dimensions=("time", "key",), contiguous=True)
