@@ -88,7 +88,15 @@ def storeTimeseriesAsNc(output, timedata, varmeta={}, keydata=None, keydatameta=
         # Make the time variable
         timeV = ds.createVariable("time", "u4", dimensions=("time",), contiguous=True)
         timeV.units = timeunit
-        timeV[:] = nc.date2num(timedata[cols[0]].index.to_pydatetime(), timeunit)
+
+        times = timedata[cols[0]].index
+        if timedata[cols[0]].index[0].tz is None:
+            timeV.tz = "unknown"
+        else:
+            timeV.tz = timedata[cols[0]].index[0].tzname()
+            times = times.tz_localize(None)
+
+        timeV[:] = nc.date2num(times.to_pydatetime(), timeunit)
 
         # Make the Key variable
         keyV = ds.createVariable("keyID", "u4", dimensions=("key",), contiguous=True)

@@ -130,7 +130,7 @@ def simulatePVModule(locs, elev, source=None, module="SunPower_SPR_X21_255", azi
     else:
         tilt = pd.Series(tilt, index=locs)
 
-    if isinstance(totalSystemCapacity, pd.Series): pass
+    if isinstance(elev, pd.Series): pass
     elif isinstance(elev, str): 
         elev = gk.raster.extractValues(elev, locs).data
     elif isinstance(elev, float) or isinstance(elev, int):
