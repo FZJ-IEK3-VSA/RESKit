@@ -116,8 +116,10 @@ def storeTimeseriesAsNc(output, timedata, varmeta={}, keydata=None, keydatameta=
                 var = ds.createVariable(col, dtype, dimensions=( "key",), contiguous=True)
                 if col in keydatameta and len(keydatameta[col])>0:
                     var.setncatts(keydatameta[col])
-
+                
                 var[:] = keydata[col].values if not dtype is str else keydata[col].values.astype(np.str)
+        ds.close()
+        
     except Exception as e:
         ds.close() # make sure the ds is closed!
         raise e

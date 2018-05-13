@@ -14,7 +14,7 @@ def simulateLocations(wsSource, landcover, adjustMethod, gwa, roughness, loss, w
     # prepare wind speed loader
     locations = LocationSet(locations)
 
-    if len(locations) == 0 : 
+    if locations.count == 0 : 
         if verbose: print( " %s: No locations found"%(str(gid)))
         return None
 
@@ -281,14 +281,14 @@ def WindWorkflowTemplate(placements, merra, hubHeight, powerCurve, capacity, rot
     if verbose: print("Initializing simulations at +%.2fs"%((dt.now()-startTime).total_seconds()))
     if useMulti: pool = Pool(cpus)
     simGroups = []
-    I = np.arange(placements.shape[0])
+    I = np.arange(placements.count)
     if batchSize is None and cpus==1: # do everything in one big batch
         simGroups.append( I )
-    elif cpus>1 and (batchSize is None or placements.shape[0] < batchSize): # Split evenly to all cpus
+    elif cpus>1 and (batchSize is None or placements.count < batchSize): # Split evenly to all cpus
         for simPlacements in np.array_split( I, cpus):
             simGroups.append( simPlacements )
     else: # split the area in to equal size groups, and simulate one group at a time
-        for simPlacements in np.array_split(I, max(1,len(placements)//(batchSize/cpus))):
+        for simPlacements in np.array_split(I, max(1,placements.count//(batchSize/cpus))):
             simGroups.append( simPlacements )
 
     if verbose: 
@@ -324,7 +324,7 @@ def WindWorkflowTemplate(placements, merra, hubHeight, powerCurve, capacity, rot
             if isinstance(val , np.ndarray) and val.size>1: inputs[name] = val[sel]
             else: inputs[name] = val
 
-        add(placements, "locations")
+        add(placements[:], "locations")
         add(capacity, "capacity")
         add(hubHeight, "hubHeight")
         add(rotordiam, "rotordiam")
@@ -352,7 +352,7 @@ def WindWorkflowTemplate(placements, merra, hubHeight, powerCurve, capacity, rot
     if verbose:
         endTime = dt.now()
         totalSecs = (endTime - startTime).total_seconds()
-        print("Finished simulating %d turbines (%d surviving) at +%.2fs (%.2f turbines/sec)"%(len(placements), finalResult.c, totalSecs, len(placements)/totalSecs))
+        print("Finished simulating %d turbines (%d surviving) at +%.2fs (%.2f turbines/sec)"%(placements.count, finalResult.c, totalSecs, placements.count/totalSecs))
 
     ### Give the results
     if not output is None and not extractor.skipFinalOutput:
