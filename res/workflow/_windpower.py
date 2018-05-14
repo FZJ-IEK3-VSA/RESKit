@@ -80,7 +80,7 @@ def simulateLocations(wsSource, landcover, adjustMethod, gwa, roughness, loss, w
         endTime = dt.now()
         simSecs = (endTime - startTime).total_seconds()
         globalSecs = (endTime - globalStart).total_seconds()
-        print(" %s: Finished %d turbines +%.2fs (%.2f turbines/sec)"%(str(gid), len(locations), globalSecs, len(locations)/simSecs))
+        print(" %s: Finished %d turbines +%.2fs (%.2f turbines/sec)"%(str(gid), locations.count, globalSecs, locations.count/simSecs))
     
     # Apply Capacity Factor Filter
     if minCF > 0:

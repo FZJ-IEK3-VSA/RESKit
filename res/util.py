@@ -165,3 +165,18 @@ def removeLeapDay(x):
 
     else:
         return removeLeapDay(np.array(x))
+
+def linearTransition(x, start, stop, invert=False):
+    tmp = np.zeros(x.shape)
+
+    s = x<=start
+    tmp[s] = 0
+
+    s = (x>start)&(x<=stop)
+    tmp[s] = (x[s]-start)/(stop-start)
+
+    s = x>stop
+    tmp[s]=1
+
+    if invert: return 1-tmp
+    else: return tmp

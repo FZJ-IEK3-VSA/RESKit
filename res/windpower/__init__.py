@@ -6,3 +6,4 @@ from ._powerCurveConvoluter import convolutePowerCurveByGuassian, TerrainComplex
 from ._costModel import onshoreTurbineCost, offshoreTurbineCost, baselineOnshoreTurbine, suggestOnshoreTurbine
 from ._simulator import simulateTurbine
 from ._best_turbine import determineBestTurbine
+from ._score import scoreOnshoreWindLocation
