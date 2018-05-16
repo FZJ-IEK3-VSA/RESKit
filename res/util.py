@@ -182,32 +182,50 @@ def linearTransition(x, start, stop, invert=False):
     else: return tmp
 
 _SGF = namedtuple("RESGeneration", "capacity capex generation regionName variable capacityUnit capexUnit generationUnit")
-def parseRESGenerationFile(f, capacity=(None,None), generationName="generation"):
+def parseRESGenerationFile(f, capacity, generationName="generation"):
     ds = nc.Dataset(f)
     try:
         timeIndex = nc.num2date(ds["time"][:], ds["time"].units)
-
         CAP = ds["total_capacity"][:]
+        COST = ds["total_cost"][:]
 
-        if isinstance(capacity, int) or isinstance(capacity, float):
-            s = np.argmin(np.abs(CAP-capacity))
-        else:
-            s = np.ones(CAP.size, dtype=bool)
+        try:
+            capacity = list(capacity)
+        except:
+            capacity = [capacity,]
 
-            if not capacity[0] is None: s*=CAP>=capacity[0]
-            if not capacity[1] is None: s*=CAP<=capacity[1]
+        def atCapacity(cap):
+            s = np.argmin(np.abs(CAP-cap))
 
-        generations = pd.DataFrame(index=timeIndex, columns=CAP[s])
-        generations.values[:] = ds["generation"][:,s]
+            if CAP[s] == cap: 
+                gen = ds["generation"][:,s]
+                capex = ds["total_cost"][s]
+            else:
+                if CAP[s] > cap: low, high = s-1,s
+                else: low, high = s,s+1
 
-        capacities = CAP[s]
+                raw = ds["generation"][:,[low, high]]
 
-        capex = ds["total_cost"][s]
+                factor = (cap-CAP[low])/(CAP[high]-CAP[low])
+                
+                gen = raw[:,0]*(1-factor) + raw[:,1]*factor
+
+                lowCost, highCost = ds["total_cost"][[low,high]]
+                capex = lowCost*(1-factor) + highCost*factor
+            return gen, capex
+
+        generations = pd.DataFrame(index=timeIndex,)
+        capexes = []
+        for cap in capacity:
+            gen,capex = atCapacity(cap)
+            generations[cap] = gen
+            capexes.append(capex)
+
     except Exception as e:
         ds.close()
         raise e
 
-    return _SGF(capacity=capacities, capex=capex, generation=generations, 
+    return _SGF(capacity=np.array(capacity), capex=np.array(capexes), generation=generations, 
                 regionName=ds["generation"].region, variable=ds["generation"].technology,
                 capacityUnit=ds["total_capacity"].unit, capexUnit=ds["total_cost"].unit, 
                 generationUnit=ds["generation"].unit)
