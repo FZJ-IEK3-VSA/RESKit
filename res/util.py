@@ -180,3 +180,34 @@ def linearTransition(x, start, stop, invert=False):
 
     if invert: return 1-tmp
     else: return tmp
+
+_SGF = namedtuple("RESGeneration", "capacity capex generation regionName variable capacityUnit capexUnit generationUnit")
+def parseRESGenerationFile(f, capacity=(None,None), generationName="generation"):
+    ds = nc.Dataset(f)
+    try:
+        timeIndex = nc.num2date(ds["time"][:], ds["time"].units)
+
+        CAP = ds["total_capacity"][:]
+
+        if isinstance(capacity, int) or isinstance(capacity, float):
+            s = np.argmin(np.abs(CAP-capacity))
+        else:
+            s = np.ones(CAP.size, dtype=bool)
+
+            if not capacity[0] is None: s*=CAP>=capacity[0]
+            if not capacity[1] is None: s*=CAP<=capacity[1]
+
+        generations = pd.DataFrame(index=timeIndex, columns=CAP[s])
+        generations.values[:] = ds["generation"][:,s]
+
+        capacities = CAP[s]
+
+        capex = ds["total_cost"][s]
+    except Exception as e:
+        ds.close()
+        raise e
+
+    return _SGF(capacity=capacities, capex=capex, generation=generations, 
+                regionName=ds["generation"].region, variable=ds["generation"].technology,
+                capacityUnit=ds["total_capacity"].unit, capexUnit=ds["total_cost"].unit, 
+                generationUnit=ds["generation"].unit)
