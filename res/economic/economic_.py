@@ -1,12 +1,75 @@
-from respower.util.util_ import *
+from res.util.util_ import *
 
-def simpleLCOE(capex, meanProduction, opexPerCapex=0.02, lifetime=20, discountRate=0.08):
+def lcoeSimple(capex, meanProduction, opexPerCapex=0.02, lifetime=20, discountRate=0.08):
+    """Compute the LCOE of a producer using the simple method
+    
+    Uses the equation:
+    .. math::
+        \\mathrm{LCOE} = C * \\frac{ (r/(1-(1+r)^{-N})) + O_c }{P_{mean}}
+
+    where:
+      * $C$ -> CAPEX [euros]
+      * $O_c$ -> Fixed OPEX as a factor of CAPEX 
+      * $P_{mean}$ -> The average production in each year [kWh]
+      * $r$ -> The discount rate
+      * $N$ -> The economic lifetime [years]
+
+
+    Parameters
+    ----------
+    capex : numeric or array_like
+        The capital expenditures
+
+    meanProduction : numeric or array_like
+        The average annual production
+
+    opexPerCapex : numeric
+        The operational expenditures given as a factor or the capex
+
+    lifetime : numeric
+        The economic lifetime in years
+
+    discountRate : numeric
+        The discount rate
+
+    Returns
+    -------
+        numeric or array_like
+
+    """
     r = discountRate
     N = lifetime
     return capex * ( r /(1-np.power(1+r,-N)) + opexPerCapex ) / (meanProduction)
 
 def lcoe( expenditures, productions, discountRate=0.08 ):
-    """Provides a raw computation of LCOE. Requires input time-series for annual expenditures and annual productions"""
+    """Compute the LCOE of a producer using explicitly given production and 
+    expeditures for each year in the economic lifetime
+    
+    Uses the equation:
+    .. math::
+        \\mathrm{LCOE} = \\sum{\\frac{exp_y}{(1+r)^y}} / \\sum{\\frac{prod_y}{(1+r)^y}}
+
+    where:
+      * $exp_y$ -> The expenditures in year $y$ [Euro]
+      * $prod_y$ -> The production in year $y$ [kWh]
+      * $r$ -> The discount rate
+
+    Parameters
+    ----------
+    expenditures : array_like
+        All expenditures for each year in the lifetime
+
+    productions : array_like
+        Annual production for each year in the lifetime
+
+    discountRate : numeric
+        The discount rate
+
+    Returns
+    -------
+        numeric or array_like
+
+    """
     # Initialize variables
     exp = np.array(expenditures)
     pro = np.array(productions)

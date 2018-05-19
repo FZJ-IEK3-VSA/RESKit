@@ -1,1 +1,1 @@
-from .economic import simpleLCOE, lcoe
+from .economic_ import lcoeSimple, lcoe
