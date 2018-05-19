@@ -17,51 +17,53 @@ from datetime import datetime as dt
 # making an error
 class ResError(Exception): pass # this just creates an error that we can use
 
-# Make some type-helpers
+# Make easy access to latlon projection system
 LATLONSRS = gk.srs.EPSG4326
-
-def extentFromFile(*args, **kwargs): return gk.Extent.fromVector(*args, **kwargs)
-BoundsNT = namedtuple("Bounds","lonMin latMin lonMax latMax")
-class Bounds(BoundsNT):
-    #def __init__(s, lonMin, latMin, lonMax, latMax):
-    #    BoundsNT.__init__(s, lonMin, latMin, lonMax, latMax)
-    def __str__(s):
-        out =  "Lat: %.4f  -  %.4f\n"%(s.latMin, s.latMax)
-        out += "Lon: %.4f  -  %.4f"%(s.lonMin, s.lonMax)
-        return out
+LATLONSRS.__doc__ = "Spatial reference system for latitue and longitude coordinates"
 
 ## STAN
 def storeTimeseriesAsNc(output, timedata, varmeta={}, keydata=None, keydatameta={}, timeunit="minutes since 1900-01-01 00:00:00"):
-    """
-    Create a netCDF4 file from a set of time series arrays
+    """Create a netCDF4 file from a set of time series arrays.
 
-    Inputs:
-        output : str -- An output file path
+        Parameters
+        ----------
+        output : str
+            The path to write the netCDF4 file to
 
-        timedata
-            Pandas-DataFrame -- The time-series data to write
-                * Must be time-indexed
-                * Will be written with the variable name "var"
-            { <varname>:Pandas-DataFrame, } -- A dictionary of variable names to DataFrames
-                * All variables will be written to the output file
-                * All DataFrames must share the same index and columns
+        timedata : DataFrame or { <varname>:DataFrame, ... }
+            Two dimensional data which will be written to the netCDF4 file
+              * All dataframes must share a time-index and columns names
+              * If only a single DataFrame is given, a variable name of "var" is 
+                assumed
 
-        varmeta : dict -- Optional meta data to apply to the time-series variables
-            * If time data is a DataFrame, the varmeta dictionary will be applied directly to the "var" variable
-            * Otherwise varmeta needs to be a dictionary of dictionaries
-            * Example:
-                varmeta = { "power_output":{ "name":"The power output of each turbine",
-                                             "units":"kWh", } }
+        varmeta : dict or { <varname>:dict, ... }, optional
+            Meta data to apply to the time-series variables
+              * If timedata is a DataFrame, the varmeta dictionary will be applied 
+                directly to the "var" variable
+              * Variable names must match names given in timedata
+              * Dict keys must be strings, and values must be strings or numerics
+              * Example:
+                varmeta={ "power_output":
+                             { "name":"The power output of each wind turbine",
+                               "units":"kWh", }, 
+                        }
         
-        keydata : Pandas-DataFrame -- Optional data to save for each key
-            * Must be a pandas DataFrame whose index matches the columns in the timedata DataFrames
-            * Could be, for example, the hub height of each turbine or a the model
+        keydata : DataFrame, optional
+            Column-wise data to save for each key
+              * Indexes must match the columns in the timedata DataFrames
 
-        keydatameta : dict -- Optional meta data to apply to the key data variables
-            * Must be a dictionary of dictionaries
+        keydatameta : { <keyname>:dict, ... }, optional 
+            Meta data to apply to the keydata variables
+              * Dict keys must be strings, and values must be strings or numerics
 
-        timeunit : str -- The time unit to use when compressing the time index
+        timeunit : str, optional
+            The time unit to use when compressing the time index
+              * Example: "Minutes since 01-01-1970"
 
+        Returns
+        -------
+        None
+        
     """
     # correct the time data
     if isinstance(timedata, pd.DataFrame):
@@ -127,29 +129,8 @@ def storeTimeseriesAsNc(output, timedata, varmeta={}, keydata=None, keydatameta=
     # All done!
     return
 
-def simpleLCOE(capex, meanProduction, opexPerCapex=0.02, lifetime=20, discountRate=0.08):
-    r = discountRate
-    N = lifetime
-    return capex * ( r /(1-np.power(1+r,-N)) + opexPerCapex ) / (meanProduction)
 
-def lcoe( expenditures, productions, discountRate=0.08 ):
-    """Provides a raw computation of LCOE. Requires input time-series for annual expenditures and annual productions"""
-    # Initialize variables
-    exp = np.array(expenditures)
-    pro = np.array(productions)
-    if not exp.size==pro.size: raise ResError("expenditures length does not match productions length")
-
-    yr = np.arange(exp.size)
-    if isinstance(r,float):
-        r = np.zeros(exp.size)+discountRate
-    else:
-        r = np.array(r)
-
-    # Do summation and return
-    lcoe = (exp/np.power(1+r, yr)).sum() / (pro/np.power(1+r, yr)).sum()
-
-    return lcoe
-
+## Make basic helper functions
 def removeLeapDay(x):
     if isinstance(x, pd.Series) or isinstance(s, pd.DataFrame):
         times = x.index
@@ -181,6 +162,7 @@ def linearTransition(x, start, stop, invert=False):
     if invert: return 1-tmp
     else: return tmp
 
+## Parse Generation File
 _SGF = namedtuple("RESGeneration", "capacity capex generation regionName variable capacityUnit capexUnit generationUnit")
 def parseRESGenerationFile(f, capacity, generationName="generation"):
     ds = nc.Dataset(f)
