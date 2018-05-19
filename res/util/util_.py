@@ -25,44 +25,44 @@ LATLONSRS.__doc__ = "Spatial reference system for latitue and longitude coordina
 def storeTimeseriesAsNc(output, timedata, varmeta={}, keydata=None, keydatameta={}, timeunit="minutes since 1900-01-01 00:00:00"):
     """Create a netCDF4 file from a set of time series arrays.
 
-        Parameters
-        ----------
-        output : str
-            The path to write the netCDF4 file to
+    Parameters
+    ----------
+    output : str
+        The path to write the netCDF4 file to
 
-        timedata : DataFrame or { <varname>:DataFrame, ... }
-            Two dimensional data which will be written to the netCDF4 file
-              * All dataframes must share a time-index and columns names
-              * If only a single DataFrame is given, a variable name of "var" is 
-                assumed
+    timedata : DataFrame or { <varname>:DataFrame, ... }
+        Two dimensional data which will be written to the netCDF4 file
+          * All dataframes must share a time-index and columns names
+          * If only a single DataFrame is given, a variable name of "var" is 
+            assumed
 
-        varmeta : dict or { <varname>:dict, ... }, optional
-            Meta data to apply to the time-series variables
-              * If timedata is a DataFrame, the varmeta dictionary will be applied 
-                directly to the "var" variable
-              * Variable names must match names given in timedata
-              * Dict keys must be strings, and values must be strings or numerics
-              * Example:
-                varmeta={ "power_output":
-                             { "name":"The power output of each wind turbine",
-                               "units":"kWh", }, 
-                        }
-        
-        keydata : DataFrame, optional
-            Column-wise data to save for each key
-              * Indexes must match the columns in the timedata DataFrames
+    varmeta : dict or { <varname>:dict, ... }, optional
+        Meta data to apply to the time-series variables
+          * If timedata is a DataFrame, the varmeta dictionary will be applied 
+            directly to the "var" variable
+          * Variable names must match names given in timedata
+          * Dict keys must be strings, and values must be strings or numerics
+          * Example:
+            varmeta={ "power_output":
+                         { "name":"The power output of each wind turbine",
+                           "units":"kWh", }, 
+                    }
+    
+    keydata : DataFrame, optional
+        Column-wise data to save for each key
+          * Indexes must match the columns in the timedata DataFrames
 
-        keydatameta : { <keyname>:dict, ... }, optional 
-            Meta data to apply to the keydata variables
-              * Dict keys must be strings, and values must be strings or numerics
+    keydatameta : { <keyname>:dict, ... }, optional 
+        Meta data to apply to the keydata variables
+          * Dict keys must be strings, and values must be strings or numerics
 
-        timeunit : str, optional
-            The time unit to use when compressing the time index
-              * Example: "Minutes since 01-01-1970"
+    timeunit : str, optional
+        The time unit to use when compressing the time index
+          * Example: "Minutes since 01-01-1970"
 
-        Returns
-        -------
-        None
+    Returns
+    -------
+    None
         
     """
     # correct the time data
@@ -131,7 +131,22 @@ def storeTimeseriesAsNc(output, timedata, varmeta={}, keydata=None, keydatameta=
 
 
 ## Make basic helper functions
-def removeLeapDay(x):
+def removeLeapDay(timeseries):
+    """Removes leap days from a given timeseries
+
+    Parameters
+    ----------
+    timeseries : array_like
+        The time series data to remove leap days from
+          * If something array_like is given, the length must be 8784
+          * If a pandas DataFrame or Series is given, time indexes will be used
+            directly
+
+    Returns
+    -------
+    Array
+    
+    """
     if isinstance(x, pd.Series) or isinstance(s, pd.DataFrame):
         times = x.index
         sel = np.logical_and((times.day==29), (times.month==2))
@@ -148,6 +163,32 @@ def removeLeapDay(x):
         return removeLeapDay(np.array(x))
 
 def linearTransition(x, start, stop, invert=False):
+    """Apply a linear transition function to the given data array
+
+    * All values less than 'start' are mapped to 0 (or 1, if 'invert' is True)
+    * All values greather than 'stop' are mapped to 1 (or 0, if 'invert' is True)
+    * Values between 'start' and 'stop' are mapped to a linearly increasing output
+      (or decreasing, if 'invert' is True)
+
+    Parameters
+    ----------
+    x : array_like
+        The data to be mapped
+
+    start : numeric
+        The starting value of the linear transition
+
+    stop : numeric
+        The ending value of the linear transition
+
+    invert : bool, optional
+        Instructs the transition to go from 1->0 if True, or 0->1 if False
+
+    Returns
+    -------
+        Array
+    
+    """
     tmp = np.zeros(x.shape)
 
     s = x<=start
@@ -164,7 +205,28 @@ def linearTransition(x, start, stop, invert=False):
 
 ## Parse Generation File
 _SGF = namedtuple("RESGeneration", "capacity capex generation regionName variable capacityUnit capexUnit generationUnit")
-def parseRESGenerationFile(f, capacity, generationName="generation"):
+def parseRESGenerationFile(f, capacity):
+    """Parse one of Sev's RES Generation files
+
+    * These files are each created for one regional context
+    * Each one contains the time series production values of one RES technology
+      at many capacity levels
+    * Sometimes cost data is also included
+
+    Parameters
+    ----------
+    f : str
+        A path to the file to be parsed
+
+    capacity : numeric or array_like
+        The capacity levels to extract
+
+    Returns
+    -------
+        namedtuple
+          
+    """
+
     ds = nc.Dataset(f)
     try:
         timeIndex = nc.num2date(ds["time"][:], ds["time"].units)
