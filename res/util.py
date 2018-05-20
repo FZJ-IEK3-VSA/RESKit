@@ -187,7 +187,10 @@ def parseRESGenerationFile(f, capacity, generationName="generation"):
     try:
         timeIndex = nc.num2date(ds["time"][:], ds["time"].units)
         CAP = ds["total_capacity"][:]
-        COST = ds["total_cost"][:]
+        try:
+            COST = ds["total_cost"][:]
+        except:
+            COST = None
 
         try:
             capacity = list(capacity)
@@ -199,7 +202,8 @@ def parseRESGenerationFile(f, capacity, generationName="generation"):
 
             if CAP[s] == cap: 
                 gen = ds["generation"][:,s]
-                capex = ds["total_cost"][s]
+                if not COST is None: capex = ds["total_cost"][s]
+                else: capex = None
             else:
                 if CAP[s] > cap: low, high = s-1,s
                 else: low, high = s,s+1
@@ -210,8 +214,10 @@ def parseRESGenerationFile(f, capacity, generationName="generation"):
                 
                 gen = raw[:,0]*(1-factor) + raw[:,1]*factor
 
-                lowCost, highCost = ds["total_cost"][[low,high]]
-                capex = lowCost*(1-factor) + highCost*factor
+                if not COST is None: 
+                    lowCost, highCost = ds["total_cost"][[low,high]]
+                    capex = lowCost*(1-factor) + highCost*factor
+                else: capex = None
             return gen, capex
 
         generations = pd.DataFrame(index=timeIndex,)
@@ -227,5 +233,5 @@ def parseRESGenerationFile(f, capacity, generationName="generation"):
 
     return _SGF(capacity=np.array(capacity), capex=np.array(capexes), generation=generations, 
                 regionName=ds["generation"].region, variable=ds["generation"].technology,
-                capacityUnit=ds["total_capacity"].unit, capexUnit=ds["total_cost"].unit, 
+                capacityUnit=ds["total_capacity"].unit, capexUnit=None if COST is None else ds["total_cost"].unit, 
                 generationUnit=ds["generation"].unit)
