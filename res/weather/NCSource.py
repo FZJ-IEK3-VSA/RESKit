@@ -6,7 +6,7 @@ from pickle import load, dump
 
 from res.util.util_ import *
 
-Bounds = namedtuple("Bounds", "lonMin latLin lonMax latMax")
+Bounds = namedtuple("Bounds", "lonMin latMin lonMax latMax")
 
 # make a data handler
 Index = namedtuple("Index", "yi xi")
@@ -20,7 +20,7 @@ class NCSource(object):
         else:
             raise ResError("Could not understand data source input. Must be a path or a list of paths")
 
-    def __init__(s, source, bounds=None, padFactor=0, timeName="time", latName="lat", lonName="lon", dependent_coordinates=False, timeBounds=None, _maxLonDiff=10000000, _maxLatDiff=10000000):
+    def __init__(s, source, bounds=None, padFactor=0, timeName="time", latName="lat", lonName="lon", timeBounds=None, _maxLonDiff=10000000, _maxLatDiff=10000000):
         """Initialize a generic netCDF4 file source
 
         Note
@@ -49,10 +49,6 @@ class NCSource(object):
               
         lonName : str, optional
             The name of the longitude parameter in the netCDF4 dataset
-
-        dependent_coordinates : bool, optional
-            If False, a regular lat/lon grid is expected. If True, 2 dimensional
-            arrays are expected for each lat and lon parameter
 
         timeBounds : tuple of length 2, optional
             Used to employ a slice of the time dimension
@@ -108,7 +104,12 @@ class NCSource(object):
             s._maximal_lon_difference=_maxLonDiff
             s._maximal_lat_difference=_maxLatDiff
 
-            s.dependent_coordinates = dependent_coordinates
+            if len(s._allLats.shape)==1 and len(s._allLons.shape)==1:
+                s.dependent_coordinates = False
+            elif  len(s._allLats.shape)==2 and len(s._allLons.shape)==2:
+                s.dependent_coordinates = True
+            else:
+                raise ResError("latitude and longitude shapes are not usable")
 
             # set lat and lon selections
             if not bounds is None:
@@ -337,12 +338,6 @@ class NCSource(object):
             output = np.column_stack(tmp)
         
         elif interpolation == "cubic" or interpolation == "bilinear":
-            if s.dependent_coordinates:
-                raise ResError("Interpolation not setup for datasets with dependent lat/lon coordinates")
-
-            ##########
-            ## TODO: Update interpolation schemes to handle out-of-bounds indices 
-            ##########
             # set some arguments for later use
             if interpolation == "cubic":
                 win = 4
@@ -351,31 +346,54 @@ class NCSource(object):
                 win = 2
                 rbsArgs = dict(kx=1, ky=1)
 
-            # Find the minimal indexes needed
+            # Set up interpolation arrays
             yiMin = min([i.yi for i in indecies])-win
             yiMax = max([i.yi for i in indecies])+win
             xiMin = min([i.xi for i in indecies])-win
             xiMax = max([i.xi for i in indecies])+win
 
             # ensure boundaries are okay
-            if yiMin < 0 or xiMin < 0 or yiMax > s.lats.size or xiMax > s.lons.size: 
-                raise ResError("Insufficient data. Try expanding the boundary of the extracted data")
+            if s.dependent_coordinates:
+                if yiMin < 0 or xiMin < 0 or yiMax > s.lats.shape[0] or xiMax > s.lons.shape[1]: 
+                    raise ResError("Insufficient data. Try expanding the boundary of the extracted data")
+            else:
+                if yiMin < 0 or xiMin < 0 or yiMax > s.lats.size or xiMax > s.lons.size: 
+                    raise ResError("Insufficient data. Try expanding the boundary of the extracted data")
 
-            # Set up grid
-            gridLats = s.lats[yiMin:yiMax+1]
-            gridLons = s.lons[xiMin:xiMax+1]
+            ##########
+            ## TODO: Update interpolation schemes to handle out-of-bounds indices 
+            ##########
             
-            # build output
-            lats = [loc.lat for loc in locations]
-            lons = [loc.lon for loc in locations]
+            if s.dependent_coordinates: # do interpolations in 'index space'                
+                from scipy.interpolate import interp1d
+                
+                gridYVals = np.arange(yiMin, yiMax+1)
+                gridXVals = np.arange(xiMin, xiMax+1)
+
+                def getIntermediateIndex(loc, i):
+                    fy = interp1d(s.lats[:,i.xi], np.arange(s.lats.shape[0]), kind='cubic')
+                    fx = interp1d(s.lons[i.yi,:], np.arange(s.lats.shape[1]), kind='cubic')
+                    return Index( fy(loc.lat), fx(loc.lon) )
+
+                tmp = [getIntermediateIndex(loc,i) for loc,i in zip(locations, indecies)]
+                yInterp = [i.yi for i in tmp]
+                xInterp = [i.xi for i in tmp]
+                
+            else: # do interpolation in the expected 'coordinate space'
+                gridYVals = s.lats[yiMin:yiMax+1]
+                gridXVals = s.lons[xiMin:xiMax+1]
+                
+                yInterp = [loc.lat for loc in locations]
+                xInterp = [loc.lon for loc in locations]
             
+            # Do interpolation
             output = []
             for ts in range(s.data[variable].shape[0]):
                 # set up interpolation
-                rbs = RectBivariateSpline(gridLats,gridLons,s.data[variable][ts, yiMin:yiMax+1, xiMin:xiMax+1], **rbsArgs)
+                rbs = RectBivariateSpline(gridYVals,gridXVals,s.data[variable][ts, yiMin:yiMax+1, xiMin:xiMax+1], **rbsArgs)
 
                 # interpolate for each location
-                output.append(rbs(lats, lons, grid=False)) # lat/lon order switched to match index order
+                output.append(rbs(yInterp, xInterp, grid=False)) # lat/lon order switched to match index order
      
             output = np.stack(output)
 
