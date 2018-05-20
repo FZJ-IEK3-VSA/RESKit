@@ -62,8 +62,10 @@ def lcoe( expenditures, productions, discountRate=0.08 ):
     productions : array_like
         Annual production for each year in the lifetime
 
-    discountRate : numeric
+    discountRate : numeric or array_like
         The discount rate
+          * If a numeric is given, the discount rate is applied to all years
+          * If an array is given, a discount rate for each year must by provided
 
     Returns
     -------
@@ -73,11 +75,11 @@ def lcoe( expenditures, productions, discountRate=0.08 ):
     # Initialize variables
     exp = np.array(expenditures)
     pro = np.array(productions)
-    if not exp.size==pro.size: raise ResError("expenditures length does not match productions length")
+    if not exp.shape==pro.shape: raise ResError("expenditures length does not match productions length")
 
-    yr = np.arange(exp.size)
+    yr = np.arange(exp.shape[0])
     if isinstance(r,float):
-        r = np.zeros(exp.size)+discountRate
+        r = np.zeros(exp.shape[0])+discountRate
     else:
         r = np.array(r)
 

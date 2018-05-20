@@ -1,4 +1,4 @@
-from .NCSource import computeContextMean, NCSource
+from .NCSource import NCSource
 from .sources import MerraSource, CordexSource, SevCosmoREA6Source
 
 from . import noaa 

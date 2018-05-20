@@ -4,68 +4,14 @@ from glob import glob
 from scipy.interpolate import RectBivariateSpline, interp2d
 from pickle import load, dump
 
-from res.util import *
+from res.util.util_ import *
 
-# context mean
-def computeContextMean(source, contextArea, fillnan=True, pixelSize=None, srs=None):
-    """Compute the mean of raster data found in the context of an area. Usually this is used for one of the weather data sources in order to compute the, for example, mean elevation around each grid cell.
-
-    Inputs:
-        source : 
-            str - The path to a raster file to read from
-            gdal.Dataset - The raster file to read from in memory
-            * Must contain the entire context area (nan values are okay)
-
-        contextArea : 
-            ogr.Geometry - The context area
-
-        fillnan : 
-            T/F - Dictates whether nan values are filled using the 'closest real value' approach
-
-        pixelSize : 
-            float - The pixel size to use wile sampling the raster file
-            * Normally this should be left as 'None', indicating that the raster's inherent resolution should be used
-
-        srs : The spatial reference system to use while processing
-            int - A EPSG reference integer
-            str - One of GeoKit's common srs keys 
-            osr.SpatialReference - An SRS object
-            * Normally this should be left as 'None', indicating that the raster's inherent SRS should be used
-    """
-
-
-    if pixelSize is None and srs is None:
-        ras = gk.raster.rasterInfo(source)
-        pixelSize=(ras.dx, ras.dy)
-        srs=ras.srs
-
-    # get all GWA values in the area
-    rm = gk.RegionMask.fromGeom(contextArea, pixelSize=pixelSize, srs=srs)
-    values = rm.warp(source)
-    values[values<0] = np.nan # set the no data value so they can be filled properly
-
-    # fill all no data with the closest values
-    if fillnan:
-        yN,xN = values.shape
-        while np.isnan(values[rm.mask]).any():
-            tmp = values.copy()
-            for yi,xi in np.argwhere(np.isnan(values)):
-                vals = np.array([np.nan, np.nan, np.nan, np.nan])
-                if yi>0:    vals[0] = values[yi-1,xi]
-                if xi>0:    vals[1] = values[yi,xi-1]
-                if yi<yN-1: vals[2] = values[yi+1,xi]
-                if xi<xN-1: vals[3] = values[yi,xi+1]
-
-                if (~np.isnan(vals)).any():
-                    tmp[yi,xi] = np.nanmean(vals)
-            values = tmp
-    # done!
-    return np.nanmean(values[rm.mask])
-
+Bounds = namedtuple("Bounds", "lonMin latLin lonMax latMax")
 
 # make a data handler
 Index = namedtuple("Index", "yi xi")
 class NCSource(object):
+    """THE NCSource object manages weather data from a generic netCDF4 file source"""
     def _loadDS(s, path):
         if isinstance(path, str):
             return nc.Dataset(path)
@@ -74,22 +20,91 @@ class NCSource(object):
         else:
             raise ResError("Could not understand data source input. Must be a path or a list of paths")
 
-    def __init__(s, path, bounds=None, padFactor=0, timeName="time", latName="lat", lonName="lon", dependent_coordinates=False, constantsPath=None, timeBounds=None, _maxLonDiff=10000000, _maxLatDiff=10000000):
-        # set basic variables 
-        s.path = path
-        s.timeName = timeName
-        if not path is None:
-            if constantsPath is None:
-                dsC = s._loadDS(s.path)
-                ds = dsC
-            else:
-                dsC = s._loadDS(constantsPath)
-                ds = s._loadDS(s.path)
+    def __init__(s, source, bounds=None, padFactor=0, timeName="time", latName="lat", lonName="lon", dependent_coordinates=False, timeBounds=None, _maxLonDiff=10000000, _maxLatDiff=10000000):
+        """Initialize a generic netCDF4 file source
+
+        Note
+        ----
+        Generally not intended for normal use. Look into MerraSource, CordexSource, or CosmoSource
+
+        Parameters
+        ----------
+        path : str
+            The path to the main data file
+
+        bounds : Anything acceptable to geokit.Extent.load(), optional
+            The boundaries of the data which is needed
+              * Usage of this will help with memory mangement
+              * If None, the full dataset is loaded in memory
+              
+        padFactor : numeric, optional
+            The padding to apply to the boundaries 
+              * Useful in case of interpolation
+              
+        timeName : str, optional
+            The name of the time parameter in the netCDF4 dataset
+              
+        latName : str, optional
+            The name of the latitude parameter in the netCDF4 dataset
+              
+        lonName : str, optional
+            The name of the longitude parameter in the netCDF4 dataset
+
+        dependent_coordinates : bool, optional
+            If False, a regular lat/lon grid is expected. If True, 2 dimensional
+            arrays are expected for each lat and lon parameter
+
+        timeBounds : tuple of length 2, optional
+            Used to employ a slice of the time dimension
+              * Expect two pandas Timestamp objects> The first indicates the point
+                to start collecting data, and the second indicates the end
+
+        """
+        # Collect all variable information
+        s.variables = OrderedDict()
+        if not isinstance(source, list): source = [source, ]
+
+        expectedShape = OrderedDict()
+
+        units = []
+        names = []
+
+        for src in source:
+            ds = nc.Dataset(src)
+            for var in ds.variables:
+                if not var in s.variables:
+                    s.variables[var] = src
+                    expectedShape[var] = ds[var].shape
+
+                    try: unit = ds[var].units
+                    except: unit = "Unknown"
+                    
+                    try: name = ds[var].standard_name
+                    except: name = "Unknown"
+
+                    names.append(name)
+                    units.append(unit)
+
+                else:
+                    if ds[var].shape!=expectedShape[var]:
+                        raise ResError("Variable %s does not match expected shape %s. From %s"%(var, expectedShape[var], src))
         
-            s._allLats = dsC[latName][:]
-            s._allLons = dsC[lonName][:]
+        tmp = pd.DataFrame(columns=["name","units","path",], index=s.variables.keys())
+        tmp["name"] = names
+        tmp["units"] = units
+        tmp["shape"] = [expectedShape[v] for v in tmp.index]
+        tmp["path"] = [s.variables[v] for v in tmp.index]
+        s.variables = tmp
+        
+        # set basic variables
+        s.timeName = timeName
+        if not source is None:
+            lonVar = s[lonName]
+            latVar = s[latName]
+        
+            s._allLats = latVar[:]
+            s._allLons = lonVar[:]
             
-            s.variables = list(ds.variables.keys())
             s._maximal_lon_difference=_maxLonDiff
             s._maximal_lat_difference=_maxLatDiff
 
@@ -97,40 +112,8 @@ class NCSource(object):
 
             # set lat and lon selections
             if not bounds is None:
-                if isinstance(bounds, gk.Extent):
-                    lonMin,latMin,lonMax,latMax = bounds.castTo(LATLONSRS).xyXY
-
-                elif isinstance(bounds, gk.Location):
-                    lonMin=bounds.lon
-                    latMin=bounds.lat
-                    lonMax=bounds.lon
-                    latMax=bounds.lat
-
-                elif isinstance(bounds, gk.LocationSet):
-                    bounds = bounds.getBounds()
-
-                elif isinstance(bounds, Bounds):
-                    lonMin = bounds.lonMin
-                    latMin = bounds.latMin
-                    lonMax = bounds.lonMax
-                    latMax = bounds.latMax
-                else:
-                    try:
-                        lon,lat = bounds
-
-                        lonMin=lon
-                        latMin=lat
-                        lonMax=lon
-                        latMax=lat
-
-                    except:
-                        lonMin,latMin,lonMax,latMax = bounds
-                
-                # Add padding to the boundaries
-                s.bounds = Bounds(lonMin = lonMin - s._maximal_lon_difference*padFactor,
-                                  latMin = latMin - s._maximal_lat_difference*padFactor,
-                                  lonMax = lonMax + s._maximal_lon_difference*padFactor,
-                                  latMax = latMax + s._maximal_lat_difference*padFactor,)
+                s.extent = gk.Extent.load(bounds).castTo(gk.srs.EPSG4326).pad(padFactor)
+                s.bounds = Bounds(*s.extent.xyXY)
 
                 # find slices
                 s._lonSel = (s._allLons >= s.bounds.lonMin) & (s._allLons <= s.bounds.lonMax)
@@ -166,7 +149,8 @@ class NCSource(object):
                 s.lons = s._allLons[s._lonStart:s._lonStop]
 
             # compute time index
-            timeindex = nc.num2date(ds[s.timeName][:], ds[s.timeName].units)
+            timeVar = s[timeName]
+            timeindex = nc.num2date(timeVar[:], timeVar.units)
             
             if timeBounds is None:
                 s._timeSel = np.s_[:]
@@ -179,38 +163,6 @@ class NCSource(object):
 
             # initialize some variables
             s.data = OrderedDict()
-
-    def __add__(s,o, _shell=None):
-        # ensure self and other have the same indexes
-        if (s.lats != o.lats).any(): raise ResError("Latitude indexes to not match")
-        if (s.lons != o.lons).any(): raise ResError("Longitude indexes to not match")
-        #if (s.timeindex != o.timeindex).any(): raise ResError("Longitude indexes to not match")
-
-        # Create an empty NCSource and fill top-level information
-        if _shell is None:
-            out = NCSource(None)
-        else:
-            out = _shell
-
-        out.bounds = s.bounds
-        out.lats = s.lats
-        out.lons = s.lons
-        out.timeindex = s.timeindex
-        out._maximal_lon_difference = s._maximal_lon_difference
-        out._maximal_lat_difference = s._maximal_lat_difference
-        out.dependent_coordinates = s.dependent_coordinates
-
-        # Join variables in each object
-        out.data = OrderedDict()
-        for name,data in s.data.items():
-            out.data[name] = data.copy()
-        for name,data in o.data.items():
-            out.data[name] = data.copy()
-        
-        out.variables = list(out.data.keys())
-
-        # Done!
-        return out
     
     def pickle(s, path):
         """Save the source as a pickle file, so it can be quickly reopened later"""
@@ -223,7 +175,7 @@ class NCSource(object):
         with open(path, 'rb') as fo:
             out = load(fo)
         return out
-
+    
     def load(s, variable, name=None, heightIdx=None, processor=None):
         """Load a variable into the source's data container
 
@@ -240,16 +192,14 @@ class NCSource(object):
                 * Ex. If the NC file has temperature in Kelvin and you need degrees C:
                     processor = lambda x: x+273.15
         """
-        if s.path is None: raise ResError("Cannot load new variables when path is None")
+        
         # read the data
-        ds = s._loadDS(s.path)
-        if not variable in ds.variables.keys():
-            raise ResError(variable+" not in source")
+        var = s[variable]
 
         if heightIdx is None:
-            tmp = ds[variable][s._timeSel,s._latStart:s._latStop,s._lonStart:s._lonStop]
+            tmp = var[s._timeSel,s._latStart:s._latStop,s._lonStart:s._lonStop]
         else:
-            tmp = ds[variable][s._timeSel,heightIdx,s._latStart:s._latStop,s._lonStart:s._lonStop]
+            tmp = var[s._timeSel,heightIdx,s._latStart:s._latStop,s._lonStart:s._lonStop]
 
         # process, maybe?
         if not processor is None:
@@ -441,9 +391,12 @@ class NCSource(object):
             except:
                 return pd.Series(output, index=s.timeindex, name=locations[0])
 
-    def __getattr__(s, v):
-        var, locs = v
-        return s.get(var, locs)
+    def __getitem__(s, v): 
+        try:
+            return nc.Dataset(s.variables["path"][v])[v]
+        except KeyError as e:
+            pass # pass to avoid horrible pandas trace
+        raise KeyError(str(v))
 
     def contextAreaAt(s,location):
         """Compute the sources-index's context area surrounding the given location"""
