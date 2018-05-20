@@ -243,7 +243,7 @@ def offshoreTurbineCost(capacity, hubHeight, rotordiam, depth, distanceToShore, 
     rr = np.array(rotordiam/2)
     rd = np.array(rotordiam)
     hh = np.array(hubHeight)
-    depth = np.array(depth)
+    depth = np.abs(np.array(depth))
     shoreD = np.array(distanceToShore)
     busD = np.array(distanceToBus)
 
@@ -263,6 +263,9 @@ def offshoreTurbineCost(capacity, hubHeight, rotordiam, depth, distanceToShore, 
 
 def offshoreBOS(cp, rd, hh, depth, shoreD, busD, foundation, mooringCount, anchor, turbineNumber, turbineSpacing, rowSpacing):
     rr = rd/2
+
+    #prevent problems with negative depth values
+    depth = np.abs(depth)
 
     foundation = foundation.lower()
     anchor = anchor.lower()
