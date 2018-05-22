@@ -112,7 +112,6 @@ class NCSource(object):
 
         # set lat and lon selections
         if not bounds is None:
-            s.extent = gk.Extent.load(bounds).castTo(gk.srs.EPSG4326).pad(padFactor)
             s.bounds = Bounds(*s.extent.xyXY)
 
             # find slices
@@ -128,6 +127,8 @@ class NCSource(object):
             s._lonStop = s._lonSel.size-np.argmax(s._lonSel[::-1])
             s._latStart = np.argmax(s._latSel)
             s._latStop = s._latSel.size-np.argmax(s._latSel[::-1])
+        else: 
+            s.bounds = None
 
         else:
             s.bounds = None
@@ -148,6 +149,8 @@ class NCSource(object):
             s.lats = s._allLats[s._latStart:s._latStop]
             s.lons = s._allLons[s._lonStart:s._lonStop]
 
+        s.extent = gk.Extent.load((s.lons.min(), s.lats.min(), s.lons.max(), s.lats.max(), ), srs=EPSG4326)
+        
         # compute time index
         timeVar = s[timeName]
         timeindex = nc.num2date(timeVar[:], timeVar.units)
