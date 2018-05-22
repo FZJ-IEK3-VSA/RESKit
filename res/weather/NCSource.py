@@ -127,9 +127,6 @@ class NCSource(object):
             s._lonStop = s._lonSel.size-np.argmax(s._lonSel[::-1])
             s._latStart = np.argmax(s._latSel)
             s._latStop = s._latSel.size-np.argmax(s._latSel[::-1])
-        else: 
-            s.bounds = None
-
         else:
             s.bounds = None
             s._lonStart = 0
@@ -149,8 +146,8 @@ class NCSource(object):
             s.lats = s._allLats[s._latStart:s._latStop]
             s.lons = s._allLons[s._lonStart:s._lonStop]
 
-        s.extent = gk.Extent.load((s.lons.min(), s.lats.min(), s.lons.max(), s.lats.max(), ), srs=EPSG4326)
-        
+        s.extent = gk.Extent(s.lons.min(), s.lats.min(), s.lons.max(), s.lats.max(), srs=gk.srs.EPSG4326)
+
         # compute time index
         timeVar = s[timeName]
         timeindex = nc.num2date(timeVar[:], timeVar.units)
@@ -385,7 +382,7 @@ class NCSource(object):
         if isinstance(indecies, Index): indecies = [indecies, ]
 
         # Do interpolation
-        if interpolation == 'oldnear':            
+        if interpolation == 'near':            
             # arrange the output data
             tmp = []
             for i in indecies:
@@ -393,21 +390,6 @@ class NCSource(object):
                 else: tmp.append( np.array([np.nan,]*s.timeindex.size) ) 
             output = np.column_stack(tmp)
 
-        elif interpolation == 'near':
-            # arrange the output data
-            indexSet = set(indecies)
-            allYI = np.array([i.yi for i in indecies])
-            allXI = np.array([i.xi for i in indecies])
-            output = np.zeros((s.timeindex.size, locations.count))
-
-            for i in indexSet:
-                if i is None: continue
-                
-                ysel = allYI==i.yi
-                xsel = allXI==i.xi
-                sel = np.logical_and(xsel, ysel)
-                output[:,sel] = s.data[variable][:, i.yi, i.xi].reshape((s.timeindex.size, 1))
-        
         elif interpolation == "cubic" or interpolation == "bilinear":
             # set some arguments for later use
             if interpolation == "cubic":
