@@ -4,6 +4,68 @@ from ..NCSource import *
 ## Spatial adjustment methods
 
 def adjustLraToGwa( windspeed, targetLoc, gwa, longRunAverage, windspeedSourceName="windspeed"):
+    """Adjust a timeseries of wind speed values to the average suggested by 
+    Global Wind Atlas at a specific location by comparing against a given 
+    long run average of the timeseries
+
+    Uses this equation for each target location:
+    .. math::
+        ws_{adj} = ws_{raw} * GWA_{target} / LRA
+
+      Where:
+        * $ws_{adj}$ -> The output adjusted windspeed
+        * $ws_{raw}$ -> The raw windspeed
+        * $GWA_{target}$ -> The Global Wind Atlas average windspeed value value 
+          at the target location
+        * $LRA$ -> The long run average of the raw windspeed timeseries
+    
+    Example use case:
+      When you have wind speeds from a weather dataset (like MERRA), and the raw 
+      windspeeds for some index need to be adjusted to a specific location.
+
+    Parameters:
+    -----------
+    windspeed : numpy.ndarray or NCSource
+        The raw windspeeds to be adjusted
+        * If an array is given with a single dimension, it is assumed to represent 
+          timeseries values for a single location
+        * If multidimensional array is given, the assumed dimensional context is 
+          (time, locations), and 'targetLoc' must be an iterable with the same 
+          length as the 'locations' dimension
+        * If an NCSource is given, windspeeds are extracted from the source for 
+          each target location, under the variable name specified by
+          'windspeedSourceName'
+
+    targetLoc : Anything acceptable by geokit.LocationSet
+        The location(s) to adjust the wind speeds to
+          * A single tuple with (lon, lat) is acceptable, or an iterable of such 
+            tuples
+          * A single point geometry (as long as it has an SRS), or an iterable
+            of geometries is okay
+          * geokit,Location, or geokit.LocationSet are best, though
+    
+    gwa : str
+        The path to the Global Wind Atlas raster file
+          * WARNING: Be sure you are using the appropriate height, since GWA 
+            gives average windspeeds at 50, 100, and 200 meters
+            (If you are adjusting wind speeds from a MerraSource, you want the 
+            50 meter GWA version...)
+
+    longRunAverage : numeric or numpy.ndarray or str
+        The long run average of the raw windspeed time series
+          * If only a single target location is desired, a single LRA value is
+            expected
+          * If multiple target locations are desired, an array of LRA values 
+            for each target is expected
+          * A path to a raster file containing LRA values can be given as a 
+            string, from which the LRA value for each target location is extracted
+    
+    windspeedSourceName : str, optional
+        The name of the variable to extract from the given NCSource (or derivative)
+          * Only useful if the 'windspeed' input is an NCSource
+    """ 
+
+
     ## Ensure location is okay
     targetLoc = LocationSet(targetLoc)
     multi = targetLoc.count>1
