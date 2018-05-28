@@ -19,7 +19,7 @@ class NCSource(object):
         else:
             raise ResError("Could not understand data source input. Must be a path or a list of paths")
 
-    def __init__(s, source, bounds=None, indexPad=0, timeName="time", latName="lat", lonName="lon", timeBounds=None, tz=None, _maxLonDiff=0.6, _maxLatDiff=0.6):
+    def __init__(s, source, bounds=None, indexPad=0, timeName="time", latName="lat", lonName="lon", timeBounds=None, tz=None, _maxLonDiff=0.6, _maxLatDiff=0.6, verbose=True):
         """Initialize a generic netCDF4 file source
 
         Note
@@ -91,7 +91,7 @@ class NCSource(object):
         names = []
 
         for src in sources:
-            print(src)
+            if verbose: print(src)
             ds = nc.Dataset(src)
             for var in ds.variables:
                 if not var in s.variables:
@@ -144,8 +144,10 @@ class NCSource(object):
 
         # set lat and lon selections
         if not bounds is None:
-
-            s.bounds = gk.Extent.load(bounds).castTo(4326).xyXY
+            if isinstance(bounds, tuple) and len(bounds)==2: # A point has been given (Just for Leander ;D )
+                s.bounds = bounds[0]-0.08,bounds[1]-0.08,bounds[0]+0.08,bounds[1]+0.08
+            else:
+                s.bounds = gk.Extent.load(bounds).castTo(4326).xyXY
 
             # find slices which contains our extent
             s._lonSel = (s._allLons >= s.bounds[0]) & (s._allLons <= s.bounds[2])

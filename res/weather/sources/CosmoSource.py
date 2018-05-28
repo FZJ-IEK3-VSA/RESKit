@@ -12,7 +12,7 @@ class CosmoSource(NCSource):
     MAX_LON_DIFFERENCE = 0.6 # a LARGE ooverestimate of how much space should be inbetween a given point and the nearest index
     MAX_LAT_DIFFERENCE = 0.6 # a LARGE ooverestimate of how much space should be inbetween a given point and the nearest index
 
-    def __init__(s, source, bounds=None, indexPad=5, convention="REA6", **kwargs):
+    def __init__(s, source, bounds=None, indexPad=0, **kwargs):
         """Initialize a COSMO style netCDF4 file source
 
         * Assumes REA6 conventions
@@ -37,18 +37,10 @@ class CosmoSource(NCSource):
                 to start collecting data, and the second indicates the end
 
         """
-
         NCSource.__init__(s, source=source, bounds=bounds, timeName="time", latName="lat", lonName="lon", 
                           indexPad=indexPad, _maxLonDiff=s.MAX_LON_DIFFERENCE, _maxLatDiff=s.MAX_LAT_DIFFERENCE,
                           **kwargs)
-        
-        if convention == "REA6":
-            s.lonSouthPole = 18
-            s.latSouthPole = -39.25
-            s.rlonRes = 0.0550000113746
-            s.rlatRes = 0.0550001976179
-            s.rlonStart = -28.40246773
-            s.rlatStart = -23.40240860
+           
 
     def loc2Index(s, loc, outsideOkay=False, asInt=True):
         """Returns the closest X and Y indexes corresponding to a given location 
@@ -81,18 +73,38 @@ class CosmoSource(NCSource):
             * Order matches the given order of locations
 
         """
+        # Set REA6 Conventions
+        lonSouthPole = 18
+        latSouthPole = -39.25
+        rlonRes = 0.0550000113746
+        rlatRes = 0.0550001976179
+        rlonStart = -28.40246773
+        rlatStart = -23.40240860
+
+        if s is None: 
+            _lonStart=0
+            _latStart=0
+            _latN = 824
+            _lonN = 848
+        else:
+            _lonStart = s._lonStart
+            _latStart = s._latStart
+            _latN = s._latN
+            _lonN = s._lonN
+
+
         # Ensure loc is a list
         locations = LocationSet(loc)
 
         # Convert to rotated coordinates
-        rlonCoords, rlatCoords = rotateFromLatLon(locations.lons, locations.lats, lonSouthPole=s.lonSouthPole, latSouthPole=s.latSouthPole)
+        rlonCoords, rlatCoords = rotateFromLatLon(locations.lons, locations.lats, lonSouthPole=lonSouthPole, latSouthPole=latSouthPole)
         
         # Find integer locations
-        lonI = (rlonCoords - s.rlonStart)/s.rlonRes - s._lonStart
-        latI = (rlatCoords - s.rlatStart)/s.rlatRes - s._latStart
+        lonI = (rlonCoords - rlonStart)/rlonRes - _lonStart
+        latI = (rlatCoords - rlatStart)/rlatRes - _latStart
 
         # Check for out of bounds
-        s = (latI<0)|(latI>=s._latN)|(lonI<0)|(lonI>=s._lonN)
+        s = (latI<0)|(latI>=_latN)|(lonI<0)|(lonI>=_lonN)
         if s.any():
             print("Im in!!")
             if not outsideOkay:
