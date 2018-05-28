@@ -1,5 +1,5 @@
 from os import listdir
-from os.path import join, isfile, dirname, basename
+from os.path import join, isfile, dirname, basename, isdir
 from glob import glob
 from scipy.interpolate import RectBivariateSpline, interp2d, bisplrep, bisplev, interp1d
 from pickle import load, dump
@@ -68,6 +68,7 @@ class NCSource(object):
             if isinstance(source, str):
                 if not isfile(source):
                     source = glob(source)
+                elif 
                 else:
                     source = [source, ]
             else:
@@ -199,6 +200,7 @@ class NCSource(object):
         s.data = OrderedDict()
 
     def varInfo(s, var):
+        """Prints more information about the given parameter"""
         try:
             ds = nc.Dataset( s.variables["path"][var] )
             print(ds[var])

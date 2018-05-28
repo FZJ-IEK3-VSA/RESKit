@@ -1,6 +1,5 @@
 from res.util.util_ import *
 from res.weather import windutil, NCSource
-from res.weather.sources import loadWeatherSource
 
 ##################################################
 ## Make a turbine model library
