@@ -7,10 +7,10 @@ class MerraSource(NCSource):
     GWA100_CONTEXT_MEAN_SOURCE  = join(dirname(__file__),"..","..","..","data","gwa100_mean_over_merra.tif")
     LONG_RUN_AVERAGE_50M_SOURCE = join(dirname(__file__),"..","..","..","data","merra_average_windspeed_50m-shifted.tif")
 
-    MAX_LON_DIFFERENCE=0.3125
-    MAX_LAT_DIFFERENCE=0.25
+    MAX_LON_DIFFERENCE=0.5
+    MAX_LAT_DIFFERENCE=0.5
 
-    def __init__(s, source, bounds=None, padExtent=5, **kwargs):
+    def __init__(s, source, bounds=None, indexPad=5, **kwargs):
         """Initialize a Merra2 style netCDF4 file source
 
 
@@ -45,12 +45,66 @@ class MerraSource(NCSource):
         """
 
         NCSource.__init__(s, source=source, bounds=bounds, timeName="time", latName="lat", lonName="lon", 
-                          padExtent=padExtent, _maxLonDiff=s.MAX_LON_DIFFERENCE, _maxLatDiff=s.MAX_LAT_DIFFERENCE,
+                          indexPad=indexPad, _maxLonDiff=s.MAX_LON_DIFFERENCE, _maxLatDiff=s.MAX_LAT_DIFFERENCE,
                           tz="GMT", **kwargs)
 
-    def __add__(s,o):
-        out = MerraSource(None)
-        return NCSource.__add__(s, o, _shell=out)
+    def loc2Index(s, loc, outsideOkay=False, asInt=True):
+        """Returns the closest X and Y indexes corresponding to a given location 
+        or set of locations
+
+        Parameters
+        ----------
+        loc : Anything acceptable by geokit.LocationSet
+            The location(s) to search for
+            * A single tuple with (lon, lat) is acceptable, or a list of such tuples
+            * A single point geometry (as long as it has an SRS), or a list
+              of geometries is okay
+            * geokit,Location, or geokit.LocationSet are best!
+
+        outsideOkay : bool, optional
+            Determines if points which are outside the source's lat/lon grid
+            are allowed
+            * If True, points outside this space will return as None
+            * If False, an error is raised 
+
+        Returns
+        -------
+        If a single location is given: tuple 
+            * Format: (yIndex, xIndex)
+            * y index can be accessed with '.yi'
+            * x index can be accessed with '.xi'
+
+        If multiple locations are given: list
+            * Format: [ (yIndex1, xIndex1), (yIndex2, xIndex2), ...]
+            * Order matches the given order of locations
+
+        """
+        # Ensure loc is a list
+        locations = LocationSet(loc)
+
+        # get closest indices
+        latI = (locations.lats - s.lats[0])/0.5
+        lonI = (locations.lons - s.lons[0])/0.625
+
+        # Check for out of bounds
+        s = (latI<0)|(latI>=s._latN)|(lonI<0)|(lonI>=s._lonN)
+        if s.any():
+            if not outsideOkay:
+                print("The following locations are out of bounds")
+                print(locations[s])
+                raise ResError("Locations are outside the boundaries")
+        
+        # As int?
+        if asInt:
+            latI = np.round(latI).astype(int)
+            lonI = np.round(lonI).astype(int)
+
+        # Make output
+        if locations.count==1:
+            if s[0] is True: return None
+            else: return Index(yi=latI[0],xi=lonI[0])
+        else:
+            return [ None if ss else Index(yi=y,xi=x) for ss,y,x in zip(s,latI,lonI) ]
 
     def contextAreaAtIndex(s, latI, lonI):
         """Compute the context area surrounding the a specified index"""
@@ -77,7 +131,6 @@ class MerraSource(NCSource):
             If True, the wind direction is calculated and saved under a variable
             named 'winddir'
         """
-
         # read raw data
         s.load("U%dM"%height)
         s.load("V%dM"%height)
@@ -157,3 +210,4 @@ class MerraSource(NCSource):
         s.loadWindSpeed(height=50)
         del s.data["U50M"]
         del s.data["V50M"]
+

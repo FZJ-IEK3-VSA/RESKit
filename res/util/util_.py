@@ -297,59 +297,22 @@ def rotateFromLatLon( lons, lats, lonSouthPole=18, latSouthPole=-39.25 ):
 
 
 def rotateToLatLon( rlons, rlats, lonSouthPole=18, latSouthPole=-39.25 ):
-    def rotated_grid_transform(position, direction, south_pole):
-        """
-        position:   tuple(lon, lat) = input coordinate
-        direction:  1 = Regular -> Rotated, 2 = Rotated -> Regular
-        south_pole: tuple(lon, lat) = position of rotated south pole
-        returns:    tuple(lon, lat) = output coordinate
-        """
-        lon = position[0]
-        lat = position[1]
+    rlons = np.radians(rlons)
+    rlats = np.radians(rlats)
 
-        # Convert degrees to radians
-        lon = (lon * pi) / 180.0
-        lat = (lat * pi) / 180.0
+    theta = -np.radians(90+latSouthPole) # south pole is at 18 deg longitude
+    phi = -np.radians(lonSouthPole) # south pole is at -39.25 deg latitude
 
-        SP_lon = south_pole[0]
-        SP_lat = south_pole[1]
+    x = np.cos(rlons) * np.cos(rlats)
+    y = np.sin(rlons) * np.cos(rlats)
+    z = np.sin(rlats)
 
-        theta = 90 + SP_lat # Rotation around y-axis
-        phi = SP_lon        # Rotation around z-axis
+    x_new = np.cos(theta) * np.cos(phi) * x + np.sin(phi) * y + np.sin(theta) * np.cos(phi) * z
+    y_new = -np.cos(theta) * np.sin(phi) * x + np.cos(phi) * y - np.sin(theta) * np.sin(phi) * z
+    z_new = -np.sin(theta) * x + np.cos(theta) * z
 
-        # Convert degrees to radians
-        phi = (phi * pi) / 180.0
-        theta = (theta * pi) / 180.0
+    lonCoords = np.degrees(np.arctan2(y_new, x_new))
+    latCoords = np.degrees(np.arcsin(z_new))
 
-        # Convert from spherical to cartesian coordinates
-        x = cos(lon) * cos(lat)
-        y = sin(lon) * cos(lat)
-        z = sin(lat)
-
-        if direction == 1: # Regular -> Rotated
-            
-            x_new = cos(theta) * cos(phi) * x + cos(theta) * sin(phi) * y + sin(theta) * z
-            y_new = -sin(phi) * x + cos(phi) * y
-            z_new = -sin(theta) * cos(phi) * x - sin(theta) * sin(phi) * y + cos(theta) * z
-            
-        elif direction == 2: # Rotated -> Regular
-            
-            phi = -phi
-            theta = -theta
-
-            x_new = cos(theta) * cos(phi) * x + sin(phi) * y + sin(theta) * cos(phi) * z
-            y_new = -cos(theta) * sin(phi) * x + cos(phi) * y - sin(theta) * sin(phi) * z
-            z_new = -sin(theta) * x + cos(theta) * z
-            
-        else:
-            raise Exception('Invalid direction, value must be either 1 or 2.')
-
-        # Convert cartesian back to spherical coordinates
-        lon_new = atan2(y_new, x_new)
-        lat_new = asin(z_new)
-
-        # Convert radians back to degrees
-        lon_new = (lon_new * 180.0) / pi
-        lat_new = (lat_new * 180.0) / pi
-
-        return (lon_new, lat_new)
+    return lonCoords, latCoords
+    

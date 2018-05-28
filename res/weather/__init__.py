@@ -1,5 +1,5 @@
 from .NCSource import NCSource
-from .sources import MerraSource, CordexSource, SevCosmoREA6Source
+from .sources import MerraSource, CosmoSource
 
 from . import noaa 
 from . import windutil
