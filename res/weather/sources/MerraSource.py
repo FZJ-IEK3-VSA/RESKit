@@ -10,7 +10,7 @@ class MerraSource(NCSource):
     MAX_LON_DIFFERENCE=0.3125
     MAX_LAT_DIFFERENCE=0.25
 
-    def __init__(s, source, bounds=None, padFactor=5, **kwargs):
+    def __init__(s, source, bounds=None, padExtent=5, **kwargs):
         """Initialize a Merra2 style netCDF4 file source
 
 
@@ -24,7 +24,7 @@ class MerraSource(NCSource):
               * Usage of this will help with memory mangement
               * If None, the full dataset is loaded in memory
               
-        padFactor : numeric, optional
+        padExtent : numeric, optional
             The padding to apply to the boundaries 
               * Useful in case of interpolation
               
@@ -45,9 +45,8 @@ class MerraSource(NCSource):
         """
 
         NCSource.__init__(s, source=source, bounds=bounds, timeName="time", latName="lat", lonName="lon", 
-                          padFactor=padFactor, _maxLonDiff=s.MAX_LON_DIFFERENCE, _maxLatDiff=s.MAX_LAT_DIFFERENCE,
-                          **kwargs)
-        s.timeindex=pd.Index(s.timeindex, tz="GMT")
+                          padExtent=padExtent, _maxLonDiff=s.MAX_LON_DIFFERENCE, _maxLatDiff=s.MAX_LAT_DIFFERENCE,
+                          tz="GMT", **kwargs)
 
     def __add__(s,o):
         out = MerraSource(None)

@@ -1,26 +1,25 @@
 from os import listdir
 from os.path import join, isfile, dirname, basename
 from glob import glob
-from scipy.interpolate import RectBivariateSpline, interp2d
+from scipy.interpolate import RectBivariateSpline, interp2d, bisplrep, bisplev, interp1d
 from pickle import load, dump
 
 from res.util.util_ import *
 
-Bounds = namedtuple("Bounds", "lonMin latMin lonMax latMax")
-
 # make a data handler
 Index = namedtuple("Index", "yi xi")
 class NCSource(object):
-    """THE NCSource object manages weather data from a generic netCDF4 file source"""
+    """The NCSource object manages weather data from a generic set of netCDF4 
+    file sources"""
     def _loadDS(s, path):
         if isinstance(path, str):
             return nc.Dataset(path)
-        elif isinstance(path, list):
-            return nc.MFDataset( path, aggdim=s.timeName)
+        # elif isinstance(path, list):
+        #     return nc.MFDataset( path, aggdim=s.timeName)
         else:
             raise ResError("Could not understand data source input. Must be a path or a list of paths")
 
-    def __init__(s, source, bounds=None, padFactor=0, timeName="time", latName="lat", lonName="lon", timeBounds=None, _maxLonDiff=10000000, _maxLatDiff=10000000):
+    def __init__(s, source, bounds=None, padExtent=0, timeName="time", latName="lat", lonName="lon", timeBounds=None, tz=None, _maxLonDiff=10000000, _maxLatDiff=10000000):
         """Initialize a generic netCDF4 file source
 
         Note
@@ -36,10 +35,13 @@ class NCSource(object):
             The boundaries of the data which is needed
               * Usage of this will help with memory mangement
               * If None, the full dataset is loaded in memory
+              * The actual extent of the loaded data depends on the source's 
+                available data
               
-        padFactor : numeric, optional
+        padExtent : numeric, optional
             The padding to apply to the boundaries 
               * Useful in case of interpolation
+              * Units are in longitudinal degrees
               
         timeName : str, optional
             The name of the time parameter in the netCDF4 dataset
@@ -49,6 +51,10 @@ class NCSource(object):
               
         lonName : str, optional
             The name of the longitude parameter in the netCDF4 dataset
+
+        tz: str; optional
+            Applies the indicated timezone onto the time axis
+            * For example, use "GMT" for unadjusted time
 
         timeBounds : tuple of length 2, optional
             Used to employ a slice of the time dimension
@@ -97,8 +103,8 @@ class NCSource(object):
         lonVar = s[lonName]
         latVar = s[latName]
     
-        s._allLats = latVar[:]
-        s._allLons = lonVar[:]
+        s._allLats = latVar[:].copy()
+        s._allLons = lonVar[:].copy()
         
         s._maximal_lon_difference=_maxLonDiff
         s._maximal_lat_difference=_maxLatDiff
@@ -112,11 +118,12 @@ class NCSource(object):
 
         # set lat and lon selections
         if not bounds is None:
-            s.bounds = Bounds(*s.extent.xyXY)
+
+            s.bounds = gk.Extent.load(bounds).castTo(4326).pad(padExtent).xyXY
 
             # find slices
-            s._lonSel = (s._allLons >= s.bounds.lonMin) & (s._allLons <= s.bounds.lonMax)
-            s._latSel = (s._allLats >= s.bounds.latMin) & (s._allLats <= s.bounds.latMax)
+            s._lonSel = (s._allLons >= s.bounds[0]) & (s._allLons <= s.bounds[2])
+            s._latSel = (s._allLats >= s.bounds[1]) & (s._allLats <= s.bounds[3])
 
             if s.dependent_coordinates:
                 selTmp = s._latSel&s._lonSel
@@ -140,11 +147,34 @@ class NCSource(object):
                 s._latStop = s._allLats.size
 
         if s.dependent_coordinates:
-            s.lats = s._allLats[s._latStart:s._latStop,s._lonStart:s._lonStop]
-            s.lons = s._allLons[s._latStart:s._latStop,s._lonStart:s._lonStop]
+            s.lats = s._allLats[s._latStart:s._latStop, s._lonStart:s._lonStop]
+            s.lons = s._allLons[s._latStart:s._latStop, s._lonStart:s._lonStop]
+
+            # Create a mapper from degree-space to index-space
+            xi,yi = np.meshgrid( np.arange(s.lats.shape[1]), np.arange(s.lats.shape[0]) )
+            s._lonRep = bisplrep(s.lons, s.lats, xi, kx=2)
+            s._latRep = bisplrep(s.lons, s.lats, yi, kx=2)
+
+            # pts = []
+            # pts.extend( [(s.lons[i,0], s.lats[i,0]) for i in range(0, s.lats.shape[0]) ])
+            # pts.extend( [(s.lons[-1,i],s.lats[-1,i]) for i in range(0, s.lats.shape[1]) ])
+            # pts.extend( [(s.lons[i,-1],s.lats[i,-1]) for i in range(s.lats.shape[0]-1,-1,-1) ])
+            # pts.extend( [(s.lons[0,i], s.lats[0,i]) for i in range(s.lats.shape[1]-1,-1,-1) ])
+            # #pts = np.array(pts)
+            # s.g = gk.geom.polygon( np.array(pts), srs=gk.srs.EPSG4326 )
+            # #gk.drawGeoms()
+            
+            #s._lonMinRep = interp1d(s.lons[:,0], np.arange(s.lats.shape[0]), kind='cubic')
+            #s._lonMaxRep = interp1d(s.lons[:,-1], np.arange(s.lats.shape[0]), kind='cubic')
+            #s._latMinRep = interp1d(s.lats[0,:], np.arange(s.lats.shape[1]), kind='cubic')
+            #s._latMaxRep = interp1d(s.lats[-1,:], np.arange(s.lats.shape[1]), kind='cubic')
+
         else:
             s.lats = s._allLats[s._latStart:s._latStop]
             s.lons = s._allLons[s._lonStart:s._lonStop]
+
+            s._latRep = np.interp1d(s.lats, np.arange(s.lats.size), kind='cubic')
+            s._lonRep = np.interp1d(s.lons, np.arange(s.lons.size), kind='cubic')
 
         s.extent = gk.Extent(s.lons.min(), s.lats.min(), s.lons.max(), s.lats.max(), srs=gk.srs.EPSG4326)
 
@@ -160,8 +190,10 @@ class NCSource(object):
             s._timeSel = (timeindex >= timeStart) & (timeindex <= timeEnd)
 
         s.timeindex = timeindex[s._timeSel]
+        if not tz is None:
+            s.timeindex=pd.Index(s.timeindex, tz="GMT")
 
-        # initialize some variables
+        # initialize the data container
         s.data = OrderedDict()
     
     def pickle(s, path):
@@ -179,22 +211,18 @@ class NCSource(object):
     def load(s, variable, name=None, heightIdx=None, processor=None):
         """Load a variable into the source's data table
 
-        Note
-        ----
-        Generally not intended for normal use. Look into MerraSource, CordexSource, or CosmoSource
-
         Parameters
         ----------
         variable : str
-            The variable within the initialized datasources to load
+            The variable within the currated datasources to load
               * The variable must either be of dimension (time, lat, lon) or 
                 (time, height, lat, lon)
 
-        name : str, optional
+        name : str; optional
             The name to give this variable in the loaded data table
               * If None, the name of the original variable is kept
 
-        heightIdx : int, optional
+        heightIdx : int; optional
             The Height index to extract if the original variable has the height
             dimension
 
@@ -247,25 +275,24 @@ class NCSource(object):
         # Add to data
         s.data[name] = data
 
-    def loc2Index(s, loc, outsideOkay=False):
+    def loc2IndexV2(s, loc, outsideOkay=False, asInt=True):
         """Returns the closest X and Y indexes corresponding to a given location 
         or set of locations
 
         Parameters
         ----------
-            loc : Anything acceptable by geokit.LocationSet
-                The location(s) to search for
-                  * A single tuple with (lon, lat) is acceptable, or a list of such 
-                    tuples
-                  * A single point geometry (as long as it has an SRS), or a list
-                    of geometries is okay
-                  * geokit,Location, or geokit.LocationSet are best, though
+        loc : Anything acceptable by geokit.LocationSet
+            The location(s) to search for
+            * A single tuple with (lon, lat) is acceptable, or a list of such tuples
+            * A single point geometry (as long as it has an SRS), or a list
+              of geometries is okay
+            * geokit,Location, or geokit.LocationSet are best!
 
-            outsideOkay : bool, optional
-                Determines if points which are outside the source's lat/lon grid
-                are allowed
-                * If True, points outside this space will return as None
-                * If False, an error is raised 
+        outsideOkay : bool, optional
+            Determines if points which are outside the source's lat/lon grid
+            are allowed
+            * If True, points outside this space will return as None
+            * If False, an error is raised 
 
         Returns
         -------
@@ -277,6 +304,65 @@ class NCSource(object):
         If multiple locations are given: list
             * Format: [ (yIndex1, xIndex1), (yIndex2, xIndex2), ...]
             * Order matches the given order of locations
+
+        """
+        # Ensure loc is a list
+        locations = LocationSet(loc)
+
+        # Convert to rotated coordinates
+        rlonCoords, rlatCoords = rotateFromLatLon(locations.lons, locations.lats, lonSouthPole=18, latSouthPole=-39.25)
+        
+        # Find integer locations
+        drlon = 0.0550000113746
+        drlat = 0.0550001976179
+
+        rlonStart = -28.40246773
+        rlatStart = -23.40240860
+
+        lonI = (rlonCoords - rlonStart)/drlon - s._lonStart
+        latI = (rlatCoords - rlatStart)/drlat - s._latStart
+
+        # Make int, maybe
+        if asInt:
+            lonI = np.round(lonI).astype(int)
+            latI = np.round(latI).astype(int)
+
+        # Make output
+        if locations.count==1:
+            return Index(yi=latI[0], xi=lonI[0])
+        else:
+            return [Index(yi=y, xi=x) for y,x in zip(latI, lonI)]
+
+    def loc2Index(s, loc, outsideOkay=False):
+        """Returns the closest X and Y indexes corresponding to a given location 
+        or set of locations
+
+        Parameters
+        ----------
+        loc : Anything acceptable by geokit.LocationSet
+            The location(s) to search for
+            * A single tuple with (lon, lat) is acceptable, or a list of such tuples
+            * A single point geometry (as long as it has an SRS), or a list
+              of geometries is okay
+            * geokit,Location, or geokit.LocationSet are best!
+
+        outsideOkay : bool, optional
+            Determines if points which are outside the source's lat/lon grid
+            are allowed
+            * If True, points outside this space will return as None
+            * If False, an error is raised 
+
+        Returns
+        -------
+        If a single location is given: tuple 
+            * Format: (yIndex, xIndex)
+            * y index can be accessed with '.yi'
+            * x index can be accessed with '.xi'
+
+        If multiple locations are given: list
+            * Format: [ (yIndex1, xIndex1), (yIndex2, xIndex2), ...]
+            * Order matches the given order of locations
+
         """
         # Ensure loc is a list
         locations = LocationSet(loc)
@@ -305,7 +391,7 @@ class NCSource(object):
                 else:
                     idx.append(None)
                     continue
-            
+
             # Get the best indices 
             if s.dependent_coordinates:
                 dist = np.sqrt(tmpLon*tmpLon+tmpLat*tmpLat)
@@ -323,7 +409,7 @@ class NCSource(object):
         else:
             return idx
 
-    def get(s, variable, locations, interpolation='near', forceDataFrame=False, outsideOkay=False):
+    def get(s, variable, locations, interpolation='near', forceDataFrame=False, outsideOkay=False, _locIsIndex=False):
         """
         Retrieve complete time series for a variable from the source's loaded data 
         table at the given location(s)
@@ -374,11 +460,14 @@ class NCSource(object):
           * Columns match to the given order of locations
         
         """
-        # Ensure loc is a list
-        locations = LocationSet(locations)
+        if not _locIsIndex
+            # Ensure loc is a list
+            locations = LocationSet(locations)
 
-        # compute the closest indices
-        indecies = s.loc2Index(locations, outsideOkay)
+            # compute the closest indices
+            indecies = s.loc2Index(locations, outsideOkay)
+        else: 
+            indecies = locations
         if isinstance(indecies, Index): indecies = [indecies, ]
 
         # Do interpolation

@@ -4,4 +4,6 @@ from .util_ import (gk, Location, LocationSet, Extent, ResError,
                     removeLeapDay, 
                     linearTransition, 
                     parseRESGenerationFile, 
+                    rotateFromLatLon,
+                    rotateToLatLon,
                     )
