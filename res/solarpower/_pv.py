@@ -106,11 +106,13 @@ def simulatePVModule(locs, elev, source=None, module="SunPower_SPR_X21_255", azi
     if timeindex is None:
         times = source.timeindex
 
-    if ghi is None: ghi = source.get("ghi", locs, interpolation=interpolation, forceDataFrame=True)
-    if dni is None: dni = source.get("dni", locs, interpolation=interpolation, forceDataFrame=True)
-    if windspeed is None: windspeed = source.get("windspeed", locs, interpolation=interpolation, forceDataFrame=True)
-    if pressure is None: pressure = source.get("pressure", locs, interpolation=interpolation, forceDataFrame=True)
-    if air_temp is None: air_temp = source.get("air_temp", locs, interpolation=interpolation, forceDataFrame=True)-273.15
+    if not source is None:
+        idx = source.loc2Index(locs, asInt=False)
+        if ghi is None: ghi = source.get("ghi", locs, interpolation=interpolation, forceDataFrame=True, _indicies=idx)
+        if dni is None: dni = source.get("dni", locs, interpolation=interpolation, forceDataFrame=True, _indicies=idx)
+        if windspeed is None: windspeed = source.get("windspeed", locs, interpolation=interpolation, forceDataFrame=True, _indicies=idx)
+        if pressure is None: pressure = source.get("pressure", locs, interpolation=interpolation, forceDataFrame=True, _indicies=idx)
+        if air_temp is None: air_temp = source.get("air_temp", locs, interpolation=interpolation, forceDataFrame=True, _indicies=idx)-273.15
 
     #addTime("Extract weather data")
 
@@ -195,9 +197,9 @@ def simulatePVModule(locs, elev, source=None, module="SunPower_SPR_X21_255", azi
         solposLat = np.round(loc.lat, 1) # Only perform solor position calc for every .1 degrees
         solposLon = np.round(loc.lon, 1) # Only perform solor position calc for every .1 degrees
         solposElev = np.round(elev[loc], -2) # Only perform solor position calc for every 50 meters
+        if isinstance(solposElev, pd.Series): raise ResError("%s is not unique"%str(loc))
 
         solposKey = (solposLon, solposLat, solposElev)
-
         if not solposKey in checkedSolPosValues:
             # Pressure and temperature should not change much between evaluated locations
             checkedSolPosValues[solposKey] = pvlib.solarposition.spa_python(times, 

@@ -137,15 +137,14 @@ def adjustContextMeanToGwa( windspeed, targetLoc, gwa, contextMean=None, windspe
 
 ################################################################################
 ## Vertical projection methods
-
 def projectByLogLaw( measuredWindspeed, measuredHeight, targetHeight, roughness, displacement=0, stability=0):
     """Estimates windspeed at target height ($h_t$) based off a measured windspeed ($u_m$) at a known measurement height ($h_m$) subject to the surface roughness ($z$), displacement height ($d$), and stability ($S$)
 
     * Begins with the semi-empirical log wind profile ($a$ stands for any height):
-        $ u_a = \frac{u_*}{\kappa}[ln(\frac{h_a - d}{z}) + S]$
+        $ u_a = \\frac{u_*}{\\kappa}[ln(\\frac{h_a - d}{z}) + S]$
 
     * Solves for $u_t$ based off known values:
-        $ u_t = u_m * \frac{ln((h_t - d)/z}) + S]}{ln((h_m - d)/z}) + S]}
+        $ u_t = u_m * \\frac{ln((h_t - d)/z}) + S]}{ln((h_m - d)/z}) + S]}
     
     * Simplifications:
         - stability -> 0 under "neutral stability conditions"
@@ -174,9 +173,9 @@ def alphaFromGWA( gwaDir, loc, pairID=1, _structure="WS_%03dm_global_wgs84_mean_
         if not isfile(f): 
             raise ResError("Could not find file: "+f)
 
-    if pairID==0 or pairID==2: gwaAverage50  = gk.raster.extractValues(GWA_files[0], loc).data.values
-    if pairID==0 or pairID==1: gwaAverage100 = gk.raster.extractValues(GWA_files[1], loc).data.values
-    if pairID==1 or pairID==2: gwaAverage200 = gk.raster.extractValues(GWA_files[2], loc).data.values
+    if pairID==0 or pairID==2: gwaAverage50  = gk.raster.interpolateValues(GWA_files[0], loc)
+    if pairID==0 or pairID==1: gwaAverage100 = gk.raster.interpolateValues(GWA_files[1], loc)
+    if pairID==1 or pairID==2: gwaAverage200 = gk.raster.interpolateValues(GWA_files[2], loc)
 
     # Compute alpha
     if pairID==0: out = alphaFromLevels(gwaAverage50,50,gwaAverage100,100)
@@ -205,9 +204,9 @@ def roughnessFromGWA(gwaDir, loc, pairID=1, _structure="WS_%03dm_global_wgs84_me
         if not isfile(f): 
             raise ResWeatherError("Could not find file: "+f)
 
-    if pairID==0 or pairID==2: gwaAverage50  = gk.raster.extractValues(GWA_files[0], loc).data.values
-    if pairID==0 or pairID==1: gwaAverage100 = gk.raster.extractValues(GWA_files[1], loc).data.values
-    if pairID==1 or pairID==2: gwaAverage200 = gk.raster.extractValues(GWA_files[2], loc).data.values
+    if pairID==0 or pairID==2: gwaAverage50  = gk.raster.interpolateValues(GWA_files[0], loc)
+    if pairID==0 or pairID==1: gwaAverage100 = gk.raster.interpolateValues(GWA_files[1], loc)
+    if pairID==1 or pairID==2: gwaAverage200 = gk.raster.interpolateValues(GWA_files[2], loc)
 
     # Interpolate gwa average to desired height
     if pairID==0: out = roughnessFromLevels(gwaAverage50,50,gwaAverage100,100)
@@ -320,7 +319,7 @@ def roughnessFromCLC(clcPath, loc, winRange=0):
     loc = LocationSet(loc)
 
     ## Get pixels values from clc
-    clcGridValues = gk.raster.extractValues(clcPath, loc, winRange=winRange, noDataOkay=True).data.values
+    clcGridValues = gk.raster.interpolateValues(clcPath, loc, winRange=winRange, noDataOkay=True)
 
     ## make output array
     if winRange>0:
@@ -349,7 +348,7 @@ def roughnessFromCLC(clcPath, loc, winRange=0):
 
     ## Done!
     if len(outputs)==1: return outputs[0]
-    else: return pd.Series(outputs,index=loc)
+    else: return outputs
 
 
 ############################################################################

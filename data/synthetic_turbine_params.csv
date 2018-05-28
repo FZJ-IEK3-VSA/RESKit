@@ -1,4 +1,4 @@
-fitting function: ws_at_perc_capacity = exp( scale* log(specific_capacity) + cost)
+fitting function: ws_at_perc_capacity = exp( scale* log(specific_capacity) + const)
 perc_capacity,const,scale
 0.0,-0.8691217362419719,0.30864428729945903
 1.0,-0.5846306874157908,0.298395231937226
