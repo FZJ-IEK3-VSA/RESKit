@@ -62,24 +62,36 @@ class NCSource(object):
                 to start collecting data, and the second indicates the end
 
         """
+        # Collect sources
+        def addSource(src):
+            out = []
+            if isinstance(src, list): 
+                for s in src: 
+                    out.extend(addSource(s))
+            elif isinstance(src, str):
+                if isfile(src): # Assume its an NC file
+                    out.extend([src,])
+                elif isdir(src): # Assume its a directory of NC files
+                    for s in glob(join(src, "*.nc")): 
+                        out.append( s )
+                    for s in glob(join(src, "*.nc4")): 
+                        out.append( s )
+                else: # Assume we were given a glob string
+                    for s in glob(src): 
+                        out.extend( addSource(s) )
+            return out
+        sources = addSource(source)
+        if len(sources)==0: raise ResError("No '.nc' or '.nc4' files found")
+
         # Collect all variable information
         s.variables = OrderedDict()
-        if not isinstance(source, list): 
-            if isinstance(source, str):
-                if not isfile(source):
-                    source = glob(source)
-                elif 
-                else:
-                    source = [source, ]
-            else:
-                raise ResError("I just can't handle a "+str(type(source)))
-
         expectedShape = OrderedDict()
 
         units = []
         names = []
 
-        for src in source:
+        for src in sources:
+            print(src)
             ds = nc.Dataset(src)
             for var in ds.variables:
                 if not var in s.variables:
