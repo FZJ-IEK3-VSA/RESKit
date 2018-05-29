@@ -36,7 +36,7 @@ class CosmoSource(NCSource):
               * Expect two pandas Timestamp objects> The first indicates the point
                 to start collecting data, and the second indicates the end
 
-        """
+        """      
         NCSource.__init__(s, source=source, bounds=bounds, timeName="time", latName="lat", lonName="lon", 
                           indexPad=indexPad, _maxLonDiff=s.MAX_LON_DIFFERENCE, _maxLatDiff=s.MAX_LAT_DIFFERENCE,
                           **kwargs)
@@ -124,56 +124,142 @@ class CosmoSource(NCSource):
         else:
             return [ None if ss else Index(yi=y,xi=x) for ss,y,x in zip(s,latI,lonI) ]
 
-    def loadWindSpeed(s, height=100):
+    def loadRadiation(s):
+        """frankCorrection: "Bias correction of a novel European reanalysis data set for solar energy applications" """
+        s.load("SWDIFS", "dhi")
+        s.load("SWDIRS", "dni_flat")
+        s.data["ghi"] = s.data["dhi"]+s.data["dni_flat"]
+
+        del s.data["dni_flat"]
+
+    def loadWindSpeed(s, minHeight=50, maxHeight=None):
+        if minHeight < 50 :
+
+    def loadWindSpeedInterpolatable(s):
+        s.load("windspeed_10", name="windspeed")
+        s.load("windspeed_50", name="windspeed")
+        s.load("windspeed_100", name="windspeed")
+        s.load("windspeed_140", name="windspeed")
+
+    def loadWindSpeedAtHeight(s, height=100):
         """NEEDS UPDATING!"""
         # Check if height is on of the heights we already have
-        # The 3 known heights should always be 10, 100, and 120
+        # The 3 known heights should always be 50, 100, and 140
         if height == 10:
-              s.load("wspd", name="windspeed", heightIdx=0)
+              s.load("windspeed_10", name="windspeed")
+        elif height == 50:
+              s.load("windspeed_50", name="windspeed")
         elif height == 100:
-              s.load("wspd", name="windspeed", heightIdx=1)
-        elif height == 120:
-              s.load("wspd", name="windspeed", heightIdx=2)
+              s.load("windspeed_100", name="windspeed")
+        elif height == 140:
+              s.load("windspeed_140", name="windspeed")
         else:
             # projection is required
-            if height <= 60:
-                lowIndex = 0
-                highIndex = 1
+            if height <= 50:
+                s.load("windspeed_10")
+                s.load("windspeed_50")
+                s.load("windspeed_100")
 
-                lowHeight = 10
-                highHeight = 100
-            else:
-                lowIndex = 1
-                highIndex = 2
+                # DO CUBIC INTERP
+                raise RuntimeError("This hasn't been implemented yet :(")
 
-                lowHeight = 100
-                highHeight = 120
-
+                # Remove unneeded data
+                del s.data["windspeed_10"]
+                del s.data["windspeed_50"]
+                del s.data["windspeed_100"]
             
-            s.load("wspd", name="lowWspd", heightIdx=lowIndex)
-            s.load("wspd", name="highWspd", heightIdx=highIndex)
+            elif height < 100:
+                s.load("windspeed_50")
+                s.load("windspeed_100")
 
-            lowData = s.data["lowWspd"]
-            highData = s.data["highWspd"]
+                newWspd = (s.data["windspeed_100"]-s.data["windspeed_50"])*(height-50)/(100-50)
+                s.data["windspeed"] = newWspd
+                
+                del s.data["windspeed_50"]
+                del s.data["windspeed_100"]    
 
-            alpha = np.log(highData/lowData)/np.log(highHeight/lowHeight)
+            else:
+                s.load("windspeed_100")
+                s.load("windspeed_140")
 
-            s.data["windspeed"] = lowData*np.power(height/lowHeight, alpha)
+                newWspd = (s.data["windspeed_140"]-s.data["windspeed_100"])*(height-100)/(140-100)
+                s.data["windspeed"] = newWspd
+                
+                del s.data["windspeed_100"]
+                del s.data["windspeed_140"]                
 
-            del s.data["lowWspd"]
-            del s.data["highWspd"]
+    def loadTemperature(s, processor=lambda x: x-273.15):
+        """load the typical pressure variable"""
+        s.load("t2", name="air_temp", processor=processor)
 
-    #def loadRadiation(s, ghiName="rsds"):
-    #    # read raw data
-    #    s.load(ghiName, name="ghi")
+    def loadPressure(s):
+        """load the typical pressure variable"""
+        s.load("ps", name="pressure")
 
-    #def loadTemperature(s, which='air', processor=lambda x: x-273.15):
-    #    """Temperature variable loader"""
-    #    if which.lower() == 'air': varName = "tas"
-    #    elif which.lower() == 'dew': varName = "dpas"
-    #    else: raise ResMerraError("sub group '%s' not understood"%which)
-    #
-    #    # load
-    #    s.load(varName, name=which+"_temp", processor=processor)
+    def getWindSpeedAtHeights(s, locations, heights, spatialInterpolation='near', forceDataFrame=False, outsideOkay=False, _indicies=None):
+        """
+        Retrieve complete time series for a variable from the source's loaded data 
+        table at the given location(s)
 
-    #def loadPressure(s): s.load("ps", name='pressure')
+        Parameters
+        ----------
+            locations : Anything acceptable by geokit.LocationSet
+                The location(s) to search for
+                  * A single tuple with (lon, lat) is acceptable, or a list of such 
+                    tuples
+                  * A single point geometry (as long as it has an SRS), or a list
+                    of geometries is okay
+                  * geokit,Location, or geokit.LocationSet are best, though
+
+            spatialInterpolation : str, optional
+                The interpolation method to use
+                  * 'near' => For each location, extract the time series at the 
+                    closest lat/lon index
+                  * 'bilinear' => For each location, use the time series of the 
+                    surrounding +/- 1 index locations to create an estimated time 
+                    series at the given location using a biliear scheme
+                  * 'cubic' => For each location, use the time series of the 
+                    surrounding +/- 2 index locations to create an estimated time 
+                    series at the given location using a cubic scheme
+
+            forceDataFrame : bool, optional
+                Instructs the returned value to take the form of a DataFrame 
+                regardless of how many locations are specified
+
+
+            outsideOkay : bool, optional
+                Determines if points which are outside the source's lat/lon grid
+                are allowed
+                * If True, points outside this space will return as None
+                * If False, an error is raised 
+        
+        Returns
+        -------
+
+        If a single location is given: pandas.Series
+          * Indexes match to times
+        
+        If multiple locations are given: pandas.DataFrame
+          * Indexes match to times
+          * Columns match to the given order of locations
+        
+        """
+        k = dict(interpolation=spatialInterpolation, locations=locations, forceDataFrame=forceDataFrame, 
+                 outsideOkay=outsideOkay, _indicies=_indicies)
+        if height <= 50:
+            # DO CUBIC INTERP
+            raise RuntimeError("This hasn't been implemented yet below 50m :(")
+
+        elif height < 100:
+            ws50 = NCSource.get(s, "windspeed_50", **k)
+            ws100 = NCSource.get(s, "windspeed_100", **k)
+
+            newWspd = (ws100-ws50)*(heights-50)/(100-50)
+
+        else:
+            ws140 = NCSource.get(s, "windspeed_140", *s*k)
+            ws100 = NCSource.get(s, "windspeed_100", **k)
+
+            newWspd = (ws140-ws100)*(heights-100)/(140-100)
+
+        return newWspd

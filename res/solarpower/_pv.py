@@ -58,7 +58,7 @@ def _sapm_celltemp(poa_global, wind_speed, temp_air, model='open_rack_cell_glass
     return temp_cell
 
 
-def simulatePVModule(locs, elev, source=None, module="SunPower_SPR_X21_255", azimuth=180, tilt="latitude", totalSystemCapacity=None, tracking="fixed", modulesPerString=1, inverter=None, stringsPerInverter=1, rackingModel='open_rack_cell_glassback', airMassModel='kastenyoung1989', transpositionModel='haydavies', cellTempModel="sandia", generationModel="single-diode", inverterModel="sandia", interpolation="bilinear", loss=0.00, trackingGCR=2/7, trackingMaxAngle=60, ghi=None, dni=None, windspeed=None, pressure=None, air_temp=None, albedo=0.2, timeindex=None):
+def simulatePVModule(locs, elev, weather, module="SunPower_SPR_X21_255", azimuth=180, tilt="latitude", totalSystemCapacity=None, tracking="fixed", modulesPerString=1, inverter=None, stringsPerInverter=1, rackingModel='open_rack_cell_glassback', airMassModel='kastenyoung1989', transpositionModel='haydavies', cellTempModel="sandia", generationModel="single-diode", inverterModel="sandia", interpolation="bilinear", loss=0.00, trackingGCR=2/7, trackingMaxAngle=60, frankCorrection=False):
     """
     Performs a simple PV simulation
 
@@ -103,16 +103,40 @@ def simulatePVModule(locs, elev, source=None, module="SunPower_SPR_X21_255", azi
     #addTime("arrange locations")
 
     ### Collect weather data
-    if timeindex is None:
+    if isinstance(weather, NCSource):
         times = source.timeindex
 
-    if not source is None:
         idx = source.loc2Index(locs, asInt=False)
-        if ghi is None: ghi = source.get("ghi", locs, interpolation=interpolation, forceDataFrame=True, _indicies=idx)
-        if dni is None: dni = source.get("dni", locs, interpolation=interpolation, forceDataFrame=True, _indicies=idx)
-        if windspeed is None: windspeed = source.get("windspeed", locs, interpolation=interpolation, forceDataFrame=True, _indicies=idx)
-        if pressure is None: pressure = source.get("pressure", locs, interpolation=interpolation, forceDataFrame=True, _indicies=idx)
-        if air_temp is None: air_temp = source.get("air_temp", locs, interpolation=interpolation, forceDataFrame=True, _indicies=idx)-273.15
+        k = dict( locations=locs, interpolation=interpolation, forceDataFrame=True, _indicies=idx )
+
+        ghi = source.get("ghi", **k)
+        dhi = source.get("dhi", **k) if "dhi" in weather.data else None
+        dni = source.get("dni", **k) if "dni" in weather.data else None
+        if dni is None and dhi is None: raise ResError("Either dhi or dni must be available")
+
+        windspeed = source.get("windspeed", **k)
+        pressure = source.get("pressure", **k)
+        air_temp = source.get("air_temp", **k)
+        if "albedo" in weather.data: 
+            albedo = source.get("albedo", **k)
+        else: 
+            albedo = 0.2
+
+        else: # weather should be a dictionary
+            times = weather["times"]
+            
+            ghi = weather["ghi"]
+            dhi = weather["dhi"] if "dhi" in weather else None
+            dni = weather["dni"] if "dni" in weather else None
+            if dni is None and dhi is None: raise ResError("Either dhi or dni must be available")
+
+            windspeed = weather["windspeed"]
+            pressure = weather["pressure"]
+            air_temp = weather["air_temp"]
+            if "albedo" in weather: 
+                albedo = weather["albedo"]
+            else: 
+                albedo = 0.2
 
     #addTime("Extract weather data")
 
@@ -216,12 +240,37 @@ def simulatePVModule(locs, elev, source=None, module="SunPower_SPR_X21_255", azi
     del _solpos, checkedSolPosValues
     #addTime("Solar position")
 
-    # Compute DHI
-    dhi = ghi - dni*np.sin( np.radians(solpos["apparent_elevation"])) # TODO: CHECK THIS!!!
-    dhi[dhi<0] = 0
+    # DNI Extraterrestrial
+    dni_extra = pvlib.irradiance.extraradiation(times).values
+    if len(dni.shape) > 1:
+        dni_extra = np.broadcast_to(dni_extra.reshape((ghi.shape[0],1)), ghi.shape)
+    #addTime("DNI Extra")
+    
+    # Apply Frank corrections when dealing with COSMO data?
+    if frankCorrection:
+        transmissivity = ghi/dni_extra
+        sigmoid = 1/(1+np.exp( -(transmisivity-0.5)/0.03 ))
+        del transmissivity
+
+        # Adjust clearsky regime
+        factor = np.empty(ghi.shape[0])
+        months = times.month
+        factor[months==1] = 
+
+        #addTime("Frank Correction")
+
+    # Compute DHI or DNI
+    if dhi is None:
+        dhi = ghi - dni*np.sin( np.radians(solpos["apparent_elevation"])) # TODO: CHECK THIS!!!
+        dhi[dhi<0] = 0
+    elif dni is None:
+        dni = (ghi - dhi)/np.sin( np.radians(solpos["apparent_elevation"])) # TODO: CHECK THIS!!!
+        dni[dni<0] = 0
+
+
+
     #addTime("DHI calc")
     
-
     # Get tilt and azimuths
     if singleAxis:
         axis_tilt = tilt
@@ -239,13 +288,6 @@ def simulatePVModule(locs, elev, source=None, module="SunPower_SPR_X21_255", azi
             azimuth[loc] = tmp["surface_azimuth"].copy()
 
         del axis_azimuth, axis_tilt, tmp
-
-    # DNI Extraterrestrial
-    dni_extra = pvlib.irradiance.extraradiation(times).values
-    if len(dni.shape) > 1:
-        dni_extra = np.broadcast_to(dni_extra.reshape((dni.shape[0],1)), dni.shape)
-    #addTime("DNI Extra")
-    
 
     # Airmass
     if sandiaGenerationModel: # airmass only needed for SAPM model
