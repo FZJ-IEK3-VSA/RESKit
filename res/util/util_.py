@@ -17,6 +17,9 @@ from datetime import datetime as dt
 # making an error
 class ResError(Exception): pass # this just creates an error that we can use
 
+# Add test data
+_test_data_ = gk._test_data_
+
 # Make easy access to latlon projection system
 LATLONSRS = gk.srs.EPSG4326
 LATLONSRS.__doc__ = "Spatial reference system for latitue and longitude coordinates"

@@ -58,7 +58,7 @@ def _sapm_celltemp(poa_global, wind_speed, temp_air, model='open_rack_cell_glass
     return temp_cell
 
 
-def simulatePVModule(locs, elev, weather, module="SunPower_SPR_X21_255", azimuth=180, tilt="latitude", totalSystemCapacity=None, tracking="fixed", modulesPerString=1, inverter=None, stringsPerInverter=1, rackingModel='open_rack_cell_glassback', airMassModel='kastenyoung1989', transpositionModel='haydavies', cellTempModel="sandia", generationModel="single-diode", inverterModel="sandia", interpolation="bilinear", loss=0.00, trackingGCR=2/7, trackingMaxAngle=60, frankCorrection=False):
+def simulatePVModule(locs, elev, source, module="SunPower_SPR_X21_255", azimuth=180, tilt="latitude", totalSystemCapacity=None, tracking="fixed", modulesPerString=1, inverter=None, stringsPerInverter=1, rackingModel='open_rack_cell_glassback', airMassModel='kastenyoung1989', transpositionModel='haydavies', cellTempModel="sandia", generationModel="single-diode", inverterModel="sandia", interpolation="bilinear", loss=0.00, trackingGCR=2/7, trackingMaxAngle=60, frankCorrection=False):
     """
     Performs a simple PV simulation
 
@@ -103,40 +103,40 @@ def simulatePVModule(locs, elev, weather, module="SunPower_SPR_X21_255", azimuth
     #addTime("arrange locations")
 
     ### Collect weather data
-    if isinstance(weather, NCSource):
+    if isinstance(source, NCSource):
         times = source.timeindex
 
         idx = source.loc2Index(locs, asInt=False)
         k = dict( locations=locs, interpolation=interpolation, forceDataFrame=True, _indicies=idx )
 
         ghi = source.get("ghi", **k)
-        dhi = source.get("dhi", **k) if "dhi" in weather.data else None
-        dni = source.get("dni", **k) if "dni" in weather.data else None
+        dhi = source.get("dhi", **k) if "dhi" in source.data else None
+        dni = source.get("dni", **k) if "dni" in source.data else None
         if dni is None and dhi is None: raise ResError("Either dhi or dni must be available")
 
         windspeed = source.get("windspeed", **k)
         pressure = source.get("pressure", **k)
         air_temp = source.get("air_temp", **k)
-        if "albedo" in weather.data: 
+        if "albedo" in source.data: 
             albedo = source.get("albedo", **k)
         else: 
             albedo = 0.2
 
-        else: # weather should be a dictionary
-            times = weather["times"]
-            
-            ghi = weather["ghi"]
-            dhi = weather["dhi"] if "dhi" in weather else None
-            dni = weather["dni"] if "dni" in weather else None
-            if dni is None and dhi is None: raise ResError("Either dhi or dni must be available")
+    else: # source should be a dictionary
+        times = source["times"]
+        
+        ghi = source["ghi"]
+        dhi = source["dhi"] if "dhi" in source else None
+        dni = source["dni"] if "dni" in source else None
+        if dni is None and dhi is None: raise ResError("Either dhi or dni must be available")
 
-            windspeed = weather["windspeed"]
-            pressure = weather["pressure"]
-            air_temp = weather["air_temp"]
-            if "albedo" in weather: 
-                albedo = weather["albedo"]
-            else: 
-                albedo = 0.2
+        windspeed = source["windspeed"]
+        pressure = source["pressure"]
+        air_temp = source["air_temp"]
+        if "albedo" in source: 
+            albedo = source["albedo"]
+        else: 
+            albedo = 0.2
 
     #addTime("Extract weather data")
 
@@ -242,21 +242,54 @@ def simulatePVModule(locs, elev, weather, module="SunPower_SPR_X21_255", azimuth
 
     # DNI Extraterrestrial
     dni_extra = pvlib.irradiance.extraradiation(times).values
-    if len(dni.shape) > 1:
+    if len(ghi.shape) > 1:
         dni_extra = np.broadcast_to(dni_extra.reshape((ghi.shape[0],1)), ghi.shape)
     #addTime("DNI Extra")
     
     # Apply Frank corrections when dealing with COSMO data?
     if frankCorrection:
         transmissivity = ghi/dni_extra
-        sigmoid = 1/(1+np.exp( -(transmisivity-0.5)/0.03 ))
-        del transmissivity
+        sigmoid = 1/(1+np.exp( -(transmissivity-0.5)/0.03 ))
+
+        # Adjust cloudy regime
+        months = times.month
+        cloudyFactors = np.empty(months.shape)
+
+        cloudyFactors[months==1] = 0.7776553729824053
+        cloudyFactors[months==2] = 0.7897164461247639
+        cloudyFactors[months==3] = 0.8176553729824052
+        cloudyFactors[months==4] = 0.8406805293005672
+        cloudyFactors[months==5] = 0.8761808928311765
+        cloudyFactors[months==6] = 0.9094139886578452
+        cloudyFactors[months==7] = 0.9350856478115459
+        cloudyFactors[months==8] = 0.9191682419659737
+        cloudyFactors[months==9] = 0.912703795259561
+        cloudyFactors[months==10]= 0.8775035625999711
+        cloudyFactors[months==11]= 0.8283158353933402
+        cloudyFactors[months==12]= 0.7651417769376183
+        cloudyFactors = np.broadcast_to(cloudyFactors.reshape( (cloudyFactors.size,1) ), ghi.shape)
+
+        cloudyFactors = cloudyFactors*(1-sigmoid)
 
         # Adjust clearsky regime
-        factor = np.empty(ghi.shape[0])
-        months = times.month
-        factor[months==1] = 
+        e = solpos["apparent_elevation"]
+        clearSkyFactors = np.ones(e.shape)
 
+        clearSkyFactors[(e>=10)&(e<20)] = 1.17612920884004
+        clearSkyFactors[(e>=20)&(e<30)] = 1.1384180020822825
+        clearSkyFactors[(e>=30)&(e<40)] = 1.1022951259566156
+        clearSkyFactors[(e>=40)&(e<50)] = 1.0856852748290704
+        clearSkyFactors[(e>=50)&(e<60)] = 1.0779254457050245
+        clearSkyFactors[e>=60] = 1.0715262914980628
+
+        clearSkyFactors *= sigmoid
+
+        # Apply to ghi
+        totalCorrectionFactor = clearSkyFactors+cloudyFactors
+        ghi *= totalCorrectionFactor
+        if not dhi is None: dhi *= totalCorrectionFactor # should the factor be applied to dhi too?
+
+        del clearSkyFactors, cloudyFactors, totalCorrectionFactor, e, months, sigmoid, transmissivity
         #addTime("Frank Correction")
 
     # Compute DHI or DNI
@@ -266,8 +299,6 @@ def simulatePVModule(locs, elev, weather, module="SunPower_SPR_X21_255", azimuth
     elif dni is None:
         dni = (ghi - dhi)/np.sin( np.radians(solpos["apparent_elevation"])) # TODO: CHECK THIS!!!
         dni[dni<0] = 0
-
-
 
     #addTime("DHI calc")
     

@@ -39,7 +39,7 @@ class CosmoSource(NCSource):
         """      
         NCSource.__init__(s, source=source, bounds=bounds, timeName="time", latName="lat", lonName="lon", 
                           indexPad=indexPad, _maxLonDiff=s.MAX_LON_DIFFERENCE, _maxLatDiff=s.MAX_LAT_DIFFERENCE,
-                          **kwargs)
+                          tz="GMT", **kwargs)
            
 
     def loc2Index(s, loc, outsideOkay=False, asInt=True):
@@ -92,7 +92,6 @@ class CosmoSource(NCSource):
             _latN = s._latN
             _lonN = s._lonN
 
-
         # Ensure loc is a list
         locations = LocationSet(loc)
 
@@ -126,14 +125,11 @@ class CosmoSource(NCSource):
 
     def loadRadiation(s):
         """frankCorrection: "Bias correction of a novel European reanalysis data set for solar energy applications" """
-        s.load("SWDIFS", "dhi")
-        s.load("SWDIRS", "dni_flat")
+        s.load("SWDIFDS_RAD", "dhi")
+        s.load("SWDIRS_RAD", "dni_flat")
         s.data["ghi"] = s.data["dhi"]+s.data["dni_flat"]
 
         del s.data["dni_flat"]
-
-    def loadWindSpeed(s, minHeight=50, maxHeight=None):
-        if minHeight < 50 :
 
     def loadWindSpeedInterpolatable(s):
         s.load("windspeed_10", name="windspeed")
@@ -190,11 +186,17 @@ class CosmoSource(NCSource):
 
     def loadTemperature(s, processor=lambda x: x-273.15):
         """load the typical pressure variable"""
-        s.load("t2", name="air_temp", processor=processor)
+        s.load("2t", name="air_temp", processor=processor)
 
     def loadPressure(s):
         """load the typical pressure variable"""
-        s.load("ps", name="pressure")
+        s.load("sp", name="pressure")
+
+    def loadSet_PV(s):
+        s.loadRadiation()
+        s.loadWindSpeedAtHeight(10)
+        s.loadPressure()
+        s.loadTemperature()
 
     def getWindSpeedAtHeights(s, locations, heights, spatialInterpolation='near', forceDataFrame=False, outsideOkay=False, _indicies=None):
         """

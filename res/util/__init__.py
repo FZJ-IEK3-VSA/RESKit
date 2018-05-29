@@ -1,4 +1,4 @@
-from .util_ import (gk, Location, LocationSet, Extent, ResError, 
+from .util_ import (_test_data_, gk, Location, LocationSet, Extent, ResError, 
                     LATLONSRS,
                     storeTimeseriesAsNc, 
                     removeLeapDay, 
