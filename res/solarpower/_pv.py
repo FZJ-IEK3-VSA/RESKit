@@ -275,12 +275,13 @@ def simulatePVModule(locs, elev, source, module="SunPower_SPR_X21_255", azimuth=
         e = solpos["apparent_elevation"]
         clearSkyFactors = np.ones(e.shape)
 
-        clearSkyFactors[(e>=10)&(e<20)] = 1.17612920884004
-        clearSkyFactors[(e>=20)&(e<30)] = 1.1384180020822825
-        clearSkyFactors[(e>=30)&(e<40)] = 1.1022951259566156
-        clearSkyFactors[(e>=40)&(e<50)] = 1.0856852748290704
-        clearSkyFactors[(e>=50)&(e<60)] = 1.0779254457050245
-        clearSkyFactors[e>=60] = 1.0715262914980628
+
+        clearSkyFactors[np.where((e>=10)&(e<20))] = 1.17612920884004
+        clearSkyFactors[np.where((e>=20)&(e<30))] = 1.1384180020822825
+        clearSkyFactors[np.where((e>=30)&(e<40))] = 1.1022951259566156
+        clearSkyFactors[np.where((e>=40)&(e<50))] = 1.0856852748290704
+        clearSkyFactors[np.where((e>=50)&(e<60))] = 1.0779254457050245
+        clearSkyFactors[np.where(e>=60)] = 1.0715262914980628
 
         clearSkyFactors *= sigmoid
 
