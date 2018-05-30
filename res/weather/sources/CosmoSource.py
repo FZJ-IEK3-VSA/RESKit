@@ -168,7 +168,9 @@ class CosmoSource(NCSource):
                 s.load("windspeed_50")
                 s.load("windspeed_100")
 
-                newWspd = (s.data["windspeed_100"]-s.data["windspeed_50"])*(height-50)/(100-50)
+                fac = (heights-50)/(100-50)
+
+                newWspd = s.data["windspeed_100"]*fac+s.data["windspeed_50"]*(1-fac)
                 s.data["windspeed"] = newWspd
                 
                 del s.data["windspeed_50"]
@@ -178,7 +180,9 @@ class CosmoSource(NCSource):
                 s.load("windspeed_100")
                 s.load("windspeed_140")
 
-                newWspd = (s.data["windspeed_140"]-s.data["windspeed_100"])*(height-100)/(140-100)
+                fac = (heights-100)/(140-100)
+
+                newWspd = s.data["windspeed_140"]*fac+s.data["windspeed_100"]*(1-fac)
                 s.data["windspeed"] = newWspd
                 
                 del s.data["windspeed_100"]
@@ -246,22 +250,30 @@ class CosmoSource(NCSource):
           * Columns match to the given order of locations
         
         """
-        k = dict(interpolation=spatialInterpolation, locations=locations, forceDataFrame=forceDataFrame, 
+        k = dict(interpolation=spatialInterpolation, forceDataFrame=forceDataFrame, 
                  outsideOkay=outsideOkay, _indicies=_indicies)
-        if height <= 50:
-            # DO CUBIC INTERP
-            raise RuntimeError("This hasn't been implemented yet below 50m :(")
 
-        elif height < 100:
-            ws50 = NCSource.get(s, "windspeed_50", **k)
-            ws100 = NCSource.get(s, "windspeed_100", **k)
+        locations = gk.LocationSet(locations)
+        heights = np.array(heights)
+        _0_50 = heights<50
+        _50_100 = np.logical_and(heights>=50, heights<100)
+        _100_ = heights>=100
 
-            newWspd = (ws100-ws50)*(heights-50)/(100-50)
+        newWindspeed = np.empty((len(s.timeindex), locations.count))
 
-        else:
-            ws140 = NCSource.get(s, "windspeed_140", *s*k)
-            ws100 = NCSource.get(s, "windspeed_100", **k)
+        if _0_50.any(): raise RuntimeError("This hasn't been implemented yet below 50m :(")
+        if _50_100.any(): 
+            ws50 = NCSource.get(s, "windspeed_50", locations=locations[_50_100], **k)
+            ws100 = NCSource.get(s, "windspeed_100", locations=locations[_50_100], **k)
 
-            newWspd = (ws140-ws100)*(heights-100)/(140-100)
+            fac = (heights-50)/(100-50)
+            newWindspeed[:,_50_100] = ws100*fac + ws50*(1-fac)
 
-        return newWspd
+        if _100_.any():
+            ws100 = NCSource.get(s, "windspeed_100", locations=locations[_100_], **k)
+            ws140 = NCSource.get(s, "windspeed_140", locations=locations[_100_], **k)
+
+            fac = (heights-100)/(140-100)
+            newWindspeed[:,_100_] = ws140*fac + ws100*(1-fac)
+
+        return pd.DataFrame(newWindspeed, columns=ws100.columns, index=ws100.index)

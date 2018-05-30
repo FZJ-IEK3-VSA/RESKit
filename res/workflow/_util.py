@@ -3,6 +3,24 @@ from res.weather.sources import MerraSource
 
 from multiprocessing import Pool, cpu_count, Manager
 from multiprocessing.managers import BaseManager
+from collections import namedtuple
+
+### FIX ME !!!!!!! WHAT IS NEEDED?????
+import numpy as np
+import netCDF4 as nc
+import geokit as gk
+from geokit import Location, LocationSet, Extent
+import ogr, osr
+import pandas as pd
+from collections import namedtuple, OrderedDict
+from scipy.interpolate import splrep, splev
+from scipy.stats import norm
+from glob import glob
+import re
+from os.path import join, dirname, basename, splitext
+import types
+from types import FunctionType
+from datetime import datetime as dt
 
 ## Make helpers
 class WSManager(BaseManager): pass

@@ -22,7 +22,7 @@ def convolutePowerCurveByGuassian(powerCurve, stdScaling=0.2, stdBase=0.6, minSp
             print("WARNING: 'steps' may not be high enough to properly compute the convoluted power curve. Check results or use a higher number of steps")
     
     # Initialize vanilla power curve
-    powerCurveInterp = splrep(powerCurve.ws, powerCurve.cf)
+    powerCurveInterp = splrep(ws, np.interp(ws, powerCurve.ws, powerCurve.cf))
 
     cf = np.zeros(steps)
     sel = ws<powerCurve.ws.max()
