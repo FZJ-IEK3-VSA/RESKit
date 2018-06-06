@@ -254,7 +254,10 @@ def offshoreTurbineCost(capacity, hubHeight, rotordiam, depth, distanceToShore, 
     bos = offshoreBOS(cp=cp, rd=rd, hh=hh, depth=depth, shoreD=shoreD, busD=busD, foundation=foundation, 
                       mooringCount=mooringCount, anchor=anchor, turbineNumber=turbineNumber, 
                       turbineSpacing=turbineSpacing, rowSpacing=rowSpacing, )
-    bos *= 0.44322409
+    
+    #scaling cost of bos to normalize overall cost to 2300 euro/kW 
+    #bos *= 0.44322409    # standard turbine: V164-8.0MW hh-105m depth 30 m shoreD=45 km
+    bos *= 0.2842698876700619 # standard turbine: V164-8.0MW hh-105m depth 80 m shoreD=50 km
 
     if foundation == 'monopile' or foundation == 'jacket':
         fin = tcc * 20.9/32.9 # Scaled according to tcc [7]
