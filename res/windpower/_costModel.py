@@ -563,7 +563,8 @@ def offshoreBOS(cp, rd, hh, depth, shoreD, busD, foundation, mooringCount, ancho
     else:
 
         # copied from above in case of spar
-        if foundation == 'spar':
+        if foundation == 'spar':   #WHY WAS IT SPAR BEFORE? WE ARE DOING THINGS WITH SEMISUBMERSIBLE
+        #if foundation == 'semisubmersible':
             semiSubmersibleSCMass = -0.9571 * np.power(cp , 2) + 40.89 * cp + 802.09
             semiSubmersibleSCCost = semiSubmersibleSCMass * semiSubmersibleSCCostRate
 
@@ -648,7 +649,7 @@ def offshoreBOS(cp, rd, hh, depth, shoreD, busD, foundation, mooringCount, ancho
     #development = tot*0.02
 
     #########################################
-    ## The below cooresponds to cost percentages in [7] for the fixed-monopile example
+    ## The below cooresponds to cost percentages in [7]
     if fixedType:
         tot = (assemblyAndInstallationCost*19.0 + 
            totalElectricalInfrastructureCosts*9.00 + 
