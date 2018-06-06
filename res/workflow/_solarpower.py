@@ -90,7 +90,7 @@ def PVWorkflowTemplate(placements, source, elev, module, azimuth, tilt, inverter
     ### Determine the total extent which will be simulated (also make sure the placements input is okay)
     if verbose: print("Arranging placements at +%.2fs"%((dt.now()-startTime).total_seconds()))
     if isinstance(placements, str): # placements is a path to a point-type shapefile
-        placements = gk.vector.extractAsDataFrame(placements, outputSRS='latlon')
+        placements = gk.vector.extractFeatures(placements, outputSRS='latlon')
         placements["lat"] = placements.geom.apply(lambda x: x.GetY())
         placements["lon"] = placements.geom.apply(lambda x: x.GetX())
     
