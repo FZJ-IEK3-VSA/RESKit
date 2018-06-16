@@ -254,9 +254,15 @@ def offshoreTurbineCost(capacity, hubHeight, rotordiam, depth, distanceToShore, 
     bos = offshoreBOS(cp=cp, rd=rd, hh=hh, depth=depth, shoreD=shoreD, busD=busD, foundation=foundation, 
                       mooringCount=mooringCount, anchor=anchor, turbineNumber=turbineNumber, 
                       turbineSpacing=turbineSpacing, rowSpacing=rowSpacing, )
-    bos *= 0.44322409
+    
+    #scaling cost of bos to normalize overall cost to 2300 euro/kW 
+    #bos *= 0.44322409    # standard turbine: V164-8.0MW hh-105m depth 30 m shoreD=45 km
+    bos *= 0.2842698876700619 # standard turbine: V164-8.0MW hh-105m depth 80 m shoreD=50 km
 
-    fin = tcc * 20.9/32.9 # Scaled according to tcc
+    if foundation == 'monopile' or foundation == 'jacket':
+        fin = tcc * 20.9/32.9 # Scaled according to tcc [7]
+    else:
+        fin = tcc * 15.6/23.6 # Scaled according to tcc [7]
 
     return tcc+bos+fin
     #return np.array([tcc,bos,fin])
@@ -428,8 +434,8 @@ def offshoreBOS(cp, rd, hh, depth, shoreD, busD, foundation, mooringCount, ancho
         mooringAndAnchorCost = mooringLength * mooringCostRate + anchorCost
 
     if fixedType:
-        # Only greater than 4 implemented
-        secondarySteelSubstructureMass = 40 + (0.8 * (18 + depth))
+        if cp > 4:  secondarySteelSubstructureMass = 40 + (0.8 * (18 + depth))
+        else: secondarySteelSubstructureMass = 35 + (0.8 * (18 + depth))
 
     elif foundation == 'spar':
         secondarySteelSubstructureMass = np.exp(3.58+0.196*np.power(cp, 0.5)*np.log(cp) + 0.00001*depth*np.log(depth))
@@ -444,6 +450,7 @@ def offshoreBOS(cp, rd, hh, depth, shoreD, busD, foundation, mooringCount, ancho
                                        secondarySteelSubstructureCost
 
     ##ELECTRICAL INFRASTRUCTURE
+    #in the calculation of singleStringPower1 and 2, bur depth is assumed to be 1. Because of that the equation is simplified.
     singleStringPower1 = np.sqrt(3)*cable1CurrentRating*arrayVoltage*powerFactor/1000
     singleStringPower2 = np.sqrt(3)*cable2CurrentRating*arrayVoltage*powerFactor/1000
 
@@ -532,17 +539,18 @@ def offshoreBOS(cp, rd, hh, depth, shoreD, busD, foundation, mooringCount, ancho
 
     numberOfMainPowerTransformers = np.floor_divide(turbineNumber*cp,250)+1
 
-    singleMptRating = np.round(turbineNumber*cp*1.15/numberOfMainPowerTransformers, -1)
+    #equation 72 in [1] is simplified 
+    singleMPTRating = np.round(turbineNumber*cp*1.15/numberOfMainPowerTransformers, -1)
 
-    mainPowerTransformerCost = numberOfMainPowerTransformers*singleMptRating*mainPowerTransformerCostRate
+    mainPowerTransformerCost = numberOfMainPowerTransformers*singleMPTRating*mainPowerTransformerCostRate
 
     switchgearCost = numberOfMainPowerTransformers*(highVoltageSwitchgearCost+mediumVoltageSwitchgearCost)
 
-    shuntReactorCost = singleMptRating * numberOfMainPowerTransformers * shuntReactorCostRate * 0.5
+    shuntReactorCost = singleMPTRating * numberOfMainPowerTransformers * shuntReactorCostRate * 0.5
 
     ancillarySystemsCost = dieselGeneratorBackupCost + workspaceCost + otherAncillaryCosts
 
-    offshoreSubstationTopsideMass = 3.85 * (singleMptRating*numberOfMainPowerTransformers) + 285
+    offshoreSubstationTopsideMass = 3.85 * (singleMPTRating*numberOfMainPowerTransformers) + 285
     offshoreSubstationTopsideCost = offshoreSubstationTopsideMass * fabricationCostRate + topsideDesignCost
     assemblyFactor = 1 # could not find a number...
 
@@ -558,7 +566,8 @@ def offshoreBOS(cp, rd, hh, depth, shoreD, busD, foundation, mooringCount, ancho
     else:
 
         # copied from above in case of spar
-        if foundation == 'spar':
+        if foundation == 'spar':   #WHY WAS IT SPAR BEFORE? WE ARE DOING THINGS WITH SEMISUBMERSIBLE
+        #if foundation == 'semisubmersible':
             semiSubmersibleSCMass = -0.9571 * np.power(cp , 2) + 40.89 * cp + 802.09
             semiSubmersibleSCCost = semiSubmersibleSCMass * semiSubmersibleSCCostRate
 
@@ -639,19 +648,30 @@ def offshoreBOS(cp, rd, hh, depth, shoreD, busD, foundation, mooringCount, ancho
     
     #commissioning = tot*0.015
     #portAndStaging = tot*0.005
-    #engineeringAndManagement = tot*0.02
-    #developement = tot*0.02
+    #engineeringManagement = tot*0.02
+    #development = tot*0.02
 
     #########################################
-    ## The below cooresponds to cost percentages in [7] for the fixed-monopile example
-    tot = (assemblyAndInstallationCost*19.0 + 
+    ## The below cooresponds to cost percentages in [7]
+    if fixedType:
+        tot = (assemblyAndInstallationCost*19.0 + 
            totalElectricalInfrastructureCosts*9.00 + 
            totalStructureAndFoundationCosts*13.9)/46.2
 
-    commissioning = tot*(0.8/46.2)
-    portAndStaging = tot*(0.5/46.2)
-    engineeringAndManagement = tot*(1.6/46.2)
-    developement = tot*(1.4/46.2)
+        commissioning = tot*(0.8/46.2)
+        portAndStaging = tot*(0.5/46.2)
+        engineeringManagement = tot*(1.6/46.2)
+        development = tot*(1.4/46.2)
+
+    else:
+        tot = (assemblyAndInstallationCost*11.3 + 
+           totalElectricalInfrastructureCosts*10.9 + 
+           totalStructureAndFoundationCosts*34.1)/60.8
+
+        commissioning = tot*(0.8/60.8)
+        portAndStaging = tot*(0.6/60.8)
+        engineeringManagement = tot*(2.2/60.8)
+        development = tot*(1/60.8)
 
     ## TOTAL COST
     totalCost = commissioning +\
@@ -659,7 +679,7 @@ def offshoreBOS(cp, rd, hh, depth, shoreD, busD, foundation, mooringCount, ancho
                 totalElectricalInfrastructureCosts +\
                 totalStructureAndFoundationCosts +\
                 portAndStaging +\
-                engineeringAndManagement +\
-                developement
+                engineeringManagement +\
+                development
 
     return totalCost

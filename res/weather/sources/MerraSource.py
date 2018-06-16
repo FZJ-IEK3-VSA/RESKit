@@ -179,7 +179,7 @@ class MerraSource(NCSource):
         else: raise ResMerraError("sub group '%s' not understood"%which)
 
         # load
-        s.load(varName, name=which+"_temp", processor=None)-273.15
+        s.load(varName, name=which+"_temp", processor=lambda x: x-273.15)
 
     def loadPressure(s): 
         """Load the PS Merra variable into the data table with the name 'pressure'"""

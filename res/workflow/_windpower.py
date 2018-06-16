@@ -185,10 +185,10 @@ def WindWorkflowTemplate(placements, merra, hubHeight, powerCurve, capacity, rot
     if useMulti:
         manager = WSManager()
         manager.start()
-        wsSource = manager.MerraSource(path=merra, bounds=Bounds(*totalExtent.pad(2).xyXY))
+        wsSource = manager.MerraSource(source=merra, bounds=totalExtent.xyXY, indexPad=2)
     else:
         if isinstance(merra,str):
-            wsSource = MerraSource(path=merra, bounds=totalExtent.pad(2))
+            wsSource = MerraSource(source=merra, bounds=totalExtent, indexPad=2)
         elif isinstance(merra, MerraSource):
             wsSource = merra
             doload=False
