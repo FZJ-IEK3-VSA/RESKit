@@ -134,6 +134,7 @@ class CosmoSource(NCSource):
 
     def loadWindSpeed(s, minHeight=50, maxHeight=None):
         if minHeight < 50 :
+            pass
 
     def loadWindSpeedInterpolatable(s):
         s.load("windspeed_10", name="windspeed")

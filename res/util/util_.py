@@ -147,20 +147,20 @@ def removeLeapDay(timeseries):
     Array
     
     """
-    if isinstance(x, pd.Series) or isinstance(s, pd.DataFrame):
-        times = x.index
+    if isinstance(timeseries, pd.Series) or isinstance(timeseries, pd.DataFrame):
+        times = timeseries.index
         sel = np.logical_and((times.day==29), (times.month==2))
-        if isinstance(x, pd.Series): return x[~sel]
-        else: return x.loc[~sel]
+        if isinstance(timeseries, pd.Series): return timeseries[~sel]
+        else: return timeseries.loc[~sel]
 
-    elif isinstance(x, np.ndarray) and x.shape[0] == 8784:
+    elif isinstance(timeseries, np.ndarray) and timeseries.shape[0] == 8784:
         times = pd.date_range("01-01-2000 00:00:00", "12-31-2000 23:00:00", freq="H")
         sel = np.logical_and((times.day==29), (times.month==2))
-        if len(x.shape)==1: return x[~sel]
-        else: return x[~sel,:]
+        if len(timeseries.shape)==1: return timeseries[~sel]
+        else: return timeseries[~sel,:]
 
     else:
-        return removeLeapDay(np.array(x))
+        return removeLeapDay(np.array(timeseries))
 
 def linearTransition(x, start, stop, invert=False):
     """Apply a linear transition function to the given data array
@@ -205,7 +205,7 @@ def linearTransition(x, start, stop, invert=False):
 
 ## Parse Generation File
 _SGF = namedtuple("RESGeneration", "capacity capex generation regionName variable capacityUnit capexUnit generationUnit")
-def parseRESGenerationFile(f, capacity):
+def parseRESGenerationFile(f, capacity, hasCapex=False, extrapolateOverCapacity=False, keepLeapDay=True):
     """Parse one of Sev's RES Generation files
 
     * These files are each created for one regional context
@@ -230,8 +230,8 @@ def parseRESGenerationFile(f, capacity):
     ds = nc.Dataset(f)
     try:
         timeIndex = nc.num2date(ds["time"][:], ds["time"].units)
-        CAP = ds["total_capacity"][:]
-        COST = ds["total_cost"][:]
+        CAP = ds["installed_capacity"][:]
+        if hasCapex: COST = ds["capex"][:]
 
         try:
             capacity = list(capacity)
@@ -242,37 +242,51 @@ def parseRESGenerationFile(f, capacity):
             s = np.argmin(np.abs(CAP-cap))
 
             if CAP[s] == cap: 
-                gen = ds["generation"][:,s]
-                capex = ds["total_cost"][s]
+                gen = ds["capfac"][:,s]
+                if hasCapex: capex = ds["capex"][s]
+            elif cap > CAP[-1]: 
+                if extrapolateOverCapacity: 
+                    gen = ds["capfac"][:,-1]
+                    if hasCapex: capex = ds["capex"][s]/CAP[-1]*cap
+                else:
+                    raise ResError("The given capacity (%f) exceeds the maximum capacity(%f)"%(cap, CAP[-1]))
             else:
                 if CAP[s] > cap: low, high = s-1,s
                 else: low, high = s,s+1
 
-                raw = ds["generation"][:,[low, high]]
+                raw = ds["capfac"][:,[low, high]]
 
                 factor = (cap-CAP[low])/(CAP[high]-CAP[low])
                 
                 gen = raw[:,0]*(1-factor) + raw[:,1]*factor
-
-                lowCost, highCost = ds["total_cost"][[low,high]]
-                capex = lowCost*(1-factor) + highCost*factor
-            return gen, capex
+                if hasCapex: 
+                    lowCost, highCost = ds["capex"][[low,high]]
+                    capex = lowCost*(1-factor) + highCost*factor
+            
+            if hasCapex: return gen, capex
+            else: return gen,None
 
         generations = pd.DataFrame(index=timeIndex,)
-        capexes = []
+        if hasCapex: capexes = []
         for cap in capacity:
             gen,capex = atCapacity(cap)
-            generations[cap] = gen
-            capexes.append(capex)
+            generations[cap] = gen*cap
+            if hasCapex: capexes.append(capex)
+
+        if len(capacity)==1: generations = generations[capacity[0]]
+
+        if not keepLeapDay: generations = removeLeapDay(generations)
 
     except Exception as e:
         ds.close()
         raise e
 
-    return _SGF(capacity=np.array(capacity), capex=np.array(capexes), generation=generations, 
-                regionName=ds["generation"].region, variable=ds["generation"].technology,
-                capacityUnit=ds["total_capacity"].unit, capexUnit=ds["total_cost"].unit, 
-                generationUnit=ds["generation"].unit)
+    # return _SGF(capacity=np.array(capacity), capex=np.array(capexes), generation=generations, 
+    #             regionName=ds["generation"].region, variable=ds["generation"].technology,
+    #             capacityUnit=ds["total_capacity"].unit, capexUnit=ds["total_cost"].unit, 
+    #             generationUnit=ds["generation"].unit)
+    if hasCapex: return generations, np.array(capexes)
+    else: return generations, None
 
 
 def rotateFromLatLon( lons, lats, lonSouthPole=18, latSouthPole=-39.25 ):
