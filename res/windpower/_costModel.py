@@ -24,7 +24,8 @@ def suggestOnshoreTurbine(average_windspeed, rotordiam=baselineOnshoreTurbine["r
     else:
         multi=False
 
-    hubHeight = 1.300063336328163*np.exp(-0.84976623*np.log(average_windspeed)+6.1879937)
+    #hubHeight = 1.300063336328163*np.exp(-0.84976623*np.log(average_windspeed)+6.1879937)
+    hubHeight = 1.3160236838393815*np.exp(-0.84976623*np.log(average_windspeed)+6.1879937)
     if multi:
         lt40 = hubHeight<(rotordiam/2+40)
         if lt40.any():
@@ -36,7 +37,8 @@ def suggestOnshoreTurbine(average_windspeed, rotordiam=baselineOnshoreTurbine["r
         if hubHeight<(rotordiam/2+40): hubHeight = rotordiam/2 + 40
         if hubHeight>200: hubHeight = 200
     
-    specificPower = 0.851302913263520*np.exp(0.53769024 *np.log(average_windspeed)+4.74917728)
+    #specificPower = 0.851302913263520*np.exp(0.53769024 *np.log(average_windspeed)+4.74917728)
+    specificPower = 0.84481603138739625*np.exp(0.53769024 *np.log(average_windspeed)+4.74917728)
     if multi:
         lt200 = specificPower<180
         if lt200.any():
