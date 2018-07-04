@@ -110,13 +110,13 @@ def SyntheticPowerCurve( specificCapacity=None, capacity=None, rotordiam=None, c
     # Create ws
     ws = [0,]
     ws.extend( np.exp(synthTurbData.const + synthTurbData.scale*np.log(specificCapacity)) )
-    ws.append(cutout)
+    ws.extend( np.linspace(ws[-1], cutout, 20)[1:])
     ws = np.array(ws)
     
     # create capacity factor output
     cf = [0,]
     cf.extend( synthTurbData.perc_capacity/100 )
-    cf.append(1)
+    cf.extend([1]*19)
     cf = np.array(cf)
     
     # Done!
