@@ -1,4 +1,5 @@
 from res.util import *
+from res.weather.windutil import *
 from res.economic import *
 from res.weather import *
 

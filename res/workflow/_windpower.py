@@ -75,7 +75,7 @@ def simulateLocations(wsSource, landcover, adjustMethod, gwa, roughness, loss, w
 
     capacityFactor = capacityGeneration.mean(axis=0)
     production = capacityGeneration*capacity
-
+    print(production.mean().mean())
     if verbose:
         endTime = dt.now()
         simSecs = (endTime - startTime).total_seconds()
