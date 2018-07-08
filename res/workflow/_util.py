@@ -24,7 +24,7 @@ from datetime import datetime as dt
 
 ## Make helpers
 class WSManager(BaseManager): pass
-WSManager.register('MerraSource', MerraSource, exposed=["get", "loadWindSpeed", "loadSet_PV", "_timeindex"] )
+WSManager.register('MerraSource', MerraSource, exposed=["get", "loadWindSpeed", "loadPressure", "loadTemperature", "loadSet_PV", "_timeindex"] )
 
 Result = namedtuple("Result", "c o")
 ncattr = {

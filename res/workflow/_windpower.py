@@ -136,7 +136,8 @@ def simulateLocations(wsSource, landcover, adjustMethod, gwa, roughness, loss, l
         if verbose: print( " %s: No locations found"%(str(gid)))
         return None
 
-    if pickleable: 
+    if pickleable:
+        print("ami here?")
         locations.makePickleable()
 
     # read and spatially adjust windspeeds
@@ -418,7 +419,9 @@ def WindWorkflowTemplate(placements, merra, hubHeight, powerCurve, capacity, rot
         print("Simulating %d groups at +%.2fs"%(len(simGroups), (dt.now()-startTime).total_seconds() ))
 
     results = []
-    if useMulti: placements.makePickleable()
+    if useMulti: 
+        placements.makePickleable()
+
     for i,sel in enumerate(simGroups):
         # Construct arguments for each submission
         inputs = {}
