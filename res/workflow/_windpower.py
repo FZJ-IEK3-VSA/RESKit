@@ -3,6 +3,7 @@ from res.windpower import *
 
 ##################################################################
 ## Make a typical simulator function
+"""
 def simulateLocations(wsSource, landcover, adjustMethod, gwa, roughness, loss, wscorr_a, wscorr_b, lctype, minCF, verbose, 
                       extractor, powerCurve, pcKey, gid, locationID, globalStart, locations, capacity, conv_stdBase, 
                       conv_stdScale, hubHeight, rotordiam, cutout, pickleable):
@@ -75,7 +76,7 @@ def simulateLocations(wsSource, landcover, adjustMethod, gwa, roughness, loss, w
 
     capacityFactor = capacityGeneration.mean(axis=0)
     production = capacityGeneration*capacity
-    print(production.mean().mean())
+
     if verbose:
         endTime = dt.now()
         simSecs = (endTime - startTime).total_seconds()
@@ -120,12 +121,131 @@ def simulateLocations(wsSource, landcover, adjustMethod, gwa, roughness, loss, w
     
     output = extractor.finalize(production, capacityFactor)
     return output
+"""
+def simulateLocations(wsSource, landcover, adjustMethod, gwa, roughness, loss, low_a, low_b, 
+                      lctype, verbose, extractor, powerCurve, pcKey, gid, locationID, globalStart, locations, capacity, 
+                      conv_stdBase, conv_stdScale, hubHeight, rotordiam, cutout, pickleable, densityCorrection):
+    if verbose: 
+        startTime = dt.now()
+        globalStart = globalStart
+        print(" %s: Starting at +%.2fs"%(str(gid), (startTime-globalStart).total_seconds()))
+    
+    # prepare wind speed loader
+    locations = LocationSet(locations)
+    if locations.count == 0 : 
+        if verbose: print( " %s: No locations found"%(str(gid)))
+        return None
+
+    if pickleable: 
+        locations.makePickleable()
+
+    # read and spatially adjust windspeeds
+    if adjustMethod == "lra":
+        ws = wsSource.get("windspeed", locations, forceDataFrame=True)
+        ws = windutil.adjustLraToGwa( ws, locations, longRunAverage=MerraSource.LONG_RUN_AVERAGE_50M_SOURCE, gwa=gwa)
+
+    elif adjustMethod == "near" or adjustMethod == "bilinear" or adjustMethod == "cubic":
+        ws = wsSource.get("windspeed", locations, interpolation=adjustMethod, forceDataFrame=True)
+
+    elif adjustMethod is None:
+        ws = wsSource.get("windspeed", locations, forceDataFrame=True)
+    
+    else: raise ResError("adjustMethod not recognized")
+    
+    
+    # Look for bad values
+    badVals = np.isnan(ws)
+    if badVals.any().any():
+        print("%d locations have invalid wind speed values:"%badVals.any().sum())
+        sel = badVals.any()
+        for loc in locations[sel]: print("  ", loc)
+
+    # Get roughnesses from Land Cover
+    if roughness is None and not lctype is None:
+        lcVals = gk.raster.extractValues(landcover, locations).data
+        roughnesses = windutil.roughnessFromLandCover(lcVals, lctype)
+
+        if np.isnan(roughnesses).any():
+            raise RuntimeError("%d locations are outside the given landcover file"%np.isnan(roughnesses).sum())
+
+    elif not roughness is None and lctype is None:
+        roughnesses = roughness
+    else:
+        raise ResError("roughness and lctype are both given or are both None")
+
+    # Project WS to hub height
+    ws = windutil.projectByLogLaw(ws, measuredHeight=50, targetHeight=hubHeight, roughness=roughnesses)
+    
+    # Density correction to windspeeds
+    if densityCorrection:
+        t =  wsSource.get("air_temp", locations, interpolation='bilinear', forceDataFrame=True)
+        p =  wsSource.get("pressure", locations, interpolation='bilinear', forceDataFrame=True)
+        ws = densityAdjustment(ws, pressure=p, temperature=t, height=hubHeight)
+    
+    # do simulations
+    if not isinstance(powerCurve, dict):
+        capacityGeneration = simulateTurbine(ws, powerCurve=powerCurve, loss=0)
+    else:
+        capacityGeneration = pd.DataFrame(-1*np.ones(ws.shape), index=ws.index, columns=ws.columns)
+        for key in np.unique(pcKey):
+            tmp = simulateTurbine(ws.iloc[:,pcKey==key], powerCurve[key], loss=0)
+            capacityGeneration.update( tmp )
+
+        if (capacityGeneration.values<0).any(): raise RuntimeError("Some placements were not evaluated")
+    
+    if verbose:
+        endTime = dt.now()
+        simSecs = (endTime - startTime).total_seconds()
+        globalSecs = (endTime - globalStart).total_seconds()
+        print(" %s: Finished %d turbines +%.2fs (%.2f turbines/sec)"%(str(gid), locations.count, globalSecs, locations.count/simSecs))
+    
+    # apply wind speed corrections to account (somewhat) for local effects not captured on the MERRA context
+    if not (low_a is None and low_b is None):
+        factors = (1-low_a)*(1-np.exp(-low_b*capacityGeneration))+low_a # dampens lower wind speeds
+        capacityGeneration = factors*capacityGeneration
+        factors = None
+
+    capacityGeneration *= (1-loss)
+    capacityFactor = capacityGeneration.mean(axis=0)
+    production = capacityGeneration*capacity
+
+    # Done!
+    if extractor.method == "batch":
+        outputVars = OrderedDict()
+        outputVars["lctype"] = lctype
+        outputVars["pcKey"] = pcKey
+        outputVars["adjustMethod"] = adjustMethod
+        outputVars["roughness"] = roughness
+        outputVars["loss"] = loss
+        outputVars["low_a"] = low_a
+        outputVars["low_b"] = low_b
+        outputVars["conv_stdBase"] = conv_stdBase
+        outputVars["conv_stdScale"] = conv_stdScale
+        outputVars["hubHeight"] = hubHeight
+        outputVars["capacity"] = capacity
+        outputVars["rotordiam"] = rotordiam
+        outputVars["cutout"] = cutout
+        outputVars["locationID"] = locationID
+        
+        result = raw_finalizer(production, capacityFactor)
+
+        try:
+            outputPath = extractor.outputPath%gid
+        except:
+            if extractor.outputPath.format(0) == extractor.outputPath.format(2):
+                raise ResError("output is not integer-formatable. Be sure there is a single %d or a {}")
+            outputPath = extractor.outputPath.format(gid)
+
+        raw_output(outputPath, result, outputVars)
+    
+    output = extractor.finalize(production, capacityFactor)
+    return output
 
 ##################################################################
 ## Distributed Wind production from a Merra wind source
 def WindWorkflowTemplate(placements, merra, hubHeight, powerCurve, capacity, rotordiam, cutout, extract, output, 
-                         roughness, landcover, adjustMethod, gwa, lctype, conv_stdBase, conv_stdScale, loss, wscorr_a, wscorr_b, 
-                         minCF, jobs, batchSize, verbose, padding=2):
+                         roughness, landcover, adjustMethod, gwa, lctype, conv_stdBase, conv_stdScale, loss, low_a, low_b, 
+                         jobs, batchSize, verbose, densityCorrection, padding=2):
     startTime = dt.now()
     if verbose:
         print("Starting at: %s"%str(startTime))
@@ -194,6 +314,9 @@ def WindWorkflowTemplate(placements, merra, hubHeight, powerCurve, capacity, rot
             doload=False
     if doload:
         wsSource.loadWindSpeed(height=50)
+        if densityCorrection:
+            wsSource.loadPressure()
+            wsSource.loadTemperature('air')
 
     ### Convolute turbine
     if verbose: print("Convolving power curves at +%.2fs"%( (dt.now()-startTime).total_seconds()) )
@@ -206,7 +329,7 @@ def WindWorkflowTemplate(placements, merra, hubHeight, powerCurve, capacity, rot
         # Compute specific capacity
         #  - Round to the nearest 10 to save memory and time for convolution
         specificCapacity = np.array(capacity*1000/(np.pi*rotordiam**2/4))
-        specificCapacity = np.round(specificCapacity, -1).astype(int)
+        specificCapacity = np.round(specificCapacity).astype(int)
 
         if specificCapacity.size == 1:
             powerCurve = SyntheticPowerCurve( specificCapacity=specificCapacity, cutout=cutout)
@@ -257,7 +380,7 @@ def WindWorkflowTemplate(placements, merra, hubHeight, powerCurve, capacity, rot
             res = []
         
             for k,v in powerCurve.items():
-                kwargs = dict(stdScaling=conv_stdScale, stdBase=conv_stdBase, powerCurve=v)
+                kwargs = dict(stdScaling=conv_stdScale, stdBase=conv_stdBase, powerCurve=v, extendBeyondCutoff=False)
                 res.append((k,pool.apply_async(convolutePowerCurveByGuassian, (), kwargs)))
 
             for k,r in res:
@@ -268,9 +391,9 @@ def WindWorkflowTemplate(placements, merra, hubHeight, powerCurve, capacity, rot
             pool = None
         else:
             for k,v in powerCurve.items():
-                powerCurve[k] = convolutePowerCurveByGuassian(stdScaling=conv_stdScale, stdBase=conv_stdBase, powerCurve=v)
+                powerCurve[k] = convolutePowerCurveByGuassian(stdScaling=conv_stdScale, stdBase=conv_stdBase, powerCurve=v, extendBeyondCutoff=False)
     else:
-        powerCurve = convolutePowerCurveByGuassian(stdScaling=conv_stdScale, stdBase=conv_stdBase, powerCurve=powerCurve )
+        powerCurve = convolutePowerCurveByGuassian(stdScaling=conv_stdScale, stdBase=conv_stdBase, powerCurve=powerCurve, extendBeyondCutoff=False )
 
     ### Do simulations
     # Check inputs
@@ -305,12 +428,11 @@ def WindWorkflowTemplate(placements, merra, hubHeight, powerCurve, capacity, rot
         inputs["adjustMethod"]=adjustMethod
         inputs["roughness"]=roughness
         inputs["loss"]=loss
-        inputs["wscorr_a"]=wscorr_a
-        inputs["wscorr_b"]=wscorr_b
+        inputs["low_a"]=low_a
+        inputs["low_b"]=low_b
         inputs["conv_stdBase"]=conv_stdBase
         inputs["conv_stdScale"]=conv_stdScale
         inputs["lctype"]=lctype
-        inputs["minCF"]=minCF
         inputs["verbose"]=verbose
         inputs["extractor"]=extractor
         inputs["powerCurve"] = powerCurve
@@ -318,6 +440,7 @@ def WindWorkflowTemplate(placements, merra, hubHeight, powerCurve, capacity, rot
         inputs["gid"]=i
         inputs["locationID"]=sel
         inputs["globalStart"]=startTime
+        inputs["densityCorrection"]=densityCorrection
 
         def add(val,name):
             if isinstance(val, list): val = np.array(val)
@@ -391,7 +514,7 @@ def WindWorkflowTemplate(placements, merra, hubHeight, powerCurve, capacity, rot
     outputResult.name = extractor.title
     outputResult.TurbineCount = finalResult.c
     return outputResult
-    
+
 def WindOnshoreWorkflow(placements, merra, landcover, gwa, hubHeight=None, powerCurve=None, capacity=None, rotordiam=None, cutout=None, lctype="clc", extract="totalProduction", output=None, minCF=0, jobs=1, batchSize=None, verbose=True, **kwargs):
     """
     Apply the wind simulation method developed by Severin Ryberg, Dilara Caglayan, and Sabrina Schmitt. This method 
@@ -477,16 +600,18 @@ def WindOnshoreWorkflow(placements, merra, landcover, gwa, hubHeight=None, power
                 - ex: output="somepath\outputData_%02d.nc"
     """
     return WindWorkflowTemplate(placements=placements, merra=merra, hubHeight=hubHeight, powerCurve=powerCurve, 
-                                capacity=capacity, rotordiam=rotordiam, cutout=cutout, extract=extract, 
-                                output=output, landcover=landcover, gwa=gwa, lctype=lctype, minCF=minCF, jobs=jobs, 
-                                batchSize=batchSize, verbose=verbose,
-                                roughness=None,
-                                adjustMethod="lra",
-                                conv_stdBase=0.6,
-                                conv_stdScale=0.1,
-                                loss=0.04,
-                                wscorr_a=0.3,
-                                wscorr_b=0.2,)
+                            capacity=capacity, rotordiam=rotordiam, cutout=cutout, extract=extract, 
+                            output=output, landcover=landcover, gwa=gwa, lctype=lctype, jobs=jobs, 
+                            batchSize=batchSize, verbose=verbose,
+                            roughness=None,
+                            adjustMethod="lra",
+                            conv_stdBase=0.1,
+                            conv_stdScale=0.16,
+                            loss=0.01,
+                            low_a=0.1,
+                            low_b=80.0,
+                            densityCorrection=True)
+
                          
                                                   
 def WindOffshoreWorkflow(placements, merra, adjustMethod="bilinear", loss=0.03, conv_stdBase=0.2, conv_stdScale=0.05, wscorr_a=0.45, wscorr_b=0.2,hubHeight=None, powerCurve=None, capacity=None, rotordiam=None, cutout=None, roughness=0.0002, extract="averageProduction", output=None, minCF=0, jobs=1, batchSize=None, verbose=True, **kwargs):
@@ -494,3 +619,4 @@ def WindOffshoreWorkflow(placements, merra, adjustMethod="bilinear", loss=0.03, 
                                 rotordiam=rotordiam, cutout=cutout, extract=extract, output=output, landcover=None, gwa=None, 
                                 roughness=roughness, minCF=minCF, jobs=jobs,batchSize=batchSize, verbose=verbose, lctype=None,
                                 adjustMethod=adjustMethod,conv_stdBase=conv_stdBase,conv_stdScale=conv_stdScale,loss=loss, wscorr_a=wscorr_a, wscorr_b=wscorr_b,)
+
