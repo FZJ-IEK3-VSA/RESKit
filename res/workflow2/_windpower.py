@@ -94,13 +94,15 @@ def _simulator(source, landcover, gwa, adjustMethod, roughness, loss, convScale,
         capacityGeneration *= (1-loss)
         
         # Arrange output
-        if extract == "capacityFactor": res.append(capacityGeneration.mean(0))
-        elif extract == "totalProduction": res.append((capacityGeneration*capacity[s]).sum(1))
-        elif extract == "raw": res.append(capacityGeneration*capacity[s])
+        if extract == "capacityFactor": tmp = capacityGeneration.mean(0)
+        elif extract == "totalProduction": tmp = (capacityGeneration*capacity[s]).s
+        elif extract == "raw": tmp = capacityGeneration*capacity[s]
         elif extract == "batchfile": pass
         else:
             raise ResError("extract method '%s' not understood"%extract)
 
+        res.append(tmp)
+    placements.makePickleable()
     # All done!
     if verbose:
         endTime = dt.now()
@@ -149,6 +151,7 @@ def workflowTemplate(placements, source, landcover, gwa, convScale, convBase, lo
             placements = placements["geom"].values
 
     placements = gk.LocationSet(placements)
+    if useMulti: placements.makePickleable()
 
     hubHeight = None if hubHeight is None else pd.Series(hubHeight, index=placements)
     capacity = None if capacity is None else pd.Series(capacity, index=placements)
@@ -305,3 +308,18 @@ def workflowTemplate(placements, source, landcover, gwa, convScale, convBase, lo
     print("Finished simulating %d turbines at +%.2fs (%.2f turbines/sec)"%(placements.count, totalSecs, placements.count/totalSecs))
 
     return res
+
+def WindOnshoreWorkflow(placements, source, landcover, gwa, hubHeight=None, powerCurve=None, capacity=None, rotordiam=None, cutout=None, lctype="clc", extract="totalProduction", output=None, jobs=1, batchSize=10000, ):
+
+    kwgs = dict()
+    kwgs["convScale"]=0.16
+    kwgs["convBase"]=0.1
+    kwgs["lowBase"]=0.1
+    kwgs["lowSharp"]=80
+    kwgs["adjustMethod"]="lra"
+    kwgs["verbose"]=True
+    kwgs["roughness"]=None
+    kwgs["loss"]=0.01
+    kwgs["densityCorrection"]=True
+
+    return workflowTemplate(placements=placements, source=source, landcover=landcover, gwa=gwa, hubHeight=hubHeight, powerCurve=powerCurve, capacity=capacity, rotordiam=rotordiam, cutout=cutout, lctype=lctype, extract=extract, output=output, jobs=jobs, batchSize=batchSize, **kwgs)
