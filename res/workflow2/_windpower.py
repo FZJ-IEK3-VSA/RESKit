@@ -13,11 +13,12 @@ def _simulator(source, landcover, gwa, adjustMethod, roughness, loss, convScale,
         print(" %s: Starting at +%.2fs"%(str(gid), (groupStartTime-globalStart).total_seconds()))
 
     ### Open Source and load weather data
-    source = MerraSource(source, bounds=placements, indexPad=3)
-    source.loadWindSpeed(50)
-    if densityCorrection:
-        source.loadPressure()
-        source.loadTemperature('air')
+    if isinstance(source, str):
+        source = MerraSource(source, bounds=placements, indexPad=3)
+        source.loadWindSpeed(50)
+        if densityCorrection:
+            source.loadPressure()
+            source.loadTemperature('air')
 
     ### Loop over batch size
     res = []
@@ -95,7 +96,7 @@ def _simulator(source, landcover, gwa, adjustMethod, roughness, loss, convScale,
         
         # Arrange output
         if extract == "capacityFactor": tmp = capacityGeneration.mean(0)
-        elif extract == "totalProduction": tmp = (capacityGeneration*capacity[s]).s
+        elif extract == "totalProduction": tmp = (capacityGeneration*capacity[s]).sum(1)
         elif extract == "raw": tmp = capacityGeneration*capacity[s]
         elif extract == "batchfile": pass
         else:
@@ -162,7 +163,9 @@ def workflowTemplate(placements, source, landcover, gwa, convScale, convBase, lo
     if verbose: print("Convolving power curves at +%.2fs"%( (dt.now()-startTime).total_seconds()) )
     
     pcKey = None
-    if powerCurve is None: # no turbine given, so a synthetic turbine will need to be constructed
+    if isinstance(powerCurve, PowerCurve):
+        pcKey = 'user-defined'
+    elif powerCurve is None: # no turbine given, so a synthetic turbine will need to be constructed
         if capacity is None and rotordiam is None:
             raise RuntimeError("powerCurve, capacity, and rotordiam cannot all be None")
 
@@ -210,10 +213,11 @@ def workflowTemplate(placements, source, landcover, gwa, convScale, convBase, lo
             powerCurve = PowerCurve(tmp[:,0], tmp[:,1])
             pcKey = "user-defined"
 
+    convolutionKwargs = dict(stdScaling=convScale, stdBase=convBase, extendBeyondCutoff=False)
     if isinstance(powerCurve, dict):
         if verbose: 
             print("   Convolving %d power curves..."%(len(powerCurve)))
-        convolutionKwargs = dict(stdScaling=convScale, stdBase=convBase, extendBeyondCutoff=False)
+        
 
         if useMulti:
             pool = Pool(cpus)
