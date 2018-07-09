@@ -152,8 +152,8 @@ def adjustContextMeanToGwa( windspeed, targetLoc, gwa, contextMean=None, windspe
         * $contextMean$ -> The contextual average of GWA windspeed values
     
     Example use case:
-      When you have wind speeds from a weather dataset (like MERRA), and the raw 
-      windspeeds for some index need to be adjusted to a specific location.
+        When you have wind speeds from a weather dataset (like MERRA), and the raw 
+        windspeeds for some index need to be adjusted to a specific location.
 
     Parameters:
     -----------
@@ -421,9 +421,50 @@ def alphaFromGWA( gwaDir, loc, pairID=1, _structure="WS_%03dm_global_wgs84_mean_
 ################################################################################
 ## Roughness computers
 def roughnessFromLevels(lowWindSpeed, lowHeight, highWindSpeed, highHeight):
+    """Computes a roughness factor from two windspeed values at two distinct heights
+
+    Parameters:
+    -----------
+    lowWindspeed : numeric or np.ndarray
+        The measured wind speed at the lower height
+
+    lowHeight : numeric or np.ndarray
+        The lower height
+
+    highWindspeed : numeric or np.ndarray
+        The measured wind speed at the higher height
+
+    highHeight : numeric or np.ndarray
+        The higher height
+    """
+
     return np.exp( (highWindSpeed * np.log(lowHeight) - lowWindSpeed * np.log(highHeight) )/(highWindSpeed - lowWindSpeed) )
 
 def roughnessFromGWA(gwaDir, loc, pairID=1, _structure="WS_%03dm_global_wgs84_mean_trimmed.tif"):
+    """Computes a roughness factor from two windspeed values found at the same 
+    location, but different heights, in the Global Wind Atlas datasets
+
+    Parameters:
+    -----------
+    gwaDir : str
+        The directory containing global wind atlas files
+          * The expected file names are: "WS_%03dm_global_wgs84_mean_trimmed.tif"
+          * This can be changed with the '_structure' input
+
+    loc : Anything acceptable to geokit.LocationSet
+        The locations for which roughness should be calculated
+
+    pairID : int
+        An id indicating which two Global Wind Atlas files should be used to in
+          the computation:
+            0 -> 50m and 100m
+            1 -> 100m and 200m
+            2 -> 50m and 200m
+
+    _structure : str; optional
+        The filename structure to expect
+        * Must accept a single integer formatting input
+    """
     ## Ensure location is okay
     loc = LocationSet(loc)
 
@@ -547,6 +588,80 @@ clcGridToCode_v2006[43] = 522
 clcGridToCode_v2006[44] = 523
 
 def roughnessFromCLC(clcPath, loc, winRange=0):
+    """Estimates a roughness factor by the prominent land cover at given locations
+    given by the Corine Land Cover dataset.
+    
+    * Roughness suggestions from [1], and are given below
+
+    Parameters:
+    -----------
+    clcPath : str
+        The path to the Corine Land Cover file on disk
+
+    loc : Anything acceptable to geokit.LocationSet
+        The locations for which roughness should be estimated
+
+    winRange : int; optional
+        An extra number of pixels to extract around the indicated locations
+          * A winRange of 0 means only the CLC pixel value for each location is
+            returned
+          * A winRange of 1 means an extra pixel is extracted around each location
+            in all directions. Leading to a 3x3 matrix of roughness values
+          * Use this if you need to do some operation on the roughnesses found
+            around the indicated location
+
+    Sources:
+    --------
+    1: Silva et al.
+
+    Roughness Values:
+    -----------------
+        Continuous urban fabric : 1.2 
+        Broad-leaved forest : 0.75 
+        Coniferous-leaved forest : 0.75 
+        Mixed-leaved forest : 0.75 
+        Green urban areas : 0.6 
+        Transitional woodland/shrub : 0.6 
+        Burnt areas : 0.6 
+        Discontinous urban fabric : 0.5 
+        Construction sites : 0.5 
+        Industrial or commercial units : 0.5 
+        Sport and leisure facilities : 0.5 
+        Port areas : 0.5 
+        Agro-forestry areas : 0.3 
+        Complex cultivation patterns : 0.3 
+        Land principally occupied by agriculture, with significant areas of natural vegetation : 0.3 
+        Annual crops associated with permanent crops : 0.1 
+        Fruit trees and berry plantations : 0.1 
+        Vineyard : 0.1 
+        Olive groves : 0.1 
+        Road and rail networks and associated land : 0.075 
+        Non-irrigated arable land : 0.05 
+        Permanently irrigated land : 0.05 
+        Rice fields : 0.05 
+        Inland marshes : 0.05 
+        Salt marshes : 0.05 
+        Sclerophylous vegetation : 0.03 
+        Moors and heathland : 0.03 
+        Natural grassland : 0.03 
+        Pastures : 0.03 
+        Dump sites : 0.005 
+        Mineral extraction sites : 0.005 
+        Airports : 0.005 
+        Bare rock : 0.005 
+        Sparsely vegetated areas : 0.005 
+        Glaciers and perpetual snow : 0.001 
+        Peatbogs : 0.0005 
+        Salines : 0.0005 
+        Intertidal flats : 0.0005 
+        Beaches, dunes, and sand plains : 0.0003 
+        Water courses # SUSPICIOUS : 0.001 
+        Water bodies # SUSPISCIOUS : 0.0005 
+        Costal lagoons # SUSPISCIOUS : 0.0005 
+        Estuaries # SUSPISCIOUS : 0.0008 
+        Sea and ocean # SUSPISCIOUS : 0.0002 
+
+    """
     ## Ensure location is okay
     loc = LocationSet(loc)
 
