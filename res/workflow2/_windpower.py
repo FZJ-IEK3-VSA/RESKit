@@ -26,7 +26,7 @@ def _simulator(source, landcover, gwa, adjustMethod, roughness, loss, convScale,
     for i,batchStart in enumerate(np.arange(0, placements.count, batchSize)):
         if verbose: 
            batchStartTime = dt.now()
-           print(" %s: Starting batch %s at +%.2fs"%(str(gid), i, (batchStartTime-globalStart).total_seconds()))
+           print(" %s: Starting batch %d of %d at +%.2fs"%(str(gid), i, placements.count//batchSize+1, (batchStartTime-globalStart).total_seconds()))
 
         s = np.s_[batchStart: min(batchStart+batchSize,placements.count) ]
 
@@ -316,14 +316,14 @@ def workflowTemplate(placements, source, landcover, gwa, convScale, convBase, lo
 def WindOnshoreWorkflow(placements, source, landcover, gwa, hubHeight=None, powerCurve=None, capacity=None, rotordiam=None, cutout=None, lctype="clc", extract="totalProduction", output=None, jobs=1, batchSize=10000, ):
 
     kwgs = dict()
-    kwgs["convScale"]=0.16
+    kwgs["convScale"]=0.06
     kwgs["convBase"]=0.1
-    kwgs["lowBase"]=0.1
-    kwgs["lowSharp"]=80
+    kwgs["lowBase"]=0.0
+    kwgs["lowSharp"]=5
     kwgs["adjustMethod"]="lra"
     kwgs["verbose"]=True
     kwgs["roughness"]=None
-    kwgs["loss"]=0.01
+    kwgs["loss"]=0.00
     kwgs["densityCorrection"]=True
 
     return workflowTemplate(placements=placements, source=source, landcover=landcover, gwa=gwa, hubHeight=hubHeight, powerCurve=powerCurve, capacity=capacity, rotordiam=rotordiam, cutout=cutout, lctype=lctype, extract=extract, output=output, jobs=jobs, batchSize=batchSize, **kwgs)
