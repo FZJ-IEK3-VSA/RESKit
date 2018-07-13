@@ -6,7 +6,7 @@ from datetime import datetime as dt
 from multiprocessing import Pool
 
 def _simulator(source, landcover, gwa, adjustMethod, roughness, loss, convScale, convBase, lowBase, lowSharp, lctype, verbose, extract, powerCurve , pcKey , gid, globalStart, densityCorrection, placements, hubHeight, capacity, rotordiam, cutout, batchSize):
-
+    print(roughness)
     if verbose: 
         groupStartTime = dt.now()
         globalStart = globalStart
@@ -60,7 +60,7 @@ def _simulator(source, landcover, gwa, adjustMethod, roughness, loss, convScale,
             if np.isnan(roughnesses).any():
                 raise RuntimeError("%d locations are outside the given landcover file"%np.isnan(roughnesses).sum())
 
-        elif not roughness is None and lctype is None:
+        elif not roughness is None:
             roughnesses = roughness
         else:
             raise ResError("roughness and lctype are both given or are both None")
@@ -327,3 +327,20 @@ def WindOnshoreWorkflow(placements, source, landcover, gwa, hubHeight=None, powe
     kwgs["densityCorrection"]=True
 
     return workflowTemplate(placements=placements, source=source, landcover=landcover, gwa=gwa, hubHeight=hubHeight, powerCurve=powerCurve, capacity=capacity, rotordiam=rotordiam, cutout=cutout, lctype=lctype, extract=extract, output=output, jobs=jobs, batchSize=batchSize, **kwgs)
+
+
+def WindOffshoreWorkflow(placements, source, hubHeight=None, powerCurve=None, capacity=None, rotordiam=None, cutout=None, lctype="clc", extract="totalProduction", output=None, jobs=1, batchSize=10000, ):
+
+    kwgs = dict()
+    kwgs["convScale"]=0.04
+    kwgs["convBase"]=0.5
+    kwgs["lowBase"]=0.1
+    kwgs["lowSharp"]=3.5
+    kwgs["adjustMethod"]="bilinear"
+    kwgs["verbose"]=True
+    kwgs["roughness"]=0.0002
+    kwgs["loss"]=0.00
+    #kwgs["lctype"]=None
+    kwgs["densityCorrection"]=False
+
+    return workflowTemplate(placements=placements, source=source, landcover=None, gwa=None, hubHeight=hubHeight, powerCurve=powerCurve, capacity=capacity, rotordiam=rotordiam, cutout=cutout, lctype=lctype, extract=extract, output=output, jobs=jobs, batchSize=batchSize, **kwgs)
