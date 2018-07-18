@@ -78,7 +78,7 @@ def lcoe( expenditures, productions, discountRate=0.08 ):
     if not exp.shape==pro.shape: raise ResError("expenditures length does not match productions length")
 
     yr = np.arange(exp.shape[0])
-    if isinstance(r,float):
+    if isinstance(discountRate,float):
         r = np.zeros(exp.shape[0])+discountRate
     else:
         r = np.array(r)

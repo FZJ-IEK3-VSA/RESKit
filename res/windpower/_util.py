@@ -121,3 +121,7 @@ def SyntheticPowerCurve( specificCapacity=None, capacity=None, rotordiam=None, c
     
     # Done!
     return PowerCurve(ws, cf)
+
+
+def specificPower(capacity, rotordiam, **k):
+    return capacity*1000/rotordiam**2/np.pi*4

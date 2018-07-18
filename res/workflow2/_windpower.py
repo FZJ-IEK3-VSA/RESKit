@@ -192,7 +192,7 @@ def workflowTemplate(placements, source, landcover, gwa, convScale, convBase, lo
 
     elif isinstance(powerCurve, str):
         pcKey = powerCurve
-        capacity = TurbineLibrary.ix[powerCurve].Capacity
+        capacity = pd.Series(TurbineLibrary.ix[powerCurve].Capacity, index=placements)
         powerCurve = TurbineLibrary.ix[powerCurve].PowerCurve
 
     else: # powerCurve is either a (ws,power) list or is a list of turbine names

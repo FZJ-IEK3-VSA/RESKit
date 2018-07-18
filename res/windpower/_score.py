@@ -1,4 +1,4 @@
-from res.util import *
+from ._util import *
 
 # make a calculator function
 def windspeedScore(x): return linearTransition( np.array(x), 4.5, 7 )
