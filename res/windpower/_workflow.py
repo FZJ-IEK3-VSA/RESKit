@@ -14,7 +14,10 @@ def _batch_simulator(source, landcover, gwa, adjustMethod, roughness, loss, conv
 
     ### Open Source and load weather data
     if isinstance(source, str):
-        source = MerraSource(source, bounds=placements, indexPad=3)
+        ext = gk.Extent.fromLocationSet(placements).castTo(gk.srs.EPSG4326).pad(1) # Pad to make sure we only select the data we need
+                                                                                   # Otherwise, the NCSource might pull EVERYTHING when
+                                                                                   # a smalle area is simulated. IDKY???
+        source = MerraSource(source, bounds=ext, indexPad=2)
         source.loadWindSpeed(50)
         if densityCorrection:
             source.loadPressure()
@@ -73,6 +76,7 @@ def _batch_simulator(source, landcover, gwa, adjustMethod, roughness, loss, conv
             t =  source.get("air_temp", placements[s], interpolation='bilinear', forceDataFrame=True)
             p =  source.get("pressure", placements[s], interpolation='bilinear', forceDataFrame=True)
             ws = densityAdjustment(ws, pressure=p, temperature=t, height=hubHeight[s])
+        del source
 
         ### Do simulations
         if not isinstance(powerCurve, dict):
