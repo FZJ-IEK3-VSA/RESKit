@@ -1,55 +1,5 @@
 from ._util import *
 
-class _BaselineOnshoreTurbine(dict):
-    """
-    The baseline onshore turbine is chosen to reflect future trends in wind turbine characteristics.
-    """
-
-baselineOnshoreTurbine = _BaselineOnshoreTurbine(capacity=4200, hubHeight=129, rotordiam=141, specificPower=269)
-
-def suggestOnshoreTurbine(average_windspeed, rotordiam=baselineOnshoreTurbine["rotordiam"]):
-    """
-    Suggest turbine characteristics based off an average wind speed and in relation to the 'baseline' onshore turbine.
-    relationships are derived from turbine data between 2013 and 2017
-
-    * Suggested specific power will not go less than 180 W/m2
-    * Suggested hub height will not go higher than 200m or lower than rotor_diameter/2 + 40
-    * Normalizations chosen for the context of 2050
-        - Such that at 6.5 m/s, a turbine with 4200 kW capacity, 129m hub height, and 141m rotor diameter is chosen
-    """
-    average_windspeed = np.array(average_windspeed)
-    if average_windspeed.size>1:
-        multi=True
-        rotordiam = np.array([rotordiam]*average_windspeed.size)
-    else:
-        multi=False
-
-    #hubHeight = 1.300063336328163*np.exp(-0.84976623*np.log(average_windspeed)+6.1879937)
-    hubHeight = 1.3160236838393815*np.exp(-0.84976623*np.log(average_windspeed)+6.1879937)
-    if multi:
-        lt40 = hubHeight<(rotordiam/2+40)
-        if lt40.any():
-            hubHeight[lt40] = rotordiam[lt40]/2 + 40
-        gt180 = hubHeight>200
-        if gt180.any():
-            hubHeight[gt180] = 200
-    else:
-        if hubHeight<(rotordiam/2+40): hubHeight = rotordiam/2 + 40
-        if hubHeight>200: hubHeight = 200
-    
-    #specificPower = 0.851302913263520*np.exp(0.53769024 *np.log(average_windspeed)+4.74917728)
-    specificPower = 0.84481603138739625*np.exp(0.53769024 *np.log(average_windspeed)+4.74917728)
-    if multi:
-        lt200 = specificPower<180
-        if lt200.any():
-            specificPower[lt200] = 180
-    else:
-        if specificPower<180: specificPower = 180
-
-    capacity = specificPower*np.pi*np.power((rotordiam/2),2)/1000
-
-    return dict(capacity=capacity, hubHeight=hubHeight, rotordiam=rotordiam, specificPower=specificPower)
-
 def onshoreTurbineCost(capacity, hubHeight, rotordiam,):
     """
     **NEEDS UPDATE**

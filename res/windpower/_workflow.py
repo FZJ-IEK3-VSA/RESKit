@@ -1,12 +1,12 @@
-from res.windpower import *
-import pandas as pd
-import numpy as np
-import geokit as gk
-from datetime import datetime as dt
-from multiprocessing import Pool
+from ._util import *
+from ._powerCurveConvoluter import *
+from ._simulator import *
+from res.weather import MerraSource
+from res.weather.windutil import *
 
-def _simulator(source, landcover, gwa, adjustMethod, roughness, loss, convScale, convBase, lowBase, lowSharp, lctype, verbose, extract, powerCurve , pcKey , gid, globalStart, densityCorrection, placements, hubHeight, capacity, rotordiam, cutout, batchSize):
-    print(roughness)
+def _batch_simulator(source, landcover, gwa, adjustMethod, roughness, loss, convScale, convBase, lowBase, lowSharp, lctype, 
+                     verbose, extract, powerCurve , pcKey , gid, globalStart, densityCorrection, placements, hubHeight, 
+                     capacity, rotordiam, cutout, batchSize):
     if verbose: 
         groupStartTime = dt.now()
         globalStart = globalStart
@@ -26,7 +26,7 @@ def _simulator(source, landcover, gwa, adjustMethod, roughness, loss, convScale,
     for i,batchStart in enumerate(np.arange(0, placements.count, batchSize)):
         if verbose: 
            batchStartTime = dt.now()
-           print(" %s: Starting batch %d of %d at +%.2fs"%(str(gid), i, placements.count//batchSize+1, (batchStartTime-globalStart).total_seconds()))
+           print(" %s: Starting batch %d of %d at +%.2fs"%(str(gid), i+1, placements.count//batchSize+1, (batchStartTime-globalStart).total_seconds()))
 
         s = np.s_[batchStart: min(batchStart+batchSize,placements.count) ]
 
@@ -112,8 +112,9 @@ def _simulator(source, landcover, gwa, adjustMethod, roughness, loss, convScale,
         print(" %s: Finished %d turbines +%.2fs (%.2f turbines/sec)"%(str(gid), placements.count, globalSecs, placements.count/simSecs))
     return res
 
-def workflowTemplate(placements, source, landcover, gwa, convScale, convBase, lowBase, lowSharp, adjustMethod, hubHeight=None, powerCurve=None, capacity=None, rotordiam=None, cutout=None, lctype="clc", extract="totalProduction", output=None, jobs=1, batchSize=None, verbose=True, roughness=None, loss=0, densityCorrection=True):
-
+def workflowTemplate(placements, source, landcover, gwa, convScale, convBase, lowBase, lowSharp, adjustMethod, hubHeight, 
+                     powerCurve, capacity, rotordiam, cutout, lctype, extract, output, jobs, groups, batchSize, verbose, 
+                     roughness, loss, densityCorrection):
     startTime = dt.now()
     if verbose:
         print("Starting at: %s"%str(startTime))
@@ -220,6 +221,7 @@ def workflowTemplate(placements, source, landcover, gwa, convScale, convBase, lo
         
 
         if useMulti:
+            from multiprocessing import Pool
             pool = Pool(cpus)
             res = []
         
@@ -264,7 +266,8 @@ def workflowTemplate(placements, source, landcover, gwa, convScale, convBase, lo
         placements.makePickleable()
         pool = Pool(jobs)
         res = []
-        for i,placementGroup in enumerate(placements.splitKMeans(jobs)):
+        if groups is None: groups = jobs
+        for i,placementGroup in enumerate(placements.splitKMeans(groups)):
             kwargs = simKwargs.copy()
             kwargs.update(dict(
                 placements=placementGroup,
@@ -276,7 +279,7 @@ def workflowTemplate(placements, source, landcover, gwa, convScale, convBase, lo
                 batchSize=batchSize//jobs,
                 gid=i,
                 ))
-            res.append(pool.apply_async(_simulator, (), kwargs))
+            res.append(pool.apply_async(_batch_simulator, (), kwargs))
 
         finalRes = []
         for r in res: finalRes.extend(r.get())
@@ -296,7 +299,7 @@ def workflowTemplate(placements, source, landcover, gwa, convScale, convBase, lo
             batchSize=batchSize,
             gid=0,
             ))
-        res = _simulator(**simKwargs)
+        res = _batch_simulator(**simKwargs)
 
     ## Finalize
     if extract == "capacityFactor": res = pd.concat(res)
@@ -313,34 +316,38 @@ def workflowTemplate(placements, source, landcover, gwa, convScale, convBase, lo
 
     return res
 
-def WindOnshoreWorkflow(placements, source, landcover, gwa, hubHeight=None, powerCurve=None, capacity=None, rotordiam=None, cutout=None, lctype="clc", extract="totalProduction", output=None, jobs=1, batchSize=10000, ):
+def workflowOnshore(placements, source, landcover, gwa, hubHeight=None, powerCurve=None, capacity=None, rotordiam=None, cutout=None, lctype="clc", extract="totalProduction", output=None, jobs=1, groups=None, batchSize=10000, verbose=True):
 
     kwgs = dict()
+    kwgs["loss"]=0.00
     kwgs["convScale"]=0.06
     kwgs["convBase"]=0.1
     kwgs["lowBase"]=0.0
     kwgs["lowSharp"]=5
     kwgs["adjustMethod"]="lra"
-    kwgs["verbose"]=True
     kwgs["roughness"]=None
-    kwgs["loss"]=0.00
     kwgs["densityCorrection"]=True
 
-    return workflowTemplate(placements=placements, source=source, landcover=landcover, gwa=gwa, hubHeight=hubHeight, powerCurve=powerCurve, capacity=capacity, rotordiam=rotordiam, cutout=cutout, lctype=lctype, extract=extract, output=output, jobs=jobs, batchSize=batchSize, **kwgs)
+    return workflowTemplate(placements=placements, source=source, landcover=landcover, gwa=gwa, hubHeight=hubHeight, 
+                            powerCurve=powerCurve, capacity=capacity, rotordiam=rotordiam, cutout=cutout, lctype=lctype, 
+                            extract=extract, output=output, jobs=jobs, groups=groups, batchSize=batchSize, verbose=verbose, 
+                            **kwgs)
 
 
-def WindOffshoreWorkflow(placements, source, hubHeight=None, powerCurve=None, capacity=None, rotordiam=None, cutout=None, lctype="clc", extract="totalProduction", output=None, jobs=1, batchSize=10000, ):
+def workflowOffshore(placements, source, hubHeight=None, powerCurve=None, capacity=None, rotordiam=None, cutout=None, extract="totalProduction", output=None, jobs=1, groups=None, batchSize=10000, verbose=True):
 
     kwgs = dict()
+    kwgs["loss"]=0.00
     kwgs["convScale"]=0.04
     kwgs["convBase"]=0.5
     kwgs["lowBase"]=0.1
     kwgs["lowSharp"]=3.5
     kwgs["adjustMethod"]="bilinear"
-    kwgs["verbose"]=True
     kwgs["roughness"]=0.0002
-    kwgs["loss"]=0.00
-    #kwgs["lctype"]=None
+    kwgs["lctype"]="clc" # This isn't actually used since adjustment is bilinear...
     kwgs["densityCorrection"]=False
 
-    return workflowTemplate(placements=placements, source=source, landcover=None, gwa=None, hubHeight=hubHeight, powerCurve=powerCurve, capacity=capacity, rotordiam=rotordiam, cutout=cutout, lctype=lctype, extract=extract, output=output, jobs=jobs, batchSize=batchSize, **kwgs)
+    return workflowTemplate(placements=placements, source=source, landcover=None, gwa=None, hubHeight=hubHeight, 
+                            powerCurve=powerCurve, capacity=capacity, rotordiam=rotordiam, cutout=cutout, lctype="clc", 
+                            extract=extract, output=output, jobs=jobs, groups=groups, batchSize=batchSize, verbose=verbose, 
+                            **kwgs)

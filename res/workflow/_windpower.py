@@ -1,256 +1,124 @@
-from ._util import *
 from res.windpower import *
+import pandas as pd
+import numpy as np
+import geokit as gk
+from datetime import datetime as dt
+from multiprocessing import Pool
 
-##################################################################
-## Make a typical simulator function
-"""
-def simulateLocations(wsSource, landcover, adjustMethod, gwa, roughness, loss, wscorr_a, wscorr_b, lctype, minCF, verbose, 
-                      extractor, powerCurve, pcKey, gid, locationID, globalStart, locations, capacity, conv_stdBase, 
-                      conv_stdScale, hubHeight, rotordiam, cutout, pickleable):
+def _simulator(source, landcover, gwa, adjustMethod, roughness, loss, convScale, convBase, lowBase, lowSharp, lctype, verbose, extract, powerCurve , pcKey , gid, globalStart, densityCorrection, placements, hubHeight, capacity, rotordiam, cutout, batchSize):
+    print(roughness)
     if verbose: 
-        startTime = dt.now()
+        groupStartTime = dt.now()
         globalStart = globalStart
-        print(" %s: Starting at +%.2fs"%(str(gid), (startTime-globalStart).total_seconds()))
-    
-    # prepare wind speed loader
-    locations = LocationSet(locations)
+        print(" %s: Starting at +%.2fs"%(str(gid), (groupStartTime-globalStart).total_seconds()))
 
-    if locations.count == 0 : 
-        if verbose: print( " %s: No locations found"%(str(gid)))
-        return None
+    ### Open Source and load weather data
+    if isinstance(source, str):
+        source = MerraSource(source, bounds=placements, indexPad=3)
+        source.loadWindSpeed(50)
+        if densityCorrection:
+            source.loadPressure()
+            source.loadTemperature('air')
 
-    if pickleable: locations.makePickleable()
+    ### Loop over batch size
+    res = []
+    if batchSize is None: batchSize = 1e10
+    for i,batchStart in enumerate(np.arange(0, placements.count, batchSize)):
+        if verbose: 
+           batchStartTime = dt.now()
+           print(" %s: Starting batch %d of %d at +%.2fs"%(str(gid), i, placements.count//batchSize+1, (batchStartTime-globalStart).total_seconds()))
 
-    # read and spatially adjust windspeeds
-    if adjustMethod == "lra":
-        ws = wsSource.get("windspeed", locations, forceDataFrame=True)
-        ws = windutil.adjustLraToGwa( ws, locations, longRunAverage=MerraSource.LONG_RUN_AVERAGE_50M_SOURCE, gwa=gwa)
+        s = np.s_[batchStart: min(batchStart+batchSize,placements.count) ]
 
-    elif adjustMethod == "near" or adjustMethod == "bilinear" or adjustMethod == "cubic":
-        ws = wsSource.get("windspeed", locations, interpolation=adjustMethod, forceDataFrame=True)
+        ### Read windspeed data and adjust to local context
+        # read and spatially spatially adjust windspeeds
+        if adjustMethod == "lra":
+            ws = source.get("windspeed", placements[s], forceDataFrame=True)
+            ws = windutil.adjustLraToGwa( ws, placements[s], longRunAverage=MerraSource.LONG_RUN_AVERAGE_50M_SOURCE, gwa=gwa)
 
-    elif adjustMethod is None:
-        ws = wsSource.get("windspeed", locations, forceDataFrame=True)
+        elif adjustMethod == "near" or adjustMethod == "bilinear" or adjustMethod == "cubic":
+            ws = source.get("windspeed", placements[s], interpolation=adjustMethod, forceDataFrame=True)
 
-    else: raise ResError("adjustMethod not recognized")
-    
-    # Look for bad values
-    badVals = np.isnan(ws)
-    if badVals.any().any():
-        print("%d locations have invalid wind speed values:"%badVals.any().sum())
-        sel = badVals.any()
-        for loc in locations[sel]: print("  ", loc)
+        elif adjustMethod is None:
+            ws = source.get("windspeed", placements[s], forceDataFrame=True)
+        
+        else: raise ResError("adjustMethod not recognized")
 
-    # apply wind speed corrections to account (somewhat) for local effects not captured on the MERRA context
-    if not (wscorr_a is None and wscorr_b is None):
-        factors = (1-wscorr_a)*(1-np.exp(-wscorr_b*ws))+wscorr_a # dampens lower wind speeds
-        ws = factors*ws
-        factors = None
+        # Look for bad values
+        badVals = np.isnan(ws)
+        if badVals.any().any():
+            print("%d locations have invalid wind speed values:"%badVals.any().sum())
+            sel = badVals.any()
+            for loc in placements[s][sel]: print("  ", loc)
+            raise RuntimeError("Bad windspeed values")
 
-    # Get roughnesses from Land Cover
-    if roughness is None and not lctype is None:
-        lcVals = gk.raster.extractValues(landcover, locations).data
-        roughnesses = windutil.roughnessFromLandCover(lcVals, lctype)
+        # Get roughnesses from Land Cover
+        if roughness is None and not lctype is None:
+            lcVals = gk.raster.extractValues(landcover, placements[s]).data
+            roughnesses = windutil.roughnessFromLandCover(lcVals, lctype)
 
-        if np.isnan(roughnesses).any():
-            raise RuntimeError("%d locations are outside the given landcover file"%np.isnan(roughnesses).sum())
+            if np.isnan(roughnesses).any():
+                raise RuntimeError("%d locations are outside the given landcover file"%np.isnan(roughnesses).sum())
 
-    elif not roughness is None and lctype is None:
-        roughnesses = roughness
-    else:
-        raise ResError("roughness and lctype are both given or are both None")
+        elif not roughness is None:
+            roughnesses = roughness
+        else:
+            raise ResError("roughness and lctype are both given or are both None")
 
-    # Project WS to hub height
-    ws = windutil.projectByLogLaw(ws, measuredHeight=50, targetHeight=hubHeight, roughness=roughnesses)
+        # Project WS to hub height
+        ws = windutil.projectByLogLaw(ws, measuredHeight=50, targetHeight=hubHeight[s], roughness=roughnesses)
+        
+        # Density correction to windspeeds
+        if densityCorrection:
+            t =  source.get("air_temp", placements[s], interpolation='bilinear', forceDataFrame=True)
+            p =  source.get("pressure", placements[s], interpolation='bilinear', forceDataFrame=True)
+            ws = densityAdjustment(ws, pressure=p, temperature=t, height=hubHeight[s])
 
-    # do simulations
-    if not isinstance(powerCurve, dict):
-        capacityGeneration = simulateTurbine(ws, powerCurve=powerCurve, loss=loss)
-    else:
-        capacityGeneration = pd.DataFrame(-1*np.ones(ws.shape), index=ws.index, columns=ws.columns)
-        for key in np.unique(pcKey):
-            tmp = simulateTurbine(ws.iloc[:,pcKey==key], powerCurve[key], loss=loss)
-            capacityGeneration.update( tmp )
+        ### Do simulations
+        if not isinstance(powerCurve, dict):
+            capacityGeneration = simulateTurbine(ws, powerCurve=powerCurve, loss=0)
+        else:
+            capacityGeneration = pd.DataFrame(-1*np.ones(ws.shape), index=ws.index, columns=ws.columns)
+            tmpPCKey = pcKey[s]
+            for key in np.unique(tmpPCKey):
+                tmp = simulateTurbine(ws.iloc[:,tmpPCKey==key], powerCurve[key], loss=0)
+                capacityGeneration.update( tmp )
 
-        if (capacityGeneration.values<0).any(): raise RuntimeError("Some placements were not evaluated")
+            if (capacityGeneration.values<0).any(): raise RuntimeError("Some placements were not evaluated")
+        
+        # apply wind speed corrections to account (somewhat) for local effects not captured on the MERRA context
+        if not (lowBase is None and lowSharp is None):
+            factors = (1-lowBase)*(1-np.exp(-lowSharp*capacityGeneration))+lowBase # dampens lower wind speeds
+            capacityGeneration = factors*capacityGeneration
+            factors = None
 
-    capacityFactor = capacityGeneration.mean(axis=0)
-    production = capacityGeneration*capacity
+        capacityGeneration *= (1-loss)
+        
+        # Arrange output
+        if extract == "capacityFactor": tmp = capacityGeneration.mean(0)
+        elif extract == "totalProduction": tmp = (capacityGeneration*capacity[s]).sum(1)
+        elif extract == "raw": tmp = capacityGeneration*capacity[s]
+        elif extract == "batchfile": pass
+        else:
+            raise ResError("extract method '%s' not understood"%extract)
 
+        res.append(tmp)
+    placements.makePickleable()
+    # All done!
     if verbose:
         endTime = dt.now()
-        simSecs = (endTime - startTime).total_seconds()
+        simSecs = (endTime - groupStartTime).total_seconds()
         globalSecs = (endTime - globalStart).total_seconds()
-        print(" %s: Finished %d turbines +%.2fs (%.2f turbines/sec)"%(str(gid), locations.count, globalSecs, locations.count/simSecs))
-    
-    # Apply Capacity Factor Filter
-    if minCF > 0:
-        sel = capacityFactor >= minCF
-        capacityFactor = capacityFactor[sel]
-        production = production.ix[:,sel]
+        print(" %s: Finished %d turbines +%.2fs (%.2f turbines/sec)"%(str(gid), placements.count, globalSecs, placements.count/simSecs))
+    return res
 
-    # Done!
-    if extractor.method == "batch":
-        outputVars = OrderedDict()
-        outputVars["lctype"] = lctype
-        outputVars["minCF"] = minCF
-        outputVars["pcKey"] = pcKey
-        outputVars["adjustMethod"] = adjustMethod
-        outputVars["roughness"] = roughness
-        outputVars["loss"] = loss
-        outputVars["wscorr_a"] = wscorr_a
-        outputVars["wscorr_b"] = wscorr_b
-        outputVars["conv_stdBase"] = conv_stdBase
-        outputVars["conv_stdScale"] = conv_stdScale
-        outputVars["hubHeight"] = hubHeight
-        outputVars["capacity"] = capacity
-        outputVars["rotordiam"] = rotordiam
-        outputVars["cutout"] = cutout
-        outputVars["locationID"] = locationID
-        
-        result = raw_finalizer(production, capacityFactor)
+def workflowTemplate(placements, source, landcover, gwa, convScale, convBase, lowBase, lowSharp, adjustMethod, hubHeight=None, powerCurve=None, capacity=None, rotordiam=None, cutout=None, lctype="clc", extract="totalProduction", output=None, jobs=1, batchSize=None, verbose=True, roughness=None, loss=0, densityCorrection=True):
 
-        try:
-            outputPath = extractor.outputPath%gid
-        except:
-            if extractor.outputPath.format(0) == extractor.outputPath.format(2):
-                raise ResError("output is not integer-formatable. Be sure there is a single %d or a {}")
-            outputPath = extractor.outputPath.format(gid)
-
-        raw_output(outputPath, result, outputVars)
-    
-    output = extractor.finalize(production, capacityFactor)
-    return output
-"""
-def simulateLocations(wsSource, landcover, adjustMethod, gwa, roughness, loss, low_a, low_b, 
-                      lctype, verbose, extractor, powerCurve, pcKey, gid, locationID, globalStart, locations, capacity, 
-                      conv_stdBase, conv_stdScale, hubHeight, rotordiam, cutout, pickleable, densityCorrection):
-    if verbose: 
-        startTime = dt.now()
-        globalStart = globalStart
-        print(" %s: Starting at +%.2fs"%(str(gid), (startTime-globalStart).total_seconds()))
-    
-    # prepare wind speed loader
-    locations = LocationSet(locations)
-    if locations.count == 0 : 
-        if verbose: print( " %s: No locations found"%(str(gid)))
-        return None
-
-    if pickleable:
-        print("ami here?")
-        locations.makePickleable()
-
-    # read and spatially adjust windspeeds
-    if adjustMethod == "lra":
-        ws = wsSource.get("windspeed", locations, forceDataFrame=True)
-        ws = windutil.adjustLraToGwa( ws, locations, longRunAverage=MerraSource.LONG_RUN_AVERAGE_50M_SOURCE, gwa=gwa)
-
-    elif adjustMethod == "near" or adjustMethod == "bilinear" or adjustMethod == "cubic":
-        ws = wsSource.get("windspeed", locations, interpolation=adjustMethod, forceDataFrame=True)
-
-    elif adjustMethod is None:
-        ws = wsSource.get("windspeed", locations, forceDataFrame=True)
-    
-    else: raise ResError("adjustMethod not recognized")
-    
-    
-    # Look for bad values
-    badVals = np.isnan(ws)
-    if badVals.any().any():
-        print("%d locations have invalid wind speed values:"%badVals.any().sum())
-        sel = badVals.any()
-        for loc in locations[sel]: print("  ", loc)
-
-    # Get roughnesses from Land Cover
-    if roughness is None and not lctype is None:
-        lcVals = gk.raster.extractValues(landcover, locations).data
-        roughnesses = windutil.roughnessFromLandCover(lcVals, lctype)
-
-        if np.isnan(roughnesses).any():
-            raise RuntimeError("%d locations are outside the given landcover file"%np.isnan(roughnesses).sum())
-
-    elif not roughness is None and lctype is None:
-        roughnesses = roughness
-    else:
-        raise ResError("roughness and lctype are both given or are both None")
-
-    # Project WS to hub height
-    ws = windutil.projectByLogLaw(ws, measuredHeight=50, targetHeight=hubHeight, roughness=roughnesses)
-    
-    # Density correction to windspeeds
-    if densityCorrection:
-        t =  wsSource.get("air_temp", locations, interpolation='bilinear', forceDataFrame=True)
-        p =  wsSource.get("pressure", locations, interpolation='bilinear', forceDataFrame=True)
-        ws = densityAdjustment(ws, pressure=p, temperature=t, height=hubHeight)
-    
-    # do simulations
-    if not isinstance(powerCurve, dict):
-        capacityGeneration = simulateTurbine(ws, powerCurve=powerCurve, loss=0)
-    else:
-        capacityGeneration = pd.DataFrame(-1*np.ones(ws.shape), index=ws.index, columns=ws.columns)
-        for key in np.unique(pcKey):
-            tmp = simulateTurbine(ws.iloc[:,pcKey==key], powerCurve[key], loss=0)
-            capacityGeneration.update( tmp )
-
-        if (capacityGeneration.values<0).any(): raise RuntimeError("Some placements were not evaluated")
-    
-    if verbose:
-        endTime = dt.now()
-        simSecs = (endTime - startTime).total_seconds()
-        globalSecs = (endTime - globalStart).total_seconds()
-        print(" %s: Finished %d turbines +%.2fs (%.2f turbines/sec)"%(str(gid), locations.count, globalSecs, locations.count/simSecs))
-    
-    # apply wind speed corrections to account (somewhat) for local effects not captured on the MERRA context
-    if not (low_a is None and low_b is None):
-        factors = (1-low_a)*(1-np.exp(-low_b*capacityGeneration))+low_a # dampens lower wind speeds
-        capacityGeneration = factors*capacityGeneration
-        factors = None
-
-    capacityGeneration *= (1-loss)
-    capacityFactor = capacityGeneration.mean(axis=0)
-    production = capacityGeneration*capacity
-
-    # Done!
-    if extractor.method == "batch":
-        outputVars = OrderedDict()
-        outputVars["lctype"] = lctype
-        outputVars["pcKey"] = pcKey
-        outputVars["adjustMethod"] = adjustMethod
-        outputVars["roughness"] = roughness
-        outputVars["loss"] = loss
-        outputVars["low_a"] = low_a
-        outputVars["low_b"] = low_b
-        outputVars["conv_stdBase"] = conv_stdBase
-        outputVars["conv_stdScale"] = conv_stdScale
-        outputVars["hubHeight"] = hubHeight
-        outputVars["capacity"] = capacity
-        outputVars["rotordiam"] = rotordiam
-        outputVars["cutout"] = cutout
-        outputVars["locationID"] = locationID
-        
-        result = raw_finalizer(production, capacityFactor)
-
-        try:
-            outputPath = extractor.outputPath%gid
-        except:
-            if extractor.outputPath.format(0) == extractor.outputPath.format(2):
-                raise ResError("output is not integer-formatable. Be sure there is a single %d or a {}")
-            outputPath = extractor.outputPath.format(gid)
-
-        raw_output(outputPath, result, outputVars)
-    
-    output = extractor.finalize(production, capacityFactor)
-    return output
-
-##################################################################
-## Distributed Wind production from a Merra wind source
-def WindWorkflowTemplate(placements, merra, hubHeight, powerCurve, capacity, rotordiam, cutout, extract, output, 
-                         roughness, landcover, adjustMethod, gwa, lctype, conv_stdBase, conv_stdScale, loss, low_a, low_b, 
-                         jobs, batchSize, verbose, densityCorrection, padding=2):
     startTime = dt.now()
     if verbose:
         print("Starting at: %s"%str(startTime))
 
+    ### Configre multiprocessing
     if jobs==1: # use only a single process
         cpus = 1
         pool = None
@@ -262,8 +130,6 @@ def WindWorkflowTemplate(placements, merra, hubHeight, powerCurve, capacity, rot
         cpus = cpu_count()-jobs
         if cpus <=0: raise ResError("Bad jobs count")
         useMulti = True
-    
-    extractor = Extractor(extract, outputPath=output)
 
     ### Determine the total extent which will be simulated (also make sure the placements input is okay)
     if verbose: print("Arranging placements at +%.2fs"%((dt.now()-startTime).total_seconds()))
@@ -285,50 +151,26 @@ def WindWorkflowTemplate(placements, merra, hubHeight, powerCurve, capacity, rot
         except:
             placements = placements["geom"].values
 
-    placements = LocationSet(placements)
+    placements = gk.LocationSet(placements)
+    if useMulti: placements.makePickleable()
 
-    lonMin, latMin, lonMax, latMax = placements.getBounds()
-    latMin = latMin -padding
-    latMax = latMax +padding
-    lonMin = lonMin -padding
-    lonMax = lonMax +padding
-
-    hubHeight = None if hubHeight is None else np.array(hubHeight)
-    capacity = None if capacity is None else np.array(capacity)
-    rotordiam = None if rotordiam is None else np.array(rotordiam)
-    cutout = None if cutout is None else np.array(cutout)
-
-    if verbose: print("Pre-loading windspeeds at +%.2fs"%((dt.now()-startTime).total_seconds()))
-    totalExtent = gk.Extent((lonMin,latMin,lonMax,latMax,), srs=LATLONSRS)
-    
-    # Setup manager if needed
-    doload=True
-    if useMulti:
-        manager = WSManager()
-        manager.start()
-        wsSource = manager.MerraSource(source=merra, bounds=totalExtent.xyXY, indexPad=2)
-    else:
-        if isinstance(merra,str):
-            wsSource = MerraSource(source=merra, bounds=totalExtent, indexPad=2)
-        elif isinstance(merra, MerraSource):
-            wsSource = merra
-            doload=False
-    if doload:
-        wsSource.loadWindSpeed(height=50)
-        if densityCorrection:
-            wsSource.loadPressure()
-            wsSource.loadTemperature('air')
+    hubHeight = None if hubHeight is None else pd.Series(hubHeight, index=placements)
+    capacity = None if capacity is None else pd.Series(capacity, index=placements)
+    rotordiam = None if rotordiam is None else pd.Series(rotordiam, index=placements)
+    cutout = None if cutout is None else pd.Series(cutout, index=placements)
 
     ### Convolute turbine
     if verbose: print("Convolving power curves at +%.2fs"%( (dt.now()-startTime).total_seconds()) )
     
     pcKey = None
-    if powerCurve is None: # no turbine given, so a synthetic turbine will need to be constructed
+    if isinstance(powerCurve, PowerCurve):
+        pcKey = 'user-defined'
+    elif powerCurve is None: # no turbine given, so a synthetic turbine will need to be constructed
         if capacity is None and rotordiam is None:
             raise RuntimeError("powerCurve, capacity, and rotordiam cannot all be None")
 
         # Compute specific capacity
-        #  - Round to the nearest 10 to save memory and time for convolution
+        #  - Round to the nearest 1 to save time for convolution
         specificCapacity = np.array(capacity*1000/(np.pi*rotordiam**2/4))
         specificCapacity = np.round(specificCapacity).astype(int)
 
@@ -338,17 +180,19 @@ def WindWorkflowTemplate(placements, merra, hubHeight, powerCurve, capacity, rot
         else:
             powerCurve = dict()
             pcKey = []
-            if isinstance(cutout, int) or isinstance(cutout, float) or cutout is None: 
-                cutout = [cutout]*specificCapacity.size
-            for sp,co in zip(specificCapacity,cutout):
+
+
+            for i,sp in enumerate(specificCapacity):
+                co = 25 if cutout is None else cutout[i]
                 key = "%d:%d"%(sp,25 if co is None else co)
                 pcKey.append( key )
                 if not key in powerCurve.keys():
                     powerCurve[key] = SyntheticPowerCurve( sp, co)
+            pcKey = pd.Series(pcKey, index=placements)
 
     elif isinstance(powerCurve, str):
         pcKey = powerCurve
-        capacity = TurbineLibrary.ix[powerCurve].Capacity
+        capacity = pd.Series(TurbineLibrary.ix[powerCurve].Capacity, index=placements)
         powerCurve = TurbineLibrary.ix[powerCurve].PowerCurve
 
     else: # powerCurve is either a (ws,power) list or is a list of turbine names
@@ -367,22 +211,20 @@ def WindWorkflowTemplate(placements, merra, hubHeight, powerCurve, capacity, rot
                 raise RuntimeError("capacity cannot be None when giving a user-defined power curve")
             tmp = np.array(powerCurve)
             powerCurve = PowerCurve(tmp[:,0], tmp[:,1])
-            pcKey = None
+            pcKey = "user-defined"
 
-        turbine = None # remove turbine so it doesn't show up in output
-    pcKey = pcKey if pcKey is None or isinstance(pcKey, str) else np.array(pcKey)
-
+    convolutionKwargs = dict(stdScaling=convScale, stdBase=convBase, extendBeyondCutoff=False)
     if isinstance(powerCurve, dict):
         if verbose: 
             print("   Convolving %d power curves..."%(len(powerCurve)))
+        
 
         if useMulti:
             pool = Pool(cpus)
             res = []
         
             for k,v in powerCurve.items():
-                kwargs = dict(stdScaling=conv_stdScale, stdBase=conv_stdBase, powerCurve=v, extendBeyondCutoff=False)
-                res.append((k,pool.apply_async(convolutePowerCurveByGuassian, (), kwargs)))
+                res.append((k,pool.apply_async(convolutePowerCurveByGuassian, (v, ), convolutionKwargs)))
 
             for k,r in res:
                 powerCurve[k] = r.get()
@@ -392,234 +234,113 @@ def WindWorkflowTemplate(placements, merra, hubHeight, powerCurve, capacity, rot
             pool = None
         else:
             for k,v in powerCurve.items():
-                powerCurve[k] = convolutePowerCurveByGuassian(stdScaling=conv_stdScale, stdBase=conv_stdBase, powerCurve=v, extendBeyondCutoff=False)
+                powerCurve[k] = convolutePowerCurveByGuassian(v, **convolutionKwargs)
     else:
-        powerCurve = convolutePowerCurveByGuassian(stdScaling=conv_stdScale, stdBase=conv_stdBase, powerCurve=powerCurve, extendBeyondCutoff=False )
+        powerCurve = convolutePowerCurveByGuassian(powerCurve, **convolutionKwargs)
 
     ### Do simulations
-    # Check inputs
-    if hubHeight is None:
-        raise RuntimeError("hubHeight has not been provided")
+    if verbose: print("Starting simulations at at +%.2fs"%( (dt.now()-startTime).total_seconds()) )
 
-    ### initialize simulations
-    if verbose: print("Initializing simulations at +%.2fs"%((dt.now()-startTime).total_seconds()))
-    if useMulti: pool = Pool(cpus)
-    simGroups = []
-    I = np.arange(placements.count)
-    if batchSize is None and cpus==1: # do everything in one big batch
-        simGroups.append( I )
-    elif cpus>1 and (batchSize is None or placements.count < batchSize): # Split evenly to all cpus
-        for simPlacements in np.array_split( I, cpus):
-            simGroups.append( simPlacements )
-    else: # split the area in to equal size groups, and simulate one group at a time
-        for simPlacements in np.array_split(I, max(1,placements.count//(batchSize/cpus))):
-            simGroups.append( simPlacements )
+    simKwargs = dict(
+        source=source,
+        landcover=landcover,
+        gwa=gwa,
+        adjustMethod=adjustMethod,
+        roughness=roughness,
+        loss=loss,
+        lowBase=lowBase,
+        lowSharp=lowSharp,
+        convBase=convBase,
+        convScale=convScale,
+        lctype=lctype,
+        verbose=verbose,
+        extract=extract,
+        powerCurve = powerCurve,
+        globalStart=startTime,
+        densityCorrection=densityCorrection,
+        )
 
-    if verbose: 
-        print("Simulating %d groups at +%.2fs"%(len(simGroups), (dt.now()-startTime).total_seconds() ))
-
-    results = []
-    if useMulti: 
-        placements.makePickleable()
-
-    for i,sel in enumerate(simGroups):
-        # Construct arguments for each submission
-        inputs = {}
-        inputs["wsSource"]=wsSource
-        inputs["landcover"]=landcover
-        inputs["gwa"]=gwa
-        inputs["adjustMethod"]=adjustMethod
-        inputs["roughness"]=roughness
-        inputs["loss"]=loss
-        inputs["low_a"]=low_a
-        inputs["low_b"]=low_b
-        inputs["conv_stdBase"]=conv_stdBase
-        inputs["conv_stdScale"]=conv_stdScale
-        inputs["lctype"]=lctype
-        inputs["verbose"]=verbose
-        inputs["extractor"]=extractor
-        inputs["powerCurve"] = powerCurve
-        inputs["pcKey"] = pcKey if (pcKey is None or isinstance(pcKey, str)) else pcKey[sel]
-        inputs["gid"]=i
-        inputs["locationID"]=sel
-        inputs["globalStart"]=startTime
-        inputs["densityCorrection"]=densityCorrection
-
-        def add(val,name):
-            if isinstance(val, list): val = np.array(val)
-            if isinstance(val , np.ndarray) and val.size>1: inputs[name] = val[sel]
-            else: inputs[name] = val
-
-        add(placements[:], "locations")
-        add(capacity, "capacity")
-        add(hubHeight, "hubHeight")
-        add(rotordiam, "rotordiam")
-        add(cutout, "cutout")
-        
-        if useMulti:
-            inputs["pickleable"]=True
-            results.append( pool.apply_async( simulateLocations, (), inputs ))
-        else:    
-            inputs["pickleable"]=False
-            results.append( PoollikeResult(simulateLocations(**inputs)) )
-
-    # Read each result as it becomes available
-    finalResult = None
-    for r in results:
-        tmp = r.get()
-        if tmp is None: continue
-        finalResult = extractor.combine(finalResult, r.get())
-       
     if useMulti:
-        # Do some cleanup
+        placements.makePickleable()
+        pool = Pool(jobs)
+        res = []
+        for i,placementGroup in enumerate(placements.splitKMeans(jobs)):
+            kwargs = simKwargs.copy()
+            kwargs.update(dict(
+                placements=placementGroup,
+                hubHeight=None if hubHeight is None else hubHeight[placementGroup[:]].values,
+                capacity=None if capacity is None else capacity[placementGroup[:]].values,
+                rotordiam=None if rotordiam is None else rotordiam[placementGroup[:]].values,
+                cutout=None if cutout is None else cutout[placementGroup[:]].values,
+                pcKey = pcKey if isinstance(pcKey, str) else pcKey[placementGroup[:]].values,
+                batchSize=batchSize//jobs,
+                gid=i,
+                ))
+            res.append(pool.apply_async(_simulator, (), kwargs))
+
+        finalRes = []
+        for r in res: finalRes.extend(r.get())
+        res = finalRes
+
         pool.close()
         pool.join()
+        pool = None
+    else:
+        simKwargs.update(dict(
+            placements=placements,
+            hubHeight=None if hubHeight is None else hubHeight.values,
+            capacity=None if capacity is None else capacity.values,
+            rotordiam=None if rotordiam is None else rotordiam.values,
+            cutout=None if cutout is None else cutout.values,
+            pcKey = pcKey if isinstance(pcKey, str) else pcKey.values,
+            batchSize=batchSize,
+            gid=0,
+            ))
+        res = _simulator(**simKwargs)
 
-    if verbose:
-        endTime = dt.now()
-        totalSecs = (endTime - startTime).total_seconds()
-        print("Finished simulating %d turbines (%d surviving) at +%.2fs (%.2f turbines/sec)"%(placements.count, finalResult.c, totalSecs, placements.count/totalSecs))
+    ## Finalize
+    if extract == "capacityFactor": res = pd.concat(res)
+    elif extract == "totalProduction": res = sum(res)
+    elif extract == "raw": res = pd.concat(res, axis=1)
+    elif extract == "batchfile": pass
+    else:
+        raise ResError("extract method '%s' not understood"%extract)
 
-    ### Give the results
-    if not output is None and not extractor.skipFinalOutput:
-        if verbose:
-            endTime = dt.now()
-            totalSecs = (endTime - startTime).total_seconds()
-            print("Writing output at +%.2fs"%totalSecs)
 
-        outputVars = OrderedDict()
-        outputVars["lctype"] = lctype
-        outputVars["minCF"] = minCF
-        outputVars["pcKey"] = pcKey
-        outputVars["adjustMethod"] = adjustMethod
-        outputVars["roughness"] = roughness
-        outputVars["loss"] = loss
-        outputVars["wscorr_a"] = wscorr_a
-        outputVars["wscorr_b"] = wscorr_b
-        outputVars["conv_stdBase"] = conv_stdBase
-        outputVars["conv_stdScale"] = conv_stdScale
-        outputVars["hubHeight"] = hubHeight
-        outputVars["capacity"] = capacity
-        outputVars["rotordiam"] = rotordiam
-        outputVars["cutout"] = cutout
-        
-        extractor.output(output, finalResult, outputVars)
+    endTime = dt.now()
+    totalSecs = (endTime - startTime).total_seconds()
+    print("Finished simulating %d turbines at +%.2fs (%.2f turbines/sec)"%(placements.count, totalSecs, placements.count/totalSecs))
 
-    #### Formulate result
-    if verbose:
-        endTime = dt.now()
-        totalSecs = (endTime - startTime).total_seconds()
-        print("Done at +%.2fs!"%totalSecs)
+    return res
 
-    if extract == "batch":  return
+def WindOnshoreWorkflow(placements, source, landcover, gwa, hubHeight=None, powerCurve=None, capacity=None, rotordiam=None, cutout=None, lctype="clc", extract="totalProduction", output=None, jobs=1, batchSize=10000, ):
 
-    outputResult = finalResult.o
-    outputResult.name = extractor.title
-    outputResult.TurbineCount = finalResult.c
-    return outputResult
+    kwgs = dict()
+    kwgs["convScale"]=0.06
+    kwgs["convBase"]=0.1
+    kwgs["lowBase"]=0.0
+    kwgs["lowSharp"]=5
+    kwgs["adjustMethod"]="lra"
+    kwgs["verbose"]=True
+    kwgs["roughness"]=None
+    kwgs["loss"]=0.00
+    kwgs["densityCorrection"]=True
 
-def WindOnshoreWorkflow(placements, merra, landcover, gwa, hubHeight=None, powerCurve=None, capacity=None, rotordiam=None, cutout=None, lctype="clc", extract="totalProduction", output=None, minCF=0, jobs=1, batchSize=None, verbose=True, **kwargs):
-    """
-    Apply the wind simulation method developed by Severin Ryberg, Dilara Caglayan, and Sabrina Schmitt. This method 
-    works as follows for a given simulation point:
-        1. The nearest time-series in the provided MERRA climate data is extracted
-            * reads windspeeds at 50 meters
-        2. The time series is adjusted so that the long-run-average (all MERRA data at this point) matches the value
-           given by the Global Wind Atlas at the simulation point
-        3. A roughness factor is assumed from the land cover and is used to project the wind speeds to the indicated
-           hub height
-        4. Low windspeeds are depressed slightly, ending around 10 m/s
-        5. The wind speeds are fed through the power-curve of the indicated turbine
-            * The power curve has been convoluted to incorporate a stochastic spread of windspeeds
-        6. An additional 4% loss is applied
-    
-    Notes:
-        * hubHeight must always be given, either as an argument or contained within the placements object (see below)
-        * When giving a user-defined power curve, the capacity must also be given 
-        * When powerCurve isn't given, capacity, rotordiam and cutout are used to generate a synthetic power curve 
-          using res.windpower.SyntheticPowerCurve. In this case, rotordiam and capacity must be given, but cutout can
-          be left as None (implying the default of 25 m/s)
-        * Be careful about writing raw production data to csv files. It takes long and output is big big big. I 
-          suggest using a netCDF4 (.nc) file instead
+    return workflowTemplate(placements=placements, source=source, landcover=landcover, gwa=gwa, hubHeight=hubHeight, powerCurve=powerCurve, capacity=capacity, rotordiam=rotordiam, cutout=cutout, lctype=lctype, extract=extract, output=output, jobs=jobs, batchSize=batchSize, **kwgs)
 
-    Inputs:
-        placements: 
-            [ (lon,lat), ] : a list of (lon,lat) coordinates to simulate
-            str : A path to a point-type shapefile indicating the turbines to simulate
-            DataFrame : A datafrom containing per-turbine characteristics, must include a 'lon' and 'lat' column
-            * When plaements is given as a shapefile path or a DataFrame, the following can also be defined as 
-              attributes/columns for each turbine (but are not necessary):
-              [turbine, powerCurve, capacity, rotordiam, hubHeight, cutout]
 
-        merra - str : A path to the MERRA data which will be used for the simulation
-            * MUST have the fields 'U50M' and 'V50M'
+def WindOffshoreWorkflow(placements, source, hubHeight=None, powerCurve=None, capacity=None, rotordiam=None, cutout=None, lctype="clc", extract="totalProduction", output=None, jobs=1, batchSize=10000, ):
 
-        landcover - str : The path to the land cover source
+    kwgs = dict()
+    kwgs["convScale"]=0.04
+    kwgs["convBase"]=0.5
+    kwgs["lowBase"]=0.1
+    kwgs["lowSharp"]=3.5
+    kwgs["adjustMethod"]="bilinear"
+    kwgs["verbose"]=True
+    kwgs["roughness"]=0.0002
+    kwgs["loss"]=0.00
+    #kwgs["lctype"]=None
+    kwgs["densityCorrection"]=False
 
-        gwa - str : The path to the global wind atlas source
-
-        powerCurve: The turbine to simulate
-            str : An indicator from the TurbineLibrary (res.windpower.TurbineLibrary)
-            [(float, float), ...] : An explicit performance curve given as (windspeed, capacity-factor-output) pairs
-            * Giving this will overload the turbine/powerCurve definition from the placements shapefile/DataFrame
-
-        hubHeight - float : The hub height to simulate at
-            * Giving this will overload the hubHeight definition from the placements shapefile/DataFrame
-
-        capacity - float : The turbine capacity in kW
-            * Giving this will overload the capacity definition from the placements shapefile/DataFrame
-
-        rotordiam - float : The turbine rotor diameter in m
-            * Giving this will overload the rotordiam definition from the placements shapefile/DataFrame
-            * Using this is only useful when generating a synthetic power curve
-        
-        cutout - float : The turbine cutout windspeed in m/s
-            * Giving this will overload the cutout definition from the placements shapefile/DataFrame
-            * Using this is only useful when generating a synthetic power curve
-        
-        lctype - str: The land cover type to use
-            * Options are "clc", "globCover", and "modis"
-
-        extract - str: Determines the extraction method and the form of the returned information
-            * Options are:
-                "raw" - returns the timeseries production for each location
-                "capacityFactor" - returns only the resulting capacity factor for each location
-                "averageProduction" - returns the average time series of all locations
-                "batch" - returns nothing, but the full production data is written independently for each batch
-
-        minCF - float : The minimum capacity factor to accept
-            * Must be between 0..1
-
-        jobs - int : The number of parallel jobs
-
-        batchSize - int : The number of placements to simulate across all concurrent jobs
-            * Use this to tune performance to your specific machine
-
-        verbose - bool : False means silent, True means noisy
-
-        output - str : The path of the output file to create
-            * File type options are ".shp", ".csv", and ".nc"
-            * When using the "batch" extract option, output must be able to handle an integer when formatting.
-                - ex: output="somepath\outputData_%02d.nc"
-    """
-    return WindWorkflowTemplate(placements=placements, merra=merra, hubHeight=hubHeight, powerCurve=powerCurve, 
-                            capacity=capacity, rotordiam=rotordiam, cutout=cutout, extract=extract, 
-                            output=output, landcover=landcover, gwa=gwa, lctype=lctype, jobs=jobs, 
-                            batchSize=batchSize, verbose=verbose,
-                            roughness=None,
-                            adjustMethod="lra",
-                            conv_stdBase=0.1,
-                            conv_stdScale=0.16,
-                            loss=0.01,
-                            low_a=0.1,
-                            low_b=80.0,
-                            densityCorrection=True)
-
-                         
-                                                  
-def WindOffshoreWorkflow(placements, merra, adjustMethod="bilinear", loss=0.03, conv_stdBase=0.2, conv_stdScale=0.05, wscorr_a=0.45, wscorr_b=0.2,hubHeight=None, powerCurve=None, capacity=None, rotordiam=None, cutout=None, roughness=0.0002, extract="averageProduction", output=None, minCF=0, jobs=1, batchSize=None, verbose=True, **kwargs):
-    return WindWorkflowTemplate(placements=placements, merra=merra, hubHeight=hubHeight, powerCurve=powerCurve, capacity=capacity, 
-                                rotordiam=rotordiam, cutout=cutout, extract=extract, output=output, landcover=None, gwa=None, 
-                                roughness=roughness, minCF=minCF, jobs=jobs,batchSize=batchSize, verbose=verbose, lctype=None,
-                                adjustMethod=adjustMethod,conv_stdBase=conv_stdBase,conv_stdScale=conv_stdScale,loss=loss, wscorr_a=wscorr_a, wscorr_b=wscorr_b,)
-
+    return workflowTemplate(placements=placements, source=source, landcover=None, gwa=None, hubHeight=hubHeight, powerCurve=powerCurve, capacity=capacity, rotordiam=rotordiam, cutout=cutout, lctype=lctype, extract=extract, output=output, jobs=jobs, batchSize=batchSize, **kwgs)
