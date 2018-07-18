@@ -561,6 +561,7 @@ def _save_to_nc(output, capacityGeneration, lats, lons, capacity, hubHeight, rot
 
         var = ds.createVariable("powerCurveKey", str, dimensions=("turbineID",))
         var.units = "-"
+        var.convention = "Specific Power : Cutout Wind Speed"
         var.description = "Key used to identify the power curve for each turbine"
         var.longname = "Power Curve Key"
         for i,k in enumerate(pckey): var[i] = k
