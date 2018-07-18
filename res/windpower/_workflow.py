@@ -348,6 +348,6 @@ def workflowOffshore(placements, source, hubHeight=None, powerCurve=None, capaci
     kwgs["densityCorrection"]=False
 
     return workflowTemplate(placements=placements, source=source, landcover=None, gwa=None, hubHeight=hubHeight, 
-                            powerCurve=powerCurve, capacity=capacity, rotordiam=rotordiam, cutout=cutout, lctype="clc", 
+                            powerCurve=powerCurve, capacity=capacity, rotordiam=rotordiam, cutout=cutout, 
                             extract=extract, output=output, jobs=jobs, groups=groups, batchSize=batchSize, verbose=verbose, 
                             **kwgs)
