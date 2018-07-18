@@ -127,7 +127,7 @@ def _batch_simulator(source, landcover, gwa, adjustMethod, roughness, loss, conv
     return res
 
 def workflowTemplate(placements, source, landcover, gwa, convScale, convBase, lowBase, lowSharp, adjustMethod, hubHeight, 
-                     powerCurve, capacity, rotordiam, cutout, lctype, extract, output, jobs, groups, batchSize, verbose, 
+                     powerCurve, capacity, rotordiam, cutout, lctype, extract, output, jobs, batchSize, verbose, 
                      roughness, loss, densityCorrection):
     startTime = dt.now()
     if verbose:
@@ -305,8 +305,20 @@ def workflowTemplate(placements, source, landcover, gwa, convScale, convBase, lo
         placements.makePickleable()
         pool = Pool(jobs)
         res = []
-        if groups is None: groups = jobs
-        for i,placementGroup in enumerate(placements.splitKMeans(groups)):
+
+        # Split locations into groups
+        groups = []
+        for grp in placements.splitKMeans(jobs):
+            if grp.count > (batchSize/jobs)*3:
+                subgroups = np.round(grp.count/(3*batchSize/jobs))
+                for sgi in range(int(subgroups)):
+                    groups.append( gk.LocationSet(grp[sgi::subgroups]) )
+            else:
+                groups.append( grp )
+
+        # Submit groups
+        if verbose: print("Submitting %d simulation groups at +%.2fs"%( len(groups), (dt.now()-startTime).total_seconds()) )
+        for i,placementGroup in enumerate(groups):
             kwargs = simKwargs.copy()
             kwargs.update(dict(
                 placements=placementGroup,
@@ -351,7 +363,7 @@ def workflowTemplate(placements, source, landcover, gwa, convScale, convBase, lo
 
     endTime = dt.now()
     totalSecs = (endTime - startTime).total_seconds()
-    print("Finished simulating %d turbines at +%.2fs (%.2f turbines/sec)"%(placements.count, totalSecs, placements.count/totalSecs))
+    if verbose: print("Finished simulating %d turbines at +%.2fs (%.2f turbines/sec)"%(placements.count, totalSecs, placements.count/totalSecs))
 
     return res
 
@@ -465,11 +477,11 @@ def workflowOnshore(placements, source, landcover, gwa, hubHeight=None, powerCur
 
     return workflowTemplate(placements=placements, source=source, landcover=landcover, gwa=gwa, hubHeight=hubHeight, 
                             powerCurve=powerCurve, capacity=capacity, rotordiam=rotordiam, cutout=cutout, lctype=lctype, 
-                            extract=extract, output=output, jobs=jobs, groups=groups, batchSize=batchSize, verbose=verbose, 
+                            extract=extract, output=output, jobs=jobs, batchSize=batchSize, verbose=verbose, 
                             **kwgs)
 
 
-def workflowOffshore(placements, source, hubHeight=None, powerCurve=None, capacity=None, rotordiam=None, cutout=None, extract="totalProduction", output=None, jobs=1, groups=None, batchSize=10000, verbose=True):
+def workflowOffshore(placements, source, hubHeight=None, powerCurve=None, capacity=None, rotordiam=None, cutout=None, extract="totalProduction", output=None, jobs=1, batchSize=10000, verbose=True):
 
     kwgs = dict()
     kwgs["loss"]=0.00
