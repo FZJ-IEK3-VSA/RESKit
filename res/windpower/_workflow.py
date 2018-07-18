@@ -76,7 +76,6 @@ def _batch_simulator(source, landcover, gwa, adjustMethod, roughness, loss, conv
             t =  source.get("air_temp", placements[s], interpolation='bilinear', forceDataFrame=True)
             p =  source.get("pressure", placements[s], interpolation='bilinear', forceDataFrame=True)
             ws = densityAdjustment(ws, pressure=p, temperature=t, height=hubHeight[s])
-        del source
 
         ### Do simulations
         if not isinstance(powerCurve, dict):
@@ -107,6 +106,7 @@ def _batch_simulator(source, landcover, gwa, adjustMethod, roughness, loss, conv
             raise ResError("extract method '%s' not understood"%extract)
 
         res.append(tmp)
+    del source
     placements.makePickleable()
     # All done!
     if verbose:
