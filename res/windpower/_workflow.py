@@ -321,6 +321,102 @@ def workflowTemplate(placements, source, landcover, gwa, convScale, convBase, lo
     return res
 
 def workflowOnshore(placements, source, landcover, gwa, hubHeight=None, powerCurve=None, capacity=None, rotordiam=None, cutout=None, lctype="clc", extract="totalProduction", output=None, jobs=1, groups=None, batchSize=10000, verbose=True):
+    """
+    Apply the wind simulation method developed by Severin Ryberg, Dilara Caglayan, and Sabrina Schmitt. 
+    This method works as follows for a given simulation point:
+        1. The nearest time-series in the provided MERRA climate data source is extracted
+            * reads windspeeds at 50 meters
+        2. The time series is adjusted so that the long-run-average (across all MERRA data at this point) 
+           matches the value given by the Global Wind Atlas at the simulation point
+        3. A roughness factor is assumed from the land cover and is used to project the wind speeds 
+           to the indicated hub height
+        4. The wind speeds are 'density corrected' so that they correspond to windspeeds at standard
+           air density
+        5. The wind speeds are fed through the power-curve of the indicated turbine
+            * The power curve has been convoluted to incorporate a stochastic spread of windspeeds
+        6. Low production periods are depressed slightly, ending around a 60% capacity factor
+        
+    Notes:
+        * hubHeight must always be given, either as an argument or contained within the placements 
+          object (see below)
+        * When giving a user-defined power curve, the capacity must also be given 
+        * When powerCurve isn't given, capacity, rotordiam and cutout are used to generate a synthetic 
+          power curve using res.windpower.SyntheticPowerCurve. In this case, rotordiam and capacity 
+          must be given, but cutout can be left as None (implying the default of 25 m/s)
+
+    Parameters:
+    ===========
+        placements : DataFrame, geokit.LocationSet, [ (lon,lat), ], or str
+            A list of (lon,lat) coordinates to simulate
+            * If str -> A path to a point-type shapefile indicating the turbines to simulate
+            * If DataFrame -> A datafrom containing per-turbine characteristics
+              - Must include a 'lon' and 'lat' column
+              - Unless specified later 'powercurve', capacity', 'hubHeight', 'rotordiam', and 
+                'cutout' columns are used for simulating each individual turbine 
+            
+        source : str, res.NCSource
+            The weather data to use for simulation
+            * If str -> A path to the MERRA data which will be used for the simulation
+            * MUST have the fields 'U50M', 'V50M', 'SP', and 'T2M'
+
+        landcover : str
+            The path to the land cover source
+
+        gwa : str
+            The path to the global wind atlas source at 50m
+
+        powerCurve : str, list; optional
+            The normalized power curve to use for simulation
+            * If str -> Expects a key from the TurbineLibrary (res.windpower.TurbineLibrary)
+            * If list -> expects (windspeed, capacity-factor) pairs for all points in the power curve
+              - Pairs must be given in order of increasing wind speed 
+
+        hubHeight : float; optional 
+            The hub height in meters to simulate at 
+            * This input is only optional when hub heights are uniquely defined in the 'placements' 
+              data frame
+            * When given, this input will be applied to all simulation locations 
+
+        capacity : float; optional 
+            The nameplate capacity to use for simulation in kW
+            * This input is only optional when capacities are uniquely defined in the 'placements' 
+              data frame
+            * When given, this input will be applied to all simulation locations 
+
+        rotordiam : float ; optional
+            The turbine rotor diameter in meters
+            * This input is only useful when Synthetic Power curves are generated
+            
+        cutout : float ; optional 
+            The turbine cutout windspeed in m/s
+            * This input is only useful when Synthetic Power curves are generated
+        
+        lctype : str ; optional
+            The land cover type to use
+            * Options are "clc", "globCover", and "modis"
+
+        extract : str ; optional
+            Determines the extraction method and the form of the returned information
+            * Options are:
+              "raw" - returns the timeseries production for each location
+              "capacityFactor" - returns only the resulting capacity factor for each location
+              "averageProduction" - returns the average time series of all locations
+              "batch" - returns nothing, but the full production data is written for each batch
+
+        jobs : int ; optional
+            The number of parallel jobs
+
+        batchSize : int; optional
+            The number of placements to simulate across all concurrent jobs
+            * Use this to tune performance to your specific machine
+
+        verbose : bool; optional
+            If True, output progress reports
+
+        outputHeader : str ; optional
+            The path of the output NC4 file to create
+            * Only useful when using the "batch" extract option
+    """
 
     kwgs = dict()
     kwgs["loss"]=0.00
