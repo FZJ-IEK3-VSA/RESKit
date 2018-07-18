@@ -5,8 +5,8 @@ from res.weather import MerraSource
 from res.weather.windutil import *
 
 def _batch_simulator(source, landcover, gwa, adjustMethod, roughness, loss, convScale, convBase, lowBase, lowSharp, lctype, 
-                     verbose, extract, powerCurve , pcKey , gid, globalStart, densityCorrection, placements, hubHeight, 
-                     capacity, rotordiam, cutout, batchSize):
+                     verbose, extract, powerCurves, pcKey, gid, globalStart, densityCorrection, placements, hubHeight, 
+                     capacity, rotordiam, batchSize, turbineID, output):
     if verbose: 
         groupStartTime = dt.now()
         globalStart = globalStart
@@ -78,17 +78,14 @@ def _batch_simulator(source, landcover, gwa, adjustMethod, roughness, loss, conv
             ws = densityAdjustment(ws, pressure=p, temperature=t, height=hubHeight[s])
 
         ### Do simulations
-        if not isinstance(powerCurve, dict):
-            capacityGeneration = simulateTurbine(ws, powerCurve=powerCurve, loss=0)
-        else:
-            capacityGeneration = pd.DataFrame(-1*np.ones(ws.shape), index=ws.index, columns=ws.columns)
-            tmpPCKey = pcKey[s]
-            for key in np.unique(tmpPCKey):
-                tmp = simulateTurbine(ws.iloc[:,tmpPCKey==key], powerCurve[key], loss=0)
-                capacityGeneration.update( tmp )
+        capacityGeneration = pd.DataFrame(-1*np.ones(ws.shape), index=ws.index, columns=ws.columns)
+        tmpPCKey = pcKey[s]
+        for key in np.unique(tmpPCKey):
+            tmp = simulateTurbine(ws.iloc[:,tmpPCKey==key], powerCurves[key], loss=0)
+            capacityGeneration.update( tmp )
 
-            if (capacityGeneration.values<0).any(): raise RuntimeError("Some placements were not evaluated")
-        
+        if (capacityGeneration.values<0).any(): raise RuntimeError("Some placements were not evaluated")
+    
         # apply wind speed corrections to account (somewhat) for local effects not captured on the MERRA context
         if not (lowBase is None and lowSharp is None):
             factors = (1-lowBase)*(1-np.exp(-lowSharp*capacityGeneration))+lowBase # dampens lower wind speeds
@@ -101,12 +98,25 @@ def _batch_simulator(source, landcover, gwa, adjustMethod, roughness, loss, conv
         if extract == "capacityFactor": tmp = capacityGeneration.mean(0)
         elif extract == "totalProduction": tmp = (capacityGeneration*capacity[s]).sum(1)
         elif extract == "raw": tmp = capacityGeneration*capacity[s]
-        elif extract == "batchfile": pass
+        elif extract == "batchfile": tmp = None
         else:
             raise ResError("extract method '%s' not understood"%extract)
 
         res.append(tmp)
     del source
+
+    if extract == "batchfile": 
+        _save_to_nc( output=output+"_%d.nc"%gid,
+                    capacityGeneration=capacityGeneration,
+                    lats=[p.lat for p in placements],
+                    lons=[p.lon for p in placements], 
+                    capacity=capacity,
+                    hubHeight=hubHeight,
+                    rotordiam=rotordiam,
+                    identity=turbineID,
+                    pckey=pcKey)
+        res = None
+
     placements.makePickleable()
     # All done!
     if verbose:
@@ -160,19 +170,24 @@ def workflowTemplate(placements, source, landcover, gwa, convScale, convBase, lo
     if useMulti: placements.makePickleable()
 
     hubHeight = None if hubHeight is None else pd.Series(hubHeight, index=placements)
-    capacity = None if capacity is None else pd.Series(capacity, index=placements)
-    rotordiam = None if rotordiam is None else pd.Series(rotordiam, index=placements)
-    cutout = None if cutout is None else pd.Series(cutout, index=placements)
-
+    
     ### Convolute turbine
     if verbose: print("Convolving power curves at +%.2fs"%( (dt.now()-startTime).total_seconds()) )
     
     pcKey = None
+    powerCurves = {}
     if isinstance(powerCurve, PowerCurve):
-        pcKey = 'user-defined'
+        if capacity is None: raise ResError("Capacity cannot be undefined when a power curve is given")
+        capacity = pd.Series(capacity, index=placements)
+
+        pcKey = pd.Series(['user-defined',] * placements.shape[0], index=placements)
+        powerCurves['user-defined'] = PowerCurve
+
     elif powerCurve is None: # no turbine given, so a synthetic turbine will need to be constructed
         if capacity is None and rotordiam is None:
             raise RuntimeError("powerCurve, capacity, and rotordiam cannot all be None")
+        capacity = pd.Series(capacity, index=placements)
+        rotordiam = pd.Series(rotordiam, index=placements)
 
         # Compute specific capacity
         #  - Round to the nearest 1 to save time for convolution
@@ -180,69 +195,86 @@ def workflowTemplate(placements, source, landcover, gwa, convScale, convBase, lo
         specificCapacity = np.round(specificCapacity).astype(int)
 
         if specificCapacity.size == 1:
-            powerCurve = SyntheticPowerCurve( specificCapacity=specificCapacity, cutout=cutout)
-            pcKey = "%d:%d"%(specificCapacity,25 if cutout is None else cutout)
+            key = "%d:%d"%(specificCapacity,25 if cutout is None else cutout)
+            powerCurves[key] = SyntheticPowerCurve( specificCapacity=specificCapacity, cutout=cutout)
+            pcKey = pd.Series([key,] * placements.shape[0], index=placements)
         else:
-            powerCurve = dict()
             pcKey = []
-
 
             for i,sp in enumerate(specificCapacity):
                 co = 25 if cutout is None else cutout[i]
                 key = "%d:%d"%(sp,25 if co is None else co)
                 pcKey.append( key )
-                if not key in powerCurve.keys():
-                    powerCurve[key] = SyntheticPowerCurve( sp, co)
+                if not key in powerCurves.keys():
+                    powerCurves[key] = SyntheticPowerCurve( sp, co)
             pcKey = pd.Series(pcKey, index=placements)
 
     elif isinstance(powerCurve, str):
-        pcKey = powerCurve
+        pcKey = pd.Series([powerCurve,] * placements.shape[0], index=placements)
         capacity = pd.Series(TurbineLibrary.ix[powerCurve].Capacity, index=placements)
-        powerCurve = TurbineLibrary.ix[powerCurve].PowerCurve
+
+        tmp = TurbineLibrary.ix[powerCurve].Rotordiameter.values
+        if isinstance(tmp,float): rotordiam = pd.Series(tmp, index=placements)
+        else: rotordiam = 0
+        
+        powerCurves[powerCurve] = TurbineLibrary.ix[powerCurve].PowerCurve
 
     else: # powerCurve is either a (ws,power) list or is a list of turbine names
         if isinstance(powerCurve[0],str): # assume entire list is a list of names
-            pcKey = powerCurve
-            powerCurve = dict()
+            pcKey = pd.Series(powerCurve, index=placements)
             capacity = []
+            rotordiam = []
 
             for name in pcKey:
+                # TODO: I SHOULD CHECK FOR THE "spPow:cutout" notation here, so that library and synthetic turbines can be mixed 
                 capacity.append(TurbineLibrary.ix[name].Capacity)
-                if not name in powerCurve.keys():
-                    powerCurve[name] = TurbineLibrary.ix[name].PowerCurve
-        
+
+                tmp = TurbineLibrary.ix[powerCurve].Rotordiameter.values
+                if isinstance(tmp,float): rotordiam = pd.Series(tmp, index=placements)
+                else: rotordiam = 0
+
+                if not name in powerCurves:
+                    powerCurves[name] = TurbineLibrary.ix[name].PowerCurve
+
+            capacity = pd.Series(capacity, index=placements)
+            rotordiam = pd.Series(rotordiam, index=placements)
+
         else: # powerCurve is a single power curve definition
             if capacity is None:
                 raise RuntimeError("capacity cannot be None when giving a user-defined power curve")
+            capacity = pd.Series(capacity, index=placements)
+
+            pcKey = pd.Series(['user-defined',] * placements.shape[0], index=placements)
+            
             tmp = np.array(powerCurve)
             powerCurve = PowerCurve(tmp[:,0], tmp[:,1])
-            pcKey = "user-defined"
+            powerCurves['user-defined'] = powerCurve
+    
+    if not rotordiam is None and isinstance(rotordiam, np.ndarray): 
+        rotordiam = pd.Series(rotordiam, index=placements)
+
+    if verbose: 
+        print("   Convolving %d power curves..."%(len(powerCurves)))
 
     convolutionKwargs = dict(stdScaling=convScale, stdBase=convBase, extendBeyondCutoff=False)
-    if isinstance(powerCurve, dict):
-        if verbose: 
-            print("   Convolving %d power curves..."%(len(powerCurve)))
-        
+    
+    if useMulti:
+        from multiprocessing import Pool
+        pool = Pool(cpus)
+        res = []
+    
+        for k,v in powerCurves.items():
+            res.append((k,pool.apply_async(convolutePowerCurveByGuassian, (v, ), convolutionKwargs)))
 
-        if useMulti:
-            from multiprocessing import Pool
-            pool = Pool(cpus)
-            res = []
+        for k,r in res:
+            powerCurves[k] = r.get()
         
-            for k,v in powerCurve.items():
-                res.append((k,pool.apply_async(convolutePowerCurveByGuassian, (v, ), convolutionKwargs)))
-
-            for k,r in res:
-                powerCurve[k] = r.get()
-            
-            pool.close()
-            pool.join()
-            pool = None
-        else:
-            for k,v in powerCurve.items():
-                powerCurve[k] = convolutePowerCurveByGuassian(v, **convolutionKwargs)
+        pool.close()
+        pool.join()
+        pool = None
     else:
-        powerCurve = convolutePowerCurveByGuassian(powerCurve, **convolutionKwargs)
+        for k,v in powerCurves.items():
+            powerCurves[k] = convolutePowerCurveByGuassian(v, **convolutionKwargs)
 
     ### Do simulations
     if verbose: print("Starting simulations at at +%.2fs"%( (dt.now()-startTime).total_seconds()) )
@@ -261,10 +293,13 @@ def workflowTemplate(placements, source, landcover, gwa, convScale, convBase, lo
         lctype=lctype,
         verbose=verbose,
         extract=extract,
-        powerCurve = powerCurve,
+        powerCurves = powerCurves,
         globalStart=startTime,
         densityCorrection=densityCorrection,
+        output=output,
         )
+    
+    turbineID=pd.Series(np.arange(placements.shape[0]), index=placements)
 
     if useMulti:
         placements.makePickleable()
@@ -275,13 +310,13 @@ def workflowTemplate(placements, source, landcover, gwa, convScale, convBase, lo
             kwargs = simKwargs.copy()
             kwargs.update(dict(
                 placements=placementGroup,
-                hubHeight=None if hubHeight is None else hubHeight[placementGroup[:]].values,
-                capacity=None if capacity is None else capacity[placementGroup[:]].values,
+                hubHeight=hubHeight[placementGroup[:]].values,
+                capacity=capacity[placementGroup[:]].values,
                 rotordiam=None if rotordiam is None else rotordiam[placementGroup[:]].values,
-                cutout=None if cutout is None else cutout[placementGroup[:]].values,
-                pcKey = pcKey if isinstance(pcKey, str) else pcKey[placementGroup[:]].values,
+                pcKey = pcKey[placementGroup[:]].values,
                 batchSize=batchSize//jobs,
                 gid=i,
+                turbineID=turbineID[placementGroup[:]].values,
                 ))
             res.append(pool.apply_async(_batch_simulator, (), kwargs))
 
@@ -295,13 +330,13 @@ def workflowTemplate(placements, source, landcover, gwa, convScale, convBase, lo
     else:
         simKwargs.update(dict(
             placements=placements,
-            hubHeight=None if hubHeight is None else hubHeight.values,
-            capacity=None if capacity is None else capacity.values,
+            hubHeight=hubHeight.values,
+            capacity=capacity.values,
             rotordiam=None if rotordiam is None else rotordiam.values,
-            cutout=None if cutout is None else cutout.values,
-            pcKey = pcKey if isinstance(pcKey, str) else pcKey.values,
+            pcKey = pcKey.values,
             batchSize=batchSize,
             gid=0,
+            turbineID=turbineID.values,
             ))
         res = _batch_simulator(**simKwargs)
 
@@ -309,10 +344,10 @@ def workflowTemplate(placements, source, landcover, gwa, convScale, convBase, lo
     if extract == "capacityFactor": res = pd.concat(res)
     elif extract == "totalProduction": res = sum(res)
     elif extract == "raw": res = pd.concat(res, axis=1)
-    elif extract == "batchfile": pass
+    elif extract == "batchfile": 
+        pass
     else:
         raise ResError("extract method '%s' not understood"%extract)
-
 
     endTime = dt.now()
     totalSecs = (endTime - startTime).total_seconds()
@@ -451,3 +486,88 @@ def workflowOffshore(placements, source, hubHeight=None, powerCurve=None, capaci
                             powerCurve=powerCurve, capacity=capacity, rotordiam=rotordiam, cutout=cutout, 
                             extract=extract, output=output, jobs=jobs, groups=groups, batchSize=batchSize, verbose=verbose, 
                             **kwgs)
+
+
+def _save_to_nc(output, capacityGeneration, lats, lons, capacity, hubHeight, rotordiam, identity, pckey):
+
+    ds = nc.Dataset(output, mode="w")
+    try:
+        # Make the dimensions
+        ds.createDimension("time",      size=capacityGeneration.shape[0])
+        ds.createDimension("turbineID", size=capacityGeneration.shape[1])
+
+        # Make the time variable
+        timeV = ds.createVariable("time", "u4", dimensions=("time",))
+        timeV.units = "minutes since 1900-01-01 00:00:00"
+
+        times = capacityGeneration.index
+        if capacityGeneration.index[0].tz is None:
+            timeV.tz = "unknown"
+        else:
+            timeV.tz = capacityGeneration.index[0].tzname()
+            times = times.tz_localize(None)
+
+        timeV[:] = nc.date2num(times.to_pydatetime(), timeV.units)
+
+        # Make the data variables
+        var = ds.createVariable("capfac", "u2", dimensions=("time", "turbineID",))
+        
+        var.scale_factor = 1/32768
+        var.units = "capacity_factor"
+        var.description = "Hourly generation of each turbine, scaled from 0 to max capacity (1)"
+        var.longname = "CapacityFactor"
+        
+        var[:] = capacityGeneration.values
+
+        # Make the descriptor variables
+        var = ds.createVariable("turbineID", "u4", dimensions=("turbineID",))
+        var.units = "-"
+        var.description = "ID number for each turbine"
+        var.longname = "Turbine ID"
+        var[:] = identity
+
+        var = ds.createVariable("hubHeight", "u2", dimensions=("turbineID",))
+        var.units = "m"
+        var.scale_factor = 1/10
+        var.description = "Hub height of each turbine"
+        var.longname = "Hub Height"
+        var[:] = hubHeight
+
+        var = ds.createVariable("capacity", "u2", dimensions=("turbineID",))
+        var.units = "kW"
+        var.description = "Capacity of each turbine"
+        var.longname = "Capacity"
+        var[:] = capacity
+
+        if not rotordiam is None:
+            var = ds.createVariable("rotordiam", "u2", dimensions=("turbineID",))
+            var.units = "m"
+            var.scale_factor = 1/10
+            var.description = "Rotor diameter of each turbine"
+            var.longname = "Rotor Diameter"
+            var[:] = rotordiam
+
+        var = ds.createVariable("powerCurveKey", str, dimensions=("turbineID",))
+        var.units = "-"
+        var.description = "Key used to identify the power curve for each turbine"
+        var.longname = "Power Curve Key"
+        for i,k in enumerate(pckey): var[i] = k
+
+        var = ds.createVariable("latitude", "f", dimensions=("turbineID",))
+        var.units = "degrees latitude"
+        var.description = "Latitude location of each turbine"
+        var.longname = "Latitude"
+        var[:] = lats
+
+        var = ds.createVariable("longitude", "f", dimensions=("turbineID",))
+        var.units = "degrees longitude"
+        var.description = "Longitude location of each turbine"
+        var.longname = "Longitude"
+        var[:] = lons
+
+        # Done!
+        ds.close()
+
+    except Exception as e: 
+        ds.close()
+        raise e
