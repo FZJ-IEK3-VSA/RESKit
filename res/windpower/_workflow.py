@@ -149,9 +149,7 @@ def workflowTemplate(placements, source, landcover, gwa, convScale, convBase, lo
     ### Determine the total extent which will be simulated (also make sure the placements input is okay)
     if verbose: print("Arranging placements at +%.2fs"%((dt.now()-startTime).total_seconds()))
     if isinstance(placements, str): # placements is a path to a point-type shapefile
-        placements = gk.vector.extractAsDataFrame(placements, outputSRS='latlon')
-        placements["lat"] = placements.geom.apply(lambda x: x.GetY())
-        placements["lon"] = placements.geom.apply(lambda x: x.GetX())
+        placements = gk.vector.extractFeatures(placements, srs=gk.srs.EPSG4326)
     
     if isinstance(placements, pd.DataFrame):
         if "powerCurve" in placements.columns and powerCurve is None: powerCurve = placements.powerCurve.values
