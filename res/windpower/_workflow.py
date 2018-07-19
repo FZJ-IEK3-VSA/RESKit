@@ -308,7 +308,7 @@ def workflowTemplate(placements, source, landcover, gwa, convScale, convBase, lo
         groups = []
         for grp in placements.splitKMeans(jobs):
             if grp.count > (batchSize/jobs)*3:
-                subgroups = np.round(grp.count/(3*batchSize/jobs))
+                subgroups = int(np.round(grp.count/(3*batchSize/jobs)))
                 for sgi in range(int(subgroups)):
                     groups.append( gk.LocationSet(grp[sgi::subgroups]) )
             else:
