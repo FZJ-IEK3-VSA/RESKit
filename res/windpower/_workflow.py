@@ -149,7 +149,7 @@ def workflowTemplate(placements, source, landcover, gwa, convScale, convBase, lo
     ### Determine the total extent which will be simulated (also make sure the placements input is okay)
     if verbose: print("Arranging placements at +%.2fs"%((dt.now()-startTime).total_seconds()))
     if isinstance(placements, str): # placements is a path to a point-type shapefile
-        placements = gk.vector.extractAsDataFrame(placements, outputSRS='latlon')
+        placements = gk.vector.extractFeatures(placements, srs=gk.srs.EPSG4326)
     
     if isinstance(placements, pd.DataFrame):
         if "powerCurve" in placements.columns and powerCurve is None: powerCurve = placements.powerCurve.values
@@ -211,7 +211,7 @@ def workflowTemplate(placements, source, landcover, gwa, convScale, convBase, lo
         pcKey = pd.Series([powerCurve,] * placements.shape[0], index=placements)
         capacity = pd.Series(TurbineLibrary.ix[powerCurve].Capacity, index=placements)
 
-        tmp = TurbineLibrary.ix[powerCurve].Rotordiameter.values
+        tmp = TurbineLibrary.ix[powerCurve].Rotordiameter
         if isinstance(tmp,float): rotordiam = pd.Series(tmp, index=placements)
         else: rotordiam = 0
         
@@ -227,7 +227,7 @@ def workflowTemplate(placements, source, landcover, gwa, convScale, convBase, lo
                 # TODO: I SHOULD CHECK FOR THE "spPow:cutout" notation here, so that library and synthetic turbines can be mixed 
                 capacity.append(TurbineLibrary.ix[name].Capacity)
 
-                tmp = TurbineLibrary.ix[powerCurve].Rotordiameter.values
+                tmp = TurbineLibrary.ix[powerCurve].Rotordiameter
                 if isinstance(tmp,float): rotordiam = pd.Series(tmp, index=placements)
                 else: rotordiam = 0
 
@@ -308,7 +308,7 @@ def workflowTemplate(placements, source, landcover, gwa, convScale, convBase, lo
         groups = []
         for grp in placements.splitKMeans(jobs):
             if grp.count > (batchSize/jobs)*3:
-                subgroups = np.round(grp.count/(3*batchSize/jobs))
+                subgroups = int(np.round(grp.count/(3*batchSize/jobs)))
                 for sgi in range(int(subgroups)):
                     groups.append( gk.LocationSet(grp[sgi::subgroups]) )
             else:
@@ -479,7 +479,7 @@ def workflowOnshore(placements, source, landcover, gwa, hubHeight=None, powerCur
                             **kwgs)
 
 
-def workflowOffshore(placements, source, hubHeight=None, powerCurve=None, capacity=None, rotordiam=None, cutout=None, extract="totalProduction", output=None, jobs=1, batchSize=10000, verbose=True):
+def workflowOffshore(placements, source, hubHeight=None, powerCurve=None, capacity=None, rotordiam=None, cutout=None, extract="totalProduction", output=None, jobs=1, batchSize=10000, verbose=True, groups=None):
 
     kwgs = dict()
     kwgs["loss"]=0.00
@@ -489,12 +489,12 @@ def workflowOffshore(placements, source, hubHeight=None, powerCurve=None, capaci
     kwgs["lowSharp"]=3.5
     kwgs["adjustMethod"]="bilinear"
     kwgs["roughness"]=0.0002
-    kwgs["lctype"]="clc" # This isn't actually used since adjustment is bilinear...
+    kwgs["lctype"]=None # This isn't actually used since adjustment is bilinear...
     kwgs["densityCorrection"]=False
 
     return workflowTemplate(placements=placements, source=source, landcover=None, gwa=None, hubHeight=hubHeight, 
                             powerCurve=powerCurve, capacity=capacity, rotordiam=rotordiam, cutout=cutout, 
-                            extract=extract, output=output, jobs=jobs, groups=groups, batchSize=batchSize, verbose=verbose, 
+                            extract=extract, output=output, jobs=jobs, batchSize=batchSize, verbose=verbose, 
                             **kwgs)
 
 
