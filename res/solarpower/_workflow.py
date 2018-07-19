@@ -1,11 +1,11 @@
-rom ._util import *
+from res.util.util_ import *
 from ._pv import *
 from res.weather import MerraSource
 from res.weather.windutil import *
 
 
-def _batch_simulator(source, elev, loss, verbose, extractor, module, inverter, capacity, azimuth, tilt, interpolation, gid, 
-                     locationID, globalStart, placements, pickleable):
+def _batch_simulator(source, elev, loss, verbose, module, inverter, capacity, azimuth, tilt, 
+                     gid, locationID, globalStart, placements, batchSize, extract):
     if verbose: 
         startTime = dt.now()
         globalStart = globalStart
@@ -26,17 +26,21 @@ def _batch_simulator(source, elev, loss, verbose, extractor, module, inverter, c
     # do simulations
     res = []
     if batchSize is None: batchSize = 1e10
-    for i,batchStart in enumerate(np.arange(0, placements.count, batchSize)):
+    for i,batchStart in enumerate(np.arange(0, placements.count, batchSize, dtype=int)):
         s = np.s_[batchStart: min(batchStart+batchSize,placements.count) ]
 
-        _locations = locations[s]
+        _placements = placements[s]
         _elev = elev if isinstance(elev, str) else elev[s]
         _tilt = tilt if isinstance(tilt, str) else tilt[s]
         _azimuth = azimuth[s]
 
-        capacityGeneration = simulatePVModule(_locations, _elev, source, module=module, 
-            azimuth=_azimuth, tilt=_tilt, inverter=inverter, extract="capacity-production", 
-            interpolation='bilinear', loss=loss)
+        capacityGeneration = simulatePVModule(locs=_placements, elev=_elev, source=source, module=module, 
+            azimuth=_azimuth, tilt=_tilt, totalSystemCapacity=1, tracking="fixed", modulesPerString=1, 
+            inverter=inverter, stringsPerInverter=1, rackingModel='open_rack_cell_glassback', 
+            airMassModel='kastenyoung1989', transpositionModel='haydavies', cellTempModel="sandia", 
+            generationModel="single-diode", inverterModel="sandia", interpolation="bilinear", loss=loss, 
+            trackingGCR=2/7, trackingMaxAngle=60, frankCorrection=False)
+
 
         # Arrange output
         if extract == "capacityFactor": tmp = capacityGeneration.mean(0)
@@ -53,15 +57,15 @@ def _batch_simulator(source, elev, loss, verbose, extractor, module, inverter, c
         endTime = dt.now()
         simSecs = (endTime - startTime).total_seconds()
         globalSecs = (endTime - globalStart).total_seconds()
-        print(" %s: Finished %d locations +%.2fs (%.2f locations/sec)"%(str(gid), len(locations), globalSecs, len(locations)/simSecs))
+        print(" %s: Finished %d locations +%.2fs (%.2f locations/sec)"%(str(gid), len(placements), globalSecs, len(placements)/simSecs))
     
-    if pickleable: placements.makePickleable()
+    placements.makePickleable()
     return res
 
 ##################################################################
 ## Distributed PV production from a weather source
 def PVWorkflowTemplate(placements, source, elev, module, azimuth, tilt, inverter, 
-                       capacity, extract, output, loss, jobs, batchSize, verbose, padding):
+                       capacity, extract, output, loss, jobs, batchSize, verbose):
     if verbose: 
         startTime = dt.now()
         print("Starting at: %s"%str(startTime))
@@ -107,12 +111,13 @@ def PVWorkflowTemplate(placements, source, elev, module, azimuth, tilt, inverter
     locationID=pd.Series(np.arange(placements.shape[0]), index=placements)
 
     simKwargs = {}
-    simKwargs["source"] = weatherSource
+    simKwargs["source"] = source
     simKwargs["loss"] = loss
     simKwargs["verbose"] = verbose
     simKwargs["module"] = module
     simKwargs["inverter"] = inverter
     simKwargs["globalStart"]=startTime
+    simKwargs["extract"]=extract
 
     if batchSize is None: batchSize = 1e10
     if useMulti:
@@ -138,9 +143,9 @@ def PVWorkflowTemplate(placements, source, elev, module, azimuth, tilt, inverter
             kwargs = simKwargs.copy()
             kwargs["placements"] = grp
             kwargs["capacity"] = capacity[grp].values
-            kwargs["tilt"] = tilt if tilt is str else tilt[grp].values
+            kwargs["tilt"] = tilt if isinstance(tilt, str) else tilt[grp].values
             kwargs["azimuth"] = azimuth[grp].values
-            kwargs["elev"] = elev if elev is str else elev[grp].values
+            kwargs["elev"] = elev if isinstance(elev, str) else elev[grp].values
             kwargs["locationID"] = locationID[grp]
             kwargs["gid"] = i
             kwargs["batchSize"] = int(np.round(batchSize/jobs))
@@ -158,9 +163,9 @@ def PVWorkflowTemplate(placements, source, elev, module, azimuth, tilt, inverter
     else:
         simKwargs["placements"] = placements
         simKwargs["capacity"] = capacity.values
-        simKwargs["tilt"] = tilt if tilt is str else tilt.values
+        simKwargs["tilt"] = tilt if isinstance(tilt, str) else tilt.values
         simKwargs["azimuth"] = azimuth.values
-        simKwargs["elev"] = elev if elev is str else elev.values
+        simKwargs["elev"] = elev if isinstance(elev, str) else elev.values
         simKwargs["locationID"] = locationID
         simKwargs["gid"] = 0
         simKwargs["batchSize"] = batchSize
@@ -181,9 +186,9 @@ def PVWorkflowTemplate(placements, source, elev, module, azimuth, tilt, inverter
 
     return res
     
-def PVOpenFieldWorkflow(placements, source, elev, capacity=None, module="Canadian_Solar_CS5P_220M___2009_", azimuth=180, tilt="latitude", inverter=None, interpolation="bilinear", extract="totalProduction", loss=0.00, output=None, jobs=1, batchSize=None, verbose=True):
+def workflowOpenField(placements, source, elev, capacity=None, module="SunPower_SPR_X21_255", azimuth=180, tilt="latitude", inverter=None, extract="totalProduction", loss=0.00, output=None, jobs=1, batchSize=None, verbose=True):
     return PVWorkflowTemplate(placements=placements, source=source, elev=elev, module=module, azimuth=azimuth, 
-                              tilt=tilt, inverter=inverter, interpolation=interpolation, extract=extract, 
+                              tilt=tilt, inverter=inverter, extract=extract, 
                               output=output, loss=loss, jobs=jobs, batchSize=batchSize, 
                               verbose=verbose, capacity=capacity)
                          
