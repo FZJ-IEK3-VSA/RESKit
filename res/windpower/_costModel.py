@@ -9,8 +9,9 @@ def onshoreTurbineCost(capacity, hubHeight, rotordiam,):
     
     Base-line (default) turbine characteristics correspond to the expected typical onshore turbine in 2050.
     Output values are adjusted such that the the baseline onshore turbine matches 1100 Eur/kW including all costs.
-    Only the turbine capital cost (tcc), amounting to 67.3% [3], is adjusted according to capacity, rotor diameter, and hub height.
-    Balance of system costs and other financial costs are added as fixed percentages.
+    Only the turbine capital cost (tcc) and balance of system (BOS) costs, amounting to 67.3% and 22.9% [3], is 
+    adjusted according to capacity, rotor diameter, and hub height. Other financial costs are added as fixed 
+    percentages.
 
     Inputs:
         capacity : Turbine nameplate capacity in kW
@@ -46,10 +47,10 @@ def onshoreTurbineCost(capacity, hubHeight, rotordiam,):
     rr = rd/2
 
     ## COMPUTE COSTS 
-    # normalizations chosen to make the default turbine (4200-cap, 129-hub, 141-rot) match both a total
+    # normalizations chosen to make the default turbine (4200-cap, 120-hub, 136-rot) match both a total
     # cost of 1100 EUR/kW as well as matching the percentages given in [3]     
-    tcc = onshoreTurbineCapitalCost(cp=cp, hh=hh, rd=rd) * 0.86025295906448673 
-    bos = onshoreTurbineBOSCost(cp=cp, hh=hh, rd=rd) * 0.63296245771197779
+    tcc = onshoreTurbineCapitalCost(cp=cp, hh=hh, rd=rd) * 0.91899472754142585984027391532436013221740722656250 
+    bos = onshoreTurbineBOSCost(cp=cp, hh=hh, rd=rd) * 0.64432243770457098275272755927289836108684539794922 
     other = (tcc + bos)*0.098/(1-0.098)
 
     return tcc + bos + other
