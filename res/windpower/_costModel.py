@@ -202,7 +202,7 @@ def offshoreTurbineCost(capacity, hubHeight, rotordiam, depth, distanceToShore, 
 
     ## COMPUTE COSTS    
     tcc = onshoreTurbineCapitalCost(cp=cp*1000, hh=hh, rd=rd)
-    tcc *= 1.05317975
+    tcc *= 1.021111784874969
 
     bos = offshoreBOS(cp=cp, rd=rd, hh=hh, depth=depth, shoreD=shoreD, busD=busD, foundation=foundation, 
                       mooringCount=mooringCount, anchor=anchor, turbineNumber=turbineNumber, 
@@ -210,13 +210,13 @@ def offshoreTurbineCost(capacity, hubHeight, rotordiam, depth, distanceToShore, 
     
     #scaling cost of bos to normalize overall cost to 2300 euro/kW 
     #bos *= 0.44322409    # standard turbine: V164-8.0MW hh-105m depth 30 m shoreD=45 km
-    bos *= 0.2842698876700619 # standard turbine: V164-8.0MW hh-105m depth 80 m shoreD=50 km
+    #bos *= 0.2842698876700619 # standard turbine: V164-8.0MW hh-105m depth 80 m shoreD=50 km
+    bos *= 0.3405847716126332 # standard turbine: Senvion 6.2M152 hh-105m depth 40 m shoreD=60 km
 
     if foundation == 'monopile' or foundation == 'jacket':
-        fin = tcc * 20.9/32.9 # Scaled according to tcc [7]
+        fin = (tcc + bos) * 20.9/ (32.9+46.2) # Scaled according to tcc [7]
     else:
-        fin = tcc * 15.6/23.6 # Scaled according to tcc [7]
-
+        fin = (tcc + bos) * 15.6/ (60.8+23.6) # Scaled according to tcc [7]
     return tcc+bos+fin
     #return np.array([tcc,bos,fin])
 
