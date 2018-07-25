@@ -1,6 +1,6 @@
 from ._util import *
 
-def onshoreTurbineCost(capacity, hubHeight, rotordiam,):
+def onshoreTurbineCost(capacity, hubHeight, rotordiam, **k):
     """
     **NEEDS UPDATE**
     Onshore wind turbine cost and scaling model (csm) built following [1] and update following [2]. 
