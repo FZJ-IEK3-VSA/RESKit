@@ -207,8 +207,8 @@ def linearTransition(x, start, stop, invert=False):
     else: return tmp
 
 ## Parse Generation File
-_SGF = namedtuple("RESGeneration", "capacity capex generation regionName variable capacityUnit capexUnit generationUnit")
-def parseRESGenerationFile(f, capacity, hasCapex=False, extrapolateOverCapacity=False, keepLeapDay=True):
+_Data = namedtuple("Data", "gen capex")
+def parseRESGenerationFile(f, capacity, extrapolateOverCapacity=False, keepLeapDay=True):
     """Parse one of Sev's RES Generation files
 
     * These files are each created for one regional context
@@ -231,10 +231,33 @@ def parseRESGenerationFile(f, capacity, hasCapex=False, extrapolateOverCapacity=
     """
 
     ds = nc.Dataset(f)
+
+    try:
+        capUnit = ds['installed_capacity'].unit.lower()
+    except AttributeError:
+        capUnit = ds['installed_capacity'].units.lower()
+
+    if  capUnit == "w":
+        capScaling = 1e9
+    elif capUnit == "kw":
+        capScaling = 1e6
+    elif capUnit == "mw":
+        capScaling = 1e3
+    elif capUnit == "gwh": # SEV MADE A STUPID MISTAKE WITH THE PV FILES, WHICH SHOULD BE FIXED LATER!!!!!
+                                                         # THIS IS HERE AS A BANDAID FIX FOR NOW
+        capScaling = 1e6
+    else:
+        capScaling = 1.0
+
     try:
         timeIndex = nc.num2date(ds["time"][:], ds["time"].units)
-        CAP = ds["installed_capacity"][:]
-        if hasCapex: COST = ds["capex"][:]
+        CAP = ds["installed_capacity"][:]/capScaling
+
+        if "capex" in ds.variables.keys(): 
+            hasCapex=True
+            TrueCOST = ds["capex"][:]
+        else: 
+            hasCapex = False
 
         try:
             capacity = list(capacity)
@@ -288,8 +311,8 @@ def parseRESGenerationFile(f, capacity, hasCapex=False, extrapolateOverCapacity=
     #             regionName=ds["generation"].region, variable=ds["generation"].technology,
     #             capacityUnit=ds["total_capacity"].unit, capexUnit=ds["total_cost"].unit, 
     #             generationUnit=ds["generation"].unit)
-    if hasCapex: return generations, np.array(capexes)
-    else: return generations, None
+    if hasCapex: return _Data(generations, np.array(capexes))
+    else: return _Data(generations, None)
 
 
 def rotateFromLatLon( lons, lats, lonSouthPole=18, latSouthPole=-39.25 ):

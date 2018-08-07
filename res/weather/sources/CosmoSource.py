@@ -131,11 +131,11 @@ class CosmoSource(NCSource):
 
         del s.data["dni_flat"]
 
-    def loadWindSpeedInterpolatable(s):
-        s.load("windspeed_10", name="windspeed")
-        s.load("windspeed_50", name="windspeed")
-        s.load("windspeed_100", name="windspeed")
-        s.load("windspeed_140", name="windspeed")
+    def loadWindSpeedLevels(s):
+        s.load("windspeed_10", name="windspeed_10")
+        s.load("windspeed_50", name="windspeed_50")
+        s.load("windspeed_100", name="windspeed_100")
+        s.load("windspeed_140", name="windspeed_140")
 
     def loadWindSpeedAtHeight(s, height=100):
         """NEEDS UPDATING!"""
@@ -168,7 +168,7 @@ class CosmoSource(NCSource):
                 s.load("windspeed_50")
                 s.load("windspeed_100")
 
-                fac = (heights-50)/(100-50)
+                fac = (height-50)/(100-50)
 
                 newWspd = s.data["windspeed_100"]*fac+s.data["windspeed_50"]*(1-fac)
                 s.data["windspeed"] = newWspd
@@ -180,7 +180,7 @@ class CosmoSource(NCSource):
                 s.load("windspeed_100")
                 s.load("windspeed_140")
 
-                fac = (heights-100)/(140-100)
+                fac = (height-100)/(140-100)
 
                 newWspd = s.data["windspeed_140"]*fac+s.data["windspeed_100"]*(1-fac)
                 s.data["windspeed"] = newWspd
