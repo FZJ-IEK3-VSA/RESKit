@@ -294,7 +294,10 @@ def simulatePVModule(locs, source, elev=300, module="SunPower_SPR_X21_255", azim
 
     # Compute DHI or DNI
     if dni is None:
-        dni = pvlib.irradiance.dirint(ghi, solpos["apparent_zenith"], timeindex, pressure=pressure, temp_dew=dew_temp)
+        dni = pd.DataFrame(0, index=times, columns=ghi.columns)
+        for c in ghi.columns:
+            dni[c] = pvlib.irradiance.dirint(ghi[c], solpos["apparent_zenith"][c], times, pressure=pressure[c], 
+                                             temp_dew=None if dew_temp is None else dew_temp[c] )
 
     if dhi is None:
         dhi = ghi - dni*np.sin( np.radians(solpos["apparent_elevation"])) # TODO: CHECK THIS!!!

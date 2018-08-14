@@ -198,7 +198,8 @@ class MerraSource(NCSource):
         del s.data["U2M"]
         del s.data["V2M"]
 
-        s.loadRadiation()
+        s.load("SWGNT", "ghi")
+        # s.loadRadiation()
         s.loadTemperature('air', height=2)
         s.loadPressure()
 
