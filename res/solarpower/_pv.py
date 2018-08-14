@@ -194,7 +194,7 @@ def simulatePVModule(locs, source, elev=300, module="SunPower_SPR_X21_255", azim
     if isinstance(tilt,str):
         if tilt=="latitude": tilt=pd.Series([l.lat for l in locs], index=locs)
         elif tilt=="half-latitude": tilt=pd.Series([l.lat/2 for l in locs], index=locs)
-        else: return ValueError("tilt directive '%s' not recognized"%tilt)
+        else: raise ValueError("tilt directive '%s' not recognized"%tilt)
     elif isinstance(tilt, FunctionType):
         tilt = tilt=pd.Series([tilt(l,e) for l,e in zip(locs, elev)], index=locs)
     elif isinstance(tilt, float) or isinstance(tilt, int):
@@ -202,7 +202,8 @@ def simulatePVModule(locs, source, elev=300, module="SunPower_SPR_X21_255", azim
     else:
         tilt = pd.Series(tilt, index=locs)
 
-    if isinstance(elev, pd.Series): pass
+    if elev is None: raise ValueError("elev cannot be None")
+    elif isinstance(elev, pd.Series): pass
     elif isinstance(elev, str): 
         elev = gk.raster.extractValues(elev, locs).data
     elif isinstance(elev, float) or isinstance(elev, int):
