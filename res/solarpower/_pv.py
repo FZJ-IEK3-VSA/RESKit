@@ -58,7 +58,7 @@ def _sapm_celltemp(poa_global, wind_speed, temp_air, model='open_rack_cell_glass
     return temp_cell
 
 
-def simulatePVModule(locs, elev, source, module="SunPower_SPR_X21_255", azimuth=180, tilt="latitude", totalSystemCapacity=None, tracking="fixed", modulesPerString=1, inverter=None, stringsPerInverter=1, rackingModel='open_rack_cell_glassback', airMassModel='kastenyoung1989', transpositionModel='haydavies', cellTempModel="sandia", generationModel="single-diode", inverterModel="sandia", interpolation="bilinear", loss=0.00, trackingGCR=2/7, trackingMaxAngle=60, frankCorrection=False):
+def simulatePVModule(locs, source, elev=300, module="SunPower_SPR_X21_255", azimuth=180, tilt="latitude", totalSystemCapacity=None, tracking="fixed", modulesPerString=1, inverter=None, stringsPerInverter=1, rackingModel='open_rack_cell_glassback', airMassModel='kastenyoung1989', transpositionModel='haydavies', cellTempModel="sandia", generationModel="single-diode", inverterModel="sandia", interpolation="bilinear", loss=0.00, trackingGCR=2/7, trackingMaxAngle=60, frankCorrection=False):
     """
     Performs a simple PV simulation
 
@@ -220,7 +220,7 @@ def simulatePVModule(locs, elev, source, module="SunPower_SPR_X21_255", azimuth=
     for i,loc in enumerate(locs):
         solposLat = np.round(loc.lat, 1) # Only perform solor position calc for every .1 degrees
         solposLon = np.round(loc.lon, 1) # Only perform solor position calc for every .1 degrees
-        solposElev = np.round(elev[loc], -2) # Only perform solor position calc for every 50 meters
+        solposElev = np.round(elev[loc], -2) # Only perform solor position calc for every 100 meters
         if isinstance(solposElev, pd.Series): raise ResError("%s is not unique"%str(loc))
 
         solposKey = (solposLon, solposLat, solposElev)
@@ -299,7 +299,7 @@ def simulatePVModule(locs, elev, source, module="SunPower_SPR_X21_255", azimuth=
     if dhi is None:
         dhi = ghi - dni*np.sin( np.radians(solpos["apparent_elevation"])) # TODO: CHECK THIS!!!
         dhi[dhi<0] = 0
-        
+
     #addTime("DHI calc")
     
     # Get tilt and azimuths

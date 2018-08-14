@@ -19,8 +19,8 @@ def _batch_simulator(source, elev, loss, verbose, module, inverter, capacity, az
     if isinstance(source, str):
         ext = gk.Extent.fromLocationSet(placements).castTo(gk.srs.EPSG4326).pad(1) # Pad to make sure we only select the data we need
                                                                                    # Otherwise, the NCSource might pull EVERYTHING when
-                                                                                   # a smalle area is simulated. IDKY???
-        source = MerraSource(source, bounds=ext, indexPad=2)
+                                                                                   # a smaller area is simulated. IDKY???
+        source = MerraSource(source, bounds=ext.xyXY, indexPad=2)
         source.loadSet_PV()
 
     # do simulations
@@ -186,7 +186,7 @@ def PVWorkflowTemplate(placements, source, elev, module, azimuth, tilt, inverter
 
     return res
     
-def workflowOpenField(placements, source, elev, capacity=None, module="SunPower_SPR_X21_255", azimuth=180, tilt="latitude", inverter=None, extract="totalProduction", loss=0.00, output=None, jobs=1, batchSize=None, verbose=True):
+def workflowOpenField(placements, source, elev=None, capacity=None, module="SunPower_SPR_X21_255", azimuth=180, tilt="latitude", inverter=None, extract="totalProduction", loss=0.00, output=None, jobs=1, batchSize=None, verbose=True):
     return PVWorkflowTemplate(placements=placements, source=source, elev=elev, module=module, azimuth=azimuth, 
                               tilt=tilt, inverter=inverter, extract=extract, 
                               output=output, loss=loss, jobs=jobs, batchSize=batchSize, 
