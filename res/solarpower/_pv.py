@@ -112,11 +112,11 @@ def simulatePVModule(locs, elev, source, module="SunPower_SPR_X21_255", azimuth=
         ghi = source.get("ghi", **k)
         dhi = source.get("dhi", **k) if "dhi" in source.data else None
         dni = source.get("dni", **k) if "dni" in source.data else None
-        if dni is None and dhi is None: raise ResError("Either dhi or dni must be available")
 
         windspeed = source.get("windspeed", **k)
         pressure = source.get("pressure", **k)
         air_temp = source.get("air_temp", **k)
+        dew_temp = None
         if "albedo" in source.data: 
             albedo = source.get("albedo", **k)
         else: 
@@ -128,11 +128,11 @@ def simulatePVModule(locs, elev, source, module="SunPower_SPR_X21_255", azimuth=
         ghi = source["ghi"]
         dhi = source["dhi"] if "dhi" in source else None
         dni = source["dni"] if "dni" in source else None
-        if dni is None and dhi is None: raise ResError("Either dhi or dni must be available")
 
         windspeed = source["windspeed"]
         pressure = source["pressure"]
         air_temp = source["air_temp"]
+        dew_temp = None
         if "albedo" in source: 
             albedo = source["albedo"]
         else: 
@@ -288,19 +288,18 @@ def simulatePVModule(locs, elev, source, module="SunPower_SPR_X21_255", azimuth=
         # Apply to ghi
         totalCorrectionFactor = clearSkyFactors+cloudyFactors
         ghi *= totalCorrectionFactor
-        if not dhi is None: dhi *= totalCorrectionFactor # should the factor be applied to dhi too?
 
         del clearSkyFactors, cloudyFactors, totalCorrectionFactor, e, months, sigmoid, transmissivity
         #addTime("Frank Correction")
 
     # Compute DHI or DNI
+    if dni is None:
+        dni = pvlib.irradiance.dirint(ghi, solpos["apparent_zenith"], timeindex, pressure=pressure, temp_dew=dew_temp)
+
     if dhi is None:
         dhi = ghi - dni*np.sin( np.radians(solpos["apparent_elevation"])) # TODO: CHECK THIS!!!
         dhi[dhi<0] = 0
-    elif dni is None:
-        dni = (ghi - dhi)/np.sin( np.radians(solpos["apparent_elevation"])) # TODO: CHECK THIS!!!
-        dni[dni<0] = 0
-
+        
     #addTime("DHI calc")
     
     # Get tilt and azimuths
