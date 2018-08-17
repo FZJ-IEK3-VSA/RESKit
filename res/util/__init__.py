@@ -6,4 +6,5 @@ from .util_ import (_test_data_, gk, Location, LocationSet, Extent, ResError,
                     parseRESGenerationFile, 
                     rotateFromLatLon,
                     rotateToLatLon,
+                    scrape4COffshoreHTML
                     )

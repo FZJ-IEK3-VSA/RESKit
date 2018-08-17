@@ -38,6 +38,23 @@ class PowerCurve(_P):
         return f.read().decode('ascii')
 
 
+def lowGenCorrection(capacityfactors, base=0, sharpness=5):
+    if isinstance(capacityfactors, PowerCurve):
+        _ws = capacityfactors.ws
+        capacityfactors = capacityfactors.cf
+        asPowerCurve = True
+    else:
+        asPowerCurve = False
+
+    factors = (1-base)*(1-np.exp(-sharpness*capacityfactors))+base # dampens lower wind speeds
+    capacityfactors = factors*capacityfactors
+    
+    if asPowerCurve:
+        return PowerCurve(_ws, capacityfactors)
+    else:
+        return capacityfactors
+
+
 rangeRE = re.compile("([0-9.]{1,})-([0-9.]{1,})")
 def parse_turbine(path):
     meta = OrderedDict()

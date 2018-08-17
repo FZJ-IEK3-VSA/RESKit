@@ -2,7 +2,7 @@ from ._util import *
 
 ###########################################################
 ## Convolute Power Curve
-def convolutePowerCurveByGuassian(powerCurve, stdScaling=0.2, stdBase=0.6, minSpeed=0.01, maxSpeed=40, steps=4000, outputResolution=0.1, extendBeyondCutoff=True):
+def convolutePowerCurveByGuassian(powerCurve, stdScaling=0.06, stdBase=0.1, minSpeed=0.01, maxSpeed=40, steps=4000, outputResolution=0.1, extendBeyondCutoff=True):
     # Set performance
     if isinstance(powerCurve,str): 
         powerCurve = np.array(TurbineLibrary.ix[powerCurve].PowerCurve)
