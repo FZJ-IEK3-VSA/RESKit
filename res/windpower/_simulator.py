@@ -28,29 +28,15 @@ def expectatedCapacityFactorFromWeibull( powerCurve, meanWindspeed=5, weibullSha
     return totalGen 
 
 def expectatedCapacityFactorFromDistribution( powerCurve, windspeedValues, windspeedCounts):
+    windspeedValues = np.array(windspeedValues)
+    windspeedCounts = np.array(windspeedCounts)
 
-    dws = 0.001
-    ws = np.arange(0,max(windspeedValues),dws)
-
-    pdf = np.interp(ws, windspeedValues, windspeedCounts, left=0, right=0)
-    pdf /= pdf.sum() * dws # normalize to unity
-
-    # Estimate generation
-    powerCurveInterp = splrep(powerCurve.ws, powerCurve.cf)
-    gen = splev(ws, powerCurveInterp)
-    
-    # Do some "just in case" clean-up
-    cutin = powerCurve.ws.min() # use the first defined windspeed as the cut in
-    cutout = powerCurve.ws.max() # use the last defined windspeed as the cut out 
-
-    gen[gen<0]=0 # floor to zero
-    
-    gen[ws<cutin]=0 # Drop power to zero before cutin
-    gen[ws>cutout]=0 # Drop power to zero after cutout
+    # Estimate generation distribution
+    gen = np.interp(windspeedValues, powerCurve.ws, powerCurve.cf, left=0, right=0) * windspeedCounts
+    meanGen = gen.sum()/windspeedCounts.sum()
 
     # Done
-    totalGen = (gen*pdf).sum()*dws
-    return totalGen 
+    return meanGen 
 
 ####################################################
 ## Simulation for a single turbine
