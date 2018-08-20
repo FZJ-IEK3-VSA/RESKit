@@ -30,10 +30,23 @@ def expectatedCapacityFactorFromWeibull( powerCurve, meanWindspeed=5, weibullSha
 def expectatedCapacityFactorFromDistribution( powerCurve, windspeedValues, windspeedCounts):
     windspeedValues = np.array(windspeedValues)
     windspeedCounts = np.array(windspeedCounts)
+    
+    # Handle 2 dimensional counts with 1 dimensional wind speeds
+    if len(windspeedCounts.shape) > 1 and len(windspeedValues.shape) == 1:
+        if not windspeedCounts.shape[1] == windspeedValues.shape[0]:
+            raise ResError("Dimensional incompatability")
+
+        windspeedValues = np.reshape(windspeedValues, (1,windspeedCounts.shape[1]))
 
     # Estimate generation distribution
     gen = np.interp(windspeedValues, powerCurve.ws, powerCurve.cf, left=0, right=0) * windspeedCounts
-    meanGen = gen.sum()/windspeedCounts.sum()
+    
+    if len(gen.shape)==1:
+        meanGen = gen.sum()/windspeedCounts.sum()
+    elif len(windspeedCounts.shape)==1:
+        meanGen = gen.sum(1)/windspeedCounts.sum()
+    else:
+        meanGen = gen.sum(1)/windspeedCounts.sum(1)
 
     # Done
     return meanGen 
