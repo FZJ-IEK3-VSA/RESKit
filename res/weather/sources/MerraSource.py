@@ -201,6 +201,7 @@ class MerraSource(NCSource):
         s.load("SWGNT", "ghi")
         # s.loadRadiation()
         s.loadTemperature('air', height=2)
+        s.loadTemperature('dew', height=2)
         s.loadPressure()
 
     def loadSet_Wind(s):

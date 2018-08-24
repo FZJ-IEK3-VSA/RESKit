@@ -57,13 +57,13 @@ def _sapm_celltemp(poa_global, wind_speed, temp_air, model='open_rack_cell_glass
 
     return temp_cell
 
-
-def simulatePVModule(locs, source, elev=300, module="SunPower_SPR_X21_255", azimuth=180, tilt="latitude", totalSystemCapacity=None, tracking="fixed", modulesPerString=1, inverter=None, stringsPerInverter=1, rackingModel='open_rack_cell_glassback', airMassModel='kastenyoung1989', transpositionModel='haydavies', cellTempModel="sandia", generationModel="single-diode", inverterModel="sandia", interpolation="bilinear", loss=0.00, trackingGCR=2/7, trackingMaxAngle=60, frankCorrection=False):
+def simulatePVModule(locs, source, elev=300, module="SunPower_SPR_X21_255", azimuth=180, tilt="ninja", totalSystemCapacity=None, tracking="fixed", modulesPerString=1, inverter=None, stringsPerInverter=1, rackingModel='open_rack_cell_glassback', airMassModel='kastenyoung1989', transpositionModel='perez', cellTempModel="sandia", generationModel="single-diode", inverterModel="sandia", interpolation="bilinear", loss=0.00, trackingGCR=2/7, trackingMaxAngle=60, frankCorrection=False, airmassMethod='kastenyoung1989'):
     """
     Performs a simple PV simulation
 
     For module options, see: res.solarpower.ModuleLibrary
     For inverter options, see: res.solarpower.InverterLibrary
+
 
     interpolation options are:
         - near
@@ -116,7 +116,8 @@ def simulatePVModule(locs, source, elev=300, module="SunPower_SPR_X21_255", azim
         windspeed = source.get("windspeed", **k)
         pressure = source.get("pressure", **k)
         air_temp = source.get("air_temp", **k)
-        dew_temp = None
+        dew_temp = source.get("dew_temp", **k)
+
         if "albedo" in source.data: 
             albedo = source.get("albedo", **k)
         else: 
@@ -132,7 +133,7 @@ def simulatePVModule(locs, source, elev=300, module="SunPower_SPR_X21_255", azim
         windspeed = source["windspeed"]
         pressure = source["pressure"]
         air_temp = source["air_temp"]
-        dew_temp = None
+        dew_temp = source["dew_temp"]
         if "albedo" in source: 
             albedo = source["albedo"]
         else: 
@@ -192,13 +193,32 @@ def simulatePVModule(locs, source, elev=300, module="SunPower_SPR_X21_255", azim
 
     if isinstance(tilt, pd.Series): pass
     if isinstance(tilt,str):
-        if tilt=="latitude": tilt=pd.Series([l.lat for l in locs], index=locs)
-        elif tilt=="half-latitude": tilt=pd.Series([l.lat/2 for l in locs], index=locs)
+        if tilt=="latitude": 
+            tilt=pd.Series([l.lat for l in locs], index=locs)
+        
+        elif tilt=="half-latitude": 
+            tilt=pd.Series([l.lat/2 for l in locs], index=locs)
+        
+        elif tilt=="ninja": 
+            lats = locs.lats
+            tilt = np.zeros( lats.size ) + 40
+
+            s = lats <= 25
+            tilt[ s ] = lats[s]*0.87
+
+            s = np.logical_and(lats > 25, lats <= 50)
+            tilt[ s ] = (lats[s]*0.76)+3.1
+
+            tilt=pd.Series(tilt, index=locs)
+
         else: raise ValueError("tilt directive '%s' not recognized"%tilt)
+
     elif isinstance(tilt, FunctionType):
         tilt = tilt=pd.Series([tilt(l,e) for l,e in zip(locs, elev)], index=locs)
+    
     elif isinstance(tilt, float) or isinstance(tilt, int):
         tilt = pd.Series([tilt,]*locs.count, index=locs)
+    
     else:
         tilt = pd.Series(tilt, index=locs)
 
@@ -299,10 +319,13 @@ def simulatePVModule(locs, source, elev=300, module="SunPower_SPR_X21_255", azim
         for c in ghi.columns:
             dni[c] = pvlib.irradiance.dirint(ghi[c], solpos["apparent_zenith"][c], times, pressure=pressure[c], 
                                              temp_dew=None if dew_temp is None else dew_temp[c] )
+            # TODO: This needs to be updated to adapt to COSMO data (Which has relative humidity instead of dew_point temp)
+        dni.fillna(0, inplace=True)
 
     if dhi is None:
-        dhi = ghi - dni*np.sin( np.radians(solpos["apparent_elevation"])) # TODO: CHECK THIS!!!
+        dhi = ghi - dni*np.sin( np.radians(solpos["apparent_elevation"]))
         dhi[dhi<0] = 0
+        dhi.fillna(0, inplace=True)
 
     #addTime("DHI calc")
     
@@ -325,31 +348,26 @@ def simulatePVModule(locs, source, elev=300, module="SunPower_SPR_X21_255", azim
         del axis_azimuth, axis_tilt, tmp
 
     # Airmass
-    if sandiaGenerationModel: # airmass only needed for SAPM model
-        amRel = pvlib.atmosphere.relativeairmass(solpos["apparent_zenith"])
-        amAbs = pvlib.atmosphere.absoluteairmass(amRel, pressure)
-        del amRel
+    amRel = pvlib.atmosphere.relativeairmass(solpos["apparent_zenith"], model=airmassMethod)
     #addTime("Airmass")
-    
 
     # Angle of Incidence
-    if sandiaGenerationModel: # aoi only needed for SAPM model
-        aoi = pvlib.irradiance.aoi(tilt, azimuth, solpos['apparent_zenith'], solpos['azimuth'])
+    aoi = pvlib.irradiance.aoi(tilt, azimuth, solpos['apparent_zenith'], solpos['azimuth'])
     #addTime("AOI")
     
-
     # Compute Total irradiation
-    poa = pvlib.irradiance.total_irrad(tilt,
-                                       azimuth,
-                                       solpos['apparent_zenith'],
-                                       solpos['azimuth'],
-                                       dni, ghi, dhi,
+    poa = pvlib.irradiance.total_irrad(surface_tilt=tilt.values,
+                                       surface_azimuth=azimuth.values,
+                                       apparent_zenith=solpos['apparent_zenith'].values,
+                                       azimuth=solpos['azimuth'].values,
+                                       dni=dni.values, ghi=ghi.values, dhi=dhi.values,
                                        dni_extra=dni_extra,
-                                       model='haydavies')
-    del dni, ghi, dhi, tilt, azimuth, dni_extra, solpos
+                                       model=transpositionModel,
+                                       airmass=amRel)
+
+    del dni, ghi, dhi, azimuth, dni_extra, solpos, 
     #addTime("POA")
     
-
     # Cell temp
     if sandiaCellTemp:
         cellTemp = _sapm_celltemp(poa['poa_global'], windspeed, air_temp)
@@ -358,23 +376,27 @@ def simulatePVModule(locs, source, elev=300, module="SunPower_SPR_X21_255", azim
         raise ResError("NOCT celltemp module not yet implemented :(")
     del air_temp, windspeed
     #addTime("Cell temp")
-    
-
-    ## Add irradiance losses
-    # TODO: Look into this. Is it necessary???
-    # See pvsystem.physicaliam, pvsystem.ashraeiam, and pvsystem.sapm_aoi_loss
 
     ## Do DC Generation calculation
     if sandiaGenerationModel:
         # Not guarenteed to work with 2D inputs
+        amAbs = pvlib.atmosphere.absoluteairmass(amRel, pressure)
         effectiveIrradiance = pvlib.pvsystem.sapm_effective_irradiance( poa_direct=poa['poa_direct'], 
                                     poa_diffuse=poa['poa_diffuse'], airmass_absolute=amAbs, aoi=aoi)
         rawDCGeneration = pvlib.pvsystem.sapm(effective_irradiance=effectiveIrradiance, 
                                    temp_cell=moduleTemp['temp_cell'])
         del amAbs, aoi
     else:
-        sel = (poa["poa_global"]>0).values
-        sotoParams = pvlib.pvsystem.calcparams_desoto(poa_global=poa["poa_global"].values[sel], 
+        ## Add irradiance losses due to angle of incidence
+        poa_total = 0
+        poa_total += poa["poa_direct"] * pvlib.pvsystem.physicaliam(aoi)
+
+        # Effective angle of incidence values from "Solar-Engineering-of-Thermal-Processes-4th-Edition"
+        poa_total += poa["poa_ground_diffuse"] * pvlib.pvsystem.physicaliam( 90 - 0.5788*tilt + 0.002693*np.power(tilt, 2) ) 
+        poa_total += poa["poa_sky_diffuse"] * pvlib.pvsystem.physicaliam( 59.7 - 0.1388*tilt + 0.001497*np.power(tilt, 2) ) 
+
+        sel = poa_total>0
+        sotoParams = pvlib.pvsystem.calcparams_desoto(poa_global=poa_total[sel], 
                                                       temp_cell=cellTemp.values[sel], 
                                                       alpha_isc=module.alpha_sc, 
                                                       module_parameters=module, 
@@ -392,9 +414,9 @@ def simulatePVModule(locs, source, elev=300, module="SunPower_SPR_X21_255", azim
             rawDCGeneration[k] = pd.DataFrame(index=times, columns=locs)
             rawDCGeneration[k].values[sel] = tmp[k]
 
-        del photoCur, satCur, resSeries, resShunt, nNsVth, tmp
+        del photoCur, satCur, resSeries, resShunt, nNsVth, tmp, poa_total, aoi
         
-    del poa, cellTemp
+    del poa, cellTemp, tilt, amRel
     #addTime("DC Sim")
 
     ## Simulate inverter interation
