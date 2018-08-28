@@ -382,9 +382,10 @@ def simulatePVModule(locs, source, elev=300, module="SunPower_SPR_X21_255", azim
         # Not guarenteed to work with 2D inputs
         amAbs = pvlib.atmosphere.absoluteairmass(amRel, pressure)
         effectiveIrradiance = pvlib.pvsystem.sapm_effective_irradiance( poa_direct=poa['poa_direct'], 
-                                    poa_diffuse=poa['poa_diffuse'], airmass_absolute=amAbs, aoi=aoi)
+                                    poa_diffuse=poa['poa_diffuse'], airmass_absolute=amAbs, aoi=aoi, 
+                                    module=module)
         rawDCGeneration = pvlib.pvsystem.sapm(effective_irradiance=effectiveIrradiance, 
-                                   temp_cell=moduleTemp['temp_cell'])
+                                   temp_cell=cellTemp, module=module)
         del amAbs, aoi
     else:
         ## Add irradiance losses due to angle of incidence
@@ -392,8 +393,8 @@ def simulatePVModule(locs, source, elev=300, module="SunPower_SPR_X21_255", azim
         poa_total += poa["poa_direct"] * pvlib.pvsystem.physicaliam(aoi)
 
         # Effective angle of incidence values from "Solar-Engineering-of-Thermal-Processes-4th-Edition"
-        poa_total += poa["poa_ground_diffuse"] * pvlib.pvsystem.physicaliam( 90 - 0.5788*tilt + 0.002693*np.power(tilt, 2) ) 
-        poa_total += poa["poa_sky_diffuse"] * pvlib.pvsystem.physicaliam( 59.7 - 0.1388*tilt + 0.001497*np.power(tilt, 2) ) 
+        poa_total += poa["poa_ground_diffuse"] * pvlib.pvsystem.physicaliam( 90 - 0.5788*tilt.values + 0.002693*np.power(tilt.values, 2) ) 
+        poa_total += poa["poa_sky_diffuse"] * pvlib.pvsystem.physicaliam( 59.7 - 0.1388*tilt.values + 0.001497*np.power(tilt.values, 2) ) 
 
         sel = poa_total>0
         sotoParams = pvlib.pvsystem.calcparams_desoto(poa_global=poa_total[sel], 

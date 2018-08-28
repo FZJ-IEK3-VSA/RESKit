@@ -131,7 +131,7 @@ def PVWorkflowTemplate(placements, source, elev, module, azimuth, tilt, inverter
         groups = []
         for grp in placements.splitKMeans(jobs):
             if grp.count > (batchSize/jobs)*3:
-                subgroups = np.round(grp.count/(3*batchSize/jobs))
+                subgroups = int(np.round(grp.count/(3*batchSize/jobs)))
                 for sgi in range(int(subgroups)):
                     groups.append( gk.LocationSet(grp[sgi::subgroups]) )
             else:
@@ -142,11 +142,11 @@ def PVWorkflowTemplate(placements, source, elev, module, azimuth, tilt, inverter
         for i,grp in enumerate(groups):
             kwargs = simKwargs.copy()
             kwargs["placements"] = grp
-            kwargs["capacity"] = capacity[grp].values
-            kwargs["tilt"] = tilt if isinstance(tilt, str) else tilt[grp].values
-            kwargs["azimuth"] = azimuth[grp].values
-            kwargs["elev"] = elev if isinstance(elev, str) else elev[grp].values
-            kwargs["locationID"] = locationID[grp]
+            kwargs["capacity"] = capacity[grp[:]].values
+            kwargs["tilt"] = tilt if isinstance(tilt, str) else tilt[grp[:]].values
+            kwargs["azimuth"] = azimuth[grp[:]].values
+            kwargs["elev"] = elev if isinstance(elev, str) else elev[grp[:]].values
+            kwargs["locationID"] = locationID[grp[:]]
             kwargs["gid"] = i
             kwargs["batchSize"] = int(np.round(batchSize/jobs))
             
