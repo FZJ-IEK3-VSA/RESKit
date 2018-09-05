@@ -282,7 +282,7 @@ def _save_to_nc(output, capacityGeneration, lats, lons, capacity, tilt, azimuth,
         timeV[:] = nc.date2num(times.to_pydatetime(), timeV.units)
 
         # Make the data variables
-        var = ds.createVariable("capfac", "u2", dimensions=("time", "parkID",))
+        var = ds.createVariable("capfac", "u2", dimensions=("time", "parkID",), zlib=True)
         
         var.scale_factor = 1/32768
         var.units = "capacity_factor"
