@@ -98,7 +98,7 @@ def _batch_simulator(source, landcover, gwa, adjustMethod, roughness, loss, conv
         if extract == "capacityFactor": tmp = capacityGeneration.mean(0)
         elif extract == "totalProduction": tmp = (capacityGeneration*capacity[s]).sum(1)
         elif extract == "raw": tmp = capacityGeneration*capacity[s]
-        elif extract == "batchfile": tmp = None
+        elif extract == "batchfile": tmp = capacityGeneration
         else:
             raise ResError("extract method '%s' not understood"%extract)
 
@@ -106,8 +106,9 @@ def _batch_simulator(source, landcover, gwa, adjustMethod, roughness, loss, conv
     del source
 
     if extract == "batchfile": 
+        tmp = pd.concat(tmp, axis=1)
         _save_to_nc( output=output+"_%d.nc"%gid,
-                    capacityGeneration=capacityGeneration,
+                    capacityGeneration=tmp[placements[:]],
                     lats=[p.lat for p in placements],
                     lons=[p.lon for p in placements], 
                     capacity=capacity,

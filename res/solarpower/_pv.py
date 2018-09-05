@@ -6,6 +6,7 @@ from res.weather import NCSource
 import pvlib
 from types import FunctionType
 from datetime import datetime as dt
+from os.path import isfile
 
 class _SolarLibrary:
     def __init__(s):
@@ -57,7 +58,7 @@ def _sapm_celltemp(poa_global, wind_speed, temp_air, model='open_rack_cell_glass
 
     return temp_cell
 
-def simulatePVModule(locs, source, elev=300, module="SunPower_SPR_X21_255", azimuth=180, tilt="ninja", totalSystemCapacity=None, tracking="fixed", modulesPerString=1, inverter=None, stringsPerInverter=1, rackingModel='open_rack_cell_glassback', airMassModel='kastenyoung1989', transpositionModel='perez', cellTempModel="sandia", generationModel="single-diode", inverterModel="sandia", interpolation="bilinear", loss=0.00, trackingGCR=2/7, trackingMaxAngle=60, frankCorrection=False, airmassMethod='kastenyoung1989'):
+def simulatePVModule(locs, source, elev=300, module="SunPower_SPR_X21_255", azimuth=180, tilt="ninja", totalSystemCapacity=None, tracking="fixed", modulesPerString=1, inverter=None, stringsPerInverter=1, rackingModel='open_rack_cell_glassback', airmassModel='kastenyoung1989', transpositionModel='perez', cellTempModel="sandia", generationModel="single-diode", inverterModel="sandia", interpolation="bilinear", loss=0.00, trackingGCR=2/7, trackingMaxAngle=60, frankCorrection=False,):
     """
     Performs a simple PV simulation
 
@@ -192,35 +193,8 @@ def simulatePVModule(locs, source, elev=300, module="SunPower_SPR_X21_255", azim
         azimuth = pd.Series(azimuth, index=locs)
 
     if isinstance(tilt, pd.Series): pass
-    if isinstance(tilt,str):
-        if tilt=="latitude": 
-            tilt=pd.Series([l.lat for l in locs], index=locs)
-        
-        elif tilt=="half-latitude": 
-            tilt=pd.Series([l.lat/2 for l in locs], index=locs)
-        
-        elif tilt=="ninja": 
-            lats = locs.lats
-            tilt = np.zeros( lats.size ) + 40
-
-            s = lats <= 25
-            tilt[ s ] = lats[s]*0.87
-
-            s = np.logical_and(lats > 25, lats <= 50)
-            tilt[ s ] = (lats[s]*0.76)+3.1
-
-            tilt=pd.Series(tilt, index=locs)
-
-        else: raise ValueError("tilt directive '%s' not recognized"%tilt)
-
-    elif isinstance(tilt, FunctionType):
-        tilt = tilt=pd.Series([tilt(l,e) for l,e in zip(locs, elev)], index=locs)
-    
-    elif isinstance(tilt, float) or isinstance(tilt, int):
-        tilt = pd.Series([tilt,]*locs.count, index=locs)
-    
-    else:
-        tilt = pd.Series(tilt, index=locs)
+    elif isinstance(tilt, str): tilt = locToTilt(locs, tilt)
+    else: tilt = pd.Series(tilt, index=locs)
 
     if elev is None: raise ValueError("elev cannot be None")
     elif isinstance(elev, pd.Series): pass
@@ -348,7 +322,7 @@ def simulatePVModule(locs, source, elev=300, module="SunPower_SPR_X21_255", azim
         del axis_azimuth, axis_tilt, tmp
 
     # Airmass
-    amRel = pvlib.atmosphere.relativeairmass(solpos["apparent_zenith"], model=airmassMethod)
+    amRel = pvlib.atmosphere.relativeairmass(solpos["apparent_zenith"], model=airmassModel)
     #addTime("Airmass")
 
     # Angle of Incidence
@@ -450,7 +424,34 @@ def simulatePVModule(locs, source, elev=300, module="SunPower_SPR_X21_255", azim
     # Done!
     #addTime("total",True)
     return output.fillna(0)
-    
+
+
+def locToTilt(locs, convention="latitude*0.76", **k):
+    locs = gk.LocationSet(locs)
+
+    if convention=="ninja": 
+        lats = locs.lats
+        tilt = np.zeros( lats.size ) + 40
+
+        s = lats <= 25
+        tilt[ s ] = lats[s]*0.87
+
+        s = np.logical_and(lats > 25, lats <= 50)
+        tilt[ s ] = (lats[s]*0.76)+3.1
+
+    elif isfile(convention):
+        tilt = gk.raster.interpolateValues(convention, locs, **k)
+
+    else:
+        try:
+            tilt = eval(convention, {}, {"latitude":locs.lats})
+        except:
+            raise ResError("Failed to apply tilt convention")
+
+    tilt=pd.Series(tilt, index=locs[:])
+
+    return tilt
+
 def simulatePVRooftopDistribution(locs, tilts, azimuths, probabilityDensity, rackingModel="roof_mount_cell_glassback", **kwargs):
     """
     Simulate a distribution of pv rooftops and combine results
