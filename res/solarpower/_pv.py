@@ -58,27 +58,89 @@ def _sapm_celltemp(poa_global, wind_speed, temp_air, model='open_rack_cell_glass
 
     return temp_cell
 
-def simulatePVModule(locs, source, elev=300, module="SunPower_SPR_X21_255", azimuth=180, tilt="ninja", totalSystemCapacity=None, tracking="fixed", modulesPerString=1, inverter=None, stringsPerInverter=1, rackingModel='open_rack_cell_glassback', airmassModel='kastenyoung1989', transpositionModel='perez', cellTempModel="sandia", generationModel="single-diode", inverterModel="sandia", interpolation="bilinear", loss=0.00, trackingGCR=2/7, trackingMaxAngle=60, frankCorrection=False,):
-    """
-    Performs a simple PV simulation
+def ensureSeries(var, locs):
+    if isinstance(var, pd.Series): pass
+    elif isinstance(var, float) or isinstance(var, int):
+        var = pd.Series([var,]*locs.count, index=locs)
+    elif isinstance(var, str): 
+        var = gk.raster.extractValues(var, locs).data
+    else:
+        var = pd.Series(var, index=locs)
 
-    For module options, see: res.solarpower.ModuleLibrary
-    For inverter options, see: res.solarpower.InverterLibrary
+    return var
+
+def frankCorrectionFactors(ghi, dni_extra, times, solarElevation):
+    transmissivity = ghi/dni_extra
+    sigmoid = 1/(1+np.exp( -(transmissivity-0.5)/0.03 ))
+
+    # Adjust cloudy regime
+    months = times.month
+    cloudyFactors = np.empty(months.shape)
+
+    cloudyFactors[months==1] = 0.7776553729824053
+    cloudyFactors[months==2] = 0.7897164461247639
+    cloudyFactors[months==3] = 0.8176553729824052
+    cloudyFactors[months==4] = 0.8406805293005672
+    cloudyFactors[months==5] = 0.8761808928311765
+    cloudyFactors[months==6] = 0.9094139886578452
+    cloudyFactors[months==7] = 0.9350856478115459
+    cloudyFactors[months==8] = 0.9191682419659737
+    cloudyFactors[months==9] = 0.912703795259561
+    cloudyFactors[months==10]= 0.8775035625999711
+    cloudyFactors[months==11]= 0.8283158353933402
+    cloudyFactors[months==12]= 0.7651417769376183
+    cloudyFactors = np.broadcast_to(cloudyFactors.reshape( (cloudyFactors.size,1) ), ghi.shape)
+
+    cloudyFactors = cloudyFactors*(1-sigmoid)
+
+    # Adjust clearsky regime
+    e = solarElevation
+    clearSkyFactors = np.ones(e.shape)
 
 
-    interpolation options are:
-        - near
-        - bilinear
-        - cubic
-    """
-    # start = dt.now()
-    # timings = [0, ]
-    # timingNames = ["start", ]
-    # def addTime(name, full=False):
-    #     tmp = (dt.now()-start).total_seconds()
-    #     if not full: tmp -= sum(timings)
-    #     timings.append(tmp)
-    #     timingNames.append(name)
+    clearSkyFactors[np.where((e>=10)&(e<20))] = 1.17612920884004
+    clearSkyFactors[np.where((e>=20)&(e<30))] = 1.1384180020822825
+    clearSkyFactors[np.where((e>=30)&(e<40))] = 1.1022951259566156
+    clearSkyFactors[np.where((e>=40)&(e<50))] = 1.0856852748290704
+    clearSkyFactors[np.where((e>=50)&(e<60))] = 1.0779254457050245
+    clearSkyFactors[np.where(e>=60)] = 1.0715262914980628
+
+    clearSkyFactors *= sigmoid
+
+    # Apply to ghi
+    totalCorrectionFactor = clearSkyFactors+cloudyFactors
+
+    del clearSkyFactors, cloudyFactors, totalCorrectionFactor, e, months, sigmoid, transmissivity
+
+    return totalCorrectionFactor
+
+def locToTilt(locs, convention="latitude*0.76", **k):
+    locs = gk.LocationSet(locs)
+
+    if convention=="ninja": 
+        lats = locs.lats
+        tilt = np.zeros( lats.size ) + 40
+
+        s = lats <= 25
+        tilt[ s ] = lats[s]*0.87
+
+        s = np.logical_and(lats > 25, lats <= 50)
+        tilt[ s ] = (lats[s]*0.76)+3.1
+
+    elif isfile(convention):
+        tilt = gk.raster.interpolateValues(convention, locs, **k)
+
+    else:
+        try:
+            tilt = eval(convention, {}, {"latitude":locs.lats})
+        except:
+            raise ResError("Failed to apply tilt convention")
+
+    tilt=pd.Series(tilt, index=locs[:])
+
+    return tilt
+
+def _presim(locs, source, elev=300, module="SunPower_SPR_X21_255", azimuth=180, tilt="ninja", totalSystemCapacity=None, tracking="fixed", modulesPerString=1, inverter=None, stringsPerInverter=1, rackingModel='open_rack_cell_glassback', airmassModel='kastenyoung1989', transpositionModel='perez', cellTempModel="sandia", generationModel="single-diode", inverterModel="sandia", interpolation="bilinear", loss=0.16, trackingGCR=2/7, trackingMaxAngle=60, frankCorrection=False,):
 
     ### Check a few inputs so it doesn't need to be done repeatedly
     if cellTempModel.lower() == "sandia": sandiaCellTemp = True
@@ -171,40 +233,18 @@ def simulatePVModule(locs, source, elev=300, module="SunPower_SPR_X21_255", azim
                             max_angle=trackingMaxAngle, module_parameters=module, albedo=albedo, 
                             modules_per_string=modulesPerString, strings_per_inverter=stringsPerInverter, 
                             inverter_parameters=inverter, racking_model=rackingModel, gcr=trackingGCR)
-    else:
-        genericSystem = pvlib.pvsystem.PVSystem(surface_tilt=None, surface_azimuth=None, 
-                            module_parameters=module, albedo=albedo, modules_per_string=modulesPerString, 
-                            strings_per_inverter=stringsPerInverter, inverter_parameters=inverter, 
-                            racking_model=rackingModel)
+
     #addTime("Create generic module")
 
     ### Check the (potentially) uniquely defined inputs
-    if not totalSystemCapacity is None:
-        if isinstance(totalSystemCapacity, pd.Series): pass
-        elif isinstance(totalSystemCapacity, float) or isinstance(totalSystemCapacity, int):
-            totalSystemCapacity = pd.Series([totalSystemCapacity,]*locs.count, index=locs)
-        else:
-            totalSystemCapacity = pd.Series(totalSystemCapacity, index=locs)
+    if not totalSystemCapacity is None: totalSystemCapacity = ensureSeries(totalSystemCapacity, locs)
+    
+    azimuth = ensureSeries(azimuth, locs)
+    elev = ensureSeries(elev, locs)
 
-    if isinstance(azimuth, pd.Series): pass
-    elif isinstance(azimuth, float) or isinstance(azimuth, int):
-        azimuth = pd.Series([azimuth,]*locs.count, index=locs)
-    else:
-        azimuth = pd.Series(azimuth, index=locs)
-
-    if isinstance(tilt, pd.Series): pass
-    elif isinstance(tilt, str): tilt = locToTilt(locs, tilt)
-    else: tilt = pd.Series(tilt, index=locs)
-
-    if elev is None: raise ValueError("elev cannot be None")
-    elif isinstance(elev, pd.Series): pass
-    elif isinstance(elev, str): 
-        elev = gk.raster.extractValues(elev, locs).data
-    elif isinstance(elev, float) or isinstance(elev, int):
-        elev = pd.Series([elev,]*locs.count, index=locs)
-    else:
-        elev = pd.Series(elev, index=locs)
-
+    if isinstance(tilt, str): tilt = locToTilt(locs, tilt)
+    else: tilt = ensureSeries(tilt, locs)
+    
     #addTime("Check unique inputs")
 
     ### Begin simulations
@@ -243,49 +283,9 @@ def simulatePVModule(locs, source, elev=300, module="SunPower_SPR_X21_255", azim
     
     # Apply Frank corrections when dealing with COSMO data?
     if frankCorrection:
-        transmissivity = ghi/dni_extra
-        sigmoid = 1/(1+np.exp( -(transmissivity-0.5)/0.03 ))
+        ghi *= frankCorrectionFactors(ghi, dni_extra, times, solpos["apparent_elevation"])
 
-        # Adjust cloudy regime
-        months = times.month
-        cloudyFactors = np.empty(months.shape)
-
-        cloudyFactors[months==1] = 0.7776553729824053
-        cloudyFactors[months==2] = 0.7897164461247639
-        cloudyFactors[months==3] = 0.8176553729824052
-        cloudyFactors[months==4] = 0.8406805293005672
-        cloudyFactors[months==5] = 0.8761808928311765
-        cloudyFactors[months==6] = 0.9094139886578452
-        cloudyFactors[months==7] = 0.9350856478115459
-        cloudyFactors[months==8] = 0.9191682419659737
-        cloudyFactors[months==9] = 0.912703795259561
-        cloudyFactors[months==10]= 0.8775035625999711
-        cloudyFactors[months==11]= 0.8283158353933402
-        cloudyFactors[months==12]= 0.7651417769376183
-        cloudyFactors = np.broadcast_to(cloudyFactors.reshape( (cloudyFactors.size,1) ), ghi.shape)
-
-        cloudyFactors = cloudyFactors*(1-sigmoid)
-
-        # Adjust clearsky regime
-        e = solpos["apparent_elevation"]
-        clearSkyFactors = np.ones(e.shape)
-
-
-        clearSkyFactors[np.where((e>=10)&(e<20))] = 1.17612920884004
-        clearSkyFactors[np.where((e>=20)&(e<30))] = 1.1384180020822825
-        clearSkyFactors[np.where((e>=30)&(e<40))] = 1.1022951259566156
-        clearSkyFactors[np.where((e>=40)&(e<50))] = 1.0856852748290704
-        clearSkyFactors[np.where((e>=50)&(e<60))] = 1.0779254457050245
-        clearSkyFactors[np.where(e>=60)] = 1.0715262914980628
-
-        clearSkyFactors *= sigmoid
-
-        # Apply to ghi
-        totalCorrectionFactor = clearSkyFactors+cloudyFactors
-        ghi *= totalCorrectionFactor
-
-        del clearSkyFactors, cloudyFactors, totalCorrectionFactor, e, months, sigmoid, transmissivity
-        #addTime("Frank Correction")
+    #addTime("Frank Correction")
 
     # Compute DHI or DNI
     if dni is None:
@@ -322,25 +322,55 @@ def simulatePVModule(locs, source, elev=300, module="SunPower_SPR_X21_255", azim
         del axis_azimuth, axis_tilt, tmp
 
     # Airmass
-    amRel = pvlib.atmosphere.relativeairmass(solpos["apparent_zenith"], model=airmassModel)
+    amRel = np.full_like(solpos["apparent_zenith"].values, 100)
+    s = solpos["apparent_zenith"].values < 90
+    amRel[s] = pvlib.atmosphere.relativeairmass(solpos["apparent_zenith"].values[s], model=airmassModel)
     #addTime("Airmass")
+
+    return dict(
+                tilt=tilt.values,
+                module=module,
+                azimuth=azimuth.values,
+                inverter=inverter,
+                moduleCap=moduleCap,
+                modulesPerString=modulesPerString,
+                stringsPerInverter=stringsPerInverter,
+                loss=loss,
+                
+                locs=locs,
+                times=times,
+
+                dni=dni.values,
+                ghi=ghi.values,
+                dhi=dhi.values,
+                amRel=amRel,
+                solpos=solpos,
+                pressure=pressure,
+                air_temp=air_temp,
+                windspeed=windspeed,
+                dni_extra=dni_extra,
+
+                sandiaCellTemp=sandiaCellTemp,
+                transpositionModel=transpositionModel,
+                totalSystemCapacity=totalSystemCapacity,
+                sandiaGenerationModel=sandiaGenerationModel,)
+
+def _simulation(tilt, module, azimuth, inverter, moduleCap, modulesPerString, stringsPerInverter, locs, times, dni, ghi, dhi, amRel, solpos, pressure, air_temp, windspeed, dni_extra, sandiaCellTemp, transpositionModel, totalSystemCapacity, sandiaGenerationModel, loss):
 
     # Angle of Incidence
     aoi = pvlib.irradiance.aoi(tilt, azimuth, solpos['apparent_zenith'], solpos['azimuth'])
-    #addTime("AOI")
     
     # Compute Total irradiation
-    poa = pvlib.irradiance.total_irrad(surface_tilt=tilt.values,
-                                       surface_azimuth=azimuth.values,
+    poa = pvlib.irradiance.total_irrad(surface_tilt=tilt,
+                                       surface_azimuth=azimuth,
                                        apparent_zenith=solpos['apparent_zenith'].values,
                                        azimuth=solpos['azimuth'].values,
-                                       dni=dni.values, ghi=ghi.values, dhi=dhi.values,
+                                       dni=dni, ghi=ghi, dhi=dhi,
                                        dni_extra=dni_extra,
                                        model=transpositionModel,
                                        airmass=amRel)
 
-    del dni, ghi, dhi, azimuth, dni_extra, solpos, 
-    #addTime("POA")
+    del dni, ghi, dhi, azimuth, dni_extra, solpos
     
     # Cell temp
     if sandiaCellTemp:
@@ -367,8 +397,8 @@ def simulatePVModule(locs, source, elev=300, module="SunPower_SPR_X21_255", azim
         poa_total += poa["poa_direct"] * pvlib.pvsystem.physicaliam(aoi)
 
         # Effective angle of incidence values from "Solar-Engineering-of-Thermal-Processes-4th-Edition"
-        poa_total += poa["poa_ground_diffuse"] * pvlib.pvsystem.physicaliam( 90 - 0.5788*tilt.values + 0.002693*np.power(tilt.values, 2) ) 
-        poa_total += poa["poa_sky_diffuse"] * pvlib.pvsystem.physicaliam( 59.7 - 0.1388*tilt.values + 0.001497*np.power(tilt.values, 2) ) 
+        poa_total += poa["poa_ground_diffuse"] * pvlib.pvsystem.physicaliam( 90 - 0.5788*tilt + 0.002693*np.power(tilt, 2) ) 
+        poa_total += poa["poa_sky_diffuse"] * pvlib.pvsystem.physicaliam( 59.7 - 0.1388*tilt + 0.001497*np.power(tilt, 2) ) 
 
         sel = poa_total>0
         sotoParams = pvlib.pvsystem.calcparams_desoto(poa_global=poa_total[sel], 
@@ -397,15 +427,15 @@ def simulatePVModule(locs, source, elev=300, module="SunPower_SPR_X21_255", azim
     ## Simulate inverter interation
     if not inverter is None: 
         if sandiaInverterModel: 
-            generation = genericSystem.snlinverter(v_dc=rawDCGeneration['v_mp']*system.modules_per_string, 
-                                                   p_dc=rawDCGeneration['p_mp']*system.modules_per_string*system.strings_per_inverter)
+            generation = genericSystem.snlinverter(v_dc=rawDCGeneration['v_mp']*modulesPerString, 
+                                                   p_dc=rawDCGeneration['p_mp']*modulesPerString*stringsPerInverter)
 
         else: 
-            generation = genericSystem.adrinverter(v_dc=rawDCGeneration['v_mp']*system.modules_per_string, 
-                                                   p_dc=rawDCGeneration['p_mp']*system.modules_per_string*system.strings_per_inverter)
+            generation = genericSystem.adrinverter(v_dc=rawDCGeneration['v_mp']*modulesPerString, 
+                                                   p_dc=rawDCGeneration['p_mp']*modulesPerString*stringsPerInverter)
         
         # normalize to a single module
-        generation = generation/system.modules_per_string/system.strings_per_inverter
+        generation = generation/modulesPerString/stringsPerInverter
     else:
         generation = rawDCGeneration["p_mp"].copy()
     del rawDCGeneration
@@ -425,44 +455,57 @@ def simulatePVModule(locs, source, elev=300, module="SunPower_SPR_X21_255", azim
     #addTime("total",True)
     return output.fillna(0)
 
+def simulatePVModule(locs, source, elev=300, module="SunPower_SPR_X21_255", azimuth=180, tilt="ninja", totalSystemCapacity=None, tracking="fixed", interpolation="bilinear", loss=0.16, rackingModel="open_rack_cell_glassback", **kwargs):
+    """
+    Performs a simple PV simulation
 
-def locToTilt(locs, convention="latitude*0.76", **k):
-    locs = gk.LocationSet(locs)
+    For module options, see: res.solarpower.ModuleLibrary
+    For inverter options, see: res.solarpower.InverterLibrary
 
-    if convention=="ninja": 
-        lats = locs.lats
-        tilt = np.zeros( lats.size ) + 40
 
-        s = lats <= 25
-        tilt[ s ] = lats[s]*0.87
+    interpolation options are:
+        - near
+        - bilinear
+        - cubic
+    """
 
-        s = np.logical_and(lats > 25, lats <= 50)
-        tilt[ s ] = (lats[s]*0.76)+3.1
+    # Perform pre-sim procedures and unpack
+    k = _presim(locs=locs, source=source, elev=elev, module=module, azimuth=azimuth, 
+               tilt=tilt, totalSystemCapacity=totalSystemCapacity, tracking=tracking, 
+               interpolation=interpolation, loss=loss, **kwargs)
+    # return k
 
-    elif isfile(convention):
-        tilt = gk.raster.interpolateValues(convention, locs, **k)
+    # Do regular simulation procedure
+    result = _simulation(**k)
 
-    else:
-        try:
-            tilt = eval(convention, {}, {"latitude":locs.lats})
-        except:
-            raise ResError("Failed to apply tilt convention")
+    # Done! 
+    return result
 
-    tilt=pd.Series(tilt, index=locs[:])
 
-    return tilt
-
-def simulatePVRooftopDistribution(locs, tilts, azimuths, probabilityDensity, rackingModel="roof_mount_cell_glassback", **kwargs):
+def simulatePVModuleDistribution(locs, tilts, azimuths=[180,], occurrence=None, rackingModel="roof_mount_cell_glassback", **kwargs):
     """
     Simulate a distribution of pv rooftops and combine results
     """
-    output = None
-    for ti, tilt in enumerate(tilts):
-        output.append([])
-        for ai, azimuth in enumerate(tilts):
-            simResult = simulatePVModule(locs=locs, tilt=tilt, azimuth=azimuth, 
-                                         rackingModel=rackingModel, extract=extract, **kwargs)
+    # Arrange occurrence
+    if occurrence is None:
+        occurrence = np.ones( (len(tilts), len(azimuths)) )
 
-            if output is None: output=simResult*probabilityDensity[ti,ai]
-            else: finalResult += simResult*probabilityDensity[ti,ai]
-    return finalResult
+    if not occurrence.shape == (len(tilts), len(azimuths)):
+        raise ResError("occurrence input does not have the correct shape")
+
+    occurrence /= occurrence.sum()
+
+    # Perform pre-sim procedures
+    k = _presim(locs=locs, rackingModel=rackingModel, azimuth=None, tilt=None, 
+                totalSystemCapacity=1, tracking='fixed', **kwargs)
+    trash = k.pop("tilt")
+    trash = k.pop("azimuth")
+
+    # Do Simulation procedure multiple times
+    result = 0
+    for ti, tilt in enumerate(tilts):
+        for ai, azimuth in enumerate(azimuths):
+            result += _simulation(tilt=tilt, azimuth=azimuth, **k) * occurrence[ti,ai]
+
+    # Done!
+    return result
