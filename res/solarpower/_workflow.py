@@ -246,9 +246,8 @@ def workflowOpenFieldFixed(placements, source, elev=None, module="SunPower_SPR_X
 def workflowOpenFieldTracking(placements, source, elev=None, capacity=None, module="SunPower_SPR_X21_255", azimuth=180, tilt="latitude", inverter=None, extract="totalProduction", output=None, jobs=1, batchSize=None, verbose=True):
     return PVWorkflowTemplate(# Controllable args
                               placements=placements, source=source, elev=elev, module=module, azimuth=azimuth, 
-                              tilt=tilt, inverter=inverter, extract=extract, output=output, 
+                              tilt=tilt, extract=extract, output=output, 
                               jobs=jobs, batchSize=batchSize, verbose=verbose, capacity=capacity,
-                              modulesPerString=modulesPerString, stringsPerInverter=stringsPerInverter,
                               frankCorrection=frankCorrection, 
 
                               # Set args
