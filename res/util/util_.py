@@ -17,8 +17,9 @@ from datetime import datetime as dt
 # making an error
 class ResError(Exception): pass # this just creates an error that we can use
 
-# Add test data
+# Add paths
 _test_data_ = gk._test_data_
+DATADIR = join( dirname(__file__), "..", "..", "data")
 
 # Make easy access to latlon projection system
 LATLONSRS = gk.srs.EPSG4326

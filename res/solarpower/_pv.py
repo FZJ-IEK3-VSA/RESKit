@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 from collections import namedtuple, OrderedDict
-from res.util import *
+from res.util.util_ import *
 from res.weather import NCSource
 import pvlib
 from types import FunctionType
@@ -18,15 +18,16 @@ class _SolarLibrary:
     def modules(s, group='cec'): 
         name = "_"+group.lower()+"mods"
         if getattr(s, name) is None:
-            setattr(s, name, pvlib.pvsystem.retrieve_sam(group+"mod"))
+            #setattr(s, name, pvlib.pvsystem.retrieve_sam(group+"mod"))
+            setattr(s, name, pd.read_csv(join(DATADIR,"modules","sam-library-cec-modules-2017-6-5.csv"), skiprows=[1,2], index_col=0))
         return getattr(s, name)
 
     def inverters(s, group='sandia'): 
         name = "_"+group.lower()+"inverters"
         if getattr(s, name) is None:
-            setattr(s, name, pvlib.pvsystem.retrieve_sam(group+"inverter"))
+            setattr(s, name, pvlib.pvsystem.retrieve_sam(group+"inverter").T)
         return getattr(s, name)
-    
+
 SolarLibrary = _SolarLibrary()
 
 def _sapm_celltemp(poa_global, wind_speed, temp_air, model='open_rack_cell_glassback'):
@@ -140,7 +141,7 @@ def locToTilt(locs, convention="latitude*0.76", **k):
 
     return tilt
 
-def _presim(locs, source, elev=300, module="SunPower_SPR_X21_255", azimuth=180, tilt="ninja", totalSystemCapacity=None, tracking="fixed", modulesPerString=1, inverter=None, stringsPerInverter=1, rackingModel='open_rack_cell_glassback', airmassModel='kastenyoung1989', transpositionModel='perez', cellTempModel="sandia", generationModel="single-diode", inverterModel="sandia", interpolation="bilinear", loss=0.16, trackingGCR=2/7, trackingMaxAngle=60, frankCorrection=False,):
+def _presim(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, tilt="ninja", totalSystemCapacity=None, tracking="fixed", modulesPerString=1, inverter=None, stringsPerInverter=1, rackingModel='open_rack_cell_glassback', airmassModel='kastenyoung1989', transpositionModel='perez', cellTempModel="sandia", generationModel="single-diode", inverterModel="sandia", interpolation="bilinear", loss=0.16, trackingGCR=2/7, trackingMaxAngle=60, frankCorrection=False,):
 
     ### Check a few inputs so it doesn't need to be done repeatedly
     if cellTempModel.lower() == "sandia": sandiaCellTemp = True
@@ -207,10 +208,38 @@ def _presim(locs, source, elev=300, module="SunPower_SPR_X21_255", azimuth=180, 
     ### Identify module and inverter
     if isinstance(module, str):
         if sandiaGenerationModel: 
-            module = SolarLibrary.modules("sandia")[module] # Extract module parameters
+            module = SolarLibrary.modules("sandia").loc[module] # Extract module parameters
             moduleCap = module.Impo*module.Vmpo # Max capacity of a single module
-        elif not sandiaGenerationModel: 
-            module = SolarLibrary.modules("cec")[module] # Extract module parameters
+        elif not sandiaGenerationModel:
+            if isinstance(module, str):
+                if module == "WINAICO WSx-240P6":
+                    module = pd.Series(dict(
+                        BIPV      =           "N",
+                        Date      =    "6/2/2014",
+                        T_NOCT    =            43,
+                        A_c       =         1.663,
+                        N_s       =            60,
+                        I_sc_ref  =          8.41,
+                        V_oc_ref  =         37.12,
+                        I_mp_ref  =          7.96,
+                        V_mp_ref  =          30.2,
+                        alpha_sc  =      0.001164,
+                        beta_oc   =      -0.12357,
+                        a_ref     =        1.6704,
+                        I_L_ref   =         8.961,
+                        I_o_ref   =      1.66e-11,
+                        R_s       =         0.405,
+                        R_sh_ref  =        326.74,
+                        Adjust    =         4.747,
+                        gamma_r   =        -0.383,
+                        Version   =      "NRELv1",
+                        PTC       =         220.2,
+                        Technology=  "Multi-c-Si",
+                    ))
+                    module.name="WINAICO WSx-240P6"
+                else:
+                    module = SolarLibrary.modules("cec").loc[module] # Extract module parameters
+
             moduleCap = module.I_mp_ref*module.V_mp_ref # Max capacity of a single module
 
             ## Check if we need to add the Desoto parameters
@@ -455,7 +484,7 @@ def _simulation(tilt, module, azimuth, inverter, moduleCap, modulesPerString, st
     #addTime("total",True)
     return output.fillna(0)
 
-def simulatePVModule(locs, source, elev=300, module="SunPower_SPR_X21_255", azimuth=180, tilt="ninja", totalSystemCapacity=None, tracking="fixed", interpolation="bilinear", loss=0.16, rackingModel="open_rack_cell_glassback", **kwargs):
+def simulatePVModule(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, tilt="ninja", totalSystemCapacity=None, tracking="fixed", interpolation="bilinear", loss=0.16, rackingModel="open_rack_cell_glassback", **kwargs):
     """
     Performs a simple PV simulation
 
