@@ -243,7 +243,7 @@ def workflowOpenFieldFixed(placements, source, elev=None, module="SunPower_SPR_X
                               transpositionModel='perez', cellTempModel="sandia", generationModel="single-diode", 
                               trackingMaxAngle=None, trackingGCR=None)
                          
-def workflowOpenFieldTracking(placements, source, elev=None, capacity=None, module="SunPower_SPR_X21_255", azimuth=180, tilt="latitude", inverter=None, extract="totalProduction", output=None, jobs=1, batchSize=None, verbose=True):
+def workflowOpenFieldTracking(placements, source, elev=None, module="SunPower_SPR_X21_255", azimuth=180, tilt="latitude", extract="totalProduction", output=None, jobs=1, batchSize=None, verbose=True, capacity=None, frankCorrection=False,):
     return PVWorkflowTemplate(# Controllable args
                               placements=placements, source=source, elev=elev, module=module, azimuth=azimuth, 
                               tilt=tilt, extract=extract, output=output, 
@@ -254,7 +254,7 @@ def workflowOpenFieldTracking(placements, source, elev=None, capacity=None, modu
                               tracking="single-axis", trackingMaxAngle=60, loss=0.16,
                               rackingModel='open_rack_cell_glassback', airmassModel='kastenyoung1989', 
                               transpositionModel='perez', cellTempModel="sandia", generationModel="single-diode", 
-                              inverterModel="sandia", interpolation="bilinear", trackingGCR=2/7, 
+                              interpolation="bilinear", trackingGCR=2/7, 
                               )
 
 
