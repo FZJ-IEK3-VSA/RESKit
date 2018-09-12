@@ -105,7 +105,6 @@ class CosmoSource(NCSource):
         # Check for out of bounds
         s = (latI<0)|(latI>=_latN)|(lonI<0)|(lonI>=_lonN)
         if s.any():
-            print("Im in!!")
             if not outsideOkay:
                 print("The following locations are out of bounds")
                 print(locations[s])
