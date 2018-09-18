@@ -264,7 +264,7 @@ def _presim(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, til
                     module.name="LG Electronics LG370Q1C-A5"
                 else:
 
-                    module = SolarLibrary.modules("cec").loc[module] # Extract module parameters
+                    module = SolarLibrary.modules("cec").loc[module].copy() # Extract module parameters
 
             moduleCap = module.I_mp_ref*module.V_mp_ref # Max capacity of a single module
 
