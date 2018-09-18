@@ -237,7 +237,33 @@ def _presim(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, til
                         Technology=  "Multi-c-Si",
                     ))
                     module.name="WINAICO WSx-240P6"
+                elif module == "LG Electronics LG370Q1C-A5":
+                    module = pd.Series(dict(
+                        BIPV      =            "N",
+                        Date      =   "12/14/2016",
+                        T_NOCT    =          45.7,
+                        A_c       =         1.673,
+                        N_s       =            60,
+                        I_sc_ref  =         10.82,
+                        V_oc_ref  =          42.8,
+                        I_mp_ref  =         10.01,
+                        V_mp_ref  =            37,
+                        alpha_sc  =      0.003246,
+                        beta_oc   =      -0.10272,
+                        a_ref     =        1.5532,
+                        I_L_ref   =        10.829,
+                        I_o_ref   =      1.12e-11,
+                        R_s       =         0.079,
+                        R_sh_ref  =         92.96,
+                        Adjust    =            14,
+                        gamma_r   =         -0.32,
+                        Version   =       "NRELv1",
+                        PTC       =         347.2,
+                        Technology=    "Mono-c-Si",
+                    ))
+                    module.name="LG Electronics LG370Q1C-A5"
                 else:
+
                     module = SolarLibrary.modules("cec").loc[module] # Extract module parameters
 
             moduleCap = module.I_mp_ref*module.V_mp_ref # Max capacity of a single module
@@ -511,30 +537,43 @@ def simulatePVModule(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth
     return result
 
 
-def simulatePVModuleDistribution(locs, tilts, azimuths=[180,], occurrence=None, rackingModel="roof_mount_cell_glassback", **kwargs):
+def simulatePVModuleDistribution(locs, tilts, source, elev=300, azimuths=180, occurrence=None, rackingModel="roof_mount_cell_glassback", module="LG Electronics LG370Q1C-A5",**kwargs):
     """
     Simulate a distribution of pv rooftops and combine results
     """
-    # Arrange occurrence
-    if occurrence is None:
-        occurrence = np.ones( (len(tilts), len(azimuths)) )
+    # Arrange tilts and azimuths
+    tilts = np.array(tilts)
+    azimuths = np.array(azimuths)
 
-    if not occurrence.shape == (len(tilts), len(azimuths)):
+    if azimuths.size ==1 and tilts.size > 1:
+        azimuths = np.full_like(tilts, azimuths)
+    if tilts.size ==1 and azimuths.size > 1:
+        tilts = np.full_like(azimuths, tilts)
+
+    if not azimuths.size == tilts.size:
+        raise ResError("Tilts and azmiuths sizes do not match")
+
+    # Arrange occurences
+    if occurrence is None:
+        occurrence = np.ones( tilts.size )
+    else:
+        occurrence = np.array(occurrence)
+
+    if not occurrence.size == tilts.size:
         raise ResError("occurrence input does not have the correct shape")
 
-    occurrence /= occurrence.sum()
+    occurrence = occurrence / occurrence.sum()
 
     # Perform pre-sim procedures
-    k = _presim(locs=locs, rackingModel=rackingModel, azimuth=None, tilt=None, 
-                totalSystemCapacity=1, tracking='fixed', **kwargs)
+    k = _presim(locs=locs, source=source, elev=elev, rackingModel=rackingModel, 
+                azimuth=None, tilt=None, totalSystemCapacity=1, tracking='fixed', **kwargs)
     trash = k.pop("tilt")
     trash = k.pop("azimuth")
 
     # Do Simulation procedure multiple times
     result = 0
-    for ti, tilt in enumerate(tilts):
-        for ai, azimuth in enumerate(azimuths):
-            result += _simulation(tilt=tilt, azimuth=azimuth, **k) * occurrence[ti,ai]
+    for tilt, azimuth, occ in zip(tilts, azimuths, occurrence):
+        result += _simulation(tilt=tilt, azimuth=azimuth, **k) * occ
 
     # Done!
     return result
