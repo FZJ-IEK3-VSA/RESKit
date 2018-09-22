@@ -66,16 +66,17 @@ def _batch_simulator(source, loss, verbose, module, globalStart, extract,
                                 trackingGCR=trackingGCR,
                                 trackingMaxAngle=trackingMaxAngle,
                                 frankCorrection=frankCorrection,)
+        print("GEN:", capacityGeneration.sum(0))
         warnings.simplefilter('default')
 
         # Arrange output        
-        if extract == "capacityFactor": tmp = capacityGeneration.mean(0)
+        if extract   == "capacityFactor": tmp = capacityGeneration.mean(0)
         elif extract == "totalProduction": tmp = (capacityGeneration*capacity[s]).sum(1)
         elif extract == "raw": tmp = capacityGeneration*capacity[s]
         elif extract == "batchfile": tmp = capacityGeneration
         else:
             raise ResError("extract method '%s' not understood"%extract)
-
+    
         res.append(tmp)
     del source
 
@@ -228,7 +229,7 @@ def PVWorkflowTemplate( placements, source, elev, module, azimuth, tilt, extract
 
     return res
     
-def workflowOpenFieldFixed(placements, source, elev=None, module="SunPower_SPR_X21_255", azimuth=180, tilt="latitude", extract="totalProduction", output=None, jobs=1, batchSize=None, verbose=True, capacity=None, frankCorrection=False,):
+def workflowOpenFieldFixed(placements, source, elev, module="WINAICO WSx-240P6", azimuth=180, tilt="latitude", extract="totalProduction", output=None, jobs=1, batchSize=None, verbose=True, capacity=1, frankCorrection=False,):
                             
     return PVWorkflowTemplate(# Controllable args
                               placements=placements, source=source, elev=elev, module=module, azimuth=azimuth, 
@@ -242,7 +243,7 @@ def workflowOpenFieldFixed(placements, source, elev=None, module="SunPower_SPR_X
                               transpositionModel='perez', cellTempModel="sandia", generationModel="single-diode", 
                               trackingMaxAngle=None, trackingGCR=None)
                          
-def workflowOpenFieldTracking(placements, source, elev=None, module="SunPower_SPR_X21_255", azimuth=180, tilt="latitude", extract="totalProduction", output=None, jobs=1, batchSize=None, verbose=True, capacity=None, frankCorrection=False,):
+def workflowOpenFieldTracking(placements, source, elev=None, module="WINAICO WSx-240P6", azimuth=180, tilt="latitude", extract="totalProduction", output=None, jobs=1, batchSize=None, verbose=True, capacity=1, frankCorrection=False,):
     return PVWorkflowTemplate(# Controllable args
                               placements=placements, source=source, elev=elev, module=module, azimuth=azimuth, 
                               tilt=tilt, extract=extract, output=output, 
