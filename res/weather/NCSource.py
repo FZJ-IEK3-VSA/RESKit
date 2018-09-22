@@ -13,7 +13,7 @@ class NCSource(object):
     file sources"""
     def _loadDS(s, path):
         if isinstance(path, str):
-            return nc.Dataset(path)
+            return nc.Dataset(path, keepweakref=True)
         # elif isinstance(path, list):
         #     return nc.MFDataset( path, aggdim=s.timeName)
         else:
@@ -92,7 +92,7 @@ class NCSource(object):
 
         for src in sources:
             if verbose: print(src)
-            ds = nc.Dataset(src)
+            ds = nc.Dataset(src, keepweakref=True)
             for var in ds.variables:
                 if not var in s.variables:
                     s.variables[var] = src
@@ -120,11 +120,11 @@ class NCSource(object):
         s.variables = tmp
         
         # set basic variables
-        ds = nc.Dataset( s.variables["path"][latName] )
+        ds = nc.Dataset( s.variables["path"][latName] , keepweakref=True)
         s._allLats = ds[latName][:]
         ds.close()
 
-        ds = nc.Dataset( s.variables["path"][lonName] )
+        ds = nc.Dataset( s.variables["path"][lonName] , keepweakref=True)
         s._allLons = ds[lonName][:]
         ds.close()
         
@@ -194,7 +194,7 @@ class NCSource(object):
         # compute time index
         s.timeName = timeName
 
-        ds = nc.Dataset( s.variables["path"][timeName] )
+        ds = nc.Dataset( s.variables["path"][timeName] , keepweakref=True)
         timeVar = ds[timeName]
         timeindex = nc.num2date(timeVar[:], timeVar.units)
         ds.close()
@@ -216,7 +216,7 @@ class NCSource(object):
     def varInfo(s, var):
         """Prints more information about the given parameter"""
         try:
-            ds = nc.Dataset( s.variables["path"][var] )
+            ds = nc.Dataset( s.variables["path"][var] , keepweakref=True)
             print(ds[var])
             ds.close()
             return
@@ -265,7 +265,7 @@ class NCSource(object):
         """
         
         # read the data
-        ds = nc.Dataset(s.variables["path"][variable])
+        ds = nc.Dataset(s.variables["path"][variable], keepweakref=True)
         var = ds[variable]
 
         if heightIdx is None:

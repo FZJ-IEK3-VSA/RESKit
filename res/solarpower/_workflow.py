@@ -25,7 +25,7 @@ def _batch_simulator(source, loss, verbose, module, globalStart, extract,
                                                                                    # Otherwise, the NCSource might pull EVERYTHING when
                                                                                    # a smaller area is simulated. IDKY???
         source = MerraSource(source, bounds=ext.xyXY, indexPad=2)
-        source.loadSet_PV()
+        source.loadSet_PV(verbose=verbose, _clockstart=globalStart, _header=" %s:"%str(gid))
 
     # do simulations
     res = []
@@ -166,7 +166,6 @@ def PVWorkflowTemplate( placements, source, elev, module, azimuth, tilt, extract
         from multiprocessing import Pool
         pool = Pool(jobs)
         placements.makePickleable()
-        pool = Pool(jobs)
         res = []
 
         # Split locations into groups
