@@ -128,7 +128,6 @@ def myDisc(ghi, zenith, I0, am, pressure):
 
 dirintCoeffs = pvlib.irradiance._get_dirint_coeffs()
 def myDirint(ghi, zenith, pressure, use_delta_kt_prime, temp_dew, amRel, I0):
-    tstart=time.time()
     """Adapted from PVLIB to better fit my use-case"""
     disc_out = myDisc(ghi=ghi, zenith=zenith, I0=I0, am=amRel, pressure=pressure)
 
@@ -211,7 +210,6 @@ def myDirint(ghi, zenith, pressure, use_delta_kt_prime, temp_dew, amRel, I0):
                              np.nan, dirint_coeffs)
     
     dni *= dirint_coeffs.reshape(dni.shape)
-    TIMETOTALS["dirint"] += time.time()-tstart
     return dni
 
 def ensureSeries(var, locs):
@@ -298,7 +296,6 @@ def locToTilt(locs, convention="latitude*0.76", **k):
 
 def _presim(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, tilt="ninja", totalSystemCapacity=None, tracking="fixed", modulesPerString=1, inverter=None, stringsPerInverter=1, rackingModel='open_rack_cell_glassback', airmassModel='kastenyoung1989', transpositionModel='perez', cellTempModel="sandia", generationModel="single-diode", inverterModel="sandia", interpolation="bilinear", loss=0.16, trackingGCR=2/7, trackingMaxAngle=60, frankCorrection=False):
 
-    tstart = time.time()
     ### Check a few inputs so it doesn't need to be done repeatedly
     if cellTempModel.lower() == "sandia": sandiaCellTemp = True
     elif cellTempModel.lower() == "noct": sandiaCellTemp = False
@@ -320,7 +317,6 @@ def _presim(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, til
     locs = LocationSet(locs)
 
     ### Collect weather data
-    tstart2 = time.time()
     if isinstance(source, NCSource):
         times = source.timeindex
 
@@ -356,7 +352,6 @@ def _presim(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, til
             albedo = source["albedo"]
         else: 
             albedo = 0.2
-    TIMETOTALS["loading data"] += time.time() - tstart2
     ### Identify module and inverter
     if isinstance(module, str):
         if sandiaGenerationModel: 
@@ -454,7 +449,6 @@ def _presim(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, til
 
     ### Begin simulations
     # get solar position
-    tstart2 = time.time()
     _solpos = {}
     checkedSolPosValues = {}
 
@@ -480,7 +474,6 @@ def _presim(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, til
         solpos[c] = pd.DataFrame(np.column_stack([_solpos[loc][c].copy() for loc in locs]), columns=locs, index=times)
     del _solpos, checkedSolPosValues
     
-    TIMETOTALS["solpos"] += time.time()-tstart2
 
     ## MAKE TIME SELECTION
     goodTimes = (solpos["apparent_zenith"] < 92).any(axis=1)
@@ -545,7 +538,6 @@ def _presim(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, til
 
         del axis_azimuth, axis_tilt, tmp
 
-    TIMETOTALS["presim"] += time.time()-tstart
     return dict(
                 tilt=tilt if isinstance(tilt, np.ndarray) else tilt[locs[:]].values,
                 module=module,
@@ -575,16 +567,12 @@ def _presim(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, til
                 totalSystemCapacity=totalSystemCapacity,
                 sandiaGenerationModel=sandiaGenerationModel,)
 
-from collections import defaultdict
-TIMETOTALS = defaultdict(lambda: 0)
-import time
 
 def my_i_from_v(resistance_shunt, resistance_series, nNsVth, voltage,
                 saturation_current, photocurrent):
     '''
     Adapted from PVLIB to better fit my use case
     '''
-    tstart = time.time()
 
     # This transforms Gsh=1/Rsh, including ideal Rsh=np.inf into Gsh=0., which
     #  is generally more numerically stable
@@ -608,56 +596,8 @@ def my_i_from_v(resistance_shunt, resistance_series, nNsVth, voltage,
     # Recast in terms of Gsh=1/Rsh for better numerical stability.
     I = (IL + I0 - V*Gsh) / (Rs*Gsh + 1.) - (a/Rs)*lambertwterm
 
-    TIMETOTALS["my_i_from_v"] += time.time()-tstart
     return I
 
-def my_golden_sect_DataFrame2(params, VL, VH, func):
-    '''
-    adapted from pvlib to better fit my needs
-    '''
-    df = params
-
-    df['VH'] = VH
-
-    errflag = True
-    iterations = 0
-
-    finalVals = np.zeros_like(df["r_sh"])
-    index = np.arange(finalVals.size, dtype=int)
-
-    ALLKEYS = ["r_sh", "nNsVth", "i_0", "i_l", "VH", "fH"]
-
-    step = -0.5*VH
-    df['fH'] = func(df, 'VH')
-    while errflag:
-        print(step.size, np.abs(step).mean())
-        df["VM"] = df["VH"]+ step
-        df['fM'] = func(df, 'VM')
-
-        s = df["fM"] < df["fH"]
-        step[s] *= -0.5
-
-        df["VH"] = df["VM"]
-        df["fH"] = df["fM"]
-
-        isgood = np.abs(step) <= 0.01
-        isbad = ~isgood
-        if isgood.any():
-           finalVals[index[isgood]] = df["VM"][isgood]
-           
-           for k in ALLKEYS: 
-               df[k] = df[k][isbad]
-           index = index[isbad]
-           step = step[isbad]
-        
-        errflag = isbad.any()
-        ####
-        iterations += 1
-
-        if iterations > 500:
-            raise Exception("EXCEPTION:iterations exeeded maximum (50)")
-
-    return finalVals #df['V1']
 
 def my_golden_sect_DataFrame(params, VL, VH, func):
     '''
@@ -726,7 +666,6 @@ def mysinglediode(photocurrent, saturation_current, resistance_series,
     r'''
     Adapted from PVLIB to better fit my use case
     '''
-    tstart = time.time()
 
     # Compute open circuit voltage
     v_oc = pvlib.pvsystem.v_from_i(resistance_shunt, resistance_series, nNsVth, 0.,
@@ -738,10 +677,8 @@ def mysinglediode(photocurrent, saturation_current, resistance_series,
               'i_0': saturation_current,
               'i_l': photocurrent}
 
-    tstart2 = time.time()
 
     v_mp = my_golden_sect_DataFrame(params, 0, v_oc, my_pwr_optfcn)
-    TIMETOTALS["golden"] += time.time()-tstart2
 
     # Invert the Power-Current curve. Find the current where the inverted power
     # is minimized. This is i_mp. Start the optimization at v_oc/2
@@ -755,12 +692,10 @@ def mysinglediode(photocurrent, saturation_current, resistance_series,
 
     if isinstance(photocurrent, pd.Series) and not ivcurve_pnts:
         out = pd.DataFrame(out, index=photocurrent.index)
-    TIMETOTALS["mysinglediode"] += time.time()-tstart
     return out
 
 def _simulation(tilt, module, azimuth, inverter, moduleCap, modulesPerString, stringsPerInverter, locs, times, dni, ghi, dhi, amRel, solpos, pressure, air_temp, windspeed, dni_extra, sandiaCellTemp, transpositionModel, totalSystemCapacity, sandiaGenerationModel, loss, goodTimes):
 
-    tstart = time.time()
 
     # Angle of Incidence
     aoi = pvlib.irradiance.aoi(tilt, azimuth, solpos['apparent_zenith'], solpos['azimuth'])
@@ -859,7 +794,6 @@ def _simulation(tilt, module, azimuth, inverter, moduleCap, modulesPerString, st
 
     # Done!
     #addTime("total",True)
-    TIMETOTALS["simulation"] += time.time()-tstart
     return output
 
 def simulatePVModule(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, tilt="ninja", totalSystemCapacity=None, tracking="fixed", interpolation="bilinear", loss=0.16, rackingModel="open_rack_cell_glassback", **kwargs):
@@ -875,7 +809,6 @@ def simulatePVModule(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth
         - bilinear
         - cubic
     """
-    tstart = time.time()
     # Perform pre-sim procedures and unpack
     k = _presim(locs=locs, source=source, elev=elev, module=module, azimuth=azimuth, 
                tilt=tilt, totalSystemCapacity=totalSystemCapacity, tracking=tracking, 
@@ -885,7 +818,6 @@ def simulatePVModule(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth
     # Do regular simulation procedure
     result = _simulation(**k)
 
-    TIMETOTALS["total"] += time.time()-tstart
     # Done! 
     return result
 
