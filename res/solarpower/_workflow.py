@@ -9,7 +9,7 @@ def _batch_simulator(source, loss, verbose, module, globalStart, extract,
                      rackingModel, airmassModel, transpositionModel, 
                      generationModel, placements, capacity, tilt, azimuth, 
                      elev, locationID, gid, batchSize, trackingGCR, 
-                     trackingMaxAngle, output):
+                     trackingMaxAngle, output, **k):
     if verbose: 
         startTime = dt.now()
         globalStart = globalStart
@@ -65,7 +65,8 @@ def _batch_simulator(source, loss, verbose, module, globalStart, extract,
                                 loss=loss,
                                 trackingGCR=trackingGCR,
                                 trackingMaxAngle=trackingMaxAngle,
-                                frankCorrection=frankCorrection,)
+                                frankCorrection=frankCorrection, 
+                                **k)
         warnings.simplefilter('default')
 
         # Arrange output        
@@ -105,7 +106,7 @@ def _batch_simulator(source, loss, verbose, module, globalStart, extract,
 
 ##################################################################
 ## Distributed PV production from a weather source
-def PVWorkflowTemplate( placements, source, elev, module, azimuth, tilt, extract, output, jobs, batchSize, verbose, capacity, frankCorrection, tracking, loss, interpolation, rackingModel, airmassModel, transpositionModel, cellTempModel, generationModel, trackingMaxAngle, trackingGCR):
+def PVWorkflowTemplate( placements, source, elev, module, azimuth, tilt, extract, output, jobs, batchSize, verbose, capacity, frankCorrection, tracking, loss, interpolation, rackingModel, airmassModel, transpositionModel, cellTempModel, generationModel, trackingMaxAngle, trackingGCR, **k):
 
     if verbose: 
         startTime = dt.now()
@@ -158,7 +159,7 @@ def PVWorkflowTemplate( placements, source, elev, module, azimuth, tilt, extract
                      rackingModel=rackingModel, airmassModel=airmassModel,
                      transpositionModel=transpositionModel, trackingGCR=trackingGCR, 
                      generationModel=generationModel, trackingMaxAngle=trackingMaxAngle,
-                     output=output,
+                     output=output, **k
                     )
 
     if batchSize is None: batchSize = 1e10
@@ -229,7 +230,7 @@ def PVWorkflowTemplate( placements, source, elev, module, azimuth, tilt, extract
 
     return res
     
-def workflowOpenFieldFixed(placements, source, elev=None, module="SunPower_SPR_X21_255", azimuth=180, tilt="latitude", extract="totalProduction", output=None, jobs=1, batchSize=None, verbose=True, capacity=None, frankCorrection=False,):
+def workflowOpenFieldFixed(placements, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, tilt="latitude", extract="totalProduction", output=None, jobs=1, batchSize=None, verbose=True, capacity=None, frankCorrection=False, **k):
                             
     return PVWorkflowTemplate(# Controllable args
                               placements=placements, source=source, elev=elev, module=module, azimuth=azimuth, 
@@ -241,9 +242,9 @@ def workflowOpenFieldFixed(placements, source, elev=None, module="SunPower_SPR_X
                               tracking="fixed",  loss=0.16, interpolation="bilinear",
                               rackingModel='open_rack_cell_glassback', airmassModel='kastenyoung1989', 
                               transpositionModel='perez', cellTempModel="sandia", generationModel="single-diode", 
-                              trackingMaxAngle=None, trackingGCR=None)
+                              trackingMaxAngle=None, trackingGCR=None, **k)
                          
-def workflowOpenFieldTracking(placements, source, elev=None, module="SunPower_SPR_X21_255", azimuth=180, tilt="latitude", extract="totalProduction", output=None, jobs=1, batchSize=None, verbose=True, capacity=None, frankCorrection=False,):
+def workflowOpenFieldTracking(placements, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, tilt="latitude", extract="totalProduction", output=None, jobs=1, batchSize=None, verbose=True, capacity=None, frankCorrection=False,):
     return PVWorkflowTemplate(# Controllable args
                               placements=placements, source=source, elev=elev, module=module, azimuth=azimuth, 
                               tilt=tilt, extract=extract, output=output, 

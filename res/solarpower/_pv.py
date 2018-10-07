@@ -7,6 +7,7 @@ import pvlib
 from types import FunctionType
 from datetime import datetime as dt
 from os.path import isfile
+from scipy.interpolate import RectBivariateSpline
 
 class _SolarLibrary:
     def __init__(s):
@@ -357,24 +358,6 @@ def _presim(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, til
         dhi.fillna(0, inplace=True)
 
     #addTime("DHI calc")
-    
-    # Get tilt and azimuths
-    if singleAxis:
-        axis_tilt = tilt
-        axis_azimuth = azimuth
-
-        tilt = pd.DataFrame(index=times, columns=locs)
-        azimuth = pd.DataFrame(index=times, columns=locs)
-
-        for loc, at, aa in zip(locs, axis_tilt, axis_azimuth):
-            tmp = pvlib.tracking.singleaxis(apparent_zenith=solpos["apparent_zenith"][loc], 
-                                            apparent_azimuth=solpos["azimuth"][loc], axis_tilt=at, axis_azimuth=aa, 
-                                            max_angle=genericSystem.max_angle, backtrack=genericSystem.backtrack,
-                                            gcr=genericSystem.gcr)
-            tilt[loc] = tmp["surface_tilt"].copy()
-            azimuth[loc] = tmp["surface_azimuth"].copy()
-
-        del axis_azimuth, axis_tilt, tmp
 
     # Airmass
     amRel = np.full_like(solpos["apparent_zenith"].values, 100)
@@ -382,7 +365,7 @@ def _presim(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, til
     amRel[s] = pvlib.atmosphere.relativeairmass(solpos["apparent_zenith"].values[s], model=airmassModel)
     #addTime("Airmass")
 
-    return dict(
+    return dict(singleAxis=singleAxis,
                 tilt=tilt.values,
                 module=module,
                 azimuth=azimuth.values,
@@ -410,7 +393,25 @@ def _presim(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, til
                 totalSystemCapacity=totalSystemCapacity,
                 sandiaGenerationModel=sandiaGenerationModel,)
 
-def _simulation(tilt, module, azimuth, inverter, moduleCap, modulesPerString, stringsPerInverter, locs, times, dni, ghi, dhi, amRel, solpos, pressure, air_temp, windspeed, dni_extra, sandiaCellTemp, transpositionModel, totalSystemCapacity, sandiaGenerationModel, loss):
+def _simulation(singleAxis, tilt, module, azimuth, inverter, moduleCap, modulesPerString, stringsPerInverter, locs, times, dni, ghi, dhi, amRel, solpos, pressure, air_temp, windspeed, dni_extra, sandiaCellTemp, transpositionModel, totalSystemCapacity, sandiaGenerationModel, loss, approximateSingleDiode):
+
+    # Get tilt and azimuths
+    if singleAxis:
+        axis_tilt = tilt
+        axis_azimuth = azimuth
+
+        tilt = pd.DataFrame(index=times, columns=locs)
+        azimuth = pd.DataFrame(index=times, columns=locs)
+
+        for loc, at, aa in zip(locs, axis_tilt, axis_azimuth):
+            tmp = pvlib.tracking.singleaxis(apparent_zenith=solpos["apparent_zenith"][loc], 
+                                            apparent_azimuth=solpos["azimuth"][loc], axis_tilt=at, axis_azimuth=aa, 
+                                            max_angle=genericSystem.max_angle, backtrack=genericSystem.backtrack,
+                                            gcr=genericSystem.gcr)
+            tilt[loc] = tmp["surface_tilt"].copy()
+            azimuth[loc] = tmp["surface_azimuth"].copy()
+
+        del axis_azimuth, axis_tilt, tmp
 
     # Angle of Incidence
     aoi = pvlib.irradiance.aoi(tilt, azimuth, solpos['apparent_zenith'], solpos['azimuth'])
@@ -454,29 +455,63 @@ def _simulation(tilt, module, azimuth, inverter, moduleCap, modulesPerString, st
         # Effective angle of incidence values from "Solar-Engineering-of-Thermal-Processes-4th-Edition"
         poa_total += poa["poa_ground_diffuse"] * pvlib.pvsystem.physicaliam( 90 - 0.5788*tilt + 0.002693*np.power(tilt, 2) ) 
         poa_total += poa["poa_sky_diffuse"] * pvlib.pvsystem.physicaliam( 59.7 - 0.1388*tilt + 0.001497*np.power(tilt, 2) ) 
-
         sel = poa_total>0
-        sotoParams = pvlib.pvsystem.calcparams_desoto(poa_global=poa_total[sel], 
-                                                      temp_cell=cellTemp.values[sel], 
-                                                      alpha_isc=module.alpha_sc, 
-                                                      module_parameters=module, 
-                                                      EgRef=module.EgRef, 
-                                                      dEgdT=module.dEgdT)
 
-        photoCur, satCur, resSeries, resShunt, nNsVth = sotoParams
-        
-        tmp = pvlib.pvsystem.singlediode(photocurrent=photoCur, saturation_current=satCur, 
-                                         resistance_series=resSeries, resistance_shunt=resShunt, 
-                                         nNsVth=nNsVth)
-        
-        rawDCGeneration = OrderedDict()
-        for k in ["p_mp", "v_mp", ]:
-            rawDCGeneration[k] = pd.DataFrame(index=times, columns=locs)
-            rawDCGeneration[k].values[sel] = tmp[k]
+        if approximateSingleDiode:
+            # Use RectBivariateSpline to speed up simulation, but at the cost of accuracy (should still be >99.996%)
+            maxpoa = np.nanmax(poa_total)
+            _poa = np.concatenate([np.logspace(-1, np.log10(maxpoa/10), 20, endpoint=False), 
+                                   np.linspace(maxpoa/10, maxpoa, 80)])
+            _temp = np.linspace(cellTemp.values[sel].min(), cellTemp.values[sel].max(), 100)
+            poaM, tempM = np.meshgrid(_poa, _temp)
 
-        del photoCur, satCur, resSeries, resShunt, nNsVth, tmp, poa_total, aoi
+            sotoParams = pvlib.pvsystem.calcparams_desoto(poa_global=poaM.flatten(), 
+                                                          temp_cell=tempM.flatten(), 
+                                                          alpha_isc=module.alpha_sc, 
+                                                          module_parameters=module, 
+                                                          EgRef=module.EgRef, 
+                                                          dEgdT=module.dEgdT)
+
+            photoCur, satCur, resSeries, resShunt, nNsVth = sotoParams
+            gen = pvlib.pvsystem.singlediode(photocurrent=photoCur, saturation_current=satCur, 
+                                             resistance_series=resSeries, resistance_shunt=resShunt, 
+                                             nNsVth=nNsVth)
+
+            rawDCGeneration=OrderedDict()
+
+            interpolator = RectBivariateSpline( _temp, _poa, gen['p_mp'].reshape(poaM.shape), kx=3, ky=3)
+            rawDCGeneration['p_mp'] = pd.DataFrame(index=times, columns=locs)
+            rawDCGeneration['p_mp'].values[sel] = interpolator( cellTemp.values[sel], poa_total[sel], grid=False )
+
+            if not inverter is None: 
+                interpolator = RectBivariateSpline( _temp, _poa, gen['v_mp'].reshape(poaM.shape), kx=3, ky=3)
+                rawDCGeneration['v_mp'] = pd.DataFrame(index=times, columns=locs)
+                rawDCGeneration['v_mp'].values[sel] = interpolator( cellTemp.values[sel], poa_total[sel], grid=False )
+
+            del photoCur, satCur, resSeries, resShunt, nNsVth, gen, poa_total, aoi, poaM, tempM, interpolator
+
+        else:
+            sotoParams = pvlib.pvsystem.calcparams_desoto(poa_global=poa_total[sel], 
+                                                          temp_cell=cellTemp.values[sel], 
+                                                          alpha_isc=module.alpha_sc, 
+                                                          module_parameters=module, 
+                                                          EgRef=module.EgRef, 
+                                                          dEgdT=module.dEgdT)
+
+            photoCur, satCur, resSeries, resShunt, nNsVth = sotoParams
+            
+            gen = pvlib.pvsystem.singlediode(photocurrent=photoCur, saturation_current=satCur, 
+                                             resistance_series=resSeries, resistance_shunt=resShunt, 
+                                             nNsVth=nNsVth)
+            
+            rawDCGeneration = OrderedDict()
+            for k in ["p_mp", "v_mp", ]:
+                rawDCGeneration[k] = pd.DataFrame(index=times, columns=locs)
+                rawDCGeneration[k].values[sel] = gen[k]
+
+            del photoCur, satCur, resSeries, resShunt, nNsVth, gen, poa_total, aoi
         
-    del poa, cellTemp, tilt, amRel
+    del poa, cellTemp, tilt, amRel, sel
     #addTime("DC Sim")
 
     ## Simulate inverter interation
@@ -492,7 +527,7 @@ def _simulation(tilt, module, azimuth, inverter, moduleCap, modulesPerString, st
         # normalize to a single module
         generation = generation/modulesPerString/stringsPerInverter
     else:
-        generation = rawDCGeneration["p_mp"].copy()
+        generation = rawDCGeneration["p_mp"]
     del rawDCGeneration
     #addTime("Inverter Sim")
 
@@ -510,7 +545,7 @@ def _simulation(tilt, module, azimuth, inverter, moduleCap, modulesPerString, st
     #addTime("total",True)
     return output.fillna(0)
 
-def simulatePVModule(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, tilt="ninja", totalSystemCapacity=None, tracking="fixed", interpolation="bilinear", loss=0.16, rackingModel="open_rack_cell_glassback", **kwargs):
+def simulatePVModule(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, tilt="ninja", totalSystemCapacity=None, tracking="fixed", interpolation="bilinear", loss=0.16, rackingModel="open_rack_cell_glassback", approximateSingleDiode=True, **kwargs):
     """
     Performs a simple PV simulation
 
@@ -531,13 +566,13 @@ def simulatePVModule(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth
     # return k
 
     # Do regular simulation procedure
-    result = _simulation(**k)
+    result = _simulation(approximateSingleDiode=approximateSingleDiode, **k)
 
     # Done! 
     return result
 
 
-def simulatePVModuleDistribution(locs, tilts, source, elev=300, azimuths=180, occurrence=None, rackingModel="roof_mount_cell_glassback", module="LG Electronics LG370Q1C-A5",**kwargs):
+def simulatePVModuleDistribution(locs, tilts, source, elev=300, azimuths=180, occurrence=None, rackingModel="roof_mount_cell_glassback", module="LG Electronics LG370Q1C-A5", approximateSingleDiode=True, **kwargs):
     """
     Simulate a distribution of pv rooftops and combine results
     """
@@ -573,7 +608,9 @@ def simulatePVModuleDistribution(locs, tilts, source, elev=300, azimuths=180, oc
     # Do Simulation procedure multiple times
     result = 0
     for tilt, azimuth, occ in zip(tilts, azimuths, occurrence):
-        result += _simulation(tilt=tilt, azimuth=azimuth, **k) * occ
+        result += _simulation(tilt=tilt, azimuth=azimuth, 
+                              approximateSingleDiode=approximateSingleDiode, 
+                              **k) * occ
 
     # Done!
     return result

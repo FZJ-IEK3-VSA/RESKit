@@ -148,11 +148,9 @@ class MerraSource(NCSource):
             s.data["winddir"] = direction
 
     def loadRadiation(s):
-        """Load the SWGNT and SWGDN variables into the data table with names
-        'ghi' and 'dni' respectively
+        """Load the SWGNT variable into the data table with the name 'ghi'
         """
         s.load("SWGNT", name="ghi")
-        s.load("SWGDN", name="dni")
 
     def loadTemperature(s, which='air', height=2):
         """Load air temperature variables 
