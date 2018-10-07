@@ -106,7 +106,7 @@ def _batch_simulator(source, landcover, gwa, adjustMethod, roughness, loss, conv
     del source
 
     if extract == "batchfile": 
-        tmp = pd.concat(tmp, axis=1)
+        tmp = pd.concat(res, axis=1)
         _save_to_nc( output=output+"_%d.nc"%gid,
                     capacityGeneration=tmp[placements[:]],
                     lats=[p.lat for p in placements],
@@ -119,6 +119,7 @@ def _batch_simulator(source, landcover, gwa, adjustMethod, roughness, loss, conv
         res = None
 
     placements.makePickleable()
+
     # All done!
     if verbose:
         endTime = dt.now()
