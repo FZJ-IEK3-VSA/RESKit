@@ -331,15 +331,11 @@ def _presim(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, til
         windspeed = source.get("windspeed", **k)
         pressure = source.get("pressure", **k)
         air_temp = source.get("air_temp", **k)
-        if "dew_temp" in source.data: 
-            dew_temp = source.get("dew_temp", **k)
-        else:
-            dew_temp = None
+        if "dew_temp" in source.data: dew_temp = source.get("dew_temp", **k)
+        else: dew_temp = None
 
-        if "albedo" in source.data: 
-            albedo = source.get("albedo", **k)
-        else: 
-            albedo = 0.2
+        if "albedo" in source.data: albedo = source.get("albedo", **k)
+        else: albedo = 0.2
 
     else: # source should be a dictionary
         times = source["times"]
@@ -351,11 +347,12 @@ def _presim(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, til
         windspeed = source["windspeed"]
         pressure = source["pressure"]
         air_temp = source["air_temp"]
-        dew_temp = source["dew_temp"]
-        if "albedo" in source: 
-            albedo = source["albedo"]
-        else: 
-            albedo = 0.2
+
+        if "dew_temp" in source.data: dew_temp = source["dew_temp"]
+        else: dew_temp = None
+        if "albedo" in source:  albedo = source["albedo"]
+        else:  albedo = 0.2
+
     ### Identify module and inverter
     if isinstance(module, str):
         if sandiaGenerationModel: 
@@ -476,7 +473,6 @@ def _presim(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, til
     for c in ['apparent_zenith', 'azimuth', 'apparent_elevation']:
         solpos[c] = pd.DataFrame(np.column_stack([_solpos[loc][c].copy() for loc in locs]), columns=locs, index=times)
     del _solpos, checkedSolPosValues
-    
 
     ## MAKE TIME SELECTION
     goodTimes = (solpos["apparent_zenith"] < 92).any(axis=1).values
@@ -491,8 +487,7 @@ def _presim(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, til
     windspeed= windspeed[goodTimes].values
     pressure = pressure[goodTimes].values
     air_temp = air_temp[goodTimes].values
-    if not dew_temp is None: 
-        dew_temp = dew_temp[goodTimes].values
+    if not dew_temp is None: dew_temp = dew_temp[goodTimes].values
 
     # DNI Extraterrestrial
     dni_extra = pvlib.irradiance.extraradiation(times[goodTimes], 1370, method='spencer').values
@@ -502,19 +497,19 @@ def _presim(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, til
     # Apply Frank corrections when dealing with COSMO data?
     if frankCorrection:
         ghi *= frankCorrectionFactors(ghi, dni_extra, times[goodTimes], solpos["apparent_elevation"])
-    
+
     # Airmass
     amRel = np.zeros_like(ghi)
     s = solpos["apparent_zenith"]<89
     amRel[s] = pvlib.atmosphere.relativeairmass(solpos["apparent_zenith"][s], model=airmassModel)
 
     # Compute DHI or DNI
-    if dni is None and dhi is None:
+    if dni is None:
         dni = myDirint(ghi=ghi, zenith=solpos["apparent_zenith"], pressure=pressure, 
                        use_delta_kt_prime=True, amRel=amRel, I0=dni_extra,
                        temp_dew=dew_temp)
-    elif dni is None and not dhi is None:
-        dni = (ghi - dhi)/np.sin( np.radians(solpos["apparent_elevation"]))
+    # elif dni is None and not dhi is None:
+    #     dni = (ghi - dhi)/np.sin( np.radians(solpos["apparent_elevation"]))
     else:
         dni = dni[goodTimes].values
 
@@ -744,6 +739,7 @@ def _simulation(singleAxis, tilt, module, azimuth, inverter, moduleCap, modulesP
         if approximateSingleDiode:
             # Use RectBivariateSpline to speed up simulation, but at the cost of accuracy (should still be >99.996%)
             maxpoa = np.nanmax(poa_total)
+            if maxpoa > 2000: raise RuntimeError("Why is POA so huge???")
             _poa = np.concatenate([np.logspace(-1, np.log10(maxpoa/10), 20, endpoint=False), 
                                    np.linspace(maxpoa/10, maxpoa, 80)])
             _temp = np.linspace(cellTemp[sel].min(), cellTemp[sel].max(), 100)
@@ -794,7 +790,7 @@ def _simulation(singleAxis, tilt, module, azimuth, inverter, moduleCap, modulesP
                 rawDCGeneration[k].values[sel] = gen[k]
 
             del photoCur, satCur, resSeries, resShunt, nNsVth, gen, poa_total, aoi
-        
+
     del poa, cellTemp, tilt, amRel, sel
     #addTime("DC Sim")
 

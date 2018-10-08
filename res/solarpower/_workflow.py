@@ -1,11 +1,11 @@
 from res.util.util_ import *
 from ._pv import *
-from res.weather import MerraSource
+from res.weather import MerraSource, CosmoSource
 from res.weather.windutil import *
 import warnings
 
-def _batch_simulator(source, loss, verbose, module, globalStart, extract, 
-                     frankCorrection, tracking, interpolation, cellTempModel, 
+def _batch_simulator(cosmoSource, source, loss, verbose, module, globalStart, extract, 
+                     tracking, interpolation, cellTempModel, 
                      rackingModel, airmassModel, transpositionModel, 
                      generationModel, placements, capacity, tilt, azimuth, 
                      elev, locationID, gid, batchSize, trackingGCR, 
@@ -21,12 +21,16 @@ def _batch_simulator(source, loss, verbose, module, globalStart, extract,
 
     ### Open Source and load weather data
     if isinstance(source, str):
-        ext = gk.Extent.fromLocationSet(placements).castTo(gk.srs.EPSG4326).pad(1) # Pad to make sure we only select the data we need
-                                                                                   # Otherwise, the NCSource might pull EVERYTHING when
-                                                                                   # a smaller area is simulated. IDKY???
-        source = MerraSource(source, bounds=ext.xyXY, indexPad=2)
+        if cosmoSource: 
+            source = CosmoSource(source, bounds=placements, indexPad=2)
+            frankCorrection=True
+    
+        else: 
+            source = MerraSource(source, bounds=placements, indexPad=2)
+            frankCorrection=False
         source.loadSet_PV(verbose=verbose, _clockstart=globalStart, _header=" %s:"%str(gid))
-
+    else:
+        frankCorrection=False
     # do simulations
     res = []
     if batchSize is None: batchSize = 1e10
@@ -107,7 +111,7 @@ def _batch_simulator(source, loss, verbose, module, globalStart, extract,
 
 ##################################################################
 ## Distributed PV production from a weather source
-def PVWorkflowTemplate( placements, source, elev, module, azimuth, tilt, extract, output, jobs, batchSize, verbose, capacity, frankCorrection, tracking, loss, interpolation, rackingModel, airmassModel, transpositionModel, cellTempModel, generationModel, trackingMaxAngle, trackingGCR, **k):
+def PVWorkflowTemplate( placements, source, elev, module, azimuth, tilt, extract, output, jobs, batchSize, verbose, capacity, tracking, loss, interpolation, rackingModel, airmassModel, transpositionModel, cellTempModel, generationModel, trackingMaxAngle, trackingGCR, cosmoSource, **k):
 
     if verbose: 
         startTime = dt.now()
@@ -154,13 +158,12 @@ def PVWorkflowTemplate( placements, source, elev, module, azimuth, tilt, extract
     locationID=pd.Series(np.arange(placements.shape[0]), index=placements)
 
     simKwargs = dict(source=source, loss=loss, verbose=verbose, 
-                     module=module, globalStart=startTime, extract=extract,
-                     frankCorrection=frankCorrection, tracking=tracking,
+                     module=module, globalStart=startTime, extract=extract, tracking=tracking,
                      interpolation=interpolation, cellTempModel=cellTempModel,
                      rackingModel=rackingModel, airmassModel=airmassModel,
                      transpositionModel=transpositionModel, trackingGCR=trackingGCR, 
                      generationModel=generationModel, trackingMaxAngle=trackingMaxAngle,
-                     output=output, **k
+                     output=output, cosmoSource=cosmoSource, **k
                     )
 
     if batchSize is None: batchSize = 1e10
@@ -230,12 +233,11 @@ def PVWorkflowTemplate( placements, source, elev, module, azimuth, tilt, extract
 
     return res
     
-def workflowOpenFieldFixed(placements, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, tilt="latitude", extract="totalProduction", output=None, jobs=1, batchSize=None, verbose=True, capacity=1, frankCorrection=False, **k):                            
+def workflowOpenFieldFixed(placements, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, tilt="ninja", extract="totalProduction", output=None, jobs=1, batchSize=None, verbose=True, capacity=1, cosmoSource=False, **k):                            
     return PVWorkflowTemplate(# Controllable args
                               placements=placements, source=source, elev=elev, module=module, azimuth=azimuth, 
-                              tilt=tilt, extract=extract, output=output, 
+                              tilt=tilt, extract=extract, output=output, cosmoSource=cosmoSource,
                               jobs=jobs, batchSize=batchSize, verbose=verbose, capacity=capacity,
-                              frankCorrection=frankCorrection,
 
                               # Set args
                               tracking="fixed",  loss=0.16, interpolation="bilinear",
@@ -243,12 +245,11 @@ def workflowOpenFieldFixed(placements, source, elev=300, module="WINAICO WSx-240
                               transpositionModel='perez', cellTempModel="sandia", generationModel="single-diode", 
                               trackingMaxAngle=None, trackingGCR=None, **k)
                          
-def workflowOpenFieldTracking(placements, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, tilt="latitude", extract="totalProduction", output=None, jobs=1, batchSize=None, verbose=True, capacity=1, frankCorrection=False,):
+def workflowOpenFieldTracking(placements, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, tilt="ninja", extract="totalProduction", output=None, jobs=1, batchSize=None, verbose=True, capacity=1, cosmoSource=False,):
     return PVWorkflowTemplate(# Controllable args
                               placements=placements, source=source, elev=elev, module=module, azimuth=azimuth, 
-                              tilt=tilt, extract=extract, output=output, 
+                              tilt=tilt, extract=extract, output=output, cosmoSource=cosmoSource,
                               jobs=jobs, batchSize=batchSize, verbose=verbose, capacity=capacity,
-                              frankCorrection=frankCorrection, 
 
                               # Set args
                               tracking="single-axis", trackingMaxAngle=60, loss=0.16,

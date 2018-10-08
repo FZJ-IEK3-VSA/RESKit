@@ -144,30 +144,32 @@ class NCSource(object):
 
         # set lat and lon selections
         if not bounds is None:
-            if isinstance(bounds, tuple) and len(bounds)==2: # A point has been given (Just for Leander ;D )
-                s.bounds = bounds[0]-0.08,bounds[1]-0.08,bounds[0]+0.08,bounds[1]+0.08
-            else:
-                s.bounds = gk.Extent.load(bounds).castTo(4326).xyXY
+            s.bounds = gk.Extent.load(bounds).castTo(4326).xyXY
 
             # find slices which contains our extent
-            s._lonSel = (s._allLons >= s.bounds[0]) & (s._allLons <= s.bounds[2])
-            s._latSel = (s._allLats >= s.bounds[1]) & (s._allLats <= s.bounds[3])
-
             if s.dependent_coordinates:
-                selTmp = s._latSel&s._lonSel
-                s._latSel = selTmp.any(axis=1)
-                s._lonSel = selTmp.any(axis=0)
+                left  = s._allLons < s.bounds[0]
+                right = s._allLons > s.bounds[2]
+                if (left|right).all(): 
+                    left[:,:-1] = np.logical_and(left[:,1:],left[:,:-1])
+                    right[:,1:] = np.logical_and(right[:,1:],right[:,:-1])
 
-            s._lonStart = np.argmax(s._lonSel)
-            s._lonStop = s._lonSel.size-np.argmax(s._lonSel[::-1])
-            s._latStart = np.argmax(s._latSel)
-            s._latStop = s._latSel.size-np.argmax(s._latSel[::-1])
+                bot   = s._allLats < s.bounds[1]
+                top   = s._allLats > s.bounds[3]
+                if (top|bot).all(): 
+                    top[:-1, :] = np.logical_and(top[1:, :],top[:-1, :])
+                    bot[1:, :] = np.logical_and(bot[1:, :],bot[:-1, :])
 
-            if indexPad >0:
-                s._lonStart = max(s._lonStart-indexPad, 0)
-                s._lonStop = min(s._lonStop+indexPad, s._lonN)
-                s._latStart = max(s._latStart-indexPad, 0)
-                s._latStop = min(s._latStop+indexPad, s._latN)
+                s._lonStart = np.argmin( ( bot | left | top          ).all(0)) - 1 - indexPad
+                s._lonStop  = np.argmax( ( bot |        top  | right ).all(0)) + 1 + indexPad
+                s._latStart = np.argmin( ( bot | left |        right ).all(1)) - 1 - indexPad
+                s._latStop  = np.argmax( (       left | top  | right ).all(1)) + 1 + indexPad
+
+            else:
+                s._lonStart = np.argmin(s._allLons < s.bounds[0]) - 1 - indexPad
+                s._lonStop = np.argmax(s._allLons > s.bounds[2]) + indexPad
+                s._latStart = np.argmin(s._allLats < s.bounds[1]) - 1 - indexPad
+                s._latStop = np.argmax(s._allLats > s.bounds[3]) + indexPad
 
         else:
             s.bounds = None
@@ -206,9 +208,9 @@ class NCSource(object):
             timeEnd = pd.Timestamp(timeBounds[1])
             s._timeSel = (timeindex >= timeStart) & (timeindex <= timeEnd)
 
-        s.timeindex = timeindex[s._timeSel]
+        s.timeindex = pd.DatetimeIndex(timeindex[s._timeSel])
         if not tz is None:
-            s.timeindex=pd.Index(s.timeindex, tz="GMT")
+            s.timeindex=s.timeindex.tz_localize(tz)
 
         # initialize the data container
         s.data = OrderedDict()

@@ -1,4 +1,5 @@
 from ..NCSource import *
+import pytz
 
 ## Define constants
 class CosmoSource(NCSource):
@@ -39,7 +40,7 @@ class CosmoSource(NCSource):
         """      
         NCSource.__init__(s, source=source, bounds=bounds, timeName="time", latName="lat", lonName="lon", 
                           indexPad=indexPad, _maxLonDiff=s.MAX_LON_DIFFERENCE, _maxLatDiff=s.MAX_LAT_DIFFERENCE,
-                          tz="CET", **kwargs)
+                          tz=pytz.FixedOffset(60), **kwargs)
            
 
     def loc2Index(s, loc, outsideOkay=False, asInt=True):
@@ -195,11 +196,22 @@ class CosmoSource(NCSource):
         """load the typical pressure variable"""
         s.load("sp", name="pressure")
 
-    def loadSet_PV(s):
+    def loadSet_PV(s, verbose=False, _clockstart=None, _header=""):
+        if verbose: 
+            from datetime import datetime as dt
+            if _clockstart is None: _clockstart = dt.now()
+            print(_header, "Loading radiation at: +%.2fs"%(dt.now()-_clockstart).total_seconds())
         s.loadRadiation()
+
+        if verbose: print(_header, "Loading wind speed at: +%.2fs"%(dt.now()-_clockstart).total_seconds())
         s.loadWindSpeedAtHeight(10)
+
+        if verbose: print(_header, "Loading pressure at: +%.2fs"%(dt.now()-_clockstart).total_seconds())
         s.loadPressure()
+
+        if verbose: print(_header, "Loading temperature at: +%.2fs"%(dt.now()-_clockstart).total_seconds())
         s.loadTemperature()
+
 
     def getWindSpeedAtHeights(s, locations, heights, spatialInterpolation='near', forceDataFrame=False, outsideOkay=False, _indicies=None):
         """
