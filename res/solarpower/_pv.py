@@ -265,7 +265,7 @@ def frankCorrectionFactors(ghi, dni_extra, times, solarElevation):
     # Apply to ghi
     totalCorrectionFactor = clearSkyFactors+cloudyFactors
 
-    del clearSkyFactors, cloudyFactors, totalCorrectionFactor, e, months, sigmoid, transmissivity
+    del clearSkyFactors, cloudyFactors, e, months, sigmoid, transmissivity
 
     return totalCorrectionFactor
 
@@ -331,7 +331,10 @@ def _presim(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, til
         windspeed = source.get("windspeed", **k)
         pressure = source.get("pressure", **k)
         air_temp = source.get("air_temp", **k)
-        dew_temp = source.get("dew_temp", **k)
+        if "dew_temp" in source.data: 
+            dew_temp = source.get("dew_temp", **k)
+        else:
+            dew_temp = None
 
         if "albedo" in source.data: 
             albedo = source.get("albedo", **k)
@@ -411,7 +414,6 @@ def _presim(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, til
                     ))
                     module.name="LG Electronics LG370Q1C-A5"
                 else:
-
                     module = SolarLibrary.modules("cec").loc[module].copy() # Extract module parameters
 
             moduleCap = module.I_mp_ref*module.V_mp_ref # Max capacity of a single module
@@ -477,13 +479,15 @@ def _presim(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, til
     
 
     ## MAKE TIME SELECTION
-    goodTimes = (solpos["apparent_zenith"] < 92).any(axis=1)
+    goodTimes = (solpos["apparent_zenith"] < 92).any(axis=1).values
     solpos['azimuth']= solpos['azimuth'][goodTimes].values
     solpos['apparent_zenith'] = solpos['apparent_zenith'][goodTimes].values
     solpos['apparent_elevation']= solpos['apparent_elevation'][goodTimes].values
     
     # filter GHI, pressure, windspeed, and temperature
     ghi = ghi[goodTimes].values
+    if not dni is None: dni = dni[goodTimes].values
+    if not dhi is None: dhi = dhi[goodTimes].values
     windspeed= windspeed[goodTimes].values
     pressure = pressure[goodTimes].values
     air_temp = air_temp[goodTimes].values
@@ -505,10 +509,12 @@ def _presim(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, til
     amRel[s] = pvlib.atmosphere.relativeairmass(solpos["apparent_zenith"][s], model=airmassModel)
 
     # Compute DHI or DNI
-    if dni is None:
+    if dni is None and dhi is None:
         dni = myDirint(ghi=ghi, zenith=solpos["apparent_zenith"], pressure=pressure, 
                        use_delta_kt_prime=True, amRel=amRel, I0=dni_extra,
                        temp_dew=dew_temp)
+    elif dni is None and not dhi is None:
+        dni = (ghi - dhi)/np.sin( np.radians(solpos["apparent_elevation"]))
     else:
         dni = dni[goodTimes].values
 

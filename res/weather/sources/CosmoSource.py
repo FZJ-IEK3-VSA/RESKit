@@ -39,7 +39,7 @@ class CosmoSource(NCSource):
         """      
         NCSource.__init__(s, source=source, bounds=bounds, timeName="time", latName="lat", lonName="lon", 
                           indexPad=indexPad, _maxLonDiff=s.MAX_LON_DIFFERENCE, _maxLatDiff=s.MAX_LAT_DIFFERENCE,
-                          tz="GMT", **kwargs)
+                          tz="CET", **kwargs)
            
 
     def loc2Index(s, loc, outsideOkay=False, asInt=True):
