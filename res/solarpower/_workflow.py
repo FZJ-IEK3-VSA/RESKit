@@ -276,7 +276,7 @@ def _save_to_nc(output, capacityGeneration, lats, lons, capacity, tilt, azimuth,
         if capacityGeneration.index[0].tz is None:
             timeV.tz = "unknown"
         else:
-            timeV.tz = capacityGeneration.index[0].tzname()
+            timeV.tz = str(capacityGeneration.index[0].tzname())
             times = times.tz_localize(None)
 
         timeV[:] = nc.date2num(times.to_pydatetime(), timeV.units)
