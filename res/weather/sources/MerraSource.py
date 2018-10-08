@@ -148,11 +148,9 @@ class MerraSource(NCSource):
             s.data["winddir"] = direction
 
     def loadRadiation(s):
-        """Load the SWGNT and SWGDN variables into the data table with names
-        'ghi' and 'dni' respectively
+        """Load the SWGNT variable into the data table with the name 'ghi'
         """
         s.load("SWGNT", name="ghi")
-        s.load("SWGDN", name="dni")
 
     def loadTemperature(s, which='air', height=2):
         """Load air temperature variables 
@@ -185,7 +183,7 @@ class MerraSource(NCSource):
         """Load the PS Merra variable into the data table with the name 'pressure'"""
         s.load("PS", name='pressure')
 
-    def loadSet_PV(s):
+    def loadSet_PV(s, verbose=False, _clockstart=None, _header=""):
         """Load basic PV power simulation variables
         
           * 'windspeed' from U2M and V2M
@@ -194,15 +192,26 @@ class MerraSource(NCSource):
           * 'air_temp' from T2M
           * 'pressure' from PS
         """
+        if verbose: 
+            from datetime import datetime as dt
+            if _clockstart is None: _clockstart = dt.now()
+            print(_header, "Loading wind speeds at: +%.2fs"%(dt.now()-_clockstart).total_seconds())
+
         s.loadWindSpeed(height=2)
         del s.data["U2M"]
         del s.data["V2M"]
 
+        if verbose: print(_header, "Loading ghi at: +%.2fs"%(dt.now()-_clockstart).total_seconds())
         s.load("SWGNT", "ghi")
         # s.loadRadiation()
+        if verbose: print(_header, "Loading temperature at: +%.2fs"%(dt.now()-_clockstart).total_seconds())
         s.loadTemperature('air', height=2)
         s.loadTemperature('dew', height=2)
+        
+        if verbose: print(_header, "Loading pressure at: +%.2fs"%(dt.now()-_clockstart).total_seconds())
         s.loadPressure()
+        
+        if verbose: print(_header, "Done loading data at: +%.2fs"%(dt.now()-_clockstart).total_seconds())
 
     def loadSet_Wind(s):
         """Load basic Wind power simulation variables

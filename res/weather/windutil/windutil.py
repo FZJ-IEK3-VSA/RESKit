@@ -79,6 +79,10 @@ def densityAdjustment(windspeed, pressure, temperature, height=0):
     temperature = (temperature+273.15)
     
     # Get surface density
+    # NOTE: I could use the equation from above, but its basically exactly equal 
+    #       to ideal gas for humidity=0, and humidity does not have a significant 
+    #       impact until high temperatures are considered
+    
     rho = pressure*Ma / ( R * temperature)
 
     # Project rho to the desired height
