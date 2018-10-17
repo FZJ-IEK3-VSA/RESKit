@@ -54,7 +54,7 @@ def _batch_simulator(cosmoSource, source, loss, verbose, module, globalStart, ex
                                 module=module, 
                                 azimuth=_azimuth, 
                                 tilt=_tilt, 
-                                totalSystemCapacity=1, 
+                                totalSystemCapacity=capacity, 
                                 tracking=tracking,
                                 modulesPerString=1, 
                                 inverter=None, 
@@ -233,7 +233,7 @@ def PVWorkflowTemplate( placements, source, elev, module, azimuth, tilt, extract
 
     return res
     
-def workflowOpenFieldFixed(placements, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, tilt="ninja", extract="totalProduction", output=None, jobs=1, batchSize=None, verbose=True, capacity=1, cosmoSource=False, **k):                            
+def workflowOpenFieldFixed(placements, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, tilt="ninja", extract="totalProduction", output=None, jobs=1, batchSize=None, verbose=True, capacity=1, cosmoSource=False, **k):                           
     return PVWorkflowTemplate(# Controllable args
                               placements=placements, source=source, elev=elev, module=module, azimuth=azimuth, 
                               tilt=tilt, extract=extract, output=output, cosmoSource=cosmoSource,

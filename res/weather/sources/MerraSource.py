@@ -6,6 +6,7 @@ class MerraSource(NCSource):
     GWA50_CONTEXT_MEAN_SOURCE   = join(dirname(__file__),"..","..","..","data","gwa50_mean_over_merra.tif")
     GWA100_CONTEXT_MEAN_SOURCE  = join(dirname(__file__),"..","..","..","data","gwa100_mean_over_merra.tif")
     LONG_RUN_AVERAGE_50M_SOURCE = join(dirname(__file__),"..","..","..","data","merra_average_windspeed_50m-shifted.tif")
+    LONG_RUN_AVERAGE_GHI_SOURCE = join(dirname(__file__),"..","..","..","data","merra_average_SWGNT_1994-2017.tif")
 
     MAX_LON_DIFFERENCE=0.5
     MAX_LAT_DIFFERENCE=0.5

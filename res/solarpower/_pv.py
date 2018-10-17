@@ -295,7 +295,7 @@ def locToTilt(locs, convention="latitude*0.76", **k):
 
     return tilt
 
-def _presim(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, tilt="ninja", totalSystemCapacity=None, tracking="fixed", modulesPerString=1, inverter=None, stringsPerInverter=1, rackingModel='open_rack_cell_glassback', airmassModel='kastenyoung1989', transpositionModel='perez', cellTempModel="sandia", generationModel="single-diode", inverterModel="sandia", interpolation="bilinear", loss=0.16, trackingGCR=2/7, trackingMaxAngle=60, frankCorrection=False):
+def _presim(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, tilt="ninja", totalSystemCapacity=None, tracking="fixed", modulesPerString=1, inverter=None, stringsPerInverter=1, rackingModel='open_rack_cell_glassback', airmassModel='kastenyoung1989', transpositionModel='perez', cellTempModel="sandia", generationModel="single-diode", inverterModel="sandia", interpolation="bilinear", loss=0.16, trackingGCR=2/7, trackingMaxAngle=60, frankCorrection=False, ghiScaling=None):
 
     ### Check a few inputs so it doesn't need to be done repeatedly
     if cellTempModel.lower() == "sandia": sandiaCellTemp = True
@@ -325,6 +325,17 @@ def _presim(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, til
         k = dict( locations=locs, interpolation=interpolation, forceDataFrame=True, _indicies=idx )
 
         ghi = source.get("ghi", **k)
+        if ghiScaling:
+            merraAvg = gk.raster.interpolateValues( source.LONG_RUN_AVERAGE_GHI_SOURCE, locs, mode="linear-spline" )*24/1000 # make into kW/m2/day
+            worldBankAvg = gk.raster.interpolateValues( ghiScaling, locs )
+            scaling = worldBankAvg / merraAvg
+            scaling[np.isnan(scaling)] = 1
+            scaling[locs.lats>=59.9] = 1
+            scaling[locs.lats<=-55.1] = 1
+
+            print("SCALING GHI", scaling.mean())
+
+            ghi *= scaling
         dhi = source.get("dhi", **k) if "dhi" in source.data else None
         dni = source.get("dni", **k) if "dni" in source.data else None
 
@@ -437,7 +448,8 @@ def _presim(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, til
                             inverter_parameters=inverter, racking_model=rackingModel, gcr=trackingGCR)
 
     ### Check the (potentially) uniquely defined inputs
-    if not totalSystemCapacity is None: totalSystemCapacity = ensureSeries(totalSystemCapacity, locs)
+    if not totalSystemCapacity is None: 
+        totalSystemCapacity = ensureSeries(totalSystemCapacity, locs)
     
     azimuth = ensureSeries(azimuth, locs)
     elev = ensureSeries(elev, locs)

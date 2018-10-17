@@ -129,7 +129,7 @@ class CosmoSource(NCSource):
         s.load("SWDIRS_RAD", "dni_flat")
         s.data["ghi"] = s.data["dhi"]+s.data["dni_flat"]
 
-        del s.data["dni_flat"]
+        del s.data["dni_flat"], s.data["dhi"]
 
     def loadWindSpeedLevels(s):
         s.load("windspeed_10", name="windspeed_10")

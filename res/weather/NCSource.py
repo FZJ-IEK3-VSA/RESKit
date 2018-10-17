@@ -19,7 +19,7 @@ class NCSource(object):
         else:
             raise ResError("Could not understand data source input. Must be a path or a list of paths")
 
-    def __init__(s, source, bounds=None, indexPad=0, timeName="time", latName="lat", lonName="lon", timeBounds=None, tz=None, _maxLonDiff=0.6, _maxLatDiff=0.6, verbose=True):
+    def __init__(s, source, bounds=None, indexPad=0, timeName="time", latName="lat", lonName="lon", tz=None, _maxLonDiff=0.6, _maxLatDiff=0.6, verbose=True, forwardFill=True):
         """Initialize a generic netCDF4 file source
 
         Note
@@ -56,10 +56,6 @@ class NCSource(object):
             Applies the indicated timezone onto the time axis
             * For example, use "GMT" for unadjusted time
 
-        timeBounds : tuple of length 2, optional
-            Used to employ a slice of the time dimension
-              * Expect two pandas Timestamp objects> The first indicates the point
-                to start collecting data, and the second indicates the end
 
         """
         # Collect sources
@@ -82,9 +78,12 @@ class NCSource(object):
             return out
         sources = addSource(source)
         if len(sources)==0: raise ResError("No '.nc' or '.nc4' files found")
+        sources.sort()
+
 
         # Collect all variable information
         s.variables = OrderedDict()
+        s.fill = forwardFill
         expectedShape = OrderedDict()
 
         units = []
@@ -108,7 +107,7 @@ class NCSource(object):
                     units.append(unit)
 
                 else:
-                    if ds[var].shape != expectedShape[var]:
+                    if ds[var].shape[1:] != expectedShape[var][1:]:
                         raise ResError("Variable %s does not match expected shape %s. From %s"%(var, expectedShape[var], src))
             ds.close()
 
@@ -160,17 +159,17 @@ class NCSource(object):
                     top[:-1, :] = np.logical_and(top[1:, :],top[:-1, :])
                     bot[1:, :] = np.logical_and(bot[1:, :],bot[:-1, :])
 
-                s._lonStart = np.argmin( ( bot | left | top          ).all(0)) - 1 - indexPad
-                s._lonStop  = np.argmax( ( bot |        top  | right ).all(0)) + 1 + indexPad
-                s._latStart = np.argmin( ( bot | left |        right ).all(1)) - 1 - indexPad
-                s._latStop  = np.argmax( (       left | top  | right ).all(1)) + 1 + indexPad
+                s._lonStart =           np.argmin( ( bot | left | top          ).all(0))       - 1 - indexPad
+                s._lonStop  = s._lonN - np.argmin( ( bot |        top  | right ).all(0)[::-1]) + 1 + indexPad
+                s._latStart =           np.argmin( ( bot | left |        right ).all(1))       - 1 - indexPad
+                s._latStop  = s._latN - np.argmax( (       left | top  | right ).all(1)[::-1]) + 1 + indexPad
 
             else:
                 s._lonStart = np.argmin(s._allLons < s.bounds[0]) - 1 - indexPad
                 s._lonStop = np.argmax(s._allLons > s.bounds[2]) + indexPad
                 s._latStart = np.argmin(s._allLats < s.bounds[1]) - 1 - indexPad
                 s._latStop = np.argmax(s._allLats > s.bounds[3]) + indexPad
-
+            print( s._lonStart, s._latStart, s._lonStop, s._latStop)
         else:
             s.bounds = None
             s._lonStart = 0
@@ -201,16 +200,11 @@ class NCSource(object):
         timeindex = nc.num2date(timeVar[:], timeVar.units)
         ds.close()
         
-        if timeBounds is None:
-            s._timeSel = np.s_[:]
-        else:
-            timeStart = pd.Timestamp(timeBounds[0])
-            timeEnd = pd.Timestamp(timeBounds[1])
-            s._timeSel = (timeindex >= timeStart) & (timeindex <= timeEnd)
-
-        s.timeindex = pd.DatetimeIndex(timeindex[s._timeSel])
+        s._timeindex_raw = pd.DatetimeIndex(timeindex)
         if not tz is None:
-            s.timeindex=s.timeindex.tz_localize(tz)
+            s.timeindex=s._timeindex_raw.tz_localize(tz)
+        else:
+            s.timeindex=s._timeindex_raw
 
         # initialize the data container
         s.data = OrderedDict()
@@ -271,13 +265,23 @@ class NCSource(object):
         var = ds[variable]
 
         if heightIdx is None:
-            tmp = var[s._timeSel,s._latStart:s._latStop,s._lonStart:s._lonStop]
+            tmp = var[ : ,s._latStart:s._latStop,s._lonStart:s._lonStop]
         else:
-            tmp = var[s._timeSel,heightIdx,s._latStart:s._latStop,s._lonStart:s._lonStop]
+            tmp = var[ : ,heightIdx,s._latStart:s._latStop,s._lonStart:s._lonStop]
 
         # process, maybe?
         if not processor is None:
             tmp = processor(tmp)
+        
+        # forward fill the last time step since it can sometimes be missing
+        if not tmp.shape[0] == s._timeindex_raw.shape[0]:
+            if not s.fill:
+                raise ResError("Time mismatch with variable %s. Expected %d, got %d"%(variable, s.timeindex.shape[0], tmp.shape[0]))
+            
+            lastTimeIndex = nc.num2date( ds[s.timeName][-1], ds[s.timeName].units )
+            
+            if not lastTimeIndex in s._timeindex_raw: raise ResError("Filling is only intended to fill the last missing hour")
+            tmp = np.append( tmp, tmp[np.newaxis, -1, :, :], axis=0) 
 
         # save the data
         if name is None: name = variable
