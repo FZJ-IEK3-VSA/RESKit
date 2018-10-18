@@ -32,7 +32,7 @@ def _batch_simulator(cosmoSource, source, loss, verbose, module, globalStart, ex
     else:
         frankCorrection=False
     # do simulations
-    res = []
+    result = []
     if batchSize is None: batchSize = 1e10
     for i,batchStart in enumerate(np.arange(0, placements.count, batchSize, dtype=int)):
         if verbose: 
@@ -47,7 +47,7 @@ def _batch_simulator(cosmoSource, source, loss, verbose, module, globalStart, ex
         _azimuth = azimuth[s]
 
         warnings.filterwarnings("ignore")
-        capacityGeneration = simulatePVModule(
+        generation = simulatePVModule(
                                 locs=_placements, 
                                 elev=_elev, 
                                 source=source, 
@@ -75,20 +75,20 @@ def _batch_simulator(cosmoSource, source, loss, verbose, module, globalStart, ex
         warnings.simplefilter('default')
 
         # Arrange output        
-        if extract   == "capacityFactor": tmp = capacityGeneration.mean(0)
-        elif extract == "totalProduction": tmp = (capacityGeneration*capacity[s]).sum(1)
-        elif extract == "raw": tmp = capacityGeneration*capacity[s]
-        elif extract == "batchfile": tmp = capacityGeneration
+        if extract   == "capacityFactor": tmp = (generation/capacity[s]).mean(0)
+        elif extract == "totalProduction": tmp = (generation).sum(1)
+        elif extract == "raw": tmp = generation
+        elif extract == "batchfile": tmp = generation/capacity[s]
         else:
             raise ResError("extract method '%s' not understood"%extract)
     
-        res.append(tmp)
+        result.append(tmp)
     del source
 
-    if extract == "batchfile": 
-        res = pd.concat(res, axis=1)
+    if extract == "batchfile":
+        result = pd.concat(result, axis=1)
         _save_to_nc( output=output+"_%d.nc"%gid,
-                     capacityGeneration=res[placements[:]],
+                     capacityGeneration=result[placements[:]],
                      lats=[p.lat for p in placements],
                      lons=[p.lon for p in placements], 
                      capacity=capacity,
@@ -98,7 +98,7 @@ def _batch_simulator(cosmoSource, source, loss, verbose, module, globalStart, ex
                      module=module,
                      tracking=tracking,
                      loss=loss)
-        res = None
+        result = None
 
     if verbose:
         endTime = dt.now()
@@ -107,7 +107,7 @@ def _batch_simulator(cosmoSource, source, loss, verbose, module, globalStart, ex
         print(" %s: Finished %d locations +%.2fs (%.2f locations/sec)"%(str(gid), len(placements), globalSecs, len(placements)/simSecs))
     
     placements.makePickleable()
-    return res
+    return result
 
 ##################################################################
 ## Distributed PV production from a weather source
