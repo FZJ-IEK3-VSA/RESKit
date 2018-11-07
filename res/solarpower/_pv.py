@@ -295,7 +295,7 @@ def locToTilt(locs, convention="latitude*0.76", **k):
 
     return tilt
 
-def _presim(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, tilt="ninja", totalSystemCapacity=None, tracking="fixed", modulesPerString=1, inverter=None, stringsPerInverter=1, rackingModel='open_rack_cell_glassback', airmassModel='kastenyoung1989', transpositionModel='perez', cellTempModel="sandia", generationModel="single-diode", inverterModel="sandia", interpolation="bilinear", loss=0.16, trackingGCR=2/7, trackingMaxAngle=60, frankCorrection=False, ghiScaling=None):
+def _presim(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, tilt="ninja", totalSystemCapacity=None, tracking="fixed", modulesPerString=1, inverter=None, stringsPerInverter=1, rackingModel='open_rack_cell_glassback', airmassModel='kastenyoung1989', transpositionModel='perez', cellTempModel="sandia", generationModel="single-diode", inverterModel="sandia", interpolation="bilinear", loss=0.18, trackingGCR=2/7, trackingMaxAngle=60, frankCorrection=False, ghiScaling=None):
 
     ### Check a few inputs so it doesn't need to be done repeatedly
     if cellTempModel.lower() == "sandia": sandiaCellTemp = True
@@ -329,9 +329,9 @@ def _presim(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, til
             merraAvg = gk.raster.interpolateValues( source.LONG_RUN_AVERAGE_GHI_SOURCE, locs, mode="linear-spline" )*24/1000 # make into kW/m2/day
             worldBankAvg = gk.raster.interpolateValues( ghiScaling, locs )
             scaling = worldBankAvg / merraAvg
-            scaling[np.isnan(scaling)] = 1
-            scaling[locs.lats>=59.9] = 1
-            scaling[locs.lats<=-55.1] = 1
+            scaling[np.isnan(scaling)] = 0.9
+            scaling[locs.lats>=59.9] = 0.9 # Default scaling value defined from near-edge average in Norway, Sweden, and Finland
+            scaling[locs.lats<=-55.1] = 0.9 # Assumed to be the same as above
 
             print("SCALING GHI", scaling.mean())
 
@@ -448,7 +448,8 @@ def _presim(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, til
                             inverter_parameters=inverter, racking_model=rackingModel, gcr=trackingGCR)
 
     ### Check the (potentially) uniquely defined inputs
-    if not totalSystemCapacity is None: 
+    if not totalSystemCapacity is None:
+        print(totalSystemCapacity)
         totalSystemCapacity = ensureSeries(totalSystemCapacity, locs)
     
     azimuth = ensureSeries(azimuth, locs)
@@ -522,8 +523,6 @@ def _presim(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, til
                        temp_dew=dew_temp)
     # elif dni is None and not dhi is None:
     #     dni = (ghi - dhi)/np.sin( np.radians(solpos["apparent_elevation"]))
-    else:
-        dni = dni[goodTimes].values
 
     if dhi is None:
         dhi = ghi - dni*np.sin( np.radians(solpos["apparent_elevation"]))
@@ -838,7 +837,7 @@ def _simulation(singleAxis, tilt, module, azimuth, inverter, moduleCap, modulesP
     #addTime("total",True)
     return output
 
-def simulatePVModule(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, tilt="ninja", totalSystemCapacity=None, tracking="fixed", interpolation="bilinear", loss=0.16, rackingModel="open_rack_cell_glassback", approximateSingleDiode=True, **kwargs):
+def simulatePVModule(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, tilt="ninja", totalSystemCapacity=None, tracking="fixed", interpolation="bilinear", loss=0.18, rackingModel="open_rack_cell_glassback", approximateSingleDiode=True, **kwargs):
     """
     Performs a simple PV simulation
 

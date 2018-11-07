@@ -42,6 +42,7 @@ def _batch_simulator(cosmoSource, source, loss, verbose, module, globalStart, ex
         s = np.s_[batchStart: min(batchStart+batchSize,placements.count) ]
 
         _placements = placements[s]
+        _capacity = capacity[s]
         _elev = elev if isinstance(elev, str) else elev[s]
         _tilt = tilt if isinstance(tilt, str) else tilt[s]
         _azimuth = azimuth[s]
@@ -54,7 +55,7 @@ def _batch_simulator(cosmoSource, source, loss, verbose, module, globalStart, ex
                                 module=module, 
                                 azimuth=_azimuth, 
                                 tilt=_tilt, 
-                                totalSystemCapacity=capacity, 
+                                totalSystemCapacity=_capacity, 
                                 tracking=tracking,
                                 modulesPerString=1, 
                                 inverter=None, 
@@ -240,7 +241,7 @@ def workflowOpenFieldFixed(placements, source, elev=300, module="WINAICO WSx-240
                               jobs=jobs, batchSize=batchSize, verbose=verbose, capacity=capacity,
 
                               # Set args
-                              tracking="fixed",  loss=0.16, interpolation="bilinear",
+                              tracking="fixed",  loss=0.18, interpolation="bilinear",
                               rackingModel='open_rack_cell_glassback', airmassModel='kastenyoung1989', 
                               transpositionModel='perez', cellTempModel="sandia", generationModel="single-diode", 
                               trackingMaxAngle=None, trackingGCR=None, **k)
@@ -252,7 +253,7 @@ def workflowOpenFieldTracking(placements, source, elev=300, module="WINAICO WSx-
                               jobs=jobs, batchSize=batchSize, verbose=verbose, capacity=capacity,
 
                               # Set args
-                              tracking="single-axis", trackingMaxAngle=60, loss=0.16,
+                              tracking="single-axis", trackingMaxAngle=60, loss=0.18,
                               rackingModel='open_rack_cell_glassback', airmassModel='kastenyoung1989', 
                               transpositionModel='perez', cellTempModel="sandia", generationModel="single-diode", 
                               interpolation="bilinear", trackingGCR=2/7, 
@@ -284,7 +285,7 @@ def _save_to_nc(output, capacityGeneration, lats, lons, capacity, tilt, azimuth,
         # Make the data variables
         var = ds.createVariable("capfac", "u2", dimensions=("time", "parkID",), zlib=True)
         
-        var.scale_factor = 1/32768
+        var.scale_factor = 1/50000
         var.units = "capacity_factor"
         var.description = "Hourly generation of each park, scaled from 0 to max capacity (1)"
         var.longname = "CapacityFactor"

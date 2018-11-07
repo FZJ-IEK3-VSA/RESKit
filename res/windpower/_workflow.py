@@ -1,12 +1,12 @@
 from ._util import *
 from ._powerCurveConvoluter import *
 from ._simulator import *
-from res.weather import MerraSource
+from res.weather import MerraSource, CosmoSource
 from res.weather.windutil import *
 
 def _batch_simulator(source, landcover, gwa, adjustMethod, roughness, loss, convScale, convBase, lowBase, lowSharp, lctype, 
                      verbose, extract, powerCurves, pcKey, gid, globalStart, densityCorrection, placements, hubHeight, 
-                     capacity, rotordiam, batchSize, turbineID, output):
+                     capacity, rotordiam, batchSize, turbineID, output, isCosmo):
     if verbose: 
         groupStartTime = dt.now()
         globalStart = globalStart
@@ -17,11 +17,19 @@ def _batch_simulator(source, landcover, gwa, adjustMethod, roughness, loss, conv
         ext = gk.Extent.fromLocationSet(placements).castTo(gk.srs.EPSG4326).pad(1) # Pad to make sure we only select the data we need
                                                                                    # Otherwise, the NCSource might pull EVERYTHING when
                                                                                    # a smalle area is simulated. IDKY???
-        source = MerraSource(source, bounds=ext, indexPad=2)
-        source.loadWindSpeed(50)
-        if densityCorrection:
-            source.loadPressure()
-            source.loadTemperature('air')
+        if isCosmo:
+            source = CosmoSource(source, bounds=ext, indexPad=2)
+            source.loadWindSpeedLevels()
+
+            if densityCorrection:
+                source.loadPressure()
+                source.loadTemperature()
+        else:
+            source = MerraSource(source, bounds=ext, indexPad=2)
+            source.loadWindSpeed(50)
+            if densityCorrection:
+                source.loadPressure()
+                source.loadTemperature('air')
 
     ### Loop over batch size
     res = []
@@ -35,47 +43,59 @@ def _batch_simulator(source, landcover, gwa, adjustMethod, roughness, loss, conv
 
         ### Read windspeed data and adjust to local context
         # read and spatially spatially adjust windspeeds
-        if adjustMethod == "lra":
-            ws = source.get("windspeed", placements[s], forceDataFrame=True)
-            ws = windutil.adjustLraToGwa( ws, placements[s], longRunAverage=MerraSource.LONG_RUN_AVERAGE_50M_SOURCE, gwa=gwa)
+        if isCosmo:
+            ws = source.getWindSpeedAtHeights(placements[s], hubHeight[s], spatialInterpolation='bilinear', forceDataFrame=True)
+            gwaVals = gk.raster.interpolateValues( gwa, placements[s], mode="linear-spline")
+            cosmo100Means = gk.raster.interpolateValues( '/home/s-ryberg/workspace/1839_cosmo_wind_average/wsMean.tif', placements[s], mode='linear-spline')
+            fac = gwaVals/cosmo100Means
+            sfac = np.isnan(fac)
+            fac[sfac] = np.nanmean(fac)
 
-        elif adjustMethod == "near" or adjustMethod == "bilinear" or adjustMethod == "cubic":
-            ws = source.get("windspeed", placements[s], interpolation=adjustMethod, forceDataFrame=True)
-
-        elif adjustMethod is None:
-            ws = source.get("windspeed", placements[s], forceDataFrame=True)
-        
-        else: raise ResError("adjustMethod not recognized")
-
-        # Look for bad values
-        badVals = np.isnan(ws)
-        if badVals.any().any():
-            print("%d locations have invalid wind speed values:"%badVals.any().sum())
-            sel = badVals.any()
-            for loc in placements[s][sel]: print("  ", loc)
-            raise RuntimeError("Bad windspeed values")
-
-        # Get roughnesses from Land Cover
-        if roughness is None and not lctype is None:
-            lcVals = gk.raster.extractValues(landcover, placements[s]).data
-            roughnesses = windutil.roughnessFromLandCover(lcVals, lctype)
-
-            if np.isnan(roughnesses).any():
-                raise RuntimeError("%d locations are outside the given landcover file"%np.isnan(roughnesses).sum())
-
-        elif not roughness is None:
-            roughnesses = roughness
+            print(fac.mean(), fac.std() )
+            ws *= fac
         else:
-            raise ResError("roughness and lctype are both given or are both None")
+            if adjustMethod == "lra":
+                ws = source.get("windspeed", placements[s], forceDataFrame=True)
+                ws = windutil.adjustLraToGwa( ws, placements[s], longRunAverage=MerraSource.LONG_RUN_AVERAGE_50M_SOURCE, gwa=gwa)
+    
+            elif adjustMethod == "near" or adjustMethod == "bilinear" or adjustMethod == "cubic":
+                ws = source.get("windspeed", placements[s], interpolation=adjustMethod, forceDataFrame=True)
+    
+            elif adjustMethod is None:
+                ws = source.get("windspeed", placements[s], forceDataFrame=True)
+            
+            else: raise ResError("adjustMethod not recognized")
 
-        # Project WS to hub height
-        ws = windutil.projectByLogLaw(ws, measuredHeight=50, targetHeight=hubHeight[s], roughness=roughnesses)
+            # Look for bad values
+            badVals = np.isnan(ws)
+            if badVals.any().any():
+                print("%d locations have invalid wind speed values:"%badVals.any().sum())
+                sel = badVals.any()
+                for loc in placements[s][sel]: print("  ", loc)
+                raise RuntimeError("Bad windspeed values")
+    
+            # Get roughnesses from Land Cover
+            if roughness is None and not lctype is None:
+                lcVals = gk.raster.extractValues(landcover, placements[s]).data
+                roughnesses = windutil.roughnessFromLandCover(lcVals, lctype)
+    
+                if np.isnan(roughnesses).any():
+                    raise RuntimeError("%d locations are outside the given landcover file"%np.isnan(roughnesses).sum())
+    
+            elif not roughness is None:
+                roughnesses = roughness
+            else:
+                raise ResError("roughness and lctype are both given or are both None")
+    
+            # Project WS to hub height
+            ws = windutil.projectByLogLaw(ws, measuredHeight=50, targetHeight=hubHeight[s], roughness=roughnesses)
         
         # Density correction to windspeeds
         if densityCorrection:
             t =  source.get("air_temp", placements[s], interpolation='bilinear', forceDataFrame=True)
             p =  source.get("pressure", placements[s], interpolation='bilinear', forceDataFrame=True)
             ws = densityAdjustment(ws, pressure=p, temperature=t, height=hubHeight[s])
+
 
         ### Do simulations
         capacityGeneration = pd.DataFrame(-1*np.ones(ws.shape), index=ws.index, columns=ws.columns)
@@ -130,7 +150,7 @@ def _batch_simulator(source, landcover, gwa, adjustMethod, roughness, loss, conv
 
 def workflowTemplate(placements, source, landcover, gwa, convScale, convBase, lowBase, lowSharp, adjustMethod, hubHeight, 
                      powerCurve, capacity, rotordiam, cutout, lctype, extract, output, jobs, batchSize, verbose, 
-                     roughness, loss, densityCorrection):
+                     roughness, loss, densityCorrection, isCosmo=False):
     startTime = dt.now()
     if verbose:
         print("Starting at: %s"%str(startTime))
@@ -297,6 +317,7 @@ def workflowTemplate(placements, source, landcover, gwa, convScale, convBase, lo
         globalStart=startTime,
         densityCorrection=densityCorrection,
         output=output,
+        isCosmo=isCosmo,
         )
     
     turbineID=pd.Series(np.arange(placements.shape[0]), index=placements)
@@ -367,7 +388,7 @@ def workflowTemplate(placements, source, landcover, gwa, convScale, convBase, lo
 
     return res
 
-def workflowOnshore(placements, source, landcover, gwa, hubHeight=None, powerCurve=None, capacity=None, rotordiam=None, cutout=None, lctype="clc", extract="totalProduction", output=None, jobs=1, groups=None, batchSize=10000, verbose=True):
+def workflowOnshore(placements, source, landcover, gwa, hubHeight=None, powerCurve=None, capacity=None, rotordiam=None, cutout=None, lctype="clc", extract="totalProduction", output=None, jobs=1, groups=None, batchSize=10000, verbose=True, isCosmo=False):
     """
     Apply the wind simulation method developed by Severin Ryberg, Dilara Caglayan, and Sabrina Schmitt. 
     This method works as follows for a given simulation point:
@@ -477,7 +498,7 @@ def workflowOnshore(placements, source, landcover, gwa, hubHeight=None, powerCur
 
     return workflowTemplate(placements=placements, source=source, landcover=landcover, gwa=gwa, hubHeight=hubHeight, 
                             powerCurve=powerCurve, capacity=capacity, rotordiam=rotordiam, cutout=cutout, lctype=lctype, 
-                            extract=extract, output=output, jobs=jobs, batchSize=batchSize, verbose=verbose, 
+                            extract=extract, output=output, jobs=jobs, batchSize=batchSize, verbose=verbose, isCosmo=isCosmo, 
                             **kwgs)
 
 
@@ -516,7 +537,7 @@ def _save_to_nc(output, capacityGeneration, lats, lons, capacity, hubHeight, rot
         if capacityGeneration.index[0].tz is None:
             timeV.tz = "unknown"
         else:
-            timeV.tz = capacityGeneration.index[0].tzname()
+            timeV.tz = str(capacityGeneration.index[0].tzname())
             times = times.tz_localize(None)
 
         timeV[:] = nc.date2num(times.to_pydatetime(), timeV.units)

@@ -266,6 +266,10 @@ class CosmoSource(NCSource):
 
         locations = gk.LocationSet(locations)
         heights = np.array(heights)
+        if heights.size==1:
+            heights = np.array([heights]*locations.count)
+        elif not heights.size == locations.count:
+            raise RuntimeError("Heights and locations sizes don't match")
         _0_50 = heights<50
         _50_100 = np.logical_and(heights>=50, heights<100)
         _100_ = heights>=100
@@ -277,14 +281,18 @@ class CosmoSource(NCSource):
             ws50 = NCSource.get(s, "windspeed_50", locations=locations[_50_100], **k)
             ws100 = NCSource.get(s, "windspeed_100", locations=locations[_50_100], **k)
 
-            fac = (heights-50)/(100-50)
-            newWindspeed[:,_50_100] = ws100*fac + ws50*(1-fac)
+            fac = (heights[_50_100]-50)/(100-50)
+            tmp = ws100*fac + ws50*(1-fac)
+
+            newWindspeed[:,_50_100] = tmp
 
         if _100_.any():
             ws100 = NCSource.get(s, "windspeed_100", locations=locations[_100_], **k)
             ws140 = NCSource.get(s, "windspeed_140", locations=locations[_100_], **k)
 
-            fac = (heights-100)/(140-100)
-            newWindspeed[:,_100_] = ws140*fac + ws100*(1-fac)
+            fac = (heights[_100_]-100)/(140-100)
+            tmp = ws140*fac + ws100*(1-fac)
+            if tmp.shape[0] == 1: tmp = tmp[0,:]
+            newWindspeed[:,_100_] = tmp
 
-        return pd.DataFrame(newWindspeed, columns=ws100.columns, index=ws100.index)
+        return pd.DataFrame(newWindspeed, columns=locations, index=s.timeindex)

@@ -503,10 +503,8 @@ class NCSource(object):
             ## TODO: Update interpolation schemes to handle out-of-bounds indices 
             ##########
             
-            if s.dependent_coordinates: # do interpolations in 'index space'                
+            if s.dependent_coordinates: # do interpolations in 'index space'               
                 if isinstance(indicies[0][0], int): raise ResError("Index must be float type for interpolation")
-
-                yiMin
 
                 gridYVals = np.arange(yiMin,yiMax+1)
                 gridXVals = np.arange(xiMin,xiMax+1)
