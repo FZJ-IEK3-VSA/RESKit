@@ -281,6 +281,12 @@ def locToTilt(locs, convention="latitude*0.76", **k):
 
         s = np.logical_and(lats > 25, lats <= 50)
         tilt[ s ] = (lats[s]*0.76)+3.1
+    
+    elif convention=='bestTilt':
+        try:
+            tilt = gk.raster.interpolateValues(join(DATADIR, "bestTilt_europe_int.tif"), locs, **k)
+        except:
+            raise ResError("Could not load best tilt for all locations. They may not have been included in the preprocessed data")
 
     elif isfile(convention):
         tilt = gk.raster.interpolateValues(convention, locs, **k)
@@ -449,7 +455,6 @@ def _presim(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, til
 
     ### Check the (potentially) uniquely defined inputs
     if not totalSystemCapacity is None:
-        print(totalSystemCapacity)
         totalSystemCapacity = ensureSeries(totalSystemCapacity, locs)
     
     azimuth = ensureSeries(azimuth, locs)

@@ -26,7 +26,7 @@ def _batch_simulator(cosmoSource, source, loss, verbose, module, globalStart, ex
             frankCorrection=True
     
         else: 
-            source = MerraSource(source, bounds=placements, indexPad=2)
+            source = MerraSource(source, bounds=placements, indexPad=2, verbose=verbose)
             frankCorrection=False
         source.loadSet_PV(verbose=verbose, _clockstart=globalStart, _header=" %s:"%str(gid))
     else:
@@ -114,8 +114,8 @@ def _batch_simulator(cosmoSource, source, loss, verbose, module, globalStart, ex
 ## Distributed PV production from a weather source
 def PVWorkflowTemplate( placements, source, elev, module, azimuth, tilt, extract, output, jobs, batchSize, verbose, capacity, tracking, loss, interpolation, rackingModel, airmassModel, transpositionModel, cellTempModel, generationModel, trackingMaxAngle, trackingGCR, cosmoSource, **k):
 
+    startTime = dt.now()
     if verbose: 
-        startTime = dt.now()
         print("Starting at: %s"%str(startTime))
 
     if jobs==1: # use only a single process

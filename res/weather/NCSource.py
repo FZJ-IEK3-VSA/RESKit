@@ -169,7 +169,7 @@ class NCSource(object):
                 s._lonStop = np.argmax(s._allLons > s.bounds[2]) + indexPad
                 s._latStart = np.argmin(s._allLats < s.bounds[1]) - 1 - indexPad
                 s._latStop = np.argmax(s._allLats > s.bounds[3]) + indexPad
-            print( s._lonStart, s._latStart, s._lonStop, s._latStop)
+
         else:
             s.bounds = None
             s._lonStart = 0
