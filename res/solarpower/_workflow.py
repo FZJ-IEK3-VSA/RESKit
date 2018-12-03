@@ -112,7 +112,7 @@ def _batch_simulator(cosmoSource, source, loss, verbose, module, globalStart, ex
 
 ##################################################################
 ## Distributed PV production from a weather source
-def PVWorkflowTemplate( placements, source, elev, module, azimuth, tilt, extract, output, jobs, batchSize, verbose, capacity, tracking, loss, interpolation, rackingModel, airmassModel, transpositionModel, cellTempModel, generationModel, trackingMaxAngle, trackingGCR, cosmoSource, **k):
+def PVWorkflowTemplate( placements, source, elev, ghiScaling, module, azimuth, tilt, extract, output, jobs, batchSize, verbose, capacity, tracking, loss, interpolation, rackingModel, airmassModel, transpositionModel, cellTempModel, generationModel, trackingMaxAngle, trackingGCR, cosmoSource, **k):
 
     startTime = dt.now()
     if verbose: 
@@ -158,7 +158,7 @@ def PVWorkflowTemplate( placements, source, elev, module, azimuth, tilt, extract
     if verbose: print("Initializing simulations at +%.2fs"%((dt.now()-startTime).total_seconds()))
     locationID=pd.Series(np.arange(placements.shape[0]), index=placements)
 
-    simKwargs = dict(source=source, loss=loss, verbose=verbose, 
+    simKwargs = dict(source=source, loss=loss, verbose=verbose, ghiScaling=ghiScaling,
                      module=module, globalStart=startTime, extract=extract, tracking=tracking,
                      interpolation=interpolation, cellTempModel=cellTempModel,
                      rackingModel=rackingModel, airmassModel=airmassModel,
@@ -234,26 +234,26 @@ def PVWorkflowTemplate( placements, source, elev, module, azimuth, tilt, extract
 
     return res
     
-def workflowOpenFieldFixed(placements, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, tilt="ninja", extract="totalProduction", output=None, jobs=1, batchSize=None, verbose=True, capacity=1, cosmoSource=False, **k):                           
+def workflowOpenFieldFixed(placements, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, tilt="ninja", ghiScaling=None, extract="totalProduction", output=None, jobs=1, batchSize=None, verbose=True, capacity=1, cosmoSource=False, **k):                           
     return PVWorkflowTemplate(# Controllable args
                               placements=placements, source=source, elev=elev, module=module, azimuth=azimuth, 
                               tilt=tilt, extract=extract, output=output, cosmoSource=cosmoSource,
                               jobs=jobs, batchSize=batchSize, verbose=verbose, capacity=capacity,
 
                               # Set args
-                              tracking="fixed",  loss=0.18, interpolation="bilinear",
+                              tracking="fixed",  loss=0.18, interpolation="bilinear", ghiScaling=ghiScaling,
                               rackingModel='open_rack_cell_glassback', airmassModel='kastenyoung1989', 
                               transpositionModel='perez', cellTempModel="sandia", generationModel="single-diode", 
                               trackingMaxAngle=None, trackingGCR=None, **k)
                          
-def workflowOpenFieldTracking(placements, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, tilt="ninja", extract="totalProduction", output=None, jobs=1, batchSize=None, verbose=True, capacity=1, cosmoSource=False,):
+def workflowOpenFieldTracking(placements, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, tilt="ninja", ghiScaling=None, extract="totalProduction", output=None, jobs=1, batchSize=None, verbose=True, capacity=1, cosmoSource=False,):
     return PVWorkflowTemplate(# Controllable args
                               placements=placements, source=source, elev=elev, module=module, azimuth=azimuth, 
                               tilt=tilt, extract=extract, output=output, cosmoSource=cosmoSource,
                               jobs=jobs, batchSize=batchSize, verbose=verbose, capacity=capacity,
 
                               # Set args
-                              tracking="single-axis", trackingMaxAngle=60, loss=0.18,
+                              tracking="single-axis", trackingMaxAngle=60, loss=0.18, ghiScaling=ghiScaling,
                               rackingModel='open_rack_cell_glassback', airmassModel='kastenyoung1989', 
                               transpositionModel='perez', cellTempModel="sandia", generationModel="single-diode", 
                               interpolation="bilinear", trackingGCR=2/7, 
