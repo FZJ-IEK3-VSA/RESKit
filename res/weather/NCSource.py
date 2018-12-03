@@ -165,11 +165,24 @@ class NCSource(object):
                 s._latStop  = s._latN - np.argmax( (       left | top  | right ).all(1)[::-1]) + 1 + indexPad
 
             else:
-                s._lonStart = np.argmin(s._allLons < s.bounds[0]) - 1 - indexPad
-                s._lonStop = np.argmax(s._allLons > s.bounds[2]) + indexPad
-                s._latStart = np.argmin(s._allLats < s.bounds[1]) - 1 - indexPad
-                s._latStop = np.argmax(s._allLats > s.bounds[3]) + indexPad
+                tmp = np.logical_and(s._allLons >= s.bounds[0], s._allLons <= s.bounds[2])
+                s._lonStart = np.argmax(tmp)
+                s._lonStop = s._lonStart + np.argmin( tmp[s._lonStart:]) - 1
 
+                tmp = np.logical_and(s._allLats >= s.bounds[1], s._allLats <= s.bounds[3])
+                s._latStart = np.argmax(tmp)
+                s._latStop = s._latStart + np.argmin( tmp[s._latStart:]) - 1
+
+                s._lonStart = max(0, s._lonStart - indexPad)
+                s._lonStop  = min( s._allLons.size-1, s._lonStop+indexPad)
+                s._latStart = max(0, s._latStart - indexPad)
+                s._latStop  = min( s._allLats.size-1, s._latStop+indexPad)
+
+                # s._lonStart = np.argmin(s._allLons < s.bounds[0]) - 1 - indexPad
+                # s._lonStop = np.argmax(s._allLons > s.bounds[2]) + indexPad
+                # s._latStart = np.argmin(s._allLats < s.bounds[1]) - 1 - indexPad
+                # s._latStop = np.argmax(s._allLats > s.bounds[3]) + indexPad
+                
         else:
             s.bounds = None
             s._lonStart = 0
@@ -189,7 +202,7 @@ class NCSource(object):
         else:
             s.lats = s._allLats[s._latStart:s._latStop]
             s.lons = s._allLons[s._lonStart:s._lonStop]
-
+        
         s.extent = gk.Extent(s.lons.min(), s.lats.min(), s.lons.max(), s.lats.max(), srs=gk.srs.EPSG4326)
 
         # compute time index

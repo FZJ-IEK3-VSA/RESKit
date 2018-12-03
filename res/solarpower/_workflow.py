@@ -256,10 +256,57 @@ def workflowOpenFieldTracking(placements, source, elev=300, module="WINAICO WSx-
                               tracking="single-axis", trackingMaxAngle=60, loss=0.18, ghiScaling=ghiScaling,
                               rackingModel='open_rack_cell_glassback', airmassModel='kastenyoung1989', 
                               transpositionModel='perez', cellTempModel="sandia", generationModel="single-diode", 
-                              interpolation="bilinear", trackingGCR=2/7, 
+                              interpolation="bilinear", trackingGCR=3/7, 
                               )
 
+def workflowRooftop(placements, source, elev=300, module="LG Electronics LG370Q1C-A5", azimuths='default', tilts='default', occurrence='default', ghiScaling=None, verbose=True, extract='totalProduction', capacity=1, cosmoSource=False, **k):
+    globalStart = dt.now()
+    if isinstance(placements, pd.DataFrame):
+        locs = gk.LocationSet(placements.geom)
+    else: locs = gk.LocationSet(placements)
 
+    if isinstance(source, str):
+        if cosmoSource: 
+            source = CosmoSource(source, bounds=locs, indexPad=2)
+            frankCorrection=True
+    
+        else: 
+            source = MerraSource(source, bounds=locs, indexPad=2, verbose=verbose)
+            frankCorrection=False
+        source.loadSet_PV(verbose=verbose, _clockstart=globalStart, _header=" %s:"%str(0))
+    else:
+        frankCorrection=False
+
+
+    if azimuths == 'default' and tilts == 'default' and occurrence == 'default':
+        # Distribution used by Sev
+        tiltTmp = [28.15, 33.08, 37.70, 42.30, 46.92, 51.85]
+        occurrenceTmp = [0.022713075351,0.135886324455,0.341329048107,0.341360442417,0.135923920404,0.0227238467777,]
+        azimuthTmp = [90, 135, 180, 225, 270]
+
+        tilts = []
+        occurrence = []
+        azimuths = []
+        for a in azimuthTmp:
+            for t,o in zip(tiltTmp,occurrenceTmp):
+                tilts.append(t)
+                occurrence.append(o)
+                azimuths.append(a)
+
+    warnings.filterwarnings("ignore")
+    gen = simulatePVModuleDistribution(placements, tilts, source, elev=elev, azimuths=azimuths, occurrence=occurrence, 
+            rackingModel="roof_mount_cell_glassback", module=module, approximateSingleDiode=True, 
+            loss=0.18, interpolation="bilinear", ghiScaling=ghiScaling, airmassModel='kastenyoung1989', 
+            transpositionModel='perez', cellTempModel="sandia", generationModel="single-diode", 
+            trackingMaxAngle=None, trackingGCR=None, **k)
+    warnings.filterwarnings("default")
+
+    if extract == 'totalProduction':
+        return gen.sum(1)
+    elif extract == 'raw':
+        return raw
+    else:
+        raise ResError(extract+" not implemented :(")
 
 def _save_to_nc(output, capacityGeneration, lats, lons, capacity, tilt, azimuth, identity, module, tracking, loss):
 

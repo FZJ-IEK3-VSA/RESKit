@@ -452,7 +452,8 @@ def _presim(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, til
                             max_angle=trackingMaxAngle, module_parameters=module, albedo=albedo, 
                             modules_per_string=modulesPerString, strings_per_inverter=stringsPerInverter, 
                             inverter_parameters=inverter, racking_model=rackingModel, gcr=trackingGCR)
-
+    else:
+        genericSystem = None
     ### Check the (potentially) uniquely defined inputs
     if not totalSystemCapacity is None:
         totalSystemCapacity = ensureSeries(totalSystemCapacity, locs)
@@ -534,6 +535,7 @@ def _presim(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, til
         dhi[dhi<0] = 0
 
     return dict(singleAxis=singleAxis,
+                genericSystem=genericSystem,
                 tilt=tilt if isinstance(tilt, np.ndarray) else tilt[locs[:]].values,
                 module=module,
                 azimuth=azimuth if isinstance(azimuth, np.ndarray) else azimuth[locs[:]].values,
@@ -688,23 +690,27 @@ def mysinglediode(photocurrent, saturation_current, resistance_series,
         out = pd.DataFrame(out, index=photocurrent.index)
     return out
 
-def _simulation(singleAxis, tilt, module, azimuth, inverter, moduleCap, modulesPerString, stringsPerInverter, locs, times, dni, ghi, dhi, amRel, solpos, pressure, air_temp, windspeed, dni_extra, sandiaCellTemp, transpositionModel, totalSystemCapacity, sandiaGenerationModel, loss, approximateSingleDiode, goodTimes):
+def _simulation(singleAxis, genericSystem, tilt, module, azimuth, inverter, moduleCap, modulesPerString, stringsPerInverter, locs, times, dni, ghi, dhi, amRel, solpos, pressure, air_temp, windspeed, dni_extra, sandiaCellTemp, transpositionModel, totalSystemCapacity, sandiaGenerationModel, loss, approximateSingleDiode, goodTimes):
 
     # Get tilt and azimuths
     if singleAxis:
         axis_tilt = tilt
         axis_azimuth = azimuth
 
-        tilt = pd.DataFrame(index=times, columns=locs)
-        azimuth = pd.DataFrame(index=times, columns=locs)
+        tilt = np.zeros_like(ghi) #pd.DataFrame(index=times, columns=locs)
+        azimuth = np.zeros_like(ghi) #pd.DataFrame(index=times, columns=locs)
 
-        for loc, at, aa in zip(locs, axis_tilt, axis_azimuth):
-            tmp = pvlib.tracking.singleaxis(apparent_zenith=solpos["apparent_zenith"][loc], 
-                                            apparent_azimuth=solpos["azimuth"][loc], axis_tilt=at, axis_azimuth=aa, 
+        for loc, at, aa, i in zip(locs, axis_tilt, axis_azimuth, range(locs.count)):
+            
+            # These fail if it isn't a pandas type :/
+            zen = pd.Series(solpos["apparent_zenith"][:,i],)
+            azi = pd.Series(solpos["azimuth"][:,i],)
+
+            tmp = pvlib.tracking.singleaxis(apparent_zenith= zen, apparent_azimuth=azi, axis_tilt=at, axis_azimuth=aa, 
                                             max_angle=genericSystem.max_angle, backtrack=genericSystem.backtrack,
                                             gcr=genericSystem.gcr)
-            tilt[loc] = tmp["surface_tilt"].copy()
-            azimuth[loc] = tmp["surface_azimuth"].copy()
+            tilt[:,i] = tmp["surface_tilt"].copy()
+            azimuth[:,i] = tmp["surface_azimuth"].copy()
 
         del axis_azimuth, axis_tilt, tmp
 
