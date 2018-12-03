@@ -144,6 +144,10 @@ class NCSource(object):
         # set lat and lon selections
         if not bounds is None:
             s.bounds = gk.Extent.load(bounds).castTo(4326).xyXY
+            if abs(s.bounds[0]-s.bounds[2]) <= 0.625:
+                s.bounds = s.bounds[0]-0.3125, s.bounds[1], s.bounds[2]+0.3125, s.bounds[3]
+            if abs(s.bounds[1]-s.bounds[3]) <= 0.5:
+                s.bounds = s.bounds[0], s.bounds[1]-0.25, s.bounds[2], s.bounds[3]+0.25
 
             # find slices which contains our extent
             if s.dependent_coordinates:

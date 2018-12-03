@@ -339,7 +339,7 @@ def _presim(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, til
             scaling[locs.lats>=59.9] = 0.9 # Default scaling value defined from near-edge average in Norway, Sweden, and Finland
             scaling[locs.lats<=-55.1] = 0.9 # Assumed to be the same as above
 
-            print("SCALING GHI", scaling.mean())
+            #print("SCALING GHI", scaling.mean())
 
             ghi *= scaling
         dhi = source.get("dhi", **k) if "dhi" in source.data else None
