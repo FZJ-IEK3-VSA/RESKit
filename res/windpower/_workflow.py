@@ -25,7 +25,7 @@ def _batch_simulator(source, landcover, gwa, adjustMethod, roughness, loss, conv
                 source.loadPressure()
                 source.loadTemperature()
         else:
-            source = MerraSource(source, bounds=ext, indexPad=2)
+            source = MerraSource(source, bounds=ext, indexPad=2, verbose=verbose)
             source.loadWindSpeed(50)
             if densityCorrection:
                 source.loadPressure()
@@ -95,7 +95,6 @@ def _batch_simulator(source, landcover, gwa, adjustMethod, roughness, loss, conv
             t =  source.get("air_temp", placements[s], interpolation='bilinear', forceDataFrame=True)
             p =  source.get("pressure", placements[s], interpolation='bilinear', forceDataFrame=True)
             ws = densityAdjustment(ws, pressure=p, temperature=t, height=hubHeight[s])
-
 
         ### Do simulations
         capacityGeneration = pd.DataFrame(-1*np.ones(ws.shape), index=ws.index, columns=ws.columns)
@@ -179,6 +178,7 @@ def workflowTemplate(placements, source, landcover, gwa, convScale, convBase, lo
         if "hubHeight" in placements.columns and hubHeight is None: hubHeight = placements.hubHeight.values
         if "capacity" in placements.columns and capacity is None: capacity = placements.capacity.values
         if "rotordiam" in placements.columns and rotordiam is None: rotordiam = placements.rotordiam.values
+        if "rotorDiam" in placements.columns and rotordiam is None: rotordiam = placements.rotorDiam.values
         if "cutout" in placements.columns and cutout is None: cutout = placements.cutout.values
 
         try:

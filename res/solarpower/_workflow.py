@@ -22,11 +22,11 @@ def _batch_simulator(cosmoSource, source, loss, verbose, module, globalStart, ex
     ### Open Source and load weather data
     if isinstance(source, str):
         if cosmoSource: 
-            source = CosmoSource(source, bounds=placements, indexPad=3)
+            source = CosmoSource(source, bounds=placements, indexPad=4)
             frankCorrection=True
     
         else: 
-            source = MerraSource(source, bounds=placements, indexPad=3, verbose=verbose)
+            source = MerraSource(source, bounds=placements, indexPad=4, verbose=verbose)
             frankCorrection=False
         source.loadSet_PV(verbose=verbose, _clockstart=globalStart, _header=" %s:"%str(gid))
     else:
