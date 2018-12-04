@@ -48,14 +48,14 @@ def _batch_simulator(cosmoSource, source, loss, verbose, module, globalStart, ex
         _azimuth = azimuth[s]
 
         warnings.filterwarnings("ignore")
-        generation = simulatePVModule(
+        capfacgen = simulatePVModule(
                                 locs=_placements, 
                                 elev=_elev, 
                                 source=source, 
                                 module=module, 
                                 azimuth=_azimuth, 
                                 tilt=_tilt, 
-                                totalSystemCapacity=_capacity, 
+                                totalSystemCapacity=1, 
                                 tracking=tracking,
                                 modulesPerString=1, 
                                 inverter=None, 
@@ -75,11 +75,11 @@ def _batch_simulator(cosmoSource, source, loss, verbose, module, globalStart, ex
         
         warnings.simplefilter('default')
 
-        # Arrange output        
-        if extract   == "capacityFactor": tmp = (generation/capacity[s]).mean(0)
-        elif extract == "totalProduction": tmp = (generation).sum(1)
-        elif extract == "raw": tmp = generation
-        elif extract == "batchfile": tmp = generation/capacity[s]
+        # Arrange output 
+        if extract   == "capacityFactor": tmp = (capfacgen).mean(0)
+        elif extract == "totalProduction": tmp = (capfacgen*_capacity).sum(1)
+        elif extract == "raw": tmp = capfacgen*_capacity
+        elif extract == "batchfile": tmp = capfacgen
         else:
             raise ResError("extract method '%s' not understood"%extract)
     
@@ -149,9 +149,11 @@ def PVWorkflowTemplate( placements, source, elev, ghiScaling, module, azimuth, t
     placements = gk.LocationSet(placements)
 
     elev = elev if isinstance(elev, str) else pd.Series(elev, index=placements)
-    capacity = pd.Series(capacity, index=placements)
     tilt = tilt if isinstance(tilt, str) else pd.Series(tilt, index=placements)
     azimuth = pd.Series(azimuth, index=placements)
+
+    if capacity is None: capacity = 1 # only occurs when no capacity is specified eitehr as a keyword argument or in the placement dataframe
+    capacity = pd.Series(capacity, index=placements)
 
     ### Do simulations
     # initialize simulations
@@ -234,7 +236,7 @@ def PVWorkflowTemplate( placements, source, elev, ghiScaling, module, azimuth, t
 
     return res
     
-def workflowOpenFieldFixed(placements, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, tilt="ninja", ghiScaling=None, extract="totalProduction", output=None, jobs=1, batchSize=None, verbose=True, capacity=1, cosmoSource=False, **k):                           
+def workflowOpenFieldFixed(placements, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, tilt="ninja", ghiScaling=None, extract="totalProduction", output=None, jobs=1, batchSize=None, verbose=True, capacity=None, cosmoSource=False, **k):                           
     return PVWorkflowTemplate(# Controllable args
                               placements=placements, source=source, elev=elev, module=module, azimuth=azimuth, 
                               tilt=tilt, extract=extract, output=output, cosmoSource=cosmoSource,
@@ -246,7 +248,7 @@ def workflowOpenFieldFixed(placements, source, elev=300, module="WINAICO WSx-240
                               transpositionModel='perez', cellTempModel="sandia", generationModel="single-diode", 
                               trackingMaxAngle=None, trackingGCR=None, **k)
                          
-def workflowOpenFieldTracking(placements, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, tilt="ninja", ghiScaling=None, extract="totalProduction", output=None, jobs=1, batchSize=None, verbose=True, capacity=1, cosmoSource=False,):
+def workflowOpenFieldTracking(placements, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, tilt="ninja", ghiScaling=None, extract="totalProduction", output=None, jobs=1, batchSize=None, verbose=True, capacity=None, cosmoSource=False,):
     return PVWorkflowTemplate(# Controllable args
                               placements=placements, source=source, elev=elev, module=module, azimuth=azimuth, 
                               tilt=tilt, extract=extract, output=output, cosmoSource=cosmoSource,
@@ -259,11 +261,19 @@ def workflowOpenFieldTracking(placements, source, elev=300, module="WINAICO WSx-
                               interpolation="bilinear", trackingGCR=3/7, 
                               )
 
-def workflowRooftop(placements, source, elev=300, module="LG Electronics LG370Q1C-A5", azimuths='default', tilts='default', occurrence='default', ghiScaling=None, verbose=True, extract='totalProduction', capacity=1, cosmoSource=False, **k):
+def workflowRooftop(placements, source, elev=300, module="LG Electronics LG370Q1C-A5", azimuths='default', tilts='default', occurrence='default', ghiScaling=None, verbose=True, extract='totalProduction', capacity=None, cosmoSource=False, **k):
     globalStart = dt.now()
     if isinstance(placements, pd.DataFrame):
         locs = gk.LocationSet(placements.geom)
-    else: locs = gk.LocationSet(placements)
+        if capacity is None:
+            if 'capacity' in placements.columns:
+                capacity = placements.capacity.values
+            else:
+                capacity = 1
+    else: 
+        locs = gk.LocationSet(placements)
+        if capacity is None:
+            capacity = 1 
 
     if isinstance(source, str):
         if cosmoSource: 
@@ -294,17 +304,16 @@ def workflowRooftop(placements, source, elev=300, module="LG Electronics LG370Q1
                 azimuths.append(a)
 
     warnings.filterwarnings("ignore")
-    gen = simulatePVModuleDistribution(placements, tilts, source, elev=elev, azimuths=azimuths, occurrence=occurrence, 
+    capfacgen = simulatePVModuleDistribution(placements, tilts, source, elev=elev, azimuths=azimuths, occurrence=occurrence, 
             rackingModel="roof_mount_cell_glassback", module=module, approximateSingleDiode=True, 
             loss=0.18, interpolation="bilinear", ghiScaling=ghiScaling, airmassModel='kastenyoung1989', 
             transpositionModel='perez', cellTempModel="sandia", generationModel="single-diode", 
             trackingMaxAngle=None, trackingGCR=None, **k)
     warnings.filterwarnings("default")
 
-    if extract == 'totalProduction':
-        return gen.sum(1)
-    elif extract == 'raw':
-        return raw
+    if extract == 'totalProduction': return (capfacgen*capacity).sum(1)
+    elif extract == 'raw': return capfacgen*capacity
+    elif extract == 'capacityFactor': return capfacgen.mean(0)
     else:
         raise ResError(extract+" not implemented :(")
 
