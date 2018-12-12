@@ -170,12 +170,12 @@ class NCSource(object):
 
             else:
                 tmp = np.logical_and(s._allLons >= s.bounds[0], s._allLons <= s.bounds[2])
-                s._lonStart = np.argmax(tmp)
-                s._lonStop = s._lonStart + np.argmin( tmp[s._lonStart:]) - 1
+                s._lonStart = np.argmax(tmp) - 1
+                s._lonStop = s._lonStart + 1 + np.argmin( tmp[s._lonStart+1:]) + 1
 
                 tmp = np.logical_and(s._allLats >= s.bounds[1], s._allLats <= s.bounds[3])
-                s._latStart = np.argmax(tmp)
-                s._latStop = s._latStart + np.argmin( tmp[s._latStart:]) - 1
+                s._latStart = np.argmax(tmp) - 1
+                s._latStop = s._latStart + 1 + np.argmin( tmp[s._latStart+1:]) + 1
 
                 s._lonStart = max(0, s._lonStart - indexPad)
                 s._lonStop  = min( s._allLons.size-1, s._lonStop+indexPad)
