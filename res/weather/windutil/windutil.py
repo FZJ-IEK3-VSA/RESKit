@@ -168,18 +168,25 @@ def adjustLraToGwa( windspeed, targetLoc, gwa, longRunAverage, windspeedSourceNa
 
     # Get the local gwa value
     gwaLocValue = np.array(gk.raster.extractValues(gwa, targetLoc).data)
+    s = np.isnan(gwaLocValue)
+    if s.any():
+        print("Replacing %d GWA values"%s.sum())
+        gwaLocValue[s] = np.array([np.nanmean(v) for v in  gk.raster.extractValues(gwa, targetLoc[s], winRange=5).data])
     if multi: gwaLocValue = gwaLocValue.reshape((1,gwaLocValue.size))
     else: gwaLocValue = gwaLocValue[0]
     
     # Get the long run average value
     if isinstance(longRunAverage, str): # A path to a raster dataset has been given
-        longRunAverage = np.array(gk.raster.extractValues(longRunAverage, targetLoc).data)
+        tmp = np.array(gk.raster.extractValues(longRunAverage, targetLoc).data)
+        longRunAverage = tmp
+
         if multi: longRunAverage = longRunAverage.reshape((1,longRunAverage.size))
         else: longRunAverage = longRunAverage[0]
     else: # A simple number or array has been given
         if multi: # expect an array
             longRunAverage = np.array(longRunAverage) # turns longRunAverage into an array or a scalar
             longRunAverage = longRunAverage.reshape((1,longRunAverage.size))
+
 
     # apply adjustment
     if isinstance(windspeed, NCSource):

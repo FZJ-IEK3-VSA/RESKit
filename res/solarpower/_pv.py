@@ -281,6 +281,12 @@ def locToTilt(locs, convention="latitude*0.76", **k):
 
         s = np.logical_and(lats > 25, lats <= 50)
         tilt[ s ] = (lats[s]*0.76)+3.1
+    
+    elif convention=='bestTilt':
+        try:
+            tilt = gk.raster.interpolateValues(join(DATADIR, "bestTilt_europe_int.tif"), locs, **k)
+        except:
+            raise ResError("Could not load best tilt for all locations. They may not have been included in the preprocessed data")
 
     elif isfile(convention):
         tilt = gk.raster.interpolateValues(convention, locs, **k)
@@ -295,7 +301,7 @@ def locToTilt(locs, convention="latitude*0.76", **k):
 
     return tilt
 
-def _presim(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, tilt="ninja", totalSystemCapacity=None, tracking="fixed", modulesPerString=1, inverter=None, stringsPerInverter=1, rackingModel='open_rack_cell_glassback', airmassModel='kastenyoung1989', transpositionModel='perez', cellTempModel="sandia", generationModel="single-diode", inverterModel="sandia", interpolation="bilinear", loss=0.16, trackingGCR=2/7, trackingMaxAngle=60, frankCorrection=False):
+def _presim(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, tilt="ninja", totalSystemCapacity=None, tracking="fixed", modulesPerString=1, inverter=None, stringsPerInverter=1, rackingModel='open_rack_cell_glassback', airmassModel='kastenyoung1989', transpositionModel='perez', cellTempModel="sandia", generationModel="single-diode", inverterModel="sandia", interpolation="bilinear", loss=0.18, trackingGCR=2/7, trackingMaxAngle=60, frankCorrection=False, ghiScaling=None):
 
     ### Check a few inputs so it doesn't need to be done repeatedly
     if cellTempModel.lower() == "sandia": sandiaCellTemp = True
@@ -325,6 +331,17 @@ def _presim(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, til
         k = dict( locations=locs, interpolation=interpolation, forceDataFrame=True, _indicies=idx )
 
         ghi = source.get("ghi", **k)
+        if ghiScaling:
+            merraAvg = gk.raster.interpolateValues( source.LONG_RUN_AVERAGE_GHI_SOURCE, locs, mode="linear-spline" )*24/1000 # make into kW/m2/day
+            worldBankAvg = gk.raster.interpolateValues( ghiScaling, locs )
+            scaling = worldBankAvg / merraAvg
+            scaling[np.isnan(scaling)] = 0.9
+            scaling[locs.lats>=59.9] = 0.9 # Default scaling value defined from near-edge average in Norway, Sweden, and Finland
+            scaling[locs.lats<=-55.1] = 0.9 # Assumed to be the same as above
+
+            #print("SCALING GHI", scaling.mean())
+
+            ghi *= scaling
         dhi = source.get("dhi", **k) if "dhi" in source.data else None
         dni = source.get("dni", **k) if "dni" in source.data else None
 
@@ -435,9 +452,11 @@ def _presim(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, til
                             max_angle=trackingMaxAngle, module_parameters=module, albedo=albedo, 
                             modules_per_string=modulesPerString, strings_per_inverter=stringsPerInverter, 
                             inverter_parameters=inverter, racking_model=rackingModel, gcr=trackingGCR)
-
+    else:
+        genericSystem = None
     ### Check the (potentially) uniquely defined inputs
-    if not totalSystemCapacity is None: totalSystemCapacity = ensureSeries(totalSystemCapacity, locs)
+    if not totalSystemCapacity is None:
+        totalSystemCapacity = ensureSeries(totalSystemCapacity, locs)
     
     azimuth = ensureSeries(azimuth, locs)
     elev = ensureSeries(elev, locs)
@@ -510,14 +529,13 @@ def _presim(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, til
                        temp_dew=dew_temp)
     # elif dni is None and not dhi is None:
     #     dni = (ghi - dhi)/np.sin( np.radians(solpos["apparent_elevation"]))
-    else:
-        dni = dni[goodTimes].values
 
     if dhi is None:
         dhi = ghi - dni*np.sin( np.radians(solpos["apparent_elevation"]))
         dhi[dhi<0] = 0
 
     return dict(singleAxis=singleAxis,
+                genericSystem=genericSystem,
                 tilt=tilt if isinstance(tilt, np.ndarray) else tilt[locs[:]].values,
                 module=module,
                 azimuth=azimuth if isinstance(azimuth, np.ndarray) else azimuth[locs[:]].values,
@@ -672,23 +690,27 @@ def mysinglediode(photocurrent, saturation_current, resistance_series,
         out = pd.DataFrame(out, index=photocurrent.index)
     return out
 
-def _simulation(singleAxis, tilt, module, azimuth, inverter, moduleCap, modulesPerString, stringsPerInverter, locs, times, dni, ghi, dhi, amRel, solpos, pressure, air_temp, windspeed, dni_extra, sandiaCellTemp, transpositionModel, totalSystemCapacity, sandiaGenerationModel, loss, approximateSingleDiode, goodTimes):
+def _simulation(singleAxis, genericSystem, tilt, module, azimuth, inverter, moduleCap, modulesPerString, stringsPerInverter, locs, times, dni, ghi, dhi, amRel, solpos, pressure, air_temp, windspeed, dni_extra, sandiaCellTemp, transpositionModel, totalSystemCapacity, sandiaGenerationModel, loss, approximateSingleDiode, goodTimes):
 
     # Get tilt and azimuths
     if singleAxis:
         axis_tilt = tilt
         axis_azimuth = azimuth
 
-        tilt = pd.DataFrame(index=times, columns=locs)
-        azimuth = pd.DataFrame(index=times, columns=locs)
+        tilt = np.zeros_like(ghi) #pd.DataFrame(index=times, columns=locs)
+        azimuth = np.zeros_like(ghi) #pd.DataFrame(index=times, columns=locs)
 
-        for loc, at, aa in zip(locs, axis_tilt, axis_azimuth):
-            tmp = pvlib.tracking.singleaxis(apparent_zenith=solpos["apparent_zenith"][loc], 
-                                            apparent_azimuth=solpos["azimuth"][loc], axis_tilt=at, axis_azimuth=aa, 
+        for loc, at, aa, i in zip(locs, axis_tilt, axis_azimuth, range(locs.count)):
+            
+            # These fail if it isn't a pandas type :/
+            zen = pd.Series(solpos["apparent_zenith"][:,i],)
+            azi = pd.Series(solpos["azimuth"][:,i],)
+
+            tmp = pvlib.tracking.singleaxis(apparent_zenith= zen, apparent_azimuth=azi, axis_tilt=at, axis_azimuth=aa, 
                                             max_angle=genericSystem.max_angle, backtrack=genericSystem.backtrack,
                                             gcr=genericSystem.gcr)
-            tilt[loc] = tmp["surface_tilt"].copy()
-            azimuth[loc] = tmp["surface_azimuth"].copy()
+            tilt[:,i] = tmp["surface_tilt"].copy()
+            azimuth[:,i] = tmp["surface_azimuth"].copy()
 
         del axis_azimuth, axis_tilt, tmp
 
@@ -826,7 +848,7 @@ def _simulation(singleAxis, tilt, module, azimuth, inverter, moduleCap, modulesP
     #addTime("total",True)
     return output
 
-def simulatePVModule(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, tilt="ninja", totalSystemCapacity=None, tracking="fixed", interpolation="bilinear", loss=0.16, rackingModel="open_rack_cell_glassback", approximateSingleDiode=True, **kwargs):
+def simulatePVModule(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, tilt="ninja", totalSystemCapacity=None, tracking="fixed", interpolation="bilinear", loss=0.18, rackingModel="open_rack_cell_glassback", approximateSingleDiode=True, **kwargs):
     """
     Performs a simple PV simulation
 

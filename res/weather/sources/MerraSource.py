@@ -6,6 +6,7 @@ class MerraSource(NCSource):
     GWA50_CONTEXT_MEAN_SOURCE   = join(dirname(__file__),"..","..","..","data","gwa50_mean_over_merra.tif")
     GWA100_CONTEXT_MEAN_SOURCE  = join(dirname(__file__),"..","..","..","data","gwa100_mean_over_merra.tif")
     LONG_RUN_AVERAGE_50M_SOURCE = join(dirname(__file__),"..","..","..","data","merra_average_windspeed_50m-shifted.tif")
+    LONG_RUN_AVERAGE_GHI_SOURCE = join(dirname(__file__),"..","..","..","data","merra_average_SWGDN_1994-2017.tif")
 
     MAX_LON_DIFFERENCE=0.5
     MAX_LAT_DIFFERENCE=0.5
@@ -148,9 +149,9 @@ class MerraSource(NCSource):
             s.data["winddir"] = direction
 
     def loadRadiation(s):
-        """Load the SWGNT variable into the data table with the name 'ghi'
+        """Load the SWGDN variable into the data table with the name 'ghi'
         """
-        s.load("SWGNT", name="ghi")
+        s.load("SWGDN", name="ghi")
 
     def loadTemperature(s, which='air', height=2):
         """Load air temperature variables 
@@ -187,7 +188,6 @@ class MerraSource(NCSource):
         """Load basic PV power simulation variables
         
           * 'windspeed' from U2M and V2M
-          * 'ghi' from SWGNT 
           * 'dni' from SWGDN 
           * 'air_temp' from T2M
           * 'pressure' from PS
@@ -202,7 +202,7 @@ class MerraSource(NCSource):
         del s.data["V2M"]
 
         if verbose: print(_header, "Loading ghi at: +%.2fs"%(dt.now()-_clockstart).total_seconds())
-        s.load("SWGNT", "ghi")
+        s.load("SWGDN", "ghi")
         # s.loadRadiation()
         if verbose: print(_header, "Loading temperature at: +%.2fs"%(dt.now()-_clockstart).total_seconds())
         s.loadTemperature('air', height=2)
