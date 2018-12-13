@@ -146,6 +146,16 @@ def PVWorkflowTemplate( placements, source, elev, ghiScaling, module, azimuth, t
         except:
             placements = placements["geom"].values
 
+            # check for point
+            if placements[0].GetGeometryName() != "POINT":
+                rawsrs = placements[0].GetSpatialReference()
+                def centroid(g):
+                    g = g.Centroid()
+                    g.AssignSpatialReference(rawsrs)
+                    return g
+                placements = [centroid(g) for g in placements]
+
+
     placements = gk.LocationSet(placements)
 
     elev = elev if isinstance(elev, str) else pd.Series(elev, index=placements)
