@@ -388,7 +388,7 @@ def workflowTemplate(placements, source, landcover, gwa, convScale, convBase, lo
 
     return res
 
-def workflowOnshore(placements, source, landcover, gwa, hubHeight=None, powerCurve=None, capacity=None, rotordiam=None, cutout=None, lctype="clc", extract="totalProduction", output=None, jobs=1, groups=None, batchSize=10000, verbose=True, isCosmo=False):
+def workflowOnshore(placements, source, landcover, gwa, hubHeight=None, powerCurve=None, capacity=None, rotordiam=None, cutout=None, lctype="clc", extract="totalProduction", output=None, jobs=1, groups=None, batchSize=10000, verbose=True, isCosmo=False, densityCorrection=True):
     """
     Apply the wind simulation method developed by Severin Ryberg, Dilara Caglayan, and Sabrina Schmitt. 
     This method works as follows for a given simulation point:
@@ -494,7 +494,7 @@ def workflowOnshore(placements, source, landcover, gwa, hubHeight=None, powerCur
     kwgs["lowSharp"]=5
     kwgs["adjustMethod"]="lra"
     kwgs["roughness"]=None
-    kwgs["densityCorrection"]=True
+    kwgs["densityCorrection"]=densityCorrection
 
     return workflowTemplate(placements=placements, source=source, landcover=landcover, gwa=gwa, hubHeight=hubHeight, 
                             powerCurve=powerCurve, capacity=capacity, rotordiam=rotordiam, cutout=cutout, lctype=lctype, 
