@@ -182,7 +182,65 @@ def onshoreTurbineBOSCost(cp, hh, rd):
     return bosCosts
 
 def offshoreTurbineCost(capacity, hubHeight, rotordiam, depth, distanceToShore, distanceToBus=3, foundation="monopile", mooringCount=3, anchor="DEA", turbineNumber=80, turbineSpacing=5, rowSpacing=9):
-    # Defaults from [1] or [5]
+    """
+    Offshore turbine capital cost (TCC) is calculated by using the turbine capital cost 
+    Fingersh et al.(2006) and Maples et al. (2010). Balance of system cost (BOS) is 
+    calculated by using the equations of Maness et al.(2017). Afterwards, TCC and BOS 
+    are scaled by cost breakdown suggested by Stehly et al.(2017).
+
+    Stardard turbine for scaling the results is chosen from optimal turbine analysis.
+    Capacity: 9.4 MW, Hub height: 135 m and rotor diameter: 210 m, monopile foundation
+    Reference water depth is chosen as 40 m and distance to shore is chosen as 60 km.
+    Inputs:
+        capacity : Turbine nameplate capacity in kW
+            float - Single value
+            np.ndarray - multidimensional values 
+
+        hubHeight : Turbine hub height in meters
+            float - Single value
+            np.ndarray - multidimensional values
+        
+        rotordiam : Turbine rotor diameter in meters
+            float - Single value
+            np.ndarray - multidimensional values
+
+        depth : Water depth in meters (absolute value)
+            float - Single value
+            np.ndarray - multidimensional values
+
+        distanceToShore : Distance from shore in kilometers
+            float - Single value
+            np.ndarray - multidimensional values
+
+        distanceToBus : Distance from bus in kilometers
+            float - Single value
+            np.ndarray - multidimensional values
+
+        foundation : Foundation type (monopile, jacket, semisubmersible, spar)
+            str - Single value
+            np.ndarray - multidimensional values
+            
+        mooringCount : Mooring count
+            float - Single value
+            np.ndarray - multidimensional values
+            
+        anchor : Anchor type
+            str - Single value
+            np.ndarray - multidimensional values
+            
+        turbineNumber : Number of turbines in the windpark
+            float - Single value
+            np.ndarray - multidimensional values
+            
+        turbineSpacing : Spacing of turbines (5 * rotor diameter)
+            float - Single value
+            np.ndarray - multidimensional values
+            
+        rowSpacing : Spacing of rows (9 * rotor diameter)
+            float - Single value
+            np.ndarray - multidimensional values
+            
+    # Sources: (Defaults from [1] or [5])
     # [1] https://www.nrel.gov/docs/fy17osti/66874.pdf
     # [2] Anders Mhyr, Catho Bjerkseter, Anders Agotnes and Tor A. Nygaard (2014) Levelised costs of energy for offshore floating wind turbines in a life cycle perspective
     # [3] Catho Bjerkseter and Anders Agotnes(2013) Levelised costs of energy for offshore floating wind turbine concenpts
@@ -190,7 +248,8 @@ def offshoreTurbineCost(capacity, hubHeight, rotordiam, depth, distanceToShore, 
     # [5] https://www.nrel.gov/docs/fy16osti/66262.pdf
     # [6] L. Fingersh, M. Hand, and A. Laxson. "Wind Turbine Design Cost and Scaling Model". 2006. NREL
     # [7] Tyler Stehly, Donna Heimiller, and George Scott. "2016 Cost of Wind Energy Review". 2017. NREL. https://www.nrel.gov/docs/fy18osti/70363.pdf
-
+    
+    """
     ## PREPROCESS INPUTS
     cp = np.array(capacity/1000)
     rr = np.array(rotordiam/2)
@@ -202,16 +261,13 @@ def offshoreTurbineCost(capacity, hubHeight, rotordiam, depth, distanceToShore, 
 
     ## COMPUTE COSTS    
     tcc = onshoreTurbineCapitalCost(cp=cp*1000, hh=hh, rd=rd)
-    tcc *= 1.021111784874969
+    tcc *= 0.7719832742256006
 
     bos = offshoreBOS(cp=cp, rd=rd, hh=hh, depth=depth, shoreD=shoreD, busD=busD, foundation=foundation, 
                       mooringCount=mooringCount, anchor=anchor, turbineNumber=turbineNumber, 
                       turbineSpacing=turbineSpacing, rowSpacing=rowSpacing, )
-    
-    #scaling cost of bos to normalize overall cost to 2300 euro/kW 
-    #bos *= 0.44322409    # standard turbine: V164-8.0MW hh-105m depth 30 m shoreD=45 km
-    #bos *= 0.2842698876700619 # standard turbine: V164-8.0MW hh-105m depth 80 m shoreD=50 km
-    bos *= 0.3405847716126332 # standard turbine: Senvion 6.2M152 hh-105m depth 40 m shoreD=60 km
+
+    bos *= 0.3669156255898912 
 
     if foundation == 'monopile' or foundation == 'jacket':
         fin = (tcc + bos) * 20.9/ (32.9+46.2) # Scaled according to tcc [7]
