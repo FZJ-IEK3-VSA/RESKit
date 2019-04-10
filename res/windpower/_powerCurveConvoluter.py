@@ -2,7 +2,7 @@ from ._util import *
 
 ###########################################################
 ## Convolute Power Curve
-def convolutePowerCurveByGuassian(powerCurve, stdScaling=0.2, stdBase=0.6, minSpeed=0.01, maxSpeed=40, steps=4000, outputResolution=0.1):
+def convolutePowerCurveByGuassian(powerCurve, stdScaling=0.06, stdBase=0.1, minSpeed=0.01, maxSpeed=40, steps=4000, outputResolution=0.1, extendBeyondCutoff=True):
     # Set performance
     if isinstance(powerCurve,str): 
         powerCurve = np.array(TurbineLibrary.ix[powerCurve].PowerCurve)
@@ -22,7 +22,7 @@ def convolutePowerCurveByGuassian(powerCurve, stdScaling=0.2, stdBase=0.6, minSp
             print("WARNING: 'steps' may not be high enough to properly compute the convoluted power curve. Check results or use a higher number of steps")
     
     # Initialize vanilla power curve
-    powerCurveInterp = splrep(powerCurve.ws, powerCurve.cf)
+    powerCurveInterp = splrep(ws, np.interp(ws, powerCurve.ws, powerCurve.cf))
 
     cf = np.zeros(steps)
     sel = ws<powerCurve.ws.max()
@@ -37,6 +37,9 @@ def convolutePowerCurveByGuassian(powerCurve, stdScaling=0.2, stdBase=0.6, minSp
     convolutedCF = np.zeros(steps)
     for i,ws_ in enumerate(ws):
         convolutedCF[i] = (norm.pdf(ws, loc=ws_, scale=stdScaling*ws_+stdBase)*cf).sum()*dws
+
+    # Correct cutoff, maybe
+    if not extendBeyondCutoff: convolutedCF[ws>powerCurve.ws[-1]] = 0
         
     # Done!
     ws = ws[::40]

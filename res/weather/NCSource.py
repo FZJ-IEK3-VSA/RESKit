@@ -1,216 +1,241 @@
 from os import listdir
-from os.path import join, isfile, dirname, basename
+from os.path import join, isfile, dirname, basename, isdir
 from glob import glob
-from scipy.interpolate import RectBivariateSpline, interp2d
+from scipy.interpolate import RectBivariateSpline, interp2d, bisplrep, bisplev, interp1d
 from pickle import load, dump
 
-from res.util import *
-
-# context mean
-def computeContextMean(source, contextArea, fillnan=True, pixelSize=None, srs=None):
-    """Compute the mean of raster data found in the context of an area. Usually this is used for one of the weather data sources in order to compute the, for example, mean elevation around each grid cell.
-
-    Inputs:
-        source : 
-            str - The path to a raster file to read from
-            gdal.Dataset - The raster file to read from in memory
-            * Must contain the entire context area (nan values are okay)
-
-        contextArea : 
-            ogr.Geometry - The context area
-
-        fillnan : 
-            T/F - Dictates whether nan values are filled using the 'closest real value' approach
-
-        pixelSize : 
-            float - The pixel size to use wile sampling the raster file
-            * Normally this should be left as 'None', indicating that the raster's inherent resolution should be used
-
-        srs : The spatial reference system to use while processing
-            int - A EPSG reference integer
-            str - One of GeoKit's common srs keys 
-            osr.SpatialReference - An SRS object
-            * Normally this should be left as 'None', indicating that the raster's inherent SRS should be used
-    """
-
-
-    if pixelSize is None and srs is None:
-        ras = gk.raster.rasterInfo(source)
-        pixelSize=(ras.dx, ras.dy)
-        srs=ras.srs
-
-    # get all GWA values in the area
-    rm = gk.RegionMask.fromGeom(contextArea, pixelSize=pixelSize, srs=srs)
-    values = rm.warp(source)
-    values[values<0] = np.nan # set the no data value so they can be filled properly
-
-    # fill all no data with the closest values
-    if fillnan:
-        yN,xN = values.shape
-        while np.isnan(values[rm.mask]).any():
-            tmp = values.copy()
-            for yi,xi in np.argwhere(np.isnan(values)):
-                vals = np.array([np.nan, np.nan, np.nan, np.nan])
-                if yi>0:    vals[0] = values[yi-1,xi]
-                if xi>0:    vals[1] = values[yi,xi-1]
-                if yi<yN-1: vals[2] = values[yi+1,xi]
-                if xi<xN-1: vals[3] = values[yi,xi+1]
-
-                if (~np.isnan(vals)).any():
-                    tmp[yi,xi] = np.nanmean(vals)
-            values = tmp
-    # done!
-    return np.nanmean(values[rm.mask])
-
+from res.util.util_ import *
 
 # make a data handler
 Index = namedtuple("Index", "yi xi")
 class NCSource(object):
+    """The NCSource object manages weather data from a generic set of netCDF4 
+    file sources"""
     def _loadDS(s, path):
         if isinstance(path, str):
-            return nc.Dataset(path)
-        elif isinstance(path, list):
-            return nc.MFDataset( path, aggdim=s.timeName)
+            return nc.Dataset(path, keepweakref=True)
+        # elif isinstance(path, list):
+        #     return nc.MFDataset( path, aggdim=s.timeName)
         else:
             raise ResError("Could not understand data source input. Must be a path or a list of paths")
 
-    def __init__(s, path, bounds=None, padFactor=0, timeName="time", latName="lat", lonName="lon", dependent_coordinates=False, constantsPath=None, timeBounds=None, _maxLonDiff=10000000, _maxLatDiff=10000000):
-        # set basic variables 
-        s.path = path
-        s.timeName = timeName
-        if not path is None:
-            if constantsPath is None:
-                dsC = s._loadDS(s.path)
-                ds = dsC
-            else:
-                dsC = s._loadDS(constantsPath)
-                ds = s._loadDS(s.path)
+    def __init__(s, source, bounds=None, indexPad=0, timeName="time", latName="lat", lonName="lon", tz=None, _maxLonDiff=0.6, _maxLatDiff=0.6, verbose=True, forwardFill=True):
+        """Initialize a generic netCDF4 file source
+
+        Note
+        ----
+        Generally not intended for normal use. Look into MerraSource, CordexSource, or CosmoSource
+
+        Parameters
+        ----------
+        path : str
+            The path to the main data file
+
+        bounds : Anything acceptable to geokit.Extent.load(), optional
+            The boundaries of the data which is needed
+              * Usage of this will help with memory mangement
+              * If None, the full dataset is loaded in memory
+              * The actual extent of the loaded data depends on the source's 
+                available data
+              
+        padExtent : numeric, optional
+            The padding to apply to the boundaries 
+              * Useful in case of interpolation
+              * Units are in longitudinal degrees
+              
+        timeName : str, optional
+            The name of the time parameter in the netCDF4 dataset
+              
+        latName : str, optional
+            The name of the latitude parameter in the netCDF4 dataset
+              
+        lonName : str, optional
+            The name of the longitude parameter in the netCDF4 dataset
+
+        tz: str; optional
+            Applies the indicated timezone onto the time axis
+            * For example, use "GMT" for unadjusted time
+
+
+        """
+        # Collect sources
+        def addSource(src):
+            out = []
+            if isinstance(src, list): 
+                for s in src: 
+                    out.extend(addSource(s))
+            elif isinstance(src, str):
+                if isfile(src): # Assume its an NC file
+                    out.extend([src,])
+                elif isdir(src): # Assume its a directory of NC files
+                    for s in glob(join(src, "*.nc")): 
+                        out.append( s )
+                    for s in glob(join(src, "*.nc4")): 
+                        out.append( s )
+                else: # Assume we were given a glob string
+                    for s in glob(src): 
+                        out.extend( addSource(s) )
+            return out
+        sources = addSource(source)
+        if len(sources)==0: raise ResError("No '.nc' or '.nc4' files found")
+        sources.sort()
+
+
+        # Collect all variable information
+        s.variables = OrderedDict()
+        s.fill = forwardFill
+        expectedShape = OrderedDict()
+
+        units = []
+        names = []
+
+        for src in sources:
+            if verbose: print(src)
+            ds = nc.Dataset(src, keepweakref=True)
+            for var in ds.variables:
+                if not var in s.variables:
+                    s.variables[var] = src
+                    expectedShape[var] = ds[var].shape
+
+                    try: unit = ds[var].units
+                    except: unit = "Unknown"
+                    
+                    try: name = ds[var].standard_name
+                    except: name = "Unknown"
+
+                    names.append(name)
+                    units.append(unit)
+
+                else:
+                    if ds[var].shape[1:] != expectedShape[var][1:]:
+                        raise ResError("Variable %s does not match expected shape %s. From %s"%(var, expectedShape[var], src))
+            ds.close()
+
+        tmp = pd.DataFrame(columns=["name","units","path",], index=s.variables.keys())
+        tmp["name"] = names
+        tmp["units"] = units
+        tmp["shape"] = [expectedShape[v] for v in tmp.index]
+        tmp["path"] = [s.variables[v] for v in tmp.index]
+        s.variables = tmp
         
-            s._allLats = dsC[latName][:]
-            s._allLons = dsC[lonName][:]
-            
-            s.variables = list(ds.variables.keys())
-            s._maximal_lon_difference=_maxLonDiff
-            s._maximal_lat_difference=_maxLatDiff
+        # set basic variables
+        ds = nc.Dataset( s.variables["path"][latName] , keepweakref=True)
+        s._allLats = ds[latName][:]
+        ds.close()
 
-            s.dependent_coordinates = dependent_coordinates
+        ds = nc.Dataset( s.variables["path"][lonName] , keepweakref=True)
+        s._allLons = ds[lonName][:]
+        ds.close()
+        
+        s._maximal_lon_difference=_maxLonDiff
+        s._maximal_lat_difference=_maxLatDiff
 
-            # set lat and lon selections
-            if not bounds is None:
-                if isinstance(bounds, gk.Extent):
-                    lonMin,latMin,lonMax,latMax = bounds.castTo(LATLONSRS).xyXY
+        if len(s._allLats.shape)==1 and len(s._allLons.shape)==1:
+            s.dependent_coordinates = False
+            s._lonN = s._allLons.size
+            s._latN = s._allLats.size
+        elif  len(s._allLats.shape)==2 and len(s._allLons.shape)==2:
+            s.dependent_coordinates = True
+            s._lonN = s._allLons.shape[1]
+            s._latN = s._allLats.shape[0]
+        else:
+            raise ResError("latitude and longitude shapes are not usable")
 
-                elif isinstance(bounds, gk.Location):
-                    lonMin=bounds.lon
-                    latMin=bounds.lat
-                    lonMax=bounds.lon
-                    latMax=bounds.lat
+        # set lat and lon selections
+        if not bounds is None:
+            s.bounds = gk.Extent.load(bounds).castTo(4326).xyXY
+            if abs(s.bounds[0]-s.bounds[2]) <= 0.625:
+                s.bounds = s.bounds[0]-0.3125, s.bounds[1], s.bounds[2]+0.3125, s.bounds[3]
+            if abs(s.bounds[1]-s.bounds[3]) <= 0.5:
+                s.bounds = s.bounds[0], s.bounds[1]-0.25, s.bounds[2], s.bounds[3]+0.25
 
-                elif isinstance(bounds, gk.LocationSet):
-                    bounds = bounds.getBounds()
+            # find slices which contains our extent
+            if s.dependent_coordinates:
+                left  = s._allLons < s.bounds[0]
+                right = s._allLons > s.bounds[2]
+                if (left|right).all(): 
+                    left[:,:-1] = np.logical_and(left[:,1:],left[:,:-1])
+                    right[:,1:] = np.logical_and(right[:,1:],right[:,:-1])
 
-                elif isinstance(bounds, Bounds):
-                    lonMin = bounds.lonMin
-                    latMin = bounds.latMin
-                    lonMax = bounds.lonMax
-                    latMax = bounds.latMax
-                else:
-                    try:
-                        lon,lat = bounds
+                bot   = s._allLats < s.bounds[1]
+                top   = s._allLats > s.bounds[3]
+                if (top|bot).all(): 
+                    top[:-1, :] = np.logical_and(top[1:, :],top[:-1, :])
+                    bot[1:, :] = np.logical_and(bot[1:, :],bot[:-1, :])
 
-                        lonMin=lon
-                        latMin=lat
-                        lonMax=lon
-                        latMax=lat
-
-                    except:
-                        lonMin,latMin,lonMax,latMax = bounds
-                
-                # Add padding to the boundaries
-                s.bounds = Bounds(lonMin = lonMin - s._maximal_lon_difference*padFactor,
-                                  latMin = latMin - s._maximal_lat_difference*padFactor,
-                                  lonMax = lonMax + s._maximal_lon_difference*padFactor,
-                                  latMax = latMax + s._maximal_lat_difference*padFactor,)
-
-                # find slices
-                s._lonSel = (s._allLons >= s.bounds.lonMin) & (s._allLons <= s.bounds.lonMax)
-                s._latSel = (s._allLats >= s.bounds.latMin) & (s._allLats <= s.bounds.latMax)
-
-                if s.dependent_coordinates:
-                    selTmp = s._latSel&s._lonSel
-                    s._latSel = selTmp.any(axis=1)
-                    s._lonSel = selTmp.any(axis=0)
-
-                s._lonStart = np.argmax(s._lonSel)
-                s._lonStop = s._lonSel.size-np.argmax(s._lonSel[::-1])
-                s._latStart = np.argmax(s._latSel)
-                s._latStop = s._latSel.size-np.argmax(s._latSel[::-1])
+                s._lonStart =           np.argmin( ( bot | left | top          ).all(0))       - 1 - indexPad
+                s._lonStop  = s._lonN - np.argmin( ( bot |        top  | right ).all(0)[::-1]) + 1 + indexPad
+                s._latStart =           np.argmin( ( bot | left |        right ).all(1))       - 1 - indexPad
+                s._latStop  = s._latN - np.argmax( (       left | top  | right ).all(1)[::-1]) + 1 + indexPad
 
             else:
-                s.bounds = None
-                s._lonStart = 0
-                s._latStart = 0
+                tmp = np.logical_and(s._allLons >= s.bounds[0], s._allLons <= s.bounds[2])
+                s._lonStart = np.argmax(tmp) - 1
+                s._lonStop = s._lonStart + 1 + np.argmin( tmp[s._lonStart+1:]) + 1
 
-                if dependent_coordinates:
-                    s._lonStop = s._allLons.shape[1]
-                    s._latStop = s._allLons.shape[0]
-                else:
-                    s._lonStop = s._allLons.size
-                    s._latStop = s._allLats.size
+                tmp = np.logical_and(s._allLats >= s.bounds[1], s._allLats <= s.bounds[3])
+                s._latStart = np.argmax(tmp) - 1
+                s._latStop = s._latStart + 1 + np.argmin( tmp[s._latStart+1:]) + 1
+
+                s._lonStart = max(0, s._lonStart - indexPad)
+                s._lonStop  = min( s._allLons.size-1, s._lonStop+indexPad)
+                s._latStart = max(0, s._latStart - indexPad)
+                s._latStop  = min( s._allLats.size-1, s._latStop+indexPad)
+
+                # s._lonStart = np.argmin(s._allLons < s.bounds[0]) - 1 - indexPad
+                # s._lonStop = np.argmax(s._allLons > s.bounds[2]) + indexPad
+                # s._latStart = np.argmin(s._allLats < s.bounds[1]) - 1 - indexPad
+                # s._latStop = np.argmax(s._allLats > s.bounds[3]) + indexPad
+                
+        else:
+            s.bounds = None
+            s._lonStart = 0
+            s._latStart = 0
 
             if s.dependent_coordinates:
-                s.lats = s._allLats[s._latStart:s._latStop,s._lonStart:s._lonStop]
-                s.lons = s._allLons[s._latStart:s._latStop,s._lonStart:s._lonStop]
+                s._lonStop = s._allLons.shape[1]
+                s._latStop = s._allLons.shape[0]
             else:
-                s.lats = s._allLats[s._latStart:s._latStop]
-                s.lons = s._allLons[s._lonStart:s._lonStop]
+                s._lonStop = s._allLons.size
+                s._latStop = s._allLats.size
 
-            # compute time index
-            timeindex = nc.num2date(ds[s.timeName][:], ds[s.timeName].units)
-            
-            if timeBounds is None:
-                s._timeSel = np.s_[:]
-            else:
-                timeStart = pd.Timestamp(timeBounds[0])
-                timeEnd = pd.Timestamp(timeBounds[1])
-                s._timeSel = (timeindex >= timeStart) & (timeindex <= timeEnd)
-
-            s.timeindex = timeindex[s._timeSel]
-
-            # initialize some variables
-            s.data = OrderedDict()
-
-    def __add__(s,o, _shell=None):
-        # ensure self and other have the same indexes
-        if (s.lats != o.lats).any(): raise ResError("Latitude indexes to not match")
-        if (s.lons != o.lons).any(): raise ResError("Longitude indexes to not match")
-        #if (s.timeindex != o.timeindex).any(): raise ResError("Longitude indexes to not match")
-
-        # Create an empty NCSource and fill top-level information
-        if _shell is None:
-            out = NCSource(None)
+        # Read working lats/lon
+        if s.dependent_coordinates:
+            s.lats = s._allLats[s._latStart:s._latStop, s._lonStart:s._lonStop]
+            s.lons = s._allLons[s._latStart:s._latStop, s._lonStart:s._lonStop]
         else:
-            out = _shell
-
-        out.bounds = s.bounds
-        out.lats = s.lats
-        out.lons = s.lons
-        out.timeindex = s.timeindex
-        out._maximal_lon_difference = s._maximal_lon_difference
-        out._maximal_lat_difference = s._maximal_lat_difference
-        out.dependent_coordinates = s.dependent_coordinates
-
-        # Join variables in each object
-        out.data = OrderedDict()
-        for name,data in s.data.items():
-            out.data[name] = data.copy()
-        for name,data in o.data.items():
-            out.data[name] = data.copy()
+            s.lats = s._allLats[s._latStart:s._latStop]
+            s.lons = s._allLons[s._lonStart:s._lonStop]
         
-        out.variables = list(out.data.keys())
+        s.extent = gk.Extent(s.lons.min(), s.lats.min(), s.lons.max(), s.lats.max(), srs=gk.srs.EPSG4326)
 
-        # Done!
-        return out
+        # compute time index
+        s.timeName = timeName
+
+        ds = nc.Dataset( s.variables["path"][timeName] , keepweakref=True)
+        timeVar = ds[timeName]
+        timeindex = nc.num2date(timeVar[:], timeVar.units)
+        ds.close()
+        
+        s._timeindex_raw = pd.DatetimeIndex(timeindex)
+        if not tz is None:
+            s.timeindex=s._timeindex_raw.tz_localize(tz)
+        else:
+            s.timeindex=s._timeindex_raw
+
+        # initialize the data container
+        s.data = OrderedDict()
+
+    def varInfo(s, var):
+        """Prints more information about the given parameter"""
+        try:
+            ds = nc.Dataset( s.variables["path"][var] , keepweakref=True)
+            print(ds[var])
+            ds.close()
+            return
+        except KeyError as e:
+            pass # pass to avoid horrible pandas trace
+        raise KeyError(str(v))
     
     def pickle(s, path):
         """Save the source as a pickle file, so it can be quickly reopened later"""
@@ -223,49 +248,75 @@ class NCSource(object):
         with open(path, 'rb') as fo:
             out = load(fo)
         return out
-
+    
     def load(s, variable, name=None, heightIdx=None, processor=None):
-        """Load a variable into the source's data container
+        """Load a variable into the source's data table
 
-        Inputs:
-            variable : str - The variable within the original NC file to load
-            
-            name : str - The name to give this variable in the data container
-                * If left as 'None', the original variable name is maintained
+        Parameters
+        ----------
+        variable : str
+            The variable within the currated datasources to load
+              * The variable must either be of dimension (time, lat, lon) or 
+                (time, height, lat, lon)
 
-            heightIdx : idx - The height index to use
-                * If the variable is 4D (time, height, lat, lon), use this to select the level which is extracted
+        name : str; optional
+            The name to give this variable in the loaded data table
+              * If None, the name of the original variable is kept
 
-            processor : function - An optional processing function to, for example, convert units
-                * Ex. If the NC file has temperature in Kelvin and you need degrees C:
-                    processor = lambda x: x+273.15
+        heightIdx : int; optional
+            The Height index to extract if the original variable has the height
+            dimension
+
+        processor : func, optional
+            A function to process the loaded data before loading it into the 
+            the loaded data table
+              * This function must take a single matrix argument with dimensions 
+                (time, lat, lon), and must return a matrix of the same shape
+              * Example:If the NC file has temperature in Kelvin and you need C:
+                  processor = lambda x: x+273.15
+
         """
-        if s.path is None: raise ResError("Cannot load new variables when path is None")
+        
         # read the data
-        ds = s._loadDS(s.path)
-        if not variable in ds.variables.keys():
-            raise ResError(variable+" not in source")
+        ds = nc.Dataset(s.variables["path"][variable], keepweakref=True)
+        var = ds[variable]
 
         if heightIdx is None:
-            tmp = ds[variable][s._timeSel,s._latStart:s._latStop,s._lonStart:s._lonStop]
+            tmp = var[ : ,s._latStart:s._latStop,s._lonStart:s._lonStop]
         else:
-            tmp = ds[variable][s._timeSel,heightIdx,s._latStart:s._latStop,s._lonStart:s._lonStop]
+            tmp = var[ : ,heightIdx,s._latStart:s._latStop,s._lonStart:s._lonStop]
 
         # process, maybe?
         if not processor is None:
             tmp = processor(tmp)
+        
+        # forward fill the last time step since it can sometimes be missing
+        if not tmp.shape[0] == s._timeindex_raw.shape[0]:
+            if not s.fill:
+                raise ResError("Time mismatch with variable %s. Expected %d, got %d"%(variable, s.timeindex.shape[0], tmp.shape[0]))
+            
+            lastTimeIndex = nc.num2date( ds[s.timeName][-1], ds[s.timeName].units )
+            
+            if not lastTimeIndex in s._timeindex_raw: raise ResError("Filling is only intended to fill the last missing hour")
+            tmp = np.append( tmp, tmp[np.newaxis, -1, :, :], axis=0) 
 
         # save the data
         if name is None: name = variable
         s.data[name] = tmp
 
+        # Clean up
+        ds.close()
+
     def addData(s, name, data):
-        """Manually add a variable to the data container
+        """Manually add a variable to the loaded data table
 
-        Inputs:
-            name : str - The name of the new variable
+        Parameters
+        ----------
+            name : str 
+                The name of the new variable
 
-            data : np.ndarray - A 3 dimensional matrix with shape (timeN, latN, lonN)
+            data : np.ndarray
+                A 3 dimensional matrix with shape (time, lat, lon)
         """
         # test shape
         if data.shape[0] != s.timeindex.shape[0]: raise ResError("Input data's first dimension does not match the time index")
@@ -279,56 +330,88 @@ class NCSource(object):
         # Add to data
         s.data[name] = data
 
-    def loc2Index(s, loc, outsideOkay=False):
-        """Returns the closest X and Y indexes corresponding to a given location or set of locations
+    def loc2Index(s, loc, outsideOkay=False, asInt=True):
+        """Returns the closest X and Y indexes corresponding to a given location 
+        or set of locations
 
-        * If a single location is given, a single index is returned
-        * If multiple locations are given, a list of indexes is returned which match to the order of locations
+        Parameters
+        ----------
+        loc : Anything acceptable by geokit.LocationSet
+            The location(s) to search for
+            * A single tuple with (lon, lat) is acceptable, or a list of such tuples
+            * A single point geometry (as long as it has an SRS), or a list
+              of geometries is okay
+            * geokit,Location, or geokit.LocationSet are best!
 
-        Inputs:
-            loc : The location(s) to search for
-                - geokit.Location - Preferred location identifier for a single location
-                - [ geokit.location, ] - Preferred location identifier for a multiple locations
-                * Can be anything else which is understood by goekit.Location.load
+        outsideOkay : bool, optional
+            Determines if points which are outside the source's lat/lon grid
+            are allowed
+            * If True, points outside this space will return as None
+            * If False, an error is raised 
 
-            outsideOkay : T/F - Determines if points which are outside the source's lat/lon grid are allowed
-                * If True, points outside this space will return as None
+        Returns
+        -------
+        If a single location is given: tuple 
+            * Format: (yIndex, xIndex)
+            * y index can be accessed with '.yi'
+            * x index can be accessed with '.xi'
+
+        If multiple locations are given: list
+            * Format: [ (yIndex1, xIndex1), (yIndex2, xIndex2), ...]
+            * Order matches the given order of locations
+
         """
         # Ensure loc is a list
         locations = LocationSet(loc)
 
-        # Get coordinates
-        lonCoords = locations.lons
-        latCoords = locations.lats
-
         # get closest indices
         idx = []
-        for lat,lon in zip(latCoords, lonCoords):
-            # Check the lat distance
-            tmpLat = np.abs(lat-s.lats)
-            if tmpLat.min() > s._maximal_lat_difference: 
-                if not outsideOkay:
-                    raise ResError("(%f,%f) are outside the boundaries"%(lat,lon))
-                else:
-                    idx.append(None)
-                    continue
-
-            # Check the lon distance
-            tmpLon = np.abs(lon-s.lons)
-            if tmpLon.min() > s._maximal_lon_difference: 
-                if not outsideOkay:
-                    raise ResError("(%f,%f) are outside the boundaries"%(lat,lon))
-                else:
-                    idx.append(None)
-                    continue
+        for lat,lon in zip(locations.lats, locations.lons):
+            # Check the distance
+            latDist = lat-s.lats
+            lonDist = lon-s.lons
             
             # Get the best indices 
             if s.dependent_coordinates:
-                dist = np.sqrt(tmpLon*tmpLon+tmpLat*tmpLat)
+                dist = lonDist*lonDist+latDist*latDist
                 latI,lonI = np.unravel_index(np.argmin(dist),dist.shape)
+
+                latDists = []
+                if latI<s._latN-1: latDists.append( (s.lats[latI+1,lonI]-s.lats[latI,lonI]) )
+                if latI>0        : latDists.append( (s.lats[latI,lonI]-s.lats[latI-1,lonI]) )
+                latDistI = latDist[latI,lonI]/np.mean(latDists)
+
+                lonDists = []
+                if lonI<s._lonN-1: lonDists.append( (s.lons[latI,lonI+1]-s.lons[latI,lonI]) )
+                if lonI>0        : lonDists.append( (s.lons[latI,lonI]-s.lons[latI,lonI-1]) )
+                lonDistI = lonDist[latI,lonI]/np.mean(lonDists)
+
             else:
-                lonI = np.argmin(tmpLon)
-                latI = np.argmin(tmpLat)
+                lonI = np.argmin(np.abs(lonDist))
+                latI = np.argmin(np.abs(latDist))
+
+                latDists = []
+                if latI<s._latN-1: latDists.append( (s.lats[latI+1]-s.lats[latI]) )
+                if latI>0        : latDists.append( (s.lats[latI]-s.lats[latI-1]) )
+                latDistI = latDist[latI]/np.mean(latDists)
+
+                lonDists = []
+                if lonI<s._latN-1: lonDists.append( (s.lons[lonI+1]-s.lons[lonI]) )
+                if lonI>0        : lonDists.append( (s.lons[lonI]-s.lons[lonI-1]) )
+                lonDistI = lonDist[lonI]/np.mean(lonDists)
+
+            # Check for out of bounds
+            if np.abs(latDistI) > s._maximal_lat_difference or np.abs(lonDistI) > s._maximal_lon_difference:
+                if not outsideOkay:
+                    raise ResError("(%f,%f) are outside the boundaries"%(lat,lon))
+                else:
+                    idx.append(None)
+                    continue
+
+            # As int?
+            if not asInt:
+                latI = latI+latDistI
+                lonI = lonI+lonDistI
             
             # append
             idx.append( Index(yi=latI,xi=lonI) )
@@ -339,60 +422,82 @@ class NCSource(object):
         else:
             return idx
 
-    def _timeindex(s): return s.timeindex
-    def get(s, variable, locations, interpolation='near', forceDataFrame=False, outsideOkay=False):
+    def get(s, variable, locations, interpolation='near', forceDataFrame=False, outsideOkay=False, _indicies=None):
         """
-        Retrieve a variable from the source's data container at the given location(s)
+        Retrieve complete time series for a variable from the source's loaded data 
+        table at the given location(s)
 
-        * Fetches the complete time series corresponding to the given location(s)
-        * If a single location is given, a pandas.Series object is returned (index is time)
-        * If multiple locations are given, a pandas.DataFrame object is returned (index is time, columns are locations)
-            - Column order will always match the order of locations
+        Parameters
+        ----------
+            variable : str
+                The variable within the data container to extract
 
-        Inputs:
-            variable : str - The variable within the data container to extract
+            locations : Anything acceptable by geokit.LocationSet
+                The location(s) to search for
+                  * A single tuple with (lon, lat) is acceptable, or a list of such 
+                    tuples
+                  * A single point geometry (as long as it has an SRS), or a list
+                    of geometries is okay
+                  * geokit,Location, or geokit.LocationSet are best, though
 
-            locations : The location(s) to search for
-                - geokit.Location - Preferred location identifier for a single location
-                - [ geokit.location, ] - Preferred location identifier for a multiple locations
-                * Can be anything else which is understood by geokit.Location.load
+            interpolation : str, optional
+                The interpolation method to use
+                  * 'near' => For each location, extract the time series at the 
+                    closest lat/lon index
+                  * 'bilinear' => For each location, use the time series of the 
+                    surrounding +/- 1 index locations to create an estimated time 
+                    series at the given location using a biliear scheme
+                  * 'cubic' => For each location, use the time series of the 
+                    surrounding +/- 2 index locations to create an estimated time 
+                    series at the given location using a cubic scheme
 
-            interpolation : str - The interpolation method to use
-                * 'near' => For each location, extract the time series at the closest lat/lon index
-                * 'bilinear' => For each location, use the time series of the surrounding four index locations to create an estimated time series at the given location
-                    - Uses the bilinear interpolation scheme
-                * 'cubic' => For each location, use the time series of the surrounding 16 index locations to create an estimated time series at the given location
-                    - Uses the cubic interpolation scheme
+            forceDataFrame : bool, optional
+                Instructs the returned value to take the form of a DataFrame 
+                regardless of how many locations are specified
 
-            forceDataFrame : T/F - Instructs the returned value to take the form of a DataFrame regardless of how many locations are specified
 
-            outsideOkay : T/F - Determines if points which are outside the source's lat/lon grid are allowed
-                * If True, points outside this space will a time series of NaN values
+            outsideOkay : bool, optional
+                Determines if points which are outside the source's lat/lon grid
+                are allowed
+                * If True, points outside this space will return as None
+                * If False, an error is raised 
+        
+        Returns
+        -------
 
+        If a single location is given: pandas.Series
+          * Indexes match to times
+        
+        If multiple locations are given: pandas.DataFrame
+          * Indexes match to times
+          * Columns match to the given order of locations
+        
         """
         # Ensure loc is a list
         locations = LocationSet(locations)
+        
+        # Get the indicies
+        if _indicies is None:
+            # compute the closest indices
+            if not s.dependent_coordinates or interpolation == 'near': asInt=True
+            else: asInt = False
+            indicies = s.loc2Index(locations, outsideOkay, asInt=asInt)
+        else: 
+            # Assume indicies match locations
+            indicies = _indicies
 
-        # compute the closest indices
-        indecies = s.loc2Index(locations, outsideOkay)
-        if isinstance(indecies, Index): indecies = [indecies, ]
+        if isinstance(indicies, Index): indicies = [indicies, ]
 
         # Do interpolation
         if interpolation == 'near':            
             # arrange the output data
             tmp = []
-            for i in indecies:
+            for i in indicies:
                 if not i is None: tmp.append(s.data[variable][:, i.yi, i.xi])
                 else: tmp.append( np.array([np.nan,]*s.timeindex.size) ) 
             output = np.column_stack(tmp)
-        
-        elif interpolation == "cubic" or interpolation == "bilinear":
-            if s.dependent_coordinates:
-                raise ResError("Interpolation not setup for datasets with dependent lat/lon coordinates")
 
-            ##########
-            ## TODO: Update interpolation schemes to handle out-of-bounds indices 
-            ##########
+        elif interpolation == "cubic" or interpolation == "bilinear":
             # set some arguments for later use
             if interpolation == "cubic":
                 win = 4
@@ -401,31 +506,44 @@ class NCSource(object):
                 win = 2
                 rbsArgs = dict(kx=1, ky=1)
 
-            # Find the minimal indexes needed
-            yiMin = min([i.yi for i in indecies])-win
-            yiMax = max([i.yi for i in indecies])+win
-            xiMin = min([i.xi for i in indecies])-win
-            xiMax = max([i.xi for i in indecies])+win
+            # Set up interpolation arrays
+            yiMin = np.round( min([i.yi for i in indicies])-win).astype(int)
+            yiMax = np.round( max([i.yi for i in indicies])+win).astype(int)
+            xiMin = np.round( min([i.xi for i in indicies])-win).astype(int)
+            xiMax = np.round( max([i.xi for i in indicies])+win).astype(int)
 
             # ensure boundaries are okay
-            if yiMin < 0 or xiMin < 0 or yiMax > s.lats.size or xiMax > s.lons.size: 
+            if yiMin < 0 or xiMin < 0 or yiMax > s._latN or xiMax > s._lonN: 
                 raise ResError("Insufficient data. Try expanding the boundary of the extracted data")
 
-            # Set up grid
-            gridLats = s.lats[yiMin:yiMax+1]
-            gridLons = s.lons[xiMin:xiMax+1]
+            ##########
+            ## TODO: Update interpolation schemes to handle out-of-bounds indices 
+            ##########
             
-            # build output
-            lats = [loc.lat for loc in locations]
-            lons = [loc.lon for loc in locations]
+            if s.dependent_coordinates: # do interpolations in 'index space'               
+                if isinstance(indicies[0][0], int): raise ResError("Index must be float type for interpolation")
+
+                gridYVals = np.arange(yiMin,yiMax+1)
+                gridXVals = np.arange(xiMin,xiMax+1)
+
+                yInterp = [i.yi for i in indicies]
+                xInterp = [i.xi for i in indicies]
+                
+            else: # do interpolation in the expected 'coordinate space'
+                gridYVals = s.lats[yiMin:yiMax+1]
+                gridXVals = s.lons[xiMin:xiMax+1]
+                
+                yInterp = [loc.lat for loc in locations]
+                xInterp = [loc.lon for loc in locations]
             
+            # Do interpolation
             output = []
             for ts in range(s.data[variable].shape[0]):
                 # set up interpolation
-                rbs = RectBivariateSpline(gridLats,gridLons,s.data[variable][ts, yiMin:yiMax+1, xiMin:xiMax+1], **rbsArgs)
+                rbs = RectBivariateSpline(gridYVals,gridXVals,s.data[variable][ts, yiMin:yiMax+1, xiMin:xiMax+1], **rbsArgs)
 
                 # interpolate for each location
-                output.append(rbs(lats, lons, grid=False)) # lat/lon order switched to match index order
+                output.append(rbs(yInterp, xInterp, grid=False)) # lat/lon order switched to match index order
      
             output = np.stack(output)
 
@@ -440,10 +558,6 @@ class NCSource(object):
                 return pd.Series(output[:,0], index=s.timeindex, name=locations[0])
             except:
                 return pd.Series(output, index=s.timeindex, name=locations[0])
-
-    def __getattr__(s, v):
-        var, locs = v
-        return s.get(var, locs)
 
     def contextAreaAt(s,location):
         """Compute the sources-index's context area surrounding the given location"""
@@ -487,19 +601,3 @@ class NCSource(object):
         
             # return box
             return gk.geom.box( lowLon, lowLat, highLon, highLat, srs=gk.srs.EPSG4326 )
-
-    def computeContextMeans(s, source, fillnan=True):
-        """Compute the context means of a source at all lat/lon indexes"""
-        # get raster info
-        ras = gk.raster.rasterInfo(source)
-
-        # compute all means
-        means = np.zeros((s.lats.size, s.lons.size))
-        means[:] = np.nan
-
-        for latI in range(1,s.lats.size-1):
-            for lonI in range(1,s.lons.size-1):        
-                means[latI,lonI] = computeContextMean(source=source, contextArea=s._contextAreaAt(latI,lonI), pixelSize=(ras.dx, ras.dy), srs=ras.srs, 
-                    fillnan=fillnan)
-
-        return means

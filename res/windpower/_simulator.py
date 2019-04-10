@@ -1,5 +1,53 @@
 from ._util import *
 
+def expectatedCapacityFactorFromWeibull( powerCurve, meanWindspeed=5, weibullShape=2 ):
+    from scipy.special import gamma
+    from scipy.stats import exponweib
+    
+    # Get windspeed distribution
+    lam = meanWindspeed / gamma(1+1/weibullShape)
+    dws = 0.001
+    ws = np.arange(0,40,dws)
+    pdf = exponweib.pdf(ws, 1, weibullShape, scale=lam)
+
+    # Estimate generation
+    powerCurveInterp = splrep(powerCurve.ws, powerCurve.cf)
+    gen = splev(ws, powerCurveInterp)
+    
+    # Do some "just in case" clean-up
+    cutin = powerCurve.ws.min() # use the first defined windspeed as the cut in
+    cutout = powerCurve.ws.max() # use the last defined windspeed as the cut out 
+
+    gen[gen<0]=0 # floor to zero
+    
+    gen[ws<cutin]=0 # Drop power to zero before cutin
+    gen[ws>cutout]=0 # Drop power to zero after cutout
+
+    # Done
+    totalGen = (gen*pdf).sum()*dws
+    return totalGen 
+
+def expectatedCapacityFactorFromDistribution( powerCurve, windspeedValues, windspeedCounts):
+    windspeedValues = np.array(windspeedValues)
+    windspeedCounts = np.array(windspeedCounts)
+    
+    if not len(windspeedValues.shape) == 1: raise ResError("windspeedValues must be 1-dimensional")
+
+    # Handle 2 dimensional counts with 1 dimensional wind speeds
+    if len(windspeedCounts.shape) > 1:
+        if not windspeedCounts.shape[0] == windspeedValues.shape[0]:
+            raise ResError("Dimensional incompatability")
+
+        windspeedValues = np.reshape(windspeedValues, (windspeedCounts.shape[0],1))
+
+    # Estimate generation distribution
+    gen = np.interp(windspeedValues, powerCurve.ws, powerCurve.cf, left=0, right=0) * windspeedCounts
+    
+    meanGen = gen.sum(0)/windspeedCounts.sum(0)
+
+    # Done
+    return meanGen 
+
 ####################################################
 ## Simulation for a single turbine
 def simulateTurbine( windspeed, powerCurve=None, capacity=None, rotordiam=None, measuredHeight=None, roughness=None, alpha=None, hubHeight=None, loss=0.08, **kwargs):

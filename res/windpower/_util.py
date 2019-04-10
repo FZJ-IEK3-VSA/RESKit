@@ -1,6 +1,5 @@
-from res.util import *
+from res.util.util_ import *
 from res.weather import windutil, NCSource
-from res.weather.sources import loadWeatherSource
 
 ##################################################
 ## Make a turbine model library
@@ -37,6 +36,23 @@ class PowerCurve(_P):
         plt.close()
         f.seek(0)
         return f.read().decode('ascii')
+
+
+def lowGenCorrection(capacityfactors, base=0, sharpness=5):
+    if isinstance(capacityfactors, PowerCurve):
+        _ws = capacityfactors.ws
+        capacityfactors = capacityfactors.cf
+        asPowerCurve = True
+    else:
+        asPowerCurve = False
+
+    factors = (1-base)*(1-np.exp(-sharpness*capacityfactors))+base # dampens lower wind speeds
+    capacityfactors = factors*capacityfactors
+    
+    if asPowerCurve:
+        return PowerCurve(_ws, capacityfactors)
+    else:
+        return capacityfactors
 
 
 rangeRE = re.compile("([0-9.]{1,})-([0-9.]{1,})")
@@ -111,14 +127,18 @@ def SyntheticPowerCurve( specificCapacity=None, capacity=None, rotordiam=None, c
     # Create ws
     ws = [0,]
     ws.extend( np.exp(synthTurbData.const + synthTurbData.scale*np.log(specificCapacity)) )
-    ws.append(cutout)
+    ws.extend( np.linspace(ws[-1], cutout, 20)[1:])
     ws = np.array(ws)
     
     # create capacity factor output
     cf = [0,]
     cf.extend( synthTurbData.perc_capacity/100 )
-    cf.append(1)
+    cf.extend([1]*19)
     cf = np.array(cf)
     
     # Done!
     return PowerCurve(ws, cf)
+
+
+def specificPower(capacity, rotordiam, **k):
+    return capacity*1000/rotordiam**2/np.pi*4

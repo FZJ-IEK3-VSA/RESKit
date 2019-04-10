@@ -1,54 +1,6 @@
 from ._util import *
 
-class _BaselineOnshoreTurbine(dict):
-    """
-    The baseline onshore turbine is chosen to reflect future trends in wind turbine characteristics.
-    """
-
-baselineOnshoreTurbine = _BaselineOnshoreTurbine(capacity=4200, hubHeight=129, rotordiam=141, specificPower=269)
-
-def suggestOnshoreTurbine(average_windspeed, rotordiam=baselineOnshoreTurbine["rotordiam"]):
-    """
-    Suggest turbine characteristics based off an average wind speed and in relation to the 'baseline' onshore turbine.
-    relationships are derived from turbine data between 2013 and 2017
-
-    * Suggested specific power will not go less than 180 W/m2
-    * Suggested hub height will not go higher than 200m or lower than rotor_diameter/2 + 40
-    * Normalizations chosen for the context of 2050
-        - Such that at 6.5 m/s, a turbine with 4200 kW capacity, 129m hub height, and 141m rotor diameter is chosen
-    """
-    average_windspeed = np.array(average_windspeed)
-    if average_windspeed.size>1:
-        multi=True
-        rotordiam = np.array([rotordiam]*average_windspeed.size)
-    else:
-        multi=False
-
-    hubHeight = 1.300063336328163*np.exp(-0.84976623*np.log(average_windspeed)+6.1879937)
-    if multi:
-        lt40 = hubHeight<(rotordiam/2+40)
-        if lt40.any():
-            hubHeight[lt40] = rotordiam[lt40]/2 + 40
-        gt180 = hubHeight>200
-        if gt180.any():
-            hubHeight[gt180] = 200
-    else:
-        if hubHeight<(rotordiam/2+40): hubHeight = rotordiam/2 + 40
-        if hubHeight>200: hubHeight = 200
-    
-    specificPower = 0.851302913263520*np.exp(0.53769024 *np.log(average_windspeed)+4.74917728)
-    if multi:
-        lt200 = specificPower<180
-        if lt200.any():
-            specificPower[lt200] = 180
-    else:
-        if specificPower<180: specificPower = 180
-
-    capacity = specificPower*np.pi*np.power((rotordiam/2),2)/1000
-
-    return dict(capacity=capacity, hubHeight=hubHeight, rotordiam=rotordiam, specificPower=specificPower)
-
-def onshoreTurbineCost(capacity, hubHeight, rotordiam,):
+def onshoreTurbineCost(capacity, hubHeight, rotordiam, **k):
     """
     **NEEDS UPDATE**
     Onshore wind turbine cost and scaling model (csm) built following [1] and update following [2]. 
@@ -57,8 +9,9 @@ def onshoreTurbineCost(capacity, hubHeight, rotordiam,):
     
     Base-line (default) turbine characteristics correspond to the expected typical onshore turbine in 2050.
     Output values are adjusted such that the the baseline onshore turbine matches 1100 Eur/kW including all costs.
-    Only the turbine capital cost (tcc), amounting to 67.3% [3], is adjusted according to capacity, rotor diameter, and hub height.
-    Balance of system costs and other financial costs are added as fixed percentages.
+    Only the turbine capital cost (tcc) and balance of system (BOS) costs, amounting to 67.3% and 22.9% [3], is 
+    adjusted according to capacity, rotor diameter, and hub height. Other financial costs are added as fixed 
+    percentages.
 
     Inputs:
         capacity : Turbine nameplate capacity in kW
@@ -94,10 +47,10 @@ def onshoreTurbineCost(capacity, hubHeight, rotordiam,):
     rr = rd/2
 
     ## COMPUTE COSTS 
-    # normalizations chosen to make the default turbine (4200-cap, 129-hub, 141-rot) match both a total
+    # normalizations chosen to make the default turbine (4200-cap, 120-hub, 136-rot) match both a total
     # cost of 1100 EUR/kW as well as matching the percentages given in [3]     
-    tcc = onshoreTurbineCapitalCost(cp=cp, hh=hh, rd=rd) * 0.86025295906448673 
-    bos = onshoreTurbineBOSCost(cp=cp, hh=hh, rd=rd) * 0.63296245771197779
+    tcc = onshoreTurbineCapitalCost(cp=cp, hh=hh, rd=rd) * 0.91899472754142585984027391532436013221740722656250 
+    bos = onshoreTurbineBOSCost(cp=cp, hh=hh, rd=rd) * 0.64432243770457098275272755927289836108684539794922 
     other = (tcc + bos)*0.098/(1-0.098)
 
     return tcc + bos + other
@@ -229,7 +182,65 @@ def onshoreTurbineBOSCost(cp, hh, rd):
     return bosCosts
 
 def offshoreTurbineCost(capacity, hubHeight, rotordiam, depth, distanceToShore, distanceToBus=3, foundation="monopile", mooringCount=3, anchor="DEA", turbineNumber=80, turbineSpacing=5, rowSpacing=9):
-    # Defaults from [1] or [5]
+    """
+    Offshore turbine capital cost (TCC) is calculated by using the turbine capital cost 
+    Fingersh et al.(2006) and Maples et al. (2010). Balance of system cost (BOS) is 
+    calculated by using the equations of Maness et al.(2017). Afterwards, TCC and BOS 
+    are scaled by cost breakdown suggested by Stehly et al.(2017).
+
+    Stardard turbine for scaling the results is chosen from optimal turbine analysis.
+    Capacity: 9.4 MW, Hub height: 135 m and rotor diameter: 210 m, monopile foundation
+    Reference water depth is chosen as 40 m and distance to shore is chosen as 60 km.
+    Inputs:
+        capacity : Turbine nameplate capacity in kW
+            float - Single value
+            np.ndarray - multidimensional values 
+
+        hubHeight : Turbine hub height in meters
+            float - Single value
+            np.ndarray - multidimensional values
+        
+        rotordiam : Turbine rotor diameter in meters
+            float - Single value
+            np.ndarray - multidimensional values
+
+        depth : Water depth in meters (absolute value)
+            float - Single value
+            np.ndarray - multidimensional values
+
+        distanceToShore : Distance from shore in kilometers
+            float - Single value
+            np.ndarray - multidimensional values
+
+        distanceToBus : Distance from bus in kilometers
+            float - Single value
+            np.ndarray - multidimensional values
+
+        foundation : Foundation type (monopile, jacket, semisubmersible, spar)
+            str - Single value
+            np.ndarray - multidimensional values
+            
+        mooringCount : Mooring count
+            float - Single value
+            np.ndarray - multidimensional values
+            
+        anchor : Anchor type
+            str - Single value
+            np.ndarray - multidimensional values
+            
+        turbineNumber : Number of turbines in the windpark
+            float - Single value
+            np.ndarray - multidimensional values
+            
+        turbineSpacing : Spacing of turbines (5 * rotor diameter)
+            float - Single value
+            np.ndarray - multidimensional values
+            
+        rowSpacing : Spacing of rows (9 * rotor diameter)
+            float - Single value
+            np.ndarray - multidimensional values
+            
+    # Sources: (Defaults from [1] or [5])
     # [1] https://www.nrel.gov/docs/fy17osti/66874.pdf
     # [2] Anders Mhyr, Catho Bjerkseter, Anders Agotnes and Tor A. Nygaard (2014) Levelised costs of energy for offshore floating wind turbines in a life cycle perspective
     # [3] Catho Bjerkseter and Anders Agotnes(2013) Levelised costs of energy for offshore floating wind turbine concenpts
@@ -237,7 +248,8 @@ def offshoreTurbineCost(capacity, hubHeight, rotordiam, depth, distanceToShore, 
     # [5] https://www.nrel.gov/docs/fy16osti/66262.pdf
     # [6] L. Fingersh, M. Hand, and A. Laxson. "Wind Turbine Design Cost and Scaling Model". 2006. NREL
     # [7] Tyler Stehly, Donna Heimiller, and George Scott. "2016 Cost of Wind Energy Review". 2017. NREL. https://www.nrel.gov/docs/fy18osti/70363.pdf
-
+    
+    """
     ## PREPROCESS INPUTS
     cp = np.array(capacity/1000)
     rr = np.array(rotordiam/2)
@@ -249,15 +261,18 @@ def offshoreTurbineCost(capacity, hubHeight, rotordiam, depth, distanceToShore, 
 
     ## COMPUTE COSTS    
     tcc = onshoreTurbineCapitalCost(cp=cp*1000, hh=hh, rd=rd)
-    tcc *= 1.05317975
+    tcc *= 0.7719832742256006
 
     bos = offshoreBOS(cp=cp, rd=rd, hh=hh, depth=depth, shoreD=shoreD, busD=busD, foundation=foundation, 
                       mooringCount=mooringCount, anchor=anchor, turbineNumber=turbineNumber, 
                       turbineSpacing=turbineSpacing, rowSpacing=rowSpacing, )
-    bos *= 0.44322409
 
-    fin = tcc * 20.9/32.9 # Scaled according to tcc
+    bos *= 0.3669156255898912 
 
+    if foundation == 'monopile' or foundation == 'jacket':
+        fin = (tcc + bos) * 20.9/ (32.9+46.2) # Scaled according to tcc [7]
+    else:
+        fin = (tcc + bos) * 15.6/ (60.8+23.6) # Scaled according to tcc [7]
     return tcc+bos+fin
     #return np.array([tcc,bos,fin])
 
@@ -428,8 +443,8 @@ def offshoreBOS(cp, rd, hh, depth, shoreD, busD, foundation, mooringCount, ancho
         mooringAndAnchorCost = mooringLength * mooringCostRate + anchorCost
 
     if fixedType:
-        # Only greater than 4 implemented
-        secondarySteelSubstructureMass = 40 + (0.8 * (18 + depth))
+        if cp > 4:  secondarySteelSubstructureMass = 40 + (0.8 * (18 + depth))
+        else: secondarySteelSubstructureMass = 35 + (0.8 * (18 + depth))
 
     elif foundation == 'spar':
         secondarySteelSubstructureMass = np.exp(3.58+0.196*np.power(cp, 0.5)*np.log(cp) + 0.00001*depth*np.log(depth))
@@ -444,6 +459,7 @@ def offshoreBOS(cp, rd, hh, depth, shoreD, busD, foundation, mooringCount, ancho
                                        secondarySteelSubstructureCost
 
     ##ELECTRICAL INFRASTRUCTURE
+    #in the calculation of singleStringPower1 and 2, bur depth is assumed to be 1. Because of that the equation is simplified.
     singleStringPower1 = np.sqrt(3)*cable1CurrentRating*arrayVoltage*powerFactor/1000
     singleStringPower2 = np.sqrt(3)*cable2CurrentRating*arrayVoltage*powerFactor/1000
 
@@ -532,17 +548,18 @@ def offshoreBOS(cp, rd, hh, depth, shoreD, busD, foundation, mooringCount, ancho
 
     numberOfMainPowerTransformers = np.floor_divide(turbineNumber*cp,250)+1
 
-    singleMptRating = np.round(turbineNumber*cp*1.15/numberOfMainPowerTransformers, -1)
+    #equation 72 in [1] is simplified 
+    singleMPTRating = np.round(turbineNumber*cp*1.15/numberOfMainPowerTransformers, -1)
 
-    mainPowerTransformerCost = numberOfMainPowerTransformers*singleMptRating*mainPowerTransformerCostRate
+    mainPowerTransformerCost = numberOfMainPowerTransformers*singleMPTRating*mainPowerTransformerCostRate
 
     switchgearCost = numberOfMainPowerTransformers*(highVoltageSwitchgearCost+mediumVoltageSwitchgearCost)
 
-    shuntReactorCost = singleMptRating * numberOfMainPowerTransformers * shuntReactorCostRate * 0.5
+    shuntReactorCost = singleMPTRating * numberOfMainPowerTransformers * shuntReactorCostRate * 0.5
 
     ancillarySystemsCost = dieselGeneratorBackupCost + workspaceCost + otherAncillaryCosts
 
-    offshoreSubstationTopsideMass = 3.85 * (singleMptRating*numberOfMainPowerTransformers) + 285
+    offshoreSubstationTopsideMass = 3.85 * (singleMPTRating*numberOfMainPowerTransformers) + 285
     offshoreSubstationTopsideCost = offshoreSubstationTopsideMass * fabricationCostRate + topsideDesignCost
     assemblyFactor = 1 # could not find a number...
 
@@ -558,7 +575,8 @@ def offshoreBOS(cp, rd, hh, depth, shoreD, busD, foundation, mooringCount, ancho
     else:
 
         # copied from above in case of spar
-        if foundation == 'spar':
+        if foundation == 'spar':   #WHY WAS IT SPAR BEFORE? WE ARE DOING THINGS WITH SEMISUBMERSIBLE
+        #if foundation == 'semisubmersible':
             semiSubmersibleSCMass = -0.9571 * np.power(cp , 2) + 40.89 * cp + 802.09
             semiSubmersibleSCCost = semiSubmersibleSCMass * semiSubmersibleSCCostRate
 
@@ -639,19 +657,30 @@ def offshoreBOS(cp, rd, hh, depth, shoreD, busD, foundation, mooringCount, ancho
     
     #commissioning = tot*0.015
     #portAndStaging = tot*0.005
-    #engineeringAndManagement = tot*0.02
-    #developement = tot*0.02
+    #engineeringManagement = tot*0.02
+    #development = tot*0.02
 
     #########################################
-    ## The below cooresponds to cost percentages in [7] for the fixed-monopile example
-    tot = (assemblyAndInstallationCost*19.0 + 
+    ## The below cooresponds to cost percentages in [7]
+    if fixedType:
+        tot = (assemblyAndInstallationCost*19.0 + 
            totalElectricalInfrastructureCosts*9.00 + 
            totalStructureAndFoundationCosts*13.9)/46.2
 
-    commissioning = tot*(0.8/46.2)
-    portAndStaging = tot*(0.5/46.2)
-    engineeringAndManagement = tot*(1.6/46.2)
-    developement = tot*(1.4/46.2)
+        commissioning = tot*(0.8/46.2)
+        portAndStaging = tot*(0.5/46.2)
+        engineeringManagement = tot*(1.6/46.2)
+        development = tot*(1.4/46.2)
+
+    else:
+        tot = (assemblyAndInstallationCost*11.3 + 
+           totalElectricalInfrastructureCosts*10.9 + 
+           totalStructureAndFoundationCosts*34.1)/60.8
+
+        commissioning = tot*(0.8/60.8)
+        portAndStaging = tot*(0.6/60.8)
+        engineeringManagement = tot*(2.2/60.8)
+        development = tot*(1/60.8)
 
     ## TOTAL COST
     totalCost = commissioning +\
@@ -659,7 +688,7 @@ def offshoreBOS(cp, rd, hh, depth, shoreD, busD, foundation, mooringCount, ancho
                 totalElectricalInfrastructureCosts +\
                 totalStructureAndFoundationCosts +\
                 portAndStaging +\
-                engineeringAndManagement +\
-                developement
+                engineeringManagement +\
+                development
 
     return totalCost
