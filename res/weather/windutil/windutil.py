@@ -99,7 +99,7 @@ def densityAdjustment(windspeed, pressure, temperature, height=0):
 
 ################################################################################
 ## Spatial adjustment methods
-def adjustLraToGwa( windspeed, targetLoc, gwa, longRunAverage, windspeedSourceName="windspeed"):
+def adjustLraToGwa( windspeed, targetLoc, gwa, longRunAverage, windspeedSourceName="windspeed", interpolation='near'):
     """Adjust a timeseries of wind speed values to the average suggested by 
     Global Wind Atlas at a specific location by comparing against a given 
     long run average of the timeseries
@@ -177,7 +177,7 @@ def adjustLraToGwa( windspeed, targetLoc, gwa, longRunAverage, windspeedSourceNa
     
     # Get the long run average value
     if isinstance(longRunAverage, str): # A path to a raster dataset has been given
-        tmp = np.array(gk.raster.extractValues(longRunAverage, targetLoc).data)
+        tmp = gk.raster.interpolateValues(longRunAverage, targetLoc, interpolation=interpolation)
         longRunAverage = tmp
 
         if multi: longRunAverage = longRunAverage.reshape((1,longRunAverage.size))

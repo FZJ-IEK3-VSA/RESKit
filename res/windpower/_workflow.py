@@ -58,6 +58,11 @@ def _batch_simulator(source, landcover, gwa, adjustMethod, roughness, loss, conv
                 ws = source.get("windspeed", placements[s], forceDataFrame=True)
                 ws = windutil.adjustLraToGwa( ws, placements[s], longRunAverage=MerraSource.LONG_RUN_AVERAGE_50M_SOURCE, gwa=gwa)
     
+            elif adjustMethod == "lra-bilinear":
+                ws = source.get("windspeed", placements[s], forceDataFrame=True, interpolation='bilinear')
+                ws = windutil.adjustLraToGwa( ws, placements[s], longRunAverage=MerraSource.LONG_RUN_AVERAGE_50M_SOURCE, gwa=gwa, 
+                                              interpolation='bilinear')
+    
             elif adjustMethod == "near" or adjustMethod == "bilinear" or adjustMethod == "cubic":
                 ws = source.get("windspeed", placements[s], interpolation=adjustMethod, forceDataFrame=True)
     
@@ -492,7 +497,7 @@ def workflowOnshore(placements, source, landcover, gwa, hubHeight=None, powerCur
     kwgs["convBase"]=0.1
     kwgs["lowBase"]=0.0
     kwgs["lowSharp"]=5
-    kwgs["adjustMethod"]="lra"
+    kwgs["adjustMethod"]="lra-bilinear"
     kwgs["roughness"]=None
     kwgs["densityCorrection"]=densityCorrection
 
