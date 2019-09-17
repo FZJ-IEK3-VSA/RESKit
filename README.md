@@ -64,6 +64,7 @@ If you decide to use RES anywhere in a published work related to wind energy, pl
   volume = {182},
   year = {2019}
 }
+
 ```
 
 ## License
