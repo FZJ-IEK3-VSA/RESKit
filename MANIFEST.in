@@ -1,0 +1,2 @@
+recursive-include res *.py
+recursive-include res/test *
