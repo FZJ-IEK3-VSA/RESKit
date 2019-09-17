@@ -39,6 +39,15 @@ class PowerCurve(_P):
 
 
 def lowGenCorrection(capacityfactors, base=0, sharpness=5):
+    """Performs capacity factor correction to suppress the generation during low generation times
+
+
+    Uses the equation:
+    .. math::
+        \\mathrm{new_cap_fac} = mathrm{original_cap_fac} * ((1-base)*(1-exp(-sharpness*mathrm{original_cap_fac}))+base)
+    """
+
+
     if isinstance(capacityfactors, PowerCurve):
         _ws = capacityfactors.ws
         capacityfactors = capacityfactors.cf
@@ -119,6 +128,10 @@ TurbineLibrary['PowerCurve'] = [x.profile for x in tmp]
 synthTurbData = pd.read_csv(join(dirname(__file__),"..","..","data","synthetic_turbine_params.csv"), header=1)
 
 def SyntheticPowerCurve( specificCapacity=None, capacity=None, rotordiam=None, cutout=25 ):
+    """The synthetic power curve generator creates a wind turbine power curve 
+    based off observed relationships between turbine specific power and known
+    power curves
+    """
     if cutout is None: cutout=25
     if specificCapacity is None:
         specificCapacity = capacity*1000/(np.pi*rotordiam**2/4)
@@ -141,4 +154,5 @@ def SyntheticPowerCurve( specificCapacity=None, capacity=None, rotordiam=None, c
 
 
 def specificPower(capacity, rotordiam, **k):
+    """Computes specific power from capacity and rotor diameter"""
     return capacity*1000/rotordiam**2/np.pi*4

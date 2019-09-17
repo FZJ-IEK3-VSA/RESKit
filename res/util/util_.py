@@ -324,6 +324,23 @@ def parseRESGenerationFile(f, capacity, extrapolateOverCapacity=False, keepLeapD
 
 
 def rotateFromLatLon( lons, lats, lonSouthPole=18, latSouthPole=-39.25 ):
+    """This function applies a spherical rotation to a set of given latitude and
+    longitude coordinates, yielding coordinates in the rotated system.
+
+    Parameters
+    ----------
+    lons : list, numpy.ndarray
+        A one-dimensional list of longitude coordinates
+
+    lats : list, numpy.ndarray
+        A one-dimensional list of latitude coordinates
+
+    lonSouthPole : float
+        The longitude of the rotated system's south pole
+
+    latSouthPole : float
+        The latitude of the rotated system's south pole
+    """
     lons = np.radians(lons)
     lats = np.radians(lats)
 
@@ -345,6 +362,24 @@ def rotateFromLatLon( lons, lats, lonSouthPole=18, latSouthPole=-39.25 ):
 
 
 def rotateToLatLon( rlons, rlats, lonSouthPole=18, latSouthPole=-39.25 ):
+    """This function un-does a spherical rotation to a set of given latitude and
+    longitude coordinates (in the rotated), yielding coordinates in the regular 
+    longitude and latitude system.
+
+    Parameters
+    ----------
+    rlons : list, numpy.ndarray
+        A one-dimensional list of longitude coordinates in the rotated system
+
+    rlats : list, numpy.ndarray
+        A one-dimensional list of latitude coordinates in the rotated system
+
+    lonSouthPole : float
+        The longitude of the rotated system's south pole
+
+    latSouthPole : float
+        The latitude of the rotated system's south pole
+    """
     rlons = np.radians(rlons)
     rlats = np.radians(rlats)
 
@@ -364,61 +399,3 @@ def rotateToLatLon( rlons, rlats, lonSouthPole=18, latSouthPole=-39.25 ):
 
     return lonCoords, latCoords
     
-
-def scrape4COffshoreHTML(filename):
-    from bs4 import BeautifulSoup
-    import pandas as pd
-    import re
-
-    head = ""
-    for line in open(filename, encoding="utf-8"):
-        head += line
-    soup = BeautifulSoup(head, 'html.parser')
-    rows = soup.find_all(class_="ProjectRow") + soup.find_all(class_="AltProjectRow")
-
-    # categories = []
-    variables = []
-    values = []
-
-    for row in rows:
-        # cat = row.find(class_="uccol1Head")
-        # if not cat is None:
-        #     lastCat = cat.getText().strip()
-            
-        # categories.append(lastCat)
-        
-        var = row.find(class_="uccol2").getText().strip()
-        variables.append(var)
-        
-        val = row.find(class_="uccol3").find("span").getText().strip()
-        values.append(val)
-
-    data = pd.Series(values, index=variables)
-
-    numRE = re.compile("-?[0-9]+\.?[0-9]+")
-    noteRE = re.compile("Note:")
-
-    try:
-        data["lat"] = float(numRE.search(data["Centre latitude"]).group())
-        data["lon"] = float(numRE.search(data["Centre longitude"]).group())
-    except:
-        data["lat"] = np.nan
-        data["lon"] = np.nan
-
-    if noteRE.search(data["Centre latitude"]):
-        data["accurate"] = False
-    else:
-        data["accurate"] = True
-
-    def getAvg(s):
-        m = numRE.findall(s)
-        if len(m)==0: 
-            return np.nan
-        else:
-            return sum([float(v) for v in m])/len(m)
-    
-    data["capAVG"] = getAvg(data["Turbine capacity"])
-    data["rotAVG"] = getAvg(data["Rotor diameter"])
-    data["hubAVG"] = getAvg(data["Hub height"])
-
-    return data

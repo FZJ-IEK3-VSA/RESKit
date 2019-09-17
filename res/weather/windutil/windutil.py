@@ -3,7 +3,7 @@ from ..NCSource import *
 ################################################################################
 ## Pressure adjustment to wind speed
 def airDensity( temperature=20, pressure=101325, relativeHumidity=0, dewPointTemperature=None ):
-    """Follows the apprach of "Revised formula for the density of moist air (CIPM-2007)" by A Picard, R S Davis, M Glaser and K Fujii"""
+    """Computes air density, following the apprach of "Revised formula for the density of moist air (CIPM-2007)" by A Picard, R S Davis, M Glaser and K Fujii"""
 
     if relativeHumidity is None and dewPointTemperature is None:
         relativeHumidity = 0
@@ -56,13 +56,17 @@ def airDensity( temperature=20, pressure=101325, relativeHumidity=0, dewPointTem
 
 def densityAdjustment(windspeed, pressure, temperature, height=0):
     """
+    Applies windspeed correction based off calculated aid density
+
+    Notes:
+    ------
     * Density calculation from ideal gas
     * Projection using barometric equation
     * Density correction from assuming equal energy in the wind 
      - Suggested by IEC IEC61400-12
 
     Parameters:
-    ===========
+    -----------
     windspeed : The wind speeds to adjust
 
     pressure : The pressure at the surface, in Pa
@@ -855,7 +859,14 @@ cciCodeToRoughess [190] = 1.2 # Urban areas
 
 def roughnessFromLandCover(num, lctype='clc'):
     """
+    Convenience function to ease access to roughness calculating functions
+
+    Note:
+    -----
     landCover can be 'clc', 'clc-code', globCover', 'modis', or 'cci'
+
+
+    **THIS FUNCTION SHOULD PROBABLY BE DELETED AND ALL REFERENCES TO IT UPDATED**
     """
     if lctype=='clc': 
         # fix no data values

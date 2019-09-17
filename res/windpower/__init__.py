@@ -4,7 +4,7 @@ from res.weather.windutil import *
 from res.weather import *
 
 from ._util import windutil, PowerCurve, TurbineLibrary, SyntheticPowerCurve, specificPower, lowGenCorrection
-from ._powerCurveConvoluter import convolutePowerCurveByGuassian, TerrainComplexityConvoluter
+from ._powerCurveConvoluter import convolutePowerCurveByGuassian
 from ._costModel import onshoreTurbineCost, offshoreTurbineCost
 from ._simulator import simulateTurbine, expectatedCapacityFactorFromWeibull, expectatedCapacityFactorFromDistribution
 from ._best_turbine import determineBestTurbine, baselineOnshoreTurbine, suggestOnshoreTurbine

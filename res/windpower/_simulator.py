@@ -1,6 +1,8 @@
 from ._util import *
 
 def expectatedCapacityFactorFromWeibull( powerCurve, meanWindspeed=5, weibullShape=2 ):
+    """Computes the expected capacity factor of a wind turbine based on an assumed Weibull distribution of observed wind speeds
+    """
     from scipy.special import gamma
     from scipy.stats import exponweib
     
@@ -28,6 +30,8 @@ def expectatedCapacityFactorFromWeibull( powerCurve, meanWindspeed=5, weibullSha
     return totalGen 
 
 def expectatedCapacityFactorFromDistribution( powerCurve, windspeedValues, windspeedCounts):
+    """Computes the expected capacity factor of a wind turbine based on an explicitly-provided wind speed distribution
+    """
     windspeedValues = np.array(windspeedValues)
     windspeedCounts = np.array(windspeedCounts)
     

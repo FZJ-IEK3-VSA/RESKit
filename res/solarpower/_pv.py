@@ -11,6 +11,12 @@ from scipy.interpolate import RectBivariateSpline
 from scipy.special import lambertw
 
 class _SolarLibrary:
+    """Provides access to module and inverter parameters from the CEC and Sandia databases.
+
+    **This simply exposes the associated functions from PVLib, and is only here for convenience**
+    
+    TODO: Add citation!
+    """
     def __init__(s):
         s._cecmods = None
         s._sandiamods = None
@@ -33,7 +39,10 @@ class _SolarLibrary:
 SolarLibrary = _SolarLibrary()
 
 def my_sapm_celltemp(poa_global, wind_speed, temp_air, model='open_rack_cell_glassback'):
-    """ Cell temp function updated from PVLIB version! """
+    """ Cell temp function slightly adapted from the PVLib version 
+
+    TODO: Add citation!
+    """
     temp_models = {'open_rack_cell_glassback': [-3.47, -.0594, 3],
                    'roof_mount_cell_glassback': [-2.98, -.0471, 1],
                    'open_rack_cell_polymerback': [-3.56, -.0750, 3],
@@ -62,6 +71,10 @@ def my_sapm_celltemp(poa_global, wind_speed, temp_air, model='open_rack_cell_gla
     return temp_cell
 
 def spencerSolPos(times, lat, lon):
+    """Compute solar position from the method proposed by Spencer
+
+    TODO: Add citation!
+    """
     lat_r = lat * np.pi/180
     
     times += pd.Timedelta(hours=lon/180*12 )
@@ -88,7 +101,12 @@ def spencerSolPos(times, lat, lon):
     return dict(apparent_zenith=zenith, apparent_elevation=90-zenith, azimuth=azimuth)
 
 def myDisc(ghi, zenith, I0, am, pressure):
-    """Adapted from PVLIB to better fit my use-case"""
+    """Diffuse irradiance estimation using the DISC model.
+
+    Slightly Adapted from PVLIB to better fit my use-case
+
+    TODO: Add citation to PVLib and DISC!
+    """
     # this is the I0 calculation from the reference
     I0h = I0 * np.cos(np.radians(zenith))
 
@@ -129,7 +147,12 @@ def myDisc(ghi, zenith, I0, am, pressure):
 
 dirintCoeffs = pvlib.irradiance._get_dirint_coeffs()
 def myDirint(ghi, zenith, pressure, use_delta_kt_prime, temp_dew, amRel, I0):
-    """Adapted from PVLIB to better fit my use-case"""
+    """Diffuse irradiance estimation using the Dirint model.
+
+    Slightly Adapted from PVLIB to better fit my use-case
+
+    TODO: Add citation to PVLib and Dirint!
+    """
     disc_out = myDisc(ghi=ghi, zenith=zenith, I0=I0, am=amRel, pressure=pressure)
 
     dni = disc_out['dni']
@@ -214,6 +237,7 @@ def myDirint(ghi, zenith, pressure, use_delta_kt_prime, temp_dew, amRel, I0):
     return dni
 
 def ensureSeries(var, locs):
+    """*Internal function to ensure a given object is a pandas series"""
     if isinstance(var, pd.Series): pass
     elif isinstance(var, float) or isinstance(var, int):
         var = pd.Series([var,]*locs.count, index=locs)
@@ -225,6 +249,11 @@ def ensureSeries(var, locs):
     return var
 
 def frankCorrectionFactors(ghi, dni_extra, times, solarElevation):
+    """Applies the proposed transmissivity-based irradiance corrections to COSMO
+    data based on Frank et al.
+
+    TODO: Add citation to Frank!
+    """
     transmissivity = ghi/dni_extra
     sigmoid = 1/(1+np.exp( -(transmissivity-0.5)/0.03 ))
 
@@ -270,6 +299,13 @@ def frankCorrectionFactors(ghi, dni_extra, times, solarElevation):
     return totalCorrectionFactor
 
 def locToTilt(locs, convention="latitude*0.76", **k):
+    """Simple system tilt estimators based off latitude and longitude coordinates
+
+    TODO: Add citation to Pfenninger for 'ninja' method
+    
+    **The role of this function probably needs to be readdressed since it tries to
+        do a lot of things currently**
+    """
     locs = gk.LocationSet(locs)
 
     if convention=="ninja": 
@@ -567,7 +603,13 @@ def _presim(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, til
 def my_i_from_v(resistance_shunt, resistance_series, nNsVth, voltage,
                 saturation_current, photocurrent):
     '''
-    Adapted from PVLIB to better fit my use case
+    Internal function to estimate module output current at a given voltage. 
+
+    * Slightly adapted from PVLIB to better fit my use case
+
+    TODO: Add citation to PVLib
+
+    **Should be hidden**
     '''
 
     # This transforms Gsh=1/Rsh, including ideal Rsh=np.inf into Gsh=0., which
@@ -597,7 +639,11 @@ def my_i_from_v(resistance_shunt, resistance_series, nNsVth, voltage,
 
 def my_golden_sect_DataFrame(params, VL, VH, func):
     '''
-    adapted from pvlib to better fit my needs
+    Slightly adapted from pvlib to better fit my needs
+
+    TODO: Add citation to PVLib
+
+    **Should be hidden**
     '''
     df = params
 
@@ -648,7 +694,11 @@ def my_golden_sect_DataFrame(params, VL, VH, func):
 
 def my_pwr_optfcn(df, loc):
     '''
-    UPDATED BY ME TO MAYBE BE A LITTLE FASTER
+    Slightly adapted from pvlib to better fit my needs
+
+    TODO: Add citation to PVLib
+
+    **Should be hidden**
     '''
     I = np.zeros_like(df['r_sh'])
 
@@ -659,8 +709,12 @@ def my_pwr_optfcn(df, loc):
 
 def mysinglediode(photocurrent, saturation_current, resistance_series,
                 resistance_shunt, nNsVth, ivcurve_pnts=None):
-    r'''
-    Adapted from PVLIB to better fit my use case
+    '''
+    Slightly adapted from pvlib to better fit my needs
+
+    TODO: Add citation to PVLib
+
+    **Should be hidden**
     '''
 
     # Compute open circuit voltage
@@ -854,7 +908,6 @@ def simulatePVModule(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth
 
     For module options, see: res.solarpower.ModuleLibrary
     For inverter options, see: res.solarpower.InverterLibrary
-
 
     interpolation options are:
         - near
