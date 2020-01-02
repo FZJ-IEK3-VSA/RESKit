@@ -5,9 +5,9 @@ from os.path import join
 import geokit as gk
 import matplotlib.pyplot as plt
 
-from res.windpower import *
-from res.weather import MerraSource, computeContextMean
-from res.util import ResError, Location
+from reskit.windpower import *
+from reskit.weather import MerraSource, computeContextMean
+from reskit.util import ResError, Location
 
 ## make some constants
 windspeed = np.linspace(0,35,351)

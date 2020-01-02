@@ -1,8 +1,8 @@
 import numpy as np
 import pandas as pd
 from collections import namedtuple, OrderedDict
-from res.util.util_ import *
-from res.weather import NCSource
+from reskit.util.util_ import *
+from reskit.weather import NCSource
 import pvlib
 from types import FunctionType
 from datetime import datetime as dt

@@ -1,4 +1,4 @@
-from res.windpower import determineBestTurbine
+from reskit.windpower import determineBestTurbine
 import numpy as np
 from multiprocessing import Pool
 from datetime import datetime as dt

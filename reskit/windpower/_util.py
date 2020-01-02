@@ -1,5 +1,5 @@
-from res.util.util_ import *
-from res.weather import windutil, NCSource
+from reskit.util.util_ import *
+from reskit.weather import windutil, NCSource
 
 ##################################################
 ## Make a turbine model library

@@ -1,8 +1,8 @@
 from ._util import *
 from ._powerCurveConvoluter import *
 from ._simulator import *
-from res.weather import MerraSource, CosmoSource
-from res.weather.windutil import *
+from reskit.weather import MerraSource, CosmoSource
+from reskit.weather.windutil import *
 
 def _batch_simulator(source, landcover, gwa, adjustMethod, roughness, loss, convScale, convBase, lowBase, lowSharp, lctype, 
                      verbose, extract, powerCurves, pcKey, gid, globalStart, densityCorrection, placements, hubHeight, 
@@ -473,7 +473,7 @@ def workflowOnshore(placements, source, landcover, gwa, hubHeight=None, powerCur
             * Options are:
               "raw" - returns the timeseries production for each location
               "capacityFactor" - returns only the resulting capacity factor for each location
-              "averageProduction" - returns the average time series of all locations
+              "totalProduction" - returns the total time series of all locations
               "batch" - returns nothing, but the full production data is written for each batch
 
         jobs : int ; optional

@@ -1,7 +1,7 @@
-from res.util.util_ import *
+from reskit.util.util_ import *
 from ._pv import *
-from res.weather import MerraSource, CosmoSource
-from res.weather.windutil import *
+from reskit.weather import MerraSource, CosmoSource
+from reskit.weather.windutil import *
 import warnings
 
 def _batch_simulator(cosmoSource, source, loss, verbose, module, globalStart, extract, 

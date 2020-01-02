@@ -1,7 +1,7 @@
-# from res.util import *
-from res.weather.windutil import *
-# from res.economic import *
-from res.weather import *
+# from reskit.util import *
+from reskit.weather.windutil import *
+# from reskit.economic import *
+from reskit.weather import *
 
 from ._util import windutil, PowerCurve, TurbineLibrary, SyntheticPowerCurve, specificPower, lowGenCorrection
 from ._powerCurveConvoluter import convolutePowerCurveByGuassian

@@ -1,6 +1,6 @@
-from res.workflow import WindOnshoreWorkflow
+from reskit.workflow import WindOnshoreWorkflow
 
-from res.windpower import *
+from reskit.windpower import *
 import netCDF4 as nc
 import geokit as gk
 import numpy as np

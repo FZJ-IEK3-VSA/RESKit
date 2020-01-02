@@ -3,9 +3,9 @@ import numpy as np
 from os.path import join, dirname
 import geokit as gk
 
-from res.weather.windutil import *
-from res.weather import MerraSource
-from res.util import ResError, Location
+from reskit.weather.windutil import *
+from reskit.weather import MerraSource
+from reskit.util import ResError, Location
 
 ## setup some common inputs
 loc = Location(lat=50.105, lon=6.005)

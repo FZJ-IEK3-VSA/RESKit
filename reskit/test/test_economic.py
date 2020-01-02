@@ -1,4 +1,4 @@
-from res.economic import *
+from reskit.economic import *
 import numpy as np
 
 def test_lcoeSimple():

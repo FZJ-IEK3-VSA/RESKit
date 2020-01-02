@@ -4,8 +4,8 @@ import pandas as pd
 from os.path import join
 import geokit as gk
 
-from res.weather import MerraSource, computeContextMean
-from res.util import ResError, Location, Bounds
+from reskit.weather import MerraSource, computeContextMean
+from reskit.util import ResError, Location, Bounds
 
 ## Make testing globals
 raw = nc.Dataset(join("data","merra-like.nc4"))

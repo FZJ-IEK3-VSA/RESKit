@@ -1,4 +1,4 @@
-from res.util.util_ import *
+from reskit.util.util_ import *
 
 def lcoeSimple(capex, meanProduction, opexPerCapex=0.02, lifetime=20, discountRate=0.08):
     """Compute the LCOE of a producer using the simple method

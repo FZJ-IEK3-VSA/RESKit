@@ -4,7 +4,7 @@ from glob import glob
 from scipy.interpolate import RectBivariateSpline, interp2d, bisplrep, bisplev, interp1d
 from pickle import load, dump
 
-from res.util.util_ import *
+from reskit.util.util_ import *
 
 # make a data handler
 Index = namedtuple("Index", "yi xi")

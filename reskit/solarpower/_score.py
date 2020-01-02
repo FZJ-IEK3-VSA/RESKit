@@ -1,4 +1,4 @@
-from res.util.util_ import *
+from reskit.util.util_ import *
 
 # make a calculator function
 def scoreOpenfieldPVLocation(ghi, roadDist, powerDist, settlementDist,

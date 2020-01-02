@@ -1,6 +1,6 @@
-from res import util
-from res import weather
-from res import economic
+from reskit import util
+from reskit import weather
+from reskit import economic
 
 # Add useful paths for testing and stuff
 from collections import OrderedDict as _OrderedDict

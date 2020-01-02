@@ -135,7 +135,7 @@ def simulateTurbine( windspeed, powerCurve=None, capacity=None, rotordiam=None, 
         if capacity is None or rotordiam is None:
             raise ResError("capacity and rotordiam must be given when generating a synthetic power curve")
         cutoutWindSpeed = kwargs.pop("cutout", None)
-        powerCurve = SyntheticPowerCurve(capacity, rotordiam, cutoutWindSpeed)
+        powerCurve = SyntheticPowerCurve(capacity=capacity, rotordiam=rotordiam, cutout=cutoutWindSpeed)
     elif isinstance(powerCurve,str): # Load a turbine from the TurbineLibrary
         if capacity is None: capacity = TurbineLibrary.ix[powerCurve].Capacity
         powerCurve = TurbineLibrary.ix[powerCurve].PowerCurve
