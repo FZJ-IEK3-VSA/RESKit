@@ -8,6 +8,7 @@ RESKit aids with the broad-scale simulation of renewable energy systems, primari
 
 **TODO**:
 
+- Add more accreditation
 - Implement Testing
 - Fill out docstrings
 - Simplify internal functionality
