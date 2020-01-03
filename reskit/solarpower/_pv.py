@@ -17,24 +17,24 @@ class _SolarLibrary:
     
     TODO: Add citation!
     """
-    def __init__(s):
-        s._cecmods = None
-        s._sandiamods = None
-        s._cecinverters = None
-        s._sandiainverters = None
+    def __init__(self):
+        self._cecmods = None
+        self._sandiamods = None
+        self._cecinverters = None
+        self._sandiainverters = None
 
-    def modules(s, group='cec'): 
+    def modules(self, group='cec'): 
         name = "_"+group.lower()+"mods"
-        if getattr(s, name) is None:
-            #setattr(s, name, pvlib.pvsystem.retrieve_sam(group+"mod"))
-            setattr(s, name, pd.read_csv(join(DATADIR,"modules","sam-library-cec-modules-2017-6-5.csv"), skiprows=[1,2], index_col=0))
-        return getattr(s, name)
+        if getattr(self, name) is None:
+            # setattr(self, name, pvlib.pvsystem.retrieve_sam(group+"mod"))
+            setattr(self, name, pd.read_csv(join(DATADIR,"modules","sam-library-cec-modules-2017-6-5.csv"), skiprows=[1,2], index_col=0))
+        return getattr(self, name)
 
-    def inverters(s, group='sandia'): 
+    def inverters(self, group='sandia'): 
         name = "_"+group.lower()+"inverters"
-        if getattr(s, name) is None:
-            setattr(s, name, pvlib.pvsystem.retrieve_sam(group+"inverter").T)
-        return getattr(s, name)
+        if getattr(self, name) is None:
+            setattr(self, name, pvlib.pvsystem.retrieve_sam(group+"inverter").T)
+        return getattr(self, name)
 
 SolarLibrary = _SolarLibrary()
 
@@ -401,7 +401,7 @@ def _presim(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, til
         pressure = source["pressure"]
         air_temp = source["air_temp"]
 
-        if "dew_temp" in source.data: dew_temp = source["dew_temp"]
+        if "dew_temp" in source: dew_temp = source["dew_temp"]
         else: dew_temp = None
         if "albedo" in source:  albedo = source["albedo"]
         else:  albedo = 0.2
