@@ -1,7 +1,7 @@
 from ._util import *
 from ._powerCurveConvoluter import *
 from ._simulator import *
-from reskit.weather import MerraSource, CosmoSource
+from reskit.weather.sources import MerraSource, CosmoSource
 from reskit.weather.windutil import *
 
 def _batch_simulator(source, landcover, gwa, adjustMethod, roughness, loss, convScale, convBase, lowBase, lowSharp, lctype, 

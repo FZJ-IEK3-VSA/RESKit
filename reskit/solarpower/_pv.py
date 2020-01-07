@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from collections import namedtuple, OrderedDict
 from reskit.util.util_ import *
-from reskit.weather import NCSource
+from reskit.weather.sources import NCSource
 import pvlib
 from types import FunctionType
 from datetime import datetime as dt

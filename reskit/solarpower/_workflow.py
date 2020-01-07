@@ -1,6 +1,6 @@
 from reskit.util.util_ import *
 from ._pv import *
-from reskit.weather import MerraSource, CosmoSource
+from reskit.weather.sources import MerraSource, CosmoSource
 from reskit.weather.windutil import *
 import warnings
 
