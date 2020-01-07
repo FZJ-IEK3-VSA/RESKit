@@ -1,2 +1,8 @@
-recursive-include res *.py
-recursive-include res/test *
+recursive-include reskit *.py
+recursive-include reskit/util *
+recursive-include reskit/data *
+recursive-include reskit/weather *
+recursive-include reskit/economic *
+recursive-include reskit/windpower *
+recursive-include reskit/solarpower *
+recursive-include reskit/test *

@@ -1,10 +1,10 @@
-from distutils.core import setup
+from setuptools import setup, find_packages
 
 setup(
     name='reskit',
     version='0.1.1',
     author='David Severin Ryberg, Dilara Gulcin Caglayan, Sabrina Schmitt, Roman Kraemer',
-    url='http://www.fz-juelich.de/iek/iek-3/EN/Home/home_node.html',
+    url='https: // github.com/FZJ-IEK3-VSA/reskit',
     packages=find_packages(),
     include_package_data=True,
     install_requires=[
