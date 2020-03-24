@@ -380,6 +380,7 @@ def _presim(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, til
             ghi *= scaling
         dhi = source.get("dhi", **k) if "dhi" in source.data else None
         dni = source.get("dni", **k) if "dni" in source.data else None
+        dni_flat = source.get("dni_flat", **k) if "dni_flat" in source.data else None
 
         windspeed = source.get("windspeed", **k)
         pressure = source.get("pressure", **k)
@@ -396,6 +397,7 @@ def _presim(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, til
         ghi = source["ghi"]
         dhi = source["dhi"] if "dhi" in source else None
         dni = source["dni"] if "dni" in source else None
+        dni_flat = source["dni_flat"] if "dni_flat" in source else None
 
         windspeed = source["windspeed"]
         pressure = source["pressure"]
@@ -537,6 +539,7 @@ def _presim(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, til
     
     # filter GHI, pressure, windspeed, and temperature
     ghi = ghi[goodTimes].values
+    if not dni_flat is None: dni_flat = dni_flat[goodTimes].values
     if not dni is None: dni = dni[goodTimes].values
     if not dhi is None: dhi = dhi[goodTimes].values
     windspeed= windspeed[goodTimes].values
@@ -559,15 +562,18 @@ def _presim(locs, source, elev=300, module="WINAICO WSx-240P6", azimuth=180, til
     amRel[s] = pvlib.atmosphere.relativeairmass(solpos["apparent_zenith"][s], model=airmassModel)
 
     # Compute DHI or DNI
-    if dni is None:
+    if dni is None and dni_flat is None:
         dni = myDirint(ghi=ghi, zenith=solpos["apparent_zenith"], pressure=pressure, 
                        use_delta_kt_prime=True, amRel=amRel, I0=dni_extra,
                        temp_dew=dew_temp)
-    # elif dni is None and not dhi is None:
-    #     dni = (ghi - dhi)/np.sin( np.radians(solpos["apparent_elevation"]))
+    elif dni is None and dni_flat is not None:
+        dni = dni_flat / np.sin( np.radians(solpos['apparent_elevation'] ))
 
-    if dhi is None:
+    if dhi is None and dni_flat is None:
         dhi = ghi - dni*np.sin( np.radians(solpos["apparent_elevation"]))
+        dhi[dhi<0] = 0
+    elif dhi is None and dni_flat is not None:
+        dhi = ghi - dni_flat
         dhi[dhi<0] = 0
 
     return dict(singleAxis=singleAxis,

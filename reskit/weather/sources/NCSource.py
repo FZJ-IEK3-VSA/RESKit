@@ -19,7 +19,7 @@ class NCSource(object):
         else:
             raise ResError("Could not understand data source input. Must be a path or a list of paths")
 
-    def __init__(s, source, bounds=None, indexPad=0, timeName="time", latName="lat", lonName="lon", tz=None, _maxLonDiff=0.6, _maxLatDiff=0.6, verbose=True, forwardFill=True):
+    def __init__(s, source, bounds=None, indexPad=0, timeName="time", latName="lat", lonName="lon", tz=None, _maxLonDiff=0.6, _maxLatDiff=0.6, verbose=True, forwardFill=True, flip_lat=False, flip_lon=False):
         """Initialize a generic netCDF4 file source
 
         Note
@@ -200,13 +200,23 @@ class NCSource(object):
                 s._latStop = s._allLats.size
 
         # Read working lats/lon
+        s._flip_lat = flip_lat
+        s._flip_lon = flip_lon
+
         if s.dependent_coordinates:
             s.lats = s._allLats[s._latStart:s._latStop, s._lonStart:s._lonStop]
             s.lons = s._allLons[s._latStart:s._latStop, s._lonStart:s._lonStop]
+        
+            if flip_lat: s.lats = s.lats[::-1,:]
+            if flip_lon: s.lons = s.lons[:,::-1]
         else:
             s.lats = s._allLats[s._latStart:s._latStop]
             s.lons = s._allLons[s._lonStart:s._lonStop]
         
+            if flip_lat: s.lats = s.lats[::-1]
+            if flip_lon: s.lons = s.lons[::-1]
+
+
         s.extent = gk.Extent(s.lons.min(), s.lats.min(), s.lons.max(), s.lats.max(), srs=gk.srs.EPSG4326)
 
         # compute time index
@@ -214,7 +224,7 @@ class NCSource(object):
 
         ds = nc.Dataset( s.variables["path"][timeName] , keepweakref=True)
         timeVar = ds[timeName]
-        timeindex = nc.num2date(timeVar[:], timeVar.units)
+        timeindex = nc.num2date(timeVar[:], timeVar.units, only_use_cftime_datetimes=False, only_use_python_datetimes=True)
         ds.close()
         
         s._timeindex_raw = pd.DatetimeIndex(timeindex)
@@ -276,7 +286,7 @@ class NCSource(object):
                   processor = lambda x: x+273.15
 
         """
-        
+            
         # read the data
         ds = nc.Dataset(s.variables["path"][variable], keepweakref=True)
         var = ds[variable]
@@ -302,7 +312,15 @@ class NCSource(object):
 
         # save the data
         if name is None: name = variable
-        s.data[name] = tmp
+
+        if not s._flip_lat and not s._flip_lon:
+            s.data[name] = tmp
+        elif s._flip_lat and not s._flip_lon:
+            s.data[name] = tmp[:, ::-1, :]
+        elif not s._flip_lat and s._flip_lon:
+            s.data[name] = tmp[:, :, ::-1]
+        elif s._flip_lat and s._flip_lon:
+            s.data[name] = tmp[:, ::-1, ::-1]
 
         # Clean up
         ds.close()
@@ -329,6 +347,69 @@ class NCSource(object):
 
         # Add to data
         s.data[name] = data
+    
+    @staticmethod
+    def _loc2IndexRect( lat_step, lon_step ):
+        def func(s, loc, outsideOkay=False, asInt=True ):
+            """Returns the closest X and Y indexes corresponding to a given location 
+            or set of locations
+    
+            Parameters
+            ----------
+            loc : Anything acceptable by geokit.LocationSet
+                The location(s) to search for
+                * A single tuple with (lon, lat) is acceptable, or a list of such tuples
+                * A single point geometry (as long as it has an SRS), or a list
+                  of geometries is okay
+                * geokit,Location, or geokit.LocationSet are best!
+    
+            outsideOkay : bool, optional
+                Determines if points which are outside the source's lat/lon grid
+                are allowed
+                * If True, points outside this space will return as None
+                * If False, an error is raised 
+    
+            Returns
+            -------
+            If a single location is given: tuple 
+                * Format: (yIndex, xIndex)
+                * y index can be accessed with '.yi'
+                * x index can be accessed with '.xi'
+    
+            If multiple locations are given: list
+                * Format: [ (yIndex1, xIndex1), (yIndex2, xIndex2), ...]
+                * Order matches the given order of locations
+    
+            """
+            # Ensure loc is a list
+            locations = LocationSet(loc)
+    
+            # get closest indices
+            latI = (locations.lats - s.lats[0])/lat_step
+            lonI = (locations.lons - s.lons[0])/lon_step
+
+            # Check for out of bounds
+            s = (latI < 0) | (latI >= s._latN) | (lonI < 0) | (lonI >= s._lonN)
+            if s.any():
+                if not outsideOkay:
+                    print("The following locations are out of bounds")
+                    print(locations[s])
+                    raise ResError("Locations are outside the boundaries")
+    
+            # As int?
+            if asInt:
+                latI = np.round(latI).astype(int)
+                lonI = np.round(lonI).astype(int)
+    
+            # Make output
+            if locations.count == 1:
+                if s[0] is True:
+                    return None
+                else:
+                    return Index(yi=latI[0], xi=lonI[0])
+            else:
+                return [None if ss else Index(yi=y, xi=x) for ss, y, x in zip(s, latI, lonI)]
+        return func
 
     def loc2Index(s, loc, outsideOkay=False, asInt=True):
         """Returns the closest X and Y indexes corresponding to a given location 
