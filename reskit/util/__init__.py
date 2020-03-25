@@ -7,3 +7,5 @@ from .util_ import (_test_data_, _data_, gk, Location, LocationSet, Extent, ResE
                     rotateFromLatLon,
                     rotateToLatLon,
                     )
+
+from .visibilityFromTopography import visibilityFromTopography 
