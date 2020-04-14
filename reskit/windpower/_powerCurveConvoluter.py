@@ -8,7 +8,7 @@ def convolutePowerCurveByGuassian(powerCurve, stdScaling=0.06, stdBase=0.1, minS
     """
     # Set performance
     if isinstance(powerCurve,str): 
-        powerCurve = np.array(TurbineLibrary.ix[powerCurve].PowerCurve)
+        powerCurve = np.array(TurbineLibrary.loc[powerCurve].PowerCurve)
     elif isinstance(powerCurve, list):
         powerCurve = np.array(powerCurve)
 

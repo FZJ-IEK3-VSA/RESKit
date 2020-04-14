@@ -51,7 +51,7 @@ def test_simulateTurbine():
 
     # Test choosing turbine by name
     p = simulateTurbine( windspeed, powerCurve="G80", loss=0.08)
-    perfG80 = np.array(TurbineLibrary.ix["G80"].PowerCurve)
+    perfG80 = np.array(TurbineLibrary.loc["G80"].PowerCurve)
     if abs(p.mean()-0.42599635)<1e-6: # Manually evaluated
         print("  Single simulation turbine identified by name: Success")
     else: raise RuntimeError("Single simulation turbine identified by name: Fail")
