@@ -1,3 +1,5 @@
+__version__ = "0.1.2"
+
 from reskit import util
 from reskit import weather
 from reskit import economic
