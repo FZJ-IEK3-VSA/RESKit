@@ -122,6 +122,7 @@ def _batch_simulator(source, landcover, gwa, adjustMethod, roughness, loss, conv
         if extract == "capacityFactor": tmp = capacityGeneration.mean(0)
         elif extract == "totalProduction": tmp = (capacityGeneration*capacity[s]).sum(1)
         elif extract == "raw": tmp = capacityGeneration*capacity[s]
+        elif extract == "wind speed": tmp = ws
         elif extract == "batchfile": tmp = capacityGeneration
         else:
             raise ResError("extract method '%s' not understood"%extract)
@@ -382,6 +383,9 @@ def workflowTemplate(placements, source, landcover, gwa, convScale, convBase, lo
     if extract == "capacityFactor": res = pd.concat(res)
     elif extract == "totalProduction": res = sum(res)
     elif extract == "raw": res = pd.concat(res, axis=1)
+    elif extract == "wind speed":
+        res = pd.concat(res)
+
     elif extract == "batchfile": 
         pass
     else:
