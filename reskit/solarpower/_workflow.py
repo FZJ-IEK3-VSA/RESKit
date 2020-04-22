@@ -71,6 +71,7 @@ def _batch_simulator(cosmoSource, source, loss, verbose, module, globalStart, ex
                                 trackingGCR=trackingGCR,
                                 trackingMaxAngle=trackingMaxAngle,
                                 frankCorrection=frankCorrection, 
+                                extract=extract,
                                 **k)
         
         warnings.simplefilter('default')
@@ -79,6 +80,7 @@ def _batch_simulator(cosmoSource, source, loss, verbose, module, globalStart, ex
         if extract   == "capacityFactor": tmp = (capfacgen).mean(0)
         elif extract == "totalProduction": tmp = (capfacgen*_capacity).sum(1)
         elif extract == "raw": tmp = capfacgen*_capacity
+        elif extract == "poa": tmp = capfacgen
         elif extract == "batchfile": tmp = capfacgen
         else:
             raise ResError("extract method '%s' not understood"%extract)
@@ -235,6 +237,7 @@ def PVWorkflowTemplate( placements, source, elev, ghiScaling, module, azimuth, t
     if extract == "capacityFactor": res = pd.concat(res)
     elif extract == "totalProduction": res = sum(res)
     elif extract == "raw": res = pd.concat(res, axis=1)
+    elif extract == "poa": res = pd.concat(res)
     elif extract == "batchfile": 
         pass
     else:
