@@ -11,6 +11,22 @@ Index = namedtuple("Index", "yi xi")
 class NCSource(object):
     """The NCSource object manages weather data from a generic set of netCDF4 
     file sources"""
+
+    @property
+    @staticmethod
+    def _p(p):
+        raise RuntimeError("Parameter '"+p+"' is not available for this weather source")
+
+    WIND_SPEED_HEIGHT_FOR_WIND_ENERGY = _p('WIND_SPEED_HEIGHT_FOR_WIND_ENERGY')
+    WIND_SPEED_HEIGHT_FOR_SOLAR_ENERGY = _p("WIND_SPEED_HEIGHT_FOR_SOLAR_ENERGY")
+    LONG_RUN_AVERAGE_WINDSPEED = _p("LONG_RUN_AVERAGE_WINDSPEED")
+    LONG_RUN_AVERAGE_WINDDIR = _p("LONG_RUN_AVERAGE_WINDDIR")
+    LONG_RUN_AVERAGE_GHI = _p("LONG_RUN_AVERAGE_GHI")
+    LONG_RUN_AVERAGE_DNI = _p("LONG_RUN_AVERAGE_DNI")
+    MAX_LON_DIFFERENCE = _p("MAX_LON_DIFFERENCE") 
+    MAX_LAT_DIFFERENCE = _p("MAX_LAT_DIFFERENCE") 
+
+
     def _loadDS(s, path):
         if isinstance(path, str):
             return nc.Dataset(path, keepweakref=True)
@@ -259,7 +275,7 @@ class NCSource(object):
             out = load(fo)
         return out
     
-    def load(s, variable, name=None, heightIdx=None, processor=None):
+    def load(s, variable, name=None, heightIdx=None, processor=None, overwrite=False):
         """Load a variable into the source's data table
 
         Parameters
@@ -286,6 +302,10 @@ class NCSource(object):
                   processor = lambda x: x+273.15
 
         """
+        if name is None:
+            name = variable
+        if not overwrite and name in s.data:
+            return
             
         # read the data
         ds = nc.Dataset(s.variables["path"][variable], keepweakref=True)
@@ -311,8 +331,6 @@ class NCSource(object):
             tmp = np.append( tmp, tmp[np.newaxis, -1, :, :], axis=0) 
 
         # save the data
-        if name is None: name = variable
-
         if not s._flip_lat and not s._flip_lon:
             s.data[name] = tmp
         elif s._flip_lat and not s._flip_lon:
@@ -324,7 +342,7 @@ class NCSource(object):
 
         # Clean up
         ds.close()
-
+        
     def addData(s, name, data):
         """Manually add a variable to the loaded data table
 
@@ -682,3 +700,40 @@ class NCSource(object):
         
             # return box
             return gk.geom.box( lowLon, lowLat, highLon, highLat, srs=gk.srs.EPSG4326 )
+
+
+    #### STANDARD LOADERS
+    @staticmethod
+    def default_standard_loader(varname):
+        def func(*args, **kwargs):
+            raise RuntimeError("The '"+ varname +"' standard loader is not implemented for this weather source")
+        return func
+
+    sload_wind_speed_for_wind_energy = default_standard_loader("wind_speed_for_wind_energy")
+    sload_wind_direction_for_wind_energy = default_standard_loader("wind_direction_for_wind_energy")
+    sload_surface_wind_speed = default_standard_loader("surface_wind_speed")
+    sload_surface_pressure = default_standard_loader("surface_pressure")
+    sload_surface_air_temperature = default_standard_loader("surface_air_temperature")
+    sload_surface_dew_temperature = default_standard_loader("surface_dew_temperature")
+    sload_direct_normal_irradiance = default_standard_loader("direct_normal_irradiance")
+    sload_direct_horizontal_irradiance = default_standard_loader("direct_horizontal_irradiance")
+    sload_global_horizontal_irradiance = default_standard_loader("global_horizontal_irradiance")
+
+    def sload(self, variable, *args, **kwargs):
+        """Load standard variables
+
+        Acceptable keys are:
+            - wind_speed_for_wind_energy
+            - wind_direction_for_wind_energy
+            - surface_wind_speed
+            - surface_pressure
+            - surface_air_temperature
+            - surface_dew_temperature
+            - direct_normal_irradiance
+            - direct_horizontal_irradiance
+            - global_horizontal_irradiance
+        """
+        if hasattr(self, "sload_"+variable):
+            return getattr("sload_"+variable, *args, **kwargs)
+        else:
+            raise RuntimeError(variable+" is not an acceptable key")

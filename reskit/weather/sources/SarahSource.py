@@ -116,3 +116,13 @@ class SarahSource(NCSource):
             
             # src.data[name][sel] = (minus_1+plus_1)/2
 
+    #### STANDARD LOADERS
+    def sload_direct_normal_irradiance(self):
+        self.load("DNI", name="dni")
+        sel = np.logical_or(self.data['dni'] < 0, np.isnan(self.data['dni']))
+        self.data['dni'][sel] = 0
+
+    def sload_global_horizontal_irradiance(self):
+        self.load("SIS", name="ghi")
+        sel = np.logical_or(self.data['ghi'] < 0, np.isnan(self.data['ghi']))
+        self.data['ghi'][sel] = 0

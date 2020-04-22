@@ -4,14 +4,25 @@ from ..NCSource import *
 
 class Era5Source(NCSource):
 
-    LONG_RUN_AVERAGE_WINDSPEED_100M = join(
-        dirname(__file__), "data", "ERA5_wind_speed_100m_mean.tiff")
-    LONG_RUN_AVERAGE_WINDDIR_100M = join(
-        dirname(__file__), "data", "ERA5_wind_direction_100m_mean.tiff")
-    LONG_RUN_AVERAGE_GHI = join(
-        dirname(__file__), "data", "ERA5_surface_solar_radiation_downwards_mean.tiff")
-    LONG_RUN_AVERAGE_DNI = join(
-        dirname(__file__), "data", "ERA5_total_sky_direct_solar_radiation_at_surface_mean.tiff")
+    WIND_SPEED_HEIGHT_FOR_WIND_ENERGY = 100
+    WIND_SPEED_HEIGHT_FOR_SOLAR_ENERGY = 10
+
+    LONG_RUN_AVERAGE_WINDSPEED = join( 
+        dirname(__file__), 
+        "data", 
+        "ERA5_wind_speed_100m_mean.tiff")
+    LONG_RUN_AVERAGE_WINDDIR = join( 
+        dirname(__file__), 
+        "data", 
+        "ERA5_wind_direction_100m_mean.tiff")
+    LONG_RUN_AVERAGE_GHI = join( 
+        dirname(__file__), 
+        "data", 
+        "ERA5_surface_solar_radiation_downwards_mean.tiff")
+    LONG_RUN_AVERAGE_DNI = join( 
+        dirname(__file__), 
+        "data", 
+        "ERA5_total_sky_direct_solar_radiation_at_surface_mean.tiff")
     
     MAX_LON_DIFFERENCE = 0.26
     MAX_LAT_DIFFERENCE = 0.26
@@ -160,3 +171,23 @@ class Era5Source(NCSource):
           * 'windspeed' from U50M and V50M
         """
         s.loadWindSpeed(height=100, winddir=True)
+
+    #### STANDARD LOADERS
+    def sload_wind_speed_for_wind_energy(self):
+        return self.load("ws100", "windspeed")
+    def sload_wind_direction_for_wind_energy(self):
+        return self.load("wd100", "winddir")
+    def sload_surface_wind_speed(self):
+        return self.load("ws10", "windspeed")
+    def sload_surface_pressure(self):
+        return self.load("sp", name='pressure')
+    def sload_surface_air_temperature(self):
+        return self.load("t2m", name="air_temp", processor=lambda x: x-273.15)
+    def sload_surface_dew_temperature(self):
+        return self.load("d2m", name="dew_temp", processor=lambda x: x-273.15)
+    # def sload_direct_normal_irradiance(self):
+    #     return None
+    def sload_direct_horizontal_irradiance(self):
+        return self.load("fdir", name="dni_flat")
+    def sload_global_horizontal_irradiance(self):
+        return self.load("ssrd", name="ghi")

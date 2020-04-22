@@ -5,15 +5,14 @@ from ..NCSource import *
 
 class MerraSource(NCSource):
 
-    GWA50_CONTEXT_MEAN_SOURCE = join(
-        dirname(__file__), "data", "gwa50_mean_over_merra.tif")
-    GWA100_CONTEXT_MEAN_SOURCE = join(
-        dirname(__file__), "data", "gwa100_mean_over_merra.tif")
-    LONG_RUN_AVERAGE_50M_SOURCE = join(
+    WIND_SPEED_HEIGHT_FOR_WIND_ENERGY = 50
+    WIND_SPEED_HEIGHT_FOR_SOLAR_ENERGY = 2
+
+    LONG_RUN_AVERAGE_WINDSPEED = join(
         dirname(__file__), "data", "merra_average_windspeed_50m-shifted.tif")
-    LONG_RUN_AVERAGE_GHI_SOURCE = join(
-        dirname(__file__), "data", "merra_average_SWGDN_1994-2015_globe.tif")
-    #LONG_RUN_AVERAGE_GHI_SOURCE = join(dirname(__file__), "data", "merra_average_SWGDN_1994-2017.tif")
+    LONG_RUN_AVERAGE_GHI = join(
+        dirname(__file__), "data", "Emerra_average_SWGDN_1994-2015_globe.tif")
+
 
     MAX_LON_DIFFERENCE = 0.5
     MAX_LAT_DIFFERENCE = 0.5
@@ -244,3 +243,46 @@ class MerraSource(NCSource):
         s.loadWindSpeed(height=50)
         del s.data["U50M"]
         del s.data["V50M"]
+
+    #### STANDARD LOADERS
+    def sload_wind_speed_for_wind_energy(self):
+        self.load("U50M")
+        self.load("V50M")
+        uData = self.data["U50M"]
+        vData = self.data["V50M"]
+        speed = np.sqrt(uData*uData+vData*vData)  # total speed
+        self.data["windspeed"] = speed
+
+    def sload_wind_direction_for_wind_energy(self):
+        self.load("U50M")
+        self.load("V50M")
+        uData = self.data["U50M"]
+        vData = self.data["V50M"]
+        direction = np.arctan2(vData, uData)*(180/np.pi)  # total direction
+        self.data["winddir"] = direction
+
+    def sload_surface_wind_speed(self):
+        self.load("U2M")
+        self.load("V2M")
+        uData = self.data["U2M"]
+        vData = self.data["V2M"]
+        speed = np.sqrt(uData*uData+vData*vData)  # total speed
+        self.data["windspeed"] = speed
+
+    def sload_surface_pressure(self):
+        return self.load("sp", name='pressure')
+
+    def sload_surface_air_temperature(self):
+        return self.load("T2M", name="air_temp", processor=lambda x: x-273.15)
+
+    def sload_surface_dew_temperature(self):
+        return self.load("T2MDEW", name="dew_temp", processor=lambda x: x-273.15)
+
+    # def sload_direct_normal_irradiance(self):
+    #     return None
+
+    # def sload_direct_horizontal_irradiance(self):
+    #     return self.load("fdir", name="dni_flat")
+
+    def sload_global_horizontal_irradiance(self):
+        return self.load("SWGDN", name="ghi")
