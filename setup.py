@@ -13,6 +13,7 @@ setup(
         "pandas",
         "scipy",
         "matplotlib",
-        "pvlib==0.5.1"
+        "pvlib==0.5.1",
+        "netCDF4>=1.5.3"
     ]
 )

@@ -1,0 +1,3 @@
+from .wind_workflow_generator import WindWorkflowGenerator
+
+from .workflows import onshore_wind_Ryberg2019_Europe
