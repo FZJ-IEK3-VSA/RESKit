@@ -67,7 +67,7 @@ def Turbine_Library():
     global _Turbine_Library
 
     if _Turbine_Library is None:
-        turbineFiles = glob(join(dirname(__file__), "turbines", "*.csv"))
+        turbineFiles = glob(join(dirname(__file__), "data", "turbines", "*.csv"))
 
         tmp = []
         for f in turbineFiles:
