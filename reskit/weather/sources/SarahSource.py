@@ -1,5 +1,6 @@
 from .NCSource import *
 
+
 class SarahSource(NCSource):
 
     MAX_LON_DIFFERENCE = 0.06
@@ -78,8 +79,8 @@ class SarahSource(NCSource):
         locations = LocationSet(loc)
 
         # get closest indices
-        latI = (locations.lats - s.lats[0])/0.05
-        lonI = (locations.lons - s.lons[0])/0.05
+        latI = (locations.lats - s.lats[0]) / 0.05
+        lonI = (locations.lons - s.lons[0]) / 0.05
 
         # Check for out of bounds
         s = (latI < 0) | (latI >= s._latN) | (lonI < 0) | (lonI >= s._lonN)
@@ -108,21 +109,21 @@ class SarahSource(NCSource):
         """
         for ds_name, name in [("SIS", "ghi"), ("DNI", "dni")]:
             s.load(ds_name, name=name)
-            
-            sel = np.logical_or(s.data[name]<0, np.isnan(s.data[name]) ) 
+
+            sel = np.logical_or(s.data[name] < 0, np.isnan(s.data[name]))
             s.data[name][sel] = fill
             # minus_1 = src.data[name][np.roll(sel, -1, axis=0)]
             # plus_1 = src.data[name][np.roll(sel,  1, axis=0)]
-            
+
             # src.data[name][sel] = (minus_1+plus_1)/2
 
-    #### STANDARD LOADERS
+    # STANDARD LOADERS
     def sload_direct_normal_irradiance(self):
-        self.load("DNI", name="dni")
-        sel = np.logical_or(self.data['dni'] < 0, np.isnan(self.data['dni']))
-        self.data['dni'][sel] = 0
+        self.load("DNI", name="direct_normal_irradiance")
+        sel = np.logical_or(self.data['direct_normal_irradiance'] < 0, np.isnan(self.data['direct_normal_irradiance']))
+        self.data['direct_normal_irradiance'][sel] = 0
 
     def sload_global_horizontal_irradiance(self):
-        self.load("SIS", name="ghi")
-        sel = np.logical_or(self.data['ghi'] < 0, np.isnan(self.data['ghi']))
-        self.data['ghi'][sel] = 0
+        self.load("SIS", name="global_horizontal_irradiance")
+        sel = np.logical_or(self.data['global_horizontal_irradiance'] < 0, np.isnan(self.data['global_horizontal_irradiance']))
+        self.data['global_horizontal_irradiance'][sel] = 0
