@@ -4,4 +4,4 @@ from .power_profile import alphaFromLevels, alphaFromLevels
 from .power_curve import PowerCurve, compute_specific_power
 from .turbine_library import Turbine_Library
 from .design_turbine import onshore_turbine_from_avg_wind_speed
-from .expecation_value import expectated_capacity_factor_from_distribution, expectated_capacity_factor_from_weibull
+from .expectation_value import expectated_capacity_factor_from_distribution, expectated_capacity_factor_from_weibull
