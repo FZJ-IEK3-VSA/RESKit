@@ -2,7 +2,7 @@ import geokit as gk
 import numpy as np
 import pandas as pd
 
-def visibilityFromTopography(lon, lat, elevation_raster, base_elevation=None, eye_level=2, max_degree = 0.1, degree_step = 0.003, theta_step=3, _interpolation='cubic',):
+def visibility_from_topography(lon, lat, elevation_raster, base_elevation=None, eye_level=2, max_degree = 0.1, degree_step = 0.003, theta_step=3, _interpolation='cubic',):
     """Determine visibility around a given point based on topography. Also 
     gives planar angle, planar elevation, and planar distance of multiple 
     sample points surroudning the specified latitude and longitude
