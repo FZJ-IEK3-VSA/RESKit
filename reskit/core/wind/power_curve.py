@@ -16,7 +16,7 @@ def synthetic_power_curve_data():
 
     if _synthetic_power_curve_data is None:
         _synthetic_power_curve_data = pd.read_csv(
-            join(dirname(__file__), "synthetic_turbine_params.csv"), header=1)
+            join(dirname(__file__), "data", "synthetic_turbine_params.csv"), header=1)
 
     return _synthetic_power_curve_data
 
@@ -138,3 +138,17 @@ class PowerCurve(namedtuple('PowerCurve', 'wind_speed capacity_factor')):
         ws = ws[::40]
         convolutedCF = convolutedCF[::40]
         return PowerCurve(ws, convolutedCF)
+
+    def apply_loss_factor(self, loss):
+        """Apply a loss factor onto the power curve
+
+        'loss' can be a single value, or a function which takes a 'capacity factor' array as input
+
+        Returns: PowerCurve
+        """
+        try:
+            cf = self.capacity_factor * loss
+        except:
+            cf = self.capacity_factor * loss(self.capacity_factor)
+
+        return PowerCurve(self.wind_speed, cf)
