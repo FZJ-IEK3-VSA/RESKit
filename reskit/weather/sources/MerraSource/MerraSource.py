@@ -16,7 +16,7 @@ class MerraSource(NCSource):
     LONG_RUN_AVERAGE_GHI = join(
         dirname(__file__),
         "data",
-        "Emerra_average_SWGDN_1994-2015_globe.tif")
+        "merra_average_SWGDN_1994-2015_globe.tif")
 
     MAX_LON_DIFFERENCE = 0.5
     MAX_LAT_DIFFERENCE = 0.5

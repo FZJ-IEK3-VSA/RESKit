@@ -112,9 +112,7 @@ class WindWorkflowGenerator(WorkflowGenerator):
         return self
 
     def simulate(self):
-        gen = pd.DataFrame(np.nan,
-                           index=self.time_index,
-                           columns=self.locs)
+        gen = np.zeros_like(self.sim_data['elevated_wind_speed'])
 
         for pckey, pc in self.powerCurveLibrary.items():
             sel = self.placements.powerCurve == pckey
@@ -122,11 +120,11 @@ class WindWorkflowGenerator(WorkflowGenerator):
 
             # Do simulation
             gen_ = rk.windpower.simulateTurbine(
-                self.sim_data['elevated_wind_speed'].values[:, sel],
+                self.sim_data['elevated_wind_speed'][:, sel],
                 powerCurve=pc,
                 loss=0.00)
 
-            gen.values[:, sel] = gen_.values
+            gen[:, sel] = gen_.values
 
         self.sim_data['capacity_factor'] = gen
 

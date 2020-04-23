@@ -27,7 +27,7 @@ class PowerCurve(_P):
         from io import BytesIO
 
         plt.figure(figsize=(7, 3))
-        plt.plot(s.ws, s.cf, color=(0, 91/255, 130/255), linewidth=3)
+        plt.plot(s.ws, s.cf, color=(0, 91 / 255, 130 / 255), linewidth=3)
         plt.tick_params(labelsize=12)
         plt.xlabel("wind speed [m/s]", fontsize=13)
         plt.ylabel("capacity output", fontsize=13)
@@ -39,6 +39,11 @@ class PowerCurve(_P):
         plt.close()
         f.seek(0)
         return f.read().decode('ascii')
+
+
+def lowGenLoss(capacityfactors, base=0, sharpness=5):
+    efficiency = (1 - base) * (1 - np.exp(-sharpness * capacityfactors)) + base  # dampens lower wind speeds
+    return 1 - efficiency
 
 
 def lowGenCorrection(capacityfactors, base=0, sharpness=5):
@@ -57,9 +62,8 @@ def lowGenCorrection(capacityfactors, base=0, sharpness=5):
     else:
         asPowerCurve = False
 
-    factors = (1-base)*(1-np.exp(-sharpness*capacityfactors)) + \
-        base  # dampens lower wind speeds
-    capacityfactors = factors*capacityfactors
+    factors = 1 - lowGenLoss(capacityfactors, base=base, sharpness=sharpness)
+    capacityfactors = factors * capacityfactors
 
     if asPowerCurve:
         return PowerCurve(_ws, capacityfactors)
@@ -99,7 +103,7 @@ def parse_turbine(path):
                             a = int(a)
                             b = int(b)
 
-                            for hh in range(a, b+1):
+                            for hh in range(a, b + 1):
                                 heights.append(hh)
                         except:
                             raise RuntimeError("Could not understand heights")
@@ -115,7 +119,7 @@ def parse_turbine(path):
         tmp = pd.read_csv(fin)
         tmp = np.array([(ws, output)
                         for i, ws, output in tmp.iloc[:, :2].itertuples()])
-        power = PowerCurve(tmp[:, 0], tmp[:, 1]/meta["Capacity"])
+        power = PowerCurve(tmp[:, 0], tmp[:, 1] / meta["Capacity"])
     return TurbineInfo(power, meta)
 
 
@@ -146,20 +150,20 @@ def SyntheticPowerCurve(specificCapacity=None, capacity=None, rotordiam=None, cu
     if cutout is None:
         cutout = 25
     if specificCapacity is None:
-        specificCapacity = capacity*1000/(np.pi*rotordiam**2/4)
+        specificCapacity = capacity * 1000 / (np.pi * rotordiam**2 / 4)
 
     specificCapacity = int(specificCapacity)
     # Create ws
     ws = [0, ]
     ws.extend(np.exp(synthTurbData.const +
-                     synthTurbData.scale*np.log(specificCapacity)))
+                     synthTurbData.scale * np.log(specificCapacity)))
     ws.extend(np.linspace(ws[-1], cutout, 20)[1:])
     ws = np.array(ws)
 
     # create capacity factor output
     cf = [0, ]
-    cf.extend(synthTurbData.perc_capacity/100)
-    cf.extend([1]*19)
+    cf.extend(synthTurbData.perc_capacity / 100)
+    cf.extend([1] * 19)
     cf = np.array(cf)
 
     # Done!
@@ -168,4 +172,4 @@ def SyntheticPowerCurve(specificCapacity=None, capacity=None, rotordiam=None, cu
 
 def specificPower(capacity, rotordiam, **k):
     """Computes specific power from capacity and rotor diameter"""
-    return capacity*1000/rotordiam**2/np.pi*4
+    return capacity * 1000 / rotordiam**2 / np.pi * 4
