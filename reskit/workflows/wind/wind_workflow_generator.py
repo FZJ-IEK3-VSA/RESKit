@@ -57,7 +57,7 @@ class WindWorkflowGenerator(WorkflowGenerator):
                     specific_power=float(sppow),
                     cutout=float(cutout))
             else:
-                self.powerCurveLibrary[pc] = rk.core.wind.TurbineLibrary.loc[pc].PowerCurve
+                self.powerCurveLibrary[pc] = rk.core.wind.TurbineLibrary().loc[pc].PowerCurve
 
     def set_roughness(self, roughness):
         self.placements['roughness'] = roughness
