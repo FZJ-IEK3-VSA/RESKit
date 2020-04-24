@@ -156,7 +156,6 @@ class NCSource(object):
             raise ResError("latitude and longitude shapes are not usable")
 
         # set lat and lon selections
-        print("INDEX PAD:", index_pad)
         if bounds is not None:
             self.bounds = gk.Extent.load(bounds).castTo(4326)
             if abs(self.bounds.xMin - self.bounds.xMax) <= self.MAX_LON_DIFFERENCE:
@@ -189,32 +188,24 @@ class NCSource(object):
                     top[:-1, :] = np.logical_and(top[1:, :], top[:-1, :])
                     bot[1:, :] = np.logical_and(bot[1:, :], bot[:-1, :])
 
-                self._lonStart = np.argmin(
-                    (bot | left | top).all(0)) - 1 - index_pad
-                self._lonStop = self._lonN - \
-                    np.argmin((bot | top | right).all(0)[::-1]) + 1 + index_pad
-                self._latStart = np.argmin(
-                    (bot | left | right).all(1)) - 1 - index_pad
-                self._latStop = self._latN - \
-                    np.argmax((left | top | right).all(1)[::-1]) + 1 + index_pad
+                self._lonStart = np.argmin((bot | left | top).all(0)) - 1 - index_pad
+                self._lonStop = self._lonN - np.argmin((bot | top | right).all(0)[::-1]) + 1 + index_pad
+                self._latStart = np.argmin((bot | left | right).all(1)) - 1 - index_pad
+                self._latStop = self._latN - np.argmax((left | top | right).all(1)[::-1]) + 1 + index_pad
 
             else:
-                tmp = np.logical_and(
-                    self._allLons >= self.bounds.xMin, self._allLons <= self.bounds.xMax)
+                tmp = np.logical_and(self._allLons >= self.bounds.xMin, self._allLons <= self.bounds.xMax)
                 self._lonStart = np.argmax(tmp) - 1
-                self._lonStop = self._lonStart + 1 + \
-                    np.argmin(tmp[self._lonStart + 1:]) + 1
+                self._lonStop = self._lonStart + 1 + np.argmin(tmp[self._lonStart + 1:]) + 1
 
-                tmp = np.logical_and(
-                    self._allLats >= self.bounds.yMin, self._allLats <= self.bounds.yMax)
+                tmp = np.logical_and(self._allLats >= self.bounds.yMin, self._allLats <= self.bounds.yMax)
                 self._latStart = np.argmax(tmp) - 1
-                self._latStop = self._latStart + 1 + \
-                    np.argmin(tmp[self._latStart + 1:]) + 1
+                self._latStop = self._latStart + 1 + np.argmin(tmp[self._latStart + 1:]) + 1
 
                 self._lonStart = max(0, self._lonStart - index_pad)
-                self._lonStop = min(self._allLons.size - 1, self._lonStop + index_pad)
+                self._lonStop = min(self._allLons.size, self._lonStop + index_pad)
                 self._latStart = max(0, self._latStart - index_pad)
-                self._latStop = min(self._allLats.size - 1, self._latStop + index_pad)
+                self._latStop = min(self._allLats.size, self._latStop + index_pad)
 
         else:
             self.bounds = None
