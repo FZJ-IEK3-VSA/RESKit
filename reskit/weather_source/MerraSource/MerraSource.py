@@ -22,7 +22,7 @@ class MerraSource(NCSource):
     MAX_LON_DIFFERENCE = 0.5
     MAX_LAT_DIFFERENCE = 0.5
 
-    def __init__(self, source, bounds=None, indexPad=5, **kwargs):
+    def __init__(self, source, bounds=None, index_pad=5, **kwargs):
         """Initialize a Merra2 style netCDF4 file source
 
 
@@ -57,13 +57,12 @@ class MerraSource(NCSource):
         """
 
         super().__init__(
-            self,
             source=source,
             bounds=bounds,
             time_name="time",
             lat_name="lat",
             lon_name="lon",
-            index_pad=indexPad,
+            index_pad=index_pad,
             _max_lon_diff=self.MAX_LON_DIFFERENCE,
             _max_lat_diff=self.MAX_LAT_DIFFERENCE,
             tz="GMT",
