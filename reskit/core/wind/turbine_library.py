@@ -66,7 +66,7 @@ def parse_turbine(path):
 _Turbine_Library = None
 
 
-def Turbine_Library():
+def TurbineLibrary():
     global _Turbine_Library
 
     if _Turbine_Library is None:

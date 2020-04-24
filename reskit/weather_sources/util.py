@@ -1,6 +1,7 @@
 import numpy as np
 
-def rotateFromLatLon(lons, lats, lonSouthPole=18, latSouthPole=-39.25):
+
+def rotate_from_lat_lon(lons, lats, lon_south_pole=18, lat_south_pole=-39.25):
     """This function applies a spherical rotation to a set of given latitude and
     longitude coordinates, yielding coordinates in the rotated system.
 
@@ -12,17 +13,17 @@ def rotateFromLatLon(lons, lats, lonSouthPole=18, latSouthPole=-39.25):
     lats : list, numpy.ndarray
         A one-dimensional list of latitude coordinates
 
-    lonSouthPole : float
+    lon_south_pole : float
         The longitude of the rotated system's south pole
 
-    latSouthPole : float
+    lat_south_pole : float
         The latitude of the rotated system's south pole
     """
     lons = np.radians(lons)
     lats = np.radians(lats)
 
-    theta = np.radians(90+latSouthPole)  # south pole is at 18 deg longitude
-    phi = np.radians(lonSouthPole)  # south pole is at -39.25 deg latitude
+    theta = np.radians(90 + lat_south_pole)  # south pole is at 18 deg longitude
+    phi = np.radians(lon_south_pole)  # south pole is at -39.25 deg latitude
 
     x = np.cos(lons) * np.cos(lats)
     y = np.sin(lons) * np.cos(lats)
@@ -40,7 +41,7 @@ def rotateFromLatLon(lons, lats, lonSouthPole=18, latSouthPole=-39.25):
     return rlonCoords, rlatCoords
 
 
-def rotateToLatLon(rlons, rlats, lonSouthPole=18, latSouthPole=-39.25):
+def rotate_to_lat_lon(rlons, rlats, lon_south_pole=18, lat_south_pole=-39.25):
     """This function un-does a spherical rotation to a set of given latitude and
     longitude coordinates (in the rotated), yielding coordinates in the regular 
     longitude and latitude system.
@@ -53,17 +54,17 @@ def rotateToLatLon(rlons, rlats, lonSouthPole=18, latSouthPole=-39.25):
     rlats : list, numpy.ndarray
         A one-dimensional list of latitude coordinates in the rotated system
 
-    lonSouthPole : float
+    lon_south_pole : float
         The longitude of the rotated system's south pole
 
-    latSouthPole : float
+    lat_south_pole : float
         The latitude of the rotated system's south pole
     """
     rlons = np.radians(rlons)
     rlats = np.radians(rlats)
 
-    theta = -np.radians(90+latSouthPole)  # south pole is at 18 deg longitude
-    phi = -np.radians(lonSouthPole)  # south pole is at -39.25 deg latitude
+    theta = -np.radians(90 + lat_south_pole)  # south pole is at 18 deg longitude
+    phi = -np.radians(lon_south_pole)  # south pole is at -39.25 deg latitude
 
     x = np.cos(rlons) * np.cos(rlats)
     y = np.sin(rlons) * np.cos(rlats)

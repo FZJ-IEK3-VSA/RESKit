@@ -1,3 +1,4 @@
+"""TODO: NEEDS UPDATING!!!"""
 from ..NCSource import *
 import pytz
 
@@ -104,8 +105,8 @@ class CosmoSource(NCSource):
             locations.lons, locations.lats, lonSouthPole=lonSouthPole, latSouthPole=latSouthPole)
 
         # Find integer locations
-        lonI = (rlonCoords - rlonStart)/rlonRes - _lonStart
-        latI = (rlatCoords - rlatStart)/rlatRes - _latStart
+        lonI = (rlonCoords - rlonStart) / rlonRes - _lonStart
+        latI = (rlatCoords - rlatStart) / rlatRes - _latStart
 
         # Check for out of bounds
         s = (latI < 0) | (latI >= _latN) | (lonI < 0) | (lonI >= _lonN)
@@ -133,7 +134,7 @@ class CosmoSource(NCSource):
         """frankCorrection: "Bias correction of a novel European reanalysis data set for solar energy applications" """
         s.load("SWDIFDS_RAD", "dhi")
         s.load("SWDIRS_RAD", "dni_flat")
-        s.data["ghi"] = s.data["dhi"]+s.data["dni_flat"]
+        s.data["ghi"] = s.data["dhi"] + s.data["dni_flat"]
 
         del s.data["dni_flat"], s.data["dhi"]
 
@@ -174,10 +175,10 @@ class CosmoSource(NCSource):
                 s.load("windspeed_50")
                 s.load("windspeed_100")
 
-                fac = (height-50)/(100-50)
+                fac = (height - 50) / (100 - 50)
 
                 newWspd = s.data["windspeed_100"] * \
-                    fac+s.data["windspeed_50"]*(1-fac)
+                    fac + s.data["windspeed_50"] * (1 - fac)
                 s.data["windspeed"] = newWspd
 
                 del s.data["windspeed_50"]
@@ -187,16 +188,16 @@ class CosmoSource(NCSource):
                 s.load("windspeed_100")
                 s.load("windspeed_140")
 
-                fac = (height-100)/(140-100)
+                fac = (height - 100) / (140 - 100)
 
                 newWspd = s.data["windspeed_140"] * \
-                    fac+s.data["windspeed_100"]*(1-fac)
+                    fac + s.data["windspeed_100"] * (1 - fac)
                 s.data["windspeed"] = newWspd
 
                 del s.data["windspeed_100"]
                 del s.data["windspeed_140"]
 
-    def loadTemperature(s, processor=lambda x: x-273.15):
+    def loadTemperature(s, processor=lambda x: x - 273.15):
         """load the typical pressure variable"""
         s.load("2t", name="air_temp", processor=processor)
 
@@ -210,22 +211,22 @@ class CosmoSource(NCSource):
             if _clockstart is None:
                 _clockstart = dt.now()
             print(_header, "Loading radiation at: +%.2fs" %
-                  (dt.now()-_clockstart).total_seconds())
+                  (dt.now() - _clockstart).total_seconds())
         s.loadRadiation()
 
         if verbose:
             print(_header, "Loading wind speed at: +%.2fs" %
-                  (dt.now()-_clockstart).total_seconds())
+                  (dt.now() - _clockstart).total_seconds())
         s.loadWindSpeedAtHeight(10)
 
         if verbose:
             print(_header, "Loading pressure at: +%.2fs" %
-                  (dt.now()-_clockstart).total_seconds())
+                  (dt.now() - _clockstart).total_seconds())
         s.loadPressure()
 
         if verbose:
             print(_header, "Loading temperature at: +%.2fs" %
-                  (dt.now()-_clockstart).total_seconds())
+                  (dt.now() - _clockstart).total_seconds())
         s.loadTemperature()
 
     def getWindSpeedAtHeights(s, locations, heights, spatialInterpolation='near', forceDataFrame=False, outsideOkay=False, _indicies=None):
@@ -282,7 +283,7 @@ class CosmoSource(NCSource):
         locations = gk.LocationSet(locations)
         heights = np.array(heights)
         if heights.size == 1:
-            heights = np.array([heights]*locations.count)
+            heights = np.array([heights] * locations.count)
         elif not heights.size == locations.count:
             raise RuntimeError("Heights and locations sizes don't match")
         _0_50 = heights < 50
@@ -299,8 +300,8 @@ class CosmoSource(NCSource):
             ws100 = NCSource.get(s, "windspeed_100",
                                  locations=locations[_50_100], **k)
 
-            fac = (heights[_50_100]-50)/(100-50)
-            tmp = ws100*fac + ws50*(1-fac)
+            fac = (heights[_50_100] - 50) / (100 - 50)
+            tmp = ws100 * fac + ws50 * (1 - fac)
 
             newWindspeed[:, _50_100] = tmp
 
@@ -310,8 +311,8 @@ class CosmoSource(NCSource):
             ws140 = NCSource.get(s, "windspeed_140",
                                  locations=locations[_100_], **k)
 
-            fac = (heights[_100_]-100)/(140-100)
-            tmp = ws140*fac + ws100*(1-fac)
+            fac = (heights[_100_] - 100) / (140 - 100)
+            tmp = ws140 * fac + ws100 * (1 - fac)
             if tmp.shape[0] == 1:
                 tmp = tmp[0, :]
             newWindspeed[:, _100_] = tmp

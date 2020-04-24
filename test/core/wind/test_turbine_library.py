@@ -1,9 +1,9 @@
-from reskit.core.wind.turbine_library import Turbine_Library
+from reskit.core.wind.turbine_library import TurbineLibrary
 import numpy as np
 
 
-def test_Turbine_Library():
-    turb = Turbine_Library().loc["E115_2500"]
+def test_TurbineLibrary():
+    turb = TurbineLibrary().loc["E115_2500"]
 
     assert turb.Manufacturer == "Enercon"
     assert turb.Capacity == 2500
