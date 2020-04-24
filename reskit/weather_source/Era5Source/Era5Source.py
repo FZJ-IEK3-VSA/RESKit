@@ -1,6 +1,6 @@
-from . import NCSource
+from .. import NCSource
 import numpy as np
-from os.pth import dirname, join
+from os.path import dirname, join
 
 
 class Era5Source(NCSource):
@@ -76,7 +76,7 @@ class Era5Source(NCSource):
             flip_lat=True,
             **kwargs)
 
-    loc2Index = NCSource._loc2IndexRect(0.25, 0.25)
+    loc2Index = NCSource._lot_to_index_rect(0.25, 0.25)
 
     # STANDARD LOADERS
     def sload_elevated_wind_speed(self):

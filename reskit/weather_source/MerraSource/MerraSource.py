@@ -1,6 +1,6 @@
-from . import NCSource
+from .. import NCSource
 import numpy as np
-from os.pth import dirname, join
+from os.path import dirname, join
 
 
 class MerraSource(NCSource):
