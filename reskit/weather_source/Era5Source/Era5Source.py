@@ -70,8 +70,8 @@ class Era5Source(NCSource):
             lat_name="latitude",
             lon_name="longitude",
             index_pad=indexPad,
-            _max_lon_diff=s.MAX_LON_DIFFERENCE,
-            _max_lat_diff=s.MAX_LAT_DIFFERENCE,
+            _max_lon_diff=self.MAX_LON_DIFFERENCE,
+            _max_lat_diff=self.MAX_LAT_DIFFERENCE,
             tz=None,
             flip_lat=True,
             **kwargs)
