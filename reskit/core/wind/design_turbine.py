@@ -19,23 +19,9 @@ def onshore_turbine_from_avg_wind_speed(wind_speed, constant_rotor_diam=True, ba
         - Such that at 6.7 m/s, a turbine with 4200 kW capacity, 120m hub height, and 136m rotor diameter is chosen
     """
     wind_speed = np.array(wind_speed)
-    if wind_speed.size > 1:
-        multi = True
-        rotor_diam = np.array([rotor_diam] * wind_speed.size)
-    else:
-        multi = False
+    multi = wind_speed.size > 1
 
-    scaling = base_hub_height / (np.exp(-0.84976623 * np.log(reference_wind_speed) + 6.1879937))
-    hub_height = scaling * np.exp(-0.84976623 * np.log(wind_speed) + 6.1879937)
-    if multi:
-        lt20 = hub_height < (rotor_diam / 2 + min_tip_height)
-        if lt20.any():
-            hub_height[lt20] = rotor_diam[lt20] / 2 + min_tip_height
-    else:
-        if hub_height < (rotor_diam / 2 + min_tip_height):
-            hub_height = rotor_diam / 2 + min_tip_height
-        # if hub_height>200: hub_height = 200
-
+    # Design Specific Power
     scaling = compute_specific_power(base_capacity, base_rotor_diam) / (np.exp(0.53769024 * np.log(reference_wind_speed) + 4.74917728))
     specific_power = scaling * np.exp(0.53769024 * np.log(wind_speed) + 4.74917728)
     if multi:
@@ -52,6 +38,17 @@ def onshore_turbine_from_avg_wind_speed(wind_speed, constant_rotor_diam=True, ba
     else:
         capacity = base_capacity
         rotor_diam = 2 * np.sqrt(capacity * 1000 / specific_power / np.pi)
+
+    # Design Hub Height
+    scaling = base_hub_height / (np.exp(-0.84976623 * np.log(reference_wind_speed) + 6.1879937))
+    hub_height = scaling * np.exp(-0.84976623 * np.log(wind_speed) + 6.1879937)
+    if multi:
+        lt20 = hub_height < (rotor_diam / 2 + min_tip_height)
+        if lt20.any():
+            hub_height[lt20] = rotor_diam[lt20] / 2 + min_tip_height
+    else:
+        if hub_height < (rotor_diam / 2 + min_tip_height):
+            hub_height = rotor_diam / 2 + min_tip_height
 
     output = dict(capacity=capacity, hub_height=hub_height, rotor_diam=rotor_diam, specific_power=specific_power)
     if multi:

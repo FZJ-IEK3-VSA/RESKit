@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def projectByPowerLaw(measured_wind_speed, measured_height, target_height, alpha=1 / 7):
+def apply_power_profile_projection(measured_wind_speed, measured_height, target_height, alpha=1 / 7):
     """Estimates windspeed at target height ($h_t$) based off a measured windspeed 
     ($u_m$) at a known measurement height ($h_m$) subject to the scaling factor ($a$)
 
@@ -45,7 +45,7 @@ def projectByPowerLaw(measured_wind_speed, measured_height, target_height, alpha
     return measured_wind_speed * np.power(target_height / measured_height, alpha)
 
 
-def alphaFromLevels(low_wind_speed, low_height, high_wind_speed, high_height):
+def alpha_from_levels(low_wind_speed, low_height, high_wind_speed, high_height):
     """Solves for the scaling factor ($a$) given two windspeeds with known heights
 
     $ a = log(\\frac{u_m}{u_t}) / log(\\frac{h_m}{h_t}) $
