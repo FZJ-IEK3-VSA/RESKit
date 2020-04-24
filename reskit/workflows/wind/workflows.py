@@ -11,7 +11,19 @@ from reskit import windpower
 from .wind_workflow_generator import WindWorkflowGenerator
 
 
+<< << << < HEAD
+
+
 def onshore_wind_merra_ryberg2019_europe(placements, merra_path, gwa_50m_path, clc2012_path):
+
+
+== == == =
+
+
+def onshore_wind_Ryberg2019_Europe(placements, merra_path, gwa_50m_path, clc2012_path):
+
+
+>>>>>> > a30f522e14f26c8de03d7afbf766bc9c95e9d87c
     wf = WindWorkflowGenerator(placements)
 
     wf.read(
@@ -28,7 +40,11 @@ def onshore_wind_merra_ryberg2019_europe(placements, merra_path, gwa_50m_path, c
         real_long_run_average=gwa_50m_path
     )
 
+<< << << < HEAD
     wf.estimate_roughness_from_land_cover(
+== == == =
+    wf.estimate_roughness_from_land_coverestimate_roughness_from_land_cover(
+>>>>>> > a30f522e14f26c8de03d7afbf766bc9c95e9d87c
         path=clc2012_path,
         source_type="clc")
 
@@ -51,7 +67,7 @@ def onshore_wind_merra_ryberg2019_europe(placements, merra_path, gwa_50m_path, c
 
 
 def offshore_wind_merra_caglayan2019(placements, merra_path):
-    wf = WindWorkflowGenerator(placements)
+    wf=WindWorkflowGenerator(placements)
 
     wf.read(
         variables=['elevated_wind_speed', ],
@@ -78,7 +94,7 @@ def offshore_wind_merra_caglayan2019(placements, merra_path):
 
 
 def onshore_wind_with_era5_ryberg2020(placements, era5_path, gwa_100m_path, esa_cci_path):
-    wf = WindWorkflowGenerator(placements)
+    wf=WindWorkflowGenerator(placements)
 
     wf.read(
         variables=['elevated_wind_speed',

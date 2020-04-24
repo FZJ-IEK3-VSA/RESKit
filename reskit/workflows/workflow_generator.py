@@ -44,7 +44,9 @@ class WorkflowGenerator():
         self._time_index_ = self.time_index.copy()
         self._set_sim_shape()
 
-        return self
+        # read variables
+        if not isinstance(variables, list):
+            variables = [variables, ]
 
     def _set_sim_shape(self):
         self._sim_shape_ = len(self._time_index_), self.locs.count
