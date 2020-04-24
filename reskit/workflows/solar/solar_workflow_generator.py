@@ -1,7 +1,7 @@
 import geokit as gk
 import pandas as pd
 import numpy as np
-import pvlib
+
 from os.path import isfile
 from collections import OrderedDict
 from types import FunctionType
@@ -9,8 +9,25 @@ from warnings import warn
 from scipy.interpolate import RectBivariateSpline
 
 import reskit as rk
-from reskit import solarpower
+# from reskit import solarpower
 from ..workflow_generator import WorkflowGenerator
+
+# Lazily import PVLib
+import importlib
+
+
+class LazyLoader:
+    def __init__(self, lib_name):
+        self.lib_name = lib_name
+        self._mod = None
+
+    def __getattr__(self, name):
+        if self._mod is None:
+            self._mod = importlib.import_module(self.lib_name)
+        return getattr(self._mod, name)
+
+
+pvlib = LazyLoader("pvlib")
 
 
 class SolarWorkflowGenerator(WorkflowGenerator):
