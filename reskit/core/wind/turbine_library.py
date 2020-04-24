@@ -2,6 +2,7 @@ from collections import OrderedDict, namedtuple
 import numpy as np
 import pandas as pd
 from glob import glob
+import re
 from os.path import join, dirname
 
 from . import PowerCurve
@@ -9,6 +10,8 @@ from . import PowerCurve
 ##################################################
 # Make a turbine model library
 TurbineInfo = namedtuple('TurbineInfo', 'profile meta')
+
+rangeRE = re.compile("([0-9.]{1,})-([0-9.]{1,})")
 
 
 def parse_turbine(path):
@@ -76,8 +79,8 @@ def Turbine_Library():
             except:
                 print("failed to parse:", f)
 
-        TurbineLibrary = pd.DataFrame([i.meta for i in tmp])
-        TurbineLibrary.set_index('Model', inplace=True)
-        TurbineLibrary['PowerCurve'] = [x.profile for x in tmp]
+        _Turbine_Library = pd.DataFrame([i.meta for i in tmp])
+        _Turbine_Library.set_index('Model', inplace=True)
+        _Turbine_Library['PowerCurve'] = [x.profile for x in tmp]
 
     return _Turbine_Library

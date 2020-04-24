@@ -5,10 +5,10 @@ import pytest
 # from reskit.workflows.wind import WindWorkflowGenerator
 
 
-# @pytest.fixture
-# def placements():
-#     placements = pd.read_csv(rk._TEST_DATA_['turbine_placements.csv'])
-#     return placements
+@pytest.fixture
+def placements():
+    placements = pd.read_csv(rk.TEST_DATA['turbine_placements.csv'])
+    return placements
 
 
 # @pytest.fixture
