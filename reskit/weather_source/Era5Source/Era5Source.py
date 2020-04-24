@@ -28,7 +28,7 @@ class Era5Source(NCSource):
     MAX_LON_DIFFERENCE = 0.26
     MAX_LAT_DIFFERENCE = 0.26
 
-    def __init__(self, source, bounds=None, indexPad=5, **kwargs):
+    def __init__(self, source, bounds=None, index_pad=5, **kwargs):
         """Initialize a ERA5 style netCDF4 file source
 
 
@@ -63,20 +63,19 @@ class Era5Source(NCSource):
         """
 
         super().__init__(
-            self,
             source=source,
             bounds=bounds,
             time_name="time",
             lat_name="latitude",
             lon_name="longitude",
-            index_pad=indexPad,
+            index_pad=index_pad,
             _max_lon_diff=self.MAX_LON_DIFFERENCE,
             _max_lat_diff=self.MAX_LAT_DIFFERENCE,
             tz=None,
             flip_lat=True,
             **kwargs)
 
-    loc2Index = NCSource._lot_to_index_rect(0.25, 0.25)
+    loc_to_index = NCSource._loc_to_index_rect(0.25, 0.25)
 
     # STANDARD LOADERS
     def sload_elevated_wind_speed(self):
