@@ -68,7 +68,7 @@ class MerraSource(NCSource):
             tz="GMT",
             **kwargs)
 
-    loc2Index = NCSource._lot_to_index_rect(lat_step=0.5, lon_step=0.625)
+    loc_to_index = NCSource._loc_to_index_rect(lat_step=0.5, lon_step=0.625)
 
     def context_area_at_index(self, latI, lonI):
         """Compute the context area surrounding the a specified index"""
@@ -116,21 +116,21 @@ class MerraSource(NCSource):
         return np.arctan2(vData, uData) * (180 / np.pi)  # total direction
 
     def sload_elevated_wind_direction(self):
-        self.data["elevated_wind_speed"] = self._load_wind_speed(
+        self.data["elevated_wind_direction"] = self._load_wind_speed(
             height=self.ELEVATED_WIND_SPEED_HEIGHT)
 
     def sload_surface_wind_direction(self):
-        self.data["surface_wind_speed"] = self._load_wind_speed(
+        self.data["surface_wind_direction"] = self._load_wind_speed(
             height=self.SURFACE_WIND_SPEED_HEIGHT)
 
     def sload_wind_direction_at_2m(self):
-        self.data["wind_speed_at_2m"] = self._load_wind_speed(2)
+        self.data["wind_direction_at_2m"] = self._load_wind_speed(2)
 
     def sload_wind_direction_at_10m(self):
-        self.data["wind_speed_at_10m"] = self._load_wind_speed(10)
+        self.data["wind_direction_at_10m"] = self._load_wind_speed(10)
 
     def sload_wind_direction_at_50m(self):
-        self.data["wind_speed_at_50m"] = self._load_wind_speed(50)
+        self.data["wind_direction_at_50m"] = self._load_wind_speed(50)
 
     def sload_surface_pressure(self):
         return self.load("PS", name='surface_pressure')

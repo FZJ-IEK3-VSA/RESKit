@@ -42,7 +42,6 @@ class SarahSource(NCSource):
         """
 
         super().__init__(
-            self,
             source=source,
             bounds=bounds,
             time_name="time",
@@ -54,7 +53,7 @@ class SarahSource(NCSource):
             tz=None,
             **kwargs)
 
-    loc2Index = NCSource._lot_to_index_rect(lat_step=0.05, lon_step=0.05)
+    loc_to_index = NCSource._loc_to_index_rect(lat_step=0.05, lon_step=0.05)
 
     # STANDARD LOADERS
     def sload_direct_normal_irradiance(self):

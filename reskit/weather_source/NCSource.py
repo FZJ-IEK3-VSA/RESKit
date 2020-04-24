@@ -365,7 +365,7 @@ class NCSource(object):
         ds.close()
 
     @staticmethod
-    def _lot_to_index_rect(lat_step, lon_step):
+    def _loc_to_index_rect(lat_step, lon_step):
         def func(self, loc, outside_okay=False, as_int=True):
             """Returns the closest X and Y indexes corresponding to a given location 
             or set of locations
