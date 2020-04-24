@@ -1,6 +1,7 @@
 from .. import NCSource
 import numpy as np
 from os.path import dirname, join
+import geokit as gk
 
 
 class MerraSource(NCSource):
@@ -63,20 +64,20 @@ class MerraSource(NCSource):
             lat_name="lat",
             lon_name="lon",
             index_pad=indexPad,
-            _max_lon_diff=s.MAX_LON_DIFFERENCE,
-            _max_lat_diff=s.MAX_LAT_DIFFERENCE,
+            _max_lon_diff=self.MAX_LON_DIFFERENCE,
+            _max_lat_diff=self.MAX_LAT_DIFFERENCE,
             tz="GMT",
             **kwargs)
 
     loc2Index = NCSource._lot_to_index_rect(lat_step=0.5, lon_step=0.625)
 
-    def context_area_at_index(s, latI, lonI):
+    def context_area_at_index(self, latI, lonI):
         """Compute the context area surrounding the a specified index"""
         # Make and return a box
-        lowLat = s.lats[latI] - 0.25
-        highLat = s.lats[latI] + 0.25
-        lowLon = s.lons[lonI] - 0.3125
-        highLon = s.lons[lonI] + 0.3125
+        lowLat = self.lats[latI] - 0.25
+        highLat = self.lats[latI] + 0.25
+        lowLon = self.lons[lonI] - 0.3125
+        highLon = self.lons[lonI] + 0.3125
 
         return gk.geom.box(lowLon, lowLat, highLon, highLat, srs=gk.srs.EPSG4326)
 
