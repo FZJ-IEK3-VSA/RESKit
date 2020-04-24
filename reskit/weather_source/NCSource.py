@@ -156,25 +156,35 @@ class NCSource(object):
             raise ResError("latitude and longitude shapes are not usable")
 
         # set lat and lon selections
-        if not bounds is None:
-            self.bounds = gk.Extent.load(bounds).castTo(4326).xyXY
-            if abs(self.bounds[0] - self.bounds[2]) <= 0.625:
-                self.bounds = self.bounds[0] - \
-                    0.3125, self.bounds[1], self.bounds[2] + 0.3125, self.bounds[3]
-            if abs(self.bounds[1] - self.bounds[3]) <= 0.5:
-                self.bounds = self.bounds[0], self.bounds[1] - \
-                    0.25, self.bounds[2], self.bounds[3] + 0.25
+        print("INDEX PAD:", index_pad)
+        if bounds is not None:
+            self.bounds = gk.Extent.load(bounds).castTo(4326)
+            if abs(self.bounds.xMin - self.bounds.xMax) <= self.MAX_LON_DIFFERENCE:
+                self.bounds = gk.Extent(
+                    self.bounds.xMin - self.MAX_LON_DIFFERENCE / 2,
+                    self.bounds.yMin,
+                    self.bounds.xMax + self.MAX_LON_DIFFERENCE / 2,
+                    self.bounds.yMax,
+                    srs=gk.srs.EPSG4326)
+
+            if abs(self.bounds.yMin - self.bounds.yMax) <= self.MAX_LAT_DIFFERENCE:
+                self.bounds = gk.Extent(
+                    self.bounds.xMin,
+                    self.bounds.yMin - self.MAX_LAT_DIFFERENCE / 2,
+                    self.bounds.xMax,
+                    self.bounds.yMax + self.MAX_LAT_DIFFERENCE / 2,
+                    srs=gk.srs.EPSG4326)
 
             # find slices which contains our extent
             if self.dependent_coordinates:
-                left = self._allLons < self.bounds[0]
-                right = self._allLons > self.bounds[2]
+                left = self._allLons < self.bounds.xMin
+                right = self._allLons > self.bounds.xMax
                 if (left | right).all():
                     left[:, :-1] = np.logical_and(left[:, 1:], left[:, :-1])
                     right[:, 1:] = np.logical_and(right[:, 1:], right[:, :-1])
 
-                bot = self._allLats < self.bounds[1]
-                top = self._allLats > self.bounds[3]
+                bot = self._allLats < self.bounds.yMin
+                top = self._allLats > self.bounds.yMax
                 if (top | bot).all():
                     top[:-1, :] = np.logical_and(top[1:, :], top[:-1, :])
                     bot[1:, :] = np.logical_and(bot[1:, :], bot[:-1, :])
@@ -190,13 +200,13 @@ class NCSource(object):
 
             else:
                 tmp = np.logical_and(
-                    self._allLons >= self.bounds[0], self._allLons <= self.bounds[2])
+                    self._allLons >= self.bounds.xMin, self._allLons <= self.bounds.xMax)
                 self._lonStart = np.argmax(tmp) - 1
                 self._lonStop = self._lonStart + 1 + \
                     np.argmin(tmp[self._lonStart + 1:]) + 1
 
                 tmp = np.logical_and(
-                    self._allLats >= self.bounds[1], self._allLats <= self.bounds[3])
+                    self._allLats >= self.bounds.yMin, self._allLats <= self.bounds.yMax)
                 self._latStart = np.argmax(tmp) - 1
                 self._latStop = self._latStart + 1 + \
                     np.argmin(tmp[self._latStart + 1:]) + 1
