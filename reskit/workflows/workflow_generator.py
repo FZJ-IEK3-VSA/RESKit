@@ -44,10 +44,6 @@ class WorkflowGenerator():
         self._time_index_ = self.time_index.copy()
         self._set_sim_shape()
 
-        # read variables
-        if not isinstance(variables, list):
-            variables = [variables, ]
-
     def _set_sim_shape(self):
         self._sim_shape_ = len(self._time_index_), self.locs.count
 
@@ -56,11 +52,11 @@ class WorkflowGenerator():
             raise RuntimeError("Time index is not available")
 
         if source_type == "ERA5":
-            source_constructor = rk.weather.sources.Era5Source
+            source_constructor = rk.weather_source.Era5Source
         elif source_type == "SARAH":
-            source_constructor = rk.weather.sources.SarahSource
+            source_constructor = rk.weather_source.SarahSource
         elif source_type == "MERRA":
-            source_constructor = rk.weather.sources.MerraSource
+            source_constructor = rk.weather_source.MerraSource
         else:
             raise RuntimeError("Unknown source_type")
 
@@ -70,7 +66,7 @@ class WorkflowGenerator():
             **kwargs)
 
         if set_time_index:
-            self.set_time_index(source.timeindex)
+            self.set_time_index(source.time_index)
 
         # read variables
         if not isinstance(variables, list):
@@ -83,7 +79,7 @@ class WorkflowGenerator():
                 var,
                 self.locs,
                 interpolation=spatial_interpolation_mode,
-                forceDataFrame=True)
+                force_as_data_frame=True)
 
             if not set_time_index:
                 self.sim_data[var] = self.sim_data[var].reindex(

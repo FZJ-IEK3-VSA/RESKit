@@ -1,6 +1,5 @@
 import geokit as gk
 import reskit as rk
-from reskit import windpower
 
 import pandas as pd
 import numpy as np
@@ -19,17 +18,18 @@ class WindWorkflowGenerator(WorkflowGenerator):
 
         # Check for basics
         assert 'capacity' in self.placements.columns, "Placement dataframe needs 'capacity' column"
-        assert 'hubHeight' in self.placements.columns, "Placement dataframe needs 'hubHeight' column"
+        assert 'hub_height' in self.placements.columns, "Placement dataframe needs 'hub_height' column"
 
         # Check for power curve. If not found, make it!
         self.powerCurveLibrary = dict()
 
         # Should we automatically generate synthetic power curves?
         if not "powerCurve" in self.placements.columns:
-            assert 'rotordiam' in self.placements.columns, "Placement dataframe needs 'rotordiam' or 'powerCurve' column"
+            assert 'rotor_diam' in self.placements.columns, "Placement dataframe needs 'rotor_diam' or 'powerCurve' column"
 
-            specificPower = windpower.specificPower(self.placements['capacity'],
-                                                    self.placements['rotordiam'])
+            specificPower = rk.core.wind.compute_specific_power(
+                self.placements['capacity'],
+                self.placements['rotor_diam'])
 
             if synthetic_power_curve_rounding is not None:
                 specificPower = np.round(
@@ -53,11 +53,11 @@ class WindWorkflowGenerator(WorkflowGenerator):
 
             if pc[:4] == "SPC:":
                 sppow, cutout = pc.split(":")[1].split(",")
-                self.powerCurveLibrary[pc] = windpower.SyntheticPowerCurve(
-                    specificCapacity=float(sppow),
+                self.powerCurveLibrary[pc] = rk.core.wind.PowerCurve.from_specific_power(
+                    specific_power=float(sppow),
                     cutout=float(cutout))
             else:
-                self.powerCurveLibrary[pc] = windpower.TurbineLibrary[pc].PowerCurve
+                self.powerCurveLibrary[pc] = rk.core.wind.TurbineLibrary.loc[pc].PowerCurve
 
     def set_roughness(self, roughness):
         self.placements['roughness'] = roughness
@@ -65,7 +65,7 @@ class WindWorkflowGenerator(WorkflowGenerator):
 
     def estimate_roughness_from_land_cover(self, path, source_type):
         num = gk.raster.interpolateValues(path, self.locs, mode='near')
-        self.placements['roughness'] = rk.weather.windutil.roughnessFromLandCover(
+        self.placements['roughness'] = rk.core.wind.roughness_from_land_cover_classification(
             num, source_type)
         return self
 
@@ -73,13 +73,13 @@ class WindWorkflowGenerator(WorkflowGenerator):
         assert "roughness" in self.placements.columns
         assert hasattr(self, "elevated_wind_speed_height")
 
-        self.sim_data['elevated_wind_speed'] = rk.weather.windutil.projectByLogLaw(
+        self.sim_data['elevated_wind_speed'] = rk.core.wind.apply_logarithmic_profile_projection(
             self.sim_data['elevated_wind_speed'],
-            measuredHeight=self.elevated_wind_speed_height,
-            targetHeight=self.placements['hubHeight'].values,
+            measured_height=self.elevated_wind_speed_height,
+            target_height=self.placements['hub_height'].values,
             roughness=self.placements['roughness'].values
         )
-        self.wind_speed_height = self.placements['hubHeight'].values
+        self.wind_speed_height = self.placements['hub_height'].values
 
         return self
 
@@ -88,7 +88,7 @@ class WindWorkflowGenerator(WorkflowGenerator):
         assert "surface_pressure" in self.sim_data, "surface_pressure has not been read from a source"
         assert hasattr(self, "elevated_wind_speed_height")
 
-        self.sim_data['elevated_wind_speed'] = rk.weather.windutil.densityAdjustment(
+        self.sim_data['elevated_wind_speed'] = rk.core.wind.apply_air_density_adjustment(
             self.sim_data['elevated_wind_speed'],
             pressure=self.sim_data['surface_pressure'],
             temperature=self.sim_data['surface_air_temperature'],
@@ -96,16 +96,13 @@ class WindWorkflowGenerator(WorkflowGenerator):
 
         return self
 
-    def convolute_power_curves(self, stdScaling, stdBase, **kwargs):
-        from reskit import windpower
-
+    def convolute_power_curves(self, scaling, base, **kwargs):
         assert hasattr(self, "powerCurveLibrary")
 
         for key in self.powerCurveLibrary.keys():
-            self.powerCurveLibrary[key] = windpower.convolutePowerCurveByGuassian(
-                self.powerCurveLibrary[key],
-                stdScaling=stdScaling,
-                stdBase=stdBase,
+            self.powerCurveLibrary[key] = self.powerCurveLibrary[key].convolute_by_guassian(
+                scaling=scaling,
+                base=base,
                 **kwargs
             )
 
@@ -116,15 +113,7 @@ class WindWorkflowGenerator(WorkflowGenerator):
 
         for pckey, pc in self.powerCurveLibrary.items():
             sel = self.placements.powerCurve == pckey
-            #placements = self.placements[sel]
-
-            # Do simulation
-            gen_ = rk.windpower.simulateTurbine(
-                self.sim_data['elevated_wind_speed'][:, sel],
-                powerCurve=pc,
-                loss=0.00)
-
-            gen[:, sel] = gen_.values
+            gen[:, sel] = pc.simulate(self.sim_data['elevated_wind_speed'][:, sel])
 
         self.sim_data['capacity_factor'] = gen
 
