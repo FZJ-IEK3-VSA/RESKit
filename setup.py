@@ -12,8 +12,8 @@ setup(
         "numpy",
         "pandas",
         "scipy",
-        "matplotlib",
-        "pvlib==0.5.1",
+        # "matplotlib",
+        "pvlib>=0.7.2",
         "netCDF4>=1.5.3"
         "xarray",
     ]

@@ -5,7 +5,7 @@ import numpy as np
 from os.path import isfile
 from collections import OrderedDict
 from types import FunctionType
-from warnings import warn
+import warnings
 from scipy.interpolate import RectBivariateSpline
 
 import reskit as rk
@@ -38,7 +38,7 @@ class SolarWorkflowGenerator(WorkflowGenerator):
         self._time_index_ = None
 
     def estimate_tilt_from_latitude(self, convention):
-        self.placements['tilt'] = solarpower.locToTilt(
+        self.placements['tilt'] = rk.core.solar.location_to_tilt(
             self.locs, convention=convention)
         return self
 
@@ -72,7 +72,7 @@ class SolarWorkflowGenerator(WorkflowGenerator):
 
         self.sim_data['solar_azimuth'] = np.full_like(self.sim_data['surface_pressure'], np.nan)  # pd.DataFrame(np.nan, index=self.time_index, columns=self.locs)
         self.sim_data['apparent_solar_zenith'] = np.full_like(self.sim_data['surface_pressure'], np.nan)  # pd.DataFrame(np.nan, index=self.time_index, columns=self.locs)
-        self.sim_data['apparent_solar_elevation'] = np.full_like(self.sim_data['surface_pressure'], np.nan)  # pd.DataFrame(np.nan, index=self.time_index, columns=self.locs)
+        # self.sim_data['apparent_solar_elevation'] = np.full_like(self.sim_data['surface_pressure'], np.nan)  # pd.DataFrame(np.nan, index=self.time_index, columns=self.locs)
 
         for loc, row in enumerate(rounded_locs.itertuples()):
             key = (row.lon, row.lat, row.elev)
@@ -89,7 +89,7 @@ class SolarWorkflowGenerator(WorkflowGenerator):
 
             self.sim_data['solar_azimuth'][:, loc] = _solpos_["azimuth"]
             self.sim_data['apparent_solar_zenith'][:, loc] = _solpos_["apparent_zenith"]
-            self.sim_data['apparent_solar_elevation'][:, loc] = _solpos_["apparent_elevation"]
+            # self.sim_data['apparent_solar_elevation'][:, loc] = _solpos_["apparent_elevation"]
 
         assert not np.isnan(self.sim_data['solar_azimuth']).any()
         assert not np.isnan(self.sim_data['apparent_solar_zenith']).any()
@@ -99,11 +99,11 @@ class SolarWorkflowGenerator(WorkflowGenerator):
 
     def filter_positive_solar_elevation(self):
         if self._time_sel_ is not None:
-            warn("Filtering already applied, skipping...")
+            warnings.warn("Filtering already applied, skipping...")
             return self
         assert "apparent_solar_zenith" in self.sim_data
 
-        self._time_sel_ = (self.sim_data["apparent_solar_zenith"] < 92).any(axis=1)
+        self._time_sel_ = (self.sim_data["apparent_solar_zenith"] < 95).any(axis=1)
 
         for key in self.sim_data.keys():
             self.sim_data[key] = self.sim_data[key][self._time_sel_, :]
@@ -114,7 +114,7 @@ class SolarWorkflowGenerator(WorkflowGenerator):
         return self
 
     def determine_extra_terrestrial_irradiance(self, **kwargs):
-        dni_extra = pvlib.irradiance.extraradiation(self._time_index_, **kwargs).values
+        dni_extra = pvlib.irradiance.get_extra_radiation(self._time_index_, **kwargs).values
 
         shape = len(self._time_index_), self.locs.count
         self.sim_data['extra_terrestrial_irradiance'] = np.broadcast_to(
@@ -129,9 +129,9 @@ class SolarWorkflowGenerator(WorkflowGenerator):
         self.sim_data["air_mass"] = np.full_like(self.sim_data['apparent_solar_zenith'], 29)
 
         s = self.sim_data['apparent_solar_zenith'] < 90
-        self.sim_data["air_mass"][s] = pvlib.atmosphere.relativeairmass(self.sim_data['apparent_solar_zenith'][s], model=model)
+        self.sim_data["air_mass"][s] = pvlib.atmosphere.get_relative_airmass(self.sim_data['apparent_solar_zenith'][s], model=model)
 
-    def apply_DIRINT_model(self):
+    def apply_DIRINT_model(self, use_pressure=False, use_dew_temperature=False):
         assert "global_horizontal_irradiance" in self.sim_data
         assert "surface_pressure" in self.sim_data
         assert "surface_dew_temperature" in self.sim_data
@@ -139,14 +139,31 @@ class SolarWorkflowGenerator(WorkflowGenerator):
         assert "air_mass" in self.sim_data
         assert "extra_terrestrial_irradiance" in self.sim_data
 
-        self.sim_data["direct_normal_irradiance"] = solarpower.myDirint(
-            ghi=self.sim_data['global_horizontal_irradiance'],
-            zenith=self.sim_data["apparent_solar_zenith"],
-            pressure=self.sim_data["surface_pressure"],
-            amRel=self.sim_data["air_mass"],
-            I0=self.sim_data["extra_terrestrial_irradiance"],
-            temp_dew=self.sim_data["surface_dew_temperature"],
-            use_delta_kt_prime=True,)
+        # self.sim_data["direct_normal_irradiance"] = solarpower.myDirint(
+        #     ghi=self.sim_data['global_horizontal_irradiance'],
+        #     zenith=self.sim_data["apparent_solar_zenith"],
+        #     pressure=self.sim_data["surface_pressure"],
+        #     amRel=self.sim_data["air_mass"],
+        #     I0=self.sim_data["extra_terrestrial_irradiance"],
+        #     temp_dew=self.sim_data["surface_dew_temperature"],
+        #     use_delta_kt_prime=True,)
+
+        use_pressure = True
+        use_dew_temperature = True
+
+        g = self.sim_data['global_horizontal_irradiance'].flatten()
+        z = self.sim_data['apparent_solar_zenith'].flatten()
+        p = self.sim_data['surface_pressure'].flatten() if use_pressure else None
+        td = self.sim_data['surface_dew_temperature'].flatten() if use_dew_temperature else None
+        times = pd.DatetimeIndex(np.column_stack([self._time_index_ for x in range(self._sim_shape_[1])]).flatten())
+
+        self.sim_data['direct_normal_irradiance'] = pvlib.irradiance.dirint(
+            ghi=g,
+            solar_zenith=z,
+            times=times,
+            pressure=p,
+            temp_dew=td
+        ).fillna(0).values.reshape(self._sim_shape_)
 
         return self
 
@@ -161,6 +178,19 @@ class SolarWorkflowGenerator(WorkflowGenerator):
 
         self.sim_data['diffuse_horizontal_irradiance'] = ghi - dni * np.sin(elev)
         self.sim_data['diffuse_horizontal_irradiance'][self.sim_data['diffuse_horizontal_irradiance'] < 0] = 0
+
+        return self
+
+    def direct_normal_irradiance_from_trigonometry(self):
+        # TODO: This can also cover the case when we know GHI & DiffHI
+        assert "direct_horizontal_irradiance" in self.sim_data
+        assert "apparent_solar_zenith" in self.sim_data
+
+        dni_flat = self.sim_data['direct_horizontal_irradiance']
+        zen = np.radians(self.sim_data['apparent_solar_zenith'])
+
+        self.sim_data['direct_normal_irradiance'] = dni_flat / np.cos(zen)
+        self.sim_data['direct_normal_irradiance'][self.sim_data['direct_normal_irradiance'] < 0] = 0
 
         return self
 
@@ -179,27 +209,30 @@ class SolarWorkflowGenerator(WorkflowGenerator):
         system_tilt = np.empty(self._sim_shape_)
         system_azimuth = np.empty(self._sim_shape_)
 
-        for i in range(self.locs.count):
-            placement = self.placements.iloc[i]
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
 
-            tmp = pvlib.tracking.singleaxis(
-                apparent_zenith=pd.Series(self.sim_data['apparent_solar_zenith'][:, i], index=self._time_index_),
-                apparent_azimuth=pd.Series(self.sim_data['solar_azimuth'][:, i], index=self._time_index_),
-                axis_tilt=placement.tilt,  # self.placements['tilt'].values,
-                axis_azimuth=placement.azimuth,  # self.placements['azimuth'].values,
-                max_angle=max_angle,
-                backtrack=backtrack,
-                gcr=gcr)
+            for i in range(self.locs.count):
+                placement = self.placements.iloc[i]
 
-            system_tilt[:, i] = tmp['surface_tilt'].values
-            system_azimuth[:, i] = tmp['surface_azimuth'].values
+                tmp = pvlib.tracking.singleaxis(
+                    apparent_zenith=pd.Series(self.sim_data['apparent_solar_zenith'][:, i], index=self._time_index_),
+                    apparent_azimuth=pd.Series(self.sim_data['solar_azimuth'][:, i], index=self._time_index_),
+                    axis_tilt=placement.tilt,  # self.placements['tilt'].values,
+                    axis_azimuth=placement.azimuth,  # self.placements['azimuth'].values,
+                    max_angle=max_angle,
+                    backtrack=backtrack,
+                    gcr=gcr)
 
-            # fix nan values. Why are they there???
-            s = np.isnan(system_tilt[:, i])
-            system_tilt[s, i] = placement.tilt
+                system_tilt[:, i] = tmp['surface_tilt'].values
+                system_azimuth[:, i] = tmp['surface_azimuth'].values
 
-            s = np.isnan(system_azimuth[:, i])
-            system_azimuth[s, i] = placement.tilt
+                # fix nan values. Why are they there???
+                s = np.isnan(system_tilt[:, i])
+                system_tilt[s, i] = placement.tilt
+
+                s = np.isnan(system_azimuth[:, i])
+                system_azimuth[s, i] = placement.tilt
 
         self.sim_data['system_tilt'] = system_tilt
         self.sim_data['system_azimuth'] = system_azimuth
@@ -222,7 +255,7 @@ class SolarWorkflowGenerator(WorkflowGenerator):
 
         return self
 
-    def estimate_plane_of_array_irradiances(self, transposition_model="perez"):
+    def estimate_plane_of_array_irradiances(self, transposition_model="perez", albedo=0.25, **kwargs):
 
         assert 'apparent_solar_zenith' in self.sim_data
         assert 'solar_azimuth' in self.sim_data
@@ -235,17 +268,20 @@ class SolarWorkflowGenerator(WorkflowGenerator):
         azimuth = self.sim_data.get("system_azimuth", self.placements['azimuth'].values)
         tilt = self.sim_data.get("system_tilt", self.placements['tilt'].values)
 
-        poa = pvlib.irradiance.total_irrad(
+        poa = pvlib.irradiance.get_total_irradiance(
             surface_tilt=tilt,
             surface_azimuth=azimuth,
-            apparent_zenith=self.sim_data['apparent_solar_zenith'],
-            azimuth=self.sim_data['solar_azimuth'],
+            solar_zenith=self.sim_data['apparent_solar_zenith'],
+            solar_azimuth=self.sim_data['solar_azimuth'],
             dni=self.sim_data['direct_normal_irradiance'],
             ghi=self.sim_data['global_horizontal_irradiance'],
             dhi=self.sim_data['diffuse_horizontal_irradiance'],
             dni_extra=self.sim_data['extra_terrestrial_irradiance'],
             airmass=self.sim_data['air_mass'],
-            model=transposition_model,)
+            albedo=albedo,
+            model=transposition_model,
+            **kwargs,
+        )
 
         for key in poa.keys():
             # This should set: 'poa_global', 'poa_direct', 'poa_diffuse', 'poa_sky_diffuse', and 'poa_ground_diffuse'
@@ -259,15 +295,32 @@ class SolarWorkflowGenerator(WorkflowGenerator):
 
         return self
 
-    def cell_temperature_from_sandia_method(self):
+    def cell_temperature_from_sapm(self, mounting="glass_open_rack"):
+        """Mounting can be any of: 'glass_open_rack', 'glass_close_roof', 'polymer_open_rack', or 'polymer_insulated_back'"""
         assert 'surface_wind_speed' in self.sim_data
         assert 'surface_air_temperature' in self.sim_data
         assert 'poa_global' in self.sim_data
 
-        self.sim_data['cell_temperature'] = solarpower.my_sapm_celltemp(
+        if mounting == "glass_open_rack":
+            a, b, dT = -3.47, -0.0594, 3
+        elif mounting == "glass_close_roof":
+            a, b, dT = -2.98, -0.0471, 1
+        elif mounting == "polymer_open_rack":
+            a, b, dT = -3.56, -0.075, 3
+        elif mounting == "polymer_insulated_back":
+            a, b, dT = -2.81, -0.0455, 0
+        else:
+            raise RuntimeError("mounting not one of: 'glass_open_rack', 'glass_close_roof', 'polymer_open_rack', or 'polymer_insulated_back'")
+
+        self.sim_data['cell_temperature'] = pvlib.temperature.sapm_cell(
             self.sim_data['poa_global'],
+            self.sim_data['surface_air_temperature'],
             self.sim_data['surface_wind_speed'],
-            self.sim_data['surface_air_temperature'], )
+            a=a,
+            b=b,
+            deltaT=dT,
+            irrad_ref=1000,
+        )
 
         return self
 
@@ -278,11 +331,27 @@ class SolarWorkflowGenerator(WorkflowGenerator):
 
         tilt = self.sim_data.get("system_tilt", self.placements['tilt'].values)
 
-        self.sim_data["poa_direct"] *= pvlib.pvsystem.physicaliam(self.sim_data['angle_of_incidence'])
+        self.sim_data["poa_direct"] *= pvlib.pvsystem.iam.physical(
+            aoi=self.sim_data['angle_of_incidence'],
+            n=1.526,  # PVLIB v0.7.2 default
+            K=4.0,   # PVLIB v0.7.2 default
+            L=0.002,  # PVLIB v0.7.2 default
+        )
 
         # Effective angle of incidence values from "Solar-Engineering-of-Thermal-Processes-4th-Edition"
-        self.sim_data["poa_ground_diffuse"] *= pvlib.pvsystem.physicaliam(90 - 0.5788 * tilt + 0.002693 * np.power(tilt, 2))
-        self.sim_data["poa_sky_diffuse"] *= pvlib.pvsystem.physicaliam(59.7 - 0.1388 * tilt + 0.001497 * np.power(tilt, 2))
+        self.sim_data["poa_ground_diffuse"] *= pvlib.pvsystem.iam.physical(
+            aoi=(90 - 0.5788 * tilt + 0.002693 * np.power(tilt, 2)),
+            n=1.526,  # PVLIB v0.7.2 default
+            K=4.0,   # PVLIB v0.7.2 default
+            L=0.002,  # PVLIB v0.7.2 default
+        )
+
+        self.sim_data["poa_sky_diffuse"] *= pvlib.pvsystem.iam.physical(
+            aoi=(59.7 - 0.1388 * tilt + 0.001497 * np.power(tilt, 2)),
+            n=1.526,  # PVLIB v0.7.2 default
+            K=4.0,   # PVLIB v0.7.2 default
+            L=0.002,  # PVLIB v0.7.2 default
+        )
 
         self.sim_data['poa_global'] = self.sim_data["poa_direct"] + self.sim_data["poa_ground_diffuse"] + self.sim_data["poa_sky_diffuse"]
 
@@ -349,13 +418,13 @@ class SolarWorkflowGenerator(WorkflowGenerator):
                 db = pvlib.pvsystem.retrieve_sam("CECMod")
                 module = getattr(db, module)
 
-            # Check if we need to add the Desoto parameters
-            # defaults for EgRef and dEgdT taken from the note in the docstring for
-            #  'pvlib.pvsystem.calcparams_desoto'
-            if not "EgRef" in module:
-                module['EgRef'] = 1.121
-            if not "dEgdT" in module:
-                module['dEgdT'] = -0.0002677
+            # # Check if we need to add the Desoto parameters
+            # # defaults for EgRef and dEgdT taken from the note in the docstring for
+            # #  'pvlib.pvsystem.calcparams_desoto'
+            # if not "EgRef" in module:
+            #     module['EgRef'] = 1.121
+            # if not "dEgdT" in module:
+            #     module['dEgdT'] = -0.0002677
 
         self.module = module
 
@@ -383,20 +452,31 @@ class SolarWorkflowGenerator(WorkflowGenerator):
         _temp = np.linspace(cell_temp.min(), cell_temp.max(), 100)
         poaM, tempM = np.meshgrid(_poa, _temp)
 
-        sotoParams = pvlib.pvsystem.calcparams_desoto(poa_global=poaM.flatten(),
-                                                      temp_cell=tempM.flatten(),
-                                                      alpha_isc=self.module.alpha_sc,
-                                                      module_parameters=self.module,
-                                                      EgRef=self.module.EgRef,
-                                                      dEgdT=self.module.dEgdT)
+        sotoParams = pvlib.pvsystem.calcparams_desoto(
+            effective_irradiance=poaM.flatten(),
+            temp_cell=tempM.flatten(),
+            alpha_sc=self.module.alpha_sc,
+            a_ref=self.module.a_ref,
+            I_L_ref=self.module.I_L_ref,
+            I_o_ref=self.module.I_o_ref,
+            R_sh_ref=self.module.R_sh_ref,
+            R_s=self.module.R_s,
+            EgRef=1.121,  # PVLIB v0.7.2 Default
+            dEgdT=-0.0002677,  # PVLIB v0.7.2 Default
+            irrad_ref=1000,  # PVLIB v0.7.2 Default
+            temp_ref=25,  # PVLIB v0.7.2 Default
+        )
 
         photoCur, satCur, resSeries, resShunt, nNsVth = sotoParams
-        gen = solarpower.mysinglediode(
+        gen = pvlib.pvsystem.singlediode(
             photocurrent=photoCur,
             saturation_current=satCur,
             resistance_series=resSeries,
             resistance_shunt=resShunt,
-            nNsVth=nNsVth)
+            nNsVth=nNsVth,
+            ivcurve_pnts=None,  # PVLIB v0.7.2 Default
+            method='lambertw',  # PVLIB v0.7.2 Default
+        )
 
         interpolator = RectBivariateSpline(_temp, _poa, gen['p_mp'].reshape(poaM.shape), kx=3, ky=3)
         self.sim_data['module_dc_power_at_mpp'] = np.zeros_like(self.sim_data['poa_global'])
