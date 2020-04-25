@@ -236,13 +236,13 @@ def workflowTemplate(placements, source, landcover, gwa, convScale, convBase, lo
 
     elif isinstance(powerCurve, str):
         pcKey = pd.Series([powerCurve,] * placements.shape[0], index=placements)
-        capacity = pd.Series(TurbineLibrary.ix[powerCurve].Capacity, index=placements)
+        capacity = pd.Series(TurbineLibrary.loc[powerCurve].Capacity, index=placements)
 
-        tmp = TurbineLibrary.ix[powerCurve].Rotordiameter
+        tmp = TurbineLibrary.loc[powerCurve].Rotordiameter
         if isinstance(tmp,float): rotordiam = pd.Series(tmp, index=placements)
         else: rotordiam = 0
         
-        powerCurves[powerCurve] = TurbineLibrary.ix[powerCurve].PowerCurve
+        powerCurves[powerCurve] = TurbineLibrary.loc[powerCurve].PowerCurve
 
     else: # powerCurve is either a (ws,power) list or is a list of turbine names
         if isinstance(powerCurve[0],str): # assume entire list is a list of names
@@ -252,14 +252,14 @@ def workflowTemplate(placements, source, landcover, gwa, convScale, convBase, lo
 
             for name in pcKey:
                 # TODO: I SHOULD CHECK FOR THE "spPow:cutout" notation here, so that library and synthetic turbines can be mixed 
-                capacity.append(TurbineLibrary.ix[name].Capacity)
+                capacity.append(TurbineLibrary.loc[name].Capacity)
 
-                tmp = TurbineLibrary.ix[powerCurve].Rotordiameter
+                tmp = TurbineLibrary.loc[powerCurve].Rotordiameter
                 if isinstance(tmp,float): rotordiam = pd.Series(tmp, index=placements)
                 else: rotordiam = 0
 
                 if not name in powerCurves:
-                    powerCurves[name] = TurbineLibrary.ix[name].PowerCurve
+                    powerCurves[name] = TurbineLibrary.loc[name].PowerCurve
 
             capacity = pd.Series(capacity, index=placements)
             rotordiam = pd.Series(rotordiam, index=placements)
