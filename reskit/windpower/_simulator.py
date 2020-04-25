@@ -137,8 +137,8 @@ def simulateTurbine( windspeed, powerCurve=None, capacity=None, rotordiam=None, 
         cutoutWindSpeed = kwargs.pop("cutout", None)
         powerCurve = SyntheticPowerCurve(capacity=capacity, rotordiam=rotordiam, cutout=cutoutWindSpeed)
     elif isinstance(powerCurve,str): # Load a turbine from the TurbineLibrary
-        if capacity is None: capacity = TurbineLibrary.ix[powerCurve].Capacity
-        powerCurve = TurbineLibrary.ix[powerCurve].PowerCurve
+        if capacity is None: capacity = TurbineLibrary.loc[powerCurve].Capacity
+        powerCurve = TurbineLibrary.loc[powerCurve].PowerCurve
     elif isinstance(powerCurve, list):
         tmp = np.array(powerCurve)
         powerCurve = PowerCurve(tmp[:,0], tmp[:,1])
