@@ -27,7 +27,7 @@ class NCSource(object):
     MAX_LON_DIFFERENCE = None
     MAX_LAT_DIFFERENCE = None
 
-    def __init__(self, source, bounds=None, index_pad=0, time_name="time", lat_name="lat", lon_name="lon", tz=None, _max_lon_diff=0.6, _max_lat_diff=0.6, verbose=True, forward_fill=True, flip_lat=False, flip_lon=False):
+    def __init__(self, source, bounds=None, index_pad=0, time_name="time", lat_name="lat", lon_name="lon", tz=None, _max_lon_diff=0.6, _max_lat_diff=0.6, verbose=True, forward_fill=True, flip_lat=False, flip_lon=False, time_offset_minutes=None):
         """Initialize a generic netCDF4 file source
 
         Note
@@ -251,6 +251,10 @@ class NCSource(object):
         timeindex = nc.num2date(
             timeVar[:], timeVar.units, only_use_cftime_datetimes=False, only_use_python_datetimes=True)
         ds.close()
+
+        if time_offset_minutes is not None:
+            from datetime import timedelta
+            timeindex = [t + timedelta(minutes=time_offset_minutes) for t in timeindex]
 
         self._timeindex_raw = pd.DatetimeIndex(timeindex)
         if not tz is None:
