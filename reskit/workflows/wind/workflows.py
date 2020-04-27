@@ -11,7 +11,7 @@ import reskit as rk
 from .wind_workflow_generator import WindWorkflowGenerator
 
 
-def onshore_wind_merra_ryberg2019_europe(placements, merra_path, gwa_50m_path, clc2012_path):
+def onshore_wind_merra_ryberg2019_europe(placements, merra_path, gwa_50m_path, clc2012_path, output_netcdf_path=None, output_variables=None):
     # TODO: Add range limitation over Europe by checking placements
     wf = WindWorkflowGenerator(placements)
 
@@ -49,10 +49,10 @@ def onshore_wind_merra_ryberg2019_europe(placements, merra_path, gwa_50m_path, c
         loss=lambda x: rk.core.util.low_generation_loss(x, base=0.0, sharpness=5.0)
     )
 
-    return wf.to_xarray()
+    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
 
-def offshore_wind_merra_caglayan2019(placements, merra_path):
+def offshore_wind_merra_caglayan2019(placements, merra_path, output_netcdf_path=None, output_variables=None):
     wf = WindWorkflowGenerator(placements)
 
     wf.read(
@@ -77,10 +77,10 @@ def offshore_wind_merra_caglayan2019(placements, merra_path):
         loss=lambda x: rk.core.util.low_generation_loss(x, base=0.1, sharpness=3.5)  # TODO: Check values with Dil
     )
 
-    return wf.to_xarray()
+    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
 
-def offshore_wind_era5_unvalidated(placements, era5_path):
+def offshore_wind_era5_unvalidated(placements, era5_path, output_netcdf_path=None, output_variables=None):
     wf = WindWorkflowGenerator(placements)
 
     wf.read(
@@ -105,10 +105,10 @@ def offshore_wind_era5_unvalidated(placements, era5_path):
         loss=lambda x: rk.core.util.low_generation_loss(x, base=0.1, sharpness=3.5)  # TODO: Check values with Dil
     )
 
-    return wf.to_xarray()
+    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
 
-def onshore_wind_era5_unvalidated(placements, era5_path, gwa_100m_path, esa_cci_path):
+def onshore_wind_era5_unvalidated(placements, era5_path, gwa_100m_path, esa_cci_path, output_netcdf_path=None, output_variables=None):
     wf = WindWorkflowGenerator(placements)
 
     wf.read(
@@ -145,4 +145,4 @@ def onshore_wind_era5_unvalidated(placements, era5_path, gwa_100m_path, esa_cci_
         loss=lambda x: rk.core.util.low_generation_loss(x, base=0.0, sharpness=5.0)
     )
 
-    return wf.to_xarray()
+    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
