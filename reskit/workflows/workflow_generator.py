@@ -135,7 +135,7 @@ class WorkflowGenerator():
     def register_workflow_parameter(self, key, value):
         self.workflow_parameters[key] = value
 
-    def to_xarray(self, output_netcdf_path=None, _intermediate_dict=False):
+    def to_xarray(self, output_netcdf_path=None, output_variables=None, _intermediate_dict=False):
 
         import xarray
 
@@ -145,7 +145,16 @@ class WorkflowGenerator():
         xds = OrderedDict()
         encoding = dict()
 
+        if "location_id" in self.placements.columns:
+            location_coords = self.placements['location_id'].copy()
+            del self.placements['location_id']
+        else:
+            location_coords = np.arange(self.placements.shape[0])
+
         for c in self.placements.columns:
+            if output_variables is not None:
+                if c not in output_variables:
+                    continue
             if np.issubdtype(self.placements[c].dtype, np.number):
                 write = True
             else:
@@ -157,16 +166,20 @@ class WorkflowGenerator():
             if write:
                 xds[c] = xarray.DataArray(self.placements[c],
                                           dims=["location"],
-                                          coords=dict(location=range(self.locs.count)))
+                                          coords=dict(location=location_coords))
 
         for key in self.sim_data.keys():
+            if output_variables is not None:
+                if key not in output_variables:
+                    continue
+
             tmp = np.full((len(self.time_index), self.locs.count), np.nan)
             tmp[self._time_sel_, :] = self.sim_data[key]
 
             xds[key] = xarray.DataArray(tmp,
                                         dims=["time", "location"],
                                         coords=dict(time=times,
-                                                    location=range(self.locs.count)))
+                                                    location=location_coords))
             encoding[key] = dict(zlib=True)
 
         if _intermediate_dict:
@@ -179,5 +192,71 @@ class WorkflowGenerator():
 
         if output_netcdf_path is not None:
             xds.to_netcdf(output_netcdf_path, encoding=encoding)
+            return output_netcdf_path
+        else:
+            return xds
 
-        return xds
+
+def _split_locs(placements, groups):
+    if groups == 1:
+        yield placements
+    else:
+        locs = gk.LocationSet(placements.index)
+        for loc_group in locs.splitKMeans(groups=groups):
+            yield placements.loc[loc_group[:]]
+
+
+def distribute_workflow(workflow_function, placements, jobs=2, max_batch_size=None, intermediate_output_dir=None, **kwargs):
+    import xarray
+    from multiprocessing import Pool
+
+    assert isinstance(placements, pd.DataFrame)
+    assert ("lon" in placements.columns and "lat" in placements.columns) or ("geom" in placements.columns)
+
+    # Split placements into groups
+    if "geom" in placements.columns:
+        locs = gk.LocationSet(placements)
+    else:
+        locs = gk.LocationSet(np.column_stack([placements.lon.values, placements.lat.values]))
+
+    placements.index = locs
+    placements['location_id'] = np.arange(placements.shape[0])
+
+    if max_batch_size is None:
+        max_batch_size = int(np.ceil(placements.shape[0] / jobs))
+
+    kmeans_groups = int(np.ceil(placements.shape[0] / max_batch_size))
+    placement_groups = []
+    for placement_group in _split_locs(placements, kmeans_groups):
+        kmeans_groups_level2 = int(np.ceil(placement_group.shape[0] / max_batch_size))
+
+        for placement_sub_group in _split_locs(placement_group, kmeans_groups_level2):
+            placement_groups.append(placement_sub_group)
+
+    # Do simulations
+    pool = Pool(jobs)
+
+    results = []
+    for gid, placement_group in enumerate(placement_groups):
+
+        kwargs_ = kwargs.copy()
+        if intermediate_output_dir is not None:
+            kwargs_['output_netcdf_path'] = join(intermediate_output_dir, "simulation_group_{:05d}.nc".format(gid))
+
+        results.append(pool.apply_async(
+            func=workflow_function,
+            args=(placement_group, ),
+            kwds=kwargs_
+        ))
+
+    xdss = []
+    for result in results:
+        xdss.append(result.get())
+
+    pool.close()
+    pool.join()
+
+    if intermediate_output_dir is None:
+        return xarray.concat(xdss, dim="location").sortby('location')
+    else:
+        return xdss
