@@ -1,8 +1,10 @@
-from reskit.util.util_ import *
+import numpy as np
+from ...core.util import ResError
 
-def lcoeSimple(capex, meanProduction, opexPerCapex=0.02, lifetime=20, discountRate=0.08):
+
+def levelized_cost_of_electricity_simplified(capex, mean_production, opex_per_capex=0.02, lifetime=20, discount_rate=0.08):
     """Compute the LCOE of a producer using the simple method
-    
+
     Uses the equation:
     .. math::
         \\mathrm{LCOE} = C * \\frac{ (r/(1-(1+r)^{-N})) + O_c }{P_{mean}}
@@ -20,16 +22,16 @@ def lcoeSimple(capex, meanProduction, opexPerCapex=0.02, lifetime=20, discountRa
     capex : numeric or array_like
         The capital expenditures
 
-    meanProduction : numeric or array_like
+    mean_production : numeric or array_like
         The average annual production
 
-    opexPerCapex : numeric
+    opex_per_capex : numeric
         The operational expenditures given as a factor or the capex
 
     lifetime : numeric
         The economic lifetime in years
 
-    discountRate : numeric
+    discount_rate : numeric
         The discount rate
 
     Returns
@@ -37,14 +39,15 @@ def lcoeSimple(capex, meanProduction, opexPerCapex=0.02, lifetime=20, discountRa
         numeric or array_like
 
     """
-    r = discountRate
+    r = discount_rate
     N = lifetime
-    return capex * ( r /(1-np.power(1+r,-N)) + opexPerCapex ) / (meanProduction)
+    return capex * (r / (1 - np.power(1 + r, -N)) + opex_per_capex) / (mean_production)
 
-def lcoe( expenditures, productions, discountRate=0.08 ):
+
+def levelized_cost_of_electricity(expenditures, productions, discount_rate=0.08):
     """Compute the LCOE of a producer using explicitly given production and 
     expeditures for each year in the economic lifetime
-    
+
     Uses the equation:
     .. math::
         \\mathrm{LCOE} = \\sum{\\frac{exp_y}{(1+r)^y}} / \\sum{\\frac{prod_y}{(1+r)^y}}
@@ -62,7 +65,7 @@ def lcoe( expenditures, productions, discountRate=0.08 ):
     productions : array_like
         Annual production for each year in the lifetime
 
-    discountRate : numeric or array_like
+    discount_rate : numeric or array_like
         The discount rate
           * If a numeric is given, the discount rate is applied to all years
           * If an array is given, a discount rate for each year must by provided
@@ -75,15 +78,16 @@ def lcoe( expenditures, productions, discountRate=0.08 ):
     # Initialize variables
     exp = np.array(expenditures)
     pro = np.array(productions)
-    if not exp.shape==pro.shape: raise ResError("expenditures length does not match productions length")
+    if not exp.shape == pro.shape:
+        raise ResError("expenditures length does not match productions length")
 
     yr = np.arange(exp.shape[0])
-    if isinstance(discountRate,float):
-        r = np.zeros(exp.shape[0])+discountRate
+    if isinstance(discount_rate, float):
+        r = np.zeros(exp.shape[0]) + discount_rate
     else:
         r = np.array(r)
 
     # Do summation and return
-    lcoe = (exp/np.power(1+r, yr)).sum() / (pro/np.power(1+r, yr)).sum()
+    lcoe = (exp / np.power(1 + r, yr)).sum() / (pro / np.power(1 + r, yr)).sum()
 
     return lcoe
