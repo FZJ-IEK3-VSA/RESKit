@@ -193,7 +193,12 @@ class SolarWorkflowGenerator(WorkflowGenerator):
         zen = np.radians(self.sim_data['apparent_solar_zenith'])
 
         self.sim_data['direct_normal_irradiance'] = dni_flat / np.cos(zen)
-        self.sim_data['direct_normal_irradiance'][self.sim_data['direct_normal_irradiance'] < 0] = 0
+    
+        sel = ~np.isfinite(self.sim_data['direct_normal_irradiance'])
+        sel = np.logical_or(sel, self.sim_data['direct_normal_irradiance']<0)
+        sel = np.logical_or(sel, self.sim_data['direct_normal_irradiance']>1600)
+
+        self.sim_data['direct_normal_irradiance'][sel] = 0
 
         return self
 
