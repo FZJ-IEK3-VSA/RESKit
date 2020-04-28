@@ -424,7 +424,10 @@ class SolarWorkflowGenerator(WorkflowGenerator):
             else:
                 # Extract module parameters
                 db = pvlib.pvsystem.retrieve_sam("CECMod")
-                module = getattr(db, module)
+                try:
+                    module = getattr(db, module)
+                except:
+                    raise RuntimeError("The module '{}' is not in the CEC database".format(module))
 
             # # Check if we need to add the Desoto parameters
             # # defaults for EgRef and dEgdT taken from the note in the docstring for
