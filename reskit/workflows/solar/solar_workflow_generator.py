@@ -44,13 +44,16 @@ class SolarWorkflowGenerator(WorkflowGenerator):
 
     def estimate_azimuth_from_latitude(self):
         self.placements['azimuth'] = 180
-        self.placements['azimuth'][self.locs.lats < 0] = 0
+
+        self.placements['azimuth'].values[self.locs.lats < 0] = 0
         return self
 
     def apply_elevation(self, elev):
         if isinstance(elev, str):
+            clipped_elev = self.ext.pad(0.5).rasterMosaic(elev)
             self.placements['elev'] = gk.raster.interpolateValues(
-                elev, self.locs)
+                clipped_elev, 
+                self.locs)
         else:
             self.placements['elev'] = elev
 

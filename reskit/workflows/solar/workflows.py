@@ -2,10 +2,14 @@ import reskit as rk
 from .solar_workflow_generator import SolarWorkflowGenerator
 
 
-def openfield_pv_with_merra_ryberg2019(placements, merra_path, global_solar_atlas_ghi_path, module="WINAICO WSx-240P6", elev=300, tracking="fixed", inverter=None, inverter_kwargs={}, tracking_args={}, output_netcdf_path=None):
+def openfield_pv_with_merra_ryberg2019(placements, merra_path, global_solar_atlas_ghi_path, module="WINAICO WSx-240P6", elev=300, tracking="fixed", inverter=None, inverter_kwargs={}, tracking_args={}, output_netcdf_path=None, output_variables=None):
 
     wf = SolarWorkflowGenerator(placements)
 
+    if not "tilt" in wf.placements.columns:
+        wf.estimate_tilt_from_latitude(convention="Ryberg2020")
+    if not "azimuth" in wf.placements.columns:
+        wf.estimate_azimuth_from_latitude()
     if not "elev" in wf.placements.columns:
         wf.apply_elevation(elev)
 
@@ -52,12 +56,16 @@ def openfield_pv_with_merra_ryberg2019(placements, merra_path, global_solar_atla
 
     wf.apply_loss_factor(0.20, variables=['capacity_factor', 'total_system_generation'])
 
-    return wf.to_xarray(output_netcdf_path=output_netcdf_path)
+    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
 
-def openfield_pv_with_era5_unvalidated(placements, era5_path, global_solar_atlas_ghi_path, global_solar_atlas_dni_path, module="WINAICO WSx-240P6", elev=300, tracking="fixed", inverter=None, inverter_kwargs={}, tracking_args={}, output_netcdf_path=None):
+def openfield_pv_with_era5_unvalidated(placements, era5_path, global_solar_atlas_ghi_path, global_solar_atlas_dni_path, module="WINAICO WSx-240P6", elev=300, tracking="fixed", inverter=None, inverter_kwargs={}, tracking_args={}, output_netcdf_path=None, output_variables=None):
     wf = SolarWorkflowGenerator(placements)
 
+    if not "tilt" in wf.placements.columns:
+        wf.estimate_tilt_from_latitude(convention="Ryberg2020")
+    if not "azimuth" in wf.placements.columns:
+        wf.estimate_azimuth_from_latitude()
     if not "elev" in wf.placements.columns:
         wf.apply_elevation(elev)
 
@@ -115,12 +123,16 @@ def openfield_pv_with_era5_unvalidated(placements, era5_path, global_solar_atlas
 
     wf.apply_loss_factor(0.20, variables=['capacity_factor', 'total_system_generation'])
 
-    return wf.to_xarray(output_netcdf_path=output_netcdf_path)
+    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
 
-def openfield_pv_with_sarah_unvalidated(placements, sarah_path, era5_path, module="WINAICO WSx-240P6", elev=300, tracking="fixed", inverter=None, inverter_kwargs={}, tracking_args={}, output_netcdf_path=None):
+def openfield_pv_with_sarah_unvalidated(placements, sarah_path, era5_path, module="WINAICO WSx-240P6", elev=300, tracking="fixed", inverter=None, inverter_kwargs={}, tracking_args={}, output_netcdf_path=None, output_variables=None):
     wf = SolarWorkflowGenerator(placements)
 
+    if not "tilt" in wf.placements.columns:
+        wf.estimate_tilt_from_latitude(convention="Ryberg2020")
+    if not "azimuth" in wf.placements.columns:
+        wf.estimate_azimuth_from_latitude()
     if not "elev" in wf.placements.columns:
         wf.apply_elevation(elev)
 
@@ -168,4 +180,4 @@ def openfield_pv_with_sarah_unvalidated(placements, sarah_path, era5_path, modul
 
     wf.apply_loss_factor(0.20, variables=['capacity_factor', 'total_system_generation'])
 
-    return wf.to_xarray(output_netcdf_path=output_netcdf_path)
+    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
