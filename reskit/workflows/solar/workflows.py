@@ -5,6 +5,7 @@ from .solar_workflow_generator import SolarWorkflowGenerator
 def openfield_pv_with_merra_ryberg2019(placements, merra_path, global_solar_atlas_ghi_path, module="WINAICO WSx-240P6", elev=300, tracking="fixed", inverter=None, inverter_kwargs={}, tracking_args={}, output_netcdf_path=None, output_variables=None):
 
     wf = SolarWorkflowGenerator(placements)
+    wf.configure_cec_module(module)
 
     if not "tilt" in wf.placements.columns:
         wf.estimate_tilt_from_latitude(convention="Ryberg2020")
@@ -39,7 +40,7 @@ def openfield_pv_with_merra_ryberg2019(placements, merra_path, global_solar_atla
     wf.apply_DIRINT_model()
     wf.diffuse_horizontal_irradiance_from_trigonometry()
 
-    if tracking == "singleaxis":
+    if tracking == "single_axis":
         wf.permit_single_axis_tracking(**tracking_args)
 
     wf.determine_angle_of_incidence()
@@ -49,7 +50,7 @@ def openfield_pv_with_merra_ryberg2019(placements, merra_path, global_solar_atla
 
     wf.cell_temperature_from_sapm()
 
-    wf.simulate_with_interpolated_single_diode_approximation()
+    wf.simulate_with_interpolated_single_diode_approximation(module=module)
 
     if inverter is not None:
         wf.apply_inverter_losses(inverter=inverter, **inverter_kwargs)
@@ -61,6 +62,7 @@ def openfield_pv_with_merra_ryberg2019(placements, merra_path, global_solar_atla
 
 def openfield_pv_with_era5_unvalidated(placements, era5_path, global_solar_atlas_ghi_path, global_solar_atlas_dni_path, module="WINAICO WSx-240P6", elev=300, tracking="fixed", inverter=None, inverter_kwargs={}, tracking_args={}, output_netcdf_path=None, output_variables=None):
     wf = SolarWorkflowGenerator(placements)
+    wf.configure_cec_module(module)
 
     if not "tilt" in wf.placements.columns:
         wf.estimate_tilt_from_latitude(convention="Ryberg2020")
@@ -106,7 +108,7 @@ def openfield_pv_with_era5_unvalidated(placements, era5_path, global_solar_atlas
 
     wf.diffuse_horizontal_irradiance_from_trigonometry()
 
-    if tracking == "singleaxis":
+    if tracking == "single_axis":
         wf.permit_single_axis_tracking(**tracking_args)
 
     wf.determine_angle_of_incidence()
@@ -116,7 +118,7 @@ def openfield_pv_with_era5_unvalidated(placements, era5_path, global_solar_atlas
 
     wf.cell_temperature_from_sapm()
 
-    wf.simulate_with_interpolated_single_diode_approximation()
+    wf.simulate_with_interpolated_single_diode_approximation(module=module)
 
     if inverter is not None:
         wf.apply_inverter_losses(inverter=inverter, **inverter_kwargs)
@@ -128,6 +130,7 @@ def openfield_pv_with_era5_unvalidated(placements, era5_path, global_solar_atlas
 
 def openfield_pv_with_sarah_unvalidated(placements, sarah_path, era5_path, module="WINAICO WSx-240P6", elev=300, tracking="fixed", inverter=None, inverter_kwargs={}, tracking_args={}, output_netcdf_path=None, output_variables=None):
     wf = SolarWorkflowGenerator(placements)
+    wf.configure_cec_module(module)
 
     if not "tilt" in wf.placements.columns:
         wf.estimate_tilt_from_latitude(convention="Ryberg2020")
@@ -163,7 +166,7 @@ def openfield_pv_with_sarah_unvalidated(placements, sarah_path, era5_path, modul
 
     wf.diffuse_horizontal_irradiance_from_trigonometry()
 
-    if tracking == "singleaxis":
+    if tracking == "single_axis":
         wf.permit_single_axis_tracking(**tracking_args)
 
     wf.determine_angle_of_incidence()
@@ -173,7 +176,7 @@ def openfield_pv_with_sarah_unvalidated(placements, sarah_path, era5_path, modul
 
     wf.cell_temperature_from_sapm()
 
-    wf.simulate_with_interpolated_single_diode_approximation()
+    wf.simulate_with_interpolated_single_diode_approximation(module=module)
 
     if inverter is not None:
         wf.apply_inverter_losses(inverter=inverter, **inverter_kwargs)
