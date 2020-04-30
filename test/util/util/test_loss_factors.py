@@ -1,5 +1,5 @@
 import numpy as np
-from reskit.core.util.loss_factors import low_generation_loss
+from reskit.util.loss_factors import low_generation_loss
 
 
 def test_low_generation_loss():

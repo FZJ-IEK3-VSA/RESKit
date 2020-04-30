@@ -1,4 +1,4 @@
-from reskit.economic.wind.onshore_cost_model import onshore_turbine_capex
+from reskit.wind.economic.onshore_cost_model import onshore_turbine_capex
 import numpy as np
 
 

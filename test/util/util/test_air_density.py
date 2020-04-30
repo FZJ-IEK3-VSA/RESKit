@@ -1,5 +1,5 @@
 import numpy as np
-from reskit.core.util.air_density import compute_air_density
+from reskit.util.air_density import compute_air_density
 
 
 def test_compute_air_density():

@@ -1,4 +1,4 @@
-from reskit.core.wind.power_profile import alpha_from_levels, apply_power_profile_projection
+from reskit.wind.core.power_profile import alpha_from_levels, apply_power_profile_projection
 import numpy as np
 
 

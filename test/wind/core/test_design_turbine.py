@@ -1,5 +1,5 @@
 # from reskit import TEST_DATA
-from reskit.core.wind.design_turbine import onshore_turbine_from_avg_wind_speed
+from reskit.wind.core.design_turbine import onshore_turbine_from_avg_wind_speed
 import numpy as np
 import pandas as pd
 
