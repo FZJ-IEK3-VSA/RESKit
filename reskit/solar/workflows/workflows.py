@@ -1,10 +1,10 @@
-import reskit as rk
-from .solar_workflow_generator import SolarWorkflowGenerator
+from ... import weather as rk_weather
+from .solar_workflow_manager import SolarWorkflowManager
 
 
 def openfield_pv_merra_ryberg2019(placements, merra_path, global_solar_atlas_ghi_path, module="WINAICO WSx-240P6", elev=300, tracking="fixed", inverter=None, inverter_kwargs={}, tracking_args={}, output_netcdf_path=None, output_variables=None):
 
-    wf = SolarWorkflowGenerator(placements)
+    wf = SolarWorkflowManager(placements)
     wf.configure_cec_module(module)
 
     if not "tilt" in wf.placements.columns:
@@ -28,7 +28,7 @@ def openfield_pv_merra_ryberg2019(placements, merra_path, global_solar_atlas_ghi
 
     wf.adjust_variable_to_long_run_average(
         variable='global_horizontal_irradiance',
-        source_long_run_average=rk.weather_source.MerraSource.LONG_RUN_AVERAGE_GHI,
+        source_long_run_average=rk_weather.MerraSource.LONG_RUN_AVERAGE_GHI,
         real_long_run_average=global_solar_atlas_ghi_path,
         real_lra_scaling=1000 / 24,  # cast to hourly average kWh
     )
@@ -61,7 +61,7 @@ def openfield_pv_merra_ryberg2019(placements, merra_path, global_solar_atlas_ghi
 
 
 def openfield_pv_era5_unvalidated(placements, era5_path, global_solar_atlas_ghi_path, global_solar_atlas_dni_path, module="WINAICO WSx-240P6", elev=300, tracking="fixed", inverter=None, inverter_kwargs={}, tracking_args={}, output_netcdf_path=None, output_variables=None):
-    wf = SolarWorkflowGenerator(placements)
+    wf = SolarWorkflowManager(placements)
     wf.configure_cec_module(module)
 
     if not "tilt" in wf.placements.columns:
@@ -91,14 +91,14 @@ def openfield_pv_era5_unvalidated(placements, era5_path, global_solar_atlas_ghi_
 
     wf.adjust_variable_to_long_run_average(
         variable='global_horizontal_irradiance',
-        source_long_run_average=rk.weather_source.Era5Source.LONG_RUN_AVERAGE_GHI,
+        source_long_run_average=rk_weather.Era5Source.LONG_RUN_AVERAGE_GHI,
         real_long_run_average=global_solar_atlas_ghi_path,
         real_lra_scaling=1000 / 24,  # cast to hourly average kWh
     )
 
     wf.adjust_variable_to_long_run_average(
         variable='direct_normal_irradiance',
-        source_long_run_average=rk.weather_source.Era5Source.LONG_RUN_AVERAGE_DNI,
+        source_long_run_average=rk_weather.Era5Source.LONG_RUN_AVERAGE_DNI,
         real_long_run_average=global_solar_atlas_dni_path,
         real_lra_scaling=1000 / 24,  # cast to hourly average kWh
     )
@@ -129,7 +129,7 @@ def openfield_pv_era5_unvalidated(placements, era5_path, global_solar_atlas_ghi_
 
 
 def openfield_pv_sarah_unvalidated(placements, sarah_path, era5_path, module="WINAICO WSx-240P6", elev=300, tracking="fixed", inverter=None, inverter_kwargs={}, tracking_args={}, output_netcdf_path=None, output_variables=None):
-    wf = SolarWorkflowGenerator(placements)
+    wf = SolarWorkflowManager(placements)
     wf.configure_cec_module(module)
 
     if not "tilt" in wf.placements.columns:
