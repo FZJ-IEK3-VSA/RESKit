@@ -1,4 +1,4 @@
-from reskit.economic.util.lcoe import levelized_cost_of_electricity, levelized_cost_of_electricity_simplified
+from reskit.util.economic.lcoe import levelized_cost_of_electricity, levelized_cost_of_electricity_simplified
 import numpy as np
 
 

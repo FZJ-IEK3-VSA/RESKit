@@ -1,5 +1,5 @@
 from reskit import TEST_DATA
-from reskit.core.wind.power_curve import PowerCurve, compute_specific_power
+from reskit.wind.core.power_curve import PowerCurve, compute_specific_power
 
 import numpy as np
 import pandas as pd

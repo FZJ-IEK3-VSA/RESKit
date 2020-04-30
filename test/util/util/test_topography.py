@@ -1,4 +1,4 @@
-from reskit.core.util.topography import visibility_from_topography
+from reskit.util.topography import visibility_from_topography
 from reskit import TEST_DATA
 import numpy as np
 

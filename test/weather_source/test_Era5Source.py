@@ -1,5 +1,5 @@
 from reskit import TEST_DATA
-from reskit.weather_source import Era5Source
+from reskit.weather import Era5Source
 import pytest
 import numpy as np
 import pandas as pd

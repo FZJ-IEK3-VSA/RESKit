@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from reskit.core.util.leap_day import remove_leap_day
+from reskit.util.leap_day import remove_leap_day
 
 
 def test_remove_leap_day():

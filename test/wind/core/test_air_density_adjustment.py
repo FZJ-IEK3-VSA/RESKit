@@ -1,5 +1,5 @@
 from reskit import TEST_DATA
-from reskit.core.wind.air_density_adjustment import apply_air_density_adjustment
+from reskit.wind.core.air_density_adjustment import apply_air_density_adjustment
 import numpy as np
 
 

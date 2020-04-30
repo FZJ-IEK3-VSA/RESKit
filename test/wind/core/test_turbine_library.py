@@ -1,4 +1,4 @@
-from reskit.core.wind.turbine_library import TurbineLibrary
+from reskit.wind.core.turbine_library import TurbineLibrary
 import numpy as np
 
 
