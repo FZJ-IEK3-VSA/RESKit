@@ -19,8 +19,6 @@ class WindWorkflowGenerator(WorkflowGenerator):
         # Do basic workflow construction
         super().__init__(placements)
 
-        placements = WindWorkflowGenerator._fix_hub_height(placements)
-
         # Check for basics
         assert 'capacity' in self.placements.columns, "Placement dataframe needs 'capacity' column"
         assert 'hub_height' in self.placements.columns, "Placement dataframe needs 'hub_height' column"
