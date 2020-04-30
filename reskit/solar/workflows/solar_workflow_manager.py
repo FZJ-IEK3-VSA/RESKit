@@ -8,9 +8,10 @@ from types import FunctionType
 import warnings
 from scipy.interpolate import RectBivariateSpline
 
-import reskit as rk
 # from reskit import solarpower
-from ...workflow_generator import WorkflowGenerator
+
+from .. import core as rk_solar_core
+from ...workflow_manager import WorkflowManager
 
 # Lazily import PVLib
 import importlib
@@ -30,7 +31,7 @@ class LazyLoader:
 pvlib = LazyLoader("pvlib")
 
 
-class SolarWorkflowGenerator(WorkflowGenerator):
+class SolarWorkflowManager(WorkflowManager):
     def __init__(self, placements):
         # Do basic workflow construction
         super().__init__(placements)
@@ -38,7 +39,7 @@ class SolarWorkflowGenerator(WorkflowGenerator):
         self._time_index_ = None
 
     def estimate_tilt_from_latitude(self, convention):
-        self.placements['tilt'] = rk.core.solar.location_to_tilt(
+        self.placements['tilt'] = rk_solar_core.system_design.location_to_tilt(
             self.locs, convention=convention)
         return self
 

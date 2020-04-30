@@ -1,5 +1,4 @@
 import geokit as gk
-import reskit as rk
 
 import pandas as pd
 import numpy as np
@@ -7,10 +6,12 @@ from os import mkdir, environ
 from os.path import join, isfile, isdir
 from collections import OrderedDict, namedtuple
 from types import FunctionType
-from ...workflow_generator import WorkflowGenerator
+
+from .. import core as rk_wind_core
+from ...workflow_manager import WorkflowManager
 
 
-class WindWorkflowGenerator(WorkflowGenerator):
+class WindWorkflowManager(WorkflowManager):
     """
         I am a doc string
     """
@@ -30,7 +31,7 @@ class WindWorkflowGenerator(WorkflowGenerator):
         if not "powerCurve" in self.placements.columns:
             assert 'rotor_diam' in self.placements.columns, "Placement dataframe needs 'rotor_diam' or 'powerCurve' column"
 
-            specificPower = rk.core.wind.compute_specific_power(
+            specificPower = rk_wind_core.power_curve.compute_specific_power(
                 self.placements['capacity'],
                 self.placements['rotor_diam'])
 
@@ -56,11 +57,11 @@ class WindWorkflowGenerator(WorkflowGenerator):
 
             if pc[:4] == "SPC:":
                 sppow, cutout = pc.split(":")[1].split(",")
-                self.powerCurveLibrary[pc] = rk.core.wind.PowerCurve.from_specific_power(
+                self.powerCurveLibrary[pc] = rk_wind_core.power_curve.PowerCurve.from_specific_power(
                     specific_power=float(sppow),
                     cutout=float(cutout))
             else:
-                self.powerCurveLibrary[pc] = rk.core.wind.TurbineLibrary().loc[pc].PowerCurve
+                self.powerCurveLibrary[pc] = rk_wind_core.turbine_library.TurbineLibrary().loc[pc].PowerCurve
 
     def set_roughness(self, roughness):
         self.placements['roughness'] = roughness
@@ -68,7 +69,7 @@ class WindWorkflowGenerator(WorkflowGenerator):
 
     def estimate_roughness_from_land_cover(self, path, source_type):
         num = gk.raster.interpolateValues(path, self.locs, mode='near')
-        self.placements['roughness'] = rk.core.wind.roughness_from_land_cover_classification(
+        self.placements['roughness'] = rk_wind_core.logarithmic_profile.roughness_from_land_cover_classification(
             num, source_type)
         return self
 
@@ -76,7 +77,7 @@ class WindWorkflowGenerator(WorkflowGenerator):
         assert "roughness" in self.placements.columns
         assert hasattr(self, "elevated_wind_speed_height")
 
-        self.sim_data['elevated_wind_speed'] = rk.core.wind.apply_logarithmic_profile_projection(
+        self.sim_data['elevated_wind_speed'] = rk_wind_core.logarithmic_profile.apply_logarithmic_profile_projection(
             self.sim_data['elevated_wind_speed'],
             measured_height=self.elevated_wind_speed_height,
             target_height=self.placements['hub_height'].values,
@@ -91,7 +92,7 @@ class WindWorkflowGenerator(WorkflowGenerator):
         assert "surface_pressure" in self.sim_data, "surface_pressure has not been read from a source"
         assert hasattr(self, "elevated_wind_speed_height")
 
-        self.sim_data['elevated_wind_speed'] = rk.core.wind.apply_air_density_adjustment(
+        self.sim_data['elevated_wind_speed'] = rk_wind_core.air_density_adjustment.apply_air_density_adjustment(
             self.sim_data['elevated_wind_speed'],
             pressure=self.sim_data['surface_pressure'],
             temperature=self.sim_data['surface_air_temperature'],

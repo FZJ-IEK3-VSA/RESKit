@@ -1,5 +1,4 @@
 import geokit as gk
-import reskit as rk
 
 import pandas as pd
 import numpy as np
@@ -9,7 +8,10 @@ from collections import OrderedDict, namedtuple
 from types import FunctionType
 
 
-class WorkflowGenerator():
+from . import weather as rk_weather
+
+
+class WorkflowManager():
     def __init__(self, placements):
         # arrange placements, locs, and extent
         assert isinstance(placements, pd.DataFrame)
@@ -52,11 +54,11 @@ class WorkflowGenerator():
             raise RuntimeError("Time index is not available")
 
         if source_type == "ERA5":
-            source_constructor = rk.weather_source.Era5Source
+            source_constructor = rk_weather.Era5Source
         elif source_type == "SARAH":
-            source_constructor = rk.weather_source.SarahSource
+            source_constructor = rk_weather.SarahSource
         elif source_type == "MERRA":
-            source_constructor = rk.weather_source.MerraSource
+            source_constructor = rk_weather.MerraSource
         else:
             raise RuntimeError("Unknown source_type")
 
