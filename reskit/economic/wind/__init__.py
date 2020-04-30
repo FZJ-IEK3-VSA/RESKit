@@ -1,2 +1,0 @@
-from .onshore_cost_model import onshore_turbine_capex
-from .offshore_cost_model import offshore_turbine_capex
