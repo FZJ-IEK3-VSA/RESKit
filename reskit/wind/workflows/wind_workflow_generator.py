@@ -15,7 +15,7 @@ class WindWorkflowGenerator(WorkflowGenerator):
         I am a doc string
     """
 
-    def __init__(self, placements, synthetic_power_curve_cut_out=25, synthetic_power_curve_rounding=1, hub_height_name="hub_height"):
+    def __init__(self, placements, synthetic_power_curve_cut_out=25, synthetic_power_curve_rounding=1):
         # Do basic workflow construction
         super().__init__(placements)
 
