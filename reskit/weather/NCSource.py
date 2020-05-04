@@ -146,9 +146,9 @@ class NCSource(object):
 
         See Also:
         ---------
-        reskit.weather.MerraSource
-        reskit.weather.SarahSource
-        reskit.weather.Era5Source
+        MerraSource
+        SarahSource
+        Era5Source
         """
         # Collect sources
         def addSource(src):
@@ -349,29 +349,114 @@ class NCSource(object):
         # initialize the data container
         self.data = OrderedDict()
 
-    def varInfo(self, var):
-        """Prints more information about the given parameter"""
+    def var_info(self, var):
+        """Prints more information about the given variable
+
+        Parameters:
+        -----------
+        var : str
+            The variable to get more information about
+
+
+        Returns:
+        --------
+        None
+
+
+        Note:
+        -----
+        You can access a list of all available variables by printing the member ".variables"
+
+        """
         assert var in self.variables.index
         ds = nc.Dataset(self.variables["path"][var], keepweakref=True)
         print(ds[var])
         ds.close()
 
     def to_pickle(self, path):
-        """Save the source as a pickle file, so it can be quickly reopened later"""
+        """Save the source as a pickle file, so it can be quickly reopened later
+
+        Parameters:
+        -----------
+        path : str
+            The path to write the output file at
+
+        Returns:
+        --------
+        None
+        """
         from pickle import dump
         with open(path, 'wb') as fo:
             dump(self, fo)
 
     @staticmethod
     def from_pickle(path):
-        """Load a source from a pickle file"""
+        """Load an NCSource source from a pickle file
+
+        Parameters:
+        -----------
+        path : str
+            The path to read from
+
+
+        Returns:
+        --------
+        NCSource
+        """
         from pickle import load
         with open(path, 'rb') as fo:
             out = load(fo)
         return out
 
     def sload(self, *variables):
-        """Load standard variables"""
+        """Load standard variables into the source's data library
+
+        Parameters:
+        -----------
+        *variables : str
+            The standard variables to read from the weather source 
+
+        Returns:
+        --------
+        None
+
+
+        Raises:
+        --------
+        RuntimeError 
+            If the given standard variable name is not known to the weather source
+
+
+        Note:
+        -----
+        The names of the standard variable do not refer to the names of the data within the source. 
+            Instead, they refer to common plain-english names which are translated to the source-
+            specific names within the associated standard-loader function
+
+        You can see which standard loaders are are available for the weather source by seeing the 
+            class methods starting with the name "sload_"
+
+        Common variable names include:
+            elevated_wind_speed          -> The wind speed at `WIND_SPEED_HEIGHT_FOR_WIND_ENERGY`
+            surface_wind_speed           -> The wind speed at `WIND_SPEED_HEIGHT_FOR_SOLAR_ENERGY`
+            wind_speed_at_Xm             -> The wind speed at X meters above the surface
+            elevated_wind_direction      -> The wind direction at `WIND_SPEED_HEIGHT_FOR_WIND_ENERGY`
+            surface_wind_direction       -> The wind direction at `WIND_SPEED_HEIGHT_FOR_SOLAR_ENERGY`
+            wind_direction_at_Xm         -> The wind direction at X meters above the surface
+            surface_pressure             -> The pressure at the surface
+            surface_air_temperature      -> The air temperature at the surface
+            surface_dew_temperature      -> The dew-point temperature at the surface
+            global_horizontal_irradiance -> The global horizontal irradiance at the surface
+            direct_normal_irradiance     -> The direct normal irradiance at the surface
+            direct_horzontal_irradiance  -> The direct irradiance at the surface on a horizontal plane
+
+
+        See Also:
+        ---------
+        NCSource.load( variable, name, height_index, processor )
+            - For more configurable data loading into the weather source 
+
+        """
         for var in variables:
             if hasattr(self, "sload_" + var):
                 getattr(self, "sload_" + var)()
