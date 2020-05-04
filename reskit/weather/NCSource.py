@@ -15,8 +15,66 @@ Index = namedtuple("Index", "yi xi")
 
 
 class NCSource(object):
-    """The NCSource object manages weather data from a generic set of netCDF4 
-    file sources"""
+    """The NCSource object manages weather data from a generic set of netCDF4 file sources
+
+    If furthermore allows access a number of common functionalities and constants which are
+    often encountered when simulating renewable energy technologies
+
+    Note:
+    -----
+    Various constants can be set for a given weather source which can impact later simulation workflows.
+        Note that not all weather sources will have all of these constants available. Also more may be 
+        implemented besides (so be sure to check the DocString for the source you intend to use).
+
+    These constants include:
+
+        MAX_LON_DIFFERENCE
+            The maximum logitude difference to accept between a grid cell and the coordinates you would
+                like to extract data for
+
+        MAX_LAT_DIFFERENCE
+            The maximum latitude difference to accept between a grid cell and the coordinates you would
+                like to extract data for
+
+        WIND_SPEED_HEIGHT_FOR_WIND_ENERGY
+            The suggested altitude of wind speed data to use for wind-energy simulations
+
+        WIND_SPEED_HEIGHT_FOR_SOLAR_ENERGY
+            The suggested altitude of wind speed data to use for wind-energy simulations
+
+        LONG_RUN_AVERAGE_WINDSPEED
+            A path to a raster file with the long-time average wind speed in each grid cell
+            * Can be used in wind energy simulations
+            * Calculated at the height specified in `WIND_SPEED_HEIGHT_FOR_WIND_ENERGY`
+            * Time range included in the long run averaging depends on the data source
+
+        LONG_RUN_AVERAGE_WINDDIR
+            A path to a raster file with the long-time average wind direction in each grid cell
+            * Can be used in wind energy simulations
+            * Calculated at the height specified in `WIND_SPEED_HEIGHT_FOR_WIND_ENERGY`
+            * Time range included in the long run averaging depends on the data source
+
+        LONG_RUN_AVERAGE_GHI
+            A path to a raster file with the long-time average global horizontal irradiance 
+                in each grid cell
+            * Can be used in solar energy simulations
+            * Calculated at the surface
+            * Time range included in the long run averaging depends on the data source
+
+        LONG_RUN_AVERAGE_DNI
+            A path to a raster file with the long-time average direct normal irradiance 
+                in each grid cell
+            * Can be used in solar energy simulations
+            * Calculated at the surface
+            * Time range included in the long run averaging depends on the data source
+
+
+    See Also:
+    ---------
+    reskit.weather.MerraSource
+    reskit.weather.SarahSource
+    reskit.weather.Era5Source
+    """
 
     WIND_SPEED_HEIGHT_FOR_WIND_ENERGY = None
     WIND_SPEED_HEIGHT_FOR_SOLAR_ENERGY = None
@@ -30,12 +88,14 @@ class NCSource(object):
     def __init__(self, source, bounds=None, index_pad=0, time_name="time", lat_name="lat", lon_name="lon", tz=None, _max_lon_diff=0.6, _max_lat_diff=0.6, verbose=True, forward_fill=True, flip_lat=False, flip_lon=False, time_offset_minutes=None):
         """Initialize a generic netCDF4 file source
 
-        Note
-        ----
+
+        Note:
+        -----
         Generally not intended for normal use. Look into MerraSource, CordexSource, or CosmoSource
 
-        Parameters
-        ----------
+
+        Parameters:
+        -----------
         path : str
             The path to the main data file
 
@@ -46,7 +106,7 @@ class NCSource(object):
               * The actual extent of the loaded data depends on the source's 
                 available data
 
-        padExtent : numeric, optional
+        index_pad : int, optional
             The padding to apply to the boundaries 
               * Useful in case of interpolation
               * Units are in longitudinal degrees
@@ -60,11 +120,35 @@ class NCSource(object):
         lon_name : str, optional
             The name of the longitude parameter in the netCDF4 dataset
 
-        tz: str; optional
+        tz : str, optional
             Applies the indicated timezone onto the time axis
             * For example, use "GMT" for unadjusted time
 
+        verbose : bool, optional
+            If True, then status outputs are printed when searching for and reading weather data
 
+        forward_fill : bool, optional
+            If True, then missing data in the weather file is forward-filled
+            * Generally, there should be no missing data at all. This option is only intended to 
+                catch the rare scenarios where one or two timesteps are missing
+
+        flip_lat : bool, optional
+            If True, flips the latitude dimension when reading weather data from the source
+            * Should only be given if latitudes are given in descending order
+
+        flip_lon : bool, optional
+            If True, flips the longitude dimension when reading weather data from the source
+            * Should only be given if longitudes are given in descending order
+
+        time_offset_minutes : numeric, optional
+            If not none, adds the specific offset in minutes to the timesteps read from the weather file
+
+
+        See Also:
+        ---------
+        reskit.weather.MerraSource
+        reskit.weather.SarahSource
+        reskit.weather.Era5Source
         """
         # Collect sources
         def addSource(src):
