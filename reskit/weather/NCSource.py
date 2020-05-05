@@ -467,28 +467,45 @@ class NCSource(object):
     def load(self, variable, name=None, height_idx=None, processor=None, overwrite=False):
         """Load a variable into the source's data table
 
-        Parameters
-        ----------
+        Parameters:
+        -----------
         variable : str
             The variable within the currated datasources to load
               * The variable must either be of dimension (time, lat, lon) or 
                 (time, height, lat, lon)
 
-        name : str; optional
-            The name to give this variable in the loaded data table
+        name : str, optional
+            The name to give this variable in the data library
               * If None, the name of the original variable is kept
 
         height_idx : int; optional
-            The Height index to extract if the original variable has the height
+            The height index to extract if the original variable has the height
             dimension
 
         processor : func, optional
             A function to process the loaded data before loading it into the 
-            the loaded data table
+            the data library
               * This function must take a single matrix argument with dimensions 
                 (time, lat, lon), and must return a matrix of the same shape
               * Example:If the NC file has temperature in Kelvin and you need C:
                   processor = lambda x: x+273.15
+
+        overwrite : bool, optional
+            If False, then this function will exit early if the desired variable name
+                already exists within the data library. Otherwise, any pre-existing data
+                is overwritten
+
+
+        Returns:
+        --------
+        None
+
+
+        See Also:
+        ---------
+        sload( variable )
+            - For loading standard variables into the weather source using pre-configured calls 
+                to 'load' 
 
         """
         if name is None:
@@ -543,8 +560,8 @@ class NCSource(object):
             """Returns the closest X and Y indexes corresponding to a given location 
             or set of locations
 
-            Parameters
-            ----------
+            Parameters:
+            -----------
             loc : Anything acceptable by geokit.LocationSet
                 The location(s) to search for
                 * A single tuple with (lon, lat) is acceptable, or a list of such tuples
@@ -558,8 +575,8 @@ class NCSource(object):
                 * If True, points outside this space will return as None
                 * If False, an error is raised 
 
-            Returns
-            -------
+            Returns:
+            --------
             If a single location is given: tuple 
                 * Format: (yIndex, xIndex)
                 * y index can be accessed with '.yi'
@@ -604,8 +621,9 @@ class NCSource(object):
         """Returns the closest X and Y indexes corresponding to a given location 
         or set of locations
 
-        Parameters
-        ----------
+
+        Parameters:
+        -----------
         loc : Anything acceptable by geokit.LocationSet
             The location(s) to search for
             * A single tuple with (lon, lat) is acceptable, or a list of such tuples
@@ -619,8 +637,9 @@ class NCSource(object):
             * If True, points outside this space will return as None
             * If False, an error is raised 
 
-        Returns
-        -------
+
+        Returns:
+        --------
         If a single location is given: tuple 
             * Format: (yIndex, xIndex)
             * y index can be accessed with '.yi'
@@ -629,6 +648,20 @@ class NCSource(object):
         If multiple locations are given: list
             * Format: [ (yIndex1, xIndex1), (yIndex2, xIndex2), ...]
             * Order matches the given order of locations
+
+
+        Note:
+        -----
+        The default form of this function (which is the one used here) is not very efficient, ultimately 
+            leading to much longer look-up than they otherwise need to be. When the weather source has
+            grid cells on a regular lat/lon grid then a more efficient form of this function can be 
+            configured using the function generator "_loc_to_index_rect". In these instances, this is 
+            the recommended function to use.
+
+        For example, if the weather source uses a latitude spacing of 0.5, and a longitude spacing of 
+            0.625, then the function generator can be used like:
+
+            > source.loc_to_index = source._loc_to_index_rect(lat_step=0.5, lon_step=0.625)
 
         """
         # Ensure loc is a list
@@ -707,37 +740,37 @@ class NCSource(object):
 
     def get(self, variable, locations, interpolation='near', force_as_data_frame=False, outside_okay=False, _indicies=None):
         """
-        Retrieve complete time series for a variable from the source's loaded data 
-        table at the given location(s)
+        Retrieve a time series for a variable from the source's data library at the given location(s)
 
-        Parameters
-        ----------
+        Can also use various interpolation schemes (e.g. near, bilinear, or cubic)
+
+        Parameters:
+        -----------
             variable : str
-                The variable within the data container to extract
+                The variable within the data library to extract
 
-            locations : Anything acceptable by geokit.LocationSet
+            locations : Anything acceptable by geokit.LocationSet.load( )
                 The location(s) to search for
-                  * A single tuple with (lon, lat) is acceptable, or a list of such 
-                    tuples
-                  * A single point geometry (as long as it has an SRS), or a list
-                    of geometries is okay
-                  * geokit,Location, or geokit.LocationSet are best, though
+
+                * geokit.Location, or geokit.LocationSet are best
+                * A single tuple with (lon, lat) is acceptable, or a list of such tuples
+                * A single point geometry (as long as it has an SRS), or a list of geometries
 
             interpolation : str, optional
                 The interpolation method to use
-                  * 'near' => For each location, extract the time series at the 
-                    closest lat/lon index
-                  * 'bilinear' => For each location, use the time series of the 
-                    surrounding +/- 1 index locations to create an estimated time 
-                    series at the given location using a biliear scheme
-                  * 'cubic' => For each location, use the time series of the 
-                    surrounding +/- 2 index locations to create an estimated time 
-                    series at the given location using a cubic scheme
+
+                * 'near' => For each location, extract the time series from the source's 
+                closest lat/lon index
+                * 'bilinear' => For each location, use the time series of the source's
+                surrounding +/- 1 index locations to create an estimated time 
+                series at the given location using a biliear interpolation scheme
+                * 'cubic' => For each location, use the time series of the source's
+                surrounding +/- 2 index locations to create an estimated time 
+                series at the given location using a cubic scheme
 
             force_as_data_frame : bool, optional
-                Instructs the returned value to take the form of a DataFrame 
-                regardless of how many locations are specified
-
+                If True, instructs the returned value to always take the form of a 
+                Pandas DataFrame regardless of how many locations are specified
 
             outside_okay : bool, optional
                 Determines if points which are outside the source's lat/lon grid
@@ -745,14 +778,14 @@ class NCSource(object):
                 * If True, points outside this space will return as None
                 * If False, an error is raised 
 
-        Returns
-        -------
+        Returns:
+        --------
 
         If a single location is given: pandas.Series
-          * Indexes match to times
+          * Indexes match to the source's time dimension
 
-        If multiple locations are given: pandas.DataFrame
-          * Indexes match to times
+        If multiple locations are given (or if `force_as_data_frame` is True): pandas.DataFrame
+          * Indexes match to the source's time dimension
           * Columns match to the given order of locations
 
         """
