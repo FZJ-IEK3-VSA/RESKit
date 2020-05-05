@@ -293,6 +293,8 @@ class MerraSource(NCSource):
 
         Automatically reads the variable "T2M" from the given MERRA2 source and saves it as the 
         variable 'surface_air_temperature' in the data library
+
+        Temperature values are also converted from kelvin to degrees celsius
         """
         return self.load("T2M", name="surface_air_temperature", processor=lambda x: x - 273.15)
 
@@ -302,6 +304,8 @@ class MerraSource(NCSource):
 
         Automatically reads the variable "T2MDEW" from the given MERRA2 source and saves it as the 
         variable 'surface_dew_temperature' in the data library
+
+        Temperature values are also converted from kelvin to degrees celsius
         """
         return self.load("T2MDEW", name="surface_dew_temperature", processor=lambda x: x - 273.15)
 
