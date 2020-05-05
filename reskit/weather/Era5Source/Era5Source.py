@@ -4,7 +4,6 @@ from os.path import dirname, join
 
 
 class Era5Source(NCSource):
-
     """The Era5Source object manages weather data (as netCDF4 files) coming from the 
     `ERA5 climate data products<https://www.ecmwf.int/en/forecasts/datasets/reanalysis-datasets/era5>`
 
