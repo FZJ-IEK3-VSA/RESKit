@@ -87,13 +87,13 @@ class MerraSource(NCSource):
     MAX_LAT_DIFFERENCE = 0.5
 
     def __init__(self, source, bounds=None, index_pad=5, **kwargs):
-        """Initialize a Merra2 style netCDF4 file source
+        """Initialize a MERRA2 style netCDF4 file source
 
         Compared to the generic NCSource object, the following parameters are automatically set:
             * tz = "GMT"
             * time_name = "time"
             * lat_name = "lat"
-            * lon_name = "lon
+            * lon_name = "lon"
             * flip_lat = False
             * flip_lon = False
             * time_offset_minutes = 0
@@ -290,7 +290,6 @@ class MerraSource(NCSource):
     def sload_surface_air_temperature(self):
         """Standard loader function for the variable 'surface_air_temperature'
 
-
         Automatically reads the variable "T2M" from the given MERRA2 source and saves it as the 
         variable 'surface_air_temperature' in the data library
 
@@ -301,7 +300,6 @@ class MerraSource(NCSource):
     def sload_surface_dew_temperature(self):
         """Standard loader function for the variable 'surface_dew_temperature'
 
-
         Automatically reads the variable "T2MDEW" from the given MERRA2 source and saves it as the 
         variable 'surface_dew_temperature' in the data library
 
@@ -311,7 +309,6 @@ class MerraSource(NCSource):
 
     def sload_global_horizontal_irradiance(self):
         """Standard loader function for the variable 'global_horizontal_irradiance'
-
 
         Automatically reads the variable "SWGDN" from the given MERRA2 source and saves it as the 
         variable 'global_horizontal_irradiance' in the data library
