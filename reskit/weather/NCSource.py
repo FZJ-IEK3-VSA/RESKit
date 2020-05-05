@@ -96,8 +96,12 @@ class NCSource(object):
 
         Parameters:
         -----------
-        path : str
-            The path to the main data file
+        path : str or list of strings
+            The path to the main data file(s) to load
+
+            If multiple files are given, or if a directory of netCDF4 files is given, then it is assumed
+            that all files ending with the extension '.nc' or '.nc4' should be managed by this object. 
+            * Be sure that all the netCDF4 files given share the same time and spatial dimensions!
 
         bounds : Anything acceptable to geokit.Extent.load(), optional
             The boundaries of the data which is needed
