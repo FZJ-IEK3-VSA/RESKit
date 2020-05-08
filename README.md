@@ -4,10 +4,6 @@
 
 RESKit aids with the broad-scale simulation of renewable energy systems, primarily for the purpose of input generation to Energy System Design Models. Simulation tools currently exist for onshore and offshore wind turbines, as well as for solar PV systems, in addtion to general weather-data manipulation tools. Simulations are performed in the context of singular units, however high computational performance is nevertheless maintained. As a result, this tool allows for the simulation of millions of individual turbines and PV systems in a matter of minutes (on the right hardware).
 
-**TODO**:
-
-- Register on Zenodo
-
 ## Features
 
 - High performance unit-level wind turbine and PV module simulations
@@ -24,7 +20,7 @@ The primary dependancies of RESKit are:
 2. xarray
 3. PVLib>=0.7.2
 4. gdal>2.0.0,<3.0.0
-5. <a href="https://github.com/FZJ-IEK3-VSA/geokit">GeoKit</a> >= 1.2.7
+5. <a href="https://github.com/FZJ-IEK3-VSA/geokit">GeoKit</a> >= 1.2.4
 
 If you can install these modules on you own, then the reskit module should be easily installable with:
 
