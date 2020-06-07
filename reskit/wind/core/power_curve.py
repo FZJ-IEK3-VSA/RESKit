@@ -18,7 +18,7 @@ def synthetic_power_curve_data():
     Returns
     -------
     DataFrame
-        DataFrame with the imput data to create a synthetic power curve.
+        DataFrame with data to create a synthetic power curve.
 
     """
     global _synthetic_power_curve_data
@@ -32,14 +32,14 @@ def synthetic_power_curve_data():
 
 def compute_specific_power(capacity, rotor_diam, **k):
     """
-    Computes specific power from capacity and rotor diameter
+    Computes the corresponding specific power in kW/M2 from capacity in kW and rotor diameter in m.
 
     Parameters
     ----------
     capacity : float or array-like
-            Turbine's nominal capacity in kW.
+        Turbine's nominal capacity in kW.
     rotor_diam : float or array-like
-            Turbine's hub height in m.
+        Turbine's hub height in m.
 
     Returns
     -------
@@ -94,27 +94,19 @@ class PowerCurve():
     @staticmethod
     def from_specific_power(specific_power, cutout=25):
         """
-        The synthetic power curve generator creates a wind turbine power curve based off observed relationships between turbine specific power and known power curves
+        Creates a synthetic wind turbine power curve based off observed relationships between turbine specific power and known power curves.
 
         Parameters
         ----------
-        specific_power : float or array-like
-            [description]
+        specific_power : float 
+            Turbines's specific power in m/s 
         cutout : int, optional
             Cut out wind speed in m/s, by default 25
 
         Returns
         -------
-        [type]
-            [description]
-        
-        
-        
-        
-        
-        The synthetic power curve generator creates a wind turbine power curve 
-        based off observed relationships between turbine specific power and known
-        power curves
+        Plot
+            A power curve plot
         """
         # Create ws
         ws = [0, ]
@@ -136,19 +128,60 @@ class PowerCurve():
 
     @staticmethod
     def from_capacity_and_rotor_diam(capacity, rotor_diam, cutout=25):
-        """The synthetic power curve generator creates a wind turbine power curve 
-        based off observed relationships between turbine specific power and known
-        power curves
+        """
+        Creates a synthetic wind turbine power curve based off observed relationships between turbine's capacity, rotor diameter and known power curves.
+
+        Parameters
+        ----------
+        capacity : numeric
+        Baseline turbine capacity in kW.
+        rotor_diam : numeric
+            turbine rotor diameter in m
+        cutout : int, optional
+            Cut out wind speed in m/s, by default 25
+
+        Returns
+        -------
+        Plot
+            A power curve plot
+        
         """
         return PowerCurve.from_specific_power(compute_specific_power(capacity, rotor_diam))
 
     def simulate(self, wind_speed):
-        """apply the invoking power curve to the given wind speeds"""
+        """
+        Applies the invoking power curve to the given wind speeds
+
+        Parameters
+        ----------
+        wind_speed : array_like
+        Local average wind speed close to or at the hub height.
+
+        Returns
+        -------
+        array_like
+            #I do not undestand this properly
+        
+        """
         powerCurveInterp = splrep(self.wind_speed, self.capacity_factor)
         return splev(wind_speed, powerCurveInterp)
 
     def expectated_capacity_factor_from_weibull(self, mean_wind_speed=5, weibull_shape=2):
-        """Computes the expected capacity factor of a wind turbine based on an assumed Weibull distribution of observed wind speeds
+        """
+        Computes the expected capacity factor of a wind turbine based on an assumed Weibull distribution of observed wind speeds
+
+        Parameters
+        ----------
+        mean_wind_speed : int, optional
+            #I do not undestand this properly, by default 5
+        weibull_shape : int, optional
+            #I do not undestand this properly, by default 2
+
+        Returns
+        -------
+        Numeric or arrray-like
+            Total generation in kWh
+        
         """
         from scipy.special import gamma
         from scipy.stats import exponweib

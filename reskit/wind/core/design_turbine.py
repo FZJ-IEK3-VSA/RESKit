@@ -9,78 +9,42 @@ from .power_curve import compute_specific_power
 
 
 def onshore_turbine_from_avg_wind_speed(wind_speed, constant_rotor_diam=True, base_capacity=4200, base_hub_height=120, base_rotor_diam=136, reference_wind_speed=6.7, min_tip_height=20, min_specific_power=180):
-    """
-    TODO: NEEDS UPDATE!!!
+    """ 
+    Suggest onshore turbine turbine desing characteristics (capacity, hub height, rotor diameter, specific power) for the context of 2050 based on an average wind speed value.
+    The default values and function's normalization correspond to the baseline turbine considered by Ryberg et al. [1] for a wind speed equal to 6.7 m/s.
     
-    Suggest onshore turbine turbine desing characteristics based on an average wind speed such that a baseline turbine with 4200 kW capacity, 120m hub height, and 136 m rotor diameter is chosen for a wind speed equal to 6.7 m/s as per Ryberg et al. [1]
-    
-    
-
     Parameters:
     ----------
-    wind_speed : float or array_like
+    wind_speed : numeric or array_like
         Local average wind speed close to or at the hub height.
-
     constant_rotor_diam : bool, optional
         Whether the rotor diameter is mantained constant or not, by default True
-    base_capacity : int, optional
+    base_capacity : numeric or array_like, optional
         Baseline turbine capacity in kW, by default 4200.
-    base_hub_height : int, optional
-        [description], by default 120.
-    base_rotor_diam : int, optional
-        [description], by default 136.
-    reference_wind_speed : float, optional
-        [description], by default 6.7.
-    min_tip_height : int, optional.
-        [description], by default 20.
-    min_specific_power : int, optional
-        [description], by default 180.
+    base_hub_height : numeric or array_like, optional
+        Baseline turbine hub height in m, by default 120.
+    base_rotor_diam : numeric or array_like, optional
+        Baseline turbine rotor diameter in m, by default 136.
+    reference_wind_speed : numeric, optional
+        Wind speed the baseline turbine desing corresponds to, by default 6.7.
+    min_tip_height : numeric, optional.
+        Minium distance in m between the lower tip of the blades and the floor, by default 20.
+    min_specific_power : numeric, optional
+        Muninum specific power allowed in kw/m2, by default 180.
 
-
-
-
-
-    rotordiam : float or array_like, optional
-        Rotor diamter in meters. Default value is 136.
-    
     Returns
     -------
-    Onshore turbine suggested characteristcs: pandas data frame
-        A pandas data frame with columns hub height in m, specific power in W/m2, and capacity in kW.
+    Dict or pandas DataFrame
+        A dict or a pandas DataFrame (in case of array_like entries) with suggested values of hub height in m, specific power in W/m2, and capacity in kW.
 
     Notes
     -------
-    Suggestions are given such that with an average wind speed value of 6.7 m/s, a turbine with 4200 kW capacity, 120m hub height, and 136m rotor diameter is chosen
-    The specific power (capacity/area of the rotor) is not permited to go less than 180 W/m2 (becase...)
-    A minimum hub height to keep 20 m sepatarion distnce beteen the tip of the blade and the floor is maintaied.
+    The defaut baseline onshore turbine has 4200 kW capacity, 120m hub height, and 136m rotor diameter [1]
     
     References
     -------
     [1] David S. Ryberg, Dilara C. Caglayana, Sabrina Schmitt, Jochen Linßena, Detlef Stolten, Martin Robinius - The Future of European Onshore Wind Energy Potential: 
     Detailed Distributionand Simulation of Advanced Turbine Designs, Energy, 2019, available at https://www.sciencedirect.com/science/article/abs/pii/S0360544219311818
-
-
-
-    Suggest turbine characteristics based off an average wind speed and in relation to the 'baseline' onshore turbine.
-    relationships are derived from turbine data between 2013 and 2017
-
-    Parameters
-    ----------
-    wind_speed : float or array-like
-        The wind speed in m/s at <(or close to)> the surface/hub height?.
-    
-
-    Returns
-    -------
-    [type]
-        [description]
-    """    """
-    
-    
-
-    * Suggested specific power will not go less than 180 W/m2
-    * Normalizations chosen for the context of 2050
-        - Such that at 6.7 m/s, a turbine with 4200 kW capacity, 120m hub height, and 136m rotor diameter is chosen
     """
     wind_speed = np.array(wind_speed)
     multi = wind_speed.size > 1
