@@ -5,72 +5,83 @@ from .onshore_cost_model import onshore_tcc
 def offshore_turbine_capex(capacity, hub_height, rotor_diam, depth, distance_to_shore, distance_to_bus=3, foundation="monopile", mooring_count=3, anchor="DEA", turbine_count=80, turbine_spacing=5, turbine_row_spacing=9):
     """
     TODO: Generalize this function further (like with the onshore cost model)
-    Offshore turbine capital cost (TCC) is calculated by using the turbine capital cost 
-    Fingersh et al.(2006) and Maples et al. (2010). Balance of system cost (BOS) is 
-    calculated by using the equations of Maness et al.(2017). Afterwards, TCC and BOS 
-    are scaled by cost breakdown suggested by Stehly et al.(2017).
+    A cost and scaling model (CSM) to calculate the total cost of a 3-bladed, direct drive offshore wind turbine according to the cost model by Fingersh et al. [1] and Maples et al. [2].
+    The CSM distinguises between seaflor-fixed foundation types, "monopile" and "jacket", and floating foundation types, "semisubmersible" and "spar".
+    The total turbine cost includes the contributions of the turbine capital cost (TCC), amounting 32.9% or 23.9% for fixed and floating structures respectively [3], the balance of system costs (BOS) contribution, amounting 46.2% and 60.8% in the same manner [3], as well as the finantial costs, with the compementary contribution of 15.9% and 20.9% respectively [3].
+    A CSM normalization is done such that a chosen baseline offshore turbine as per Caglayan et al. [4] (see notes for details) corresponds to an expected specific cost of 2300 Eur/kW in a 2050 context according to the 2016 cost of wind energy review by Stehly [3]   
+    
 
-    Stardard turbine for scaling the results is chosen from optimal turbine analysis.
-    Capacity: 9.4 MW, Hub height: 135 m and rotor diameter: 210 m, monopile foundation
-    Reference water depth is chosen as 40 m and distance to shore is chosen as 60 km.
-    Inputs:
-        capacity : Turbine nameplate capacity in kW
-            float - Single value
-            np.ndarray - multidimensional values 
+    Parameters
+    ----------
+        capacity : float or array-like
+            Turbine's nominal capacity in kW.
 
-        hub_height : Turbine hub height in meters
-            float - Single value
-            np.ndarray - multidimensional values
+        hub_height : float or array-like
+            Turbine's hub height in m.
 
-        rotor_diam : Turbine rotor diameter in meters
-            float - Single value
-            np.ndarray - multidimensional values
+        rotor_diam : float or array-like
+            Turbine's hub height in m.
 
-        depth : Water depth in meters (absolute value)
-            float - Single value
-            np.ndarray - multidimensional values
+        depth : float or array-like
+        Water depth in m (absolute value) at the turbine's location.
 
-        distance_to_shore : Distance from shore in kilometers
-            float - Single value
-            np.ndarray - multidimensional values
+        distance_to_shore : float or array-like
+            Distance from the turbine's location to the nearest shore in km.
+            
+        distance_to_bus : float or array-like
+            Distance from the wind farm's bus in km from the turbine's location.
 
-        distance_to_bus : Distance from bus in kilometers
-            float - Single value
-            np.ndarray - multidimensional values
+        foundation : str or array-like of strings
+            Turbine's foundation type. Accepted  types are: "monopile", "jacket", "semisubmersible" or "spar".
+            
+        mooring_count : int
+            Refers to the number of mooring lines are there attaching a turbine only applicable for floating foundation types
+            Default value is 3 assuming a triangular attachment to the seafloor.
+            
+        anchor : str
+            Turbine's anchor type only applicable for floating foundation types. 
+            Arguments accepted are "dea" (drag embedment anchor) or "spa" (suction pile anchor). The default value is "dea" as recomended by [1].
 
-        foundation : Foundation type (monopile, jacket, semisubmersible, spar)
-            str - Single value
-            np.ndarray - multidimensional values
+        turbine_count : int
+            Number of turbines in the offshore windpark. CSM valid for the rangue [3-200]. The default value is 80
+            
+        turbine_spacing : float
+            Spacing distance in a row of turbines (turbines that share the electrical connection) to the bus. The value must be a multiplyer of rotor diameter. CSM valid for the rangue [4-9]. Dafault value 5
+            
+        turbine_row_spacing : float
+            Spacing distance between rows of turbines. The value must be a multiplyer of rotor diameter. CSM valid for the rangue [4-10]. Dafault value is 9.
+    
+    Returns
+    --------
+        Offshore turbine total cost: float or array-like
 
-        mooring_count : Mooring count
-            float - Single value
-            np.ndarray - multidimensional values
 
-        anchor : Anchor type
-            str - Single value
-            np.ndarray - multidimensional values
+    Notes
+    -------
+        The baseline offshore turbine correspongs to the optimal desing for Europe accoring to Cagalayn et al. [4]: capacity of 9400 kW, hub height of 135 m, and rotor diameter of 210 m, monopile foundation, reference water depth of 40 m, and distance to shore of 60 km.
 
-        turbine_count : Number of turbines in the windpark
-            float - Single value
-            np.ndarray - multidimensional values
 
-        turbine_spacing : Spacing of turbines (5 * rotor diameter)
-            float - Single value
-            np.ndarray - multidimensional values
+    Sources:
+    -------
 
-        turbine_row_spacing : Spacing of rows (9 * rotor diameter)
-            float - Single value
-            np.ndarray - multidimensional values
+        [1] Fingersh, L., Hand, M., & Laxson, A. (2006). Wind Turbine Design Cost and Scaling Model. Nrel. https://www.nrel.gov/docs/fy07osti/40566.pdf
 
-    # Sources: (Defaults from [1] or [5])
-    # [1] https://www.nrel.gov/docs/fy17osti/66874.pdf
-    # [2] Anders Mhyr, Catho Bjerkseter, Anders Agotnes and Tor A. Nygaard (2014) Levelised costs of energy for offshore floating wind turbines in a life cycle perspective
-    # [3] Catho Bjerkseter and Anders Agotnes(2013) Levelised costs of energy for offshore floating wind turbine concenpts
-    # [4] www.rpgcables.com/images/product/EHV-catalogue.pdf
-    # [5] https://www.nrel.gov/docs/fy16osti/66262.pdf
-    # [6] L. Fingersh, M. Hand, and A. Laxson. "Wind Turbine Design Cost and Scaling Model". 2006. NREL
-    # [7] Tyler Stehly, Donna Heimiller, and George Scott. "2016 Cost of Wind Energy Review". 2017. NREL. https://www.nrel.gov/docs/fy18osti/70363.pdf
+        [2] Maples, B., Hand, M., & Musial, W. (2010). Comparative Assessment of Direct Drive High Temperature Superconducting Generators in Multi-Megawatt Class Wind Turbines. Energy. https://doi.org/10.2172/991560
 
+        [3] Stehly, T., Heimiller, D., & Scott, G. (2016). Cost of Wind Energy Review. Technical Report. https://www.nrel.gov/docs/fy18osti/70363.pdf
+
+        [4] Caglayan, D. G., Ryberg, D. S., Heinrichs, H., Linßen, J., Stolten, D., & Robinius, M. (2019). The techno-economic potential of offshore wind energy with optimized future turbine designs in Europe. Applied Energy. https://doi.org/10.1016/j.apenergy.2019.113794
+    
+        [5] Maness, M., Maples, B., & Smith, A. (2017). NREL Offshore Balance-of- System Model NREL Offshore Balance-of- System Model. https://www.nrel.gov/docs/fy17osti/66874.pdf
+        
+        [6] Myhr, A., Bjerkseter, C., Ågotnes, A., & Nygaard, T. A. (2014). Levelised cost of energy for offshore floating wind turbines in a life cycle perspective. Renewable Energy, 66, 714–728. https://doi.org/10.1016/j.renene.2014.01.017
+
+        [7] Bjerkseter, C., & Ågotnes, A. (2013). Levelised Costs Of Energy For Offshore Floating Wind Turbine Concepts [Norwegian University of Life Sciences]. https://nmbu.brage.unit.no/nmbu-xmlui/bitstream/handle/11250/189073/Bjerkseter%2C C. %26 Ågotnes%2C A. %282013%29 - Levelised Costs of Energy for Offshore Floating Wind Turbine Concepts.pdf?sequence=1&isAllowed=y
+        
+        [8] Smart, G., Smith, A., Warner, E., Sperstad, I. B., Prinsen, B., & Lacal-Arantegui, R. (2016). IEA Wind Task 26: Offshore Wind Farm Baseline Documentation. https://doi.org/10.2172/1259255
+
+        [9] RPG CABLES, & KEC International limited. (n.d.). EXTRA HIGH VOLTAGE cables. RPG CABLES. www.rpgcables.com/images/product/EHV-catalogue.pdf
+    
     """
     # PREPROCESS INPUTS
     cp = np.array(capacity / 1000)
@@ -100,6 +111,80 @@ def offshore_turbine_capex(capacity, hub_height, rotor_diam, depth, distance_to_
 
 
 def offshore_bos(cp, rd, hh, depth, distance_to_shore, distance_to_bus, foundation, mooring_count, anchor, turbine_count, turbine_spacing, turbine_row_spacing):
+    """
+    A function to determine the balance of the system cost (BOS) of an offshore turbine based on the capacity, hub height and rotor diamter values accoriding to Fingersh et al. [1].
+
+    Parameters
+    ----------
+    cp : float or array-like
+        [description]
+    rd : float or array-like
+        [description]
+    hh : float or array-like
+        [description]
+    depth : float or array-like
+        Water depth in m (absolute value) at the turbine's location.
+
+    distance_to_shore : float or array-like
+        Distance from the turbine's location to the nearest shore in km.
+        
+    distance_to_bus : float or array-like
+        Distance from the wind farm's bus in km from the turbine's location.
+
+    foundation : str or array-like of strings
+        Turbine's foundation type. Accepted  types are: "monopile", "jacket", "semisubmersible" or "spar".
+        
+    mooring_count : int
+        Refers to the number of mooring lines are there attaching a turbine only applicable for floating foundation types
+        Default value is 3 assuming a triangular attachment to the seafloor.
+        
+    anchor : str
+        Turbine's anchor type only applicable for floating foundation types. 
+        Arguments accepted are "dea" (drag embedment anchor) or "spa" (suction pile anchor). The default value is "dea" as recomended by [1].
+
+    turbine_count : int
+        Number of turbines in the offshore windpark. CSM valid for the rangue [3-200]. The default value is 80
+        
+    turbine_spacing : float
+        Spacing distance in a row of turbines (turbines that share the electrical connection) to the bus. The value must be a multiplyer of rotor diameter. CSM valid for the rangue [4-9]. Dafault value 5
+        
+    turbine_row_spacing : float
+        Spacing distance between rows of turbines. The value must be a multiplyer of rotor diameter. CSM valid for the rangue [4-10]. Dafault value is 9.
+    
+
+    Returns
+    -------
+     float
+        Offshore turbine's BOS in monetary units.
+
+    Notes
+    ------
+        Assembly and installation costs could not be implemented due to the excessive number of unspecified constants considered by Smart et al. [8]. Therefore empirical equations were derived which fit the sensitivities to the baseline plants shown in [8]. These ended up being linear equations in turbine capacity and sea depth (only for floating turbines).
+
+
+    Sources
+    ---------
+    
+        [1] Fingersh, L., Hand, M., & Laxson, A. (2006). Wind Turbine Design Cost and Scaling Model. Nrel. https://www.nrel.gov/docs/fy07osti/40566.pdf
+
+        [2] Maples, B., Hand, M., & Musial, W. (2010). Comparative Assessment of Direct Drive High Temperature Superconducting Generators in Multi-Megawatt Class Wind Turbines. Energy. https://doi.org/10.2172/991560
+
+        [3] Stehly, T., Heimiller, D., & Scott, G. (2016). Cost of Wind Energy Review. Technical Report. https://www.nrel.gov/docs/fy18osti/70363.pdf
+
+        [4] Caglayan, D. G., Ryberg, D. S., Heinrichs, H., Linßen, J., Stolten, D., & Robinius, M. (2019). The techno-economic potential of offshore wind energy with optimized future turbine designs in Europe. Applied Energy. https://doi.org/10.1016/j.apenergy.2019.113794
+    
+        [5] Maness, M., Maples, B., & Smith, A. (2017). NREL Offshore Balance-of- System Model NREL Offshore Balance-of- System Model. https://www.nrel.gov/docs/fy17osti/66874.pdf
+        
+        [6] Myhr, A., Bjerkseter, C., Ågotnes, A., & Nygaard, T. A. (2014). Levelised cost of energy for offshore floating wind turbines in a life cycle perspective. Renewable Energy, 66, 714–728. https://doi.org/10.1016/j.renene.2014.01.017
+
+        [7] Bjerkseter, C., & Ågotnes, A. (2013). Levelised Costs Of Energy For Offshore Floating Wind Turbine Concepts [Norwegian University of Life Sciences]. https://nmbu.brage.unit.no/nmbu-xmlui/bitstream/handle/11250/189073/Bjerkseter%2C C. %26 Ågotnes%2C A. %282013%29 - Levelised Costs of Energy for Offshore Floating Wind Turbine Concepts.pdf?sequence=1&isAllowed=y
+        
+        [8] Smart, G., Smith, A., Warner, E., Sperstad, I. B., Prinsen, B., & Lacal-Arantegui, R. (2016). IEA Wind Task 26: Offshore Wind Farm Baseline Documentation. https://doi.org/10.2172/1259255
+
+        [9] RPG CABLES, & KEC International limited. (n.d.). EXTRA HIGH VOLTAGE cables. RPG CABLES. www.rpgcables.com/images/product/EHV-catalogue.pdf
+
+    """
+
     # rr = rd / 2
 
     # prevent problems with negative depth values
@@ -451,12 +536,7 @@ def offshore_bos(cp, rd, hh, depth, distance_to_shore, distance_to_bus, foundati
     totalElectricalInfrastructureCosts /= turbine_count
 
     # ASSEMBLY AND INSTALLATION
-    """
-    assembly and installation could not be implemented due to the excessive number of unspecified 
-    constants in [1]. Therefore empirical equations were derived which fit the sensitivities to
-    the baseline plants shown in [1]. These ended up being linear equations in turbine capacity and 
-    sea depth (only for floating turbines).
-    """
+
     assemblyAndInstallationCost = np.ones(totalElectricalInfrastructureCosts.shape)
 
     if fixedType:

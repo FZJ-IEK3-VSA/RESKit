@@ -12,6 +12,15 @@ _synthetic_power_curve_data = None
 
 
 def synthetic_power_curve_data():
+    """
+    Reads the data used for creating a synthetic power curve.
+
+    Returns
+    -------
+    DataFrame
+        DataFrame with the imput data to create a synthetic power curve.
+
+    """
     global _synthetic_power_curve_data
 
     if _synthetic_power_curve_data is None:
@@ -22,13 +31,34 @@ def synthetic_power_curve_data():
 
 
 def compute_specific_power(capacity, rotor_diam, **k):
-    """Computes specific power from capacity and rotor diameter"""
+    """
+    Computes specific power from capacity and rotor diameter
+
+    Parameters
+    ----------
+    capacity : float or array-like
+            Turbine's nominal capacity in kW.
+    rotor_diam : float or array-like
+            Turbine's hub height in m.
+
+    Returns
+    -------
+    float or array-like
+        Specific power in kW/m2
+        
+    """
     return capacity * 1000 / rotor_diam**2 / np.pi * 4
 
 
 class PowerCurve():
-    """ 
-    A wind turbine's power curve represented by a set of (wind-speed,capacty-factor) pairs:
+    """
+    A wind turbine's power curve represented by a set of (wind-speed,capacty-factor) pairs.
+
+    Returns
+    -------
+    Plot
+        A plot of the power curve.
+
     """
 
     def __init__(self, wind_speed, capacity_factor):
@@ -63,7 +93,26 @@ class PowerCurve():
 
     @staticmethod
     def from_specific_power(specific_power, cutout=25):
-        """The synthetic power curve generator creates a wind turbine power curve 
+        """
+        The synthetic power curve generator creates a wind turbine power curve based off observed relationships between turbine specific power and known power curves
+
+        Parameters
+        ----------
+        specific_power : float or array-like
+            [description]
+        cutout : int, optional
+            Cut out wind speed in m/s, by default 25
+
+        Returns
+        -------
+        [type]
+            [description]
+        
+        
+        
+        
+        
+        The synthetic power curve generator creates a wind turbine power curve 
         based off observed relationships between turbine specific power and known
         power curves
         """

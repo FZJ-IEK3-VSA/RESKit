@@ -6,7 +6,8 @@ from ...util import ResError
 
 
 def apply_logarithmic_profile_projection(measured_wind_speed, measured_height, target_height, roughness, displacement=0, stability=0):
-    """Estimates windspeed at target height ($h_t$) based off a measured windspeed 
+    """
+    Estimates windspeed at target height ($h_t$) based on a measured windspeed 
     ($u_m$) at a known measurement height ($h_m$) subject to the surface roughness 
     ($z$), displacement height ($d$), and stability ($S$)
 
@@ -19,82 +20,71 @@ def apply_logarithmic_profile_projection(measured_wind_speed, measured_height, t
     * Simplifications:
         - stability -> 0 under "neutral stability conditions"
 
-    Parameters:
-    -----------
-    measured_wind_speed : numpy.ndarray
-        The raw windspeeds to be adjusted
-        * If an array is given with a single dimension, it is assumed to represent 
-          timeseries values for a single location
-        * If multidimensional array is given, the assumed dimensional context is 
-          (time, locations), and 'targetLoc' must be an iterable with the same 
-          length as the 'locations' dimension
+    Parameters
+    ----------
+    measured_wind_speed : multidimentional array-like
+        The raw windspeeds in m to be adjusted
+        If an array is given with a single dimension, it is assumed to represent timeseries values for a single location
+        If multidimensional array is given, the assumed dimensional context is (time, locations), and 'targetLoc' must be an iterable with the same length as the 'locations' dimension
+    
+    measured_height : multidimentional array-like
+        The measurement height in m of the raw windspeeds.
+        If an array is given for measured_wind_speed with a single dimension, a single value is expected for measured_height
+        If multidimensional array is given for measured_wind_speed, an array of values is expected for measured_height. One value for each wind speed timeseries
 
-    measured_height : numeric or numpy.ndarray
-        The measurement height of the raw windspeeds
-        * If an array is given for measured_wind_speed with a single dimension, a 
-          single value is expected for measured_height
-        * If multidimensional array is given for measured_wind_speed, an array of
-          values is expected for measured_height. One value for each wind speed
-          timeseries
+    target_height : numeric or array-like
+        The height in m to project each wind speed timeseries to.
+        If an array is given for target_height, each value must match to one wind speed timeseries in measured_wind_speed
 
-    target_height : numeric or numpy.ndarray
-        The height to project each wind speed timeseries to
-        * If a numeric value is given, all windspeed timeseries will be projected
-          to this height
-        * If an array is given for target_height, each value must match to one
-          wind speed timeseries in measured_wind_speed
+    roughness : numeric or array-like
+        The roughness value used to project each wind speed timeseries.
+        If an array is given, each value must match to one wind speed timeseries in measured_wind_speed.
 
-    roughness : numeric or numpy.ndarray
-        The roughness value used to project each wind speed timeseries
-        * If a numeric value is given, all windspeed timeseries will be projected
-          using this roughness value
-        * If an array is given, each value must match to one wind speed timeseries
-          in measured_wind_speed
+    displacement : numeric or array-like, optional
+        The displacement value used to project each wind speed timeseries, by default 0.
+        If an array is given, each value must match to one wind speed timeseries in measured_wind_speed.
 
-    displacement : numeric or numpy.ndarray, optional
-        The displacement value used to project each wind speed timeseries
-        * If a numeric value is given, all windspeed timeseries will be projected
-          using this displacement value
-        * If an array is given, each value must match to one wind speed timeseries
-          in measured_wind_speed
+    stability : numeric or array-like, optional
+        The stability value used to project each wind speed timeseries, by default 0.
+        If an array is given, each value must match to one wind speed timeseries in measured_wind_speed.
 
-    stability : numeric or numpy.ndarray, optional
-        The stability value used to project each wind speed timeseries
-        * If a numeric value is given, all windspeed timeseries will be projected
-          using this stability value
-        * If an array is given, each value must match to one wind speed timeseries
-          in measured_wind_speed
+    Returns
+    -------
+    multidimentional array-like
+        Windspeed in m/s at target height
+    """    
 
-    """
     return measured_wind_speed * (np.log((target_height - displacement) / roughness) + stability) / (np.log((measured_height - displacement) / roughness) + stability)
 
 
 def roughness_from_levels(low_wind_speed, low_height, high_wind_speed, high_height):
-    """Computes a roughness factor from two windspeed values at two distinct heights
-
-    Parameters:
-    -----------
-    lowWindspeed : numeric or np.ndarray
-        The measured wind speed at the lower height
-
-    low_height : numeric or np.ndarray
-        The lower height
-
-    high_wind_speed : numeric or np.ndarray
-        The measured wind speed at the higher height
-
-    high_height : numeric or np.ndarray
-        The higher height
     """
+    Computes a roughness factor from two windspeed values at two distinct heights
+
+    Parameters
+    ----------
+    low_wind_speed : numeric or np.ndarray
+        The measured wind speed in m/s at the lower height.
+    low_height : numeric or np.ndarray
+        The lower height in m.
+    high_wind_speed : numeric or np.ndarray
+        The measured wind speed in m/s at the higher height.
+    high_height : numeric or np.ndarray
+        The higher height in m.
+
+    Returns
+    -------
+    numeric or arrray-like
+        roughness factor
+    """ 
 
     return np.exp((high_wind_speed * np.log(low_height) - low_wind_speed * np.log(high_height)) / (high_wind_speed - low_wind_speed))
 
 
 ############################################################################
-# See CLC codes at: http://uls.eionet.europa.eu/CLC2000/classes/
-# Roughnesses defined primarily from :
-# Title -- ROUGHNESS LENGTH CLASSIFICATION OF CORINE LAND COVER CLASSES
-# Authors -- Julieta Silva, Carla Ribeiro, Ricardo Guedes
+# See CLC codes at: https://land.copernicus.eu/pan-european/corine-land-cover/clc-2000 #Link updated 
+# Roughnesses defined primarily from: Silva, J., Ribeiro, C., & Guedes, R. (2007). Roughness length classification of corine land cover classes. European Wind Energy Conference and Exhibition 2007, EWEC 2007.
+
 clcCodeToRoughess = OrderedDict()
 clcCodeToRoughess[111] = 1.2  # Continuous urban fabric
 clcCodeToRoughess[311] = 0.75  # Broad-leaved forest
@@ -189,34 +179,32 @@ clcGridToCode_v2006[44] = 523
 
 
 def roughness_from_clc(clc_path, loc, window_range=0):
-    """Estimates a roughness factor by the prominent land cover at given locations
-    given by the Corine Land Cover dataset.
+    """
+    Estimates a roughness factor according to suggestions by Silva et al [1] by the prominent land cover at given locations according to the Corine Land Cover dataset [2].
 
-    * Roughness suggestions from [1], and are given below
-
-    Parameters:
-    -----------
+    Parameters
+    ----------
     clc_path : str
-        The path to the Corine Land Cover file on disk
-
-    loc : Anything acceptable to geokit.LocationSet
-        The locations for which roughness should be estimated
-
+        The path to the Corine Land Cover raster file on the disk.
+    loc : Location or ogr.Geometry or str or tuple (lat,lon)
+        The locations for which roughness should be estimated.
     window_range : int; optional
-        An extra number of pixels to extract around the indicated locations
-          * A window_range of 0 means only the CLC pixel value for each location is
-            returned
-          * A window_range of 1 means an extra pixel is extracted around each location
-            in all directions. Leading to a 3x3 matrix of roughness values
-          * Use this if you need to do some operation on the roughnesses found
-            around the indicated location
+        An extra number of pixels to extract around the indicated locations, by default 0.
+        A window_range of 0 means only the CLC pixel value for each location is returned, A window_range of 1 means an extra pixel is extracted around each location in all directions. Leading to a 3x3 matrix of roughness values
+        Use this if you need to do some operation on the roughnesses found around the indicated location
 
-    Sources:
+    Returns
+    -------
+    float
+        Roughness lengths factors
+    
+
+    Sources
     --------
-    1: Silva et al.
+        [1] Silva, J., Ribeiro, C., & Guedes, R. (2007). Roughness length classification of corine land cover classes. European Wind Energy Conference and Exhibition 2007, EWEC 2007.
 
     Roughness Values:
-    -----------------
+
         Continuous urban fabric : 1.2 
         Broad-leaved forest : 0.75 
         Coniferous-leaved forest : 0.75 
@@ -303,9 +291,7 @@ def roughness_from_clc(clc_path, loc, window_range=0):
 
 
 ############################################################################
-# Defined primarily from :
-# Title -- ROUGHNESS LENGTH CLASSIFICATION OF Global Wind Atlas
-## Authors -- DTU
+# Defined primarily from [2] DTU Wind Energy. (2019). Gloabal Wind Atlas. https://globalwindatlas.info/
 globCoverCodeToRoughess = OrderedDict()
 # GlobCover Number
 globCoverCodeToRoughess[210] = 0.0002  # Water Bodies # changed by Me from 0.0 to 0.0002
@@ -352,8 +338,7 @@ modisCodeToRoughess[5] = 1.5  # Forests
 modisCodeToRoughess[8] = 1.5  # Forests
 
 ############################################################################
-# CCI Landcover  classification by ESA and the Climate Change Initiative
-# ABOUT: https://www.esa-landcover-cci.org/?q=node/1
+# CCI Landcover  classification by ESA and the Climate Change Initiative [3] European Space Agency. (2014). ESA Climate Change Initiative. https://www.esa-landcover-cci.org/?q=node/1
 # Roughnesses defined due to the comparison with CLC and globCover
 cciCodeToRoughess = OrderedDict()
 # CCI LC Number
@@ -399,9 +384,18 @@ def roughness_from_land_cover_classification(classification, land_cover_type='cl
     """
     Estimate roughness value from a given land cover classification
 
-    Note:
-    -----
-    land_cover_type can be 'clc', 'clc-code', 'globCover', 'modis', or 'cci'
+    Parameters
+    ----------
+    classification : int
+        land cover classification
+    land_cover_type : str, optional
+        Accepted arguments are 'clc', 'clc-code', 'globCover', 'modis', or 'cci', by default 'clc'
+
+    Returns
+    -------
+    int
+        Roughness lengnth value
+
     """
     if land_cover_type == 'clc':
         # fix no data values
@@ -430,9 +424,19 @@ def roughness_from_land_cover_source(source, loc, land_cover_type='clc'):
     """
     Estimate roughness value from a given land cover source
 
-    Note:
-    -----
-    land_cover_type can be 'clc', 'clc-code', 'globCover', 'modis', or 'cci'
+    Parameters
+    ----------
+    source : str
+        The path to the Corine Land Cover raster file on the disk.
+    loc : Location or ogr.Geometry or str or tuple (lat,lon)
+        The locations for which roughness should be estimated.
+    land_cover_type : str, optional
+        Accepted arguments are 'clc', 'clc-code', 'globCover', 'modis', or 'cci', by default 'clc'
+    Returns
+    -------
+    int
+        Roughness lengnth value
+    
     """
     loc = gk.LocationSet(loc)
     classifications = gk.raster.interpolateValues(source, loc, noDataOkay=False)

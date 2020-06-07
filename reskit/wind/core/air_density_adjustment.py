@@ -4,24 +4,32 @@ import numpy as np
 
 def apply_air_density_adjustment(wind_speed, pressure, temperature, height=0):
     """
-    Applies wind_speed correction based off calculated aid density
+    Applies air density corrections to the wind speed as suggested by the IEC 61400-12-1:2017 [1].
 
-    Notes:
+    Parameters
+    ----------
+    wind_speed : float or array-like
+        The wind speed in m/s at <(or close to)> the surface/hub height?.                                                           @Sev: "(or close to)" is ok too, right?
+    pressure : float or array-like
+        Air preassure in Pa at (or close to) the surface.
+    temperature : float or array-like
+        Air temperature in degree Celsius at (or close to) the surface.
+    height : float or array-like, optional
+        The height to project the air density to in m, by default 0
+
+    Returns
+    -------
+    float or array-like
+        The air density corrected wind speed in m/s at the given height.
+
+    Notes
     ------
-    * Density calculation from ideal gas
-    * Projection using barometric equation
-    * Density correction from assuming equal energy in the wind 
-     - Suggested by IEC IEC61400-12
-
-    Parameters:
-    -----------
-    wind_speed : The wind speeds to adjust
-
-    pressure : The pressure at the surface, in Pa
-
-    temperature : Air temperature at the surface, in C
-
-    height : The height to project the air density to, in meters
+        Air density calculation using the ideal gas equation since it is equivalent for a real-gas ecuaquion for humidity = 0, and humidity does not have a significant impact until high temperatures are considered [2]   @Sev: Reference added, got one better?
+        Pressure projection using barometric equation and density correction from assuming equal energy in the wind 
+    Sources
+    -------
+        [1] International Electrotechnical Commision (ICE). (2017). IEC 61400-12-1:2017 (p. 558). https://webstore.iec.ch/publication/26603
+        [2] Yue, W., Xue, Y., & Liu, Y. (2017). High Humidity Aerodynamic Effects Study on Offshore Wind Turbine Airfoil/Blade Performance through CFD Analysis. International Journal of Rotating Machinery, 2017, 1–15. https://doi.org/10.1155/2017/7570519
     """
     g0 = 9.80665  # Gravitational acceleration [m/s2]
     Ma = 0.0289644  # Molar mass of dry air [kg/mol]
@@ -31,10 +39,6 @@ def apply_air_density_adjustment(wind_speed, pressure, temperature, height=0):
     temperature = (temperature + 273.15)
 
     # Get surface density
-    # NOTE: I could use the equation from above, but its basically exactly equal
-    #       to ideal gas for humidity=0, and humidity does not have a significant
-    #       impact until high temperatures are considered
-
     rho = pressure * Ma / (R * temperature)
 
     # Project rho to the desired height

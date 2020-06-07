@@ -5,6 +5,30 @@ from .wind_workflow_manager import WindWorkflowManager
 
 def onshore_wind_merra_ryberg2019_europe(placements, merra_path, gwa_50m_path, clc2012_path, output_netcdf_path=None, output_variables=None):
     # TODO: Add range limitation over Europe by checking placements
+    """
+    [summary]
+
+    Parameters
+    ----------
+    placements : [type]
+        [description]
+    merra_path : [type]
+        [description]
+    gwa_50m_path : [type]
+        [description]
+    clc2012_path : [type]
+        [description]
+    output_netcdf_path : [type], optional
+        [description], by default None
+    output_variables : [type], optional
+        [description], by default None
+
+    Returns
+    -------
+    [type]
+        [description]
+    """
+    
     wf = WindWorkflowManager(placements)
 
     wf.read(
