@@ -2,38 +2,47 @@ import numpy as np
 
 
 def onshore_turbine_capex(capacity, hub_height, rotor_diam, base_capex=1100 * 4200, base_capacity=4200, base_hub_height=120, base_rotor_diam=136, tcc_share=0.673, bos_share=0.229, **k):
-    """
+    """    
     A cost and scaling model (CSM) to calculate the total cost of a 3-bladed, direct drive onshore wind turbine according to Fingersh et al. [1] and Maples et al. [2].
-    A CSM normalization is done such that a chosen baseline turbine, with a capacity of 4200 kW, hub height of 120 m, and rotor diameter of 136 m, corresponds to a expected typical specific cost of 1100 Eur/kW in a 2050 context according to the 2016 cost of wind energy review by Stehly [3]
+    A CSM normalization is done such that a chosen baseline turbine, with a capacity of 4200 kW, hub height of 120 m, and rotor diameter of 136 m, corresponds to a expected typical specific cost of 1100 Eur/kW in a 2050 European context according to the 2016 cost of wind energy review by Stehly [3]
     The turbine cost includes the turbine capital cost (TCC) and balance of system costs (BOS), amounting to 67.3% and 22.9% respectively [3], as well as finantial costs equivalent to the the complementary percentage.
     
+
     Parameters
     ----------
-        capacity : float or array-like
-            Turbine's nominal capacity in kW.
-
-        hubHeight : float or array-like
-            Turbine's hub height in m.
-
-        rotordiam : float or array-like
-            Turbine's hub height in m.
+    capacity : numeric or array-like
+        Turbine's nominal capacity in kW.
+    hub_height : numeric or array-like
+        Turbine's hub height in m.
+    rotor_diam : numeric or array-like
+        Turbine's hub height in m.
+    base_capex : numeric, optional
+        Turbine's baseline capital costs in €, by default 1100*4200 [€/kW * kW]
+    base_capacity : int, optional
+        Turbine's baseline capacity in kW, by default 4200
+    base_hub_height : int, optional
+        Turbine's baseline hub height in m, by default 120
+    base_rotor_diam : int, optional
+        Turbine's baseline rotor diamter in m, by default 136
+    tcc_share : float, optional
+        Turbine's TCC percentage contribution in the total cost, by default 0.673
+    bos_share : float, optional
+        Turbine's baseline BOS percentage contribution in the total cost, by default 0.229 
 
     Returns
     --------
-        Onshore turbine total cost: float
+    numeric or array-like
+        Onshore turbine total cost
 
     Notes
     -------
-        The expected turbine cost estimation by Stehly et al [3]. is claimed to be derived from real cost data and valid until 10 MW capacity.
-        The baseline (or standard) turbine characteristics correspond to the expected typical onshore turbine in 2050 [].
+    The expected turbine cost estimation of 1100 €/kW by Stehly et al. [3] is claimed to be derived from real cost data and valid until 10 MW capacity.
 
     Sources
     ---------
-        [1] Fingersh, L., Hand, M., & Laxson, A. (2006). Wind Turbine Design Cost and Scaling Model. Nrel. https://www.nrel.gov/docs/fy07osti/40566.pdf
-
-        [2] Maples, B., Hand, M., & Musial, W. (2010). Comparative Assessment of Direct Drive High Temperature Superconducting Generators in Multi-Megawatt Class Wind Turbines. Energy. https://doi.org/10.2172/991560
-
-        [3] Stehly, T., Heimiller, D., & Scott, G. (2016). Cost of Wind Energy Review. Technical Report. https://www.nrel.gov/docs/fy18osti/70363.pdf
+    [1] Fingersh, L., Hand, M., & Laxson, A. (2006). Wind Turbine Design Cost and Scaling Model. Nrel. https://www.nrel.gov/docs/fy07osti/40566.pdf
+    [2] Maples, B., Hand, M., & Musial, W. (2010). Comparative Assessment of Direct Drive High Temperature Superconducting Generators in Multi-Megawatt Class Wind Turbines. Energy. https://doi.org/10.2172/991560
+    [3] Stehly, T., Heimiller, D., & Scott, G. (2016). Cost of Wind Energy Review. Technical Report. https://www.nrel.gov/docs/fy18osti/70363.pdf
 
     """
 
@@ -63,32 +72,32 @@ def onshore_turbine_capex(capacity, hub_height, rotor_diam, base_capex=1100 * 42
 
 def onshore_tcc(cp, hh, rd, gdp_escalator=1, blade_material_escalator=1, blades=3):
     """
+    A function to determine the tubine capital cost (TCC) of a 3 blade standar onshore wind turbime based capacity, hub height and rotor diameter values according to the cost model by Fingersh et al. [1].
 
-    A function to determine the tubine capita cost (TCC) based on the capacity, hub height and rotor diamter values accoiding to Fingersh et al. [1].
 
     Parameters
     ----------
-    cp : int
+    cp : numeric or array-like
         Turbine's capacity in kW
-    hh : int
+    hh : numeric or array-like
         Turbine's hub height in m
-    rd : int
+    rd : numeric or array-like
         Turbine's rotor diamter in m
-    gdpEscalator : int, optional
+    gdp_escalator : int, optional
         Labor cost escalator, by default 1
-    bladeMaterialEscalator : int, optional
+    blade_material_escalator : int, optional
         Blade material cost escalator, by default 1
     blades : int, optional
         Number of blades, by default 3
 
     Returns
     -------
-    Turbine capital cost: float
-        Turbine's capital cost in monetary units.
+    numeric or array-like
+        Turbine's TCC in monetary units.
     
     Sources
     ---------
-        [1] Fingersh, L., Hand, M., & Laxson, A. (2006). Wind Turbine Design Cost and Scaling Model. Nrel. https://www.nrel.gov/docs/fy07osti/40566.pdf
+    [1] Fingersh, L., Hand, M., & Laxson, A. (2006). Wind Turbine Design Cost and Scaling Model. Nrel. https://www.nrel.gov/docs/fy07osti/40566.pdf
 
     """
     rr = rd / 2
@@ -188,20 +197,20 @@ def onshore_bos(cp, hh, rd):
 
     Parameters
     ----------
-    cp : int
+    cp : numeric or array-like
         Turbine's capacity in kW
-    hh : int
+    hh : numeric or array-like
         Turbine's hub height in m
-    rd : int
+    rd : numeric or array-like
         Turbine's rotor diamter in m
     Returns
     -------
-    bosCosts: float
+    numeric or array-like
         Turbine's BOS in monetary units.
     
     Sources
     ---------
-        [1] Fingersh, L., Hand, M., & Laxson, A. (2006). Wind Turbine Design Cost and Scaling Model. Nrel. https://www.nrel.gov/docs/fy07osti/40566.pdf
+    [1] Fingersh, L., Hand, M., & Laxson, A. (2006). Wind Turbine Design Cost and Scaling Model. Nrel. https://www.nrel.gov/docs/fy07osti/40566.pdf
 
     """
     

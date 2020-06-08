@@ -1,19 +1,23 @@
 import geokit as gk
-
 import pandas as pd
 import numpy as np
+
 from os import mkdir, environ
 from os.path import join, isfile, isdir
 from collections import OrderedDict, namedtuple
 from types import FunctionType
-
 from .. import core as rk_wind_core
 from ...workflow_manager import WorkflowManager
 
 
 class WindWorkflowManager(WorkflowManager):
     """
-        I am a doc string
+    [summary]
+
+    Returns
+    -------
+    [type]
+        [description]  
     """
 
     def __init__(self, placements, synthetic_power_curve_cut_out=25, synthetic_power_curve_rounding=1):

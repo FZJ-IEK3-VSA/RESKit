@@ -7,23 +7,13 @@ from ...util import ResError
 
 def apply_logarithmic_profile_projection(measured_wind_speed, measured_height, target_height, roughness, displacement=0, stability=0):
     """
-    Estimates windspeed at target height ($h_t$) based on a measured windspeed 
-    ($u_m$) at a known measurement height ($h_m$) subject to the surface roughness 
-    ($z$), displacement height ($d$), and stability ($S$)
-
-    * Begins with the semi-empirical log wind profile ($a$ stands for any height):
-        $ u_a = \\frac{u_*}{\\kappa}[ln(\\frac{h_a - d}{z}) + S] $
-
-    * Solves for $u_t$ based off known values:
-        $ u_t = u_m * \\frac{ln((h_t - d)/z}) + S]}{ln((h_m - d)/z}) + S]} $
-
-    * Simplifications:
-        - stability -> 0 under "neutral stability conditions"
+    Estimates wind speeds at target height based on measured wind speeds values at a known measurement height.
+    Estimation subject to surface roughness, displacement height, and stability factors.
 
     Parameters
     ----------
     measured_wind_speed : multidimentional array-like
-        The raw windspeeds in m to be adjusted
+        The wind speeds to be adjusted in m/s
         If an array is given with a single dimension, it is assumed to represent timeseries values for a single location
         If multidimensional array is given, the assumed dimensional context is (time, locations), and 'targetLoc' must be an iterable with the same length as the 'locations' dimension
     
@@ -59,7 +49,7 @@ def apply_logarithmic_profile_projection(measured_wind_speed, measured_height, t
 
 def roughness_from_levels(low_wind_speed, low_height, high_wind_speed, high_height):
     """
-    Computes a roughness factor from two windspeed values at two distinct heights
+    Computes a roughness factor from two windspeed values at two distinct heights.
 
     Parameters
     ----------
@@ -75,7 +65,7 @@ def roughness_from_levels(low_wind_speed, low_height, high_wind_speed, high_heig
     Returns
     -------
     numeric or arrray-like
-        roughness factor
+        Roughness factor
     """ 
 
     return np.exp((high_wind_speed * np.log(low_height) - low_wind_speed * np.log(high_height)) / (high_wind_speed - low_wind_speed))

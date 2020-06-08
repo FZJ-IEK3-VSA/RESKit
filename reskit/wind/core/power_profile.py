@@ -1,68 +1,64 @@
 import numpy as np
 
 
-def apply_power_profile_projection(measured_wind_speed, measured_height, target_height, alpha=1 / 7):
-    """Estimates windspeed at target height ($h_t$) based off a measured windspeed 
-    ($u_m$) at a known measurement height ($h_m$) subject to the scaling factor ($a$)
+def apply_power_profile_projection(measured_wind_speed, measured_height, target_height, alpha = 1/7):
+  """
+  Estimates wind speed values at target height based on another measured wind speed at a known height subject to a scaling factor.
 
-    $ u_t = u_m * (\\frac{h_t}{h_m})^a $
+  Parameters
+  ----------
+  measured_wind_speed : array_like
+    The raw wind speeds to be adjusted.
+    If a single dimension array is given, it is assumed to represent timeseries values for a single location
+    If a multidimensional array is given, the assumed dimensional context is (time, locations), and 'targetLoc' must be an iterable with the same length as the 'locations' dimension
+  measured_height : array_like
+    The measurement height of the raw windspeeds.
+    If a single dimension array is given for measured_wind_speed, a single value is expected for measured_height.
+    If a multidimensional array is given for measured_wind_speed, a array of values is expected for measured_height. One value for each wind speed timeseries
 
+  target_height : numeric or array_like
+    The (hub) height to project each wind speed timeseries to
+    If a numeric value is given, all windspeed timeseries will be projected to this height.
+    If an array is given, each value must match to one wind speed timeseries in measured_wind_speed
 
-    Parameters:
-    -----------
-    measured_wind_speed : numpy.ndarray
-        The raw windspeeds to be adjusted
-        * If an array is given with a single dimension, it is assumed to represent 
-          timeseries values for a single location
-        * If multidimensional array is given, the assumed dimensional context is 
-          (time, locations), and 'targetLoc' must be an iterable with the same 
-          length as the 'locations' dimension
+  alpha : numeric or array_like, optional
+    The scaling factor used to project each wind speed timeseries, by default 1/7
+    If a numeric value is given, all windspeed timeseries will be projected using this alpha value
+    If an array is given, each value must match to one wind speed timeseries in measured_wind_speed
+  
+  Notes
+  -----
+    The default scaling factor (alpha = 1/7) corresponds to neutral stability conditions.
+  
+  Returns
+  -------
+  array_like
+      projected wind speed
 
-    measured_height : numeric or numpy.ndarray
-        The measurement height of the raw windspeeds
-        * If an array is given for measured_wind_speed with a single dimension, a 
-          single value is expected for measured_height
-        * If multidimensional array is given for measured_wind_speed, an array of
-          values is expected for measured_height. One value for each wind speed
-          timeseries
-
-    target_height : numeric or numpy.ndarray
-        The height to project each wind speed timeseries to
-        * If a numeric value is given, all windspeed timeseries will be projected
-          to this height
-        * If an array is given for target_height, each value must match to one
-          wind speed timeseries in measured_wind_speed
-
-    alpha : numeric or numpy.ndarray, optional
-        The alpha value used to project each wind speed timeseries
-        * If a numeric value is given, all windspeed timeseries will be projected
-          using this alpha value
-        * If an array is given, each value must match to one wind speed timeseries
-          in measured_wind_speed
-        * The default 1/7 value corresponds to neutral stability conditions
-
-    """
-    return measured_wind_speed * np.power(target_height / measured_height, alpha)
+  """
+  return measured_wind_speed * np.power(target_height / measured_height, alpha)
 
 
 def alpha_from_levels(low_wind_speed, low_height, high_wind_speed, high_height):
-    """Solves for the scaling factor ($a$) given two windspeeds with known heights
+  """
+  Obtaines the scaling factor given two wind speeds measured at two different known heights.
 
-    $ a = log(\\frac{u_m}{u_t}) / log(\\frac{h_m}{h_t}) $
+  Parameters
+  ----------
+  low_wind_speed : numeric or array_like
+    The measured windspeed at the 'lower height'
+  low_height : numeric or array_like
+    The measured height at the 'lower height'
+  high_wind_speed : numeric or array_like
+    The measured windspeed at the 'higher height'
+  high_height : numeric or array_like
+    The measured height at the 'higher height'
 
-    Parameters:
-    -----------
-    low_wind_speed : numeric or numpy.ndarray
-        The measured windspeed at the 'lower height'
+  Returns
+  -------
+  numeric
+    The corresponding scaling factor
 
-    low_height : numeric or numpy.ndarray
-        The measured height at the 'lower height'
+  """
 
-    high_wind_speed : numeric or numpy.ndarray
-        The measured windspeed at the 'lower height'
-
-    high_height : numeric or numpy.ndarray
-        The measured height at the 'lower height'
-
-    """
-    return np.log(low_wind_speed / high_wind_speed) / np.log(low_height / high_height)
+  return np.log(low_wind_speed / high_wind_speed) / np.log(low_height / high_height)

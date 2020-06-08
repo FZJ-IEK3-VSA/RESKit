@@ -10,10 +10,10 @@ from .power_curve import compute_specific_power
 
 def onshore_turbine_from_avg_wind_speed(wind_speed, constant_rotor_diam=True, base_capacity=4200, base_hub_height=120, base_rotor_diam=136, reference_wind_speed=6.7, min_tip_height=20, min_specific_power=180):
     """ 
-    Suggest onshore turbine turbine desing characteristics (capacity, hub height, rotor diameter, specific power) for the context of 2050 based on an average wind speed value.
-    The default values and function's normalization correspond to the baseline turbine considered by Ryberg et al. [1] for a wind speed equal to 6.7 m/s.
+    Suggest onshore turbine desing characteristics (capacity, hub height, rotor diameter, specific power) for a 2050 European context based on an average wind speed value.
+    The default values and the function's normalization correspond to match the baseline turbine desing considered by Ryberg et al. [1] for a wind speed equal to 6.7 m/s. See notes.
     
-    Parameters:
+    Parameters
     ----------
     wind_speed : numeric or array_like
         Local average wind speed close to or at the hub height.
@@ -34,7 +34,7 @@ def onshore_turbine_from_avg_wind_speed(wind_speed, constant_rotor_diam=True, ba
 
     Returns
     -------
-    Dict or pandas DataFrame
+    dict or pandas DataFrame
         A dict or a pandas DataFrame (in case of array_like entries) with suggested values of hub height in m, specific power in W/m2, and capacity in kW.
 
     Notes

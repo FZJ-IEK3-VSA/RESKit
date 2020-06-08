@@ -17,7 +17,7 @@ def synthetic_power_curve_data():
 
     Returns
     -------
-    DataFrame
+    pandas DataFrame
         DataFrame with data to create a synthetic power curve.
 
     """
@@ -32,7 +32,7 @@ def synthetic_power_curve_data():
 
 def compute_specific_power(capacity, rotor_diam, **k):
     """
-    Computes the corresponding specific power in kW/M2 from capacity in kW and rotor diameter in m.
+    Computes the corresponding specific power in kW/m2 from values of capacity in kW and rotor diameter in m.
 
     Parameters
     ----------
@@ -56,7 +56,7 @@ class PowerCurve():
 
     Returns
     -------
-    Plot
+    matplotlib.pyplot
         A plot of the power curve.
 
     """
@@ -94,7 +94,7 @@ class PowerCurve():
     @staticmethod
     def from_specific_power(specific_power, cutout=25):
         """
-        Creates a synthetic wind turbine power curve based off observed relationships between turbine specific power and known power curves.
+        Creates a synthetic wind turbine power curve based on observed relationships between turbine specific power and known power curves.
 
         Parameters
         ----------
@@ -105,7 +105,7 @@ class PowerCurve():
 
         Returns
         -------
-        Plot
+        matplotlib.pyplot
             A power curve plot
         """
         # Create ws
@@ -129,12 +129,12 @@ class PowerCurve():
     @staticmethod
     def from_capacity_and_rotor_diam(capacity, rotor_diam, cutout=25):
         """
-        Creates a synthetic wind turbine power curve based off observed relationships between turbine's capacity, rotor diameter and known power curves.
+        Creates a synthetic wind turbine power curve based on observed relationships between turbine's capacity, rotor diameter and known power curves.
 
         Parameters
         ----------
         capacity : numeric
-        Baseline turbine capacity in kW.
+            Baseline turbine capacity in kW.
         rotor_diam : numeric
             turbine rotor diameter in m
         cutout : int, optional
@@ -142,7 +142,7 @@ class PowerCurve():
 
         Returns
         -------
-        Plot
+        matplotlib.pyplot
             A power curve plot
         
         """
@@ -155,7 +155,7 @@ class PowerCurve():
         Parameters
         ----------
         wind_speed : array_like
-        Local average wind speed close to or at the hub height.
+            Local average wind speed close to or at the hub height.
 
         Returns
         -------
@@ -179,7 +179,7 @@ class PowerCurve():
 
         Returns
         -------
-        Numeric or arrray-like
+        numeric or arrray-like
             Total generation in kWh
         
         """
@@ -210,7 +210,22 @@ class PowerCurve():
         return totalGen
 
     def expectated_capacity_factor_from_distribution(self, wind_speed_values, wind_speed_counts):
-        """Computes the expected capacity factor of a wind turbine based on an explicitly-provided wind speed distribution
+        """
+        Computes the expected capacity factor of a wind turbine based on an explicitly-provided wind speed distribution
+
+        Parameters
+        ----------
+        wind_speed_values : numeric or array-like
+            wind speed values in m/s
+        wind_speed_counts : numeric or array-like
+            #I do not undestand this properly
+
+        Returns
+        -------
+        numeric or arrray-like
+            Mean generation in kWh
+
+        
         """
         wind_speed_values = np.array(wind_speed_values)
         wind_speed_counts = np.array(wind_speed_counts)
@@ -236,6 +251,27 @@ class PowerCurve():
     def convolute_by_guassian(self, scaling=0.06, base=0.1, extend_beyond_cut_out=True, _min_speed=0.01, _max_speed=40, _steps=4000):
         """
         Convolutes a turbine power curve from a normal distribution function with wind-speed-dependent standard deviation.
+
+        Parameters
+        ----------
+        scaling : float, optional
+            [description], by default 0.06
+        base : float, optional
+            [description], by default 0.1
+        extend_beyond_cut_out : bool, optional
+            [description], by default True
+        _min_speed : float, optional
+            [description], by default 0.01
+        _max_speed : int, optional
+            [description], by default 40
+        _steps : int, optional
+            [description], by default 4000
+
+        Returns
+        -------
+        [type]
+            [description]
+
 
         * The wind-speed-dependent standard deviation is computed with:
             std = wind_speed * scaling + base
@@ -279,11 +315,22 @@ class PowerCurve():
         return PowerCurve(ws, convolutedCF)
 
     def apply_loss_factor(self, loss):
-        """Apply a loss factor onto the power curve
+        """
+        Applies a loss factor onto the power curve.
 
         'loss' can be a single value, or a function which takes a 'capacity factor' array as input
 
-        Returns: PowerCurve
+        Parameters
+        ----------
+        loss : numeric or function
+            If numeric, it is applyed at all capacty factors.
+            if a fuction, it must take a numpy array representing capacity factor values as input.
+
+        Returns
+        -------
+        numpy array
+            A corrected power curve.
+
         """
         try:
             cf = self.capacity_factor * (1 - loss)
