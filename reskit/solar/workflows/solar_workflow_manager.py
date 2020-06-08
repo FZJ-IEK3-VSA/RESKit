@@ -16,13 +16,55 @@ from ...workflow_manager import WorkflowManager
 # Lazily import PVLib
 import importlib
 
+"""
+
+Importing required packages.
+
+"""
+
 
 class LazyLoader:
     def __init__(self, lib_name):
+        
+        """
+        
+        __init_(self, lib_name)
+        
+        Initialization of an instance of the LazyLoader class.
+        
+        Parameters
+        ----------
+        lib_name : str
+                   The name of the library that you want to load.
+                   
+        Returns
+        -------
+        Nothing is returned.
+        
+        """
+        
         self.lib_name = lib_name
         self._mod = None
 
     def __getattr__(self, name):
+        
+        """
+        
+        __getattr__(self, lib_name)
+        
+        Returns attribute value.
+        
+        Parameters
+        ----------
+        name :  str
+                Attribute you want to return?
+                
+        Returns
+        -------
+        Libname?
+        
+        """
+        
         if self._mod is None:
             self._mod = importlib.import_module(self.lib_name)
         return getattr(self._mod, name)
@@ -30,26 +72,113 @@ class LazyLoader:
 
 pvlib = LazyLoader("pvlib")
 
+"""
+
+Initialization of an Instance of the LazyLoader class called pvlib.
+
+"""
+
 
 class SolarWorkflowManager(WorkflowManager):
     def __init__(self, placements):
+        
+        """
+        
+        __init_(self, placements)
+        
+        Initialization of an instance of the SolarWorkflowManager class.
+        
+        Parameters
+        ----------
+        placements : pandas Dataframe
+                     The locations that the simulation should be run for.
+                     Columns must be "lon", "lat"
+                     
+        Returns
+        -------
+        Nothing is returned.
+
+        """
+        
         # Do basic workflow construction
         super().__init__(placements)
         self._time_sel_ = None
         self._time_index_ = None
 
     def estimate_tilt_from_latitude(self, convention):
+        
+        """
+        
+        estimate_tilt_from_latitude(self, convention)
+        
+        Estimates the tilt of the solar panels based on the latitude of the placements of the instance.
+        
+        Parameters
+        ----------
+        convention : str, optional
+                     The calculation method used to suggest system tilts
+                     `convention` can be...
+                         * "Ryberg2020"
+                         * A string consumable by 'eval'
+                            - Can use the variable 'latitude'
+                            - Ex. "latitude*0.76"
+                        * A path to a raster file
+                        
+        Returns
+        -------
+        Returns a reference.
+                        
+        """
+        
         self.placements['tilt'] = rk_solar_core.system_design.location_to_tilt(
             self.locs, convention=convention)
         return self
 
     def estimate_azimuth_from_latitude(self):
+        
+        """
+        
+        estimate_azimuth_from_latitude(self)
+        
+        Estimates the azimuth of the placements of the instance. 
+        For a positive latitude the azimuth is set to 180.
+        For a negative latitude the azimuth is set to 0.
+        
+        Parameters
+        ----------
+        None
+                        
+        Returns
+        -------
+        Returns a referece.
+                        
+        """
+        
         self.placements['azimuth'] = 180
 
         self.placements['azimuth'].values[self.locs.lats < 0] = 0
         return self
 
     def apply_elevation(self, elev):
+        
+        """
+        
+        apply_elevation(self)
+        
+        Adds an elevation (name: 'elev') column to the placements data frame.
+        
+        Parameters
+        ----------
+        elev: str, list?
+              * if string path to a rasterfile?
+              * if list including the elevations at each location?
+                        
+        Returns
+        -------
+        Returns a reference.
+                        
+        """
+        
         if isinstance(elev, str):
             clipped_elev = self.ext.pad(0.5).rasterMosaic(elev)
             self.placements['elev'] = gk.raster.interpolateValues(
@@ -61,6 +190,46 @@ class SolarWorkflowManager(WorkflowManager):
         return self
 
     def determine_solar_position(self, lon_rounding=1, lat_rounding=1, elev_rounding=-2):
+        
+        """
+        
+        determine_solar_position(self, lon_rounding=1, lat_rounding=1, elev_rounding=-2)
+        
+        Calculates azimuth and apparent zenith for each location using the pvlib fuction pvlib.solarposition.spa_python() [1].
+        Adds azimuth and apparent zenit to the sim_data dictionary.
+        
+        Parameters
+        ----------
+        lon_rounding: int, optional
+                      Decimal places that the longitude should be rounded to. Default is 1.
+                      
+        lat_rounding: int, optional
+                      Decimal places that the latitude should be rounded to. Default is 1.
+                      
+        elev_rounding: int, optional
+                      Decimal places that the elevation should be rounded to. Default is -2.
+                        
+        Returns
+        -------
+        Returns a reference.
+        
+        References
+        ----------
+        [1] https://pvlib-python.readthedocs.io/en/stable/generated/pvlib.solarposition.spa_python.html
+        
+        [2] I. Reda and A. Andreas, Solar position algorithm for solar
+            radiation applications. Solar Energy, vol. 76, no. 5, pp. 577-589, 2004.
+
+        [3] I. Reda and A. Andreas, Corrigendum to Solar position algorithm for
+            solar radiation applications. Solar Energy, vol. 81, no. 6, p. 838,
+            2007.
+
+        [4] USNO delta T:
+            http://www.usno.navy.mil/USNO/earth-orientation/eo-products/long-term
+
+                        
+        """
+        
         assert "lon" in self.placements.columns
         assert "lat" in self.placements.columns
         assert "elev" in self.placements.columns
@@ -102,6 +271,23 @@ class SolarWorkflowManager(WorkflowManager):
         return self
 
     def filter_positive_solar_elevation(self):
+        
+        """
+        
+        filter_positive_solar_elevation(self)
+        
+        Filters positive solar elevatios.
+        
+        Parameters
+        ----------
+        None
+                        
+        Returns
+        -------
+        Returns a reference.
+                        
+        """
+        
         if self._time_sel_ is not None:
             warnings.warn("Filtering already applied, skipping...")
             return self
@@ -118,6 +304,38 @@ class SolarWorkflowManager(WorkflowManager):
         return self
 
     def determine_extra_terrestrial_irradiance(self, **kwargs):
+        
+        """
+        
+        determine_extra_terrestrial_irradiance(self, **kwargs)
+        
+        Determines extra terrestrial irradiance using the pvlib.irradiance.get_extra_radiation() function [1].
+        
+        Parameters
+        ----------
+        None
+                        
+        Returns
+        -------
+        
+        Returns a reference.
+        
+        References
+        ----------
+        [1] https://pvlib-python.readthedocs.io/en/stable/generated/pvlib.irradiance.get_extra_radiation.html
+        
+        [2]	M. Reno, C. Hansen, and J. Stein, “Global Horizontal Irradiance Clear Sky Models: Implementation and Analysis”, Sandia National Laboratories, SAND2012-2389, 2012.
+        
+        [3]	<http://solardat.uoregon.edu/SolarRadiationBasics.html>, Eqs. SR1 and SR2
+        
+        [4]	Partridge, G. W. and Platt, C. M. R. 1976. Radiative Processes in Meteorology and Climatology.
+        
+        [5]	Duffie, J. A. and Beckman, W. A. 1991. Solar Engineering of Thermal Processes, 2nd edn. J. Wiley and Sons, New York.
+        
+        [6]	ASCE, 2005. The ASCE Standardized Reference Evapotranspiration Equation, Environmental and Water Resources Institute of the American Civil Engineers, Ed. R. G. Allen et al.
+                        
+        """
+        
         dni_extra = pvlib.irradiance.get_extra_radiation(self._time_index_, **kwargs).values
 
         shape = len(self._time_index_), self.locs.count
@@ -127,6 +345,53 @@ class SolarWorkflowManager(WorkflowManager):
         return self
 
     def determine_air_mass(self, model='kastenyoung1989'):
+        
+        """
+        
+        determine_air_mass(self, model='kastenyoung1989')
+        
+        Determines air mass using the pvlib function pvlib.atmosphere.get_relative_airmass() [1].
+        
+        Parameters
+        ----------
+        model: str, optional
+               default 'kastenyoung1989' [1]
+
+               ’simple’ - secant(apparent zenith angle) - Note that this gives -inf at zenith=90 [2]
+               ’kasten1966’ - See reference [2] - requires apparent sun zenith [2]
+               ’youngirvine1967’ - See reference [3] - requires true sun zenith [2]
+               ’kastenyoung1989’ - See reference [4] - requires apparent sun zenith [2]
+               ’gueymard1993’ - See reference [5] - requires apparent sun zenith [2]
+               ’young1994’ - See reference [6] - requries true sun zenith [2]
+               ’pickering2002’ - See reference [7] - requires apparent sun zenith [2]
+
+
+                        
+        Returns
+        -------
+        Nothing is returned.
+        
+        References
+        ----------
+        [1] https://pvlib-python.readthedocs.io/en/stable/generated/pvlib.atmosphere.get_relative_airmass.html
+        
+        [2]	Fritz Kasten. “A New Table and Approximation Formula for the Relative Optical Air Mass”. Technical Report 136, Hanover, N.H.: U.S. Army Material Command, CRREL.
+        
+        [3]	A. T. Young and W. M. Irvine, “Multicolor Photoelectric Photometry of the Brighter Planets,” The Astronomical Journal, vol. 72, pp. 945-950, 1967.
+        
+        [4]	Fritz Kasten and Andrew Young. “Revised optical air mass tables and approximation formula”. Applied Optics 28:4735-4738
+        
+        [5]	C. Gueymard, “Critical analysis and performance assessment of clear sky solar irradiance models using theoretical and measured data,” Solar Energy, vol. 51, pp. 121-138, 1993.
+        
+        [6]	A. T. Young, “AIR-MASS AND REFRACTION,” Applied Optics, vol. 33, pp. 1108-1110, Feb 1994.
+        
+        [7]	Keith A. Pickering. “The Ancient Star Catalog”. DIO 12:1, 20,
+        
+        [8]	Matthew J. Reno, Clifford W. Hansen and Joshua S. Stein, “Global Horizontal Irradiance Clear Sky Models: Implementation and Analysis” Sandia Report, (2012).
+        
+                        
+        """
+        
         assert "apparent_solar_zenith" in self.sim_data
 
         # 29 becasue that what the function seems to max out at as zenith approaches 90
@@ -136,6 +401,36 @@ class SolarWorkflowManager(WorkflowManager):
         self.sim_data["air_mass"][s] = pvlib.atmosphere.get_relative_airmass(self.sim_data['apparent_solar_zenith'][s], model=model)
 
     def apply_DIRINT_model(self, use_pressure=False, use_dew_temperature=False):
+        
+        """
+        
+        apply_DIRINT_model(self, use_pressure=False, use_dew_temperature=False)
+        
+        Determines direct normal irradiance (DNI) using  the pvlib.irradiance.dirint() function [1].
+        
+        Parameters
+        ----------
+        use_pressure: boolian, optional
+                      Default: False
+                        
+        use_dew_temperature: boolian, optional
+                             Default: False
+                        
+        Returns
+        -------
+        Returns a reference.
+        
+        References
+        ----------
+        [1] https://pvlib-python.readthedocs.io/en/stable/generated/pvlib.irradiance.dirint.html
+        
+        [2]	Perez, R., P. Ineichen, E. Maxwell, R. Seals and A. Zelenka, (1992). “Dynamic Global-to-Direct Irradiance Conversion Models”. ASHRAE Transactions-Research Series, pp. 354-369
+        
+        [3]	Maxwell, E. L., “A Quasi-Physical Model for Converting Hourly Global Horizontal to Direct Normal Insolation”, Technical Report No. SERI/TR-215-3087, Golden, CO: Solar Energy Research Institute, 1987.
+        
+                        
+        """
+    
         assert "global_horizontal_irradiance" in self.sim_data
         assert "surface_pressure" in self.sim_data
         assert "surface_dew_temperature" in self.sim_data
@@ -172,6 +467,23 @@ class SolarWorkflowManager(WorkflowManager):
         return self
 
     def diffuse_horizontal_irradiance_from_trigonometry(self):
+        
+        """
+            
+        diffuse_horizontal_irradiance_from_trigonometry(self)
+        
+        Calculates the diffuse horizontal irradiance from global horizontal irradiance, direct normal irradiance and apparent zenith.
+        
+        Parameters
+        ----------
+        None
+                        
+        Returns
+        -------
+        Returns a reference.
+                        
+        """
+        
         assert "global_horizontal_irradiance" in self.sim_data
         assert "direct_normal_irradiance" in self.sim_data
         assert "apparent_solar_zenith" in self.sim_data
@@ -186,6 +498,23 @@ class SolarWorkflowManager(WorkflowManager):
         return self
 
     def direct_normal_irradiance_from_trigonometry(self):
+        
+        """
+            
+        direct_normal_irradiance_from_trigonometry(self)
+        
+        Calculates the direct normal irradiance from trigonometry.
+        
+        Parameters
+        ----------
+        None
+                        
+        Returns
+        -------
+        Returns a reference.
+                        
+        """
+        
         # TODO: This can also cover the case when we know GHI & DiffHI
         assert "direct_horizontal_irradiance" in self.sim_data
         assert "apparent_solar_zenith" in self.sim_data
@@ -204,6 +533,43 @@ class SolarWorkflowManager(WorkflowManager):
         return self
 
     def permit_single_axis_tracking(self, max_angle=90, backtrack=True, gcr=2.0 / 7.0):
+        
+        """
+            
+        permit_single_axis_tracking(self, max_angle=90, backtrack=True, gcr=2.0 / 7.0)
+        
+        Permits single axis tracking in the simulation using the pvlib.tracking.singleaxis() function [1].
+        
+        Parameters
+        ----------
+        max_angle: float, optional
+                   default 90
+                   A value denoting the maximum rotation angle, in decimal degrees, of the one-axis tracker from its horizontal position 
+                   (horizontal if axis_tilt = 0). A max_angle of 90 degrees allows the tracker to rotate to a vertical position to point the 
+                   panel towards a horizon. max_angle of 180 degrees allows for full rotation [1].
+        backtrack: bool, optional
+                   default True 
+                   Controls whether the tracker has the capability to “backtrack” to avoid row-to-row shading. 
+                   False denotes no backtrack capability. True denotes backtrack capability [1].
+        gcr:       float, optional
+                   default 2.0/7.0
+                   A value denoting the ground coverage ratio of a tracker system which utilizes backtracking; i.e. the ratio between the 
+                   PV array surface area to total ground area. A tracker system with modules 2 meters wide, centered on the tracking axis, 
+                   with 6 meters between the tracking axes has a gcr of 2/6=0.333. If gcr is not provided, a gcr of 2/7 is default. gcr must be <=1 [1].
+    
+                        
+        Returns
+        -------
+        Returns a reference.
+        
+        References
+        ----------
+        [1] https://wholmgren-pvlib-python-new.readthedocs.io/en/doc-reorg2/generated/tracking/pvlib.tracking.singleaxis.html
+        
+        [2]	Lorenzo, E et al., 2011, “Tracking and back-tracking”, Prog. in Photovoltaics: Research and Applications, v. 19, pp. 747-753.
+                        
+        """
+        
         """See pvlib.tracking.singleaxis for parameter info"""
         assert "apparent_solar_zenith" in self.sim_data
         assert "solar_azimuth" in self.sim_data
@@ -249,6 +615,23 @@ class SolarWorkflowManager(WorkflowManager):
         return self
 
     def determine_angle_of_incidence(self):
+        
+        """
+            
+        determine_angle_of_incidence(self)
+        
+        Determines the angle of incidence.
+        
+        Parameters
+        ----------
+        None
+                        
+        Returns
+        -------
+        Returns a reference.
+                        
+        """
+        
         """tracking can be: 'fixed' or 'singleaxis'"""
         assert "apparent_solar_zenith" in self.sim_data
         assert "solar_azimuth" in self.sim_data
@@ -265,6 +648,31 @@ class SolarWorkflowManager(WorkflowManager):
         return self
 
     def estimate_plane_of_array_irradiances(self, transposition_model="perez", albedo=0.25, **kwargs):
+        
+        """
+        estimate_plane_of_array_irradiances(self, transposition_model="perez", albedo=0.25, **kwargs)    
+        
+        
+        Estimates the plane of array irradiance using the pvlib.irradiance.get_total_irradiance() function [1].
+        
+        Parameters
+        ----------
+        transportion_model: str, optional
+                            default "perez"
+                            
+        albedo: numeric, optional
+                default 0.25
+                Surface albedo [1].
+        
+        Returns
+        -------
+        Returns a reference.
+        
+        References
+        ----------
+        [1] https://pvlib-python.readthedocs.io/en/stable/generated/pvlib.irradiance.get_total_irradiance.html
+        
+        """
 
         assert 'apparent_solar_zenith' in self.sim_data
         assert 'solar_azimuth' in self.sim_data
@@ -305,6 +713,33 @@ class SolarWorkflowManager(WorkflowManager):
         return self
 
     def cell_temperature_from_sapm(self, mounting="glass_open_rack"):
+        
+         """
+        cell_temperature_from_sapm(self, mounting="glass_open_rack")   
+        
+        
+        Calculates the cell temperature based on the pvlib.temperature.sapm_cell() function [1].
+        
+        Parameters
+        ----------
+        mounting: str
+                  Options:
+                  "glass_open_rack" [1]
+                  "glass_close_roof" [1]
+                  "polymer_open_rack" [1]
+                  "polymer_insulated_back" [1]
+        
+        Returns
+        -------
+        Returns a reference.
+        
+        References
+        ----------
+        [1] https://pvlib-python.readthedocs.io/en/stable/generated/pvlib.temperature.sapm_cell.html
+        
+        
+        """
+        
         """Mounting can be any of: 'glass_open_rack', 'glass_close_roof', 'polymer_open_rack', or 'polymer_insulated_back'"""
         assert 'surface_wind_speed' in self.sim_data
         assert 'surface_air_temperature' in self.sim_data
@@ -334,6 +769,28 @@ class SolarWorkflowManager(WorkflowManager):
         return self
 
     def apply_angle_of_incidence_losses_to_poa(self):
+        
+        """
+        apply_angle_of_incidence_losses_to_poa(self) 
+        
+        
+        Applies the angle of incicence losses to poa using the pvlib.pvsystem.iam.physical() function [1].
+        
+        Parameters
+        ----------
+        None
+        
+        Returns
+        -------
+        Returns a reference.
+        
+        References
+        ----------
+        [1] https://pvlib-python.readthedocs.io/en/stable/generated/pvlib.iam.physical.html
+        
+        
+        """
+        
         assert 'poa_direct' in self.sim_data
         assert 'poa_ground_diffuse' in self.sim_data
         assert 'poa_sky_diffuse' in self.sim_data
@@ -369,6 +826,32 @@ class SolarWorkflowManager(WorkflowManager):
         return self
 
     def configure_cec_module(self, module="WINAICO WSx-240P6"):
+        
+        """
+        configure_cec_module(self, module="WINAICO WSx-240P6")
+        
+        Configures CEC of a modulbe based on the pvlib.pvsystem.retrieve_sam() function [1].
+        
+        Parameters
+        ----------
+        module: str
+                Options:
+                "WINAICO WSx-240P6"
+                Describes Winaico WSx-240P6 module.
+                "WINAICO WSx-240P6"
+                Describes Winaico WSx-240P6 module.
+        
+        Returns
+        -------
+        Returns a reference.
+        
+        References
+        ----------
+        [1] https://pvlib-python.readthedocs.io/en/stable/generated/pvlib.pvsystem.retrieve_sam.html
+        
+        
+        """
+        
         if isinstance(module, str):
             self.register_workflow_parameter("module_name", module)
 
@@ -443,6 +926,50 @@ class SolarWorkflowManager(WorkflowManager):
         return self
 
     def simulate_with_interpolated_single_diode_approximation(self, module="WINAICO WSx-240P6"):
+        
+        """
+        simulate_with_interpolated_single_diode_approximation(self, module="WINAICO WSx-240P6")
+        
+        Does the simulation with an interpolated single diode approximation using the pvlib.pvsystem.calcparams_desoto() [1] function and the
+        pvlib.pvsystem.singlediode() [2] function. 
+        
+        Parameters
+        ----------
+        module: str
+                Options:
+                "WINAICO WSx-240P6"
+                Describes Winaico WSx-240P6 module.
+                "WINAICO WSx-240P6"
+                Describes Winaico WSx-240P6 module.
+        
+        Returns
+        -------
+        Returns a reference.
+        
+        References
+        ----------
+        [1] https://pvlib-python.readthedocs.io/en/stable/generated/pvlib.pvsystem.calcparams_desoto.html
+        
+        [2] https://pvlib-python.readthedocs.io/en/stable/generated/pvlib.pvsystem.singlediode.html
+        
+        [3]	(1, 2) W. De Soto et al., “Improvement and validation of a model for photovoltaic array performance”, Solar Energy, vol 80, pp. 78-88, 2006.
+        
+        [4]	System Advisor Model web page. https://sam.nrel.gov.
+        
+        [5]	A. Dobos, “An Improved Coefficient Calculator for the California Energy Commission 6 Parameter Photovoltaic Module Model”, Journal of Solar Energy Engineering, vol 134, 2012.
+        
+        [6]	O. Madelung, “Semiconductors: Data Handbook, 3rd ed.” ISBN 3-540-40488-0
+
+        [7]	S.R. Wenham, M.A. Green, M.E. Watt, “Applied Photovoltaics” ISBN 0 86758 909 4
+        
+        [8]	A. Jain, A. Kapoor, “Exact analytical solutions of the parameters of real solar cells using Lambert W-function”, Solar Energy Materials and Solar Cells, 81 (2004) 269-277.
+        
+        [9]	D. King et al, “Sandia Photovoltaic Array Performance Model”, SAND2004-3535, Sandia National Laboratories, Albuquerque, NM
+        
+        [10]	“Computer simulation of the effects of electrical mismatches in photovoltaic cell interconnection circuits” JW Bishop, Solar Cell (1988) https://doi.org/10.1016/0379-6787(88)90059-2
+        
+        """
+
         """
         TODO: Make it work with multiple module definitions
         """
@@ -514,6 +1041,43 @@ class SolarWorkflowManager(WorkflowManager):
         return self
 
     def apply_inverter_losses(self, inverter, method="sandia", ):
+        
+        """
+        apply_inverter_losses(self, inverter, method="sandia", )
+        
+        Applies inverter losses using the pvlib.pvsystem.snlinverter() fuction [1], the pvlib.pvsystem.retrieve_sam() fuction [2] and the 
+        pvlib.pvsystem.adrinverter() fuction [3]. 
+        
+        Parameters
+        ----------
+        inverter: str
+                  Describes the inverter.
+        method: str
+                Options:
+                "scandia"
+                "driesse"
+                Describes the used method to apply the inverter losses.
+        
+        Returns
+        -------
+        Returns a reference.
+        
+        References
+        ----------
+       [1] https://pvlib-python.readthedocs.io/en/stable/generated/pvlib.pvsystem.snlinverter.html
+       
+       [2] https://pvlib-python.readthedocs.io/en/stable/generated/pvlib.pvsystem.retrieve_sam.html
+       
+       [3] https://pvlib-python.readthedocs.io/en/stable/generated/pvlib.pvsystem.adrinverter.html
+       
+       [4]	SAND2007-5036, “Performance Model for Grid-Connected Photovoltaic Inverters by D. King, S. Gonzalez, G. Galbraith, W. Boyson
+       
+       [5]	System Advisor Model web page. https://sam.nrel.gov.
+       
+       [6]	Beyond the Curves: Modeling the Electrical Efficiency of Photovoltaic Inverters, PVSC 2008, Anton Driesse et. al.
+        
+        """
+        
         """method can be: 'sandia' or 'driesse'
 
         TODO: Make it work with multiplt inverter definitions
