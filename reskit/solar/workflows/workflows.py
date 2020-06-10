@@ -3,54 +3,58 @@ from .solar_workflow_manager import SolarWorkflowManager
 
 
 def openfield_pv_merra_ryberg2019(placements, merra_path, global_solar_atlas_ghi_path, module="WINAICO WSx-240P6", elev=300, tracking="fixed", inverter=None, inverter_kwargs={}, tracking_args={}, output_netcdf_path=None, output_variables=None):
-    
         """
-        
-        openfield_pv_merra_ryberg2019(placements, merra_path, global_solar_atlas_ghi_path, module="WINAICO WSx-240P6", elev=300, tracking="fixed", inverter=None, inverter_kwargs={}, tracking_args={}, output_netcdf_path=None, output_variables=None)
-        
+
+        openfield_pv_merra_ryberg2019(placements, merra_path, global_solar_atlas_ghi_path, module="WINAICO WSx-240P6", elev=300, tracking="fixed",
+                                      inverter=None, inverter_kwargs={}, tracking_args={}, output_netcdf_path=None, output_variables=None)
+
         Simulation of an openfield  PV openfield system based on MERRA Data.
-        
+
         Parameters
         ----------
         placements: Pandas Dataframe
-                     Locations that you want to do the simulations for.
-                     Columns need to be lat (latitudes), lon (longitudes), tilt and capacity.
-                     
+            Locations where to perform simulations at.
+            Columns need to be lat (latitudes), lon (longitudes), tilt and capacity.
+
         merra_path: str
-                    Path to the MERRA Data on your computer.
-                    
+            Path to the MERRA Data on your computer.
+                - Can be a single ".nc" file, or a directory containing many ".nc" files
+
         global_solar_atlas_ghi_path: str
-                                     Path to the global solar atlas ghi data on your computer.
-                                     
+            Path to the global solar atlas ghi data on your computer.
+
         module: str
-                Name of the module that you wanna use for the simulation.
-                Default is Winaico Wsx-240P6
-        
+            Name of the module that you want to use for the simulation.
+            Default is Winaico Wsx-240P6
+            * See reskit.solar.SolarWorkflowManager.configure_cec_module for more usage information
+
         elev: float
-              Elevation that you want to model your PV system at.
-              
+            Elevation that you want to model your PV system at.
+
         tracking: str
-                  Determines wether your PV system is fixed or not.
-                  Default is fixed.
-                  
+            Options are:
+                * 'fixed' -> The module does not have any tracking capabilities
+                * 'single-axis' -> The module does has single-axis tracking capabilities
+
         inverter: str
-                  Determines wether you want to model your PV system with an inverter or not.
-                  Default is None.
-                  
+            Determines wether or not you want to model your PV system with an inverter.
+            Default is None, meaning no inverter is assumed
+            * See reskit.solar.SolarWorkflowManager.apply_inverter_losses for more usage information
+
         output_netcdf_path: str
-                            Path to a file that you want to save your output NETCDF file at.
-                            Default is None
-                            
+            Path to a file that you want to save your output NETCDF file at.
+            Default is None
+
         output_variables: str
-                          Output variables of the simulation that you want to save into your NETCDF Outputfile.
-                  
-                   
+            Output variables of the simulation that you want to save into your NETCDF Outputfile.
+
+
         Returns
         -------
         A xarray dataset including all the output variables you defined as your output_variables.
-        
+
         """
-    
+
     wf = SolarWorkflowManager(placements)
     wf.configure_cec_module(module)
 
