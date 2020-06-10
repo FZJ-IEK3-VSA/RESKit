@@ -49,7 +49,7 @@ class WorkflowManager():
     def _set_sim_shape(self):
         self._sim_shape_ = len(self._time_index_), self.locs.count
 
-    def read(self, variables, source_type, path, set_time_index=False, spatial_interpolation_mode="bilinear", temporal_reindex_method="ffill", **kwargs):
+    def read(self, variables, source_type, path, set_time_index=False, spatial_interpolation_mode="bilinear", temporal_reindex_method="nearest", **kwargs):
         if not set_time_index and self.time_index is None:
             raise RuntimeError("Time index is not available")
 
