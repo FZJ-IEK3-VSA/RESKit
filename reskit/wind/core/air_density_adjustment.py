@@ -9,7 +9,7 @@ def apply_air_density_adjustment(wind_speed, pressure, temperature, height=0):
     Parameters
     ----------
     wind_speed : float or array-like
-        The wind speed values in m/s at (or close to) the hub height.                                                           @Sev: "(or close to)" is ok too, right?
+        The wind speed values in m/s at (or close to) the hub height.                                                           
     pressure : float or array-like
         Air preassure in Pa.
     temperature : float or array-like
