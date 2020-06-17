@@ -7,7 +7,6 @@ from os.path import join, isfile, isdir
 from collections import OrderedDict, namedtuple
 from types import FunctionType
 
-
 from . import weather as rk_weather
 
 
@@ -262,3 +261,40 @@ def distribute_workflow(workflow_function, placements, jobs=2, max_batch_size=No
         return xarray.concat(xdss, dim="location").sortby('location')
     else:
         return xdss
+
+
+class WorkflowQueue():
+    def __init__(self, workflow, **kwargs):
+        self.workflow = workflow
+        self.constants = kwargs
+        self.queue = OrderedDict()
+
+    def append(self, key, **kwargs):
+        self.queue[key] = kwargs
+
+    def execute(self, jobs: int = 1):
+        assert jobs >= 1
+        jobs = int(jobs)
+
+        if jobs > 1:
+            from multiprocessing import Pool
+            pool = Pool(jobs)
+
+        results = OrderedDict()
+        for key, kwargs in self.queue.items():
+            k = self.constants.copy()
+            k.update(kwargs)
+
+            if jobs == 1:
+                results[key] = self.workflow(**k)
+            else:
+                results[key] = pool.apply_async(self.workflow, (), k)
+
+        if jobs > 1:
+            for key, result_ in results.items():
+                results[key] = result_.get()
+
+            pool.close()
+            pool.join()
+
+        return results
