@@ -51,11 +51,23 @@ def compute_specific_power(capacity, rotor_diam, **k):
 
 
 class PowerCurve():
+    ####Questions to @Sev:
+    # What is the logic of using this PowerCurve class as oppossed to declaring the funtions individually?
+    # What is the main objective of the PowerCurve class? is it ploting a power curve or accessing the information? ( Becuase I will use this answer to explan the "Returns" field in the fuctions' docstrigs)
+    # What does "@staticmethod" at the beggining of a function definition mean?
+    
+    ### Comments
+    # Check the purpose, name and descritopn of "expectated_capacity_factor_from_weibull ()" and "expectated_capacity_factor_from_distribution()"
+
+    ### Edgar thinking of the logic behind this class
+    # PowerCurve class simulates the capacity factors at given wind speed values and returns a plot
+    # "from_specific_power()" gets the the PowerCurve by interpolating capacity factor values accroding to constant values in synthetic_power_curve_data()
+    # "from_capacity_and_rotor_diam ()" is used to feed "from_specific_power()" to produce the PowerCurve when capacity factors are not given
+    # "simuate()" perform the simulation by interpolating according to scipy.interpolate
+    # interpolation convluter used is "convolute_by_guassian()"
+    # "apply_loss_factor()" corrects some losses 
+    
     """
-    
-    
-    
-    
     Plots a wind turbine's power curve represented by a set of (wind-speed,capacty-factor) pairs.
 
     Returns
@@ -164,6 +176,7 @@ class PowerCurve():
         Returns
         -------
         array_like
+            Corresponging 
             
         
         """
@@ -171,6 +184,10 @@ class PowerCurve():
         return splev(wind_speed, powerCurveInterp)
 
     def expectated_capacity_factor_from_weibull(self, mean_wind_speed=5, weibull_shape=2):
+        ### Question to Sev: 
+        # This funtion name is appropaite for the fuction?
+        # The descrition bellow was taken from RESkit un-docstringed version, does it corresponds with the function's objective?
+        
         """
         Computes the expected capacity factor of a wind turbine based on an assumed Weibull distribution of observed wind speeds
 
@@ -259,9 +276,9 @@ class PowerCurve():
         Parameters
         ----------
         scaling : float, optional
-            [description], by default 0.06
+            scaling factor, by default 0.06
         base : float, optional
-            [description], by default 0.1
+            base value, by default 0.1
         extend_beyond_cut_out : bool, optional
             extend the estimation beyond the turbine's cut out wind speed, by default True
         _min_speed : float, optional
@@ -269,16 +286,16 @@ class PowerCurve():
         _max_speed : int, optional
             maximum wind speed value in m/s to be considered, by default 40
         _steps : int, optional
-            number of steps in which the wind speed range will be evaluated, by default 4000
+            number of steps in between the wind speed range, by default 4000
 
         Returns
         -------
-        [type]
-            [description]
+        array-like
+            convulated capacity factors
 
-
-        * The wind-speed-dependent standard deviation is computed with:
-            std = wind_speed * scaling + base
+        Notes
+        ------
+        The wind-speed-dependent standard deviation is computed with: std = wind_speed * scaling + base
         """
         # Initialize windspeed axis
         ws = np.linspace(_min_speed, _max_speed, _steps)

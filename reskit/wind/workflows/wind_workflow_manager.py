@@ -12,12 +12,8 @@ from ...workflow_manager import WorkflowManager
 
 class WindWorkflowManager(WorkflowManager):
     """
-    [summary]
+    Helps mamanaging the logical workflow for the simulations by asserting the neceasy parameters
 
-    Returns
-    -------
-    [type]
-        [description]  
     """
 
     def __init__(self, placements, synthetic_power_curve_cut_out=25, synthetic_power_curve_rounding=1):

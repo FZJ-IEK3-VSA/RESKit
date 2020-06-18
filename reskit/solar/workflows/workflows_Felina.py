@@ -12,7 +12,7 @@ def openfield_pv_merra_ryberg2019(placements, merra_path, global_solar_atlas_ghi
         # see https://numpydoc.readthedocs.io/en/latest/format.html 1. Short summary
         # So,  I did not include it again in the docstrings... 
 
-        Simulation of an openfield  PV system based on NASA'S MERRA2  Data [source].
+        Simulation of an openfield  PV system based on NASA'S MERRA2  Data [1].
         
         Parameters
         ----------
@@ -60,6 +60,11 @@ def openfield_pv_merra_ryberg2019(placements, merra_path, global_solar_atlas_ghi
         Returns
         -------
         A xarray dataset including all the output variables you defined as your output_variables.
+
+        Sources
+        ------
+        [1] NASA (National Aeronautics and Space Administration). (2019). Modern-Era Retrospective analysis for Research and Applications, Version 2. NASA Goddard Earth Sciences (GES) Data and Information Services Center (DISC). https://disc.gsfc.nasa.gov/datasets?keywords=%22MERRA-2%22&page=1&source=Models%2FAnalyses MERRA-2
+
         
         """
     

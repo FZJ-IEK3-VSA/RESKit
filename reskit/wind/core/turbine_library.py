@@ -15,6 +15,20 @@ rangeRE = re.compile("([0-9.]{1,})-([0-9.]{1,})")
 
 
 def parse_turbine(path):
+    """
+    Parses over a turbine's data file to get hub height (, capacity ,?) and power values and their corresponding 
+
+    Parameters
+    ----------
+    path : str
+        path to the turbines' data file
+
+    Returns
+    -------
+    namedtuple
+        Turbine's power curve and data in a namedtuple.
+    """
+
     meta = OrderedDict()
     with open(path) as fin:
         # Meta extraction mode
@@ -67,6 +81,14 @@ _Turbine_Library = None
 
 
 def TurbineLibrary():
+    """
+    Reads turbine data cvs files
+
+    Returns
+    -------
+    pandas Dataframe
+        joined turbine data files
+    """    
     global _Turbine_Library
 
     if _Turbine_Library is None:
