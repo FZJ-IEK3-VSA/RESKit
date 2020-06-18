@@ -76,15 +76,14 @@ class SolarWorkflowManager(WorkflowManager):
         Parameters
         ----------
         convention : str, optional
-                     The calculation method used to suggest system tilts
-                     `convention` can be...
-                         * "Ryberg2020"
-                         * A string consumable by 'eval'
-                            - Can use the variable 'latitude'
-                            - Ex. "latitude*0.76"
-                        * A path to a raster file
+                     The calculation method used to suggest system tilts.
+                     Option 1 of convention is "Ryberg2020".
+                     Option 2 of convention is a string consumable by 'eval'. This string can use the variable latitude.
+                     For example "latitude*0.76".
+                     Option 3 of convention is a path to a rasterfile.
+                     To get more information check out reskit.solar.location_to_tilt for more information.
 
-            - See reskit.solar.location_to_tilt for more information
+        
 
         Returns
         -------
@@ -129,9 +128,10 @@ class SolarWorkflowManager(WorkflowManager):
 
         Parameters
         ----------
-        elev: str, list?
-              * if string path to a rasterfile [TODO]?
-              * if list including the elevations at each location [TODO]?
+        elev: str, list
+              If a string is given it must be a path to a rasterfile including the elevations.
+              If a list is given it has to include the elevations at each location.
+        
 
         Returns
         -------
@@ -157,7 +157,6 @@ class SolarWorkflowManager(WorkflowManager):
         Calculates azimuth and apparent zenith for each location using the pvlib fuction pvlib.solarposition.spa_python() [1].
         Adds azimuth and apparent zenit to the sim_data dictionary.
 
-        [TODO: add note about which columns are required in '.sim_data' and '.placements']
 
         Parameters
         ----------
@@ -173,7 +172,12 @@ class SolarWorkflowManager(WorkflowManager):
         Returns
         -------
         Returns a reference to the invoking SolarWorkflowManager object
-
+        
+        Notes
+        -----
+        Required columns in the placements dataframe to use this functions are 'lon', 'lat' and 'elev'.
+        Required data in the sim_data dictionary are 'surface_pressure' and 'surface_air_temperature'.
+        
         References
         ----------
         [1] https://pvlib-python.readthedocs.io/en/stable/generated/pvlib.solarposition.spa_python.html
@@ -238,7 +242,6 @@ class SolarWorkflowManager(WorkflowManager):
 
         Filters positive solar elevations so that future operations are only executed for time steps when the sun is above (or at least near-to) the horizon
 
-        [TODO: add note about which columns are required in '.sim_data' and '.placements']
 
         Parameters
         ----------
@@ -247,6 +250,12 @@ class SolarWorkflowManager(WorkflowManager):
         Returns
         -------
         Returns a reference to the invoking SolarWorkflowManager object
+        
+        Notes
+        -----
+        Required data in the sim_data dictionary are 'apparent_solar_zenith'.
+        
+        
 
         """
 
@@ -279,7 +288,8 @@ class SolarWorkflowManager(WorkflowManager):
         Returns
         -------
 
-        Returns a reference to the invoking SolarWorkflowManager object
+        Returns a reference to the invoking SolarWorkflowManager object.
+        
 
         References
         ----------
@@ -312,7 +322,6 @@ class SolarWorkflowManager(WorkflowManager):
 
         Determines air mass using the pvlib function pvlib.atmosphere.get_relative_airmass() [1].
 
-        [TODO: add note about which columns are required in '.sim_data' and '.placements']
 
         Parameters
         ----------
@@ -332,6 +341,12 @@ class SolarWorkflowManager(WorkflowManager):
         Returns
         -------
         Nothing is returned.
+        
+        Notes
+        -----
+        Required data in the sim_data dictionary are 'apparent_solar_zenith'.
+        
+        
 
         References
         ----------
@@ -369,7 +384,6 @@ class SolarWorkflowManager(WorkflowManager):
 
         Determines direct normal irradiance (DNI) using the pvlib.irradiance.dirint() function [1].
 
-        [TODO: add note about which columns are required in '.sim_data' and '.placements']
 
         Parameters
         ----------
@@ -381,7 +395,12 @@ class SolarWorkflowManager(WorkflowManager):
 
         Returns
         -------
-        Returns a reference to the invoking SolarWorkflowManager object
+        Returns a reference to the invoking SolarWorkflowManager object.
+        
+        Notes
+        -----
+        Required data in the sim_data dictionary are 'global_horizontal_irradiance', 'surface_pressure', 
+        'surface_dew_temperature', 'apparent_solar_zenith', 'air_mass' and 'extra_terrestrial_irradiance'.
 
         References
         ----------
@@ -437,7 +456,6 @@ class SolarWorkflowManager(WorkflowManager):
         Calculates the diffuse horizontal irradiance from global horizontal irradiance, direct normal irradiance and apparent zenith.
 
         [TODO: Add a simple equation such as the one given in 'direct_normal_irradiance_from_trigonometry']
-        [TODO: add note about which columns are required in '.sim_data' and '.placements']
 
         Parameters
         ----------
@@ -445,7 +463,12 @@ class SolarWorkflowManager(WorkflowManager):
 
         Returns
         -------
-        Returns a reference to the invoking SolarWorkflowManager object
+        Returns a reference to the invoking SolarWorkflowManager object.
+        
+        Notes
+        -----
+        Required data in the sim_data dictionary are 'global_horizontal_irradiance', 'direct_normal_irradiance' and
+        'apparent_solar_zenith'.
 
         """
 
@@ -465,17 +488,8 @@ class SolarWorkflowManager(WorkflowManager):
     def direct_normal_irradiance_from_trigonometry(self):
         """
 
-        direct_normal_irradiance_from_trigonometry(self)
+        direct_normal_irradiance_from_trigonometry(self):
 
-        Calculates the direct normal irradiance from the following equation:
-            .. math:: dir_nor_irr = dir_hor_irr / cos( solar_zenith )
-
-            Where:
-                * dir_nor_irr  -> The direct irradiance on the normal plane
-                * dir_hor_irr  -> The direct irradiance on the horizontal plane
-                * solar_zenith -> The solar zenith angle in radians
-
-        [TODO: add note about which columns are required in '.sim_data' and '.placements']
 
         Parameters
         ----------
@@ -483,7 +497,20 @@ class SolarWorkflowManager(WorkflowManager):
 
         Returns
         -------
-        Returns a reference to the invoking SolarWorkflowManager object
+        Returns a reference to the invoking SolarWorkflowManager object.
+        
+        Notes
+        -----
+        Required columns in the placements dataframe to use this functions are 'lon', 'lat' and 'elev'.
+        Required data in the sim_data dictionary are 'direct_horizontal_irradiance' and 'apparent_solar_zenith'.
+        
+        Calculates the direct normal irradiance from the following equation:
+            .. math:: dir_nor_irr = dir_hor_irr / cos( solar_zenith )
+
+            Where:
+            dir_nor_irr  -> The direct irradiance on the normal plane
+            dir_hor_irr  -> The direct irradiance on the horizontal plane
+            solar_zenith -> The solar zenith angle in radians
 
         """
 
@@ -511,7 +538,6 @@ class SolarWorkflowManager(WorkflowManager):
 
         Permits single axis tracking in the simulation using the pvlib.tracking.singleaxis() function [1].
 
-        [TODO: add note about which columns are required in '.sim_data' and '.placements']
 
         Parameters
         ----------
@@ -520,10 +546,12 @@ class SolarWorkflowManager(WorkflowManager):
                    A value denoting the maximum rotation angle, in decimal degrees, of the one-axis tracker from its horizontal position
                    (horizontal if axis_tilt = 0). A max_angle of 90 degrees allows the tracker to rotate to a vertical position to point the
                    panel towards a horizon. max_angle of 180 degrees allows for full rotation [1].
+                   
         backtrack: bool, optional
                    default True
                    Controls whether the tracker has the capability to “backtrack” to avoid row-to-row shading.
                    False denotes no backtrack capability. True denotes backtrack capability [1].
+                   
         gcr:       float, optional
                    default 2.0/7.0
                    A value denoting the ground coverage ratio of a tracker system which utilizes backtracking; i.e. the ratio between the
@@ -533,7 +561,12 @@ class SolarWorkflowManager(WorkflowManager):
 
         Returns
         -------
-        Returns a reference to the invoking SolarWorkflowManager object
+        Returns a reference to the invoking SolarWorkflowManager object.
+        
+        Notes
+        -----
+        Required columns in the placements dataframe to use this functions are 'lon', 'lat', 'elev', 'tilt' and 'azimuth'.
+        Required data in the sim_data dictionary are 'apparent_solar_zenith' and 'solar_azimuth'.
 
         References
         ----------
@@ -594,16 +627,18 @@ class SolarWorkflowManager(WorkflowManager):
 
         Determines the angle of incidence [TODO: credit the PVLib function as you've done in previous examples].
 
-        [TODO: add note about which columns are required in '.sim_data' and '.placements']
-
         Parameters
         ----------
         None
 
         Returns
         -------
-        Returns a reference to the invoking SolarWorkflowManager object
-
+        Returns a reference to the invoking SolarWorkflowManager object. 
+        
+        Notes
+        -----
+        Required data in the sim_data dictionary are 'apparent_solar_zenith' and 'solar_azimuth'.
+        
         """
 
         """tracking can be: 'fixed' or 'singleaxis'"""
@@ -627,7 +662,6 @@ class SolarWorkflowManager(WorkflowManager):
 
         Estimates the plane of array irradiance using the pvlib.irradiance.get_total_irradiance() function [1].
 
-        [TODO: add note about which columns are required in '.sim_data' and '.placements']
 
         Parameters
         ----------
@@ -640,7 +674,12 @@ class SolarWorkflowManager(WorkflowManager):
 
         Returns
         -------
-        Returns a reference to the invoking SolarWorkflowManager object
+        Returns a reference to the invoking SolarWorkflowManager object.
+        
+        Notes
+        -----
+        Required data in the sim_data dictionary are 'apparent_solar_zenith', 'solar_azimuth', 'direct_normal_irradiance',
+        'global_horizontal_irradiance', 'diffuse_horizontal_irradiance', 'extra_terrestrial_irradiance' and 'air_mass'.
 
         References
         ----------
@@ -692,7 +731,6 @@ class SolarWorkflowManager(WorkflowManager):
 
         Calculates the cell temperature based on the pvlib.temperature.sapm_cell() function [1].
 
-        [TODO: add note about which columns are required in '.sim_data' and '.placements']
 
         Parameters
         ----------
@@ -705,7 +743,11 @@ class SolarWorkflowManager(WorkflowManager):
 
         Returns
         -------
-        Returns a reference to the invoking SolarWorkflowManager object
+        Returns a reference to the invoking SolarWorkflowManager object.
+        
+        Notes
+        -----
+        Required data in the sim_data dictionary are 'surface_wind_speed', 'surface_air_temperature' and 'poa_global'.
 
         References
         ----------
@@ -749,15 +791,17 @@ class SolarWorkflowManager(WorkflowManager):
         
         Applies the angle of incidence losses to the plane-of-array irradiance using the pvlib.pvsystem.iam.physical() function [1].
         
-        [TODO: add note about which columns are required in '.sim_data' and '.placements']
-
         Parameters
         ----------
         None
         
         Returns
         -------
-        Returns a reference to the invoking SolarWorkflowManager object
+        Returns a reference to the invoking SolarWorkflowManager object.
+        
+        Notes
+        -----
+        Required data in the sim_data dictionary are 'poa_direct', 'poa_ground_diffuse' and 'poa_sky_diffuse'.
         
         References
         ----------
@@ -907,7 +951,6 @@ class SolarWorkflowManager(WorkflowManager):
         Does the simulation with an interpolated single diode approximation using the pvlib.pvsystem.calcparams_desoto() [1] function and the
         pvlib.pvsystem.singlediode() [2] function. 
         
-        [TODO: add note about which columns are required in '.sim_data' and '.placements']
 
         Parameters
         ----------
@@ -919,7 +962,12 @@ class SolarWorkflowManager(WorkflowManager):
         
         Returns
         -------
-        Returns a reference to the invoking SolarWorkflowManager object
+        Returns a reference to the invoking SolarWorkflowManager object.
+        
+        Notes
+        -----
+        Required columns in the placements dataframe to use this functions are 'lon', 'lat', 'elev', 'tilt' and 'azimuth'.
+        Required data in the sim_data dictionary are 'poa_global' and 'cell_temperature'.
         
         References
         ----------
@@ -1022,7 +1070,6 @@ class SolarWorkflowManager(WorkflowManager):
         Applies inverter losses using the pvlib.pvsystem.snlinverter() fuction [1], the pvlib.pvsystem.retrieve_sam() fuction [2] and the 
         pvlib.pvsystem.adrinverter() fuction [3]. 
 
-        [TODO: add note about which columns are required in '.sim_data' and '.placements']
         
         Parameters
         ----------
@@ -1037,7 +1084,14 @@ class SolarWorkflowManager(WorkflowManager):
         
         Returns
         -------
-        Returns a reference to the invoking SolarWorkflowManager object
+        Returns a reference to the invoking SolarWorkflowManager object.
+        
+        Notes
+        -----
+        Required data in the sim_data dictionary are 'module_dc_power_at_mpp' and 'module_dc_voltage_at_mpp'.
+        Required data in the placements dataframe are 'modules_per_string' and 'strings_per_inverter'.
+        Cannot simultaneously provide 'capacity' and inverter-string parameters.
+        
         
         References
         ----------
