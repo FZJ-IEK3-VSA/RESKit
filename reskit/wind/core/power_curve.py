@@ -18,7 +18,7 @@ def synthetic_power_curve_data():
     Returns
     -------
     pandas DataFrame
-        DataFrame with data to create a synthetic power curve.
+        DataFrame with the data to create a synthetic power curve.
 
     """
     global _synthetic_power_curve_data
@@ -32,7 +32,7 @@ def synthetic_power_curve_data():
 
 def compute_specific_power(capacity, rotor_diam, **k):
     """
-    Computes the corresponding specific power in kW/m2 from values of capacity in kW and rotor diameter in m.
+    Calculates the corresponding specific power in kW/m2 from values of capacity in kW and rotor diameter in m.
 
     Parameters
     ----------
@@ -52,7 +52,11 @@ def compute_specific_power(capacity, rotor_diam, **k):
 
 class PowerCurve():
     """
-    A wind turbine's power curve represented by a set of (wind-speed,capacty-factor) pairs.
+    
+    
+    
+    
+    Plots a wind turbine's power curve represented by a set of (wind-speed,capacty-factor) pairs.
 
     Returns
     -------
@@ -150,7 +154,7 @@ class PowerCurve():
 
     def simulate(self, wind_speed):
         """
-        Applies the invoking power curve to the given wind speeds
+        Applies the invoking power curve to the given wind speeds.
 
         Parameters
         ----------
@@ -160,7 +164,7 @@ class PowerCurve():
         Returns
         -------
         array_like
-            #I do not undestand this properly
+            
         
         """
         powerCurveInterp = splrep(self.wind_speed, self.capacity_factor)
@@ -173,9 +177,9 @@ class PowerCurve():
         Parameters
         ----------
         mean_wind_speed : int, optional
-            #I do not undestand this properly, by default 5
+            mean wind speed at the location in m/s, by default 5
         weibull_shape : int, optional
-            #I do not undestand this properly, by default 2
+            Weibull shape parameter, by default 2
 
         Returns
         -------
@@ -259,13 +263,13 @@ class PowerCurve():
         base : float, optional
             [description], by default 0.1
         extend_beyond_cut_out : bool, optional
-            [description], by default True
+            extend the estimation beyond the turbine's cut out wind speed, by default True
         _min_speed : float, optional
-            [description], by default 0.01
+            minimum wind speed value in m/s to be considered, by default 0.01
         _max_speed : int, optional
-            [description], by default 40
+            maximum wind speed value in m/s to be considered, by default 40
         _steps : int, optional
-            [description], by default 4000
+            number of steps in which the wind speed range will be evaluated, by default 4000
 
         Returns
         -------
@@ -316,9 +320,7 @@ class PowerCurve():
 
     def apply_loss_factor(self, loss):
         """
-        Applies a loss factor onto the power curve.
-
-        'loss' can be a single value, or a function which takes a 'capacity factor' array as input
+        Applies a loss factor onto the power curve. It can be a single value, or a function which takes a 'capacity factor' array as input.
 
         Parameters
         ----------

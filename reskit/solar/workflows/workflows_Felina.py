@@ -5,15 +5,19 @@ from .solar_workflow_manager import SolarWorkflowManager
 def openfield_pv_merra_ryberg2019(placements, merra_path, global_solar_atlas_ghi_path, module="WINAICO WSx-240P6", elev=300, tracking="fixed", inverter=None, inverter_kwargs={}, tracking_args={}, output_netcdf_path=None, output_variables=None):
     
         """
-        
         openfield_pv_merra_ryberg2019(placements, merra_path, global_solar_atlas_ghi_path, module="WINAICO WSx-240P6", elev=300, tracking="fixed", inverter=None, inverter_kwargs={}, tracking_args={}, output_netcdf_path=None, output_variables=None)
         
-        Simulation of an openfield  PV openfield system based on MERRA Data.
+        
+        ###EUPS: Usually the funtion is not normally repeated in the docstrings for Python since it is found in introspection when calling tzhe 'help' function.
+        # see https://numpydoc.readthedocs.io/en/latest/format.html 1. Short summary
+        # So,  I did not include it again in the docstrings... 
+
+        Simulation of an openfield  PV system based on NASA'S MERRA2  Data [source].
         
         Parameters
         ----------
         placements: Pandas Dataframe
-                     Locations that you want to do the simulations for.
+                     Locations that you want to perform the simulations for.
                      Columns need to be lat (latitudes), lon (longitudes), tilt and capacity.
                      
         merra_path: str
@@ -44,7 +48,15 @@ def openfield_pv_merra_ryberg2019(placements, merra_path, global_solar_atlas_ghi
         output_variables: str
                           Output variables of the simulation that you want to save into your NETCDF Outputfile.
                   
-                   
+        ###EUPS : I used one tab to decribe the variable. For example:
+        #placements : Pandas Dataframe
+        #    Locations that you want to do the simulations for.
+        #    Columns need to be lat (latitudes), lon (longitudes), tilt and capacity.
+        # We can decide on how to do this
+
+        ###EUPS : there must be a space between the variable , the colon, and the type. for example:
+        #x : type
+
         Returns
         -------
         A xarray dataset including all the output variables you defined as your output_variables.
@@ -112,7 +124,7 @@ def openfield_pv_era5_unvalidated(placements, era5_path, global_solar_atlas_ghi_
         """
         
         openfield_pv_era5_unvalidated(placements, era5_path, global_solar_atlas_ghi_path, global_solar_atlas_dni_path, module="WINAICO WSx-240P6", elev=300, tracking="fixed", inverter=None, inverter_kwargs={}, tracking_args={}, output_netcdf_path=None, output_variables=None)
-        
+        ###EUPS: same as above
         
         Simulation of an openfield  PV openfield system based on ERA5 Data.
         
@@ -153,7 +165,8 @@ def openfield_pv_era5_unvalidated(placements, era5_path, global_solar_atlas_ghi_
         output_variables: str
                           Output variables of the simulation that you want to save into your NETCDF Outputfile.
                   
-                   
+        ###EUPS: same as above
+
         Returns
         -------
         A xarray dataset including all the output variables you defined as your output_variables.

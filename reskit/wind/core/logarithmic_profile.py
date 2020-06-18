@@ -7,13 +7,13 @@ from ...util import ResError
 
 def apply_logarithmic_profile_projection(measured_wind_speed, measured_height, target_height, roughness, displacement=0, stability=0):
     """
-    Estimates wind speeds at target height based on measured wind speeds values at a known measurement height.
-    Estimation subject to surface roughness, displacement height, and stability factors.
+    Estimates wind speeds at a target height based on measured wind speeds values at a known measurement height.
+    Estimation subject to surface roughness, displacement height, and a stability factor.
 
     Parameters
     ----------
     measured_wind_speed : multidimentional array-like
-        The wind speeds to be adjusted in m/s
+        The wind speeds in m/s that is going to be adjusted 
         If an array is given with a single dimension, it is assumed to represent timeseries values for a single location
         If multidimensional array is given, the assumed dimensional context is (time, locations), and 'targetLoc' must be an iterable with the same length as the 'locations' dimension
     
