@@ -8,9 +8,9 @@ def openfield_pv_merra_ryberg2019(placements, merra_path, global_solar_atlas_ghi
         openfield_pv_merra_ryberg2019(placements, merra_path, global_solar_atlas_ghi_path, module="WINAICO WSx-240P6", elev=300, tracking="fixed", inverter=None, inverter_kwargs={}, tracking_args={}, output_netcdf_path=None, output_variables=None)
         
         
-        ###EUPS: Usually the funtion is not normally repeated in the docstrings for Python since it is found in introspection when calling tzhe 'help' function.
-        # see https://numpydoc.readthedocs.io/en/latest/format.html 1. Short summary
-        # So,  I did not include it again in the docstrings... 
+        ###EUPS: Usually the funtion is not normally repeated in the docstrings for Python since it is found in introspection when calling the 'help' function.
+                                                                                                    # see https://numpydoc.readthedocs.io/en/latest/format.html 1. Short summary
+                                                                                                    # So,  I did not include it again in the docstrings... 
 
         Simulation of an openfield  PV system based on NASA'S MERRA2  Data [1].
         
@@ -48,24 +48,39 @@ def openfield_pv_merra_ryberg2019(placements, merra_path, global_solar_atlas_ghi
         output_variables: str
                           Output variables of the simulation that you want to save into your NETCDF Outputfile.
                   
-        ###EUPS : I used one tab to decribe the variable. For example:
-        #placements : Pandas Dataframe
-        #    Locations that you want to do the simulations for.
-        #    Columns need to be lat (latitudes), lon (longitudes), tilt and capacity.
+        ###EUPS : I used only one tab to decribe the variable. For example:
+                                                                        #Parameters
+                                                                        #----------
+                                                                        # 
+                                                                        # placements : Pandas Dataframe
+                                                                        #    Locations that you want to do the simulations for.
+                                                                        #    Columns need to be lat (latitudes), lon (longitudes), tilt and capacity.
         # We can decide on how to do this
 
-        ###EUPS : there must be a space between the variable , the colon, and the type. for example:
-        #x : type
+        ###EUPS : there must be a space between the variable, the colon, and the type. For example:
+                                                                                                    Paramentes :
+                                                                                                    ----------
+                                                                                                    #x : type
+        ###EUPS : Default values in Parameters are missing. For example:
+                                                                        #Parameters
+                                                                        #----------
+                                                                        #output_netcdf_path : str, optional
+                                                                        #    Path to a directory to put the output files, by default None
+                                                                        #output_variables : str, optional
+                                                                        #    Additional variables?, by default None
 
         Returns
         -------
         A xarray dataset including all the output variables you defined as your output_variables.
 
-        Sources
-        ------
-        [1] NASA (National Aeronautics and Space Administration). (2019). Modern-Era Retrospective analysis for Research and Applications, Version 2. NASA Goddard Earth Sciences (GES) Data and Information Services Center (DISC). https://disc.gsfc.nasa.gov/datasets?keywords=%22MERRA-2%22&page=1&source=Models%2FAnalyses MERRA-2
 
-        
+        ###EUPS: I am adding a Sources field to cite the datasets and relevan literature as such:
+
+                                                                                                #Sources
+                                                                                                #------
+                                                                                                #[1] National Aeronautics and Space Administration. (2019). Modern-Era Retrospective analysis for Research and Applications, Version 2. NASA Goddard Earth Sciences (GES) Data and Information Services Center (DISC). https://disc.gsfc.nasa.gov/datasets?keywords=%22MERRA-2%22&page=1&source=Models%2FAnalyses MERRA-2
+
+                                                                                            
         """
     
     wf = SolarWorkflowManager(placements)
@@ -129,7 +144,6 @@ def openfield_pv_era5_unvalidated(placements, era5_path, global_solar_atlas_ghi_
         """
         
         openfield_pv_era5_unvalidated(placements, era5_path, global_solar_atlas_ghi_path, global_solar_atlas_dni_path, module="WINAICO WSx-240P6", elev=300, tracking="fixed", inverter=None, inverter_kwargs={}, tracking_args={}, output_netcdf_path=None, output_variables=None)
-        ###EUPS: same as above
         
         Simulation of an openfield  PV openfield system based on ERA5 Data.
         
@@ -170,8 +184,6 @@ def openfield_pv_era5_unvalidated(placements, era5_path, global_solar_atlas_ghi_
         output_variables: str
                           Output variables of the simulation that you want to save into your NETCDF Outputfile.
                   
-        ###EUPS: same as above
-
         Returns
         -------
         A xarray dataset including all the output variables you defined as your output_variables.
