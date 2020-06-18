@@ -26,16 +26,15 @@ def location_to_tilt(locs, convention="Ryberg2020", **kwargs):
                      - Ex. "latitude*0.76"
                      * A path to a raster file
                      
-    **kwargs
-        Optional keyword arguments to use in geokit.raster.interpolateValues(...)
-        * Only applies when `convention` is a path to a raster file
+    kwargs: Optional keyword arguments to use in geokit.raster.interpolateValues(...).
+            Only applies when `convention` is a path to a raster file
 
 
     Returns
     -------
     np.ndarray
-        Suggested tilt angle at each of the provided `locs`
-        - Has the same length as the number of `locs`
+        Suggested tilt angle at each of the provided `locs`.
+        Has the same length as the number of `locs`.
 
     Notes
     -----
