@@ -176,9 +176,8 @@ class PowerCurve():
         Returns
         -------
         array_like
-            Corresponging 
+            Corresponging capacity fators for the given wind speeds
             
-        
         """
         powerCurveInterp = splrep(self.wind_speed, self.capacity_factor)
         return splev(wind_speed, powerCurveInterp)
