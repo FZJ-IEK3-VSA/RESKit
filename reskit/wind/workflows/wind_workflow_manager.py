@@ -12,7 +12,7 @@ from ...workflow_manager import WorkflowManager
 
 class WindWorkflowManager(WorkflowManager):
     """
-    Helps managing the logical workflow for simulations relating to wind turbines
+    Helps managing the logical workflow for simulations relating to wind turbines.
 
     Initialization:
 
@@ -66,7 +66,7 @@ class WindWorkflowManager(WorkflowManager):
 
     def set_roughness(self, roughness):
         """
-        Sets the 'roughness' column in the .placements DataFrame
+        Sets the 'roughness' column in the placements DataFrame.
 
         Parameters
         ----------
@@ -83,12 +83,34 @@ class WindWorkflowManager(WorkflowManager):
         return self
 
     def estimate_roughness_from_land_cover(self, path, source_type):
+        """
+        Estimates the 'roughness' column in the placements DataFrame from a land cover raster file.
+
+        Parameters
+        ----------
+        path : str 
+            path to the raster file
+        source_type : str
+            string value to get the corresponing key-value pairs
+
+        Return
+        ------
+            A reference to the invoking WindWorkflowManager
+        """        
         num = gk.raster.interpolateValues(path, self.locs, mode='near')
         self.placements['roughness'] = rk_wind_core.logarithmic_profile.roughness_from_land_cover_classification(
             num, source_type)
         return self
 
     def logarithmic_projection_of_wind_speeds_to_hub_height(self):
+        """
+        Projects the wind speed values to the hub height.
+
+        Return
+        ------
+            A reference to the invoking WindWorkflowManager
+        """        
+        
         assert "roughness" in self.placements.columns
         assert hasattr(self, "elevated_wind_speed_height")
 
@@ -103,6 +125,17 @@ class WindWorkflowManager(WorkflowManager):
         return self
 
     def apply_air_density_correction_to_wind_speeds(self):
+        """
+        Applies air density corrections to the wind speeds at the hub height.
+
+        Return
+        ------
+            A reference to the invoking WindWorkflowManager
+
+
+        """        
+        
+        
         assert "surface_air_temperature" in self.sim_data, "surface_air_temperature has not been read from a source"
         assert "surface_pressure" in self.sim_data, "surface_pressure has not been read from a source"
         assert hasattr(self, "elevated_wind_speed_height")
@@ -116,6 +149,21 @@ class WindWorkflowManager(WorkflowManager):
         return self
 
     def convolute_power_curves(self, scaling, base, **kwargs):
+        """
+        Convolutes a turbine power curve from a normal distribution function with wind-speed-dependent standard deviation.
+
+        Parameters
+        ----------
+        scaling : float, optional
+            scaling factor, by default 0.06
+        base : float, optional
+            base value, by default 0.1
+        
+        Return
+        ------
+            A reference to the invoking WindWorkflowManager
+
+        """        
         assert hasattr(self, "powerCurveLibrary")
 
         for key in self.powerCurveLibrary.keys():
@@ -128,6 +176,14 @@ class WindWorkflowManager(WorkflowManager):
         return self
 
     def simulate(self):
+        """
+        Applies the invoking power curve to the given wind speeds.
+        
+        Return
+        ------
+            A reference to the invoking WindWorkflowManager
+        """ 
+        
         gen = np.zeros_like(self.sim_data['elevated_wind_speed'])
 
         for pckey, pc in self.powerCurveLibrary.items():

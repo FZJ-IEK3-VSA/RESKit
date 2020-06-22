@@ -74,7 +74,6 @@ def onshore_tcc(cp, hh, rd, gdp_escalator=1, blade_material_escalator=1, blades=
     """
     A function to determine the tubine capital cost (TCC) of a 3 blade standar onshore wind turbime based capacity, hub height and rotor diameter values according to the cost model by Fingersh et al. [1].
 
-
     Parameters
     ----------
     cp : numeric or array-like
@@ -95,7 +94,7 @@ def onshore_tcc(cp, hh, rd, gdp_escalator=1, blade_material_escalator=1, blades=
     numeric or array-like
         Turbine's TCC in monetary units.
     
-    Sources
+    References
     ---------
     [1] Fingersh, L., Hand, M., & Laxson, A. (2006). Wind Turbine Design Cost and Scaling Model. Nrel. https://www.nrel.gov/docs/fy07osti/40566.pdf
 
@@ -208,7 +207,7 @@ def onshore_bos(cp, hh, rd):
     numeric or array-like
         Turbine's BOS in monetary units.
     
-    Sources
+    References
     ---------
     [1] Fingersh, L., Hand, M., & Laxson, A. (2006). Wind Turbine Design Cost and Scaling Model. Nrel. https://www.nrel.gov/docs/fy07osti/40566.pdf
 

@@ -49,29 +49,8 @@ def compute_specific_power(capacity, rotor_diam, **k):
     """
     return capacity * 1000 / rotor_diam**2 / np.pi * 4
 
-
-
 class PowerCurve():
-    ####Questions to @Sev:
-    # What is the logic of using this PowerCurve class as oppossed to declaring the funtions individually?
-    # - add fucntions in the class that are specific for calculating the Power Curve object (namedtuple with wind_speed and cf values)
 
-    # What is the main objective of the PowerCurve class? is it ploting a power curve or accessing the information? ( Becuase I will use this answer to explan the "Returns" field in the fuctions' docstrigs)
-    # - return the power curve object as a visual representation for the user.
-    
-    # What does "@staticmethod" at the beggining of a function definition mean?
-    
-    ### Comments
-    # Check the purpose, name and descritopn of "expectated_capacity_factor_from_weibull ()" and "expectated_capacity_factor_from_distribution()"
-
-    ### Edgar thinking of the logic behind this class
-    # PowerCurve class simulates the capacity factors at given wind speed values and returns a plot
-    # "from_specific_power()" gets the the PowerCurve by interpolating capacity factor values accroding to constant values in synthetic_power_curve_data()
-    # "from_capacity_and_rotor_diam ()" is used to feed "from_specific_power()" to produce the PowerCurve when capacity factors are not given
-    # "simuate()" perform the simulation by interpolating according to scipy.interpolate
-    # interpolation convluter used is "convolute_by_guassian()"
-    # "apply_loss_factor()" corrects some losses 
-    
     """
     Creates a wind turbine's power curve represented by a set of (wind-speed,capacty-factor) pairs.
 
