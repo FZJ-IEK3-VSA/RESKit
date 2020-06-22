@@ -170,7 +170,7 @@ clcGridToCode_v2006[44] = 523
 
 def roughness_from_clc(clc_path, loc, window_range=0):
     """
-    Estimates a roughness factor according to suggestions by Silva et al [1] by the prominent land cover at given locations according to the Corine Land Cover dataset [2].
+    Estimates a roughness factor according to suggestions by Silva et al. [1] by the prominent land cover at given locations according to the Corine Land Cover dataset [2].
 
     Parameters
     ----------
@@ -188,7 +188,6 @@ def roughness_from_clc(clc_path, loc, window_range=0):
     float
         Roughness lengths factors
     
-
     Sources
     --------
         [1] Silva, J., Ribeiro, C., & Guedes, R. (2007). Roughness length classification of corine land cover classes. European Wind Energy Conference and Exhibition 2007, EWEC 2007.
@@ -374,7 +373,7 @@ cciCodeToRoughess[190] = 1.2  # Urban areas
 
 def roughness_from_land_cover_classification(classification, land_cover_type='clc'):
     """
-    Estimate roughness value from a given land cover classification
+    Estimates roughness value from a given land cover classification raster file.
 
     Parameters
     ----------
@@ -426,7 +425,7 @@ def roughness_from_land_cover_source(source, loc, land_cover_type='clc'):
         Accepted arguments are 'clc', 'clc-code', 'globCover', 'modis', or 'cci', by default 'clc'
     Returns
     -------
-    int
+    float
         Roughness lengnth value
     
     """

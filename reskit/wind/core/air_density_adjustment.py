@@ -4,18 +4,18 @@ import numpy as np
 
 def apply_air_density_adjustment(wind_speed, pressure, temperature, height=0):
     """
-    Applies air density corrections wind speed values following suggestions by the IEC 61400-12-1:2017 [1].
+    Applies air density corrections to the wind speed values following suggestions by the IEC 61400-12-1:2017 [1].
 
     Parameters
     ----------
     wind_speed : float or array-like
-        The wind speed values in m/s at (or close to) the hub height.                                                           
+        The wind speed values in m/s.                                                           
     pressure : float or array-like
         Air preassure in Pa.
     temperature : float or array-like
         Air temperature in degree Celsius.
     height : float or array-like, optional
-        The height to project the air density to in m, by default 0
+        The (hub) height of that the air density is going to be adjested to in m, by default 0
 
     Returns
     -------

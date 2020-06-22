@@ -84,15 +84,17 @@ class WindWorkflowManager(WorkflowManager):
 
     def estimate_roughness_from_land_cover(self, path, source_type):
         """
-        Estimates the 'roughness' column in the placements DataFrame from a land cover raster file.
+        Estimates the 'roughness' value column in the placements DataFrame from a given land cover classification raster file.
 
         Parameters
         ----------
         path : str 
             path to the raster file
         source_type : str
-            string value to get the corresponing key-value pairs
-
+            string value to get the corresponing key-value pairs. Saccepted types 'clc', 'clc-code', 'globCover', 'modis', or 'cci', by default 'clc'
+        See also
+        --------
+            roughness_from_land_cover_classification
         Return
         ------
             A reference to the invoking WindWorkflowManager

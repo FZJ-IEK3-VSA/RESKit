@@ -35,7 +35,7 @@ def onshore_turbine_from_avg_wind_speed(wind_speed, constant_rotor_diam=True, ba
     Returns
     -------
     dict or pandas DataFrame
-        A dict or a pandas DataFrame (in case of array_like entries) with suggested values of hub height in m, specific power in W/m2, and capacity in kW.
+        A dict or a pandas DataFrame with suggested values of hub height in m, specific power in W/m2, and capacity in kW.
 
     Notes
     -------
