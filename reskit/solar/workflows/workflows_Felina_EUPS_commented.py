@@ -3,11 +3,7 @@ from .solar_workflow_manager import SolarWorkflowManager
 
 
 def openfield_pv_merra_ryberg2019(placements, merra_path, global_solar_atlas_ghi_path, module="WINAICO WSx-240P6", elev=300, tracking="fixed", inverter=None, inverter_kwargs={}, tracking_args={}, output_netcdf_path=None, output_variables=None):
-    
         """
-        openfield_pv_merra_ryberg2019(placements, merra_path, global_solar_atlas_ghi_path, module="WINAICO WSx-240P6", elev=300, tracking="fixed", inverter=None, inverter_kwargs={}, tracking_args={}, output_netcdf_path=None, output_variables=None)
-        
-        
         ###EUPS: Usually the funtion is not normally repeated in the docstrings for Python since it is found in introspection when calling the 'help' function.
                                                                                                     # see https://numpydoc.readthedocs.io/en/latest/format.html 1. Short summary
                                                                                                     # So,  I did not include it again in the docstrings... 
@@ -45,7 +41,7 @@ def openfield_pv_merra_ryberg2019(placements, merra_path, global_solar_atlas_ghi
                             Path to a file that you want to save your output NETCDF file at.
                             Default is None
                             
-        output_variables: str
+        output_variables: str, optional
                           Output variables of the simulation that you want to save into your NETCDF Outputfile.
                   
         ###EUPS : I used only one tab to decribe the variable. For example:
@@ -74,11 +70,9 @@ def openfield_pv_merra_ryberg2019(placements, merra_path, global_solar_atlas_ghi
         A xarray dataset including all the output variables you defined as your output_variables.
 
 
-        ###EUPS: I am adding a Sources field to cite the datasets and relevant literature as such:
-
-                                                                                                #Sources
-                                                                                                #------
-                                                                                                #[1] National Aeronautics and Space Administration. (2019). Modern-Era Retrospective analysis for Research and Applications, Version 2. NASA Goddard Earth Sciences (GES) Data and Information Services Center (DISC). https://disc.gsfc.nasa.gov/datasets?keywords=%22MERRA-2%22&page=1&source=Models%2FAnalyses MERRA-2
+        References
+        ------
+        [1] National Aeronautics and Space Administration. (2019). Modern-Era Retrospective analysis for Research and Applications, Version 2. NASA Goddard Earth Sciences (GES) Data and Information Services Center (DISC). https://disc.gsfc.nasa.gov/datasets?keywords=%22MERRA-2%22&page=1&source=Models%2FAnalyses MERRA-2
 
                                                                                             
         """

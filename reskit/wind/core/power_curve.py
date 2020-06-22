@@ -73,12 +73,12 @@ class PowerCurve():
     # "apply_loss_factor()" corrects some losses 
     
     """
-    Plots a wind turbine's power curve represented by a set of (wind-speed,capacty-factor) pairs.
+    Creates a wind turbine's power curve represented by a set of (wind-speed,capacty-factor) pairs.
 
     Returns
     -------
-    matplotlib.pyplot
-        A plot of the power curve.
+    PowerCurve
+        A plot of the PowerCurve object.
 
     """
 
@@ -211,6 +211,10 @@ class PowerCurve():
         -------
         numeric or arrray-like
             Total generation in kWh
+
+        See also
+        -------
+            PowerCurve.expected_capacity_factor_from_distribution
         
         """
         from scipy.special import gamma
@@ -249,12 +253,7 @@ class PowerCurve():
             wind speed values in m/s
         wind_speed_counts : numeric or array-like
             corresponding counts (number of occurence) og the given wind speed values.
-            * Counts will be normalized within the function
-
-        Returns
-        -------
-        numeric or arrray-like
-            Mean generation in kWh
+            Counts will be normalized within the function
 
         Example
         -------
@@ -262,6 +261,10 @@ class PowerCurve():
                 wind_speed_values=[  1,   2,   3,   4,   5,      6], # Units of m/s
                 wind_speed_counts=[0.1, 0.3, 0.5, 0.3, 0.1, 0.025 ]  # Units of "counts" 
             )
+        Returns
+        -------
+        numeric or arrray-like
+            Mean generation in kWh
 
         """
         wind_speed_values = np.array(wind_speed_values)

@@ -19,19 +19,18 @@ class WindWorkflowManager(WorkflowManager):
     Parameters
     ----------
     placements : pandas.DataFrame
-        * A Pandas DataFrame describing the wind turbine placements to be simulated
-        * Must include the following columns
+        A Pandas DataFrame describing the wind turbine placements to be simulated.
+        It Must include the following columns:
             - 'geom' or 'lat' and 'lon'
             - 'hub_height'
             - 'capacity'
             - 'rotor_diam' or 'powerCurve' 
 
-    synthetic_power_curve_cut_out 
+    synthetic_power_curve_cut_out : int, optional
+        cut out wind speed, by default 25
 
-
-    synthetic_power_curve_rounding 
-
-
+    synthetic_power_curve_rounding : int, optional 
+        rounding floor, by default 1
 
     Returns
     -------
@@ -71,13 +70,10 @@ class WindWorkflowManager(WorkflowManager):
 
         Parameters
         ----------
-            roughness : numeric, iterable
-                - If a numeric is given, sets the same roughness values to 
-                  all placements
-                - If an iterable is given, sets the corresponding roughness 
-                  value in the iterable to the placements.
-                    - The length of the iterable must match the numbre of 
-                      placements 
+        roughness : numeric, iterable
+            If a numeric is given, sets the same roughness values to all placements.
+            If an iterable is given, sets the corresponding roughness value in the iterable to the placements.
+            The length of the iterable must match the numbre of placements 
 
         Return
         ------

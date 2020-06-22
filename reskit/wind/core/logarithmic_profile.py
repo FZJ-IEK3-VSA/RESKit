@@ -193,7 +193,9 @@ def roughness_from_clc(clc_path, loc, window_range=0):
     --------
         [1] Silva, J., Ribeiro, C., & Guedes, R. (2007). Roughness length classification of corine land cover classes. European Wind Energy Conference and Exhibition 2007, EWEC 2007.
 
-    Roughness Values:
+
+    Roughness Values
+    ----------------
 
         Continuous urban fabric : 1.2 
         Broad-leaved forest : 0.75 
@@ -383,8 +385,8 @@ def roughness_from_land_cover_classification(classification, land_cover_type='cl
 
     Returns
     -------
-    int
-        Roughness lengnth value
+    int or array_like
+        Roughness lengnth value(s)
 
     """
     if land_cover_type == 'clc':
