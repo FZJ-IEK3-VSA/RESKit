@@ -50,10 +50,15 @@ def compute_specific_power(capacity, rotor_diam, **k):
     return capacity * 1000 / rotor_diam**2 / np.pi * 4
 
 
+
 class PowerCurve():
     ####Questions to @Sev:
     # What is the logic of using this PowerCurve class as oppossed to declaring the funtions individually?
+    # - add fucntions in the class that are specific for calculating the Power Curve object (namedtuple with wind_speed and cf values)
+
     # What is the main objective of the PowerCurve class? is it ploting a power curve or accessing the information? ( Becuase I will use this answer to explan the "Returns" field in the fuctions' docstrigs)
+    # - return the power curve object as a visual representation for the user.
+    
     # What does "@staticmethod" at the beggining of a function definition mean?
     
     ### Comments
@@ -121,8 +126,11 @@ class PowerCurve():
 
         Returns
         -------
-        matplotlib.pyplot
-            A power curve plot
+        PowerCurve
+
+        See Also
+        --------
+            - PowerCurve.from_capacity_and_rotor_diam
         """
         # Create ws
         ws = [0, ]
@@ -158,9 +166,11 @@ class PowerCurve():
 
         Returns
         -------
-        matplotlib.pyplot
-            A power curve plot
-        
+        PowerCurve
+
+        See Also
+        --------
+            - PowerCurve.from_specific_power
         """
         return PowerCurve.from_specific_power(compute_specific_power(capacity, rotor_diam))
 
@@ -182,13 +192,13 @@ class PowerCurve():
         powerCurveInterp = splrep(self.wind_speed, self.capacity_factor)
         return splev(wind_speed, powerCurveInterp)
 
-    def expectated_capacity_factor_from_weibull(self, mean_wind_speed=5, weibull_shape=2):
+    def expected_capacity_factor_from_weibull(self, mean_wind_speed=5, weibull_shape=2):
         ### Question to Sev: 
         # This funtion name is appropaite for the fuction?
+        # an alternative way to yield a TotGener value
         # The descrition bellow was taken from RESkit un-docstringed version, does it corresponds with the function's objective?
-        
         """
-        Computes the expected capacity factor of a wind turbine based on an assumed Weibull distribution of observed wind speeds
+        Computes the expected average capacity factor of a wind turbine based on an assumed Weibull distribution of observed wind speeds.
 
         Parameters
         ----------
@@ -226,26 +236,33 @@ class PowerCurve():
         gen[ws > cutout] = 0  # Drop power to zero after cutout
 
         # Done
-        totalGen = (gen * pdf).sum() * dws
-        return totalGen
+        meanCapFac = (gen * pdf).sum() * dws
+        return meanCapFac
 
-    def expectated_capacity_factor_from_distribution(self, wind_speed_values, wind_speed_counts):
+    def expected_capacity_factor_from_distribution(self, wind_speed_values, wind_speed_counts):
         """
-        Computes the expected capacity factor of a wind turbine based on an explicitly-provided wind speed distribution
+        Computes the expected average capacity factor of a wind turbine based on an explicitly-provided wind speed distribution
 
         Parameters
         ----------
         wind_speed_values : numeric or array-like
             wind speed values in m/s
         wind_speed_counts : numeric or array-like
-            #I do not undestand this properly
+            corresponding counts (number of occurence) og the given wind speed values.
+            * Counts will be normalized within the function
 
         Returns
         -------
         numeric or arrray-like
             Mean generation in kWh
 
-        
+        Example
+        -------
+            pc.expected_capacity_factor_from_distribution(
+                wind_speed_values=[  1,   2,   3,   4,   5,      6], # Units of m/s
+                wind_speed_counts=[0.1, 0.3, 0.5, 0.3, 0.1, 0.025 ]  # Units of "counts" 
+            )
+
         """
         wind_speed_values = np.array(wind_speed_values)
         wind_speed_counts = np.array(wind_speed_counts)

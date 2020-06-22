@@ -12,34 +12,36 @@ from ...workflow_manager import WorkflowManager
 
 class WindWorkflowManager(WorkflowManager):
     """
-    Helps mamanaging the logical workflow for the simulations by asserting the neceasy parameters
+    Helps managing the logical workflow for simulations relating to wind turbines
+
+    Initialization:
+
+    Parameters
+    ----------
+    placements : pandas.DataFrame
+        * A Pandas DataFrame describing the wind turbine placements to be simulated
+        * Must include the following columns
+            - 'geom' or 'lat' and 'lon'
+            - 'hub_height'
+            - 'capacity'
+            - 'rotor_diam' or 'powerCurve' 
+
+    synthetic_power_curve_cut_out 
+
+
+    synthetic_power_curve_rounding 
+
+
+
+    Returns
+    -------
+    numpy array
+        A corrected power curve.
 
     """
 
     def __init__(self, placements, synthetic_power_curve_cut_out=25, synthetic_power_curve_rounding=1):
-        # Do basic workflow construction
-        super().__init__(placements)
-
-        # Check for basics
-        assert 'capacity' in self.placements.columns, "Placement dataframe needs 'capacity' column"
-        assert 'hub_height' in self.placements.columns, "Placement dataframe needs 'hub_height' column"
-
-        # Check for power curve. If not found, make it!
-        self.powerCurveLibrary = dict()
-
-        # Should we automatically generate synthetic power curves?
-        if not "powerCurve" in self.placements.columns:
-            assert 'rotor_diam' in self.placements.columns, "Placement dataframe needs 'rotor_diam' or 'powerCurve' column"
-
-            specificPower = rk_wind_core.power_curve.compute_specific_power(
-                self.placements['capacity'],
-                self.placements['rotor_diam'])
-
-            if synthetic_power_curve_rounding is not None:
-                specificPower = np.round(
-                    specificPower / synthetic_power_curve_rounding) * synthetic_power_curve_rounding
-                specificPower = specificPower.astype(int)
-
+        #0
             powerCurve = []
             for sppow in specificPower:
                 pcid = "SPC:%d,%d" % (sppow, synthetic_power_curve_cut_out)
@@ -64,6 +66,23 @@ class WindWorkflowManager(WorkflowManager):
                 self.powerCurveLibrary[pc] = rk_wind_core.turbine_library.TurbineLibrary().loc[pc].PowerCurve
 
     def set_roughness(self, roughness):
+        """
+        Sets the 'roughness' column in the .placements DataFrame
+
+        Parameters
+        ----------
+            roughness : numeric, iterable
+                - If a numeric is given, sets the same roughness values to 
+                  all placements
+                - If an iterable is given, sets the corresponding roughness 
+                  value in the iterable to the placements.
+                    - The length of the iterable must match the numbre of 
+                      placements 
+
+        Return
+        ------
+            A reference to the invoking WindWorkflowManager
+        """
         self.placements['roughness'] = roughness
         return self
 

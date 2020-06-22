@@ -74,7 +74,7 @@ def openfield_pv_merra_ryberg2019(placements, merra_path, global_solar_atlas_ghi
         A xarray dataset including all the output variables you defined as your output_variables.
 
 
-        ###EUPS: I am adding a Sources field to cite the datasets and relevan literature as such:
+        ###EUPS: I am adding a Sources field to cite the datasets and relevant literature as such:
 
                                                                                                 #Sources
                                                                                                 #------

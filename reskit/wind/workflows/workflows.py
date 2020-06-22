@@ -13,7 +13,7 @@ def onshore_wind_merra_ryberg2019_europe(placements, merra_path, gwa_50m_path, c
     placements : pandas Dataframe
         A Dataframe object with the parameters needed by the simulation.
     merra_path : str
-        Path to the MERRA2 data. See ___ for data processing requirements.
+        Path to the MERRA2 data.
     gwa_50m_path : str
         Path to the Global Wind Atlas at 50m [2] rater file.
     clc2012_path : str
@@ -21,12 +21,12 @@ def onshore_wind_merra_ryberg2019_europe(placements, merra_path, gwa_50m_path, c
     output_netcdf_path : str, optional
         Path to a directory to put the output files, by default None
     output_variables : str, optional
-        Additional variables?, by default None
+        Restrics the output variables to these valiables, by default None
 
     Returns
     -------
     xarrax
-        A xarray dataset including all the output variables you defined as your output_variables.??
+        A xarray dataset including all the output variables you defined as your output variables.
 
     Sources
     ------
@@ -85,16 +85,16 @@ def offshore_wind_merra_caglayan2019(placements, merra_path, output_netcdf_path=
     placements : pandas Dataframe
         A Dataframe object with the parameters needed by the simulation.
     merra_path : str
-        Path to the MERRA2 data. See ___ for data processing requirements.
+        Path to the MERRA2 data.
     output_netcdf_path : str, optional
         Path to a durectory to put the output files, by default None
     output_variables : str, optional
-        Additional variables?, by default None
+        Restrics the output variables to these valiables, by default None
 
     Returns
     -------
     xarrax
-        ###Check Workflow.py
+        A xarray dataset including all the output variables you defined as your output variables.
 
     Sources
     ------
@@ -138,21 +138,20 @@ def offshore_wind_era5_unvalidated(placements, era5_path, output_netcdf_path=Non
     placements : pandas Dataframe
         A Dataframe object with the parameters needed by the simulation.
     era5_path : str
-        Path to the ERA5 data. See ___ for data processing requirements.
+        Path to the ERA5 data.
     output_netcdf_path : str, optional
         Path to a directory to put the output files, by default None
     output_variables : str, optional
-        Additional variables?, by default None
+        Restrics the output variables to these valiables, by default None
 
     Returns
     -------
     xarrax
-        ###Check Workflow.py
+        A xarray dataset including all the output variables you defined as your output variables.
 
     Sources
     ------
-    [1] European Centre for Medium-Range Weather Forecasts. (2019). ERA5 dataset. https://www.ecmwf.int/en/forecasts/datasets/reanalysis-datasets/era5
-
+    [1] European Centre for Medium-Range Weather Forecasts. (2019). ERA5 dataset. https://www.ecmwf.int/en/forecasts/datasets/reanalysis-datasets/era5.
 
     """    
     wf = WindWorkflowManager(placements)
@@ -191,7 +190,7 @@ def onshore_wind_era5_unvalidated(placements, era5_path, gwa_100m_path, esa_cci_
     placements : pandas Dataframe
         A Dataframe object with the parameters needed by the simulation.
     era5_path : str
-        Path to the ERA5 data. See ___ for data processing requirements.
+        Path to the ERA5 data.
     gwa_100m_path : str
         Path to the Global Wind Atlas at 100m [2] rater file.
     esa_cci_path : str
@@ -199,12 +198,12 @@ def onshore_wind_era5_unvalidated(placements, era5_path, gwa_100m_path, esa_cci_
     output_netcdf_path : str, optional
         Path to a durectory to put the output files, by default None
     output_variables : str, optional
-        Additional variables?, by default None
+        Restrics the output variables to these valiables, by default None
 
     Returns
     -------
     xarrax
-        ###Check Workflow.py
+        A xarray dataset including all the output variables you defined as your output variables.
 
     Sources
     ------
