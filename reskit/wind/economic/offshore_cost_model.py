@@ -4,12 +4,9 @@ from .onshore_cost_model import onshore_tcc
 
 def offshore_turbine_capex(capacity, hub_height, rotor_diam, depth, distance_to_shore, distance_to_bus=3, foundation="monopile", mooring_count=3, anchor="DEA", turbine_count=80, turbine_spacing=5, turbine_row_spacing=9):
     """
-    TODO: Generalize this function further (like with the onshore cost model)
-
-
     A cost and scaling model (CSM) to calculate the total cost of a 3-bladed, direct drive offshore wind turbine according to the cost model proposed by Fingersh et al. [1] and Maples et al. [2].
     The CSM distinguises between seaflor-fixed foundation types; "monopile" and "jacket" and floating foundation types; "semisubmersible" and "spar".
-    The total turbine cost includes the contributions of the turbine capital cost (TCC), amounting 32.9% for fixed or 23.9% for floating structures, the balance of system costs (BOS) contribution, amounting 46.2% and 60.8% respectively, as well as the finantial costs as the compementary percentage contribution (15.9% and 20.9%) in the same manner [3].
+    The total turbine cost includes the contributions of the turbine capital cost (TCC), amounting 32.9% for fixed or 23.9% for floating structures, the balance of system costs (BOS) contribution, amounting 46.2% and 60.8% respectively, as well as the finantial costs as the complementary percentage contribution (15.9% and 20.9%) in the same manner [3].
     A CSM normalization is done such that a chosen baseline offshore turbine taken by Caglayan et al. [4] (see notes for details) corresponds to an expected specific cost of 2300 €/kW in a 2050 European context as suggested by the 2016 cost of wind energy review by Stehly [3].
 
     Parameters
@@ -28,13 +25,13 @@ def offshore_turbine_capex(capacity, hub_height, rotor_diam, depth, distance_to_
 
     distance_to_shore : numeric or array-like
         Distance from the turbine's location to the nearest shore in km.
-        
+
     distance_to_bus : numeric or array-like, optional
         Distance from the wind farm's bus in km from the turbine's location.
 
     foundation : str or array-like of strings, optional
         Turbine's foundation type. Accepted  types are: "monopile", "jacket", "semisubmersible" or "spar", by default "monopile"
-        
+
     mooring_count : numeric, optional
         Refers to the number of mooring lines are there attaching a turbine only applicable for floating foundation types. By default 3 assuming a triangular attachment to the seafloor.
 
@@ -44,10 +41,10 @@ def offshore_turbine_capex(capacity, hub_height, rotor_diam, depth, distance_to_
 
     turbine_count : numeric, optional
         Number of turbines in the offshore windpark. CSM valid for the rangue [3-200], by default 80
-        
+
     turbine_spacing : numeric, optional
         Spacing distance in a row of turbines (turbines that share the electrical connection) to the bus. The value must be a multiplyer of rotor diameter. CSM valid for the rangue [4-9], by default 5
-        
+
     turbine_row_spacing : numeric, optional
         Spacing distance between rows of turbines. The value must be a multiplyer of rotor diameter. CSM valid for the rangue [4-10], by default 9
 
@@ -57,13 +54,16 @@ def offshore_turbine_capex(capacity, hub_height, rotor_diam, depth, distance_to_
         Offshore turbine total cost in monery units
 
 
+    See Also
+    --------
+        - onshore_turbine_capex
+
     Notes
     -------
     The baseline offshore turbine correspongs to the optimal desing for Europe according to Cagalayn et al. [4]: capacity = 9400 kW, hub height = 135 m, rotor diameter = 210 m, "monopile" foundation, reference water depth = 40 m, and reference distance to shore = 60 km.
 
     Sources
     -------
-
     [1] Fingersh, L., Hand, M., & Laxson, A. (2006). Wind Turbine Design Cost and Scaling Model. Nrel. https://www.nrel.gov/docs/fy07osti/40566.pdf
     [2] Maples, B., Hand, M., & Musial, W. (2010). Comparative Assessment of Direct Drive High Temperature Superconducting Generators in Multi-Megawatt Class Wind Turbines. Energy. https://doi.org/10.2172/991560
     [3] Stehly, T., Heimiller, D., & Scott, G. (2016). Cost of Wind Energy Review. Technical Report. https://www.nrel.gov/docs/fy18osti/70363.pdf
@@ -75,6 +75,9 @@ def offshore_turbine_capex(capacity, hub_height, rotor_diam, depth, distance_to_
     [9] RPG CABLES, & KEC International limited. (n.d.). EXTRA HIGH VOLTAGE cables. RPG CABLES. www.rpgcables.com/images/product/EHV-catalogue.pdf
 
     """
+
+    # TODO: Generalize this function further(like with the onshore cost model)
+
     # PREPROCESS INPUTS
     cp = np.array(capacity / 1000)
     # rr = np.array(rotor_diam / 2)
@@ -116,35 +119,35 @@ def offshore_bos(cp, rd, hh, depth, distance_to_shore, distance_to_bus, foundati
 
     hh : numeric or array-like
         Turbine's hub height in m
-    
+
     depth : numeric or array-like
         Water depth in m (absolute value) at the turbine's location.
 
     distance_to_shore : numeric or array-like
             Distance from the turbine's location to the nearest shore in km.
-            
+
     distance_to_bus : numeric or array-like, optional
         Distance from the wind farm's bus in km from the turbine's location.
 
     foundation : str or array-like of strings, optional
         Turbine's foundation type. Accepted  types are: "monopile", "jacket", "semisubmersible" or "spar", by default "monopile"
-            
+
     mooring_count : numeric, optional
         Refers to the number of mooring lines are there attaching a turbine only applicable for floating foundation types. By default 3 assuming a triangular attachment to the seafloor.
-        
+
     anchor : str, optional
         Turbine's anchor type only applicable for floating foundation types, by default as recomended by [1].
         Arguments accepted are "dea" (drag embedment anchor) or "spa" (suction pile anchor).
 
     turbine_count : numeric, optional
         Number of turbines in the offshore windpark. CSM valid for the rangue [3-200], by default 80
-            
+
     turbine_spacing : numeric, optional
         Spacing distance in a row of turbines (turbines that share the electrical connection) to the bus. The value must be a multiplyer of rotor diameter. CSM valid for the rangue [4-9], by default 5
-            
+
     turbine_row_spacing : numeric, optional
         Spacing distance between rows of turbines. The value must be a multiplyer of rotor diameter. CSM valid for the rangue [4-10], by default 9
-    
+
     Returns
     -------
     numeric
@@ -153,10 +156,10 @@ def offshore_bos(cp, rd, hh, depth, distance_to_shore, distance_to_bus, foundati
     Notes
     ------
     Assembly and installation costs could not be implemented due to the excessive number of unspecified constants considered by Smart et al. [8]. Therefore empirical equations were derived which fit the sensitivities to the baseline plants shown in [8]. These ended up being linear equations in turbine capacity and sea depth (only for floating turbines).
-    
+
     Sources
     ---------
-    
+
     [1] Fingersh, L., Hand, M., & Laxson, A. (2006). Wind Turbine Design Cost and Scaling Model. Nrel. https://www.nrel.gov/docs/fy07osti/40566.pdf
     [2] Maples, B., Hand, M., & Musial, W. (2010). Comparative Assessment of Direct Drive High Temperature Superconducting Generators in Multi-Megawatt Class Wind Turbines. Energy. https://doi.org/10.2172/991560
     [3] Stehly, T., Heimiller, D., & Scott, G. (2016). Cost of Wind Energy Review. Technical Report. https://www.nrel.gov/docs/fy18osti/70363.pdf

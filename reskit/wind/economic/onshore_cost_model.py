@@ -4,46 +4,58 @@ import numpy as np
 def onshore_turbine_capex(capacity, hub_height, rotor_diam, base_capex=1100 * 4200, base_capacity=4200, base_hub_height=120, base_rotor_diam=136, tcc_share=0.673, bos_share=0.229, **k):
     """    
     A cost and scaling model (CSM) to calculate the total cost of a 3-bladed, direct drive onshore wind turbine according to Fingersh et al. [1] and Maples et al. [2].
-    A CSM normalization is done such that a chosen baseline turbine, with a capacity of 4200 kW, hub height of 120 m, and rotor diameter of 136 m, corresponds to a expected typical specific cost of 1100 Eur/kW in a 2050 European context according to the 2016 cost of wind energy review by Stehly [3]
+    A CSM normalization is done such that a chosen baseline turbine, with a capacity of 4200 kW, hub height of 120 m, and rotor diameter of 136 m, corresponds to a expected typical specific cost of 1100 Eur/kW in a 2050 European context according to [TODO: cite https://doi.org/10.1016/j.energy.2019.06.052]
     The turbine cost includes the turbine capital cost (TCC) and balance of system costs (BOS), amounting to 67.3% and 22.9% respectively [3], as well as finantial costs equivalent to the the complementary percentage.
-    
+
 
     Parameters
     ----------
     capacity : numeric or array-like
         Turbine's nominal capacity in kW.
+
     hub_height : numeric or array-like
         Turbine's hub height in m.
+
     rotor_diam : numeric or array-like
         Turbine's hub height in m.
+
     base_capex : numeric, optional
-        Turbine's baseline capital costs in €, by default 1100*4200 [€/kW * kW]
+        The baseline turbine's capital costs in €, by default 1100*4200 [€/kW * kW]
+
     base_capacity : int, optional
-        Turbine's baseline capacity in kW, by default 4200
+        The baseline turbine's capacity in kW, by default 4200
+
     base_hub_height : int, optional
-        Turbine's baseline hub height in m, by default 120
+        The baseline turbine's hub height in m, by default 120
+
     base_rotor_diam : int, optional
-        Turbine's baseline rotor diamter in m, by default 136
+        The baseline turbine's rotor diamter in m, by default 136
+
     tcc_share : float, optional
-        Turbine's TCC percentage contribution in the total cost, by default 0.673
+        The baseline turbine's TCC percentage contribution in the total cost, by default 0.673
+
     bos_share : float, optional
-        Turbine's baseline BOS percentage contribution in the total cost, by default 0.229 
+        The baseline turbine's BOS percentage contribution in the total cost, by default 0.229 
 
     Returns
     --------
     numeric or array-like
         Onshore turbine total cost
 
+    See Also
+    --------
+        - offshore_turbine_capex
+
     Notes
     -------
-    The expected turbine cost estimation of 1100 €/kW by Stehly et al. [3] is claimed to be derived from real cost data and valid until 10 MW capacity.
+    The expected turbine cost shares by Stehly et al. [3] are claimed to be derived from real cost data and valid until 10 MW capacity.
 
     Sources
     ---------
     [1] Fingersh, L., Hand, M., & Laxson, A. (2006). Wind Turbine Design Cost and Scaling Model. Nrel. https://www.nrel.gov/docs/fy07osti/40566.pdf
     [2] Maples, B., Hand, M., & Musial, W. (2010). Comparative Assessment of Direct Drive High Temperature Superconducting Generators in Multi-Megawatt Class Wind Turbines. Energy. https://doi.org/10.2172/991560
     [3] Stehly, T., Heimiller, D., & Scott, G. (2016). Cost of Wind Energy Review. Technical Report. https://www.nrel.gov/docs/fy18osti/70363.pdf
-
+    [4] TODO: cite  https://doi.org/10.1016/j.energy.2019.06.052
     """
 
     # PREPROCESS INPUTS
@@ -93,7 +105,7 @@ def onshore_tcc(cp, hh, rd, gdp_escalator=1, blade_material_escalator=1, blades=
     -------
     numeric or array-like
         Turbine's TCC in monetary units.
-    
+
     References
     ---------
     [1] Fingersh, L., Hand, M., & Laxson, A. (2006). Wind Turbine Design Cost and Scaling Model. Nrel. https://www.nrel.gov/docs/fy07osti/40566.pdf
@@ -191,7 +203,7 @@ def onshore_tcc(cp, hh, rd, gdp_escalator=1, blade_material_escalator=1, blades=
 
 def onshore_bos(cp, hh, rd):
     """
-    
+
     A function to determine the balance of the system cost (BOS) of an onshore turbine based on the capacity, hub height and rotor diamter values accoriding to Fingersh et al. [1].
 
     Parameters
@@ -206,13 +218,13 @@ def onshore_bos(cp, hh, rd):
     -------
     numeric or array-like
         Turbine's BOS in monetary units.
-    
+
     References
     ---------
     [1] Fingersh, L., Hand, M., & Laxson, A. (2006). Wind Turbine Design Cost and Scaling Model. Nrel. https://www.nrel.gov/docs/fy07osti/40566.pdf
 
     """
-    
+
     rr = rd / 2
     sa = np.pi * rr * rr
 
