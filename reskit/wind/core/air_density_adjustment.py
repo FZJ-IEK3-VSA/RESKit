@@ -24,16 +24,13 @@ def apply_air_density_adjustment(wind_speed, pressure, temperature, height=0):
 
     Notes
     ------
-    Ideal gas equation applied since it is equivalent to a real-gas equation at humidity = 0, and humidity does not have a significant impact until high temperatures are considered [2]   @Sev: Reference added, got one better?
+    Ideal gas equation applied since it is nearly equivalent to a real-gas equation at humidity = 0, and humidity does not have a significant impact until high temperatures are considered
     Pressure projection using barometric equation and density correction from assuming equal energy in the wind.
-    
+
     References
     -------
     [1] International Electrotechnical Commision (ICE). (2017). IEC 61400-12-1:2017 (p. 558). https://webstore.iec.ch/publication/26603
-    [2] Yue, W., Xue, Y., & Liu, Y. (2017). High Humidity Aerodynamic Effects Study on Offshore Wind Turbine Airfoil/Blade Performance through CFD Analysis. International Journal of Rotating Machinery, 2017, 1–15. https://doi.org/10.1155/2017/7570519
-    
-    
-    
+
     """
     g0 = 9.80665  # Gravitational acceleration [m/s2]
     Ma = 0.0289644  # Molar mass of dry air [kg/mol]

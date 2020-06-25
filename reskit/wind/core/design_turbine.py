@@ -10,25 +10,32 @@ from .power_curve import compute_specific_power
 
 def onshore_turbine_from_avg_wind_speed(wind_speed, constant_rotor_diam=True, base_capacity=4200, base_hub_height=120, base_rotor_diam=136, reference_wind_speed=6.7, min_tip_height=20, min_specific_power=180):
     """ 
-    Suggest onshore turbine desing characteristics (capacity, hub height, rotor diameter, specific power) for a 2050 European context based on an average wind speed value.
-    The default values and the function's normalization correspond to match the baseline turbine desing considered by Ryberg et al. [1] for a wind speed equal to 6.7 m/s. See notes.
-    
+    Suggest onshore turbine design characteristics (capacity, hub height, rotor diameter, specific power) for a 2050 European context based on an average wind speed value.
+    The default values and the function's normalization correspond to the baseline turbine design considered by Ryberg et al. [1] for a wind speed equal to 6.7 m/s. See notes.
+
     Parameters
     ----------
     wind_speed : numeric or array_like
         Local average wind speed close to or at the hub height.
+
     constant_rotor_diam : bool, optional
         Whether the rotor diameter is mantained constant or not, by default True
+
     base_capacity : numeric or array_like, optional
         Baseline turbine capacity in kW, by default 4200.
+
     base_hub_height : numeric or array_like, optional
         Baseline turbine hub height in m, by default 120.
+
     base_rotor_diam : numeric or array_like, optional
         Baseline turbine rotor diameter in m, by default 136.
+
     reference_wind_speed : numeric, optional
-        Wind speed the baseline turbine desing corresponds to, by default 6.7.
+        Average wind speed corresponding to the baseline turbine design, by default 6.7.
+
     min_tip_height : numeric, optional.
-        Minium distance in m between the lower tip of the blades and the floor, by default 20.
+        Minimum distance in m between the lower tip of the blades and the ground, by default 20.
+
     min_specific_power : numeric, optional
         Muninum specific power allowed in kw/m2, by default 180.
 
@@ -36,11 +43,12 @@ def onshore_turbine_from_avg_wind_speed(wind_speed, constant_rotor_diam=True, ba
     -------
     dict or pandas DataFrame
         A dict or a pandas DataFrame with suggested values of hub height in m, specific power in W/m2, and capacity in kW.
+        TODO: say the conditions which lead to either outcome 
 
     Notes
     -------
     The defaut baseline onshore turbine has 4200 kW capacity, 120m hub height, and 136m rotor diameter [1]
-    
+
     References
     -------
     [1] David S. Ryberg, Dilara C. Caglayana, Sabrina Schmitt, Jochen Linßena, Detlef Stolten, Martin Robinius - The Future of European Onshore Wind Energy Potential: 

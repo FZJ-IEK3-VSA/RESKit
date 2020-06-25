@@ -32,12 +32,13 @@ def synthetic_power_curve_data():
 
 def compute_specific_power(capacity, rotor_diam, **k):
     """
-    Calculates the corresponding specific power in kW/m2 from values of capacity in kW and rotor diameter in m.
+    Calculates the corresponding specific power for a wind turbine in kW/m2 from values of capacity in kW and rotor diameter in m.
 
     Parameters
     ----------
     capacity : float or array-like
         Turbine's nominal capacity in kW.
+
     rotor_diam : float or array-like
         Turbine's hub height in m.
 
@@ -45,19 +46,23 @@ def compute_specific_power(capacity, rotor_diam, **k):
     -------
     float or array-like
         Specific power in kW/m2
-        
+
     """
     return capacity * 1000 / rotor_diam**2 / np.pi * 4
+
 
 class PowerCurve():
 
     """
     Creates a wind turbine's power curve represented by a set of (wind-speed,capacty-factor) pairs.
 
+    Initialize
+    ----------
+        TODO: give the arguments for the "__init__" function here
+
     Returns
     -------
     PowerCurve
-        A plot of the PowerCurve object.
 
     """
 
@@ -96,10 +101,13 @@ class PowerCurve():
         """
         Creates a synthetic wind turbine power curve based on observed relationships between turbine specific power and known power curves.
 
+        TODO: cite https://doi.org/10.1016/j.energy.2019.06.052
+
         Parameters
         ----------
         specific_power : float 
             Turbines's specific power in m/s 
+
         cutout : int, optional
             Cut out wind speed in m/s, by default 25
 
@@ -109,7 +117,7 @@ class PowerCurve():
 
         See Also
         --------
-            - PowerCurve.from_capacity_and_rotor_diam
+            - PowerCurve.from_capacity_and_rotor_diam( <turbine capacity>, <turbine rotor diameter> )
         """
         # Create ws
         ws = [0, ]
@@ -134,12 +142,16 @@ class PowerCurve():
         """
         Creates a synthetic wind turbine power curve based on observed relationships between turbine's capacity, rotor diameter and known power curves.
 
+        TODO: cite https://doi.org/10.1016/j.energy.2019.06.052
+
         Parameters
         ----------
         capacity : numeric
             Baseline turbine capacity in kW.
+
         rotor_diam : numeric
             turbine rotor diameter in m
+
         cutout : int, optional
             Cut out wind speed in m/s, by default 25
 
@@ -149,7 +161,7 @@ class PowerCurve():
 
         See Also
         --------
-            - PowerCurve.from_specific_power
+            - PowerCurve.from_specific_power( <turbine specific power> )
         """
         return PowerCurve.from_specific_power(compute_specific_power(capacity, rotor_diam))
 
@@ -165,36 +177,33 @@ class PowerCurve():
         Returns
         -------
         array_like
-            Corresponging capacity fators for the given wind speeds
-            
+            CorrespongDing capacity fators for the given wind speeds
+
         """
         powerCurveInterp = splrep(self.wind_speed, self.capacity_factor)
         return splev(wind_speed, powerCurveInterp)
 
     def expected_capacity_factor_from_weibull(self, mean_wind_speed=5, weibull_shape=2):
-        ### Question to Sev: 
-        # This funtion name is appropaite for the fuction?
-        # an alternative way to yield a TotGener value
-        # The descrition bellow was taken from RESkit un-docstringed version, does it corresponds with the function's objective?
         """
-        Computes the expected average capacity factor of a wind turbine based on an assumed Weibull distribution of observed wind speeds.
+        Computes the expected average capacity factor of a wind turbine based on a Weibull distribution of wind speeds.
 
         Parameters
         ----------
         mean_wind_speed : int, optional
             mean wind speed at the location in m/s, by default 5
+
         weibull_shape : int, optional
             Weibull shape parameter, by default 2
 
         Returns
         -------
-        numeric or arrray-like
-            Total generation in kWh
+        numeric
+            Average capacity factor
 
         See also
         -------
             PowerCurve.expected_capacity_factor_from_distribution
-        
+
         """
         from scipy.special import gamma
         from scipy.stats import exponweib
@@ -230,8 +239,9 @@ class PowerCurve():
         ----------
         wind_speed_values : numeric or array-like
             wind speed values in m/s
+
         wind_speed_counts : numeric or array-like
-            corresponding counts (number of occurence) og the given wind speed values.
+            corresponding counts (number of occurence) of the given wind speed values.
             Counts will be normalized within the function
 
         Example
@@ -240,10 +250,15 @@ class PowerCurve():
                 wind_speed_values=[  1,   2,   3,   4,   5,      6], # Units of m/s
                 wind_speed_counts=[0.1, 0.3, 0.5, 0.3, 0.1, 0.025 ]  # Units of "counts" 
             )
+
         Returns
         -------
-        numeric or arrray-like
-            Mean generation in kWh
+        numeric
+            Average capacity factor
+
+        See also
+        -------
+            PowerCurve.expected_capacity_factor_from_weibull
 
         """
         wind_speed_values = np.array(wind_speed_values)
@@ -269,31 +284,37 @@ class PowerCurve():
 
     def convolute_by_guassian(self, scaling=0.06, base=0.1, extend_beyond_cut_out=True, _min_speed=0.01, _max_speed=40, _steps=4000):
         """
-        Convolutes a turbine power curve from a normal distribution function with wind-speed-dependent standard deviation.
+        Convolutes a turbine power curve by a normal distribution function with wind-speed-dependent standard deviation.
 
         Parameters
         ----------
         scaling : float, optional
             scaling factor, by default 0.06
+
         base : float, optional
             base value, by default 0.1
+
         extend_beyond_cut_out : bool, optional
             extend the estimation beyond the turbine's cut out wind speed, by default True
+
         _min_speed : float, optional
             minimum wind speed value in m/s to be considered, by default 0.01
+
         _max_speed : int, optional
             maximum wind speed value in m/s to be considered, by default 40
+
         _steps : int, optional
             number of steps in between the wind speed range, by default 4000
 
         Returns
         -------
-        array-like
-            convulated capacity factors
+        PowerCurve
+            The resulting convulated power curve
 
         Notes
         ------
         The wind-speed-dependent standard deviation is computed with: std = wind_speed * scaling + base
+
         """
         # Initialize windspeed axis
         ws = np.linspace(_min_speed, _max_speed, _steps)
@@ -340,13 +361,15 @@ class PowerCurve():
         Parameters
         ----------
         loss : numeric or function
-            If numeric, it is applyed at all capacty factors.
-            if a fuction, it must take a numpy array representing capacity factor values as input.
+            If numeric, the value is applyed at all capacty factors with: 
+                new_capacity_factors = [1-loss] * previous_capacity_factors
+            If a fuction, it must take a numpy array representing capacity factor values as input, resulting in the equation:
+                new_capacity_factors = [1-loss(previous_capacity_factors)] * previous_capacity_factors
 
         Returns
         -------
-        numpy array
-            A corrected power curve.
+        PowerCurve
+            The corrected power curve.
 
         """
         try:
