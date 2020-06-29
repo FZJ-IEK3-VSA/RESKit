@@ -726,7 +726,7 @@ class SolarWorkflowManager(WorkflowManager):
         return self
 
     def cell_temperature_from_sapm(self, mounting="glass_open_rack"):
-         """
+        """
         cell_temperature_from_sapm(self, mounting="glass_open_rack")
 
         Calculates the cell temperature based on the pvlib.temperature.sapm_cell() function [1].
@@ -755,8 +755,6 @@ class SolarWorkflowManager(WorkflowManager):
 
 
         """
-
-        """Mounting can be any of: 'glass_open_rack', 'glass_close_roof', 'polymer_open_rack', or 'polymer_insulated_back'"""
         assert 'surface_wind_speed' in self.sim_data
         assert 'surface_air_temperature' in self.sim_data
         assert 'poa_global' in self.sim_data
