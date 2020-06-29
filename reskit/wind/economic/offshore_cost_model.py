@@ -54,9 +54,9 @@ def offshore_turbine_capex(capacity, hub_height, rotor_diam, depth, distance_to_
         Offshore turbine total cost in monery units
 
 
-    See Also
+    See also
     --------
-        - onshore_turbine_capex
+        onshore_turbine_capex(capacity, hub_height, rotor_diam, base_capex, base_capacity, base_hub_height, base_rotor_diam, tcc_share, bos_share)
 
     Notes
     -------
