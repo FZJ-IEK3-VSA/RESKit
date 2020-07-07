@@ -54,19 +54,24 @@ def compute_specific_power(capacity, rotor_diam, **k):
 class PowerCurve():
 
     """
-    Creates a wind turbine's power curve represented by a set of (wind-speed,capacty-factor) pairs.
+    Creates a wind turbine's power curve represented by a set of (wind-speed,capacity-factor) pairs.
 
-    Initialize
+    Initialization:
+
+    Parameters
     ----------
-        TODO: give the arguments for the "__init__" function here
+        wind_speed : array-like
+            The wind speeds values
+        capacity_factor : array-like
+            The corresponding capacity factor
 
     Returns
     -------
-    PowerCurve
+    PowerCurve object
 
     """
 
-    def __init__(self, wind_speed, capacity_factor):
+    def __init__(self, wind_speed, capacity_factor):   
         self.wind_speed = np.array(wind_speed)
         self.capacity_factor = np.array(capacity_factor)
 
@@ -99,9 +104,7 @@ class PowerCurve():
     @staticmethod
     def from_specific_power(specific_power, cutout=25):
         """
-        Creates a synthetic wind turbine power curve based on observed relationships between turbine specific power and known power curves.
-
-        TODO: cite https://doi.org/10.1016/j.energy.2019.06.052
+        Creates a synthetic wind turbine power curve based on observed relationships between turbine specific power and known power curves according to Ryberg et al. [1].
 
         Parameters
         ----------
@@ -115,9 +118,13 @@ class PowerCurve():
         -------
         PowerCurve
 
-        See Also
+        Sources
+        -------
+        [1] Ryberg, D. S., Caglayan, D. G., Schmitt, S., Linßen, J., Stolten, D., & Robinius, M. (2019). The future of European onshore wind energy potential: Detailed distribution and simulation of advanced turbine designs. Energy. https://doi.org/10.1016/j.energy.2019.06.052
+
+        See also
         --------
-            - PowerCurve.from_capacity_and_rotor_diam( <turbine capacity>, <turbine rotor diameter> )
+            PowerCurve.from_capacity_and_rotor_diam( <turbine capacity>, <turbine rotor diameter> )   
         """
         # Create ws
         ws = [0, ]
@@ -140,9 +147,7 @@ class PowerCurve():
     @staticmethod
     def from_capacity_and_rotor_diam(capacity, rotor_diam, cutout=25):
         """
-        Creates a synthetic wind turbine power curve based on observed relationships between turbine's capacity, rotor diameter and known power curves.
-
-        TODO: cite https://doi.org/10.1016/j.energy.2019.06.052
+        Creates a synthetic wind turbine power curve based on observed relationships between turbine's capacity, rotor diameter and known power curves according to Ryberg et al. [1].
 
         Parameters
         ----------
@@ -159,9 +164,13 @@ class PowerCurve():
         -------
         PowerCurve
 
-        See Also
+        Sources
+        -------
+        [1] Ryberg, D. S., Caglayan, D. G., Schmitt, S., Linßen, J., Stolten, D., & Robinius, M. (2019). The future of European onshore wind energy potential: Detailed distribution and simulation of advanced turbine designs. Energy. https://doi.org/10.1016/j.energy.2019.06.052
+
+        See also
         --------
-            - PowerCurve.from_specific_power( <turbine specific power> )
+            PowerCurve.from_specific_power( <turbine specific power> )
         """
         return PowerCurve.from_specific_power(compute_specific_power(capacity, rotor_diam))
 
@@ -241,7 +250,7 @@ class PowerCurve():
             wind speed values in m/s
 
         wind_speed_counts : numeric or array-like
-            corresponding counts (number of occurence) of the given wind speed values.
+            corresponding counts (number of occurrence) of the given wind speed values.
             Counts will be normalized within the function
 
         Example
@@ -249,7 +258,7 @@ class PowerCurve():
             pc.expected_capacity_factor_from_distribution(
                 wind_speed_values=[  1,   2,   3,   4,   5,      6], # Units of m/s
                 wind_speed_counts=[0.1, 0.3, 0.5, 0.3, 0.1, 0.025 ]  # Units of "counts" 
-            )
+                )
 
         Returns
         -------
@@ -270,7 +279,7 @@ class PowerCurve():
         # Handle 2 dimensional counts with 1 dimensional wind speeds
         if len(wind_speed_counts.shape) > 1:
             if not wind_speed_counts.shape[0] == wind_speed_values.shape[0]:
-                raise ResError("Dimensional incompatability")
+                raise ResError("Dimensional incompatibility")
 
             wind_speed_values = np.reshape(wind_speed_values, (wind_speed_counts.shape[0], 1))
 
@@ -282,7 +291,7 @@ class PowerCurve():
         # Done
         return meanGen
 
-    def convolute_by_guassian(self, scaling=0.06, base=0.1, extend_beyond_cut_out=True, _min_speed=0.01, _max_speed=40, _steps=4000):
+    def convolute_by_gaussian(self, scaling=0.06, base=0.1, extend_beyond_cut_out=True, _min_speed=0.01, _max_speed=40, _steps=4000):
         """
         Convolutes a turbine power curve by a normal distribution function with wind-speed-dependent standard deviation.
 
@@ -309,7 +318,7 @@ class PowerCurve():
         Returns
         -------
         PowerCurve
-            The resulting convulated power curve
+            The resulting convoluted power curve
 
         Notes
         ------
@@ -361,9 +370,9 @@ class PowerCurve():
         Parameters
         ----------
         loss : numeric or function
-            If numeric, the value is applyed at all capacty factors with: 
+            If numeric, the value is applied at all capacity factors with: 
                 new_capacity_factors = [1-loss] * previous_capacity_factors
-            If a fuction, it must take a numpy array representing capacity factor values as input, resulting in the equation:
+            If a function, it must take a numpy array representing capacity factor values as input, resulting in the equation:
                 new_capacity_factors = [1-loss(previous_capacity_factors)] * previous_capacity_factors
 
         Returns

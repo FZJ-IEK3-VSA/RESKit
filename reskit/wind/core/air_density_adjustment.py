@@ -15,7 +15,7 @@ def apply_air_density_adjustment(wind_speed, pressure, temperature, height=0):
     temperature : float or array-like
         Air temperature in degree Celsius.
     height : float or array-like, optional
-        The (hub) height of that the air density is going to be adjested to in m, by default 0
+        The (hub) height of that the air density is going to be adjusted to in m, by default 0
 
     Returns
     -------
@@ -29,7 +29,7 @@ def apply_air_density_adjustment(wind_speed, pressure, temperature, height=0):
 
     References
     -------
-    [1] International Electrotechnical Commision (ICE). (2017). IEC 61400-12-1:2017 (p. 558). https://webstore.iec.ch/publication/26603
+    [1] International Electrotechnical Commission (ICE). (2017). IEC 61400-12-1:2017 (p. 558). https://webstore.iec.ch/publication/26603
 
     """
     g0 = 9.80665  # Gravitational acceleration [m/s2]

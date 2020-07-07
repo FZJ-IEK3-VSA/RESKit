@@ -52,7 +52,7 @@ def onshore_turbine_capex(capacity, hub_height, rotor_diam, base_capex=1100 * 42
 
     Sources
     ---------
-    [1] Fingersh, L., Hand, M., & Laxson, A. (2006). Wind Turbine Design Cost and Scaling Model. Nrel. https://www.nrel.gov/docs/fy07osti/40566.pdf
+    [1] Fingersh, L., Hand, M., & Laxson, A. (2006). Wind Turbine Design Cost and Scaling Model. NREL. https://www.nrel.gov/docs/fy07osti/40566.pdf
     [2] Maples, B., Hand, M., & Musial, W. (2010). Comparative Assessment of Direct Drive High Temperature Superconducting Generators in Multi-Megawatt Class Wind Turbines. Energy. https://doi.org/10.2172/991560
     [3] Stehly, T., Heimiller, D., & Scott, G. (2016). Cost of Wind Energy Review. Technical Report. https://www.nrel.gov/docs/fy18osti/70363.pdf
     [4] Ryberg, D. S., Caglayan, D. G., Schmitt, S., Linßen, J., Stolten, D., & Robinius, M. (2019). The future of European onshore wind energy potential: Detailed distribution and simulation of advanced turbine designs. Energy. https://doi.org/10.1016/j.energy.2019.06.052
@@ -84,7 +84,7 @@ def onshore_turbine_capex(capacity, hub_height, rotor_diam, base_capex=1100 * 42
 
 def onshore_tcc(cp, hh, rd, gdp_escalator=1, blade_material_escalator=1, blades=3):
     """
-    A function to determine the tubine capital cost (TCC) of a 3 blade standar onshore wind turbime based capacity, hub height and rotor diameter values according to the cost model by Fingersh et al. [1].
+    A function to determine the turbine capital cost (TCC) of a 3 blade standar onshore wind turbine based capacity, hub height and rotor diameter values according to the cost model by Fingersh et al. [1].
 
     Parameters
     ----------
@@ -108,7 +108,7 @@ def onshore_tcc(cp, hh, rd, gdp_escalator=1, blade_material_escalator=1, blades=
 
     References
     ---------
-    [1] Fingersh, L., Hand, M., & Laxson, A. (2006). Wind Turbine Design Cost and Scaling Model. Nrel. https://www.nrel.gov/docs/fy07osti/40566.pdf
+    [1] Fingersh, L., Hand, M., & Laxson, A. (2006). Wind Turbine Design Cost and Scaling Model. NREL. https://www.nrel.gov/docs/fy07osti/40566.pdf
 
     """
     rr = rd / 2
@@ -204,7 +204,7 @@ def onshore_tcc(cp, hh, rd, gdp_escalator=1, blade_material_escalator=1, blades=
 def onshore_bos(cp, hh, rd):
     """
 
-    A function to determine the balance of the system cost (BOS) of an onshore turbine based on the capacity, hub height and rotor diamter values accoriding to Fingersh et al. [1].
+    A function to determine the balance of the system cost (BOS) of an onshore turbine based on the capacity, hub height and rotor diamter values according to Fingersh et al. [1].
 
     Parameters
     ----------
@@ -221,7 +221,7 @@ def onshore_bos(cp, hh, rd):
 
     References
     ---------
-    [1] Fingersh, L., Hand, M., & Laxson, A. (2006). Wind Turbine Design Cost and Scaling Model. Nrel. https://www.nrel.gov/docs/fy07osti/40566.pdf
+    [1] Fingersh, L., Hand, M., & Laxson, A. (2006). Wind Turbine Design Cost and Scaling Model. NREL. https://www.nrel.gov/docs/fy07osti/40566.pdf
 
     """
 
