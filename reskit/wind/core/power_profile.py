@@ -48,7 +48,7 @@ def apply_power_profile_projection(measured_wind_speed, measured_height, target_
 
 def alpha_from_levels(low_wind_speed, low_height, high_wind_speed, high_height):
     """
-    Obtaines the scaling factor given two wind speeds measured at two different known heights.
+    Obtains the scaling factor given two wind speeds measured at two different known heights.
 
     TODO: Check indentation
 

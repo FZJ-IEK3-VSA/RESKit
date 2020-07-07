@@ -20,16 +20,16 @@ class WindWorkflowManager(WorkflowManager):
     ----------
     placements : pandas.DataFrame
         A Pandas DataFrame describing the wind turbine placements to be simulated.
-        It Must include the following columns:
+        It must include the following columns:
             - 'geom' or 'lat' and 'lon'
             - 'hub_height'
             - 'capacity'
-            - 'rotor_diam' or 'powerCurve' 
+            - 'rotor_diam' or 'powerCurve'
 
     synthetic_power_curve_cut_out : int, optional
         cut out wind speed, by default 25
 
-    synthetic_power_curve_rounding : int, optional 
+    synthetic_power_curve_rounding : int, optional
         rounding floor, by default 1
 
     Returns
@@ -40,7 +40,7 @@ class WindWorkflowManager(WorkflowManager):
     """
 
     def __init__(self, placements, synthetic_power_curve_cut_out=25, synthetic_power_curve_rounding=1):
-        #0
+        # 0
             powerCurve = []
             for sppow in specificPower:
                 pcid = "SPC:%d,%d" % (sppow, synthetic_power_curve_cut_out)
@@ -73,7 +73,7 @@ class WindWorkflowManager(WorkflowManager):
         roughness : numeric, iterable
             If a numeric is given, sets the same roughness values to all placements.
             If an iterable is given, sets the corresponding roughness value in the iterable to the placements.
-            The length of the iterable must match the numbre of placements 
+            The length of the iterable must match the number of placements 
 
         Return
         ------
@@ -91,7 +91,7 @@ class WindWorkflowManager(WorkflowManager):
         path : str 
             path to the raster file
         source_type : str
-            string value to get the corresponing key-value pairs. Saccepted types 'clc', 'clc-code', 'globCover', 'modis', or 'cci', by default 'clc'
+            string value to get the corresponding key-value pairs. Accepted types 'clc', 'clc-code', 'globCover', 'modis', or 'cci', by default 'clc'
         See also
         --------
             roughness_from_land_cover_classification

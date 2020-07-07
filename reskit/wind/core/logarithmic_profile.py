@@ -18,12 +18,12 @@ def apply_logarithmic_profile_projection(measured_wind_speed, measured_height, t
 
     Parameters
     ----------
-    measured_wind_speed : multidimentional array-like
+    measured_wind_speed : multidimensional array-like
         The input wind speeds in m/s that is going to be adjusted 
         If an array is given with a single dimension, it is assumed to represent timeseries values for a single location
         If multidimensional array is given, the assumed dimensional context is (time, locations), and 'targetLoc' must be an iterable with the same length as the 'locations' dimension (@Edgar: I'm not sure what you mean by this)
 
-    measured_height : multidimentional array-like
+    measured_height : multidimensional array-like
         The measurement height in m of the input wind speeds.
         Must either be a single value, or an array of values with the same length as the "locations" dimension of `measured_wind_speed`
 
@@ -45,7 +45,7 @@ def apply_logarithmic_profile_projection(measured_wind_speed, measured_height, t
 
     Returns
     -------
-    multidimentional array-like
+    multidimensional array-like
         Windspeed in m/s at target height
         Has the same dimensions as `measured_wind_speed`
 
@@ -193,11 +193,11 @@ def roughness_from_clc(clc_path, loc, window_range=0):
     ----------
     clc_path : str
         The path to the Corine Land Cover (CLC) raster file on the disk.
-        - This fuction currently only works for CLC versions before 2018. 
+        - This function currently only works for CLC versions before 2018. 
 
     loc : Anything acceptable to geokit.LocationSet
         The locations for which roughness should be estimated.
-        - TODO: Give a few axamples
+        - TODO: Give a few examples
 
     window_range : int; optional
         An extra number of pixels to extract around the indicated locations, by default 0.
@@ -415,7 +415,7 @@ def roughness_from_land_cover_classification(classification, land_cover_type='cl
     Returns
     -------
     int or array_like
-        Roughness lengnth value(s)
+        Roughness length value(s)
         TODO: See the example for "roughness_from_clc"
 
     See Also
@@ -457,7 +457,7 @@ def roughness_from_land_cover_source(source, loc, land_cover_type='clc'):
 
     loc : Anything acceptable to geokit.LocationSet
         The locations for which roughness should be estimated.
-        - TODO: Give a few axamples (copy from above)
+        - TODO: Give a few examples (copy from above)
 
     land_cover_type : str, optional
         Accepted arguments are 'clc', 'clc-code', 'globCover', 'modis', or 'cci', by default 'clc'

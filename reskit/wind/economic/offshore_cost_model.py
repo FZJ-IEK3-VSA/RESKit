@@ -36,22 +36,22 @@ def offshore_turbine_capex(capacity, hub_height, rotor_diam, depth, distance_to_
         Refers to the number of mooring lines are there attaching a turbine only applicable for floating foundation types. By default 3 assuming a triangular attachment to the seafloor.
 
     anchor : str, optional
-        Turbine's anchor type only applicable for floating foundation types, by default as recomended by [1].
+        Turbine's anchor type only applicable for floating foundation types, by default as reccomended by [1].
         Arguments accepted are "dea" (drag embedment anchor) or "spa" (suction pile anchor).
 
     turbine_count : numeric, optional
-        Number of turbines in the offshore windpark. CSM valid for the rangue [3-200], by default 80
+        Number of turbines in the offshore windpark. CSM valid for the range [3-200], by default 80
 
     turbine_spacing : numeric, optional
-        Spacing distance in a row of turbines (turbines that share the electrical connection) to the bus. The value must be a multiplyer of rotor diameter. CSM valid for the rangue [4-9], by default 5
+        Spacing distance in a row of turbines (turbines that share the electrical connection) to the bus. The value must be a multiplyer of rotor diameter. CSM valid for the range [4-9], by default 5
 
     turbine_row_spacing : numeric, optional
-        Spacing distance between rows of turbines. The value must be a multiplyer of rotor diameter. CSM valid for the rangue [4-10], by default 9
+        Spacing distance between rows of turbines. The value must be a multiplyer of rotor diameter. CSM valid for the range [4-10], by default 9
 
     Returns
     --------
     numeric or array-like
-        Offshore turbine total cost in monery units
+        Offshore turbine total cost 
 
 
     See Also
@@ -60,14 +60,14 @@ def offshore_turbine_capex(capacity, hub_height, rotor_diam, depth, distance_to_
 
     Notes
     -------
-    The baseline offshore turbine correspongs to the optimal desing for Europe according to Cagalayn et al. [4]: capacity = 9400 kW, hub height = 135 m, rotor diameter = 210 m, "monopile" foundation, reference water depth = 40 m, and reference distance to shore = 60 km.
+    The baseline offshore turbine correspongs to the optimal desing for Europe according to Caglayan et al. [4]: capacity = 9400 kW, hub height = 135 m, rotor diameter = 210 m, "monopile" foundation, reference water depth = 40 m, and reference distance to shore = 60 km.
 
     Sources
     -------
     [1] Fingersh, L., Hand, M., & Laxson, A. (2006). Wind Turbine Design Cost and Scaling Model. Nrel. https://www.nrel.gov/docs/fy07osti/40566.pdf
     [2] Maples, B., Hand, M., & Musial, W. (2010). Comparative Assessment of Direct Drive High Temperature Superconducting Generators in Multi-Megawatt Class Wind Turbines. Energy. https://doi.org/10.2172/991560
     [3] Stehly, T., Heimiller, D., & Scott, G. (2016). Cost of Wind Energy Review. Technical Report. https://www.nrel.gov/docs/fy18osti/70363.pdf
-    [4] Caglayan, D. G., Ryberg, D. S., Heinrichs, H., Linßen, J., Stolten, D., & Robinius, M. (2019). The techno-economic potential of offshore wind energy with optimized future turbine designs in Europe. Applied Energy. https://doi.org/10.1016/j.apenergy.2019.113794
+    [4] Caglayan, D. G., Ryberg, D. S., Heinrichs, H., Linssen, J., Stolten, D., & Robinius, M. (2019). The techno-economic potential of offshore wind energy with optimized future turbine designs in Europe. Applied Energy. https://doi.org/10.1016/j.apenergy.2019.113794
     [5] Maness, M., Maples, B., & Smith, A. (2017). NREL Offshore Balance-of- System Model NREL Offshore Balance-of- System Model. https://www.nrel.gov/docs/fy17osti/66874.pdf
     [6] Myhr, A., Bjerkseter, C., Ågotnes, A., & Nygaard, T. A. (2014). Levelised cost of energy for offshore floating wind turbines in a life cycle perspective. Renewable Energy, 66, 714–728. https://doi.org/10.1016/j.renene.2014.01.017
     [7] Bjerkseter, C., & Ågotnes, A. (2013). Levelised Costs Of Energy For Offshore Floating Wind Turbine Concepts [Norwegian University of Life Sciences]. https://nmbu.brage.unit.no/nmbu-xmlui/bitstream/handle/11250/189073/Bjerkseter%2C C. %26 Ågotnes%2C A. %282013%29 - Levelised Costs of Energy for Offshore Floating Wind Turbine Concepts.pdf?sequence=1&isAllowed=y
@@ -107,7 +107,7 @@ def offshore_turbine_capex(capacity, hub_height, rotor_diam, depth, distance_to_
 
 def offshore_bos(cp, rd, hh, depth, distance_to_shore, distance_to_bus, foundation, mooring_count, anchor, turbine_count, turbine_spacing, turbine_row_spacing):
     """
-    A function to determine the balance of the system cost (BOS) of an offshore turbine based on the capacity, hub height and rotor diamter values accoriding to Fingersh et al. [1].
+    A function to determine the balance of the system cost (BOS) of an offshore turbine based on the capacity, hub height and rotor diamter values according to Fingersh et al. [1].
 
     Parameters
     ----------
@@ -136,17 +136,17 @@ def offshore_bos(cp, rd, hh, depth, distance_to_shore, distance_to_bus, foundati
         Refers to the number of mooring lines are there attaching a turbine only applicable for floating foundation types. By default 3 assuming a triangular attachment to the seafloor.
 
     anchor : str, optional
-        Turbine's anchor type only applicable for floating foundation types, by default as recomended by [1].
+        Turbine's anchor type only applicable for floating foundation types, by default as reccomended by [1].
         Arguments accepted are "dea" (drag embedment anchor) or "spa" (suction pile anchor).
 
     turbine_count : numeric, optional
-        Number of turbines in the offshore windpark. CSM valid for the rangue [3-200], by default 80
+        Number of turbines in the offshore windpark. CSM valid for the range [3-200], by default 80
 
     turbine_spacing : numeric, optional
-        Spacing distance in a row of turbines (turbines that share the electrical connection) to the bus. The value must be a multiplyer of rotor diameter. CSM valid for the rangue [4-9], by default 5
+        Spacing distance in a row of turbines (turbines that share the electrical connection) to the bus. The value must be a multiplyer of rotor diameter. CSM valid for the range [4-9], by default 5
 
     turbine_row_spacing : numeric, optional
-        Spacing distance between rows of turbines. The value must be a multiplyer of rotor diameter. CSM valid for the rangue [4-10], by default 9
+        Spacing distance between rows of turbines. The value must be a multiplyer of rotor diameter. CSM valid for the range [4-10], by default 9
 
     Returns
     -------
@@ -163,7 +163,7 @@ def offshore_bos(cp, rd, hh, depth, distance_to_shore, distance_to_bus, foundati
     [1] Fingersh, L., Hand, M., & Laxson, A. (2006). Wind Turbine Design Cost and Scaling Model. Nrel. https://www.nrel.gov/docs/fy07osti/40566.pdf
     [2] Maples, B., Hand, M., & Musial, W. (2010). Comparative Assessment of Direct Drive High Temperature Superconducting Generators in Multi-Megawatt Class Wind Turbines. Energy. https://doi.org/10.2172/991560
     [3] Stehly, T., Heimiller, D., & Scott, G. (2016). Cost of Wind Energy Review. Technical Report. https://www.nrel.gov/docs/fy18osti/70363.pdf
-    [4] Caglayan, D. G., Ryberg, D. S., Heinrichs, H., Linßen, J., Stolten, D., & Robinius, M. (2019). The techno-economic potential of offshore wind energy with optimized future turbine designs in Europe. Applied Energy. https://doi.org/10.1016/j.apenergy.2019.113794
+    [4] Caglayan, D. G., Ryberg, D. S., Heinrichs, H., Linssen, J., Stolten, D., & Robinius, M. (2019). The techno-economic potential of offshore wind energy with optimized future turbine designs in Europe. Applied Energy. https://doi.org/10.1016/j.apenergy.2019.113794
     [5] Maness, M., Maples, B., & Smith, A. (2017). NREL Offshore Balance-of- System Model NREL Offshore Balance-of- System Model. https://www.nrel.gov/docs/fy17osti/66874.pdf
     [6] Myhr, A., Bjerkseter, C., Ågotnes, A., & Nygaard, T. A. (2014). Levelised cost of energy for offshore floating wind turbines in a life cycle perspective. Renewable Energy, 66, 714–728. https://doi.org/10.1016/j.renene.2014.01.017
     [7] Bjerkseter, C., & Ågotnes, A. (2013). Levelised Costs Of Energy For Offshore Floating Wind Turbine Concepts [Norwegian University of Life Sciences]
