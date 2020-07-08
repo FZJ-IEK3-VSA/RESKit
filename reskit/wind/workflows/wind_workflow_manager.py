@@ -21,10 +21,10 @@ class WindWorkflowManager(WorkflowManager):
     placements : pandas.DataFrame
         A Pandas DataFrame describing the wind turbine placements to be simulated.
         It must include the following columns:
-            - 'geom' or 'lat' and 'lon'
-            - 'hub_height'
-            - 'capacity'
-            - 'rotor_diam' or 'powerCurve'
+            'geom' or 'lat' and 'lon'
+            'hub_height'
+            'capacity'
+            'rotor_diam' or 'powerCurve'
 
     synthetic_power_curve_cut_out : int, optional
         cut out wind speed, by default 25
@@ -96,7 +96,7 @@ class WindWorkflowManager(WorkflowManager):
         --------
             roughness_from_land_cover_classification
         Return
-        ------
+        --------
             A reference to the invoking WindWorkflowManager
         """        
         num = gk.raster.interpolateValues(path, self.locs, mode='near')

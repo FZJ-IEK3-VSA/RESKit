@@ -7,7 +7,7 @@ def apply_power_profile_projection(measured_wind_speed, measured_height, target_
     Parameters
     ----------
     measured_wind_speed : array_like
-        The raw wind speeds to be adjusted.
+    	The raw wind speeds to be adjusted.
         If a single dimension array is given, it is assumed to represent timeseries values for a single location
         If a multidimensional array is given, the assumed dimensional context is (time, locations), and 'targetLoc' must be an iterable with the same length as the 'locations' dimension
 
@@ -25,8 +25,8 @@ def apply_power_profile_projection(measured_wind_speed, measured_height, target_
 
   	Notes
   	-----
-    The default scaling factor, alpha, equal to 1/7 corresponds to neutral stability conditions.
-    Alpha values can also be computed using the following function:
+    	The default scaling factor, alpha, equal to 1/7 corresponds to neutral stability conditions.
+    	Alpha values can also be computed using the following function:
 		alpha_from_levels(low_wind_speed, low_height, high_wind_speed, high_height)
 	
   	Returns
@@ -36,7 +36,7 @@ def apply_power_profile_projection(measured_wind_speed, measured_height, target_
 
   	See Also
   	--------
-    	apply_logarithmic_profile_projection( <wind speeds>, <measured height>, <target height>, <roughness> )
+    	apply_logarithmic_profile_projection(wind speeds, measured height, target height, roughness)
 
   """
     return measured_wind_speed * np.power(target_height / measured_height, alpha)
@@ -68,7 +68,7 @@ def alpha_from_levels(low_wind_speed, low_height, high_wind_speed, high_height):
 
 	Notes
   	-----
-    The projection of wind speed values at a given height using the retuned scaling factors can be computed using the following function:
+    	The projection of wind speed values at a given height using the retuned scaling factors can be computed using the following function:
 		apply_power_profile_projection(measured_wind_speed, measured_height, target_height, alpha)
     """
 

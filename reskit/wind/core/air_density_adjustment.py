@@ -24,8 +24,8 @@ def apply_air_density_adjustment(wind_speed, pressure, temperature, height=0):
 
     Notes
     ------
-    Ideal gas equation applied since it is nearly equivalent to a real-gas equation at humidity = 0, and humidity does not have a significant impact until high temperatures are considered.
-    Pressure projection using barometric equation and density correction from assuming equal energy in the wind.
+        Ideal gas equation applied since it is nearly equivalent to a real-gas equation at humidity = 0, and humidity does not have a significant impact until high temperatures are considered.
+        Pressure projection using barometric equation and density correction from assuming equal energy in the wind.
 
     References
     -------

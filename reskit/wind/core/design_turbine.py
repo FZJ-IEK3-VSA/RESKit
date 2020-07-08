@@ -46,7 +46,7 @@ def onshore_turbine_from_avg_wind_speed(wind_speed, constant_rotor_diam=True, ba
 
     Notes
     -------
-    The default baseline onshore turbine has 4200 kW capacity, 120m hub height, and 136m rotor diameter [1]
+        The default baseline onshore turbine has 4200 kW capacity, 120m hub height, and 136m rotor diameter [1]
 
     References
     -------

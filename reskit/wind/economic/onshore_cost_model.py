@@ -48,7 +48,7 @@ def onshore_turbine_capex(capacity, hub_height, rotor_diam, base_capex=1100 * 42
 
     Notes
     -------
-    The expected turbine cost shares by Stehly et al. [3] are claimed to be derived from real cost data and valid until 10 MW capacity.
+        The expected turbine cost shares by Stehly et al. [3] are claimed to be derived from real cost data and valid until 10 MW capacity.
 
     Sources
     ---------
