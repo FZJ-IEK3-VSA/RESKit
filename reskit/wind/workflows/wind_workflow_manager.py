@@ -92,9 +92,11 @@ class WindWorkflowManager(WorkflowManager):
             path to the raster file
         source_type : str
             string value to get the corresponding key-value pairs. Accepted types 'clc', 'clc-code', 'globCover', 'modis', or 'cci', by default 'clc'
+        
         See also
         --------
             roughness_from_land_cover_classification
+        
         Return
         --------
             A reference to the invoking WindWorkflowManager
