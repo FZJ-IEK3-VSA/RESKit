@@ -40,7 +40,29 @@ class WindWorkflowManager(WorkflowManager):
     """
 
     def __init__(self, placements, synthetic_power_curve_cut_out=25, synthetic_power_curve_rounding=1):
-        # 0
+        # Do basic workflow construction
+        super().__init__(placements)
+
+        # Check for basics
+        assert 'capacity' in self.placements.columns, "Placement dataframe needs 'capacity' column"
+        assert 'hub_height' in self.placements.columns, "Placement dataframe needs 'hub_height' column"
+
+        # Check for power curve. If not found, make it!
+        self.powerCurveLibrary = dict()
+
+        # Should we automatically generate synthetic power curves?
+        if not "powerCurve" in self.placements.columns:
+            assert 'rotor_diam' in self.placements.columns, "Placement dataframe needs 'rotor_diam' or 'powerCurve' column"
+
+            specificPower = rk_wind_core.power_curve.compute_specific_power(
+                self.placements['capacity'],
+                self.placements['rotor_diam'])
+
+            if synthetic_power_curve_rounding is not None:
+                specificPower = np.round(
+                    specificPower / synthetic_power_curve_rounding) * synthetic_power_curve_rounding
+                specificPower = specificPower.astype(int)
+
             powerCurve = []
             for sppow in specificPower:
                 pcid = "SPC:%d,%d" % (sppow, synthetic_power_curve_cut_out)
@@ -92,15 +114,15 @@ class WindWorkflowManager(WorkflowManager):
             path to the raster file
         source_type : str
             string value to get the corresponding key-value pairs. Accepted types 'clc', 'clc-code', 'globCover', 'modis', or 'cci', by default 'clc'
-        
+
         See also
         --------
             roughness_from_land_cover_classification
-        
+
         Return
         --------
             A reference to the invoking WindWorkflowManager
-        """        
+        """
         num = gk.raster.interpolateValues(path, self.locs, mode='near')
         self.placements['roughness'] = rk_wind_core.logarithmic_profile.roughness_from_land_cover_classification(
             num, source_type)
@@ -113,8 +135,8 @@ class WindWorkflowManager(WorkflowManager):
         Return
         ------
             A reference to the invoking WindWorkflowManager
-        """        
-        
+        """
+
         assert "roughness" in self.placements.columns
         assert hasattr(self, "elevated_wind_speed_height")
 
@@ -137,9 +159,8 @@ class WindWorkflowManager(WorkflowManager):
             A reference to the invoking WindWorkflowManager
 
 
-        """        
-        
-        
+        """
+
         assert "surface_air_temperature" in self.sim_data, "surface_air_temperature has not been read from a source"
         assert "surface_pressure" in self.sim_data, "surface_pressure has not been read from a source"
         assert hasattr(self, "elevated_wind_speed_height")
@@ -162,12 +183,12 @@ class WindWorkflowManager(WorkflowManager):
             scaling factor, by default 0.06
         base : float, optional
             base value, by default 0.1
-        
+
         Return
         ------
             A reference to the invoking WindWorkflowManager
 
-        """        
+        """
         assert hasattr(self, "powerCurveLibrary")
 
         for key in self.powerCurveLibrary.keys():
@@ -182,12 +203,12 @@ class WindWorkflowManager(WorkflowManager):
     def simulate(self):
         """
         Applies the invoking power curve to the given wind speeds.
-        
+
         Return
         ------
             A reference to the invoking WindWorkflowManager
-        """ 
-        
+        """
+
         gen = np.zeros_like(self.sim_data['elevated_wind_speed'])
 
         for pckey, pc in self.powerCurveLibrary.items():
