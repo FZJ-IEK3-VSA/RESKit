@@ -5,6 +5,37 @@ from .wind_workflow_manager import WindWorkflowManager
 
 def onshore_wind_merra_ryberg2019_europe(placements, merra_path, gwa_50m_path, clc2012_path, output_netcdf_path=None, output_variables=None):
     # TODO: Add range limitation over Europe by checking placements
+    """
+    Simulates onshore wind generation in Europe using NASA's MERRA2 database [1].
+
+    Parameters
+    ----------
+    placements : pandas Dataframe
+        A Dataframe object with the parameters needed by the simulation.
+    merra_path : str
+        Path to the MERRA2 data.
+    gwa_50m_path : str
+        Path to the Global Wind Atlas at 50m [2] rater file.
+    clc2012_path : str
+        Path to the CLC 2012 raster file [3].
+    output_netcdf_path : str, optional
+        Path to a directory to put the output files, by default None
+    output_variables : str, optional
+        Restrict the output variables to these variables, by default None
+
+    Returns
+    -------
+    xarray.Dataset
+        A xarray dataset including all the output variables you defined as your output variables.
+
+    Sources
+    ------
+    [1] NASA (National Aeronautics and Space Administration). (2019). Modern-Era Retrospective analysis for Research and Applications, Version 2. NASA Goddard Earth Sciences (GES) Data and Information Services Center (DISC). https://disc.gsfc.nasa.gov/datasets?keywords=%22MERRA-2%22&page=1&source=Models%2FAnalyses MERRA-2
+    [2] DTU Wind Energy. (2019). Global Wind Atlas. https://globalwindatlas.info/
+    [3] Copernicus (European Union’s Earth Observation Programme). (2012). Corine Land Cover 2012. Copernicus. https://land.copernicus.eu/pan-european/corine-land-cover/clc-2012
+
+    """
+
     wf = WindWorkflowManager(placements)
 
     wf.read(
@@ -45,6 +76,31 @@ def onshore_wind_merra_ryberg2019_europe(placements, merra_path, gwa_50m_path, c
 
 
 def offshore_wind_merra_caglayan2019(placements, merra_path, output_netcdf_path=None, output_variables=None):
+    """
+    Simulates offshore wind generation using NASA's MERRA2 database [1].
+
+    Parameters
+    ----------
+    placements : pandas Dataframe
+        A Dataframe object with the parameters needed by the simulation.
+    merra_path : str
+        Path to the MERRA2 data.
+    output_netcdf_path : str, optional
+        Path to a directory to put the output files, by default None
+    output_variables : str, optional
+        Restrict the output variables to these variables, by default None
+
+    Returns
+    -------
+    xarray.Dataset
+        A xarray dataset including all the output variables you defined as your output variables.
+
+    Sources
+    ------
+    [1] National Aeronautics and Space Administration. (2019). Modern-Era Retrospective analysis for Research and Applications, Version 2. NASA Goddard Earth Sciences (GES) Data and Information Services Center (DISC). https://disc.gsfc.nasa.gov/datasets?keywords=%22MERRA-2%22&page=1&source=Models%2FAnalyses MERRA-2
+
+    """
+
     wf = WindWorkflowManager(placements)
 
     wf.read(
@@ -73,7 +129,30 @@ def offshore_wind_merra_caglayan2019(placements, merra_path, output_netcdf_path=
 
 
 def offshore_wind_era5_unvalidated(placements, era5_path, output_netcdf_path=None, output_variables=None):
-    """[] """
+    """
+    Simulates offshore wind generation using NASA's ERA5 database [1].
+
+    Parameters
+    ----------
+    placements : pandas Dataframe
+        A Dataframe object with the parameters needed by the simulation.
+    era5_path : str
+        Path to the ERA5 data.
+    output_netcdf_path : str, optional
+        Path to a directory to put the output files, by default None
+    output_variables : str, optional
+        Restrict the output variables to these variables, by default None
+
+    Returns
+    -------
+    xarray.Dataset
+        A xarray dataset including all the output variables you defined as your output variables.
+
+    Sources
+    ------
+    [1] European Centre for Medium-Range Weather Forecasts. (2019). ERA5 dataset. https://www.ecmwf.int/en/forecasts/datasets/reanalysis-datasets/era5.
+
+    """
     wf = WindWorkflowManager(placements)
 
     wf.read(
@@ -102,6 +181,36 @@ def offshore_wind_era5_unvalidated(placements, era5_path, output_netcdf_path=Non
 
 
 def onshore_wind_era5_unvalidated(placements, era5_path, gwa_100m_path, esa_cci_path, output_netcdf_path=None, output_variables=None):
+    """
+    Simulates onshore wind generation using ECMWF's ERA5 database [1]
+
+    Parameters
+    ----------
+    placements : pandas Dataframe
+        A Dataframe object with the parameters needed by the simulation.
+    era5_path : str
+        Path to the ERA5 data.
+    gwa_100m_path : str
+        Path to the Global Wind Atlas at 100m [2] rater file.
+    esa_cci_path : str
+        Path to the ESA CCI raster file [3].
+    output_netcdf_path : str, optional
+        Path to a directory to put the output files, by default None
+    output_variables : str, optional
+        Restrict the output variables to these variables, by default None
+
+    Returns
+    -------
+    xarray.Dataset
+        A xarray dataset including all the output variables you defined as your output variables.
+
+    Sources
+    ------
+    [1] European Centre for Medium-Range Weather Forecasts. (2019). ERA5 dataset. https://www.ecmwf.int/en/forecasts/datasets/reanalysis-datasets/era5
+    [2] DTU Wind Energy. (2019). Global Wind Atlas. https://globalwindatlas.info/
+    [3] ESA. Land Cover CCI Product User Guide Version 2. Tech. Rep. (2017). Available at: maps.elie.ucl.ac.be/CCI/viewer/download/ESACCI-LC-Ph2-PUGv2_2.0.pdf
+    """
+
     wf = WindWorkflowManager(placements)
 
     wf.read(

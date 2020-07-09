@@ -15,6 +15,14 @@ rangeRE = re.compile("([0-9.]{1,})-([0-9.]{1,})")
 
 
 def parse_turbine(path):
+    """
+    **internal function**
+
+    Parses over a turbine's data file to get hub height, capacity, rotor diameter and powercurve.
+
+    Used for loading into the TurbineLibrary table 
+    """
+
     meta = OrderedDict()
     with open(path) as fin:
         # Meta extraction mode
@@ -67,6 +75,9 @@ _Turbine_Library = None
 
 
 def TurbineLibrary():
+    """
+    A dataframe of internally configured wind turbines accessible to later simulations
+    """
     global _Turbine_Library
 
     if _Turbine_Library is None:
