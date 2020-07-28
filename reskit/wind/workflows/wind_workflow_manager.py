@@ -192,7 +192,7 @@ class WindWorkflowManager(WorkflowManager):
         assert hasattr(self, "powerCurveLibrary")
 
         for key in self.powerCurveLibrary.keys():
-            self.powerCurveLibrary[key] = self.powerCurveLibrary[key].convolute_by_guassian(
+            self.powerCurveLibrary[key] = self.powerCurveLibrary[key].convolute_by_gaussian(
                 scaling=scaling,
                 base=base,
                 **kwargs
