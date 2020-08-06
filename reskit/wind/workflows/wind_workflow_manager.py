@@ -146,7 +146,7 @@ class WindWorkflowManager(WorkflowManager):
             target_height=self.placements['hub_height'].values,
             roughness=self.placements['roughness'].values
         )
-        self.wind_speed_height = self.placements['hub_height'].values
+        self.elevated_wind_speed_height = self.placements['hub_height'].values
 
         return self
 
@@ -169,7 +169,7 @@ class WindWorkflowManager(WorkflowManager):
             self.sim_data['elevated_wind_speed'],
             pressure=self.sim_data['surface_pressure'],
             temperature=self.sim_data['surface_air_temperature'],
-            height=self.wind_speed_height)
+            height=self.elevated_wind_speed_height)
 
         return self
 
