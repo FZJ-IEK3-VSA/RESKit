@@ -23,11 +23,11 @@ class WorkflowManager():
             self.placements['lat'] = self.locs.lats
             del self.placements['geom']
 
-        assert 'lon' in placements.columns
-        assert 'lat' in placements.columns
+        assert 'lon' in self.placements.columns
+        assert 'lat' in self.placements.columns
 
         if self.locs is None:
-            self.locs = gk.LocationSet(placements[['lon', 'lat']].values)
+            self.locs = gk.LocationSet(self.placements[['lon', 'lat']].values)
 
         self.ext = gk.Extent.fromLocationSet(self.locs)
 
