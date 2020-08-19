@@ -11,7 +11,7 @@ _P = namedtuple('PowerCurve', 'ws cf')
 _synthetic_power_curve_data = None
 
 
-def synthetic_power_curve_data():
+def synthetic_power_curve_data() -> pd.DataFrame:
     """
     Reads the data used for creating a synthetic power curve.
 
@@ -71,7 +71,7 @@ class PowerCurve():
 
     """
 
-    def __init__(self, wind_speed, capacity_factor):   
+    def __init__(self, wind_speed, capacity_factor):
         self.wind_speed = np.array(wind_speed)
         self.capacity_factor = np.array(capacity_factor)
 
@@ -190,7 +190,12 @@ class PowerCurve():
 
         """
         powerCurveInterp = splrep(self.wind_speed, self.capacity_factor)
-        return splev(wind_speed, powerCurveInterp)
+        output = splev(wind_speed, powerCurveInterp)
+
+        if isinstance(wind_speed, pd.DataFrame):
+            output = pd.DataFrame(output, index=wind_speed.index, columns=wind_speed.columns)
+
+        return output
 
     def expected_capacity_factor_from_weibull(self, mean_wind_speed=5, weibull_shape=2):
         """

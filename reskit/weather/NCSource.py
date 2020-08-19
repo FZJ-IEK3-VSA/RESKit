@@ -412,6 +412,13 @@ class NCSource(object):
             out = load(fo)
         return out
 
+    def list_standard_variables(self):
+        """Prints the standard variable loaders available to this weather source
+        """
+        for var in dir(self):
+            if var[:6] == "sload_":
+                print(var)
+
     def sload(self, *variables):
         """Load standard variables into the source's data library
 
