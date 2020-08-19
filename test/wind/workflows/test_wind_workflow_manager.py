@@ -5,7 +5,7 @@ import reskit as rk
 import pytest
 
 
-def test___init__():
+def test_WindWorkflowManager___init__():
     placements = pd.DataFrame()
     placements['lon'] = [6.083, 6.183, 6.083, 6.183, 6.083, ]
     placements['lat'] = [50.475, 50.575, 50.675, 50.775, 50.875, ]
@@ -41,10 +41,10 @@ def test___init__():
 
 @pytest.fixture
 def pt_WindWorkflowManager_initialized() -> WindWorkflowManager:
-    return test___init__()
+    return test_WindWorkflowManager___init__()
 
 
-def test_set_roughness(pt_WindWorkflowManager_initialized):
+def test_WindWorkflowManager_set_roughness(pt_WindWorkflowManager_initialized):
     man = pt_WindWorkflowManager_initialized
 
     roughnesses = [0.1, 0.01, 0.001, 0.0001, 0.00001]
@@ -52,7 +52,7 @@ def test_set_roughness(pt_WindWorkflowManager_initialized):
     assert (man.placements['roughness'] == roughnesses).all()
 
 
-def test_estimate_roughness_from_land_cover(pt_WindWorkflowManager_initialized):
+def test_WindWorkflowManager_estimate_roughness_from_land_cover(pt_WindWorkflowManager_initialized):
     man = pt_WindWorkflowManager_initialized
     man.estimate_roughness_from_land_cover(rk.TEST_DATA['clc-aachen_clipped.tif'], source_type="clc")
     assert (man.placements['roughness'] == [0.5, 0.0005, 0.03, 0.03, 0.3]).all()
@@ -74,7 +74,7 @@ def pt_WindWorkflowManager_loaded(pt_WindWorkflowManager_initialized: WindWorkfl
     return man
 
 
-def test_logarithmic_projection_of_wind_speeds_to_hub_height(pt_WindWorkflowManager_loaded):
+def test_WindWorkflowManager_logarithmic_projection_of_wind_speeds_to_hub_height(pt_WindWorkflowManager_loaded):
     man = pt_WindWorkflowManager_loaded
 
     roughnesses = [0.1, 0.01, 0.001, 0.0001, 0.00001]
@@ -86,7 +86,7 @@ def test_logarithmic_projection_of_wind_speeds_to_hub_height(pt_WindWorkflowMana
     assert np.isclose(man.sim_data['elevated_wind_speed'].std(), 2.9112541058945705)
 
 
-def test_apply_air_density_correction_to_wind_speeds(pt_WindWorkflowManager_loaded):
+def test_WindWorkflowManager_apply_air_density_correction_to_wind_speeds(pt_WindWorkflowManager_loaded):
     man = pt_WindWorkflowManager_loaded
 
     man.apply_air_density_correction_to_wind_speeds()
@@ -95,7 +95,7 @@ def test_apply_air_density_correction_to_wind_speeds(pt_WindWorkflowManager_load
     assert np.isclose(man.sim_data['elevated_wind_speed'].std(), 2.822941278260297)
 
 
-def test_convolute_power_curves(pt_WindWorkflowManager_initialized):
+def test_WindWorkflowManager_convolute_power_curves(pt_WindWorkflowManager_initialized):
     man = pt_WindWorkflowManager_initialized
     man.convolute_power_curves(scaling=0.06, base=0.1)
 
@@ -103,7 +103,7 @@ def test_convolute_power_curves(pt_WindWorkflowManager_initialized):
     assert np.isclose(man.powerCurveLibrary['SPC:138,25'].capacity_factor.std(), 0.4521186399908671)
 
 
-def test_simulate(pt_WindWorkflowManager_loaded):
+def test_WindWorkflowManager_simulate(pt_WindWorkflowManager_loaded):
     man = pt_WindWorkflowManager_loaded
 
     man.simulate()
