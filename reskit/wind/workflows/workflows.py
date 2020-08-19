@@ -43,7 +43,7 @@ def onshore_wind_merra_ryberg2019_europe(placements, merra_path, gwa_50m_path, c
                    "surface_pressure",
                    "surface_air_temperature"],
         source_type="MERRA",
-        path=merra_path,
+        source=merra_path,
         set_time_index=True,
         verbose=False)
 
@@ -106,7 +106,7 @@ def offshore_wind_merra_caglayan2019(placements, merra_path, output_netcdf_path=
     wf.read(
         variables=['elevated_wind_speed', ],
         source_type="MERRA",
-        path=merra_path,
+        source=merra_path,
         set_time_index=True,
         verbose=False)
 
@@ -158,7 +158,7 @@ def offshore_wind_era5_unvalidated(placements, era5_path, output_netcdf_path=Non
     wf.read(
         variables=['elevated_wind_speed', ],
         source_type="ERA5",
-        path=era5_path,
+        source=era5_path,
         set_time_index=True,
         verbose=False)
 
@@ -218,7 +218,7 @@ def onshore_wind_era5_unvalidated(placements, era5_path, gwa_100m_path, esa_cci_
                    "surface_pressure",
                    "surface_air_temperature"],
         source_type="ERA5",
-        path=era5_path,
+        source=era5_path,
         set_time_index=True,
         verbose=False)
 
