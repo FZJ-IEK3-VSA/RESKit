@@ -7,6 +7,7 @@ from collections import OrderedDict
 from types import FunctionType
 import warnings
 from scipy.interpolate import RectBivariateSpline
+import json
 
 # from reskit import solarpower
 
@@ -65,6 +66,7 @@ class SolarWorkflowManager(WorkflowManager):
         super().__init__(placements)
         self._time_sel_ = None
         self._time_index_ = None
+        self.module = None
 
     def estimate_tilt_from_latitude(self, convention):
         """
@@ -83,7 +85,7 @@ class SolarWorkflowManager(WorkflowManager):
                      Option 3 of convention is a path to a rasterfile.
                      To get more information check out reskit.solar.location_to_tilt for more information.
 
-        
+
 
         Returns
         -------
@@ -131,7 +133,7 @@ class SolarWorkflowManager(WorkflowManager):
         elev: str, list
               If a string is given it must be a path to a rasterfile including the elevations.
               If a list is given it has to include the elevations at each location.
-        
+
 
         Returns
         -------
@@ -172,12 +174,12 @@ class SolarWorkflowManager(WorkflowManager):
         Returns
         -------
         Returns a reference to the invoking SolarWorkflowManager object
-        
+
         Notes
         -----
         Required columns in the placements dataframe to use this functions are 'lon', 'lat' and 'elev'.
         Required data in the sim_data dictionary are 'surface_pressure' and 'surface_air_temperature'.
-        
+
         References
         ----------
         [1] https://pvlib-python.readthedocs.io/en/stable/generated/pvlib.solarposition.spa_python.html
@@ -250,12 +252,12 @@ class SolarWorkflowManager(WorkflowManager):
         Returns
         -------
         Returns a reference to the invoking SolarWorkflowManager object
-        
+
         Notes
         -----
         Required data in the sim_data dictionary are 'apparent_solar_zenith'.
-        
-        
+
+
 
         """
 
@@ -289,7 +291,7 @@ class SolarWorkflowManager(WorkflowManager):
         -------
 
         Returns a reference to the invoking SolarWorkflowManager object.
-        
+
 
         References
         ----------
@@ -341,12 +343,12 @@ class SolarWorkflowManager(WorkflowManager):
         Returns
         -------
         Nothing is returned.
-        
+
         Notes
         -----
         Required data in the sim_data dictionary are 'apparent_solar_zenith'.
-        
-        
+
+
 
         References
         ----------
@@ -396,7 +398,7 @@ class SolarWorkflowManager(WorkflowManager):
         Returns
         -------
         Returns a reference to the invoking SolarWorkflowManager object.
-        
+
         Notes
         -----
         Required data in the sim_data dictionary are 'global_horizontal_irradiance', 'surface_pressure', 
@@ -464,7 +466,7 @@ class SolarWorkflowManager(WorkflowManager):
         Returns
         -------
         Returns a reference to the invoking SolarWorkflowManager object.
-        
+
         Notes
         -----
         Required data in the sim_data dictionary are 'global_horizontal_irradiance', 'direct_normal_irradiance' and
@@ -498,12 +500,12 @@ class SolarWorkflowManager(WorkflowManager):
         Returns
         -------
         Returns a reference to the invoking SolarWorkflowManager object.
-        
+
         Notes
         -----
         Required columns in the placements dataframe to use this functions are 'lon', 'lat' and 'elev'.
         Required data in the sim_data dictionary are 'direct_horizontal_irradiance' and 'apparent_solar_zenith'.
-        
+
         Calculates the direct normal irradiance from the following equation:
             .. math:: dir_nor_irr = dir_hor_irr / cos( solar_zenith )
 
@@ -546,12 +548,12 @@ class SolarWorkflowManager(WorkflowManager):
                    A value denoting the maximum rotation angle, in decimal degrees, of the one-axis tracker from its horizontal position
                    (horizontal if axis_tilt = 0). A max_angle of 90 degrees allows the tracker to rotate to a vertical position to point the
                    panel towards a horizon. max_angle of 180 degrees allows for full rotation [1].
-                   
+
         backtrack: bool, optional
                    default True
                    Controls whether the tracker has the capability to “backtrack” to avoid row-to-row shading.
                    False denotes no backtrack capability. True denotes backtrack capability [1].
-                   
+
         gcr:       float, optional
                    default 2.0/7.0
                    A value denoting the ground coverage ratio of a tracker system which utilizes backtracking; i.e. the ratio between the
@@ -562,7 +564,7 @@ class SolarWorkflowManager(WorkflowManager):
         Returns
         -------
         Returns a reference to the invoking SolarWorkflowManager object.
-        
+
         Notes
         -----
         Required columns in the placements dataframe to use this functions are 'lon', 'lat', 'elev', 'tilt' and 'azimuth'.
@@ -613,7 +615,7 @@ class SolarWorkflowManager(WorkflowManager):
                 system_tilt[s, i] = placement.tilt
 
                 s = np.isnan(system_azimuth[:, i])
-                system_azimuth[s, i] = placement.tilt
+                system_azimuth[s, i] = placement.azimuth
 
         self.sim_data['system_tilt'] = system_tilt
         self.sim_data['system_azimuth'] = system_azimuth
@@ -634,11 +636,11 @@ class SolarWorkflowManager(WorkflowManager):
         Returns
         -------
         Returns a reference to the invoking SolarWorkflowManager object. 
-        
+
         Notes
         -----
         Required data in the sim_data dictionary are 'apparent_solar_zenith' and 'solar_azimuth'.
-        
+
         """
 
         """tracking can be: 'fixed' or 'singleaxis'"""
@@ -675,7 +677,7 @@ class SolarWorkflowManager(WorkflowManager):
         Returns
         -------
         Returns a reference to the invoking SolarWorkflowManager object.
-        
+
         Notes
         -----
         Required data in the sim_data dictionary are 'apparent_solar_zenith', 'solar_azimuth', 'direct_normal_irradiance',
@@ -744,7 +746,7 @@ class SolarWorkflowManager(WorkflowManager):
         Returns
         -------
         Returns a reference to the invoking SolarWorkflowManager object.
-        
+
         Notes
         -----
         Required data in the sim_data dictionary are 'surface_wind_speed', 'surface_air_temperature' and 'poa_global'.
@@ -785,29 +787,29 @@ class SolarWorkflowManager(WorkflowManager):
     def apply_angle_of_incidence_losses_to_poa(self):
         """
         apply_angle_of_incidence_losses_to_poa(self) 
-        
-        
+
+
         Applies the angle of incidence losses to the plane-of-array irradiance using the pvlib.pvsystem.iam.physical() function [1].
-        
+
         Parameters
         ----------
         None
-        
+
         Returns
         -------
         Returns a reference to the invoking SolarWorkflowManager object.
-        
+
         Notes
         -----
         Required data in the sim_data dictionary are 'poa_direct', 'poa_ground_diffuse' and 'poa_sky_diffuse'.
-        
+
         References
         ----------
         [1] https://pvlib-python.readthedocs.io/en/stable/generated/pvlib.iam.physical.html
-        
-        
+
+
         """
-        
+
         assert 'poa_direct' in self.sim_data
         assert 'poa_ground_diffuse' in self.sim_data
         assert 'poa_sky_diffuse' in self.sim_data
@@ -836,38 +838,41 @@ class SolarWorkflowManager(WorkflowManager):
             L=0.002,  # PVLIB v0.7.2 default
         )
 
-        self.sim_data['poa_global'] = self.sim_data["poa_direct"] + self.sim_data["poa_ground_diffuse"] + self.sim_data["poa_sky_diffuse"]
+        self.sim_data['poa_diffuse'] = self.sim_data["poa_ground_diffuse"] + self.sim_data["poa_sky_diffuse"]
+        self.sim_data['poa_global'] = self.sim_data["poa_direct"] + self.sim_data['poa_diffuse']
 
         assert (self.sim_data['poa_global'] < 1600).all(), "POA is too large"
 
         return self
 
     def configure_cec_module(self, module="WINAICO WSx-240P6"):
-        
         """
         configure_cec_module(self, module="WINAICO WSx-240P6")
-        
+
         Configures CEC of a module based on the outputs of the pvlib.pvsystem.retrieve_sam() function [1].
-        
+
         Parameters
         ----------
-        module: str
+        module: str or dict
             Must be one of:
                 * A module found in the pvlib.pvsystem.retrieve_sam("CECMod") database
                 * "WINAICO WSx-240P6" -> Good for open-field applications
                 * "LG Electronics LG370Q1C-A5" -> Good for rooftop applications
-        
+                * A dict containing a set of module parameters, including:
+                    T_NOCT, A_c, N_s, I_sc_ref, V_oc_ref, I_mp_ref, V_mp_ref, alpha_sc, 
+                    beta_oc, a_ref, I_L_ref, I_o_ref, R_s, R_sh_ref, Adjust, gamma_r, PTC
+
         Returns
         -------
         Returns a reference to the invoking SolarWorkflowManager object
-        
+
         References
         ----------
         [1] https://pvlib-python.readthedocs.io/en/stable/generated/pvlib.pvsystem.retrieve_sam.html
-        
-        
+
+
         """
-        
+
         if isinstance(module, str):
             self.register_workflow_parameter("module_name", module)
 
@@ -921,34 +926,58 @@ class SolarWorkflowManager(WorkflowManager):
                     Technology="Mono-c-Si",
                 ))
                 module.name = "LG Electronics LG370Q1C-A5"
-            else:
+            elif isinstance(module, str):
                 # Extract module parameters
                 db = pvlib.pvsystem.retrieve_sam("CECMod")
                 try:
                     module = getattr(db, module)
                 except:
                     raise RuntimeError("The module '{}' is not in the CEC database".format(module))
+        else:
+            module = pd.Series(module)
+            assert "T_NOCT" in module.index
+            assert "A_c" in module.index
+            assert "N_s" in module.index
+            assert "I_sc_ref" in module.index
+            assert "V_oc_ref" in module.index
+            assert "I_mp_ref" in module.index
+            assert "V_mp_ref" in module.index
+            assert "alpha_sc" in module.index
+            assert "beta_oc" in module.index
+            assert "a_ref" in module.index
+            assert "I_L_ref" in module.index
+            assert "I_o_ref" in module.index
+            assert "R_s" in module.index
+            assert "R_sh_ref" in module.index
+            assert "Adjust" in module.index
+            assert "gamma_r" in module.index
+            assert "PTC" in module.index
 
-            # # Check if we need to add the Desoto parameters
-            # # defaults for EgRef and dEgdT taken from the note in the docstring for
-            # #  'pvlib.pvsystem.calcparams_desoto'
-            # if not "EgRef" in module:
-            #     module['EgRef'] = 1.121
-            # if not "dEgdT" in module:
-            #     module['dEgdT'] = -0.0002677
+            try:
+                module_desc = json.dumps(module)
+            except:
+                module_desc = "user-configured"
+            self.register_workflow_parameter("module_desc", module_desc)
+
+        # # Check if we need to add the Desoto parameters
+        # # defaults for EgRef and dEgdT taken from the note in the docstring for
+        # #  'pvlib.pvsystem.calcparams_desoto'
+        # if not "EgRef" in module:
+        #     module['EgRef'] = 1.121
+        # if not "dEgdT" in module:
+        #     module['dEgdT'] = -0.0002677
 
         self.module = module
 
         return self
 
     def simulate_with_interpolated_single_diode_approximation(self, module="WINAICO WSx-240P6"):
-        
         """
         simulate_with_interpolated_single_diode_approximation(self, module="WINAICO WSx-240P6")
-        
+
         Does the simulation with an interpolated single diode approximation using the pvlib.pvsystem.calcparams_desoto() [1] function and the
         pvlib.pvsystem.singlediode() [2] function. 
-        
+
 
         Parameters
         ----------
@@ -957,38 +986,38 @@ class SolarWorkflowManager(WorkflowManager):
                 * A module found in the pvlib.pvsystem.retrieve_sam("CECMod") database
                 * "WINAICO WSx-240P6" -> Good for open-field applications
                 * "LG Electronics LG370Q1C-A5" -> Good for rooftop applications
-        
+
         Returns
         -------
         Returns a reference to the invoking SolarWorkflowManager object.
-        
+
         Notes
         -----
         Required columns in the placements dataframe to use this functions are 'lon', 'lat', 'elev', 'tilt' and 'azimuth'.
         Required data in the sim_data dictionary are 'poa_global' and 'cell_temperature'.
-        
+
         References
         ----------
         [1] https://pvlib-python.readthedocs.io/en/stable/generated/pvlib.pvsystem.calcparams_desoto.html
-        
+
         [2] https://pvlib-python.readthedocs.io/en/stable/generated/pvlib.pvsystem.singlediode.html
-        
+
         [3]	(1, 2) W. De Soto et al., “Improvement and validation of a model for photovoltaic array performance”, Solar Energy, vol 80, pp. 78-88, 2006.
-        
+
         [4]	System Advisor Model web page. https://sam.nrel.gov.
-        
+
         [5]	A. Dobos, “An Improved Coefficient Calculator for the California Energy Commission 6 Parameter Photovoltaic Module Model”, Journal of Solar Energy Engineering, vol 134, 2012.
-        
+
         [6]	O. Madelung, “Semiconductors: Data Handbook, 3rd ed.” ISBN 3-540-40488-0
 
         [7]	S.R. Wenham, M.A. Green, M.E. Watt, “Applied Photovoltaics” ISBN 0 86758 909 4
-        
+
         [8]	A. Jain, A. Kapoor, “Exact analytical solutions of the parameters of real solar cells using Lambert W-function”, Solar Energy Materials and Solar Cells, 81 (2004) 269-277.
-        
+
         [9]	D. King et al, “Sandia Photovoltaic Array Performance Model”, SAND2004-3535, Sandia National Laboratories, Albuquerque, NM
-        
+
         [10]	“Computer simulation of the effects of electrical mismatches in photovoltaic cell interconnection circuits” JW Bishop, Solar Cell (1988) https://doi.org/10.1016/0379-6787(88)90059-2
-        
+
         """
 
         """
@@ -1064,11 +1093,11 @@ class SolarWorkflowManager(WorkflowManager):
     def apply_inverter_losses(self, inverter, method="sandia", ):
         """
         apply_inverter_losses(self, inverter, method="sandia", )
-        
+
         Applies inverter losses using the pvlib.pvsystem.snlinverter() fuction [1], the pvlib.pvsystem.retrieve_sam() fuction [2] and the 
         pvlib.pvsystem.adrinverter() fuction [3]. 
 
-        
+
         Parameters
         ----------
         inverter: str
@@ -1079,34 +1108,34 @@ class SolarWorkflowManager(WorkflowManager):
                 "scandia"
                 "driesse"
                 Describes the used method to apply the inverter losses.
-        
+
         Returns
         -------
         Returns a reference to the invoking SolarWorkflowManager object.
-        
+
         Notes
         -----
         Required data in the sim_data dictionary are 'module_dc_power_at_mpp' and 'module_dc_voltage_at_mpp'.
         Required data in the placements dataframe are 'modules_per_string' and 'strings_per_inverter'.
         Cannot simultaneously provide 'capacity' and inverter-string parameters.
-        
-        
+
+
         References
         ----------
        [1] https://pvlib-python.readthedocs.io/en/stable/generated/pvlib.pvsystem.snlinverter.html
-       
+
        [2] https://pvlib-python.readthedocs.io/en/stable/generated/pvlib.pvsystem.retrieve_sam.html
-       
+
        [3] https://pvlib-python.readthedocs.io/en/stable/generated/pvlib.pvsystem.adrinverter.html
-       
+
        [4]	SAND2007-5036, “Performance Model for Grid-Connected Photovoltaic Inverters by D. King, S. Gonzalez, G. Galbraith, W. Boyson
-       
+
        [5]	System Advisor Model web page. https://sam.nrel.gov.
-       
+
        [6]	Beyond the Curves: Modeling the Electrical Efficiency of Photovoltaic Inverters, PVSC 2008, Anton Driesse et. al.
-        
+
         """
-        
+
         """method can be: 'sandia' or 'driesse'
 
         TODO: Make it work with multiplt inverter definitions
