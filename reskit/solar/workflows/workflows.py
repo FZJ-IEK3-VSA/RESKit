@@ -72,7 +72,7 @@ def openfield_pv_merra_ryberg2019(placements, merra_path, global_solar_atlas_ghi
                    "surface_dew_temperature",
                    "global_horizontal_irradiance"],
         source_type="MERRA",
-        path=merra_path,
+        source=merra_path,
         set_time_index=True,
         verbose=False
     )
@@ -112,60 +112,59 @@ def openfield_pv_merra_ryberg2019(placements, merra_path, global_solar_atlas_ghi
 
 
 def openfield_pv_era5_unvalidated(placements, era5_path, global_solar_atlas_ghi_path, global_solar_atlas_dni_path, module="WINAICO WSx-240P6", elev=300, tracking="fixed", inverter=None, inverter_kwargs={}, tracking_args={}, output_netcdf_path=None, output_variables=None):
-    
     """
-    
+
     openfield_pv_era5_unvalidated(placements, era5_path, global_solar_atlas_ghi_path, global_solar_atlas_dni_path, module="WINAICO WSx-240P6", elev=300, tracking="fixed", inverter=None, inverter_kwargs={}, tracking_args={}, output_netcdf_path=None, output_variables=None)
-    
-    
+
+
     Simulation of an openfield  PV openfield system based on ERA5 Data.
-    
+
     Parameters
     ----------
     placements: Pandas Dataframe
                     Locations that you want to do the simulations for.
                     Columns need to be lat (latitudes), lon (longitudes), tilt and capacity.
-                    
+
     era5_path: str
                 Path to the ERA5 Data on your computer.
                 Can be a single ".nc" file, or a directory containing many ".nc" files.
-                
+
     global_solar_atlas_ghi_path: str
                                     Path to the global solar atlas ghi data on your computer.
-                                    
+
     global_solar_atlas_dni_path: str
                                     Path to the global solar atlas dni data on your computer.
-                                    
+
     module: str
             Name of the module that you wanna use for the simulation.
             Default is Winaico Wsx-240P6
-    
+
     elev: float
             Elevation that you want to model your PV system at.
-            
+
     tracking: str
                 Determines wether your PV system is fixed or not.
                 Default is fixed.
                 Option 1 is 'fixed' meaning that the module does not have any tracking capabilities.
                 Option 2 is 'single-axis' meaning that the module has single-axis tracking capabilities.
-                
+
     inverter: str
                 Determines wether you want to model your PV system with an inverter or not.
                 Default is None.
                 See reskit.solar.SolarWorkflowManager.apply_inverter_losses for more usage information.
-                
+
     output_netcdf_path: str
                         Path to a file that you want to save your output NETCDF file at.
                         Default is None
-                        
+
     output_variables: str
                         Output variables of the simulation that you want to save into your NETCDF Outputfile.
-                
-                
+
+
     Returns
     -------
     A xarray dataset including all the output variables you defined as your output_variables.
-    
+
     """
 
     wf = SolarWorkflowManager(placements)
@@ -186,7 +185,7 @@ def openfield_pv_era5_unvalidated(placements, era5_path, global_solar_atlas_ghi_
                    "surface_air_temperature",
                    "surface_dew_temperature", ],
         source_type="ERA5",
-        path=era5_path,
+        source=era5_path,
         set_time_index=True,
         verbose=False
     )
@@ -237,59 +236,59 @@ def openfield_pv_era5_unvalidated(placements, era5_path, global_solar_atlas_ghi_
 
 def openfield_pv_sarah_unvalidated(placements, sarah_path, era5_path, module="WINAICO WSx-240P6", elev=300, tracking="fixed", inverter=None, inverter_kwargs={}, tracking_args={}, output_netcdf_path=None, output_variables=None):
     """
-    
+
     openfield_pv_sarah_unvalidated(placements, sarah_path, era5_path, module="WINAICO WSx-240P6", elev=300, tracking="fixed", inverter=None, inverter_kwargs={}, tracking_args={}, output_netcdf_path=None, output_variables=None)
-    
-    
+
+
     Simulation of an openfield  PV openfield system based on Sarah and ERA5 Data.
-    
+
     Parameters
     ----------
     placements: Pandas Dataframe
                     Locations that you want to do the simulations for.
                     Columns need to be lat (latitudes), lon (longitudes), tilt and capacity.
-                    
+
     sarah_path: str
                 Path to the SARAH Data on your computer.
                 Can be a single ".nc" file, or a directory containing many ".nc" files.
-                    
+
     era5_path: str
                 Path to the ERA5 Data on your computer.
                 Can be a single ".nc" file, or a directory containing many ".nc" files.
-                
-                                    
+
+
     module: str
             Name of the module that you wanna use for the simulation.
             Default is Winaico Wsx-240P6
-    
+
     elev: float
             Elevation that you want to model your PV system at.
-            
+
     tracking: str
                 Determines wether your PV system is fixed or not.
                 Default is fixed.
                 Option 1 is 'fixed' meaning that the module does not have any tracking capabilities.
                 Option 2 is 'single-axis' meaning that the module has single-axis tracking capabilities.
-                
+
     inverter: str
                 Determines wether you want to model your PV system with an inverter or not.
                 Default is None.
                 See reskit.solar.SolarWorkflowManager.apply_inverter_losses for more usage information.
-                
+
     output_netcdf_path: str
                         Path to a file that you want to save your output NETCDF file at.
                         Default is None
-                        
+
     output_variables: str
                         Output variables of the simulation that you want to save into your NETCDF Outputfile.
-                
-                
+
+
     Returns
     -------
     A xarray dataset including all the output variables you defined as your output_variables.
-    
+
     """
-    
+
     wf = SolarWorkflowManager(placements)
     wf.configure_cec_module(module)
 
@@ -304,7 +303,7 @@ def openfield_pv_sarah_unvalidated(placements, sarah_path, era5_path, module="WI
         variables=["direct_normal_irradiance",
                    "global_horizontal_irradiance"],
         source_type="SARAH",
-        path=sarah_path,
+        source=sarah_path,
         set_time_index=True,
         verbose=False
     )
@@ -315,7 +314,7 @@ def openfield_pv_sarah_unvalidated(placements, sarah_path, era5_path, module="WI
                    "surface_air_temperature",
                    "surface_dew_temperature", ],
         source_type="ERA5",
-        path=era5_path,
+        source=era5_path,
         set_time_index=False,
         verbose=False
     )

@@ -115,7 +115,7 @@ def pt_SolarWorkflowManager_loaded(pt_SolarWorkflowManager_initialized: SolarWor
                    "surface_air_temperature",
                    "surface_dew_temperature", ],
         source_type="ERA5",
-        path=rk.TEST_DATA['era5-like'],
+        source=rk.TEST_DATA['era5-like'],
         set_time_index=True,
         verbose=False
     )

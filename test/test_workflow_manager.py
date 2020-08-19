@@ -3,6 +3,7 @@ import numpy as np
 from reskit import WorkflowQueue, WorkflowManager, distribute_workflow, TEST_DATA
 import reskit as rk
 import geokit as gk
+import xarray
 import pytest
 
 
@@ -55,7 +56,7 @@ def test_WorkflowManager_read(pt_WorkflowManager_initialized: WorkflowManager) -
                    "surface_pressure",
                    "surface_air_temperature"],
         source_type="ERA5",
-        path=rk.TEST_DATA['era5-like'],
+        source=rk.TEST_DATA['era5-like'],
         set_time_index=True,
         verbose=False,
         spatial_interpolation_mode='bilinear',
@@ -80,7 +81,7 @@ def pt_WorkflowManager_loaded(pt_WorkflowManager_initialized: WorkflowManager) -
                    "surface_pressure",
                    "surface_air_temperature"],
         source_type="ERA5",
-        path=rk.TEST_DATA['era5-like'],
+        source=rk.TEST_DATA['era5-like'],
         set_time_index=True,
         verbose=False,
         spatial_interpolation_mode='bilinear',
@@ -197,7 +198,7 @@ def simple_workflow(placements, era5_path, var1, var2):
                    "surface_pressure",
                    "surface_air_temperature"],
         source_type="ERA5",
-        path=era5_path,
+        source=era5_path,
         set_time_index=True,
         verbose=False,
         spatial_interpolation_mode='bilinear',
