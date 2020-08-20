@@ -7,6 +7,7 @@ dependencies:
   - pytest
   - pytest-cov
   - pylint
+  - papermill
   - autopep8
   - jupyter
   - notebook
