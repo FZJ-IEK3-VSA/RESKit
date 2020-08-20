@@ -4,7 +4,7 @@ from glob import glob
 from os import path
 
 TEST_DIR = path.dirname(__file__)
-notebooks = glob(path.join(TEST_DIR, "..", "examples", "*.ipynb"))
+notebooks = glob(path.join(TEST_DIR, "..", "..", "examples", "*.ipynb"))
 
 # This will create a test function for each ".ipynb" file in the examples folder
 # Note: The notebooks are only checked that they can run without rasing an error.
