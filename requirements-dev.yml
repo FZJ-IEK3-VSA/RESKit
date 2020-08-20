@@ -1,0 +1,28 @@
+name: reskit
+channels:
+  - conda-forge
+  - pvlib
+dependencies:
+  - python
+  - pytest
+  - pytest-cov
+  - pylint
+  - papermill
+  - autopep8
+  - jupyter
+  - notebook
+  - jupyterlab
+  - pip
+  - matplotlib
+  - descartes
+  - pandas
+  - numpy
+  - scipy
+  - scikit-learn
+  - gdal>2.2.0,<3.0.0
+  - netCDF4>=1.5.3
+  - xarray
+  - pvlib>=0.7.2
+  - pip:
+      - https://github.com/FZJ-IEK3-VSA/geokit/archive/v1.2.7.zip
+      - -e .
