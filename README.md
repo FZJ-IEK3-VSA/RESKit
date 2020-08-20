@@ -1,20 +1,8 @@
-<a href="http://www.fz-juelich.de/iek/iek-3/EN/Forschung/_Process-and-System-Analysis/_node.html"><img src="http://www.fz-juelich.de/SharedDocs/Bilder/IBG/IBG-3/DE/Plant-soil-atmosphere%20exchange%20processes/INPLAMINT%20(BONARES)/Bild3.jpg?__blob=poster" alt="Forschungszentrum Juelich Logo" width="230px"></a>
+<a href="https://www.fz-juelich.de/iek/iek-3/EN/Home/home_node.html"><img src="http://www.fz-juelich.de/SharedDocs/Bilder/IBG/IBG-3/DE/Plant-soil-atmosphere%20exchange%20processes/INPLAMINT%20(BONARES)/Bild3.jpg?__blob=poster" alt="Forschungszentrum Juelich Logo" width="230px"></a>
 
 # RESKit - **R**enewable **E**nergy **S**imulation tool**kit** for Python
 
 RESKit aids with the broad-scale simulation of renewable energy systems, primarily for the purpose of input generation to Energy System Design Models. Simulation tools currently exist for onshore and offshore wind turbines, as well as for solar PV systems, in addtion to general weather-data manipulation tools. Simulations are performed in the context of singular units, however high computational performance is nevertheless maintained. As a result, this tool allows for the simulation of millions of individual turbines and PV systems in a matter of minutes (on the right hardware).
-
-**NOTE:** The current state of the model is **highly developmental**, and thus should not be considered to be in a finalized state.
-
-**TODO**:
-
-- Add more accreditation
-- Implement Testing
-- Fill out docstrings
-- Simplify internal functionality
-  - Remove unnecessary developemental functions...
-- Update PVLib linkages to work with version 6.\*
-- Register on Zenodo
 
 ## Features
 
@@ -26,30 +14,51 @@ RESKit aids with the broad-scale simulation of renewable energy systems, primari
 
 ## Installation
 
-First, be sure the following modules are installed:
+The primary dependancies of RESKit are:
 
-1. netCDF4
-2. PVLib (version 0.5.1) TODO: check that this is the version!
-3. numpy
-4. pandas
-5. gdal (version 2.4.1)
-6. matplotlib
-7. descartes
-8. <a href="https://github.com/FZJ-IEK3-VSA/geokit">GeoKit</a>
+1. netCDF4>=1.5.3
+2. xarray
+3. PVLib>=0.7.2
+4. gdal>2.0.0,<3.0.0
+5. <a href="https://github.com/FZJ-IEK3-VSA/geokit">GeoKit</a> >= 1.2.4
 
-NOTE: When using anaconda python (which is highly recommended), requirements 1-7 can often be installed at once using:
+If you can install these modules on you own, then the reskit module should be easily installable with:
 
-```bash
-	$ conda install -c conda-forge numpy pandas matplotlib descartes gdal==2.4.1 netCDF4
-	$ conda install -c pvlib pvlib==0.5.1
+```
+pip install git+https://github.com/FZJ-IEK3-VSA/reskit.git#egg=reskit
 ```
 
-NOTE: Requirement 8 should be installed by cloning the repository and following the associated installation instructions.
+If, on the otherhand, you prefer an automated installation using Anaconda, then you should be able to follow these steps:
 
-Second, clone the RESKit repository to your machine. Then install RESKit via pip as follows
+1. First clone a local copy of the repository to your computer, and move into the created directory
 
-```bash
-	pip install -e <path-to-repository>
+```
+git clone https://github.com/FZJ-IEK3-VSA/reskit.git
+cd reskit
+```
+
+1. (Alternative) If you want to use the 'dev' branch (or another branch) then use:
+
+```
+git checkout dev
+```
+
+2. RESkit should be installable to a new environment with:
+
+```
+conda env create --file requirements.yml
+```
+
+2. (Alternative) Or into an existing environment with:
+
+```
+conda env update --file requirements.yml -n <ENVIRONMENT-NAME>
+```
+
+2. (Alternative) If you want to install RESKit in editable mode, and also with jupyter notebook and with testing functionalities use:
+
+```
+conda env create --file requirements-dev.yml
 ```
 
 ## Examples
@@ -91,7 +100,7 @@ If not, see <https://opensource.org/licenses/MIT>
 
 ## About Us
 
-<a href="http://www.fz-juelich.de/iek/iek-3/EN/Forschung/_Process-and-System-Analysis/_node.html"><img src="http://fz-juelich.de/SharedDocs/Bilder/IEK/IEK-3/Abteilungen2015/VSA_DepartmentPicture_2017.jpg?__blob=normal" alt="Abteilung VSA"></a>
+<a href="https://www.fz-juelich.de/iek/iek-3/EN/Home/home_node.html"><img src="http://fz-juelich.de/SharedDocs/Bilder/IEK/IEK-3/Abteilungen2015/VSA_DepartmentPicture_2017.jpg?__blob=normal" alt="Abteilung VSA"></a>
 
 We are the [Process and Systems Analysis](http://www.fz-juelich.de/iek/iek-3/EN/Forschung/_Process-and-System-Analysis/_node.html) department at the [Institute of Energy and Climate Research: Techno-economic Systems Analysis (IEK-3)](http://www.fz-juelich.de/iek/iek-3/EN/Home/home_node.html) belonging to the Forschungszentrum Jülich. Our interdisciplinary department's research is focusing on energy-related process and systems analyses. Data searches and system simulations are used to determine energy and mass balances, as well as to evaluate performance, emissions and costs of energy systems. The results are used for performing comparative assessment studies between the various systems. Our current priorities include the development of energy strategies, in accordance with the German Federal Government’s greenhouse gas reduction targets, by designing new infrastructures for sustainable and secure energy supply chains and by conducting cost analysis studies for integrating new technologies into future energy market frameworks.
 

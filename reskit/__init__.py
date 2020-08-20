@@ -1,15 +1,9 @@
-__version__ = "0.1.2"
+__version__ = "0.2.0"
 
-from reskit import util
-from reskit import weather
-from reskit import economic
+from . import util
+from . import weather
+from .workflow_manager import WorkflowManager, WorkflowQueue, distribute_workflow
+from . import wind
+from . import solar
 
-# Add useful paths for testing and stuff
-from collections import OrderedDict as _OrderedDict
-from glob import glob as _glob
-from os.path import join as _join, dirname as _dirname, basename as _basename
-
-_TEST_DATA_ = _OrderedDict()
-
-for f in _glob(_join(_dirname(__file__), "test", "data", "*")):
-    _TEST_DATA_[_basename(f)] = f
+from ._test import TEST_DATA

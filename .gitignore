@@ -5,6 +5,7 @@ env/*
 */.ipynb_checkpoints/*
 __pycache__
 analysis/regions/*
+.vscode/
 
 # file types to ignore
 #*.ipynb
@@ -19,4 +20,5 @@ testing/results/*.prj
 testing/results/*.cpg
 testing/results/*.csv
 testing/results/eligibility_plots
-.vscode/settings.json
+test/*/*.ipynb
+reskit/*/*.ipynb
