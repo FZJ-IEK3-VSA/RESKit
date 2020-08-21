@@ -128,7 +128,7 @@ class WindWorkflowManager(WorkflowManager):
             num, source_type)
         return self
 
-    def logarithmic_projection_of_wind_speeds_to_hub_height(self):
+    def logarithmic_projection_of_wind_speeds_to_hub_height(self, consider_boundary_layer_height=False):
         """
         Projects the wind speed values to the hub height.
 
@@ -140,12 +140,30 @@ class WindWorkflowManager(WorkflowManager):
         assert "roughness" in self.placements.columns
         assert hasattr(self, "elevated_wind_speed_height")
 
-        self.sim_data['elevated_wind_speed'] = rk_wind_core.logarithmic_profile.apply_logarithmic_profile_projection(
+        if consider_boundary_layer_height:
+            # When the hub height is above the PBL, then only project to the PBL
+            target_height = np.minimum(
+                    self.sim_data['boundary_layer_height'],
+                    self.placements['hub_height'].values)
+
+            # When the PBL is below the elevated_wind_speed_height, then no projection
+            # should be performed. This can be effectlvely accomplished by setting the 
+            # target height to that of the elevated_wind_speed_height
+            sel = target_height > self.elevated_wind_speed_height
+            target_height[sel] = self.elevated_wind_speed_height
+
+        else:
+            target_height = self.placements['hub_height'].values
+
+        tmp = rk_wind_core.logarithmic_profile.apply_logarithmic_profile_projection(
             self.sim_data['elevated_wind_speed'],
             measured_height=self.elevated_wind_speed_height,
-            target_height=self.placements['hub_height'].values,
+            target_height=target_height,
             roughness=self.placements['roughness'].values
         )
+        
+        self.sim_data['elevated_wind_speed'] = tmp
+        
         self.elevated_wind_speed_height = self.placements['hub_height'].values
 
         return self
