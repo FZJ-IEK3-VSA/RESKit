@@ -164,6 +164,15 @@ class Era5Source(NCSource):
     loc_to_index = NCSource._loc_to_index_rect(0.25, 0.25)
 
     # STANDARD LOADERS
+    def sload_boundary_layer_height(self):
+        """Standard loader function for the variable 'boundary_layer_height' in meters 
+        from the surface
+
+        """
+        return self.load(
+            "blh",
+            "boundary_layer_height")
+
     def sload_elevated_wind_speed(self):
         """Standard loader function for the variable 'elevated_wind_speed'
 
