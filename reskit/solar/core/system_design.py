@@ -14,7 +14,7 @@ def location_to_tilt(locs, convention="Ryberg2020", **kwargs):
 
     Parameters
     ----------
-    locs : geokit.LocationSet or iterable of (lat,lon) pairs
+    locs : geokit.LocationSet or iterable of (lon,lat) pairs
            The locations at which to estimate system tilt angle
 
     convention : str, optional
