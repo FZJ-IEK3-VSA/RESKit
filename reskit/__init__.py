@@ -2,7 +2,7 @@ __version__ = "0.2.0"
 
 from . import util
 from . import weather
-from .workflow_manager import WorkflowManager, WorkflowQueue, distribute_workflow
+from .workflow_manager import WorkflowManager, WorkflowQueue, distribute_workflow, load_workflow_result
 from . import wind
 from . import solar
 
