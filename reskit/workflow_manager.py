@@ -463,6 +463,9 @@ def distribute_workflow(workflow_function: FunctionType, placements: pd.DataFram
 
     placements.index = locs
     placements['location_id'] = np.arange(placements.shape[0])
+    placements['lat'] = locs.lats
+    placements['lon'] = locs.lons
+    del placements['geom']
 
     if max_batch_size is None:
         max_batch_size = int(np.ceil(placements.shape[0] / jobs))
@@ -480,8 +483,6 @@ def distribute_workflow(workflow_function: FunctionType, placements: pd.DataFram
 
     results = []
     for gid, placement_group in enumerate(placement_groups):
-        print( placement_group.shape )
-
         kwargs_ = kwargs.copy()
         if intermediate_output_dir is not None:
             kwargs_['output_netcdf_path'] = join(intermediate_output_dir, "simulation_group_{:05d}.nc".format(gid))
@@ -491,6 +492,7 @@ def distribute_workflow(workflow_function: FunctionType, placements: pd.DataFram
             args=(placement_group, ),
             kwds=kwargs_
         ))
+        #results.append(workflow_function(placement_group, **kwargs_ ))
 
     xdss = []
     for result in results:
