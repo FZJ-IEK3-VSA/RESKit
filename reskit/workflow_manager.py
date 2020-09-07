@@ -8,7 +8,7 @@ from collections import OrderedDict, namedtuple
 from types import FunctionType
 import xarray
 from typing import Union, List, OrderedDict
-
+from glob import glob
 from . import weather as rk_weather
 
 
@@ -504,7 +504,25 @@ def distribute_workflow(workflow_function: FunctionType, placements: pd.DataFram
     if intermediate_output_dir is None:
         return xarray.concat(xdss, dim="location").sortby('location')
     else:
-        return xdss
+        return load_workflow_result(xdss)
+        #return xdss
+
+
+def load_workflow_result(datasets):
+
+    if isinstance(datasets, str):
+        if isdir(datasets):
+            datasets = glob(join(datasets, "*.nc"))
+        else:
+            datasets = glob(datasets)
+
+    if len(datasets)==1:
+        return xarray.load_dataset(datasets[0]).sortby('locations')
+    else:
+        return xarray.concat(
+                    map(xarray.load_dataset, datasets), 
+                    dim="location"
+                ).sortby('location')
 
 
 class WorkflowQueue():
