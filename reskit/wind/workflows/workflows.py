@@ -216,7 +216,8 @@ def onshore_wind_era5_unvalidated(placements, era5_path, gwa_100m_path, esa_cci_
     wf.read(
         variables=['elevated_wind_speed',
                    "surface_pressure",
-                   "surface_air_temperature"],
+                   "surface_air_temperature",
+                   "boundary_layer_height"],
         source_type="ERA5",
         source=era5_path,
         set_time_index=True,
@@ -243,7 +244,7 @@ def onshore_wind_era5_unvalidated(placements, era5_path, gwa_100m_path, esa_cci_
     )
 
     # Adjust wind speeds
-    wf.sim_data['elevated_wind_speed'] = np.maximum(wind_speeds*0.80 - 0.0, 0 ) # Empirically found to improve simulation accuracy
+    wf.sim_data['elevated_wind_speed'] = np.maximum(wf.sim_data['elevated_wind_speed']*0.80 - 0.0, 0 ) # Empirically found to improve simulation accuracy
 
     wf.simulate()
 
