@@ -458,14 +458,14 @@ def distribute_workflow(workflow_function: FunctionType, placements: pd.DataFram
     # Split placements into groups
     if "geom" in placements.columns:
         locs = gk.LocationSet(placements)
+        placements['lat'] = locs.lats
+        placements['lon'] = locs.lons
+        del placements['geom']
     else:
         locs = gk.LocationSet(np.column_stack([placements.lon.values, placements.lat.values]))
 
     placements.index = locs
     placements['location_id'] = np.arange(placements.shape[0])
-    placements['lat'] = locs.lats
-    placements['lon'] = locs.lons
-    del placements['geom']
 
     if max_batch_size is None:
         max_batch_size = int(np.ceil(placements.shape[0] / jobs))
