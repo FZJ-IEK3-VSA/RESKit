@@ -232,20 +232,24 @@ def onshore_wind_era5_unvalidated(placements, era5_path, gwa_100m_path, esa_cci_
         path=esa_cci_path,
         source_type="cci")
 
-    wf.logarithmic_projection_of_wind_speeds_to_hub_height()
+    wf.logarithmic_projection_of_wind_speeds_to_hub_height(
+            consider_boundary_layer_height=True)
 
     wf.apply_air_density_correction_to_wind_speeds()
 
     wf.convolute_power_curves(
-        scaling=0.06,
-        base=0.1
+        scaling=0.05,
+        base=0.0
     )
+
+    # Adjust wind speeds
+    wf.sim_data['elevated_wind_speed'] = np.maximum(wind_speeds*0.80 - 0.0, 0 ) # Empirically found to improve simulation accuracy
 
     wf.simulate()
 
-    wf.apply_loss_factor(
-        loss=lambda x: rk_util.low_generation_loss(x, base=0.0, sharpness=5.0)
-    )
+    #wf.apply_loss_factor(
+    #    loss=lambda x: rk_util.low_generation_loss(x, base=0.0, sharpness=5.0)
+    #)
 
     return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
@@ -326,67 +330,74 @@ def onshore_wind_era5_unvalidated_validator(placements, era5_path, gwa_100m_path
 
 
         for (convolution_scaling_factor,
-             convolution_base_factor,
-             loss_sharpness_factor,
-             loss_base_factor,
-             wind_speed_offset,
-             wind_speed_scaling) \
+            convolution_base_factor) \
             in product(convolution_scaling_factors,
-                       convolution_base_factors,
-                       loss_sharpness_factors,
-                       loss_base_factors,
-                       wind_speed_offsets,
-                       wind_speed_scalings):
+                       convolution_base_factors):
 
             # Reset power curves
             wf.powerCurveLibrary = power_curves.copy()
-
-            print(convolution_scaling_factor,
-                  convolution_base_factor,
-                  loss_sharpness_factor,
-                  loss_base_factor,
-                  wind_speed_offset,
-                  wind_speed_scaling) 
-
-            name = dumps({
-                'convolution_scaling_factor': convolution_scaling_factor,
-                'convolution_base_factor': convolution_base_factor,
-                'loss_sharpness_factor': loss_sharpness_factor,
-                'loss_base_factor': loss_base_factor,
-                'wind_speed_offset':wind_speed_offset,
-                'wind_speed_scaling':wind_speed_scaling 
-            })
-
+            
+            # Apply power curve convolution
             try:
-                
-                # Adjust wind speeds
-                wf.sim_data['elevated_wind_speed'] = np.maximum(
-                        wind_speeds*wind_speed_scaling - wind_speed_offset,
-                        0
-                        )
-
                 if not (convolution_scaling_factor == 0 and convolution_base_factor == 0):
                     wf.convolute_power_curves(
                         scaling=convolution_scaling_factor,
                         base=convolution_base_factor,
-                    )
-
-                wf.simulate()
-
-                wf.apply_loss_factor(
-                    loss=lambda x: rk_util.low_generation_loss(
-                        x,
-                        base=loss_base_factor,
-                        sharpness=loss_sharpness_factor)
                 )
+            except:
+                continue
 
-                output = wf.sim_data['capacity_factor'].mean(axis=1)
-            except Exception as e:
-                if isinstance(e, KeyboardInterrupt):
-                    raise e
+            for (loss_sharpness_factor,
+                 loss_base_factor,
+                 wind_speed_offset,
+                 wind_speed_scaling) \
+                in product(loss_sharpness_factors,
+                           loss_base_factors,
+                           wind_speed_offsets,
+                           wind_speed_scalings):
 
-                output = np.full(wf.sim_data['elevated_wind_speed'].shape[0], np.nan)
-                print("  Failed :(")
-
-            fo.write("'{name_string}',".format(name_string=name))
-            fo.write(dumps(output.round(4).tolist())[1:-1] + "\n")
+                print(convolution_scaling_factor,
+                      convolution_base_factor,
+                      loss_sharpness_factor,
+                      loss_base_factor,
+                      wind_speed_offset,
+                      wind_speed_scaling) 
+    
+                name = dumps({
+                    'convolution_scaling_factor': convolution_scaling_factor,
+                    'convolution_base_factor': convolution_base_factor,
+                    'loss_sharpness_factor': loss_sharpness_factor,
+                    'loss_base_factor': loss_base_factor,
+                    'wind_speed_offset':wind_speed_offset,
+                    'wind_speed_scaling':wind_speed_scaling 
+                })
+    
+                try:
+                    
+                    # Adjust wind speeds
+                    wf.sim_data['elevated_wind_speed'] = np.maximum(
+                            wind_speeds*wind_speed_scaling - wind_speed_offset,
+                            0
+                            )
+    
+    
+                    wf.simulate()
+    
+                    wf.apply_loss_factor(
+                        loss=lambda x: rk_util.low_generation_loss(
+                            x,
+                            base=loss_base_factor,
+                            sharpness=loss_sharpness_factor)
+                    )
+    
+                    output = wf.sim_data['capacity_factor'].mean(axis=1)
+                except Exception as e:
+                    if isinstance(e, KeyboardInterrupt):
+                        raise e
+    
+                    #output = np.full(wf.sim_data['elevated_wind_speed'].shape[0], np.nan)
+                    continue
+                    print("  Failed :(")
+    
+                fo.write("'{name_string}',".format(name_string=name))
+                fo.write(dumps(output.round(4).tolist())[1:-1] + "\n")

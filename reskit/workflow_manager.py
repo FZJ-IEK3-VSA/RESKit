@@ -480,6 +480,7 @@ def distribute_workflow(workflow_function: FunctionType, placements: pd.DataFram
 
     results = []
     for gid, placement_group in enumerate(placement_groups):
+        print( placement_group.shape )
 
         kwargs_ = kwargs.copy()
         if intermediate_output_dir is not None:
