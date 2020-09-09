@@ -504,11 +504,11 @@ def distribute_workflow(workflow_function: FunctionType, placements: pd.DataFram
     if intermediate_output_dir is None:
         return xarray.concat(xdss, dim="location").sortby('location')
     else:
-        return load_workflow_result(xdss)
-        #return xdss
+        # return load_workflow_result(xdss)
+        return xdss
 
 
-def load_workflow_result(datasets):
+def load_workflow_result(datasets, loader=xarray.load_dataset, sortby='location'):
 
     if isinstance(datasets, str):
         if isdir(datasets):
@@ -516,13 +516,18 @@ def load_workflow_result(datasets):
         else:
             datasets = glob(datasets)
 
-    if len(datasets)==1:
-        return xarray.load_dataset(datasets[0]).sortby('locations')
+    if len(datasets) == 1:
+        ds = xarray.load_dataset(datasets[0]).sortby('locations')
     else:
-        return xarray.concat(
-                    map(xarray.load_dataset, datasets), 
-                    dim="location"
-                ).sortby('location')
+        ds = xarray.concat(
+            map(loader, datasets),
+            dim="location"
+        )
+
+    if sortby is not None:
+        ds = ds.sortby(sortby)
+
+    return ds
 
 
 class WorkflowQueue():
