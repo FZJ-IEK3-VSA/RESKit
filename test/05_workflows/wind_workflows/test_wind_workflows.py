@@ -2,7 +2,7 @@ from reskit.wind.workflows.workflows import (
     onshore_wind_merra_ryberg2019_europe,
     offshore_wind_merra_caglayan2019,
     offshore_wind_era5_unvalidated,
-    onshore_wind_era5_unvalidated)
+    onshore_wind_era5)
 from reskit import TEST_DATA
 import pytest
 import numpy as np
@@ -99,9 +99,9 @@ def test_offshore_wind_era5_unvalidated(pt_wind_placements):
     assert np.isclose(gen.capacity_factor.std(), 0.32166903)
 
 
-def test_onshore_wind_era5_unvalidated(pt_wind_placements):
+def test_onshore_wind_era5(pt_wind_placements):
     # placements, era5_path, gwa_100m_path, esa_cci_path, output_netcdf_path=None, output_variables=None):
-    gen = onshore_wind_era5_unvalidated(
+    gen = onshore_wind_era5(
         placements=pt_wind_placements,
         era5_path=TEST_DATA['era5-like'],
         gwa_100m_path=TEST_DATA['gwa100-like.tif'],
