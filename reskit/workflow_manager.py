@@ -82,6 +82,10 @@ class WorkflowManager():
     def _set_sim_shape(self):
         self._sim_shape_ = len(self._time_index_), self.locs.count
 
+    def extract_raster_values_at_placements(self, raster, **kwargs):
+        """Extracts pixel values at each of the configured placements from the specified raster file"""
+        return gk.raster.interpolateValues(raster, points=self.locs, **kwargs)
+
     def read(self, variables: Union[str, List[str]], source_type: str, source: str, set_time_index: bool = False, spatial_interpolation_mode: str = "bilinear", temporal_reindex_method: str = "nearest", **kwargs):
         """Reads the specified variables from the NetCDF4-style weather dataset, and then extracts
         those variables for each of the coordinates configured in `.placements`. The resulting
