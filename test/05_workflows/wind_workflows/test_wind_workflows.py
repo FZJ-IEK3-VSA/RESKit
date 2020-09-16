@@ -2,7 +2,7 @@ from reskit.wind.workflows.workflows import (
     onshore_wind_merra_ryberg2019_europe,
     offshore_wind_merra_caglayan2019,
     offshore_wind_era5_unvalidated,
-    onshore_wind_era5_unvalidated)
+    onshore_wind_era5)
 from reskit import TEST_DATA
 import pytest
 import numpy as np
@@ -99,9 +99,9 @@ def test_offshore_wind_era5_unvalidated(pt_wind_placements):
     assert np.isclose(gen.capacity_factor.std(), 0.32166903)
 
 
-def test_onshore_wind_era5_unvalidated(pt_wind_placements):
+def test_onshore_wind_era5(pt_wind_placements):
     # placements, era5_path, gwa_100m_path, esa_cci_path, output_netcdf_path=None, output_variables=None):
-    gen = onshore_wind_era5_unvalidated(
+    gen = onshore_wind_era5(
         placements=pt_wind_placements,
         era5_path=TEST_DATA['era5-like'],
         gwa_100m_path=TEST_DATA['gwa100-like.tif'],
@@ -115,13 +115,13 @@ def test_onshore_wind_era5_unvalidated(pt_wind_placements):
     assert np.isclose(gen.roughness.std(), 0.55593945)
 
     assert gen.elevated_wind_speed.shape == (140, 560)
-    assert np.isclose(gen.elevated_wind_speed.mean(), 7.06107829)
-    assert np.isclose(gen.elevated_wind_speed.min(), 0.20127667)
-    assert np.isclose(gen.elevated_wind_speed.max(), 15.54891827)
-    assert np.isclose(gen.elevated_wind_speed.std(), 2.68409704)
+    assert np.isclose(gen.elevated_wind_speed.mean(), 6.36036701)
+    assert np.isclose(gen.elevated_wind_speed.min(), 1.31488327)
+    assert np.isclose(gen.elevated_wind_speed.max(), 12.50751751)
+    assert np.isclose(gen.elevated_wind_speed.std(), 1.99619664)
 
     assert gen.capacity_factor.shape == (140, 560)
-    assert np.isclose(gen.capacity_factor.mean(), 0.51808489)
-    assert np.isclose(gen.capacity_factor.min(), 9.07952534e-17)
-    assert np.isclose(gen.capacity_factor.max(), 0.99326205)
-    assert np.isclose(gen.capacity_factor.std(), 0.34210853)
+    assert np.isclose(gen.capacity_factor.mean(), 0.47818037)
+    assert np.isclose(gen.capacity_factor.min(), 0.00046684)
+    assert np.isclose(gen.capacity_factor.max(), 0.99989628)
+    assert np.isclose(gen.capacity_factor.std(), 0.28034374)
