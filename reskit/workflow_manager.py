@@ -393,13 +393,27 @@ class WorkflowManager():
             return xds
 
 
+# Original Code
+# def _split_locs(placements, groups):
+#     if groups == 1:
+#         yield placements
+#     else:
+#         locs = gk.LocationSet(placements.index)
+#         for loc_group in locs.splitKMeans(groups=groups):
+#             yield placements.loc[loc_group[:]]
+
+# A new suggestion for _split_locs function
 def _split_locs(placements, groups):
+    from sklearn.cluster import KMeans
     if groups == 1:
         yield placements
     else:
         locs = gk.LocationSet(placements.index)
-        for loc_group in locs.splitKMeans(groups=groups):
-            yield placements.loc[loc_group[:]]
+        obs = np.column_stack([locs.lons,locs.lats])
+        km = KMeans(n_clusters=groups).fit(obs)
+        for i in range(groups):
+            sel = km.labels_ == i
+            yield placements.loc[sel]
 
 
 def distribute_workflow(workflow_function: FunctionType, placements: pd.DataFrame, jobs: int = 2, max_batch_size: int = None, intermediate_output_dir: str = None, **kwargs) -> xarray.Dataset:
