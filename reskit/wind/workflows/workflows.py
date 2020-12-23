@@ -128,7 +128,7 @@ def offshore_wind_merra_caglayan2019(placements, merra_path, output_netcdf_path=
     return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
 
-def offshore_wind_era5_unvalidated(placements, era5_path, output_netcdf_path=None, output_variables=None):
+def offshore_wind_era5(placements, era5_path, output_netcdf_path=None, output_variables=None):
     """
     Simulates offshore wind generation using NASA's ERA5 database [1].
 
@@ -156,7 +156,7 @@ def offshore_wind_era5_unvalidated(placements, era5_path, output_netcdf_path=Non
     wf = WindWorkflowManager(placements)
 
     wf.read(
-        variables=['elevated_wind_speed', ],
+        variables=['elevated_wind_speed', ],  # Why we dont read P, T or boundary_layer_height?
         source_type="ERA5",
         source=era5_path,
         set_time_index=True,
@@ -167,15 +167,19 @@ def offshore_wind_era5_unvalidated(placements, era5_path, output_netcdf_path=Non
     wf.logarithmic_projection_of_wind_speeds_to_hub_height()
 
     wf.convolute_power_curves(
-        scaling=0.04,  # TODO: Check values with Dil
-        base=0.5       # TODO: Check values with Dil
+        scaling=0.04,    # Taken as MERRA2 from onshore_wind_merra2
+        base=0.5         # Taken as MERRA2 from onshore_wind_merra2
     )
+
+    wind_speed_scaling=0.92
+    wind_speed_offset=-0.40
+    wf.sim_data['elevated_wind_speed'] = np.maximum(wf.sim_data['elevated_wind_speed'] * wind_speed_scaling - wind_speed_offset, 0 )
 
     wf.simulate()
 
     wf.apply_loss_factor(
-        loss=lambda x: rk_util.low_generation_loss(x, base=0.1, sharpness=3.5)  # TODO: Check values with Dil
-    )
+        loss=lambda x: rk_util.low_generation_loss(x, base=0.2, sharpness=5)  # Taken as MERRA2 from onshore_wind_merra2
+    ) #this can pontentially be left out. It was not becuase when implemented, the convination of factors were the best matching 
 
     return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
