@@ -373,6 +373,7 @@ cciCodeToRoughess[200] = 0.005  # Bare areas
 cciCodeToRoughess[201] = 0.005  # Consolidated bare areas
 cciCodeToRoughess[202] = 0.005  # Unconsolidated bare areas
 cciCodeToRoughess[150] = 0.005  # Sparse vegetation (tree, shrub, herbaceous cover) (<15%)
+cciCodeToRoughess[151] = 0.005  # Sparse tree (<15%)
 cciCodeToRoughess[152] = 0.005  # Sparse shrub (<15%)
 cciCodeToRoughess[153] = 0.005  # Sparse herbaceous cover (<15%)
 cciCodeToRoughess[10] = 0.03  # Cropland, rainfed
@@ -497,3 +498,5 @@ def roughness_from_land_cover_source(source, loc, land_cover_type='clc'):
     classifications = gk.raster.interpolateValues(source, loc, noDataOkay=False)
 
     return roughness_from_land_cover_classification(classifications, land_cover_type=land_cover_type)
+
+
