@@ -1,5 +1,23 @@
 from ... import weather as rk_weather
 from .solar_workflow_manager import SolarWorkflowManager
+from .csp_workflow_manager import CSPWorkflowManager
+
+
+def csp_test_franzmann(placements, era5_path, output_netcdf_path=None, output_variables=None):
+    wf = CSPWorkflowManager(placements)
+
+    wf.read(
+        variables=["direct_horizontal_irradiance"],
+        source_type="ERA5",
+        source=era5_path,
+        set_time_index=True,
+        verbose=False)
+    
+    wf.easycalc()
+
+
+    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
+
 
 
 def openfield_pv_merra_ryberg2019(placements, merra_path, global_solar_atlas_ghi_path, module="WINAICO WSx-240P6", elev=300, tracking="fixed", inverter=None, inverter_kwargs={}, tracking_args={}, output_netcdf_path=None, output_variables=None):
