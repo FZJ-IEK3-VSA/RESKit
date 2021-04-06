@@ -1,22 +1,103 @@
 from ... import weather as rk_weather
 from .solar_workflow_manager import SolarWorkflowManager
-from .csp_workflow_manager import CSPWorkflowManager
+from .csp_workflow_manager import PTRWorkflowManager
+from .CSP_data.database_loader import load_dataset
+import numpy as np
 
 
-def csp_test_franzmann(placements, era5_path, output_netcdf_path=None, output_variables=None):
-    wf = CSPWorkflowManager(placements)
+def csp_ptr_V1(placements, era5_path, output_netcdf_path=None, output_variables=None, return_self=True):
+    """ Calculates the heat output from the solar field based on parabolic trough technology. The workflow is not yet finally validated (but is still plausible).
+        Status: 24.03.2021
+        Author: David Franzmann IEK -3
+
+    Args:
+        placements ([type]): [description]
+        era5_path ([type]): [description]
+        output_netcdf_path ([type], optional): [description]. Defaults to None.
+        output_variables ([type], optional): [description]. Defaults to None.
+        return_self (bool, optional): [description]. Defaults to True.
+
+    Returns:
+        [type]: [description]
+    """
+
+    # 1) Load input data
+
+    ptr_data = load_dataset(datasetname='Validation 1')
+
+    orientation = ptr_data['orientation']
+    a1 = ptr_data['a1']                  #gafurov2013: 0.000884
+    a2 = ptr_data['a2']                 #gafurov2013: 0.00005369
+    a3 = ptr_data['a3']                          #gafurov2013
+    SF_density = ptr_data['SF_density']              #gafurov2013
+    eta_ptr_max = ptr_data['eta_ptr_max']             #gafurov2013: 0.742
+    eta_cleaness = ptr_data['eta_cleaness']
+    A_aperture_sf = ptr_data['A_aperture_sf']           #gafurov2013: 909060
+    relHeatLosses = ptr_data['relHeatLosses']            #gafurov2013
+    ratedFieldOutputHeat_W = 1000 * A_aperture_sf * eta_ptr_max #from nowhere
+    maxWindspeed = ptr_data['maxWindspeed'] #m/s
+    b = np.array([ptr_data['b0'],      #b0
+                    ptr_data['b1'],    #b1
+                    ptr_data['b2'],    #b2
+                    ptr_data['b3'],    #b3
+                    ptr_data['b4']])   #b4
+    TM_plant = ptr_data['TM_plant'] #J/K
+    maxHTFTemperature = ptr_data['maxHTFTemperature'] #°C
+    minHTFTemperature = ptr_data['minHTFTemperature'] #°C
+    inletHTFTemperature = ptr_data['inletHTFTemperature'] #°C
+
+    JITaccelerate= False
+    
+    # 2) Create instance of PTR worflowmanager 
+
+    wf = PTRWorkflowManager(placements)
+
+    # 3) read in Input data from ERA5 
 
     wf.read(
-        variables=["direct_horizontal_irradiance"],
+        variables=["direct_horizontal_irradiance",
+                    "surface_air_temperature",
+                    "surface_wind_speed"],
         source_type="ERA5",
         source=era5_path,
         set_time_index=True,
         verbose=False)
+
+    wf.sim_data['ptr_data'] = ptr_data
     
-    wf.easycalc()
+    # 4) get length of timesteps for later numpy sizing 
 
+    wf.get_timesteps()
 
-    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
+    # 5) calculate the solar position based on pvlib
+    wf.calculateSolarPosition() 
+    #wf.calculateSolarPositionfaster()
+
+    # 6) doing selfmade calulations until Heat to HTF
+    wf.calculateCosineLossesParabolicTrough()
+    wf.calculateIAM(a1=a1, a2=a2, a3=a3)
+    wf.calculateShadowLosses(method='wagner2011', SF_density=SF_density)
+    wf.calculateWindspeedLosses(max_windspeed_threshold=maxWindspeed)
+    wf.calculateHeattoHTF(A_aperture_sf=A_aperture_sf, eta_ptr_max=eta_ptr_max, eta_cleaness=eta_cleaness)
+
+    # 7) calculation heat to plant with loss model
+    wf.applyHTFHeatLossModel(
+        calculationmethod='dersch2018',
+        params={'b': b,
+            'A': A_aperture_sf,
+            'TM_plant': TM_plant,
+            'maxHTFTemperature': maxHTFTemperature,
+            'JITaccelerate': JITaccelerate,
+            'minHTFTemperature': minHTFTemperature,
+            'inletHTFTemperature': inletHTFTemperature
+            }
+        )
+    # wf.applyHTFHeatLossModel(calculationmethod='gafurov2013', params={'relHeatLosses': relHeatLosses, 'ratedFieldOutputHeat_W': ratedFieldOutputHeat_W})
+
+    if return_self == True:
+        return wf
+    else:
+        return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
 
 
