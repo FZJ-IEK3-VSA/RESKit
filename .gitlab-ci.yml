@@ -15,4 +15,4 @@ test:
     - mamba info --envs
     - source activate reskit
     - python -m pip install -e .
-    - python -m pytest --cov=reskit reskit/test/
+    - python -m pytest --cov=reskit test/
