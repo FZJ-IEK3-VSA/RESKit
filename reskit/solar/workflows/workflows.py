@@ -3,9 +3,10 @@ from .solar_workflow_manager import SolarWorkflowManager
 from .csp_workflow_manager import PTRWorkflowManager
 from .CSP_data.database_loader import load_dataset
 import numpy as np
+import time
 
 
-def csp_ptr_V1(placements, era5_path, output_netcdf_path=None, output_variables=None, return_self=True):
+def csp_ptr_V1(placements, era5_path, datasetname ='Validation 1', output_netcdf_path=None, output_variables=None, return_self=True, JITaccelerate = False, verbose = False):
     """ Calculates the heat output from the solar field based on parabolic trough technology. The workflow is not yet finally validated (but is still plausible).
         Status: 24.03.2021
         Author: David Franzmann IEK -3
@@ -23,7 +24,7 @@ def csp_ptr_V1(placements, era5_path, output_netcdf_path=None, output_variables=
 
     # 1) Load input data
 
-    ptr_data = load_dataset(datasetname='Validation 1')
+    ptr_data = load_dataset(datasetname=datasetname)
 
     orientation = ptr_data['orientation']
     a1 = ptr_data['a1']                  #gafurov2013: 0.000884
@@ -41,19 +42,33 @@ def csp_ptr_V1(placements, era5_path, output_netcdf_path=None, output_variables=
                     ptr_data['b2'],    #b2
                     ptr_data['b3'],    #b3
                     ptr_data['b4']])   #b4
-    TM_plant = ptr_data['TM_plant'] #J/K
+    relTMplant = ptr_data['relTMplant'] #J/K m2
     maxHTFTemperature = ptr_data['maxHTFTemperature'] #°C
     minHTFTemperature = ptr_data['minHTFTemperature'] #°C
     inletHTFTemperature = ptr_data['inletHTFTemperature'] #°C
+    add_losses_coefficient = ptr_data['add_losses_coefficient']
+    heatlossfactor = ptr_data['heatlossfactor']
+    heatlossconstant = ptr_data['heatlossconstant']
+    discretizationmethod = ptr_data['discretizationmethod']
 
-    JITaccelerate= False
-    
+
+    #parasitic loss parameters from gafurov 2013
+    params_PL_gafurov = {}
+    params_PL_gafurov['I_DNI_nom'] = ptr_data['I_DNI_nom'] # w/m^2
+    params_PL_gafurov['PL_plant_fix'] = ptr_data['PL_plant_fix']
+    params_PL_gafurov['PL_sf_track'] = ptr_data['PL_sf_track']
+    params_PL_gafurov['PL_sf_pumping'] = ptr_data['PL_sf_pumping']
+    params_PL_gafurov['PL_plant_pumping'] = ptr_data['PL_plant_pumping']
+    params_PL_gafurov['PL_plant_other'] = ptr_data['PL_plant_other']
+
+
     # 2) Create instance of PTR worflowmanager 
 
     wf = PTRWorkflowManager(placements)
 
     # 3) read in Input data from ERA5 
-
+    if verbose:
+        tic = time.time()
     wf.read(
         variables=["direct_horizontal_irradiance",
                     "surface_air_temperature",
@@ -61,10 +76,15 @@ def csp_ptr_V1(placements, era5_path, output_netcdf_path=None, output_variables=
         source_type="ERA5",
         source=era5_path,
         set_time_index=True,
-        verbose=False)
+        verbose=verbose)
 
     wf.sim_data['ptr_data'] = ptr_data
-    
+    if verbose:
+        toc = time.time()
+        print('Weather data read in within {dt}s.'.format(dt = str(toc-tic)))
+
+        tic = time.time()
+
     # 4) get length of timesteps for later numpy sizing 
 
     wf.get_timesteps()
@@ -74,7 +94,7 @@ def csp_ptr_V1(placements, era5_path, output_netcdf_path=None, output_variables=
     #wf.calculateSolarPositionfaster()
 
     # 6) doing selfmade calulations until Heat to HTF
-    wf.calculateCosineLossesParabolicTrough()
+    wf.calculateCosineLossesParabolicTrough(orientation=orientation)
     wf.calculateIAM(a1=a1, a2=a2, a3=a3)
     wf.calculateShadowLosses(method='wagner2011', SF_density=SF_density)
     wf.calculateWindspeedLosses(max_windspeed_threshold=maxWindspeed)
@@ -85,20 +105,33 @@ def csp_ptr_V1(placements, era5_path, output_netcdf_path=None, output_variables=
         calculationmethod='dersch2018',
         params={'b': b,
             'A': A_aperture_sf,
-            'TM_plant': TM_plant,
+            'relTMplant': relTMplant,
             'maxHTFTemperature': maxHTFTemperature,
             'JITaccelerate': JITaccelerate,
             'minHTFTemperature': minHTFTemperature,
-            'inletHTFTemperature': inletHTFTemperature
+            'inletHTFTemperature': inletHTFTemperature,
+            'add_losses_coefficient': add_losses_coefficient,
+            'heatlossfactor': heatlossfactor,
+            'heatlossconstant': heatlossconstant,
+            'discretizationmethod': discretizationmethod
+            
             }
         )
     # wf.applyHTFHeatLossModel(calculationmethod='gafurov2013', params={'relHeatLosses': relHeatLosses, 'ratedFieldOutputHeat_W': ratedFieldOutputHeat_W})
+
+    # 8) calculate Parasitic Losses of the plant
+    wf.calculateParasitics(
+        calculationmethod='gafurov2013',
+        params=params_PL_gafurov)
+
+    if verbose:
+        toc = time.time()
+        print('Total simulation done in in {dt}s.'.format(dt = str(toc-tic)))
 
     if return_self == True:
         return wf
     else:
         return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
-
 
 
 def openfield_pv_merra_ryberg2019(placements, merra_path, global_solar_atlas_ghi_path, module="WINAICO WSx-240P6", elev=300, tracking="fixed", inverter=None, inverter_kwargs={}, tracking_args={}, output_netcdf_path=None, output_variables=None):
