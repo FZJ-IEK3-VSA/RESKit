@@ -50,7 +50,8 @@ def csp_ptr_V1(placements, era5_path, datasetname ='Validation 1', output_netcdf
     heatlossfactor = ptr_data['heatlossfactor']
     heatlossconstant = ptr_data['heatlossconstant']
     discretizationmethod = ptr_data['discretizationmethod']
-
+    efficencyDropPerYear = ptr_data['efficencyDropPerYear']
+    lifetime = ptr_data['lifetime']
 
     #parasitic loss parameters from gafurov 2013
     params_PL_gafurov = {}
@@ -98,6 +99,7 @@ def csp_ptr_V1(placements, era5_path, datasetname ='Validation 1', output_netcdf
     wf.calculateIAM(a1=a1, a2=a2, a3=a3)
     wf.calculateShadowLosses(method='wagner2011', SF_density=SF_density)
     wf.calculateWindspeedLosses(max_windspeed_threshold=maxWindspeed)
+    wf.calculateDegradationLosses(efficencyDropPerYear=efficencyDropPerYear, lifetime=lifetime)
     wf.calculateHeattoHTF(A_aperture_sf=A_aperture_sf, eta_ptr_max=eta_ptr_max, eta_cleaness=eta_cleaness)
 
     # 7) calculation heat to plant with loss model
@@ -123,6 +125,13 @@ def csp_ptr_V1(placements, era5_path, datasetname ='Validation 1', output_netcdf
     wf.calculateParasitics(
         calculationmethod='gafurov2013',
         params=params_PL_gafurov)
+    
+    # 9) calculate economics
+    # Todo: adjust size of annual_heat... from 1D to 2D, or change the storage type
+    # wf.calclateEconomics(
+    #     params={'c_A_sf': 1, 'c_Land': 1, 'SF_density': SF_density} 
+    #     )
+
 
     if verbose:
         toc = time.time()

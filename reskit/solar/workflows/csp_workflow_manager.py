@@ -5,6 +5,7 @@ import pandas as pd
 import pvlib
 from numba import jit
 import time
+import geokit as gk
 
 class PTRWorkflowManager(WorkflowManager):
     def __init__(self, placements):
@@ -53,6 +54,37 @@ class PTRWorkflowManager(WorkflowManager):
         return self
     
 
+    def apply_elevation(self, elev):
+        """
+
+        apply_elevation(self)
+
+        Adds an elevation (name: 'elev') column to the placements data frame.
+
+        Parameters
+        ----------
+        elev: str, list
+              If a string is given it must be a path to a rasterfile including the elevations.
+              If a list is given it has to include the elevations at each location.
+
+
+        Returns
+        -------
+        Returns a reference to the invoking SolarWorkflowManager object
+
+        """
+
+        if isinstance(elev, str):
+            clipped_elev = self.ext.pad(0.5).rasterMosaic(elev)
+            self.placements['elev'] = gk.raster.interpolateValues(
+                clipped_elev,
+                self.locs)
+        else:
+            self.placements['elev'] = elev
+
+        return self
+
+
     def calculateSolarPosition(self):
         """calculates the solar position in terms of hour angle and declination from time series and location series of the current object
 
@@ -61,10 +93,27 @@ class PTRWorkflowManager(WorkflowManager):
             sim_data['declination_angle'][timeserie_iter, location_iter]]
         """
 
+        #check for inputs
+        assert 'lat' in self.placements.columns
+        assert 'lon' in self.placements.columns
+
+        # if no altitude, take values from 'elevation' or take 0
+        if not 'altitude' in self.placements.columns:
+            if 'elevation' in self.placements.columns:
+                self.placements.rename(
+                    mapper = {'elevation': 'altitude'},
+                    axis=1
+                )
+            else:
+                self.placements['altitude'] = 0
+                warning('No altitude/elevation set for placements. Calculating for sea-level 0m!')
+
+
+
 
         #set up empty array
-        self.sim_data['hour_angle_degree'] = np.empty(shape=(self._numtimesteps, self._numlocations))
-        self.sim_data['declination_angle_degree'] = np.empty(shape=(self._numtimesteps, self._numlocations))
+        #self.sim_data['hour_angle_degree'] = np.empty(shape=(self._numtimesteps, self._numlocations))
+        #self.sim_data['declination_angle_degree'] = np.empty(shape=(self._numtimesteps, self._numlocations))
         self.sim_data['solar_zenith'] = np.empty(shape=(self._numtimesteps, self._numlocations))
         self.sim_data['aoi_northsouth'] = np.empty(shape=(self._numtimesteps, self._numlocations))
         self.sim_data['aoi_eastwest'] = np.empty(shape=(self._numtimesteps, self._numlocations))
@@ -73,7 +122,7 @@ class PTRWorkflowManager(WorkflowManager):
 
 
         # iterate trough all location
-        for location_iter, row in enumerate(self.placements[['lon', 'lat']].itertuples()):
+        for location_iter, row in enumerate(self.placements[['lon', 'lat', 'altitude']].itertuples()):
             
 
 
@@ -98,7 +147,8 @@ class PTRWorkflowManager(WorkflowManager):
                 pvlib.solarposition.get_solarposition(
                     time=self.time_index,
                     latitude=row.lat,
-                    longitude=row.lon
+                    longitude=row.lon,
+                    altitude=row.altitude
                 )
 
 
@@ -130,7 +180,8 @@ class PTRWorkflowManager(WorkflowManager):
 
             #from [1]	KALOGIROU, Soteris A. Environmental Characteristics. In: Soteris Kalogirou, ed. Solar energy engineering. Processes and systems. Waltham, Mass: Academic Press, 2014, pp. 51-123.
             # fromula 2.12
-            self.sim_data['solar_altitude_angle_degree'] = np.rad2deg(np.arcsin(np.cos(np.deg2rad(self.sim_data['solar_zenith']))))
+        
+        self.sim_data['solar_altitude_angle_degree'] = np.rad2deg(np.arcsin(np.cos(np.deg2rad(self.sim_data['solar_zenith']))))
 
 
         pass
@@ -235,24 +286,24 @@ class PTRWorkflowManager(WorkflowManager):
         # northsouth: north south
         # eastwest: east west
         # song2013: apply logic form song 2013 to dertermine the orientation of solar fields
-        assert 'hour_angle_degree' in self.sim_data.keys()
-        assert 'declination_angle_degree' in self.sim_data.keys()
-        assert 'solar_altitude_angle_degree' in self.sim_data.keys()
+        assert 'aoi_northsouth' in self.sim_data.keys()
+        assert 'aoi_eastwest' in self.sim_data.keys()
+        #assert 'solar_altitude_angle_degree' in self.sim_data.keys()
         assert 'lat' in list(self.placements.columns)
 
 
 
 
         # write data all locations to one 1-D array
-        _hour_angle = self.sim_data['hour_angle_degree'].flatten(order='F')
-        _declination = self.sim_data['declination_angle_degree'].flatten(order='F')
-        _solar_altitude = self.sim_data['solar_altitude_angle_degree'].flatten(order='F')
+        #_hour_angle = self.sim_data['hour_angle_degree'].flatten(order='F')
+        #_declination = self.sim_data['declination_angle_degree'].flatten(order='F')
+        #_solar_altitude = self.sim_data['solar_altitude_angle_degree'].flatten(order='F')
         _latitude = self.placements['lat'].repeat(self.time_index.shape[0])
 
         #degree to radians
-        _hour_angle = np.deg2rad(_hour_angle)
-        _declination = np.deg2rad(_declination) 
-        _solar_altitude = np.deg2rad(_solar_altitude)
+        #_hour_angle = np.deg2rad(_hour_angle)
+        #_declination = np.deg2rad(_declination) 
+        #_solar_altitude = np.deg2rad(_solar_altitude)
 
         #calculate the cos of theta for a north / south oreintation
         #formula (6) from Song How to decide the alignment of the parabolic trough collector according to the local latitude 2013
@@ -383,6 +434,12 @@ class PTRWorkflowManager(WorkflowManager):
 
         return self
 
+    def calculateDegradationLosses(self, efficencyDropPerYear = 0, lifetime = 40):
+            if efficencyDropPerYear == 0:
+                self.sim_data['eta_degradation'] = 1
+            else:
+                self.sim_data['eta_degradation'] = (1 - (1-efficencyDropPerYear)**(lifetime+1))/(1-(1-efficencyDropPerYear)) / lifetime
+
 
     def calculateWindspeedLosses(self, max_windspeed_threshold: float = 14):
         """ If windspeed is above threshold, the efficency is set to zero.
@@ -431,6 +488,7 @@ class PTRWorkflowManager(WorkflowManager):
                                         * self.sim_data['IAM'] \
                                         * self.sim_data['eta_shdw'] \
                                         * self.sim_data['eta_wind'] \
+                                        * self.sim_data['eta_degradation'] \
                                         * A_aperture_sf \
                                         * self.sim_data['direct_horizontal_irradiance']
 
@@ -773,7 +831,13 @@ class PTRWorkflowManager(WorkflowManager):
         calculationmethod : str, optional
             [description], by default 'gafurov2013'
         params : dict, optional
-            [description], by default {}
+            For calculationmethod gafurov013:
+                I_DNI_nom: DNI for design point estimation in W/m^2
+                PL_plant_fix: Fixed plant losses in % of design point power output of te plant
+                PL_sf_track: Fixed solar field losses in % of design point power output of the field
+                PL_sf_pumping: Solar field pumping losses in % of design point power output
+                PL_plant_other: Plant Pumping losses in % of design point power output
+
         '''
         if calculationmethod == 'gafurov2013':
             assert 'I_DNI_nom' in params.keys()
@@ -833,20 +897,30 @@ class PTRWorkflowManager(WorkflowManager):
     def calclateEconomics(self, WACC: float = 0.08, lifetime: float = 40, calculationmethod: str = 'dersch2018', params: dict = {}):
         
         #Check inputs
-        assert 'HeattoPlant_W' in self.simdata.keys
+        assert 'HeattoPlant_W' in self.sim_data.keys()
         
         # Calculate annuity factor from WACC and lifetime like in Heuser
-        self.annuity = (WACC * (1 + WACC)**lifetime) / ((1+WACC)**lifetime - 1)
+        annuity = (WACC * (1 + WACC)**lifetime) / ((1+WACC)**lifetime - 1)
         
         # calculate the average annual heat production
-        self.annualHeat = self.sim_data['HeattoPlant_W'].mean(axis=0) * (self._time_index_[-1] - self._time_index_[0]) / pd.Timedelta(years=1) 
+        self.sim_data['annualHeat'] = self.sim_data['HeattoPlant_W'].mean(axis=0)  * (pd.Timedelta(days=365) / (self._time_index_[-1] - self._time_index_[0]))
         
         if calculationmethod == 'dersch2018':
-            self.investSF = self.A_aperture_sf * params['c_A_sf'] + self.A_aperture_sf / params['SF_density'] * params['c_Land']
+            investSF = self.A_aperture_sf * params['c_A_sf'] + self.A_aperture_sf / params['SF_density'] * params['c_Land']
         elif False:
             pass
 
-        self. capex = self.invest * self.annuity / self.annualHeat
+        self.sim_data['capexSF'] = investSF * annuity
+        self.sim_data['opexFix'] = 0
+        self.sim_data['opexVar'] = 0
+
+        self.sim_data['totex'] = self.sim_data['capexSF'] + self.sim_data['opexFix'] +self.sim_data['opexVar']
+
+        self.sim_data['LCO_heat'] = self.sim_data['totex'] / self.sim_data['annualHeat']
+
+        
+
+        return self
 
         
 
