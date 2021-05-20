@@ -73,9 +73,9 @@ def test_offshore_wind_merra_caglayan2019(pt_wind_placements):
     assert np.isclose(gen.capacity_factor.std(), 0.29062806)
 
 
-def test_offshore_wind_era5_unvalidated(pt_wind_placements):
+def test_offshore_wind_era5(pt_wind_placements):
     # placements, era5_path, output_netcdf_path=None, output_variables=None):
-    gen = offshore_wind_era5_unvalidated(
+    gen = offshore_wind_era5(
         placements=pt_wind_placements,
         era5_path=TEST_DATA['era5-like'],
     )
@@ -87,16 +87,16 @@ def test_offshore_wind_era5_unvalidated(pt_wind_placements):
     assert np.isclose(gen.roughness.std(), 0)
 
     assert gen.elevated_wind_speed.shape == (140, 560)
-    assert np.isclose(gen.elevated_wind_speed.mean(), 7.81518479)
-    assert np.isclose(gen.elevated_wind_speed.min(), 0.24186178)
-    assert np.isclose(gen.elevated_wind_speed.max(), 16.15992779)
-    assert np.isclose(gen.elevated_wind_speed.std(), 2.95790908)
+    assert np.isclose(gen.elevated_wind_speed.mean(), 7.58997001)
+    assert np.isclose(gen.elevated_wind_speed.min(), 0.62251284)
+    assert np.isclose(gen.elevated_wind_speed.max(), 15.26713356)
+    assert np.isclose(gen.elevated_wind_speed.std(), 2.72127635)
 
     assert gen.capacity_factor.shape == (140, 560)
-    assert np.isclose(gen.capacity_factor.mean(), 0.59134448)
-    assert np.isclose(gen.capacity_factor.min(), 2.02666021e-7)
-    assert np.isclose(gen.capacity_factor.max(), 0.97282235)
-    assert np.isclose(gen.capacity_factor.std(), 0.32166903)
+    assert np.isclose(gen.capacity_factor.mean(), 0.6044807)
+    assert np.isclose(gen.capacity_factor.min(), 3.48962656e-06)
+    assert np.isclose(gen.capacity_factor.max(), 0.99460964)
+    assert np.isclose(gen.capacity_factor.std(), 0.31366607)
 
 
 def test_onshore_wind_era5(pt_wind_placements):
