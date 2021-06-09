@@ -6,7 +6,7 @@ import numpy as np
 import time
 
 
-def csp_ptr_V1(placements, era5_path, datasetname ='Validation 1', output_netcdf_path=None, output_variables=None, return_self=True, JITaccelerate = False, verbose = False):
+def csp_ptr_V1(placements, era5_path, datasetname ='Validation 1', elev_path = None, output_netcdf_path=None, output_variables=None, return_self=True, JITaccelerate = False, verbose = False):
     """ Calculates the heat output from the solar field based on parabolic trough technology. The workflow is not yet finally validated (but is still plausible).
         Status: 24.03.2021
         Author: David Franzmann IEK -3
@@ -47,8 +47,6 @@ def csp_ptr_V1(placements, era5_path, datasetname ='Validation 1', output_netcdf
     minHTFTemperature = ptr_data['minHTFTemperature'] #°C
     inletHTFTemperature = ptr_data['inletHTFTemperature'] #°C
     add_losses_coefficient = ptr_data['add_losses_coefficient']
-    heatlossfactor = ptr_data['heatlossfactor']
-    heatlossconstant = ptr_data['heatlossconstant']
     discretizationmethod = ptr_data['discretizationmethod']
     efficencyDropPerYear = ptr_data['efficencyDropPerYear']
     lifetime = ptr_data['lifetime']
@@ -78,6 +76,9 @@ def csp_ptr_V1(placements, era5_path, datasetname ='Validation 1', output_netcdf
         source=era5_path,
         set_time_index=True,
         verbose=verbose)
+
+    
+    wf.apply_elevation(elev_path)
 
     wf.sim_data['ptr_data'] = ptr_data
     if verbose:
@@ -113,8 +114,6 @@ def csp_ptr_V1(placements, era5_path, datasetname ='Validation 1', output_netcdf
             'minHTFTemperature': minHTFTemperature,
             'inletHTFTemperature': inletHTFTemperature,
             'add_losses_coefficient': add_losses_coefficient,
-            'heatlossfactor': heatlossfactor,
-            'heatlossconstant': heatlossconstant,
             'discretizationmethod': discretizationmethod
             
             }

@@ -74,7 +74,13 @@ class PTRWorkflowManager(WorkflowManager):
 
         """
 
-        if isinstance(elev, str):
+        if 'elev' in self.placements.columns:
+            return self
+
+        if elev == None:
+            self.placements['elev']=0
+
+        elif isinstance(elev, str):
             clipped_elev = self.ext.pad(0.5).rasterMosaic(elev)
             self.placements['elev'] = gk.raster.interpolateValues(
                 clipped_elev,
@@ -89,32 +95,24 @@ class PTRWorkflowManager(WorkflowManager):
         """calculates the solar position in terms of hour angle and declination from time series and location series of the current object
 
         Returns:
-            [CSPWorkflowManager]: [Updated CSPWorkflowManager with new value for sim_data['hour_angle'][timeserie_iter, location_iter] and 
-            sim_data['declination_angle'][timeserie_iter, location_iter]]
+            [CSPWorkflowManager]: Updated CSPWorkflowManager with new values for sim_data['values'][timeserie_iter, location_iter]. The calculated values are:
+                                    - solar_zenith_degree: solar zenith angle
+                                    - solar_altitude_angle_degree: solar altitude (elevation) angle in degrees
+                                    - aoi_northsouth: angle of incidence for northsouth-orientation of trough
+                                    - aoi_eastwest: angle of incidence for eastwest-orientation of trough
+
         """
 
         #check for inputs
         assert 'lat' in self.placements.columns
         assert 'lon' in self.placements.columns
-
-        # if no altitude, take values from 'elevation' or take 0
-        if not 'altitude' in self.placements.columns:
-            if 'elevation' in self.placements.columns:
-                self.placements.rename(
-                    mapper = {'elevation': 'altitude'},
-                    axis=1
-                )
-            else:
-                self.placements['altitude'] = 0
-                warning('No altitude/elevation set for placements. Calculating for sea-level 0m!')
-
-
+        assert 'elev' in self.placements.columns
 
 
         #set up empty array
         #self.sim_data['hour_angle_degree'] = np.empty(shape=(self._numtimesteps, self._numlocations))
         #self.sim_data['declination_angle_degree'] = np.empty(shape=(self._numtimesteps, self._numlocations))
-        self.sim_data['solar_zenith'] = np.empty(shape=(self._numtimesteps, self._numlocations))
+        self.sim_data['solar_zenith_degree'] = np.empty(shape=(self._numtimesteps, self._numlocations))
         self.sim_data['aoi_northsouth'] = np.empty(shape=(self._numtimesteps, self._numlocations))
         self.sim_data['aoi_eastwest'] = np.empty(shape=(self._numtimesteps, self._numlocations))
 
@@ -122,7 +120,7 @@ class PTRWorkflowManager(WorkflowManager):
 
 
         # iterate trough all location
-        for location_iter, row in enumerate(self.placements[['lon', 'lat', 'altitude']].itertuples()):
+        for location_iter, row in enumerate(self.placements[['lon', 'lat', 'elev']].itertuples()):
             
 
 
@@ -148,11 +146,11 @@ class PTRWorkflowManager(WorkflowManager):
                     time=self.time_index,
                     latitude=row.lat,
                     longitude=row.lon,
-                    altitude=row.altitude
+                    altitude=row.elev
                 )
 
 
-            self.sim_data['solar_zenith'][:, location_iter] = _solarpos['zenith'].values
+            self.sim_data['solar_zenith_degree'][:, location_iter] = _solarpos['zenith'].values
 
             #calculate aoi
             truetracking_angles = pvlib.tracking.singleaxis(
@@ -181,93 +179,13 @@ class PTRWorkflowManager(WorkflowManager):
             #from [1]	KALOGIROU, Soteris A. Environmental Characteristics. In: Soteris Kalogirou, ed. Solar energy engineering. Processes and systems. Waltham, Mass: Academic Press, 2014, pp. 51-123.
             # fromula 2.12
         
-        self.sim_data['solar_altitude_angle_degree'] = np.rad2deg(np.arcsin(np.cos(np.deg2rad(self.sim_data['solar_zenith']))))
+        self.sim_data['solar_altitude_angle_degree'] = np.rad2deg(np.arcsin(np.cos(np.deg2rad(self.sim_data['solar_zenith_degree']))))
 
 
         pass
 
         return self
 
-
-    def calculateSolarPositionfaster(self):
-        """
-        DOES NOT WORK PV LIP DOES NOT SUPPORT MULTIPLE LOCATIONS
-        calculates the solar position in terms of hour angle and declination from time series and location series of the current object
-
-        Returns:
-            [CSPWorkflowManager]: [Updated CSPWorkflowManager with new value for sim_data['hour_angle'][timeserie_iter, location_iter] and 
-            sim_data['declination_angle'][timeserie_iter, location_iter]]
-        """
-        # Shape Input data to 1D
-        _time = pd.DatetimeIndex(np.tile(self.time_index.values, self._numlocations))
-        _dayoftheyear = pd.DataFrame(np.tile(self.time_index.day_of_year.values, self._numlocations))
-        _latitute = pd.DataFrame(self.placements['lat'].values.repeat(self._numtimesteps))
-        _longitude = pd.DataFrame(self.placements['lon'].values.repeat(self._numtimesteps))
-
-
-
-        #calculate the solar hour angle with pv lib
-        _hour_angle = pvlib.solarposition.hour_angle(
-                    times=_time,
-                    longitude=_longitude,
-                    equation_of_time=pvlib.solarposition.equation_of_time_pvcdrom(dayofyear=_dayoftheyear)
-                    )
-                    # equation_of_time is the deviation betwee real time and solar time
-
-        self.sim_data['hour_angle_degree_fast'] = np.reshape(
-            a=_hour_angle,
-            newshape=(self._numtimesteps, self._numlocations)
-        )
-
-
-
-        #calculate the solar declonation angle with pv lib
-        _declination_angle_degree = \
-             pvlib.solarposition.declination_cooper69(dayofyear=_dayoftheyear) * 180 / np.pi
-
-
-        self.sim_data['declination_angle_degree_fast'] = np.reshape(
-            a=_declination_angle_degree,
-            newshape=(self._numtimesteps, self._numlocations)
-        )
-
-
-
-        #calculate the solar altitide angle
-        _solarpos = pvlib.solarposition.get_solarposition(
-            time=_time,
-            latitude=_latitute,
-            longitude=_longitude
-        )
-
-        _solar_zenith = _solarpos['zenith'].values
-
-        truetracking_angles = pvlib.tracking.singleaxis(
-            apparent_zenith=_solarpos['apparent_zenith'],
-            apparent_azimuth=_solarpos['azimuth'],
-            axis_tilt=0,
-            axis_azimuth=180,
-            max_angle=90,
-            backtrack=False,  # for true-tracking
-            gcr=0.5)  # irrelevant for true-tracking
-
-
-        #from [1]	KALOGIROU, Soteris A. Environmental Characteristics. In: Soteris Kalogirou, ed. Solar energy engineering. Processes and systems. Waltham, Mass: Academic Press, 2014, pp. 51-123.
-        # fromula 2.12
-        _solar_altitude_angle = np.rad2deg(np.arcsin(np.cos(_solar_zenith)))
-
-        self.sim_data['solar_altitude_angle_degree_fast'] = np.reshape(
-            a=_declination_angle_degree,
-            newshape=(self._numtimesteps, self._numlocations)
-        )
-
-        self.sim_data['aoi'] = np.reshape(
-            a=truetracking_angles['aoi'],
-            newshape=(self._numtimesteps, self._numlocations)
-        )
-
-        return self
- 
 
     def calculateCosineLossesParabolicTrough(self, orientation: str = 'song2013'):
         """[calculate the cosine losses of a parabolic trough CSP solar field.
@@ -298,7 +216,7 @@ class PTRWorkflowManager(WorkflowManager):
         #_hour_angle = self.sim_data['hour_angle_degree'].flatten(order='F')
         #_declination = self.sim_data['declination_angle_degree'].flatten(order='F')
         #_solar_altitude = self.sim_data['solar_altitude_angle_degree'].flatten(order='F')
-        _latitude = self.placements['lat'].repeat(self.time_index.shape[0])
+        _latitude = np.tile(self.placements['lat'].values, (self.time_index.shape[0],1))#self.placements['lat']#.repeat(self.time_index.shape[0])
 
         #degree to radians
         #_hour_angle = np.deg2rad(_hour_angle)
@@ -325,7 +243,7 @@ class PTRWorkflowManager(WorkflowManager):
             #     / np.sqrt( np.square(np.cos(_latitude) * np.sin(_declination) - np.sin(_latitude) * np.cos(_declination) * np.cos(_hour_angle))
             #                 + np.square(np.cos(_latitude) * np.cos(_declination) * np.cos(_hour_angle) +  np.sin(_latitude) * np.sin(_declination))))
             
-            theta_northsouth = self.sim_data['aoi_northsouth'].flatten(order='F')
+            theta_northsouth = self.sim_data['aoi_northsouth']#.flatten(order='F')
 
 
         #calculate the cos of theta for a east/ west oreintation
@@ -342,7 +260,7 @@ class PTRWorkflowManager(WorkflowManager):
             theta_eastwest = theta_eastwest * (_solar_altitude >0)
             '''
 
-            theta_eastwest = self.sim_data['aoi_eastwest'].flatten(order='F')
+            theta_eastwest = self.sim_data['aoi_eastwest']#.flatten(order='F')
 
 
         if orientation == 'northsouth':
@@ -360,11 +278,11 @@ class PTRWorkflowManager(WorkflowManager):
 
 
         # change array to 2D
-        self.sim_data['theta'] = np.reshape(
-            a=theta,
-            newshape=(self._numtimesteps, self._numlocations),
-            order='F'
-        )
+        self.sim_data['theta'] = theta #p.reshape(
+        #     a=theta,
+        #     newshape=(self._numtimesteps, self._numlocations),
+        #     order='F'
+        # )
 
         return self
 
@@ -433,6 +351,7 @@ class PTRWorkflowManager(WorkflowManager):
             self.sim_data['eta_shdw'] = np.sin(np.deg2rad(self.sim_data['solar_altitude_angle_degree'])) / ( SF_density * np.cos(np.deg2rad(self.sim_data['theta'])) )
 
         return self
+
 
     def calculateDegradationLosses(self, efficencyDropPerYear = 0, lifetime = 40):
             if efficencyDropPerYear == 0:
@@ -543,7 +462,7 @@ class PTRWorkflowManager(WorkflowManager):
             assert 'minHTFTemperature' in params.keys()
             assert 'inletHTFTemperature' in params.keys()
             assert params['b'].shape == (5,)
-            assert 'heatlossfactor' in params.keys()
+            assert 'add_losses_coefficient' in params.keys()
 
             assert 'IAM' in self.sim_data.keys()
             assert 'theta' in self.sim_data.keys()
@@ -573,8 +492,7 @@ class PTRWorkflowManager(WorkflowManager):
                     HeattoHTF: np.ndarray, temperature: np.ndarray, ambient_temperature: np.ndarray,
                     losses: np.ndarray, K: np.ndarray, DNI: np.ndarray, A: float, b:np.ndarray, relTMplant: float,
                     deltat: float, maxHTFTemperature: float, minHTFTemperature: float, inletHTFTemperature: float,
-                    P_heating: np.ndarray, HeattoPlant: np.ndarray, add_losses_coefficient: float,
-                    heatlossfactor: float=1.8, heatlossconstant: float = 5.5):
+                    P_heating: np.ndarray, HeattoPlant: np.ndarray, add_losses_coefficient: float):
                     """[Transient simulation of the HTF fluid temperature. Calculate losses by empiric formulation as in Greenius]
 
                     Args:
@@ -621,7 +539,15 @@ class PTRWorkflowManager(WorkflowManager):
                         # maximal temperature is achieved, when outlet temperature is at max temperature.
                         temperature[i+1, :] = np.minimum(temperature[i+1, :], maxHTFmeanTemperature)
                         # Heat to plant equals Heat input minus losses, when the plant is in operation mode (temperature = max temperature)
-                        HeattoPlant[i, :] = np.maximum((HeattoHTF[i, :] - losses[i, :]) * (temperature[i, :] == maxHTFmeanTemperature), 0)
+                        
+                        HeattoPlant[i, :] = (HeattoHTF[i, :] - losses[i, :]) * (temperature[i, :] == maxHTFmeanTemperature)
+                        # In the first time step with max temp, not all energy can be used in the plant, as some energy was used for heating the htf.
+                        # The htf heating losses are substracted for the first time step 
+                        is_first_max_heat = np.logical_and(temperature[i-1, :] != maxHTFmeanTemperature, temperature[i, :] == maxHTFmeanTemperature)
+                        heat_flux_htf_heatup_last_timestep = (temperature[i, :] - temperature[i-1, :]) * relTMplant * A / deltat
+
+                        # manipulate HeattoPlant, so that heat flux into htf is substracted from HeattoPlant
+                        HeattoPlant[i, :] = np.maximum(HeattoPlant[i, :] - is_first_max_heat * heat_flux_htf_heatup_last_timestep, 0)
                         # because of discretization uncertainties, HeattoPlant can get negativ. So this will be prevented here. Looks odd, but is true
 
                         # 2) Freeze protection
@@ -640,8 +566,7 @@ class PTRWorkflowManager(WorkflowManager):
                     HeattoHTF: np.ndarray, temperature: np.ndarray, ambient_temperature: np.ndarray,
                     losses: np.ndarray, K: np.ndarray, DNI: np.ndarray, A: float, b:np.ndarray, relTMplant: float,
                     deltat: float, maxHTFTemperature: float, minHTFTemperature: float, inletHTFTemperature: float,
-                    P_heating: np.ndarray, HeattoPlant: np.ndarray, add_losses_coefficient: float,
-                    heatlossfactor: float=1.8, heatlossconstant: float = 5.5):
+                    P_heating: np.ndarray, HeattoPlant: np.ndarray, add_losses_coefficient: float):
                     """[Transient simulation of the HTF fluid temperature. Calculate losses by empiric formulation as in Greenius]
 
                     Args:
@@ -767,9 +692,7 @@ class PTRWorkflowManager(WorkflowManager):
                         inletHTFTemperature=params['inletHTFTemperature'],
                         P_heating = _P_heating,
                         HeattoPlant = _HeattoPlant,
-                        add_losses_coefficient = params['add_losses_coefficient'],
-                        heatlossfactor = params['heatlossfactor'],
-                        heatlossconstant = params['heatlossconstant']
+                        add_losses_coefficient = params['add_losses_coefficient']
                     )
 
             else:
@@ -790,9 +713,7 @@ class PTRWorkflowManager(WorkflowManager):
                         inletHTFTemperature=params['inletHTFTemperature'],
                         P_heating = _P_heating,
                         HeattoPlant = _HeattoPlant,
-                        add_losses_coefficient = params['add_losses_coefficient'],
-                        heatlossfactor = params['heatlossfactor'],
-                        heatlossconstant = params['heatlossconstant']
+                        add_losses_coefficient = params['add_losses_coefficient']
                     )
 
             toc = time.time()
@@ -871,7 +792,7 @@ class PTRWorkflowManager(WorkflowManager):
             PL_plant_fix = params['PL_plant_fix'] * P_pb_des
 
             #PL_sf_track 
-            PL_sf_track = params['PL_sf_track'] * P_pb_des * (self.sim_data['solar_zenith'] < 90)
+            PL_sf_track = params['PL_sf_track'] * P_pb_des * (self.sim_data['solar_zenith_degree'] < 90)
 
             #PL_sf_night = self.sim_data['P_heating_W']
 
@@ -924,3 +845,85 @@ class PTRWorkflowManager(WorkflowManager):
 
         
 
+
+    ### Try to increase speed of PV-Lib by dropping one loop. Aparently, multiple locations are not supported by PV-Lib. If there are performance
+    ### issues, try again. So keep this in mind here 
+    #
+    # def calculateSolarPositionfaster(self):
+    #     """
+    #     DOES NOT WORK PV LIP DOES NOT SUPPORT MULTIPLE LOCATIONS
+    #     calculates the solar position in terms of hour angle and declination from time series and location series of the current object
+    #
+    #     Returns:
+    #         [CSPWorkflowManager]: [Updated CSPWorkflowManager with new value for sim_data['hour_angle'][timeserie_iter, location_iter] and 
+    #         sim_data['declination_angle'][timeserie_iter, location_iter]]
+    #     """
+    #     # Shape Input data to 1D
+    #     _time = pd.DatetimeIndex(np.tile(self.time_index.values, self._numlocations))
+    #     _dayoftheyear = pd.DataFrame(np.tile(self.time_index.day_of_year.values, self._numlocations))
+    #     _latitute = pd.DataFrame(self.placements['lat'].values.repeat(self._numtimesteps))
+    #     _longitude = pd.DataFrame(self.placements['lon'].values.repeat(self._numtimesteps))
+    #
+    #
+    #
+    #     #calculate the solar hour angle with pv lib
+    #     _hour_angle = pvlib.solarposition.hour_angle(
+    #                 times=_time,
+    #                 longitude=_longitude,
+    #                 equation_of_time=pvlib.solarposition.equation_of_time_pvcdrom(dayofyear=_dayoftheyear)
+    #                 )
+    #                 # equation_of_time is the deviation betwee real time and solar time
+    #
+    #     self.sim_data['hour_angle_degree_fast'] = np.reshape(
+    #         a=_hour_angle,
+    #         newshape=(self._numtimesteps, self._numlocations)
+    #     )
+    #  
+    #
+    #
+    #     #calculate the solar declonation angle with pv lib
+    #     _declination_angle_degree = \
+    #          pvlib.solarposition.declination_cooper69(dayofyear=_dayoftheyear) * 180 / np.pi
+    #
+    #
+    #     self.sim_data['declination_angle_degree_fast'] = np.reshape(
+    #         a=_declination_angle_degree,
+    #         newshape=(self._numtimesteps, self._numlocations)
+    #     )
+
+
+
+    #     #calculate the solar altitide angle
+    #     _solarpos = pvlib.solarposition.get_solarposition(
+    #         time=_time,
+    #         latitude=_latitute,
+    #         longitude=_longitude
+    #     )
+
+    #     _solar_zenith_degree = _solarpos['zenith'].values
+
+    #     truetracking_angles = pvlib.tracking.singleaxis(
+    #         apparent_zenith=_solarpos['apparent_zenith'],
+    #         apparent_azimuth=_solarpos['azimuth'],
+    #         axis_tilt=0,
+    #         axis_azimuth=180,
+    #         max_angle=90,
+    #         backtrack=False,  # for true-tracking
+    #         gcr=0.5)  # irrelevant for true-tracking
+
+
+    #     #from [1]	KALOGIROU, Soteris A. Environmental Characteristics. In: Soteris Kalogirou, ed. Solar energy engineering. Processes and systems. Waltham, Mass: Academic Press, 2014, pp. 51-123.
+    #     # fromula 2.12
+    #     _solar_altitude_angle = np.rad2deg(np.arcsin(np.cos(_solar_zenith_degree)))
+
+    #     self.sim_data['solar_altitude_angle_degree_fast'] = np.reshape(
+    #         a=_declination_angle_degree,
+    #         newshape=(self._numtimesteps, self._numlocations)
+    #     )
+
+    #     self.sim_data['aoi'] = np.reshape(
+    #         a=truetracking_angles['aoi'],
+    #         newshape=(self._numtimesteps, self._numlocations)
+    #     )
+
+    #     return self
