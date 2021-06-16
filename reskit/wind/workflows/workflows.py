@@ -166,20 +166,13 @@ def offshore_wind_era5(placements, era5_path, output_netcdf_path=None, output_va
 
     wf.logarithmic_projection_of_wind_speeds_to_hub_height()
 
-    wf.convolute_power_curves(
-        scaling=0.04,    # Taken as MERRA2 from onshore_wind_merra2
-        base=0.5         # Taken as MERRA2 from onshore_wind_merra2
-    )
+    wf.convolute_power_curves(scaling=0.01,base=0.00)
 
-    wind_speed_scaling=0.92
-    wind_speed_offset=-0.40
-    wf.sim_data['elevated_wind_speed'] = np.maximum(wf.sim_data['elevated_wind_speed'] * wind_speed_scaling - wind_speed_offset, 0 )
+    wind_speed_scaling=0.95
+    wind_speed_offset= 0.0
+    wf.sim_data['elevated_wind_speed'] = np.maximum(wf.sim_data['elevated_wind_speed'] * wind_speed_scaling + wind_speed_offset, 0 )
 
     wf.simulate()
-
-    wf.apply_loss_factor(
-        loss=lambda x: rk_util.low_generation_loss(x, base=0.2, sharpness=5)  # Taken as MERRA2 from onshore_wind_merra2
-    ) #this can pontentially be left out. It was not becuase when implemented, the convination of factors were the best matching 
 
     return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
@@ -245,12 +238,12 @@ def onshore_wind_era5(placements, era5_path, gwa_100m_path, esa_cci_path, output
     wf.apply_air_density_correction_to_wind_speeds()
 
     wf.convolute_power_curves(
-        scaling=0.08,
-        base=0.40
+        scaling=0.01,
+        base=0.00
     )
 
     # Adjust wind speeds
-    wf.sim_data['elevated_wind_speed'] = np.maximum(wf.sim_data['elevated_wind_speed']*0.75 + 1.20, 0 ) # Empirically found to improve simulation accuracy
+    wf.sim_data['elevated_wind_speed'] = np.maximum(wf.sim_data['elevated_wind_speed']*0.75 + 0.75, 0 ) # Empirically found to improve simulation accuracy
 
     # do simulation
     wf.simulate()
