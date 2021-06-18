@@ -6,6 +6,7 @@ import pvlib
 from numba import jit
 import time
 import geokit as gk
+from typing import Union
 
 class PTRWorkflowManager(WorkflowManager):
     def __init__(self, placements):
@@ -53,6 +54,82 @@ class PTRWorkflowManager(WorkflowManager):
 
         return self
     
+
+    def adjust_variable_to_long_run_average(
+        self,
+        variable: str,
+        source_long_run_average: Union[str, float, np.ndarray],
+        real_long_run_average: Union[str, float, np.ndarray],
+        real_lra_scaling: float = 1,
+        spatial_interpolation: str = "linear-spline"):
+        
+        """Adjusts the average mean of the specified variable to a known long-run-average
+
+        Note:
+        -----
+        uses the equation: variable[t] = variable[t] * real_long_run_average / source_long_run_average
+
+        Parameters
+        ----------
+        variable : str
+            The variable to be adjusted
+
+        source_long_run_average : Union[str, float, np.ndarray]
+            The variable's native long run average (the average in the weather file)
+            - If a string is given, it is expected to be a path to a raster file which can be 
+              used to look up the average values from using the coordinates in `.placements`
+            - If a numpy ndarray (or derivative) is given, the shape must be one of (time, placements)
+              or at least (placements) 
+
+        real_long_run_average : Union[str, float, np.ndarray]
+            The variables 'true' long run average
+            - If a string is given, it is expected to be a path to a raster file which can be 
+              used to look up the average values from using the coordinates in `.placements`
+            - If a numpy ndarray (or derivative) is given, the shape must be one of (time, placements)
+              or at least (placements)
+
+        real_lra_scaling : float, optional
+            An optional scaling factor to apply to the values derived from `real_long_run_average`. 
+            - This is primarily useful when `real_long_run_average` is a path to a raster file
+            - By default 1
+
+        spatial_interpolation : str, optional
+            When either `source_long_run_average` or `real_long_run_average` are a path to a raster 
+            file, this input specifies which interpolation algorithm should be used
+            - Options are: "near", "linear-spline", "cubic-spline", "average"
+            - By default "linear-spline"
+            - See for more info: geokit.raster.interpolateValues
+
+        Returns
+        -------
+        WorkflowManager
+            Returns the invoking WorkflowManager (for chaining)
+        """
+
+        if isinstance(real_long_run_average, str):
+            real_lra = gk.raster.interpolateValues(
+                real_long_run_average,
+                self.locs,
+                mode=spatial_interpolation)
+            assert not np.isnan(real_lra).any() and (real_lra > 0).all()
+        else:
+            real_lra = real_long_run_average
+
+        if isinstance(source_long_run_average, str):
+            source_lra = gk.raster.interpolateValues(
+                source_long_run_average,
+                self.locs,
+                mode=spatial_interpolation)
+            assert not np.isnan(source_lra).any() and (source_lra > 0).all()
+        else:
+            source_lra = source_long_run_average
+
+        self.sim_data[variable] *= real_lra * real_lra_scaling / source_lra
+        print('Factors_from_LRA:')
+        print(real_lra * real_lra_scaling / source_lra)
+        print('__')
+        return self
+
 
     def apply_elevation(self, elev):
         """
@@ -294,9 +371,9 @@ class PTRWorkflowManager(WorkflowManager):
         Generation. 2015, 9(2), 120-130. Available from: 10.1049/iet-rpg.2013.0377. 
 
         Args:
-            a1 (float, optional): [description]. Defaults to 0.000884.
-            a2 (float, optional): [description]. Defaults to 0.00005369.
-            a3 (float, optional): [description]. Defaults to 0.
+            a1 (float, optional): IAM-modifier1. Defaults to 0.000884.
+            a2 (float, optional): IAM-modifier1. Defaults to 0.00005369.
+            a3 (float, optional): IAM-modifier1. Defaults to 0.
 
         Returns:
             [CSPWorkflowManager]: [Updated CSPWorkflowManager with new value for sim_data['IAM'][timeserie_iter, location_iter]

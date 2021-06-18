@@ -99,6 +99,37 @@ def pt_PTRWorkflowManager_loaded(pt_PTRWorkflowManager_initialized: PTRWorkflowM
 
     return wfm
 
+#%% test Long rung averaging
+def test_adjust_variable_to_long_run_average(pt_PTRWorkflowManager_loaded):
+    wfm = pt_PTRWorkflowManager_loaded
+
+    print('before LRA')
+    print(wfm.sim_data['direct_horizontal_irradiance'].mean())
+    print(wfm.sim_data['direct_horizontal_irradiance'].std())
+    print(wfm.sim_data['direct_horizontal_irradiance'].min())
+    print(wfm.sim_data['direct_horizontal_irradiance'].max())
+
+
+    wfm.adjust_variable_to_long_run_average(
+            variable='direct_horizontal_irradiance',
+            source_long_run_average=rk.weather.Era5Source.LONG_RUN_AVERAGE_DNI,
+            real_long_run_average=rk.TEST_DATA['gsa-dni-like.tif'],
+            real_lra_scaling=1000 / 24,  # cast to hourly average kWh
+    )
+
+    print('after LRA')
+    print(wfm.sim_data['direct_horizontal_irradiance'].mean())
+    print(wfm.sim_data['direct_horizontal_irradiance'].std())
+    print(wfm.sim_data['direct_horizontal_irradiance'].min())
+    print(wfm.sim_data['direct_horizontal_irradiance'].max())
+
+    assert np.isclose(wfm.sim_data['direct_horizontal_irradiance'].mean(), 16.06680060520131)
+    assert np.isclose(wfm.sim_data['direct_horizontal_irradiance'].std(), 45.92803832175536)
+    assert np.isclose(wfm.sim_data['direct_horizontal_irradiance'].min(), 0.0)
+    assert np.isclose(wfm.sim_data['direct_horizontal_irradiance'].max(), 257.65673305845195)
+    
+
+
 #%% test get_timesteps
 def test_get_timesteps(pt_PTRWorkflowManager_loaded):
     wfm = pt_PTRWorkflowManager_loaded
