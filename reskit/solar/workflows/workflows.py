@@ -111,7 +111,7 @@ def openfield_pv_merra_ryberg2019(placements, merra_path, global_solar_atlas_ghi
     return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
 
-def openfield_pv_era5_unvalidated(placements, era5_path, global_solar_atlas_ghi_path, global_solar_atlas_dni_path, module="WINAICO WSx-240P6", elev=300, tracking="fixed", inverter=None, inverter_kwargs={}, tracking_args={}, output_netcdf_path=None, output_variables=None):
+def openfield_pv_era5(placements, era5_path, global_solar_atlas_ghi_path, global_solar_atlas_dni_path, module="WINAICO WSx-240P6", elev=300, tracking="fixed", inverter=None, inverter_kwargs={}, tracking_args={}, output_netcdf_path=None, output_variables=None):
     """
 
     openfield_pv_era5_unvalidated(placements, era5_path, global_solar_atlas_ghi_path, global_solar_atlas_dni_path, module="WINAICO WSx-240P6", elev=300, tracking="fixed", inverter=None, inverter_kwargs={}, tracking_args={}, output_netcdf_path=None, output_variables=None)
@@ -229,7 +229,7 @@ def openfield_pv_era5_unvalidated(placements, era5_path, global_solar_atlas_ghi_
     if inverter is not None:
         wf.apply_inverter_losses(inverter=inverter, **inverter_kwargs)
 
-    wf.apply_loss_factor(0.20, variables=['capacity_factor', 'total_system_generation'])
+    wf.apply_loss_factor(0.08, variables=['capacity_factor', 'total_system_generation'])
 
     return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
