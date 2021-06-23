@@ -52,6 +52,11 @@ class WorkflowManager:
 
         if self.locs is None:
             self.locs = gk.LocationSet(self.placements[["lon", "lat"]].values)
+        
+        # limit the input placements longitude to range of -180...180
+        assert self.placements["lon"].between(-180, 180, inclusive=True).any()
+        # limit the input placements latitude to range of -90...90
+        assert self.placements["lat"].between(-90, 90, inclusive=True).any()
 
         self.ext = gk.Extent.fromLocationSet(self.locs)
 
@@ -154,6 +159,20 @@ class WorkflowManager:
         if not set_time_index and self.time_index is None:
             raise RuntimeError("Time index is not available")
 
+        if source_type == "ERA5":
+            #Convert +-180 longitudes to -22.5_to_337.5
+            lon_pm_180 = self.placements[["lon"]].values
+            lon_smaller_225 = lon_pm_180 < -22.5
+            # if lon_smaller_225 is true, add 360 to longitude
+            lon_for_ERA5_tiles = lon_pm_180 + lon_smaller_225 * (360)
+            #create locs:
+            lat = self.placements[["lat"]].values
+            locs_matrix = np.column_stack((lon_for_ERA5_tiles, lat))
+            locs_for_ERA5_tiles = gk.LocationSet(locs_matrix)
+            ext_for_ERA5_tiles = gk.Extent.fromLocationSet(locs_for_ERA5_tiles)
+ 
+        assert ext_for_ERA5_tiles.xMin > -22.5 and ext_for_ERA5_tiles.xMax < 337.5
+
         if isinstance(source, str) and source_type != "user":
             if source_type == "ERA5":
                 source_constructor = rk_weather.Era5Source
@@ -164,7 +183,7 @@ class WorkflowManager:
             else:
                 raise RuntimeError("Unknown source_type")
 
-            source = source_constructor(source, bounds=self.ext, **kwargs)
+            source = source_constructor(source, bounds=ext_for_ERA5_tiles, **kwargs) #Manipulate ext here
 
             # Load the requested variables
             source.sload(*variables)
@@ -185,7 +204,7 @@ class WorkflowManager:
         for var in variables:
             self.sim_data[var] = source.get(
                 var,
-                self.locs,
+                locs_for_ERA5_tiles, #Manipulate locs here
                 interpolation=spatial_interpolation_mode,
                 force_as_data_frame=True,
             )
