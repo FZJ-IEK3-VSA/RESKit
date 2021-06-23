@@ -128,7 +128,7 @@ class WindWorkflowManager(WorkflowManager):
             num, source_type)
         return self
 
-    def logarithmic_projection_of_wind_speeds_to_hub_height(self):
+    def logarithmic_projection_of_wind_speeds_to_hub_height(self, consider_boundary_layer_height=False):
         """
         Projects the wind speed values to the hub height.
 
@@ -140,12 +140,30 @@ class WindWorkflowManager(WorkflowManager):
         assert "roughness" in self.placements.columns
         assert hasattr(self, "elevated_wind_speed_height")
 
-        self.sim_data['elevated_wind_speed'] = rk_wind_core.logarithmic_profile.apply_logarithmic_profile_projection(
+        if consider_boundary_layer_height:
+            # When the hub height is above the PBL, then only project to the PBL
+            target_height = np.minimum(
+                    self.sim_data['boundary_layer_height'],
+                    self.placements['hub_height'].values)
+
+            # When the PBL is below the elevated_wind_speed_height, then no projection
+            # should be performed. This can be effectlvely accomplished by setting the 
+            # target height to that of the elevated_wind_speed_height
+            sel = target_height > self.elevated_wind_speed_height
+            target_height[sel] = self.elevated_wind_speed_height
+
+        else:
+            target_height = self.placements['hub_height'].values
+
+        tmp = rk_wind_core.logarithmic_profile.apply_logarithmic_profile_projection(
             self.sim_data['elevated_wind_speed'],
             measured_height=self.elevated_wind_speed_height,
-            target_height=self.placements['hub_height'].values,
+            target_height=target_height,
             roughness=self.placements['roughness'].values
         )
+        
+        self.sim_data['elevated_wind_speed'] = tmp
+        
         self.elevated_wind_speed_height = self.placements['hub_height'].values
 
         return self
@@ -217,4 +235,45 @@ class WindWorkflowManager(WorkflowManager):
 
         self.sim_data['capacity_factor'] = gen
 
+        return self
+
+    def interpolate_raster_vals_to_hub_height(self, name: str, height_to_raster_dict: dict, **kwargs):
+        """Given several raster datasets which correspond to a desired value (e.g. average wind speed) at 
+        different altitudes, this function will read values for each placement location from each of these 
+        datasets, and will then linearly interpolate them to the hub height of each turbine
+
+        Parameters
+        ----------
+        name : str 
+            The name of the variable to create (will be placed in the `self.placements` member)
+
+        height_to_raster_dict : dict
+            A dictionary which maps altitude values to raster datasets
+
+        Return
+        ------
+            A reference to the invoking WindWorkflowManager
+        """
+        known_heights = sorted(height_to_raster_dict.keys())
+        known_vals = []
+        for h in known_heights:
+            known_vals.append(
+                self.extract_raster_values_at_placements(
+                    height_to_raster_dict[h],
+                    **kwargs
+                ))
+
+        interpolated_vals = np.full_like(known_vals[0], np.nan)
+        hh = self.placements['hub_height'].values
+        for hi in range(len(known_heights) - 1):
+            sel = np.logical_and(
+                hh >= known_heights[hi],
+                hh < known_heights[hi + 1])
+            if sel.any():
+                interpolated_vals[sel] = (hh[sel] - known_heights[hi]) / (known_heights[hi + 1] - known_heights[hi]) * (known_vals[hi + 1] - known_vals[hi]) + known_vals[hi]
+
+        if np.isnan(interpolated_vals).any():
+            raise RuntimeError("Could not determine interpolation for all hub heights")
+
+        self.placements[name] = interpolated_vals
         return self
