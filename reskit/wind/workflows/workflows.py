@@ -166,12 +166,16 @@ def offshore_wind_era5(placements, era5_path, output_netcdf_path=None, output_va
 
     wf.logarithmic_projection_of_wind_speeds_to_hub_height()
 
+    # gaussian convolution of the power curve to account for statistical events in wind speed
     wf.convolute_power_curves(
-        scaling=0.04,    # Taken as MERRA2 from onshore_wind_merra2
-        base=0.5         # Taken as MERRA2 from onshore_wind_merra2
+        scaling=0.04,    # standard deviation of gaussian equals scaling*v + base
+        base=0.5         # values are derived from validation with real wind turbine data
     )
 
-    wind_speed_scaling=0.92
+    # Adjust wind speeds
+    # elevated windspeds are corrected by a linear function by comparing to real wind turbine data.
+    # corrected_speed = windspeed * wind_speed_scaling + wind_speed_offset [m/s]
+    wind_speed_scaling=0.92 
     wind_speed_offset=-0.40
     wf.sim_data['elevated_wind_speed'] = np.maximum(wf.sim_data['elevated_wind_speed'] * wind_speed_scaling - wind_speed_offset, 0 )
 
@@ -244,12 +248,15 @@ def onshore_wind_era5(placements, era5_path, gwa_100m_path, esa_cci_path, output
 
     wf.apply_air_density_correction_to_wind_speeds()
 
+    # gaussian convolution of the power curve to account for statistical events in wind speed
     wf.convolute_power_curves(
-        scaling=0.08,
-        base=0.40
+        scaling=0.08, # standard deviation of gaussian equals scaling*v + base
+        base=0.40     # values are derived from validation with real wind turbine data
     )
 
     # Adjust wind speeds
+    # elevated windspeds are corrected by a linear function by comparing to real wind turbine data.
+    # corrected_speed = windspeed * 0.75 + 1.2 [m/s]
     wf.sim_data['elevated_wind_speed'] = np.maximum(wf.sim_data['elevated_wind_speed']*0.75 + 1.20, 0 ) # Empirically found to improve simulation accuracy
 
     # do simulation

@@ -229,6 +229,7 @@ def openfield_pv_era5_unvalidated(placements, era5_path, global_solar_atlas_ghi_
     if inverter is not None:
         wf.apply_inverter_losses(inverter=inverter, **inverter_kwargs)
 
+    #loss factor to account for several other real-world influences, derived from real pv data
     wf.apply_loss_factor(0.20, variables=['capacity_factor', 'total_system_generation'])
 
     return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
