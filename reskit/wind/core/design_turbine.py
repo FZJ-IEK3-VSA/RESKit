@@ -55,7 +55,7 @@ def onshore_turbine_from_avg_wind_speed(wind_speed, constant_rotor_diam=True, ba
     """
     wind_speed = np.array(wind_speed)
     multi = wind_speed.size > 1
-
+    
     # Design Specific Power
     scaling = compute_specific_power(base_capacity, base_rotor_diam) / (np.exp(0.53769024 * np.log(reference_wind_speed) + 4.74917728))
     specific_power = scaling * np.exp(0.53769024 * np.log(wind_speed) + 4.74917728)
@@ -80,7 +80,10 @@ def onshore_turbine_from_avg_wind_speed(wind_speed, constant_rotor_diam=True, ba
     if multi:
         lt20 = hub_height < (rotor_diam / 2 + min_tip_height)
         if lt20.any():
-            hub_height[lt20] = rotor_diam[lt20] / 2 + min_tip_height
+            if constant_rotor_diam:
+                hub_height[lt20] = rotor_diam / 2 + min_tip_height
+            else:
+                hub_height[lt20] = rotor_diam[lt20] / 2 + min_tip_height
     else:
         if hub_height < (rotor_diam / 2 + min_tip_height):
             hub_height = rotor_diam / 2 + min_tip_height
