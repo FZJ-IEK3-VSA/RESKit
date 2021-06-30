@@ -87,16 +87,16 @@ def test_offshore_wind_era5(pt_wind_placements):
     assert np.isclose(gen.roughness.std(), 0)
 
     assert gen.elevated_wind_speed.shape == (140, 560)
-    assert np.isclose(gen.elevated_wind_speed.mean(), 7.58997001)
-    assert np.isclose(gen.elevated_wind_speed.min(), 0.62251284)
-    assert np.isclose(gen.elevated_wind_speed.max(), 15.26713356)
-    assert np.isclose(gen.elevated_wind_speed.std(), 2.72127635)
+    assert np.isclose(gen.elevated_wind_speed.mean(), 7.42442555)
+    assert np.isclose(gen.elevated_wind_speed.min(), 0.22976869)
+    assert np.isclose(gen.elevated_wind_speed.max(), 15.3519314)
+    assert np.isclose(gen.elevated_wind_speed.std(), 2.81001362)
 
     assert gen.capacity_factor.shape == (140, 560)
-    assert np.isclose(gen.capacity_factor.mean(), 0.6044807)
-    assert np.isclose(gen.capacity_factor.min(), 3.48962656e-06)
-    assert np.isclose(gen.capacity_factor.max(), 0.99460964)
-    assert np.isclose(gen.capacity_factor.std(), 0.31366607)
+    assert np.isclose(gen.capacity_factor.mean(), 0.60372902)
+    assert np.isclose(gen.capacity_factor.min(), -0.00052774)
+    assert np.isclose(gen.capacity_factor.max(), 1.00026984)
+    assert np.isclose(gen.capacity_factor.std(), 0.32212842)
 
 
 def test_onshore_wind_era5(pt_wind_placements):
@@ -115,13 +115,14 @@ def test_onshore_wind_era5(pt_wind_placements):
     assert np.isclose(gen.roughness.std(), 0.55593945)
 
     assert gen.elevated_wind_speed.shape == (140, 560)
-    assert np.isclose(gen.elevated_wind_speed.mean(), 6.36036701)
-    assert np.isclose(gen.elevated_wind_speed.min(), 1.31488327)
-    assert np.isclose(gen.elevated_wind_speed.max(), 12.50751751)
+
+    assert np.isclose(gen.elevated_wind_speed.mean(), 5.91036701)
+    assert np.isclose(gen.elevated_wind_speed.min(), 0.86488327)
+    assert np.isclose(gen.elevated_wind_speed.max(), 12.05751751)
     assert np.isclose(gen.elevated_wind_speed.std(), 1.99619664)
 
     assert gen.capacity_factor.shape == (140, 560)
-    assert np.isclose(gen.capacity_factor.mean(), 0.47818037)
-    assert np.isclose(gen.capacity_factor.min(), 0.00046684)
-    assert np.isclose(gen.capacity_factor.max(), 0.99989628)
-    assert np.isclose(gen.capacity_factor.std(), 0.28034374)
+    assert np.isclose(gen.capacity_factor.mean(), 0.40502108)
+    assert np.isclose(gen.capacity_factor.min(), -0.0005277)
+    assert np.isclose(gen.capacity_factor.max(), 1.00026983)
+    assert np.isclose(gen.capacity_factor.std(), 0.29887539)
