@@ -1,5 +1,5 @@
 from reskit.solar.workflows.workflows import (
-    openfield_pv_era5_unvalidated,
+    openfield_pv_era5,
     openfield_pv_merra_ryberg2019,
     openfield_pv_sarah_unvalidated)
 from reskit import TEST_DATA
@@ -16,8 +16,8 @@ def pt_pv_placements() -> pd.DataFrame:
     return df
 
 
-def test_openfield_pv_era5_unvalidated(pt_pv_placements):
-    gen = openfield_pv_era5_unvalidated(
+def test_openfield_pv_era5(pt_pv_placements):
+    gen = openfield_pv_era5(
         placements=pt_pv_placements,
         era5_path=TEST_DATA['era5-like'],
         global_solar_atlas_ghi_path=TEST_DATA['gsa-ghi-like.tif'],
@@ -92,8 +92,8 @@ def test_openfield_pv_era5_unvalidated(pt_pv_placements):
     assert np.isclose(float(gen['cell_temperature'].fillna(0).mean()), 3.752365255866971)
     assert np.isclose(float(gen['module_dc_power_at_mpp'].fillna(0).mean()), 32.22847294825896)
     assert np.isclose(float(gen['module_dc_voltage_at_mpp'].fillna(0).mean()), 12.806209106252805)
-    assert np.isclose(float(gen['capacity_factor'].fillna(0).mean()), 0.10725306315770565)
-    assert np.isclose(float(gen['total_system_generation'].fillna(0).mean()), 214.50612631541125)
+    assert np.isclose(float(gen['capacity_factor'].fillna(0).mean()), 0.10524206822349867)
+    assert np.isclose(float(gen['total_system_generation'].fillna(0).mean()), 210.48413644699733)
 
 
 def test_openfield_pv_merra_ryberg2019(pt_pv_placements):
