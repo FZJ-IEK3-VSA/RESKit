@@ -892,19 +892,33 @@ class PTRWorkflowManager(WorkflowManager):
         return self
 
 
-    def calclateEconomics(self, WACC: float = 0.08, lifetime: float = 40, calculationmethod: str = 'dersch2018', params: dict = {}):
+    def simpleStorageAndPlant():
+        pass #TODO: 6h TES, 2,5SM, efficency from Gafurov and Trieb to calculate stirage size, plant size and power output (no spaceial resolution
+
+
+    def calclateEconomics(self, WACC: float = 0.08, lifetime: float = 25, A_Aperture = -1, SF_density_total = 0.38, calculationmethod: str = 'franzmann2021', params: dict = {}):
         
         #Check inputs
-        assert 'HeattoPlant_W' in self.sim_data.keys()
+        land_size = A_Aperture / SF_density_total
         
         # Calculate annuity factor from WACC and lifetime like in Heuser
         annuity = (WACC * (1 + WACC)**lifetime) / ((1+WACC)**lifetime - 1)
         
         # calculate the average annual heat production
-        self.sim_data['annualHeat'] = self.sim_data['HeattoPlant_W'].mean(axis=0)  * (pd.Timedelta(days=365) / (self._time_index_[-1] - self._time_index_[0]))
+        #self.sim_data['annualHeat'] = self.sim_data['HeattoPlant_W'].mean(axis=0)  * (pd.Timedelta(days=365) / (self._time_index_[-1] - self._time_index_[0]))
         
-        if calculationmethod == 'dersch2018':
-            investSF = self.A_aperture_sf * params['c_A_sf'] + self.A_aperture_sf / params['SF_density'] * params['c_Land']
+        if calculationmethod == 'franzmann2021':
+            assert 'CAPEX_solar_field_USD_per_m^2_aperture' in params.keys, "'CAPEX_solar_field_USD_per_m^2_aperture' needs to be in params"
+            assert 'CAPEX_land_USD_per_m^2_land' in params.keys, "'CAPEX_land_USD_per_m^2_land' needs to be in params"
+            assert 'fixOPEX_%_CAPEX_per_a' in params.keys, "'_CAPEX_per_a' needs to be in params"
+            assert 'indirect_cost_%_CAPEX' in params.keys, "'indirect_cost_USD' needs to be in params"
+            
+            CAPEX_sf_USD = self.A_aperture_sf * params['CAPEX_solar_field_USD_per_m^2_aperture'] \
+                        + self.land_size / params['CAPEX_land_USD_per_m^2_land'] \
+                        + params['CAPEX_land_USD_per_m^2_land']
+            
+            
+            
         elif False:
             pass
 

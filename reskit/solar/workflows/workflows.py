@@ -19,7 +19,7 @@ def csp_ptr_V1(
     verbose = False
     ):
     """ Calculates the heat output from the solar field based on parabolic trough technology. The workflow is not yet finally validated (but is still plausible).
-        Status: 24.03.2021
+        Date: 27.07.2021
         Author: David Franzmann IEK -3
 
     Args:
@@ -41,7 +41,8 @@ def csp_ptr_V1(
     a1 = ptr_data['a1']                  #gafurov2013: 0.000884
     a2 = ptr_data['a2']                 #gafurov2013: 0.00005369
     a3 = ptr_data['a3']                          #gafurov2013
-    SF_density = ptr_data['SF_density']              #gafurov2013
+    SF_density_direct = ptr_data['SF_density_direct'] 
+    SF_density_total = ptr_data['SF_density_total'] 
     eta_ptr_max = ptr_data['eta_ptr_max']             #gafurov2013: 0.742
     eta_cleaness = ptr_data['eta_cleaness']
     A_aperture_sf = ptr_data['A_aperture_sf']           #gafurov2013: 909060
@@ -76,7 +77,7 @@ def csp_ptr_V1(
 
     wf = PTRWorkflowManager(placements)
 
-    # 3) read in Input data from ERA5 
+    # 3) read in Input data
     if verbose:
         tic = time.time()
     wf.read(
@@ -125,7 +126,7 @@ def csp_ptr_V1(
     # 6) doing selfmade calulations until Heat to HTF
     wf.calculateCosineLossesParabolicTrough(orientation=orientation)
     wf.calculateIAM(a1=a1, a2=a2, a3=a3)
-    wf.calculateShadowLosses(method='wagner2011', SF_density=SF_density)
+    wf.calculateShadowLosses(method='wagner2011', SF_density=SF_density_direct)
     wf.calculateWindspeedLosses(max_windspeed_threshold=maxWindspeed)
     wf.calculateDegradationLosses(efficencyDropPerYear=efficencyDropPerYear, lifetime=lifetime)
     wf.calculateHeattoHTF(A_aperture_sf=A_aperture_sf, eta_ptr_max=eta_ptr_max, eta_cleaness=eta_cleaness)
@@ -154,9 +155,9 @@ def csp_ptr_V1(
     
     # 9) calculate economics
     # Todo: adjust size of annual_heat... from 1D to 2D, or change the storage type
-    # wf.calclateEconomics(
-    #     params={'c_A_sf': 1, 'c_Land': 1, 'SF_density': SF_density} 
-    #     )
+    wf.calclateEconomics(
+        params={'c_A_sf': 1, 'c_Land': 1, 'SF_density': SF_density_total} 
+        )
 
 
     if verbose:
