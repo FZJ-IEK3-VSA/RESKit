@@ -128,7 +128,7 @@ def offshore_wind_merra_caglayan2019(placements, merra_path, output_netcdf_path=
     return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
 
-def offshore_wind_era5(placements, era5_path, output_netcdf_path=None, output_variables=None):
+def offshore_wind_era5_unvalidated(placements, era5_path, output_netcdf_path=None, output_variables=None):
     """
     Simulates offshore wind generation using NASA's ERA5 database [1].
 
@@ -184,7 +184,7 @@ def offshore_wind_era5(placements, era5_path, output_netcdf_path=None, output_va
     return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
 
-def onshore_wind_era5(placements, era5_path, gwa_100m_path, esa_cci_path, output_netcdf_path=None, output_variables=None):
+def onshore_wind_era5_unvalidated(placements, era5_path, gwa_100m_path, esa_cci_path, output_netcdf_path=None, output_variables=None):
     """
     Simulates onshore wind generation using ECMWF's ERA5 database [1]. 
     
