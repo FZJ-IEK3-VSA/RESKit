@@ -37,7 +37,7 @@ def onshore_wind_merra_ryberg2019_europe(placements, merra_path, gwa_50m_path, c
     """
 
     wf = WindWorkflowManager(placements)
-
+  
     wf.read(
         variables=['elevated_wind_speed',
                    "surface_pressure",
@@ -218,7 +218,12 @@ def onshore_wind_era5(placements, era5_path, gwa_100m_path, esa_cci_path, output
     """
 
     wf = WindWorkflowManager(placements)
-
+  
+    # limit the input placements longitude to range of -180...180
+    assert wf.placements["lon"].between(-180, 180, inclusive=True).any()
+    # limit the input placements latitude to range of -90...90
+    assert wf.placements["lat"].between(-90, 90, inclusive=True).any()
+    
     wf.read(
         variables=['elevated_wind_speed',
                    "surface_pressure",

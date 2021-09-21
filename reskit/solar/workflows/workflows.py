@@ -169,6 +169,11 @@ def openfield_pv_era5(placements, era5_path, global_solar_atlas_ghi_path, global
 
     wf = SolarWorkflowManager(placements)
     wf.configure_cec_module(module)
+    
+    # limit the input placements longitude to range of -180...180
+    assert wf.placements["lon"].between(-180, 180, inclusive=True).any()
+    # limit the input placements latitude to range of -90...90
+    assert wf.placements["lat"].between(-90, 90, inclusive=True).any()
 
     if not "tilt" in wf.placements.columns:
         wf.estimate_tilt_from_latitude(convention="Ryberg2020")
@@ -194,20 +199,22 @@ def openfield_pv_era5(placements, era5_path, global_solar_atlas_ghi_path, global
     wf.filter_positive_solar_elevation()
 
     wf.direct_normal_irradiance_from_trigonometry()
+    
+    if (wf.placements["lat"] < 60).all() and (wf.placements["lon"] > -45).all():
 
-    wf.adjust_variable_to_long_run_average(
-        variable='global_horizontal_irradiance',
-        source_long_run_average=rk_weather.Era5Source.LONG_RUN_AVERAGE_GHI,
-        real_long_run_average=global_solar_atlas_ghi_path,
-        real_lra_scaling=1000 / 24,  # cast to hourly average kWh
-    )
-
-    wf.adjust_variable_to_long_run_average(
-        variable='direct_normal_irradiance',
-        source_long_run_average=rk_weather.Era5Source.LONG_RUN_AVERAGE_DNI,
-        real_long_run_average=global_solar_atlas_dni_path,
-        real_lra_scaling=1000 / 24,  # cast to hourly average kWh
-    )
+      wf.adjust_variable_to_long_run_average(
+          variable='global_horizontal_irradiance',
+          source_long_run_average=rk_weather.Era5Source.LONG_RUN_AVERAGE_GHI,
+          real_long_run_average=global_solar_atlas_ghi_path,
+          real_lra_scaling=1000 / 24,  # cast to hourly average kWh
+      )
+  
+      wf.adjust_variable_to_long_run_average(
+          variable='direct_normal_irradiance',
+          source_long_run_average=rk_weather.Era5Source.LONG_RUN_AVERAGE_DNI,
+          real_long_run_average=global_solar_atlas_dni_path,
+          real_lra_scaling=1000 / 24,  # cast to hourly average kWh
+      )
 
     wf.determine_extra_terrestrial_irradiance(model="spencer", solar_constant=1370)
     wf.determine_air_mass(model='kastenyoung1989')
