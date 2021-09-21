@@ -128,7 +128,7 @@ def offshore_wind_merra_caglayan2019(placements, merra_path, output_netcdf_path=
     return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
 
-def offshore_wind_era5(placements, era5_path, output_netcdf_path=None, output_variables=None):
+def offshore_wind_era5(placements, era5_path, gwa_100m_path, output_netcdf_path=None, output_variables=None):
     """
     Simulates offshore wind generation using NASA's ERA5 database [1].
 
@@ -161,6 +161,12 @@ def offshore_wind_era5(placements, era5_path, output_netcdf_path=None, output_va
         source=era5_path,
         set_time_index=True,
         verbose=False)
+
+    wf.spatial_disaggregation(
+        variable='elevated_wind_speed',
+        source_high_resolution=gwa_100m_path,
+        source_low_resolution=rk_weather.GWAmeanSource.GWA_with_ERA5_pixel,
+    )
 
     wf.set_roughness(0.0002)
 
@@ -229,11 +235,18 @@ def onshore_wind_era5(placements, era5_path, gwa_100m_path, esa_cci_path, output
         set_time_index=True,
         verbose=False)
 
-    wf.adjust_variable_to_long_run_average(
+    #use new method spatial disaggregation
+    wf.spatial_disaggregation(
         variable='elevated_wind_speed',
-        source_long_run_average=rk_weather.Era5Source.LONG_RUN_AVERAGE_WINDSPEED,
-        real_long_run_average=gwa_100m_path
+        source_high_resolution=gwa_100m_path,
+        source_low_resolution=rk_weather.GWAmeanSource.GWA_with_ERA5_pixel,
     )
+
+    # wf.adjust_variable_to_long_run_average(
+    #     variable='elevated_wind_speed',
+    #     source_long_run_average=rk_weather.Era5Source.LONG_RUN_AVERAGE_WINDSPEED,
+    #     real_long_run_average=gwa_100m_path
+    # )
 
     wf.estimate_roughness_from_land_cover(
         path=esa_cci_path,
