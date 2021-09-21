@@ -277,6 +277,56 @@ class WorkflowManager:
         self.sim_data[variable] *= real_lra * real_lra_scaling / source_lra
         return self
 
+    def spatial_disaggregation(
+        self,
+        variable: str,
+        source_high_resolution: Union[str, float, np.ndarray],
+        source_low_resolution: Union[str, float, np.ndarray],
+        #real_lra_scaling: float = 1,
+        spatial_interpolation: str = "linear-spline",
+    ):
+        '''[summary]
+
+        Parameters
+        ----------
+        variable : str
+            [description]
+        source_long_run_average : Union[str, float, np.ndarray]
+            [description]
+        real_long_run_average : Union[str, float, np.ndarray]
+            [description]
+        real_lra_scaling : float, optional
+            [description], by default 1
+        spatial_interpolation : str, optional
+            [description], by default "linear-spline"
+        '''
+        #Get values from high resolution tiff file
+        if isinstance(source_high_resolution, str):
+            correction_values_high_res = gk.raster.interpolateValues(#TODO change here
+                source_high_resolution, self.locs, mode=spatial_interpolation
+            )
+            #assert not np.isnan(correction_values_high_res).any() and (correction_values_high_res > 0).all()
+        else:
+            correction_values_high_res = source_high_resolution
+
+        #Get values from low resolution tiff file (meaned over eg. ERA5)
+        if isinstance(source_low_resolution, str):
+            correction_values_low_res = gk.raster.interpolateValues(#TODO change here
+                source_low_resolution, self.locs, mode=spatial_interpolation
+            )
+            #assert not np.isnan(correction_values_low_res).any() and (correction_values_low_res > 0).all()
+        else:
+            correction_values_low_res = source_low_resolution
+
+        # correction factors:
+        factors = correction_values_high_res / correction_values_low_res
+        factors = np.nan_to_num(factors, nan=1)
+        assert (factors > 0).all()
+
+        #update values
+        self.sim_data[variable] = self.sim_data[variable] * factors
+        return self
+
     # Stage 5: post processing
     def apply_loss_factor(
         self,
