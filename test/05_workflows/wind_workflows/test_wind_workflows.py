@@ -77,6 +77,7 @@ def test_offshore_wind_era5(pt_wind_placements):
     # placements, era5_path, output_netcdf_path=None, output_variables=None):
     gen = offshore_wind_era5(
         placements=pt_wind_placements,
+        gwa_100m_path=TEST_DATA['gwa100-like.tif'],
         era5_path=TEST_DATA['era5-like'],
     )
 

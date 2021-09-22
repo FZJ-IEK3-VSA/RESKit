@@ -89,6 +89,29 @@ def pt_WorkflowManager_loaded(pt_WorkflowManager_initialized: WorkflowManager) -
 
     return man
 
+def test_WorkflowManager_spatial_disagregation(pt_WorkflowManager_initialized: WorkflowManager) -> WorkflowManager:
+    man = pt_WorkflowManager_initialized
+    
+    man.read(
+        variables=['global_horizontal_irradiance',
+                   "direct_horizontal_irradiance",],
+        source_type="ERA5",
+        source=rk.TEST_DATA['era5-like'],
+        set_time_index=True,
+        verbose=False,
+        spatial_interpolation_mode='bilinear',
+        temporal_reindex_method='nearest')
+
+    man.spatial_disaggregation(
+        variable='global_horizontal_irradiance',
+        source_high_resolution=TEST_DATA['gsa-ghi-like.tif'],
+        source_low_resolution=rk.weather.GSAmeanSource.GHI_with_ERA5_pixel,
+    )
+    man.spatial_disaggregation(
+        variable='direct_horizontal_irradiance',
+        source_high_resolution=TEST_DATA['gsa-ghi-like.tif'],
+        source_low_resolution=rk.weather.GSAmeanSource.GHI_with_ERA5_pixel,
+    )
 
 def test_WorkflowManager_adjust_variable_to_long_run_average(pt_WorkflowManager_loaded: WorkflowManager) -> WorkflowManager:
     man = pt_WorkflowManager_loaded

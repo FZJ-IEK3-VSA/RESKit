@@ -262,6 +262,14 @@ class WorkflowManager:
             real_lra = gk.raster.interpolateValues(
                 real_long_run_average, self.locs, mode=spatial_interpolation
             )
+            #if getting values fails, it could be because of interpolation method.
+            # thise values will be replaced with the nearest interpolation method
+            if np.isnan(real_lra).any():
+                real_lra_near = gk.raster.interpolateValues(
+                real_long_run_average, self.locs, mode='near'
+                )
+                real_lra[np.isnan(real_lra)] = real_lra_near[np.isnan(real_lra)]
+
             #assert not np.isnan(real_lra).any() and (real_lra > 0).all()
         else:
             real_lra = real_long_run_average
@@ -270,6 +278,13 @@ class WorkflowManager:
             source_lra = gk.raster.interpolateValues(
                 source_long_run_average, self.locs, mode=spatial_interpolation
             )
+            #if getting values fails, it could be because of interpolation method.
+            # thise values will be replaced with the nearest interpolation method
+            if np.isnan(source_lra).any():
+                source_lra_nearest = gk.raster.interpolateValues(
+                source_long_run_average, self.locs, mode='near'
+                )
+                source_lra[np.isnan(source_lra)] = source_lra_nearest[np.isnan(source_lra)]
             #assert not np.isnan(source_lra).any() and (source_lra > 0).all()
         else:
             source_lra = source_long_run_average
