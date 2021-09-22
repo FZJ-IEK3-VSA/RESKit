@@ -214,6 +214,7 @@ class WorkflowManager:
         real_long_run_average: Union[str, float, np.ndarray],
         real_lra_scaling: float = 1,
         spatial_interpolation: str = "linear-spline",
+        nodata_fallback: str= 'nan',
     ):
         """Adjusts the average mean of the specified variable to a known long-run-average
 
@@ -251,7 +252,11 @@ class WorkflowManager:
             - Options are: "near", "linear-spline", "cubic-spline", "average"
             - By default "linear-spline"
             - See for more info: geokit.raster.interpolateValues
-
+        
+        nodata_fallback: str, optional
+            When real_long_run_average has no data, it can be decided between fallbackoptions:
+            -'source': use source data
+            - 'nan': return np.nan for missing values
         Returns
         -------
         WorkflowManager
@@ -293,6 +298,8 @@ class WorkflowManager:
         # nan result will stay nan results, as these placements cannot be calculated any more
         factors = real_lra * real_lra_scaling / source_lra
 
+        if nodata_fallback.lower() == 'source':
+            factors[np.isnan(factors)] = 1
 
         self.sim_data[variable] = factors * self.sim_data[variable]
         return self

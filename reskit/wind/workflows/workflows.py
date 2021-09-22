@@ -239,7 +239,8 @@ def onshore_wind_era5(placements, era5_path, gwa_100m_path, esa_cci_path, output
     wf.adjust_variable_to_long_run_average(
         variable='elevated_wind_speed',
         source_long_run_average=rk_weather.Era5Source.LONG_RUN_AVERAGE_WINDSPEED,
-        real_long_run_average=gwa_100m_path
+        real_long_run_average=gwa_100m_path,
+        nodata_fallback = 'nan',
     )
 
     wf.estimate_roughness_from_land_cover(

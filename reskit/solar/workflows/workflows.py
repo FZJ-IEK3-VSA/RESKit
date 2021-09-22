@@ -111,7 +111,7 @@ def openfield_pv_merra_ryberg2019(placements, merra_path, global_solar_atlas_ghi
     return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
 
-def openfield_pv_era5(placements, era5_path, global_solar_atlas_ghi_path, global_solar_atlas_dni_path, module="WINAICO WSx-240P6", elev=300, tracking="fixed", inverter=None, inverter_kwargs={}, tracking_args={}, output_netcdf_path=None, output_variables=None):
+def openfield_pv_era5(placements, era5_path, global_solar_atlas_ghi_path, global_solar_atlas_dni_path, module="WINAICO WSx-240P6", elev=300, tracking="fixed", inverter=None, inverter_kwargs={}, tracking_args={}, gsa_nodata_fallback='source', output_netcdf_path=None, output_variables=None):
     """
 
     openfield_pv_era5_unvalidated(placements, era5_path, global_solar_atlas_ghi_path, global_solar_atlas_dni_path, module="WINAICO WSx-240P6", elev=300, tracking="fixed", inverter=None, inverter_kwargs={}, tracking_args={}, output_netcdf_path=None, output_variables=None)
@@ -152,6 +152,12 @@ def openfield_pv_era5(placements, era5_path, global_solar_atlas_ghi_path, global
                 Determines wether you want to model your PV system with an inverter or not.
                 Default is None.
                 See reskit.solar.SolarWorkflowManager.apply_inverter_losses for more usage information.
+    
+    nodata_fallback: str, optional
+        When real_long_run_average has no data, it can be decided between fallback options:
+        -'source': use source data
+        -'nan': return np.nan for missing values
+
 
     output_netcdf_path: str
                         Path to a file that you want to save your output NETCDF file at.
@@ -206,6 +212,7 @@ def openfield_pv_era5(placements, era5_path, global_solar_atlas_ghi_path, global
         source_long_run_average=rk_weather.Era5Source.LONG_RUN_AVERAGE_GHI,
         real_long_run_average=global_solar_atlas_ghi_path,
         real_lra_scaling=1000 / 24,  # cast to hourly average kWh
+        nodata_fallback = gsa_nodata_fallback,
     )
 
     # wf.spatial_disaggregation(
@@ -219,6 +226,7 @@ def openfield_pv_era5(placements, era5_path, global_solar_atlas_ghi_path, global
         source_long_run_average=rk_weather.Era5Source.LONG_RUN_AVERAGE_DNI,
         real_long_run_average=global_solar_atlas_dni_path,
         real_lra_scaling=1000 / 24,  # cast to hourly average kWh
+        nodata_fallback = gsa_nodata_fallback,
     )
 
     wf.determine_extra_terrestrial_irradiance(model="spencer", solar_constant=1370)
