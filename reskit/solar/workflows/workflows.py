@@ -175,6 +175,11 @@ def openfield_pv_era5(placements, era5_path, global_solar_atlas_ghi_path, global
 
     wf = SolarWorkflowManager(placements)
     wf.configure_cec_module(module)
+    
+    # limit the input placements longitude to range of -180...180
+    assert wf.placements["lon"].between(-180, 180, inclusive=True).any()
+    # limit the input placements latitude to range of -90...90
+    assert wf.placements["lat"].between(-90, 90, inclusive=True).any()
 
     if not "tilt" in wf.placements.columns:
         wf.estimate_tilt_from_latitude(convention="Ryberg2020")
