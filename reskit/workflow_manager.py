@@ -262,7 +262,7 @@ class WorkflowManager:
             real_lra = gk.raster.interpolateValues(
                 real_long_run_average, self.locs, mode=spatial_interpolation
             )
-            assert not np.isnan(real_lra).any() and (real_lra > 0).all()
+            #assert not np.isnan(real_lra).any() and (real_lra > 0).all()
         else:
             real_lra = real_long_run_average
 
@@ -270,11 +270,16 @@ class WorkflowManager:
             source_lra = gk.raster.interpolateValues(
                 source_long_run_average, self.locs, mode=spatial_interpolation
             )
-            assert not np.isnan(source_lra).any() and (source_lra > 0).all()
+            #assert not np.isnan(source_lra).any() and (source_lra > 0).all()
         else:
             source_lra = source_long_run_average
 
-        self.sim_data[variable] *= real_lra * real_lra_scaling / source_lra
+        #calulate scaling factor:
+        # nan result will stay nan results, as these placements cannot be calculated any more
+        factors = real_lra * real_lra_scaling / source_lra
+
+
+        self.sim_data[variable] = factors * self.sim_data[variable]
         return self
 
     def spatial_disaggregation(
@@ -282,7 +287,7 @@ class WorkflowManager:
         variable: str,
         source_high_resolution: Union[str, float, np.ndarray],
         source_low_resolution: Union[str, float, np.ndarray],
-        #real_lra_scaling: float = 1,
+        real_lra_scaling: float = 1,
         spatial_interpolation: str = "linear-spline",
     ):
         '''[summary]
@@ -320,11 +325,11 @@ class WorkflowManager:
 
         # correction factors:
         factors = correction_values_high_res / correction_values_low_res
-        factors = np.nan_to_num(factors, nan=1)
+        factors = np.nan_to_num(factors, nan=1/real_lra_scaling)
         assert (factors > 0).all()
 
         #update values
-        self.sim_data[variable] = self.sim_data[variable] * factors
+        self.sim_data[variable] = self.sim_data[variable] * factors * real_lra_scaling
         return self
 
     # Stage 5: post processing

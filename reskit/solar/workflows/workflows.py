@@ -210,7 +210,7 @@ def openfield_pv_era5(placements, era5_path, global_solar_atlas_ghi_path, global
 
     wf.spatial_disaggregation(
         variable='direct_normal_irradiance',
-        source_high_resolution=global_solar_atlas_ghi_path,
+        source_high_resolution=global_solar_atlas_dni_path,
         source_low_resolution=rk_weather.GSAmeanSource.DNI_with_ERA5_pixel,
     )
 
