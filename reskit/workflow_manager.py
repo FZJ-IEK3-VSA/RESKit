@@ -2,6 +2,7 @@ import geokit as gk
 
 import pandas as pd
 import numpy as np
+import os
 from os import mkdir, environ
 from os.path import join, isfile, isdir
 from collections import OrderedDict, namedtuple
@@ -313,6 +314,11 @@ class WorkflowManager:
         #calulate scaling factor:
         # nan result will stay nan results, as these placements cannot be calculated any more
         factors = real_lra * real_lra_scaling / source_lra
+
+        #write info with missing values to sim_data:
+        self.sim_data[f'missing_values_{os.path.basename(real_long_run_average)}'] = \
+            np.isnan(factors)
+
 
         if nodata_fallback.lower() == 'source':
             factors[np.isnan(factors)] = 1
