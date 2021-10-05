@@ -1,3 +1,4 @@
+from logging import warning
 from ... import weather as rk_weather
 from .solar_workflow_manager import SolarWorkflowManager
 from .csp_workflow_manager import PTRWorkflowManager
@@ -10,7 +11,7 @@ def csp_ptr_V1(
     placements,
     era5_path,
     global_solar_atlas_dni_path,
-    datasetname ='Validation 1',
+    datasetname ='Validation 10',
     elev_path = None,
     output_netcdf_path=None,
     output_variables=None,
@@ -35,114 +36,144 @@ def csp_ptr_V1(
 
     # 1) Load input data
 
-    ptr_data = load_dataset(datasetname=datasetname)
+    # ptr_data = load_dataset(datasetname=datasetname)
+    
+    # orientation = ptr_data['orientation']
+    # a1 = ptr_data['a1']                  #gafurov2013: 0.000884
+    # a2 = ptr_data['a2']                 #gafurov2013: 0.00005369
+    # a3 = ptr_data['a3']                          #gafurov2013
+    # SF_density_direct = ptr_data['SF_density_direct'] 
+    # SF_density_total = ptr_data['SF_density_total'] 
+    # eta_ptr_max = ptr_data['eta_ptr_max']             #gafurov2013: 0.742
+    # eta_cleaness = ptr_data['eta_cleaness']
+    # A_aperture_sf = ptr_data['A_aperture_sf']           #gafurov2013: 909060
+    # #relHeatLosses = ptr_data['relHeatLosses']            #gafurov2013
+    # #ratedFieldOutputHeat_W = 1000 * A_aperture_sf * eta_ptr_max #from nowhere
+    # maxWindspeed = ptr_data['maxWindspeed'] #m/s
+    # b = np.array([ptr_data['b0'],      #b0
+    #                 ptr_data['b1'],    #b1
+    #                 ptr_data['b2'],    #b2
+    #                 ptr_data['b3'],    #b3
+    #                 ptr_data['b4']])   #b4
+    # relTMplant = ptr_data['relTMplant'] #J/K m2
+    # maxHTFTemperature = ptr_data['maxHTFTemperature'] #°C
+    # minHTFTemperature = ptr_data['minHTFTemperature'] #°C
+    # inletHTFTemperature = ptr_data['inletHTFTemperature'] #°C
+    # add_losses_coefficient = ptr_data['add_losses_coefficient']
+    # discretizationmethod = ptr_data['discretizationmethod']
+    # efficencyDropPerYear = ptr_data['efficencyDropPerYear']
+    # lifetime = ptr_data['lifetime']
+    # I_DNI_nom = 830 #W/m^2
 
-    orientation = ptr_data['orientation']
-    a1 = ptr_data['a1']                  #gafurov2013: 0.000884
-    a2 = ptr_data['a2']                 #gafurov2013: 0.00005369
-    a3 = ptr_data['a3']                          #gafurov2013
-    SF_density_direct = ptr_data['SF_density_direct'] 
-    SF_density_total = ptr_data['SF_density_total'] 
-    eta_ptr_max = ptr_data['eta_ptr_max']             #gafurov2013: 0.742
-    eta_cleaness = ptr_data['eta_cleaness']
-    A_aperture_sf = ptr_data['A_aperture_sf']           #gafurov2013: 909060
-    relHeatLosses = ptr_data['relHeatLosses']            #gafurov2013
-    ratedFieldOutputHeat_W = 1000 * A_aperture_sf * eta_ptr_max #from nowhere
-    maxWindspeed = ptr_data['maxWindspeed'] #m/s
-    b = np.array([ptr_data['b0'],      #b0
-                    ptr_data['b1'],    #b1
-                    ptr_data['b2'],    #b2
-                    ptr_data['b3'],    #b3
-                    ptr_data['b4']])   #b4
-    relTMplant = ptr_data['relTMplant'] #J/K m2
-    maxHTFTemperature = ptr_data['maxHTFTemperature'] #°C
-    minHTFTemperature = ptr_data['minHTFTemperature'] #°C
-    inletHTFTemperature = ptr_data['inletHTFTemperature'] #°C
-    add_losses_coefficient = ptr_data['add_losses_coefficient']
-    discretizationmethod = ptr_data['discretizationmethod']
-    efficencyDropPerYear = ptr_data['efficencyDropPerYear']
-    lifetime = ptr_data['lifetime']
-
-    #parasitic loss parameters from gafurov 2013
-    params_PL_gafurov = {}
-    params_PL_gafurov['I_DNI_nom'] = ptr_data['I_DNI_nom'] # w/m^2
-    params_PL_gafurov['PL_plant_fix'] = ptr_data['PL_plant_fix']
-    params_PL_gafurov['PL_sf_track'] = ptr_data['PL_sf_track']
-    params_PL_gafurov['PL_sf_pumping'] = ptr_data['PL_sf_pumping']
-    params_PL_gafurov['PL_plant_pumping'] = ptr_data['PL_plant_pumping']
-    params_PL_gafurov['PL_plant_other'] = ptr_data['PL_plant_other']
+    # #parasitic loss parameters from gafurov 2013
+    # params_PL_gafurov = {}
+    # params_PL_gafurov['I_DNI_nom'] = ptr_data['I_DNI_nom'] # w/m^2
+    # params_PL_gafurov['PL_plant_fix'] = ptr_data['PL_plant_fix']
+    # params_PL_gafurov['PL_sf_track'] = ptr_data['PL_sf_track']
+    # params_PL_gafurov['PL_sf_pumping'] = ptr_data['PL_sf_pumping']
+    # params_PL_gafurov['PL_plant_pumping'] = ptr_data['PL_plant_pumping']
+    # params_PL_gafurov['PL_plant_other'] = ptr_data['PL_plant_other']
 
 
+    # #cost data
+    # params_economics = {}
+    # params_economics['CAPEX_plant_cost_USD_per_kW'] = ptr_data['CAPEX_plant_cost_USD_per_kW']
+    # params_economics['CAPEX_storage_cost_USD_per_kWh'] = ptr_data['CAPEX_storage_cost_USD_per_kWh']
+    # params_economics['CAPEX_solar_field_USD_per_m^2_aperture'] = ptr_data['CAPEX_solar_field_USD_per_m^2_aperture']
+    # params_economics['CAPEX_land_USD_per_m^2_land'] = ptr_data['CAPEX_land_USD_per_m^2_land']
+    # params_economics['CAPEX_indirect_cost_%_CAPEX'] = ptr_data['CAPEX_indirect_cost_%_CAPEX']
+    # params_economics['  '] = 2
+    
+    wf = PTRWorkflowManager(placements)
+    
+    ptr_data = wf.loadPTRdata(datasetname=datasetname)
+    wf.determine_area()
+    
+    #Check placements
+    # if not 'aperture_area_m2' in placements.columns:
+    #     placements['aperture_area_m2'] = placements['land_area_m2'] * ptr_data['SF_density_total']
+    
     # 2) Create instance of PTR worflowmanager 
 
-    wf = PTRWorkflowManager(placements)
-
+    # wf.sim_data['ptr_data'] = ptr_data
+    
     # 3) read in Input data
     if verbose:
         tic = time.time()
     wf.read(
-        variables=["direct_horizontal_irradiance",
-                    "surface_air_temperature",
-                    "surface_wind_speed"],
+        variables=[#"global_horizontal_irradiance",
+                   "direct_horizontal_irradiance",
+                   "surface_wind_speed",
+                   "surface_pressure",
+                   "surface_air_temperature",],
         source_type="ERA5",
         source=era5_path,
         set_time_index=True,
         verbose=verbose)
-
-    # do long run averaging for DNI
-    if global_solar_atlas_dni_path == 'default_cluster':
-        global_solar_atlas_dni_path = r"/storage/internal/data/gears/geography/irradiance/global_solar_atlas/World_DNI_GISdata_LTAy_DailySum_GlobalSolarAtlas_GEOTIFF/DNI.tif"
-    if global_solar_atlas_dni_path == 'default_local':
-        global_solar_atlas_dni_path = r"R:\data\gears\geography\irradiance\global_solar_atlas\World_DNI_GISdata_LTAy_DailySum_GlobalSolarAtlas_GEOTIFF\DNI.tif"
-        
-
-
-    if global_solar_atlas_dni_path != None:
-        wf.adjust_variable_to_long_run_average(
-            variable='direct_horizontal_irradiance',
-            source_long_run_average=rk_weather.Era5Source.LONG_RUN_AVERAGE_DNI,
-            real_long_run_average=global_solar_atlas_dni_path,
-            real_lra_scaling=1000 / 24,  # cast to hourly average kWh
-    )
     
-    # apply elevation
-    wf.apply_elevation(elev_path)
-
-    wf.sim_data['ptr_data'] = ptr_data
-
-
-    if verbose:
-        toc = time.time()
-        print('Data read in within {dt}s.'.format(dt = str(toc-tic)))
-
     # 4) get length of timesteps for later numpy sizing 
 
     wf.get_timesteps()
-
+    
+    # apply elevation
+    wf.apply_elevation(elev_path)
     # 5) calculate the solar position based on pvlib
+    
     wf.calculateSolarPosition() 
+    
+    #calculate DNI from ERA5 to DNi convention
+    #ERA5 DIN: Heat flux per horizontal plane
+    #DNI convention: Heat flux per normal (to zenith) plane
+    
+    # wf.direct_normal_irradiance_from_trigonometry() #TODO: implement if working
+
+    # do long run averaging for DNI
+    if global_solar_atlas_dni_path == 'default_cluster':
+        global_solar_atlas_dni_path = r"/storage/internal/data/gears/geography/irradiance/global_solar_atlas_v2.5/World_DNI_GISdata_LTAy_AvgDailyTotals_GlobalSolarAtlas-v2_GEOTIFF/DNI.tif"
+    if global_solar_atlas_dni_path == 'default_local':
+        global_solar_atlas_dni_path = r"R:\data\gears\geography\irradiance\global_solar_atlas_v2.5\World_DNI_GISdata_LTAy_AvgDailyTotals_GlobalSolarAtlas-v2_GEOTIFF\DNI.tif"
+
+
+    #TODO: implement if working
+    # if global_solar_atlas_dni_path != None:
+    #     wf.adjust_variable_to_long_run_average(
+    #         variable='direct_horizontal_irradiance',
+    #         source_long_run_average=rk_weather.Era5Source.LONG_RUN_AVERAGE_DNI,
+    #         real_long_run_average=global_solar_atlas_dni_path,
+    #         real_lra_scaling=1000 / 24,  # cast to hourly average kWh
+    # )
+    #TODO: remove this, as this is wrong!!!
+    wf.sim_data['direct_normal_irradiance'] = wf.sim_data['direct_horizontal_irradiance']
+        
+    if verbose:
+        toc = time.time()
+        print('Data read in within {dt}s.'.format(dt = str(toc-tic)))
+   
     #wf.calculateSolarPositionfaster()
 
     # 6) doing selfmade calulations until Heat to HTF
-    wf.calculateCosineLossesParabolicTrough(orientation=orientation)
-    wf.calculateIAM(a1=a1, a2=a2, a3=a3)
-    wf.calculateShadowLosses(method='wagner2011', SF_density=SF_density_direct)
-    wf.calculateWindspeedLosses(max_windspeed_threshold=maxWindspeed)
-    wf.calculateDegradationLosses(efficencyDropPerYear=efficencyDropPerYear, lifetime=lifetime)
-    wf.calculateHeattoHTF(A_aperture_sf=A_aperture_sf, eta_ptr_max=eta_ptr_max, eta_cleaness=eta_cleaness)
+    wf.calculateCosineLossesParabolicTrough(orientation=ptr_data['orientation'])
+    wf.calculateIAM(a1=ptr_data['a1'], a2=ptr_data['a2'], a3=ptr_data['a3'])
+    wf.calculateShadowLosses(method='wagner2011', SF_density=ptr_data['SF_density_direct'])
+    wf.calculateWindspeedLosses(max_windspeed_threshold=ptr_data['maxWindspeed'])
+    wf.calculateDegradationLosses(efficencyDropPerYear=ptr_data['efficencyDropPerYear'], lifetime=ptr_data['lifetime'])
+    wf.calculateHeattoHTF(eta_ptr_max=ptr_data['eta_ptr_max'], eta_cleaness=ptr_data['eta_cleaness'])
 
+    if verbose:
+        toc = time.time()
+        print('Preanalysis within {dt}s.'.format(dt = str(toc-tic)))   
+    
     # 7) calculation heat to plant with loss model
     wf.applyHTFHeatLossModel(
         calculationmethod='dersch2018',
-        params={'b': b,
-            'A': A_aperture_sf,
-            'relTMplant': relTMplant,
-            'maxHTFTemperature': maxHTFTemperature,
+        params={'b': ptr_data['b'],
+            'relTMplant': ptr_data['relTMplant'],
+            'maxHTFTemperature': ptr_data['maxHTFTemperature'],
             'JITaccelerate': JITaccelerate,
-            'minHTFTemperature': minHTFTemperature,
-            'inletHTFTemperature': inletHTFTemperature,
-            'add_losses_coefficient': add_losses_coefficient,
-            'discretizationmethod': discretizationmethod
+            'minHTFTemperature': ptr_data['minHTFTemperature'],
+            'inletHTFTemperature': ptr_data['inletHTFTemperature'],
+            'add_losses_coefficient': ptr_data['add_losses_coefficient'],
+            'discretizationmethod': ptr_data['discretizationmethod']
             
             }
         )
@@ -151,14 +182,35 @@ def csp_ptr_V1(
     # 8) calculate Parasitic Losses of the plant
     wf.calculateParasitics(
         calculationmethod='gafurov2013',
-        params=params_PL_gafurov)
-    
-    # 9) calculate economics
-    # Todo: adjust size of annual_heat... from 1D to 2D, or change the storage type
-    wf.calclateEconomics(
-        params={'c_A_sf': 1, 'c_Land': 1, 'SF_density': SF_density_total} 
+        params={
+            'I_DNI_nom': ptr_data['I_DNI_nom'],
+            'PL_plant_fix': ptr_data['PL_plant_fix'],
+            'PL_sf_track': ptr_data['PL_sf_track'],
+            'PL_sf_pumping': ptr_data['PL_sf_pumping'],
+            'PL_plant_pumping': ptr_data['PL_plant_pumping'],
+            'PL_plant_other': ptr_data['PL_plant_other'],
+        }
         )
-
+    
+    #9) calculate economics
+    # Todo: adjust size of annual_heat... from 1D to 2D, or change the storage type
+    wf.calculateEconomics_SolarField(WACC=ptr_data['WACC'],
+                                     lifetime=ptr_data['lifetime'],
+                                     calculationmethod='franzmann2021',
+                                     params={
+                                        'CAPEX_solar_field_USD_per_m^2_aperture': ptr_data['CAPEX_solar_field_USD_per_m^2_aperture'], 
+                                        'CAPEX_land_USD_per_m^2_land': ptr_data['CAPEX_land_USD_per_m^2_land'],
+                                        'CAPEX_indirect_cost_%_CAPEX': ptr_data['CAPEX_indirect_cost_%_CAPEX'],
+                                        'electricity_price_USD_per_kWh': ptr_data['electricity_price_USD_per_kWh'],
+                                        'OPEX_%_CAPEX': ptr_data['OPEX_%_CAPEX'],
+                                     }
+                                     )
+    
+    # 10) Optimal_sizing
+    # wf.Sizing(I_DNI_nom=I_DNI_nom)
+    # wf.calculateEconomics_Plant_Storage(params = params_economics)
+    #11) LCOE
+    
 
     if verbose:
         toc = time.time()
