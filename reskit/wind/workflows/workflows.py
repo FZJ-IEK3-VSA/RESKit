@@ -190,7 +190,7 @@ def offshore_wind_era5(placements, era5_path, gwa_100m_path=None, output_netcdf_
     return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
 
-def onshore_wind_era5(placements, era5_path, gwa_100m_path, esa_cci_path, output_netcdf_path=None, output_variables=None):
+def onshore_wind_era5(placements, era5_path, gwa_100m_path, esa_cci_path, output_netcdf_path=None, output_variables=None, nodata_fallback = 'nan'):
     """
     Simulates onshore wind generation using ECMWF's ERA5 database [1]. 
     
@@ -210,6 +210,8 @@ def onshore_wind_era5(placements, era5_path, gwa_100m_path, esa_cci_path, output
         Path to a directory to put the output files, by default None
     output_variables : str, optional
         Restrict the output variables to these variables, by default None
+    nodata_fallback: str, optional
+        If no GWA available, use: (1) 'source' for ERA5 raw for simulation, (2) 'nan' for nan output
 
     Returns
     -------
@@ -245,7 +247,7 @@ def onshore_wind_era5(placements, era5_path, gwa_100m_path, esa_cci_path, output
         variable='elevated_wind_speed',
         source_long_run_average=rk_weather.Era5Source.LONG_RUN_AVERAGE_WINDSPEED,
         real_long_run_average=gwa_100m_path,
-        nodata_fallback = 'nan',
+        nodata_fallback = nodata_fallback,
     )
 
     wf.estimate_roughness_from_land_cover(
