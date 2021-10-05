@@ -212,6 +212,8 @@ def onshore_wind_era5(placements, era5_path, gwa_100m_path, esa_cci_path, output
         Restrict the output variables to these variables, by default None
     nodata_fallback: str, optional
         If no GWA available, use: (1) 'source' for ERA5 raw for simulation, (2) 'nan' for nan output
+        get flags for missing values:
+        - f'missing_values_{os.path.basename(path_to_LRA_source)}
 
     Returns
     -------

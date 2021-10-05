@@ -155,8 +155,10 @@ def openfield_pv_era5(placements, era5_path, global_solar_atlas_ghi_path, global
     
     nodata_fallback: str, optional
         When real_long_run_average has no data, it can be decided between fallback options:
-        -'source': use source data
+        -'source': use source data (ERA5 raw simulation)
         -'nan': return np.nan for missing values
+        get flags for missing values:
+        - f'missing_values_{os.path.basename(path_to_LRA_source)}
 
 
     output_netcdf_path: str
