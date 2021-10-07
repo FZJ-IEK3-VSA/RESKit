@@ -524,6 +524,10 @@ class SolarWorkflowManager(WorkflowManager):
         zen = np.radians(self.sim_data['apparent_solar_zenith'])
 
         self.sim_data['direct_normal_irradiance'] = dni_flat / np.cos(zen)
+        
+        #catch outliners from zero devision
+        index_out = (dni_flat < 25) & (np.cos(zen) < 0.05)
+        self.sim_data['direct_normal_irradiance'][index_out] = 0
 
         sel = ~np.isfinite(self.sim_data['direct_normal_irradiance'])
         sel = np.logical_or(sel, self.sim_data['direct_normal_irradiance'] < 0)
