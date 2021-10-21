@@ -54,9 +54,13 @@ class WorkflowManager:
             self.placements["lon"] = self.locs.lons
             self.placements["lat"] = self.locs.lats
             del self.placements["geom"]
-
-        assert "lon" in self.placements.columns
-        assert "lat" in self.placements.columns
+        else:
+            assert (
+                "lon" in self.placements.columns
+            ), "if geom are not point geometries, dataframe must contain lon columns"
+            assert (
+                "lat" in self.placements.columns
+            ), "if geom are not point geometries, dataframe must contain lat columns"
 
         if self.locs is None:
             self.locs = gk.LocationSet(self.placements[["lon", "lat"]].values)
