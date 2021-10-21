@@ -125,7 +125,7 @@ class WorkflowManager:
               should be "user"
 
         source : str or rk.weather.NCSource
-            The source to read weathre variables from
+            The source to read weather variables from
 
         set_time_index : bool, optional
             If True, instructs the workflow manager to set the time index to that which is read 
@@ -157,20 +157,6 @@ class WorkflowManager:
         if not set_time_index and self.time_index is None:
             raise RuntimeError("Time index is not available")
 
-        if source_type == "ERA5":
-            #Convert +-180 longitudes to -22.5_to_337.5
-            lon_pm_180 = self.placements[["lon"]].values
-            lon_smaller_225 = lon_pm_180 < -22.5
-            # if lon_smaller_225 is true, add 360 to longitude
-            lon_for_ERA5_tiles = lon_pm_180 + lon_smaller_225 * (360)
-            #create locs:
-            lat = self.placements[["lat"]].values
-            locs_matrix = np.column_stack((lon_for_ERA5_tiles, lat))
-            locs_for_ERA5_tiles = gk.LocationSet(locs_matrix)
-            ext_for_ERA5_tiles = gk.Extent.fromLocationSet(locs_for_ERA5_tiles)
- 
-        assert ext_for_ERA5_tiles.xMin > -22.5 and ext_for_ERA5_tiles.xMax < 337.5
-
         if isinstance(source, str) and source_type != "user":
             if source_type == "ERA5":
                 source_constructor = rk_weather.Era5Source
@@ -181,7 +167,7 @@ class WorkflowManager:
             else:
                 raise RuntimeError("Unknown source_type")
 
-            source = source_constructor(source, bounds=ext_for_ERA5_tiles, **kwargs) #Manipulate ext here
+            source = source_constructor(source, bounds=self.ext, **kwargs) #Manipulate ext here
 
             # Load the requested variables
             source.sload(*variables)
@@ -202,7 +188,7 @@ class WorkflowManager:
         for var in variables:
             self.sim_data[var] = source.get(
                 var,
-                locs_for_ERA5_tiles, #Manipulate locs here
+                self.locs, #Manipulate locs here
                 interpolation=spatial_interpolation_mode,
                 force_as_data_frame=True,
             )
@@ -316,7 +302,7 @@ class WorkflowManager:
         factors = real_lra * real_lra_scaling / source_lra
 
         #write info with missing values to sim_data:
-        self.sim_data[f'missing_values_{os.path.basename(real_long_run_average)}'] = \
+        self.placements[f'missing_values_{os.path.basename(real_long_run_average)}'] = \
             np.isnan(factors)
 
 
