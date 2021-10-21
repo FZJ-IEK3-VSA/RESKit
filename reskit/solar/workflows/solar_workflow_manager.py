@@ -1175,7 +1175,7 @@ class SolarWorkflowManager(WorkflowManager):
                 db = pvlib.pvsystem.retrieve_sam("SandiaInverter")
                 inverter = getattr(db, inverter)
 
-            self.sim_data['inverter_ac_power_at_mpp'] = pvlib.pvsystem.snlinverter(
+            self.sim_data['inverter_ac_power_at_mpp'] = pvlib.inverter.sandia(
                 v_dc=self.sim_data['module_dc_voltage_at_mpp'] * np.broadcast_to(self.placements.modules_per_string, self._sim_shape_),
                 p_dc=self.sim_data['module_dc_power_at_mpp'] * np.broadcast_to(self.placements.modules_per_string * self.placements.strings_per_inverter, self._sim_shape_),
                 inverter=inverter)
