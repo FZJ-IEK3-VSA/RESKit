@@ -5,7 +5,7 @@ stages:
 
 test:
   stage: test
-  # Uncomment once calamari is running again
+  # Uncomment, once Calamari is running again
   #tags: 
   #  - linux
 

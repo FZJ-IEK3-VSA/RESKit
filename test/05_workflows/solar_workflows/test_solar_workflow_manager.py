@@ -314,14 +314,15 @@ def test_SolarWorkflowManager_estimate_plane_of_array_irradiances(pt_SolarWorkfl
     )
 
     assert man.sim_data['poa_global'].shape == (54, 5)
-    assert np.isclose(man.sim_data['poa_global'].mean(), 173.08216451910278)
-    assert np.isclose(man.sim_data['poa_global'].std(), 184.95110192825993)
+
+    assert np.isclose(man.sim_data['poa_global'].mean(), 172.40167667262685)
+    assert np.isclose(man.sim_data['poa_global'].std(), 185.23278499778525)
     assert np.isclose(man.sim_data['poa_global'].min(), 0.0)
     assert np.isclose(man.sim_data['poa_global'].max(), 631.7933238472692)
 
     assert np.isclose(man.sim_data['poa_direct'].mean(), 89.60771030069739)
-    assert np.isclose(man.sim_data['poa_diffuse'].mean(), 83.47445421840538)
-    assert np.isclose(man.sim_data['poa_sky_diffuse'].mean(), 81.97085406686897)
+    assert np.isclose(man.sim_data['poa_diffuse'].mean(), 82.7939663719295)
+    assert np.isclose(man.sim_data['poa_sky_diffuse'].mean(), 81.29036622039311)
     assert np.isclose(man.sim_data['poa_ground_diffuse'].mean(), 1.5036001515364066)
 
 
@@ -342,18 +343,18 @@ def test_SolarWorkflowManager_cell_temperature_from_sapm(pt_SolarWorkflowManager
     man.cell_temperature_from_sapm(mounting='glass_open_rack')
 
     assert man.sim_data['cell_temperature'].shape == (54, 5)
-    assert np.isclose(man.sim_data['cell_temperature'].mean(), 6.468636188762014)
-    assert np.isclose(man.sim_data['cell_temperature'].std(), 6.21830546826928)
-    assert np.isclose(man.sim_data['cell_temperature'].min(), -3.2801978934030758)
+    assert np.isclose(man.sim_data['cell_temperature'].mean(), 6.450201026517998)
+    assert np.isclose(man.sim_data['cell_temperature'].std(), 6.224668629645448)
+    assert np.isclose(man.sim_data['cell_temperature'].min(), -3.2822840318732913)
     assert np.isclose(man.sim_data['cell_temperature'].max(), 21.887346030975728)
 
     # roof top PV should run hotter than open-field
     man.cell_temperature_from_sapm(mounting='glass_close_roof')
 
     assert man.sim_data['cell_temperature'].shape == (54, 5)
-    assert np.isclose(man.sim_data['cell_temperature'].mean(), 9.156048741650649)
-    assert np.isclose(man.sim_data['cell_temperature'].std(), 9.005449074195452)
-    assert np.isclose(man.sim_data['cell_temperature'].min(), -3.244002112200272)
+    assert np.isclose(man.sim_data['cell_temperature'].mean(), 9.127164473401596)
+    assert np.isclose(man.sim_data['cell_temperature'].std(), 9.01604763163867)
+    assert np.isclose(man.sim_data['cell_temperature'].min(), -3.2472441860793206)
     assert np.isclose(man.sim_data['cell_temperature'].max(), 31.957054506634336)
 
 
@@ -362,14 +363,14 @@ def test_SolarWorkflowManager_apply_angle_of_incidence_losses_to_poa(pt_SolarWor
     man.apply_angle_of_incidence_losses_to_poa()
 
     assert man.sim_data['poa_global'].shape == (54, 5)
-    assert np.isclose(man.sim_data['poa_global'].mean(), 167.04228278201626)
-    assert np.isclose(man.sim_data['poa_global'].std(), 179.5561799423248)
+    assert np.isclose(man.sim_data['poa_global'].mean(), 166.38901710226637)
+    assert np.isclose(man.sim_data['poa_global'].std(), 179.8283646632244)
     assert np.isclose(man.sim_data['poa_global'].min(), 0.0)
     assert np.isclose(man.sim_data['poa_global'].max(), 621.1083557294388)
 
     assert np.isclose(man.sim_data['poa_direct'].mean(), 87.1801383592781)
-    assert np.isclose(man.sim_data['poa_diffuse'].mean(), 79.86214442273817)
-    assert np.isclose(man.sim_data['poa_sky_diffuse'].mean(), 78.67731269029902)
+    assert np.isclose(man.sim_data['poa_diffuse'].mean(), 79.20887874298828)
+    assert np.isclose(man.sim_data['poa_sky_diffuse'].mean(), 78.02404701054911)
     assert np.isclose(man.sim_data['poa_ground_diffuse'].mean(), 1.1848317324391617)
 
 
@@ -422,15 +423,16 @@ def test_SolarWorkflowManager_simulate_with_interpolated_single_diode_approximat
     man.simulate_with_interpolated_single_diode_approximation(
         module='WINAICO WSx-240P6',
     )
+
     assert man.sim_data['capacity_factor'].shape == (54, 5)
-    assert np.isclose(man.sim_data['capacity_factor'].mean(), 0.2344529922042244)
-    assert np.isclose(man.sim_data['capacity_factor'].std(), 0.2492987459521858)
+    assert np.isclose(man.sim_data['capacity_factor'].mean(), 0.23351805514914714)
+    assert np.isclose(man.sim_data['capacity_factor'].std(), 0.24968652796826563)
     assert np.isclose(man.sim_data['capacity_factor'].min(), 0.0)
     assert np.isclose(man.sim_data['capacity_factor'].max(), 0.8307926711175828)
 
-    assert np.isclose(man.sim_data['module_dc_power_at_mpp'].mean(), 56.36062370195792)
-    assert np.isclose(man.sim_data['module_dc_voltage_at_mpp'].mean(), 33.3797197789669)
-    assert np.isclose(man.sim_data['total_system_generation'].mean(), 715.8269418538197)
+    assert np.isclose(man.sim_data['module_dc_power_at_mpp'].mean(), 56.135872313413785)
+    assert np.isclose(man.sim_data['module_dc_voltage_at_mpp'].mean(), 33.35582699308345)
+    assert np.isclose(man.sim_data['total_system_generation'].mean(), 712.9183321674747)
 
 
 @pytest.fixture
@@ -454,10 +456,10 @@ def test_SolarWorkflowManager_apply_inverter_losses(pt_SolarWorkflowManager_sim:
         method='sandia')
 
     assert man.sim_data['capacity_factor'].shape == (54, 5)
-    assert np.isclose(man.sim_data['capacity_factor'].mean(), 0.22216578163156858)
-    assert np.isclose(man.sim_data['capacity_factor'].std(), 0.24150846226066588)
+    assert np.isclose(man.sim_data['capacity_factor'].mean(), 0.22126327363987722)
+    assert np.isclose(man.sim_data['capacity_factor'].std(), 0.2418854551473775)
     assert np.isclose(man.sim_data['capacity_factor'].min(), -0.00031199041565443107)
     assert np.isclose(man.sim_data['capacity_factor'].max(), 0.8000614268453871)
 
-    assert np.isclose(man.sim_data['total_system_generation'].mean(), 53.40687657797603)
-    assert np.isclose(man.sim_data['inverter_ac_power_at_mpp'].mean(), 53.40687657797603)
+    assert np.isclose(man.sim_data['total_system_generation'].mean(), 53.189920876837355)
+    assert np.isclose(man.sim_data['inverter_ac_power_at_mpp'].mean(), 53.189920876837355)
