@@ -1,0 +1,2565 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.87923033725212,
+          -23.140591802925865
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4989.8037109375,
+        "hub_height": 91.39309692382812,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.88025542945685,
+          -23.146453662084305
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 5101.462890625,
+        "hub_height": 88.25181579589844,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.88224774756291,
+          -23.151180129720764
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 5022.60693359375,
+        "hub_height": 90.45146179199219,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.88035281317036,
+          -23.158191567466233
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4878.732421875,
+        "hub_height": 94.70304870605469,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.88625730416484,
+          -23.163567312089324
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4690.900390625,
+        "hub_height": 100.76531219482422,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.87921457419921,
+          -23.168131946167513
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4779.994140625,
+        "hub_height": 97.81319427490234,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.8872923400968,
+          -23.170557727882585
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4667.3779296875,
+        "hub_height": 101.56913757324219,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.88928529006891,
+          -23.175283905888964
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4627.67333984375,
+        "hub_height": 102.9496841430664,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.87854956768832,
+          -23.176263231234355
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4815.7060546875,
+        "hub_height": 96.6693115234375,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.8903035717298,
+          -23.180242950411724
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4818.0166015625,
+        "hub_height": 96.5960922241211,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.88203544162286,
+          -23.18436508015414
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4713.82080078125,
+        "hub_height": 99.99207305908203,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.8922986796083,
+          -23.185194987043108
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4787.30126953125,
+        "hub_height": 97.57733917236328,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.88525504522794,
+          -23.189759887783786
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4532.0556640625,
+        "hub_height": 106.4034423828125,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.89432052650785,
+          -23.193307039264518
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4608.6337890625,
+        "hub_height": 103.62264251708984,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.87576498552427,
+          -23.19389056520786
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4379.22412109375,
+        "hub_height": 112.33123016357422,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.88727654454495,
+          -23.197872029261802
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 5025.6787109375,
+        "hub_height": 90.36416625976562,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.87653881753407,
+          -23.19885123404593
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4215.61083984375,
+        "hub_height": 119.29849243164062,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.89341014736712,
+          -23.201214294122895
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4352.19189453125,
+        "hub_height": 113.43574523925781,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.87877596460493,
+          -23.20357598307102
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4613.77490234375,
+        "hub_height": 103.44027709960938,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.89637879686629,
+          -23.2057077128901
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4357.45849609375,
+        "hub_height": 113.2192611694336,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.87881719324744,
+          -23.208541911339577
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4514.14794921875,
+        "hub_height": 107.07125091552734,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.8983726305163,
+          -23.210433747369862
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4319.373046875,
+        "hub_height": 114.80097198486328,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.88838189933526,
+          -23.213214271432218
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4866.30908203125,
+        "hub_height": 95.08540344238281,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.90036661188981,
+          -23.215159933119473
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4306.39111328125,
+        "hub_height": 115.34837341308594,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.87789646587605,
+          -23.21532054327492
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4286.95703125,
+        "hub_height": 116.17581939697266,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.89111399552489,
+          -23.218612419766924
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4345.1748046875,
+        "hub_height": 113.72544860839844,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.90138565480811,
+          -23.22011878458877
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4204.95654296875,
+        "hub_height": 119.7765121459961,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.87793768040613,
+          -23.220286464978265
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4259.3642578125,
+        "hub_height": 117.36754608154297,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.89286929244234,
+          -23.22401752494027
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4394.53759765625,
+        "hub_height": 111.71321105957031,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.90337989802858,
+          -23.22484492423096
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4327.5078125,
+        "hub_height": 114.46000671386719,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.87895593961616,
+          -23.22524546600279
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4331.939453125,
+        "hub_height": 114.27513122558594,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.88582369047013,
+          -23.228582629800748
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4377.783203125,
+        "hub_height": 112.3896255493164,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.89633460376734,
+          -23.229410314742907
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4524.9814453125,
+        "hub_height": 106.66643524169922,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.90441640677851,
+          -23.231835161765805
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4378.552734375,
+        "hub_height": 112.35838317871094,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.87877742329778,
+          -23.2331474232771
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4192.37744140625,
+        "hub_height": 120.34505462646484,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.90641094372256,
+          -23.236561073063346
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4363.35498046875,
+        "hub_height": 112.97749328613281,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.88588579170637,
+          -23.236031583585753
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4501.71923828125,
+        "hub_height": 107.538818359375,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.89863028164164,
+          -23.240906431258388
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4270.05908203125,
+        "hub_height": 116.90328216552734,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.87811200736128,
+          -23.241278646847874
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4093.125,
+        "hub_height": 124.98925018310547,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.90744002434062,
+          -23.24264857024776
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4554.85107421875,
+        "hub_height": 105.56302642822266,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.881081074546,
+          -23.24577250897323
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4441.32080078125,
+        "hub_height": 109.85907745361328,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.90943484195697,
+          -23.247374434544408
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4304.0791015625,
+        "hub_height": 115.44631958007812,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.89867803454236,
+          -23.246549582054318
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4357.958984375,
+        "hub_height": 113.19869995117188,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.88405034318446,
+          -23.250265949693844
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4448.5830078125,
+        "hub_height": 109.57588958740234,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.89969729254162,
+          -23.25150833377906
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4212.15283203125,
+        "hub_height": 119.45327758789062,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.91045450687307,
+          -23.252333292809322
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4241.8603515625,
+        "hub_height": 118.13385009765625,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.87528532718521,
+          -23.253939856129158
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4471.1689453125,
+        "hub_height": 108.70231628417969,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.88604445810729,
+          -23.25499229320371
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4535.9560546875,
+        "hub_height": 106.2587890625,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.91147425205173,
+          -23.25729196024162
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4219.60888671875,
+        "hub_height": 119.11990356445312,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.87850651813788,
+          -23.259334742180478
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4442.8076171875,
+        "hub_height": 109.80105590820312,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.91346944943648,
+          -23.2620179422939
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4225.1279296875,
+        "hub_height": 118.87403869628906,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.89001984731604,
+          -23.262864747319224
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4468.65673828125,
+        "hub_height": 108.79898071289062,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.90322705026259,
+          -23.264349765994975
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4280.29638671875,
+        "hub_height": 116.46167755126953,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.87928071670902,
+          -23.264295535928326
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4574.60986328125,
+        "hub_height": 104.84326171875,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.91448939312355,
+          -23.266976673009083
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4216.734375,
+        "hub_height": 119.24822998046875,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.88517485682118,
+          -23.267865429679805
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4459.935546875,
+        "hub_height": 109.13542175292969,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.90474117719258,
+          -23.26998209781247
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4235.1259765625,
+        "hub_height": 118.43080139160156,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.89495994079167,
+          -23.269149924747417
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4676.91748046875,
+        "hub_height": 101.24188232421875,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.91648485309874,
+          -23.271702609024587
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4180.6474609375,
+        "hub_height": 120.87910461425781,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.8859495562297,
+          -23.272826000868825
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4332.5009765625,
+        "hub_height": 114.25165557861328,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.89769341909442,
+          -23.274547729515085
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4322.7294921875,
+        "hub_height": 114.66016387939453,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.90747507065015,
+          -23.27537990895438
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4229.8427734375,
+        "hub_height": 118.66471862792969,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.91750499387692,
+          -23.276661222466732
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4133.923828125,
+        "hub_height": 123.04535675048828,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.8906452880154,
+          -23.2791130476366
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4770.1298828125,
+        "hub_height": 98.13298034667969,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.90042722471215,
+          -23.279945661187263
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4218.88037109375,
+        "hub_height": 119.15233612060547,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.91852521660545,
+          -23.281619825685453
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4117.298828125,
+        "hub_height": 123.83149719238281,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.87942733553486,
+          -23.281901775858106
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 5155.02392578125,
+        "hub_height": 88,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.90803126543304,
+          -23.283276690006215
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4178.10986328125,
+        "hub_height": 120.99512481689453,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.89753887652736,
+          -23.285158489649337
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4318.82763671875,
+        "hub_height": 114.82391357421875,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.92052105537607,
+          -23.286345698937783
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4127.0693359375,
+        "hub_height": 123.3684310913086,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.9100267579713,
+          -23.288002518074652
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4160.5751953125,
+        "hub_height": 121.80196380615234,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.89953402802936,
+          -23.289884452881193
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4233.541015625,
+        "hub_height": 118.50096130371094,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.88438258123044,
+          -23.289993224236067
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 5029.0439453125,
+        "hub_height": 90.26860809326172,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.92154147694322,
+          -23.291304365493804
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4084.480224609375,
+        "hub_height": 125.40756225585938,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.91104680613606,
+          -23.29296134563471
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4139.27734375,
+        "hub_height": 122.7939224243164,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.8905224915329,
+          -23.293560973842826
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4311.9716796875,
+        "hub_height": 115.11255645751953,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.90080192369717,
+          -23.295292937587195
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4215.92431640625,
+        "hub_height": 119.28450012207031,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.88052547473143,
+          -23.296341034498557
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 5298.48828125,
+        "hub_height": 88,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.92256198054805,
+          -23.29626302184554
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4063.412841796875,
+        "hub_height": 126.43666076660156,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.91206693470986,
+          -23.297919982428823
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4116.87646484375,
+        "hub_height": 123.85157012939453,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.90207002712285,
+          -23.300701407008464
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4184.26708984375,
+        "hub_height": 120.71391296386719,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.9245581976724,
+          -23.300988742083018
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4055.155517578125,
+        "hub_height": 126.84390258789062,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.89157420427354,
+          -23.302357190075963
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4369.96337890625,
+        "hub_height": 112.70761108398438,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.88154827504896,
+          -23.301751591205864
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4887.45751953125,
+        "hub_height": 94.43599700927734,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.91431302908654,
+          -23.30332121317533
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4054.19677734375,
+        "hub_height": 126.89119720458984,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.92557889874564,
+          -23.305947281229216
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4076.9111328125,
+        "hub_height": 125.77568817138672,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.904315669671,
+          -23.306102782714472
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4123.17529296875,
+        "hub_height": 123.55262756347656,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.89356942152376,
+          -23.30708321899863
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4277.31982421875,
+        "hub_height": 116.5898666381836,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.87768092842015,
+          -23.306970814499763
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 5009.6044921875,
+        "hub_height": 90.82279968261719,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.91558166859643,
+          -23.308729563451305
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4066.219482421875,
+        "hub_height": 126.29877471923828,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.92757537986301,
+          -23.31067304577597
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4155.25537109375,
+        "hub_height": 122.0484619140625,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.905583934933,
+          -23.311511215461596
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4128.10302734375,
+        "hub_height": 123.31967163085938,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.89507786305968,
+          -23.312038634128495
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4258.76171875,
+        "hub_height": 117.39373779296875,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.87576882152607,
+          -23.3121762297974
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4986.041015625,
+        "hub_height": 91.50209045410156,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.91831694344766,
+          -23.31412714946088
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 3964.834716796875,
+        "hub_height": 131.4405975341797,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.88361095477997,
+          -23.314603711204636
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4444.28759765625,
+        "hub_height": 109.7433090209961,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.92859628010555,
+          -23.3156316483138
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4106.18408203125,
+        "hub_height": 124.361572265625,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.90831886561587,
+          -23.316908976691007
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4123.22607421875,
+        "hub_height": 123.55023193359375,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.89829367192065,
+          -23.31653017591181
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4229.6689453125,
+        "hub_height": 118.67241668701172,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.88804669133556,
+          -23.318860952985972
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4302.07861328125,
+        "hub_height": 115.53113555908203,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.92007472409732,
+          -23.31953186781234
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4053.44482421875,
+        "hub_height": 126.92848205566406,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.92961726253101,
+          -23.320590240678946
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4068.26318359375,
+        "hub_height": 126.19855499267578,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.90126901076145,
+          -23.321474765309542
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4203.7255859375,
+        "hub_height": 119.83197021484375,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.91106186956316,
+          -23.32320956417095
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4094.15185546875,
+        "hub_height": 124.93978881835938,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.89077346153924,
+          -23.323356137314676
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4318.02685546875,
+        "hub_height": 114.85758972167969,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.92207709513228,
+          -23.3249347632362
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4079.40771484375,
+        "hub_height": 125.65410614013672,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.87684981604919,
+          -23.324583978656324
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4411.0078125,
+        "hub_height": 111.05467224121094,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.93162003737102,
+          -23.325993010182156
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4028.35302734375,
+        "hub_height": 128.18020629882812,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.90204833393689,
+          -23.32688674985839
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4175.537109375,
+        "hub_height": 121.11300659179688,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.91306393577368,
+          -23.328612574917305
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4054.945068359375,
+        "hub_height": 126.85430145263672,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.88079668406702,
+          -23.328844875899076
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4117.09619140625,
+        "hub_height": 123.84107208251953,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.92407963576251,
+          -23.330337628298906
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4040.03759765625,
+        "hub_height": 127.59478759765625,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.90405009519827,
+          -23.3322898759014
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4132.9130859375,
+        "hub_height": 123.09295654296875,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.88864179890007,
+          -23.33149799317632
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4727.3857421875,
+        "hub_height": 99.53898620605469,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.93362890902624,
+          -23.332072996856994
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4025.623046875,
+        "hub_height": 128.31756591796875,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.91506617151916,
+          -23.3340155553306
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4016.0537109375,
+        "hub_height": 128.80116271972656,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.92461558400414,
+          -23.335751287290194
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4051.336181640625,
+        "hub_height": 127.03286743164062,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.89699920740506,
+          -23.336855475682686
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4364.3916015625,
+        "hub_height": 112.93511962890625,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.8779310492403,
+          -23.33699161046186
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4343.53662109375,
+        "hub_height": 113.79325103759766,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.93465022449,
+          -23.337031453965643
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4019.08203125,
+        "hub_height": 128.64784240722656,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.90801546716183,
+          -23.338581644988032
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4100.724609375,
+        "hub_height": 124.62335968017578,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.91756520889057,
+          -23.340317800243398
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4030.57421875,
+        "hub_height": 128.06858825683594,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.88578417010203,
+          -23.3405477449306
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4899.3505859375,
+        "hub_height": 94.073974609375,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.93567162226172,
+          -23.341989900929676
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4023.323974609375,
+        "hub_height": 128.43350219726562,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.89900092711206,
+          -23.34225866033556
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4271.73486328125,
+        "hub_height": 116.83078002929688,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.92517316573684,
+          -23.34364794074312
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4110.4814453125,
+        "hub_height": 124.15620422363281,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.90855080962214,
+          -23.34399535969443
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4109.1787109375,
+        "hub_height": 124.21845245361328,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.88900038118359,
+          -23.34503927769441
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4416.0732421875,
+        "hub_height": 110.85342407226562,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.93766904396907,
+          -23.346715509322298
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4019.799072265625,
+        "hub_height": 128.61158752441406,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.91664965941824,
+          -23.34754798229353
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4091.790771484375,
+        "hub_height": 125.05363464355469,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.89953602213293,
+          -23.347672406160164
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4323.7255859375,
+        "hub_height": 114.61839294433594,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.92717024029935,
+          -23.348373504220866
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4315.96630859375,
+        "hub_height": 114.94426727294922,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.87998499993408,
+          -23.34871521125205
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4767.78515625,
+        "hub_height": 98.20927429199219,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.90763475536119,
+          -23.351225491459402
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4171.97509765625,
+        "hub_height": 121.27642059326172,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.93869064139457,
+          -23.351674019759425
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4008.043212890625,
+        "hub_height": 129.2082061767578,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.92011939884448,
+          -23.352940130062624
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 3991.199462890625,
+        "hub_height": 130.07102966308594,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.89468823055297,
+          -23.35267354096976
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4545.1181640625,
+        "hub_height": 105.9205093383789,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.88198035921627,
+          -23.353441541392705
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4935.142578125,
+        "hub_height": 92.99793243408203,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.92893685291504,
+          -23.354680968795048
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4501.79638671875,
+        "hub_height": 107.53594207763672,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.91110413182062,
+          -23.35661783887155
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4109.546875,
+        "hub_height": 124.20079040527344,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.90107392921679,
+          -23.356013527509795
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4282.59326171875,
+        "hub_height": 116.36297607421875,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.93971232121565,
+          -23.35663252007105
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4045.084228515625,
+        "hub_height": 127.34326934814453,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.8900848766937,
+          -23.357672595169706
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4607.01318359375,
+        "hub_height": 103.68037414550781,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.91992170678553,
+          -23.358359180073997
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4048.73291015625,
+        "hub_height": 127.16195678710938,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.8793344074847,
+          -23.358652096343967
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4713.830078125,
+        "hub_height": 99.99178314208984,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.93217048622917,
+          -23.360977525227995
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4420.48046875,
+        "hub_height": 110.67880249023438,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.90405222761865,
+          -23.361183752092803
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4247.79736328125,
+        "hub_height": 117.873046875,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.94171609668895,
+          -23.36203512986626
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4062.601318359375,
+        "hub_height": 126.47663116455078,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.91287000932483,
+          -23.362925484925682
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4080.9716796875,
+        "hub_height": 125.57804107666016,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.89086019773846,
+          -23.36263326665469
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4646.2119140625,
+        "hub_height": 102.30133819580078,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.92315520407097,
+          -23.364655920842342
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4123.623046875,
+        "hub_height": 123.53143310546875,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.93417402719192,
+          -23.366380230741647
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4322.779296875,
+        "hub_height": 114.65802001953125,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.90581783931387,
+          -23.36749147666584
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4347.255859375,
+        "hub_height": 113.63948059082031,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.89090212380289,
+          -23.367599005013066
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4418.97802734375,
+        "hub_height": 110.73829650878906,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.94372602859907,
+          -23.36811495323188
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4069.421630859375,
+        "hub_height": 126.14176177978516,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.91610319296569,
+          -23.369222370129975
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4355.02783203125,
+        "hub_height": 113.31913757324219,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.92712249343778,
+          -23.37094716796318
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4548.8017578125,
+        "hub_height": 105.78494262695312,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.88384907158625,
+          -23.37216402025023
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4958.08984375,
+        "hub_height": 92.31866455078125,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.93667472514488,
+          -23.372682134073603
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4186.29443359375,
+        "hub_height": 120.62149810791016,
+        "rotor_diam": 136
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.90905080699658,
+          -23.37378850558373
+        ]
+      },
+      "properties": {
+        "ERA5_cell": "(453, 454)",
+        "capacity": 4070.99169921875,
+        "hub_height": 126.06485748291016,
+        "rotor_diam": 136
+      }
+    }
+  ]
+}

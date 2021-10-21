@@ -1,5 +1,5 @@
+#%%
 import geokit as gk
-
 import pandas as pd
 import numpy as np
 from os import mkdir, environ
@@ -9,11 +9,10 @@ from types import FunctionType
 import xarray
 from typing import Union, List, OrderedDict
 from glob import glob
+from . import weather as rk_weather
 from osgeo import ogr
 
-# from . import weather as rk_weather
-
-
+#%%
 class WorkflowManager:
     """
     The WorkflowManager class assists with the construction of more specialized WorkflowManagers,
@@ -42,18 +41,21 @@ class WorkflowManager:
         assert isinstance(placements, pd.DataFrame)
         self.placements = placements.copy()
         self.locs = None
+        
+        #Use geom column over long and lat column 
+        for row in self.placements["geom"]:
+            ispoint=False        
+            if "geom" in placements.columns:
+                
 
-        # Check if input file contains a geometry collumn
-        ispoint = False
-        if "geom" in placements.columns:
-            if self.placements["geom"].loc[0].GetGeometryName() == "POINT":
-                ispoint = True
-
-        if ispoint:
-            self.locs = gk.LocationSet(placements.geom)
-            self.placements["lon"] = self.locs.lons
-            self.placements["lat"] = self.locs.lats
-            del self.placements["geom"]
+                if isinstance(self.placements["geom"].loc[0], ogr.wkbPoint):
+                        ispoint=True
+            if ispoint:
+            
+                self.locs = gk.LocationSet(placements.geom)
+                self.placements["lon"] = self.locs.lons
+                self.placements["lat"] = self.locs.lats
+                del self.placements["geom"]
 
         assert "lon" in self.placements.columns
         assert "lat" in self.placements.columns
