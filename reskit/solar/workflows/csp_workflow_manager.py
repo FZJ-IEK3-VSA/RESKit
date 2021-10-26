@@ -327,9 +327,9 @@ class PTRWorkflowManager(WorkflowManager):
                     time=self.time_index,
                     latitude=row.lat,
                     longitude=row.lon,
-                    altitude=row.elev,
-                    pressure=self.sim_data["surface_pressure"][:, location_iter],
-                    temperature=self.sim_data["surface_air_temperature"][:, location_iter],
+                    #altitude=row.elev,
+                    #pressure=self.sim_data["surface_pressure"][:, location_iter], #TODO: insert here
+                    #temperature=self.sim_data["surface_air_temperature"][:, location_iter], #TODO: insert here
                     #method='nrel_numba'
                 )
 
@@ -1375,81 +1375,75 @@ class PTRWorkflowManager(WorkflowManager):
     ### Try to increase speed of PV-Lib by dropping one loop. Aparently, multiple locations are not supported by PV-Lib. If there are performance
     ### issues, try again. So keep this in mind here 
     #
-    # def calculateSolarPositionfaster(self):
-    #     """
-    #     DOES NOT WORK PV LIP DOES NOT SUPPORT MULTIPLE LOCATIONS
-    #     calculates the solar position in terms of hour angle and declination from time series and location series of the current object
-    #
-    #     Returns:
-    #         [CSPWorkflowManager]: [Updated CSPWorkflowManager with new value for sim_data['hour_angle'][timeserie_iter, location_iter] and 
-    #         sim_data['declination_angle'][timeserie_iter, location_iter]]
-    #     """
-    #     # Shape Input data to 1D
-    #     _time = pd.DatetimeIndex(np.tile(self.time_index.values, self._numlocations))
-    #     _dayoftheyear = pd.DataFrame(np.tile(self.time_index.day_of_year.values, self._numlocations))
-    #     _latitute = pd.DataFrame(self.placements['lat'].values.repeat(self._numtimesteps))
-    #     _longitude = pd.DataFrame(self.placements['lon'].values.repeat(self._numtimesteps))
-    #
-    #
-    #
-    #     #calculate the solar hour angle with pv lib
-    #     _hour_angle = pvlib.solarposition.hour_angle(
-    #                 times=_time,
-    #                 longitude=_longitude,
-    #                 equation_of_time=pvlib.solarposition.equation_of_time_pvcdrom(dayofyear=_dayoftheyear)
-    #                 )
-    #                 # equation_of_time is the deviation betwee real time and solar time
-    #
-    #     self.sim_data['hour_angle_degree_fast'] = np.reshape(
-    #         a=_hour_angle,
-    #         newshape=(self._numtimesteps, self._numlocations)
-    #     )
-    #  
-    #
-    #
-    #     #calculate the solar declonation angle with pv lib
-    #     _declination_angle_degree = \
-    #          pvlib.solarposition.declination_cooper69(dayofyear=_dayoftheyear) * 180 / np.pi
-    #
-    #
-    #     self.sim_data['declination_angle_degree_fast'] = np.reshape(
-    #         a=_declination_angle_degree,
-    #         newshape=(self._numtimesteps, self._numlocations)
-    #     )
+    def calculateSolarPositionfaster(self):
+        """
+        DOES NOT WORK PV LIP DOES NOT SUPPORT MULTIPLE LOCATIONS
+        calculates the solar position in terms of hour angle and declination from time series and location series of the current object
+    
+        Returns:
+            [CSPWorkflowManager]: [Updated CSPWorkflowManager with new value for sim_data['hour_angle'][timeserie_iter, location_iter] and 
+            sim_data['declination_angle'][timeserie_iter, location_iter]]
+        """
+        
+        assert 'lat' in self.placements.columns
+        assert 'lon' in self.placements.columns
+        assert 'elev' in self.placements.columns
+        
+        # Shape Input data to 1D
+        _time = pd.DatetimeIndex(np.tile(self.time_index.values, self._numlocations))
+        #_dayoftheyear = pd.DataFrame(np.tile(self.time_index.day_of_year.values, self._numlocations))
+        _latitute = pd.DataFrame(self.placements['lat'].values.repeat(self._numtimesteps))
+        _longitude = pd.DataFrame(self.placements['lon'].values.repeat(self._numtimesteps))
+        _elevation = pd.DataFrame(self.placements['elev'].values.repeat(self._numtimesteps))
 
+        _solarpos = pvlib.solarposition.spa_python(
+            _time.values.squeeze(),
+            latitude=_latitute.values.squeeze(),
+            longitude=_longitude.values.squeeze(),
+            #altitude=_elevation.values.squeeze(),
+        )
+        
+        self.sim_data['solar_zenith_degree_fast'] = np.reshape(
+            a=_solarpos['apparent_zenith'].values,
+            newshape=(self._numlocations, self._numtimesteps)
+        ).T
+        
+        #calculate aoi
+        truetracking_angles = pvlib.tracking.singleaxis(
+            apparent_zenith=_solarpos['apparent_zenith'],
+            apparent_azimuth=_solarpos['azimuth'],
+            axis_tilt=0,
+            axis_azimuth=180,
+            max_angle=90,
+            backtrack=False,  # for true-tracking
+            gcr=0.5)  # irrelevant for true-tracking
 
+        _aoi_northsouth = np.nan_to_num(truetracking_angles['aoi'].values)
+        self.sim_data['aoi_northsouth_fast'] = np.reshape(
+            a=_aoi_northsouth,
+            newshape=(self._numlocations, self._numtimesteps)
+        ).T
 
-    #     #calculate the solar altitide angle
-    #     _solarpos = pvlib.solarposition.get_solarposition(
-    #         time=_time,
-    #         latitude=_latitute,
-    #         longitude=_longitude
-    #     )
+        #calculate aoi
+        truetracking_angles = pvlib.tracking.singleaxis(
+            apparent_zenith=_solarpos['apparent_zenith'],
+            apparent_azimuth=_solarpos['azimuth'],
+            axis_tilt=0,
+            axis_azimuth=90,
+            max_angle=180,
+            backtrack=False,  # for true-tracking
+            gcr=0.5)  # irrelevant for true-tracking
+        
+        _aoi_eastwest = np.nan_to_num(truetracking_angles['aoi'].values)
+        self.sim_data['aoi_eastwest_fast'] = np.reshape(
+            a=_aoi_eastwest,
+            newshape=(self._numlocations, self._numtimesteps)
+        ).T
 
-    #     _solar_zenith_degree = _solarpos['zenith'].values
+        #from [1]	KALOGIROU, Soteris A. Environmental Characteristics. In: Soteris Kalogirou, ed. Solar energy engineering. Processes and systems. Waltham, Mass: Academic Press, 2014, pp. 51-123.
+        # fromula 2.12
+        
+        self.sim_data['solar_altitude_angle_degree_fast'] = \
+            np.rad2deg(np.arcsin(np.cos(np.deg2rad(self.sim_data['solar_zenith_degree_fast']))))
 
-    #     truetracking_angles = pvlib.tracking.singleaxis(
-    #         apparent_zenith=_solarpos['apparent_zenith'],
-    #         apparent_azimuth=_solarpos['azimuth'],
-    #         axis_tilt=0,
-    #         axis_azimuth=180,
-    #         max_angle=90,
-    #         backtrack=False,  # for true-tracking
-    #         gcr=0.5)  # irrelevant for true-tracking
-
-
-    #     #from [1]	KALOGIROU, Soteris A. Environmental Characteristics. In: Soteris Kalogirou, ed. Solar energy engineering. Processes and systems. Waltham, Mass: Academic Press, 2014, pp. 51-123.
-    #     # fromula 2.12
-    #     _solar_altitude_angle = np.rad2deg(np.arcsin(np.cos(_solar_zenith_degree)))
-
-    #     self.sim_data['solar_altitude_angle_degree_fast'] = np.reshape(
-    #         a=_declination_angle_degree,
-    #         newshape=(self._numtimesteps, self._numlocations)
-    #     )
-
-    #     self.sim_data['aoi'] = np.reshape(
-    #         a=truetracking_angles['aoi'],
-    #         newshape=(self._numtimesteps, self._numlocations)
-    #     )
-
-    #     return self
+        return self

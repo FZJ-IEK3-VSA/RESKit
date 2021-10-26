@@ -120,7 +120,8 @@ def csp_ptr_V1(
     # 5) calculate the solar position based on pvlib
     
     wf.calculateSolarPosition() 
-    
+    wf.calculateSolarPositionfaster()
+     
     #calculate DNI from ERA5 to DNi convention
     #ERA5 DIN: Heat flux per horizontal plane
     #DNI convention: Heat flux per normal (to zenith) plane

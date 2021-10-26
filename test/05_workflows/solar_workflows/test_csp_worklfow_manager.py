@@ -2,16 +2,23 @@ import pandas as pd
 import numpy as np
 from reskit.solar.workflows.csp_workflow_manager import PTRWorkflowManager
 import reskit as rk
-import geokit as gk
 import pytest
 
 #%% Test Init
+
+
+def print_testresults(variable):
+    print('mean: ', variable[0:140,:].mean())
+    print('std: ', variable[0:140,:].std())
+    print('min: ', variable[0:140,:].min())
+    print('max: ', variable[0:140,:].max())
 
 def test_PTRWorkflowManager__init__() -> PTRWorkflowManager:
     
     placements = pd.DataFrame()
     placements['lon'] = [ 6.083, 6.083, 5.583]     # Longitude
     placements['lat'] = [ 50.775, 51.475, 50.775,]    # Latitude
+    placements['area'] = [1E6, 3E6, 6E6]
 
     wfm = PTRWorkflowManager(placements=placements)
 
@@ -29,16 +36,49 @@ def test_PTRWorkflowManager__init__() -> PTRWorkflowManager:
 def pt_PTRWorkflowManager_initialized() -> PTRWorkflowManager:
     return test_PTRWorkflowManager__init__()
 
+#%% test data loading
+
+def test_loadPTRdata(pt_PTRWorkflowManager_initialized):
+    wfm = pt_PTRWorkflowManager_initialized
+    
+    ptr_data = wfm.loadPTRdata(datasetname='Initial')
+    assert 'ptr_data' in wfm.sim_data.keys()
+    assert ptr_data.shape  == (45,)
+    assert ptr_data['orientation'] == 'song2013'
+    assert ptr_data['a1'] == 0.000884
+    assert ptr_data['discretizationmethod'] == 'euler explicit'
+    assert ptr_data['SF_density_total'] == 0.383
+
+def test_determine_area(pt_PTRWorkflowManager_initialized):
+    wfm = pt_PTRWorkflowManager_initialized
+    
+    ptr_data = wfm.loadPTRdata(datasetname='Initial')
+    assert ptr_data['SF_density_total'] == 0.383
+    
+    wfm.determine_area()
+    
+    assert 'aperture_area_m2' in wfm.placements.columns
+    assert 'land_area_m2' in wfm.placements.columns
+    
+    assert np.isclose(wfm.placements['land_area_m2'].mean(), 3333333.3333333335)
+    assert np.isclose(wfm.placements['land_area_m2'].std(), 2516611.4784235833)
+    assert np.isclose(wfm.placements['aperture_area_m2'].mean(), 1276666.6666666667)
+    assert np.isclose(wfm.placements['aperture_area_m2'].std(), 963862.1962362323)
+
+@pytest.fixture
+def pt_PTRWorkflowManager_loaded() -> PTRWorkflowManager:
+    return test_loadPTRdata()
 
 #%% test load elevation
 
-def test_apply_elevation(pt_PTRWorkflowManager_initialized):
-    wfm = pt_PTRWorkflowManager_initialized
+def test_apply_elevation(pt_PTRWorkflowManager_loaded):
+    wfm = pt_PTRWorkflowManager_loaded
 
     placements = pd.DataFrame()
     placements['lon'] = [ 6.083, 6.083, 5.583]     # Longitude
     placements['lat'] = [ 50.775, 51.475, 50.775,]    # Latitude
-
+    placements['area'] = [1E6, 3E6, 6E6]
+    
     wfm = PTRWorkflowManager(placements=placements)
 
     #load from file
@@ -104,10 +144,10 @@ def test_adjust_variable_to_long_run_average(pt_PTRWorkflowManager_loaded):
     wfm = pt_PTRWorkflowManager_loaded
 
     print('before LRA')
-    print(wfm.sim_data['direct_horizontal_irradiance'].mean())
-    print(wfm.sim_data['direct_horizontal_irradiance'].std())
-    print(wfm.sim_data['direct_horizontal_irradiance'].min())
-    print(wfm.sim_data['direct_horizontal_irradiance'].max())
+    assert np.isclose(wfm.sim_data['direct_horizontal_irradiance'].mean(), 15.151816929634485)
+    assert np.isclose(wfm.sim_data['direct_horizontal_irradiance'].std(), 33.92488851386296)
+    assert np.isclose(wfm.sim_data['direct_horizontal_irradiance'].min(), 0.0)
+    assert np.isclose(wfm.sim_data['direct_horizontal_irradiance'].max(), 162.14436231574447)
 
 
     wfm.adjust_variable_to_long_run_average(
@@ -124,7 +164,7 @@ def test_adjust_variable_to_long_run_average(pt_PTRWorkflowManager_loaded):
     print(wfm.sim_data['direct_horizontal_irradiance'].max())
 
     assert np.isclose(wfm.sim_data['direct_horizontal_irradiance'].mean(), 16.06680060520131)
-    assert np.isclose(wfm.sim_data['direct_horizontal_irradiance'].std(), 45.92803832175536)
+    assert np.isclose(wfm.sim_data['direct_horizontal_irradiance'].std(), 45.902557468831624)
     assert np.isclose(wfm.sim_data['direct_horizontal_irradiance'].min(), 0.0)
     assert np.isclose(wfm.sim_data['direct_horizontal_irradiance'].max(), 257.65673305845195)
     
@@ -155,25 +195,66 @@ def test_calculateSolarPosition(pt_PTRWorkflowManager_timesteps):
 
     assert wfm.sim_data['solar_zenith_degree'].shape == (140, 3)
 
-    assert np.isclose(wfm.sim_data['solar_zenith_degree'].mean(), 108.83433, rtol=0.1)
-    assert np.isclose(wfm.sim_data['solar_zenith_degree'].std(), 26.46376)
-    assert np.isclose(wfm.sim_data['solar_zenith_degree'].min(), 73.31861)
-    assert np.isclose(wfm.sim_data['solar_zenith_degree'].max(), 152.12749)
-
-    assert np.isclose(wfm.sim_data['solar_altitude_angle_degree'].mean(),-18.834325)
-    assert np.isclose(wfm.sim_data['solar_altitude_angle_degree'].std(), 26.463765)
-    assert np.isclose(wfm.sim_data['solar_altitude_angle_degree'].min(), -62.12750)
-    assert np.isclose(wfm.sim_data['solar_altitude_angle_degree'].max(), 16.681382)
-
+    print_testresults(wfm.sim_data['solar_zenith_degree'])
+    assert np.isclose(wfm.sim_data['solar_zenith_degree'].mean(), 108.99065403545286)
+    assert np.isclose(wfm.sim_data['solar_zenith_degree'].std(), 26.722981103473714)
+    assert np.isclose(wfm.sim_data['solar_zenith_degree'].min(), 73.26375324894686)
+    assert np.isclose(wfm.sim_data['solar_zenith_degree'].max(), 152.2150485738834)
+    
+    print_testresults(wfm.sim_data['solar_altitude_angle_degree'])
+    assert np.isclose(wfm.sim_data['solar_altitude_angle_degree'].mean(), -18.99065403545286)
+    assert np.isclose(wfm.sim_data['solar_altitude_angle_degree'].std(), 26.722981103473714)
+    assert np.isclose(wfm.sim_data['solar_altitude_angle_degree'].min(), -62.215048573883394)
+    assert np.isclose(wfm.sim_data['solar_altitude_angle_degree'].max(), 16.73624675105315)
+    
+    print_testresults(wfm.sim_data['aoi_northsouth'])
     assert np.isclose(wfm.sim_data['aoi_northsouth'].mean(),20.04813)
     assert np.isclose(wfm.sim_data['aoi_northsouth'].std(), 28.55629)
     assert np.isclose(wfm.sim_data['aoi_northsouth'].min(), 0)
     assert np.isclose(wfm.sim_data['aoi_northsouth'].max(), 74.30066)
     
+    print_testresults(wfm.sim_data['aoi_eastwest'])
     assert np.isclose(wfm.sim_data['aoi_eastwest'].mean(), 9.30592)
     assert np.isclose(wfm.sim_data['aoi_eastwest'].std(), 15.76567)
     assert np.isclose(wfm.sim_data['aoi_eastwest'].min(), 0)
     assert np.isclose(wfm.sim_data['aoi_eastwest'].max(), 51.09474)
+    
+def test_calculateSolarPositionfaster(pt_PTRWorkflowManager_timesteps):
+    wfm = pt_PTRWorkflowManager_timesteps
+
+    wfm.calculateSolarPosition()
+    wfm.calculateSolarPositionfaster()
+
+    assert wfm.sim_data['solar_zenith_degree_fast'].shape == (140, 3)
+    
+    print(np.where(np.logical_not(wfm.sim_data['solar_zenith_degree'] == wfm.sim_data['solar_zenith_degree_fast'])))
+    
+    assert (wfm.sim_data['solar_zenith_degree'] == wfm.sim_data['solar_zenith_degree_fast']).all()
+
+    print_testresults(wfm.sim_data['solar_zenith_degree_fast'])
+    assert np.isclose(wfm.sim_data['solar_zenith_degree_fast'].mean(), 108.99065403545286)
+    assert np.isclose(wfm.sim_data['solar_zenith_degree_fast'].std(), 26.722981103473714)
+    assert np.isclose(wfm.sim_data['solar_zenith_degree_fast'].min(), 73.26375324894686)
+    assert np.isclose(wfm.sim_data['solar_zenith_degree_fast'].max(), 152.2150485738834)
+    
+    print_testresults(wfm.sim_data['solar_altitude_angle_degree_fast'])
+    assert np.isclose(wfm.sim_data['solar_altitude_angle_degree_fast'].mean(), -18.99065403545286)
+    assert np.isclose(wfm.sim_data['solar_altitude_angle_degree_fast'].std(), 26.722981103473714)
+    assert np.isclose(wfm.sim_data['solar_altitude_angle_degree_fast'].min(), -62.215048573883394)
+    assert np.isclose(wfm.sim_data['solar_altitude_angle_degree_fast'].max(), 16.73624675105315)
+    
+    print_testresults(wfm.sim_data['aoi_northsouth_fast'])
+    assert np.isclose(wfm.sim_data['aoi_northsouth_fast'].mean(),20.04813)
+    assert np.isclose(wfm.sim_data['aoi_northsouth_fast'].std(), 28.55629)
+    assert np.isclose(wfm.sim_data['aoi_northsouth_fast'].min(), 0)
+    assert np.isclose(wfm.sim_data['aoi_northsouth_fast'].max(), 74.30066)
+    
+    print_testresults(wfm.sim_data['aoi_eastwest_fast'])
+    assert np.isclose(wfm.sim_data['aoi_eastwest_fast'].mean(), 9.30592)
+    assert np.isclose(wfm.sim_data['aoi_eastwest_fast'].std(), 15.76567)
+    assert np.isclose(wfm.sim_data['aoi_eastwest_fast'].min(), 0)
+    assert np.isclose(wfm.sim_data['aoi_eastwest_fast'].max(), 51.09474)
+
 
 @pytest.fixture
 def pt_PTRWorkflowManager_solarpos(pt_PTRWorkflowManager_timesteps: PTRWorkflowManager) -> PTRWorkflowManager:
@@ -191,7 +272,7 @@ def test_calculateCosineLossesParabolicTrough(pt_PTRWorkflowManager_solarpos):
 
     wfm.calculateCosineLossesParabolicTrough(orientation='northsouth')
 
-    assert np.isclose(wfm.sim_data['theta'].mean(), 20.04813)
+    assert np.isclose(wfm.sim_data['theta'].mean(), 20.048007412410186)
     assert np.isclose(wfm.sim_data['theta'].std(), 28.55629)
     assert np.isclose(wfm.sim_data['theta'].min(), 0)
     assert np.isclose(wfm.sim_data['theta'].max(), 74.30066)
@@ -224,13 +305,13 @@ def pt_PTRWorkflowManager_cos_losses(pt_PTRWorkflowManager_solarpos: PTRWorkflow
 #%% test calculate IAM
 
 def test_calculateIAM(pt_PTRWorkflowManager_cos_losses):
-    wfm = pt_PTRWorkflowManager_cos_losses
-
+    wfm = pt_PTRWorkflowManager_cos_losses    
+    
     wfm.calculateIAM()
-
-    assert np.isclose(wfm.sim_data['IAM'].mean(), 0.798079)
-    assert np.isclose(wfm.sim_data['IAM'].std(), 0.354184)
-    assert np.isclose(wfm.sim_data['IAM'].min(), -0.338124)
+    print_testresults(wfm.sim_data['IAM'])
+    assert np.isclose(wfm.sim_data['IAM'].mean(), 0.7980863832679146)
+    assert np.isclose(wfm.sim_data['IAM'].std(), 0.3541675000128353)
+    assert np.isclose(wfm.sim_data['IAM'].min(), -0.33810646069490025)
     assert np.isclose(wfm.sim_data['IAM'].max(), 1)
 
 
@@ -240,10 +321,10 @@ def test_calculateShadowLosses(pt_PTRWorkflowManager_cos_losses):
     wfm = pt_PTRWorkflowManager_cos_losses
 
     wfm.calculateShadowLosses(method='wagner2011', SF_density=0.43)
-
-    assert np.isclose(wfm.sim_data['eta_shdw'].mean(), 0.678173)
-    assert np.isclose(wfm.sim_data['eta_shdw'].std(), 0.329811)
-    assert np.isclose(wfm.sim_data['eta_shdw'].min(), 0.00169546)
+    print_testresults(wfm.sim_data['eta_shdw'])
+    assert np.isclose(wfm.sim_data['eta_shdw'].mean(), 0.6798914159517275)
+    assert np.isclose(wfm.sim_data['eta_shdw'].std(), 0.3276409881093395)
+    assert np.isclose(wfm.sim_data['eta_shdw'].min(), 0.020982530847037252)
     assert np.isclose(wfm.sim_data['eta_shdw'].max(), 1)
 
 
@@ -289,7 +370,7 @@ def pt_PTRWorkflowManager_all_losses(pt_PTRWorkflowManager_cos_losses: PTRWorkfl
 def test_calculateHeattoHTF(pt_PTRWorkflowManager_all_losses):
     wfm = pt_PTRWorkflowManager_all_losses
     
-    wfm.calculateHeattoHTF(A_aperture_sf=900000, eta_ptr_max=0.8, eta_cleaness=0.99)
+    wfm.calculateHeattoHTF(eta_ptr_max=0.8, eta_cleaness=0.99)
 
     assert np.isclose(wfm.sim_data['HeattoHTF_W'].mean(), 476140.22531221766)
     assert np.isclose(wfm.sim_data['HeattoHTF_W'].std(), 1820765.586866662)
@@ -301,7 +382,7 @@ def test_calculateHeattoHTF(pt_PTRWorkflowManager_all_losses):
 def pt_PTRWorkflowManager_heat_to_HTF(pt_PTRWorkflowManager_all_losses: PTRWorkflowManager) -> PTRWorkflowManager:
     wfm = pt_PTRWorkflowManager_all_losses
 
-    wfm.calculateHeattoHTF(A_aperture_sf=900000, eta_ptr_max=0.8, eta_cleaness=0.99)
+    wfm.calculateHeattoHTF(eta_ptr_max=0.8, eta_cleaness=0.99)
 
     return wfm
 

@@ -158,7 +158,7 @@ class Era5Source(NCSource):
             _max_lat_diff=self.MAX_LAT_DIFFERENCE,
             tz=None,
             flip_lat=True,
-            time_offset_minutes=30,
+            time_offset_minutes=-30,
             **kwargs)
 
     loc_to_index = NCSource._loc_to_index_rect(0.25, 0.25)
