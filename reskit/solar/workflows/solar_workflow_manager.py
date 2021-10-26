@@ -525,6 +525,9 @@ class SolarWorkflowManager(WorkflowManager):
 
         self.sim_data['direct_normal_irradiance'] = dni_flat / np.cos(zen)
 
+        index_out = (dni_flat < 25) & (np.cos(zen) < 0.05)
+        self.sim_data['direct_normal_irradiance'][index_out] = 0
+        
         sel = ~np.isfinite(self.sim_data['direct_normal_irradiance'])
         sel = np.logical_or(sel, self.sim_data['direct_normal_irradiance'] < 0)
         sel = np.logical_or(sel, self.sim_data['direct_normal_irradiance'] > 1600)
