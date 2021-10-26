@@ -1,8 +1,8 @@
 from logging import error, warn, warning
 
-from pandas._libs.tslibs.timedeltas import Timedelta
 from ...workflow_manager import WorkflowManager
 from .CSP_data.database_loader import load_dataset
+from .solar_workflow_manager import SolarWorkflowManager
 import numpy as np
 import pandas as pd
 import pvlib
@@ -11,13 +11,13 @@ import time
 import geokit as gk
 from typing import Union
 
-class PTRWorkflowManager(WorkflowManager):
+class PTRWorkflowManager(SolarWorkflowManager):
     def __init__(self, placements):
         """
 
         __init_(self, placements)
 
-        Initialization of an instance of the generic SolarWorkflowManager class.
+        Initialization of an instance of the generic SolarWorkflowManager clas
 
         Parameters
         ----------
@@ -91,8 +91,7 @@ class PTRWorkflowManager(WorkflowManager):
         
         #only land_area_m2 in placements
         elif 'land_area_m2' in columns and not 'aperture_area_m2' in columns:
-            self.placements['land_area_m2'] = self.placements['aperture_area_m2'] / self.sim_data['ptr_data']['SF_density_total']        
-                    
+            self.placements['land_area_m2'] = self.placements['aperture_area_m2'] / self.sim_data['ptr_data']['SF_density_total']                          
     
     def get_timesteps(self):
         self._numtimesteps = self.time_index.shape[0]
@@ -114,80 +113,80 @@ class PTRWorkflowManager(WorkflowManager):
         return self
     
 
-    def adjust_variable_to_long_run_average(
-        self,
-        variable: str,
-        source_long_run_average: Union[str, float, np.ndarray],
-        real_long_run_average: Union[str, float, np.ndarray],
-        real_lra_scaling: float = 1,
-        spatial_interpolation: str = "linear-spline"):
+    # def adjust_variable_to_long_run_average(
+    #     self,
+    #     variable: str,
+    #     source_long_run_average: Union[str, float, np.ndarray],
+    #     real_long_run_average: Union[str, float, np.ndarray],
+    #     real_lra_scaling: float = 1,
+    #     spatial_interpolation: str = "linear-spline"):
         
-        """Adjusts the average mean of the specified variable to a known long-run-average
+    #     """Adjusts the average mean of the specified variable to a known long-run-average
 
-        Note:
-        -----
-        uses the equation: variable[t] = variable[t] * real_long_run_average / source_long_run_average
+    #     Note:
+    #     -----
+    #     uses the equation: variable[t] = variable[t] * real_long_run_average / source_long_run_average
 
-        Parameters
-        ----------
-        variable : str
-            The variable to be adjusted
+    #     Parameters
+    #     ----------
+    #     variable : str
+    #         The variable to be adjusted
 
-        source_long_run_average : Union[str, float, np.ndarray]
-            The variable's native long run average (the average in the weather file)
-            - If a string is given, it is expected to be a path to a raster file which can be 
-              used to look up the average values from using the coordinates in `.placements`
-            - If a numpy ndarray (or derivative) is given, the shape must be one of (time, placements)
-              or at least (placements) 
+    #     source_long_run_average : Union[str, float, np.ndarray]
+    #         The variable's native long run average (the average in the weather file)
+    #         - If a string is given, it is expected to be a path to a raster file which can be 
+    #           used to look up the average values from using the coordinates in `.placements`
+    #         - If a numpy ndarray (or derivative) is given, the shape must be one of (time, placements)
+    #           or at least (placements) 
 
-        real_long_run_average : Union[str, float, np.ndarray]
-            The variables 'true' long run average
-            - If a string is given, it is expected to be a path to a raster file which can be 
-              used to look up the average values from using the coordinates in `.placements`
-            - If a numpy ndarray (or derivative) is given, the shape must be one of (time, placements)
-              or at least (placements)
+    #     real_long_run_average : Union[str, float, np.ndarray]
+    #         The variables 'true' long run average
+    #         - If a string is given, it is expected to be a path to a raster file which can be 
+    #           used to look up the average values from using the coordinates in `.placements`
+    #         - If a numpy ndarray (or derivative) is given, the shape must be one of (time, placements)
+    #           or at least (placements)
 
-        real_lra_scaling : float, optional
-            An optional scaling factor to apply to the values derived from `real_long_run_average`. 
-            - This is primarily useful when `real_long_run_average` is a path to a raster file
-            - By default 1
+    #     real_lra_scaling : float, optional
+    #         An optional scaling factor to apply to the values derived from `real_long_run_average`. 
+    #         - This is primarily useful when `real_long_run_average` is a path to a raster file
+    #         - By default 1
 
-        spatial_interpolation : str, optional
-            When either `source_long_run_average` or `real_long_run_average` are a path to a raster 
-            file, this input specifies which interpolation algorithm should be used
-            - Options are: "near", "linear-spline", "cubic-spline", "average"
-            - By default "linear-spline"
-            - See for more info: geokit.raster.interpolateValues
+    #     spatial_interpolation : str, optional
+    #         When either `source_long_run_average` or `real_long_run_average` are a path to a raster 
+    #         file, this input specifies which interpolation algorithm should be used
+    #         - Options are: "near", "linear-spline", "cubic-spline", "average"
+    #         - By default "linear-spline"
+    #         - See for more info: geokit.raster.interpolateValues
 
-        Returns
-        -------
-        WorkflowManager
-            Returns the invoking WorkflowManager (for chaining)
-        """
+    #     Returns
+    #     -------
+    #     WorkflowManager
+    #         Returns the invoking WorkflowManager (for chaining)
+    #     """
 
-        if isinstance(real_long_run_average, str):
-            real_lra = gk.raster.interpolateValues(
-                real_long_run_average,
-                self.locs,
-                mode=spatial_interpolation)
-            assert not np.isnan(real_lra).any() and (real_lra > 0).all()
-        else:
-            real_lra = real_long_run_average
+    #     if isinstance(real_long_run_average, str):
+    #         real_lra = gk.raster.interpolateValues(
+    #             real_long_run_average,
+    #             self.locs,
+    #             mode=spatial_interpolation)
+    #         assert not np.isnan(real_lra).any() and (real_lra > 0).all()
+    #     else:
+    #         real_lra = real_long_run_average
 
-        if isinstance(source_long_run_average, str):
-            source_lra = gk.raster.interpolateValues(
-                source_long_run_average,
-                self.locs,
-                mode=spatial_interpolation)
-            assert not np.isnan(source_lra).any() and (source_lra > 0).all()
-        else:
-            source_lra = source_long_run_average
+    #     if isinstance(source_long_run_average, str):
+    #         source_lra = gk.raster.interpolateValues(
+    #             source_long_run_average,
+    #             self.locs,
+    #             mode=spatial_interpolation)
+    #         assert not np.isnan(source_lra).any() and (source_lra > 0).all()
+    #     else:
+    #         source_lra = source_long_run_average
 
-        self.sim_data[variable] *= real_lra * real_lra_scaling / source_lra
-        print('Factors_from_LRA:')
-        print(real_lra * real_lra_scaling / source_lra)
-        print('__')
-        return self
+    #     self.sim_data[variable] *= real_lra * real_lra_scaling / source_lra
+    #     print('Factors_from_LRA:')
+    #     print(real_lra * real_lra_scaling / source_lra)
+    #     print('__')
+    #     return self
 
     def direct_normal_irradiance_from_trigonometry(self):
         """
@@ -226,6 +225,9 @@ class PTRWorkflowManager(WorkflowManager):
         zen = np.radians(self.sim_data['solar_zenith_degree'])
 
         self.sim_data['direct_normal_irradiance'] = dni_flat / np.cos(zen)
+        
+        index_out = (dni_flat < 25) & (np.cos(zen) < 0.05)
+        self.sim_data['direct_normal_irradiance'][index_out] = 0
 
         sel = ~np.isfinite(self.sim_data['direct_normal_irradiance'])
         sel = np.logical_or(sel, self.sim_data['direct_normal_irradiance'] < 0)
