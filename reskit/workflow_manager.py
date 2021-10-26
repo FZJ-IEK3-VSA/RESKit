@@ -12,7 +12,7 @@ from glob import glob
 from . import weather as rk_weather
 
 
-class WorkflowManager():
+class WorkflowManager:
     """
     The WorkflowManager class assists with the construction of more specialized WorkflowManagers,
     such as the WindWorkflowManager or the SolarWorkflowManager. In addition to providing the
@@ -41,17 +41,17 @@ class WorkflowManager():
         self.placements = placements.copy()
         self.locs = None
 
-        if 'geom' in placements.columns:
+        if "geom" in placements.columns:
             self.locs = gk.LocationSet(placements.geom)
-            self.placements['lon'] = self.locs.lons
-            self.placements['lat'] = self.locs.lats
-            del self.placements['geom']
+            self.placements["lon"] = self.locs.lons
+            self.placements["lat"] = self.locs.lats
+            del self.placements["geom"]
 
-        assert 'lon' in self.placements.columns
-        assert 'lat' in self.placements.columns
+        assert "lon" in self.placements.columns
+        assert "lat" in self.placements.columns
 
         if self.locs is None:
-            self.locs = gk.LocationSet(self.placements[['lon', 'lat']].values)
+            self.locs = gk.LocationSet(self.placements[["lon", "lat"]].values)
 
         self.ext = gk.Extent.fromLocationSet(self.locs)
 
@@ -86,7 +86,16 @@ class WorkflowManager():
         """Extracts pixel values at each of the configured placements from the specified raster file"""
         return gk.raster.interpolateValues(raster, points=self.locs, **kwargs)
 
-    def read(self, variables: Union[str, List[str]], source_type: str, source: str, set_time_index: bool = False, spatial_interpolation_mode: str = "bilinear", temporal_reindex_method: str = "nearest", **kwargs):
+    def read(
+        self,
+        variables: Union[str, List[str]],
+        source_type: str,
+        source: str,
+        set_time_index: bool = False,
+        spatial_interpolation_mode: str = "bilinear",
+        temporal_reindex_method: str = "nearest",
+        **kwargs
+    ):
         """Reads the specified variables from the NetCDF4-style weather dataset, and then extracts
         those variables for each of the coordinates configured in `.placements`. The resulting
         data is then available in `.sim_data`.
@@ -155,10 +164,7 @@ class WorkflowManager():
             else:
                 raise RuntimeError("Unknown source_type")
 
-            source = source_constructor(
-                source,
-                bounds=self.ext,
-                **kwargs)
+            source = source_constructor(source, bounds=self.ext, **kwargs)
 
             # Load the requested variables
             source.sload(*variables)
@@ -172,19 +178,22 @@ class WorkflowManager():
 
         # read variables
         if not isinstance(variables, list):
-            variables = [variables, ]
+            variables = [
+                variables,
+            ]
 
         for var in variables:
             self.sim_data[var] = source.get(
                 var,
                 self.locs,
                 interpolation=spatial_interpolation_mode,
-                force_as_data_frame=True)
+                force_as_data_frame=True,
+            )
 
             if not set_time_index:
                 self.sim_data[var] = self.sim_data[var].reindex(
-                    self.time_index,
-                    method=temporal_reindex_method)
+                    self.time_index, method=temporal_reindex_method
+                )
 
             self.sim_data[var] = self.sim_data[var].values
 
@@ -198,7 +207,14 @@ class WorkflowManager():
         return self
 
     # Stage 3: Weather data adjusting & other intermediate steps
-    def adjust_variable_to_long_run_average(self, variable: str, source_long_run_average: Union[str, float, np.ndarray], real_long_run_average: Union[str, float, np.ndarray], real_lra_scaling: float = 1, spatial_interpolation: str = "linear-spline"):
+    def adjust_variable_to_long_run_average(
+        self,
+        variable: str,
+        source_long_run_average: Union[str, float, np.ndarray],
+        real_long_run_average: Union[str, float, np.ndarray],
+        real_lra_scaling: float = 1,
+        spatial_interpolation: str = "linear-spline",
+    ):
         """Adjusts the average mean of the specified variable to a known long-run-average
 
         Note:
@@ -244,18 +260,16 @@ class WorkflowManager():
 
         if isinstance(real_long_run_average, str):
             real_lra = gk.raster.interpolateValues(
-                real_long_run_average,
-                self.locs,
-                mode=spatial_interpolation)
+                real_long_run_average, self.locs, mode=spatial_interpolation
+            )
             assert not np.isnan(real_lra).any() and (real_lra > 0).all()
         else:
             real_lra = real_long_run_average
 
         if isinstance(source_long_run_average, str):
             source_lra = gk.raster.interpolateValues(
-                source_long_run_average,
-                self.locs,
-                mode=spatial_interpolation)
+                source_long_run_average, self.locs, mode=spatial_interpolation
+            )
             assert not np.isnan(source_lra).any() and (source_lra > 0).all()
         else:
             source_lra = source_long_run_average
@@ -264,7 +278,11 @@ class WorkflowManager():
         return self
 
     # Stage 5: post processing
-    def apply_loss_factor(self, loss: Union[float, np.ndarray, FunctionType], variables: Union[str, List[str]] = ["capacity_factor"]):
+    def apply_loss_factor(
+        self,
+        loss: Union[float, np.ndarray, FunctionType],
+        variables: Union[str, List[str]] = ["capacity_factor"],
+    ):
         """Applies a loss factor onto a specified variable
 
         Parameters
@@ -291,8 +309,7 @@ class WorkflowManager():
 
         for var in variables:
             if isinstance(loss, FunctionType):
-                self.sim_data[var] *= 1 - loss(
-                    self.sim_data[var])
+                self.sim_data[var] *= 1 - loss(self.sim_data[var])
             else:
                 self.sim_data[var] *= 1 - loss
 
@@ -311,7 +328,12 @@ class WorkflowManager():
         """
         self.workflow_parameters[key] = value
 
-    def to_xarray(self, output_netcdf_path: str = None, output_variables: List[str] = None, _intermediate_dict=False) -> xarray.Dataset:
+    def to_xarray(
+        self,
+        output_netcdf_path: str = None,
+        output_variables: List[str] = None,
+        _intermediate_dict=False,
+    ) -> xarray.Dataset:
         """Generates an XArray dataset from the data currently contained in the WorkflowManager
 
         Note:
@@ -341,13 +363,15 @@ class WorkflowManager():
 
         times = self.time_index
         if times[0].tz is not None:
-            times = [np.datetime64(dt.tz_convert("UTC").tz_convert(None)) for dt in times]
+            times = [
+                np.datetime64(dt.tz_convert("UTC").tz_convert(None)) for dt in times
+            ]
         xds = OrderedDict()
         encoding = dict()
 
         if "location_id" in self.placements.columns:
-            location_coords = self.placements['location_id'].copy()
-            del self.placements['location_id']
+            location_coords = self.placements["location_id"].copy()
+            del self.placements["location_id"]
         else:
             location_coords = np.arange(self.placements.shape[0])
 
@@ -364,9 +388,11 @@ class WorkflowManager():
                         write = False
                         break
             if write:
-                xds[c] = xarray.DataArray(self.placements[c],
-                                          dims=["location"],
-                                          coords=dict(location=location_coords))
+                xds[c] = xarray.DataArray(
+                    self.placements[c],
+                    dims=["location"],
+                    coords=dict(location=location_coords),
+                )
 
         for key in self.sim_data.keys():
             if output_variables is not None:
@@ -376,10 +402,11 @@ class WorkflowManager():
             tmp = np.full((len(self.time_index), self.locs.count), np.nan)
             tmp[self._time_sel_, :] = self.sim_data[key]
 
-            xds[key] = xarray.DataArray(tmp,
-                                        dims=["time", "location"],
-                                        coords=dict(time=times,
-                                                    location=location_coords))
+            xds[key] = xarray.DataArray(
+                tmp,
+                dims=["time", "location"],
+                coords=dict(time=times, location=location_coords),
+            )
             encoding[key] = dict(zlib=True)
 
         if _intermediate_dict:
@@ -406,7 +433,14 @@ def _split_locs(placements, groups):
             yield placements.loc[loc_group[:]]
 
 
-def distribute_workflow(workflow_function: FunctionType, placements: pd.DataFrame, jobs: int = 2, max_batch_size: int = None, intermediate_output_dir: str = None, **kwargs) -> xarray.Dataset:
+def distribute_workflow(
+    workflow_function: FunctionType,
+    placements: pd.DataFrame,
+    jobs: int = 2,
+    max_batch_size: int = None,
+    intermediate_output_dir: str = None,
+    **kwargs
+) -> xarray.Dataset:
     """Distributes a RESKit simulation workflow across multiple CPUs
 
     Parallelism is achieved by breaking up the placements dataframe into placement groups via  
@@ -457,19 +491,23 @@ def distribute_workflow(workflow_function: FunctionType, placements: pd.DataFram
     from multiprocessing import Pool
 
     assert isinstance(placements, pd.DataFrame)
-    assert ("lon" in placements.columns and "lat" in placements.columns) or ("geom" in placements.columns)
+    assert ("lon" in placements.columns and "lat" in placements.columns) or (
+        "geom" in placements.columns
+    )
 
     # Split placements into groups
     if "geom" in placements.columns:
         locs = gk.LocationSet(placements)
-        placements['lat'] = locs.lats
-        placements['lon'] = locs.lons
-        del placements['geom']
+        placements["lat"] = locs.lats
+        placements["lon"] = locs.lons
+        del placements["geom"]
     else:
-        locs = gk.LocationSet(np.column_stack([placements.lon.values, placements.lat.values]))
+        locs = gk.LocationSet(
+            np.column_stack([placements.lon.values, placements.lat.values])
+        )
 
     placements.index = locs
-    placements['location_id'] = np.arange(placements.shape[0])
+    placements["location_id"] = np.arange(placements.shape[0])
 
     if max_batch_size is None:
         max_batch_size = int(np.ceil(placements.shape[0] / jobs))
@@ -489,14 +527,16 @@ def distribute_workflow(workflow_function: FunctionType, placements: pd.DataFram
     for gid, placement_group in enumerate(placement_groups):
         kwargs_ = kwargs.copy()
         if intermediate_output_dir is not None:
-            kwargs_['output_netcdf_path'] = join(intermediate_output_dir, "simulation_group_{:05d}.nc".format(gid))
+            kwargs_["output_netcdf_path"] = join(
+                intermediate_output_dir, "simulation_group_{:05d}.nc".format(gid)
+            )
 
-        results.append(pool.apply_async(
-            func=workflow_function,
-            args=(placement_group, ),
-            kwds=kwargs_
-        ))
-        #results.append(workflow_function(placement_group, **kwargs_ ))
+        results.append(
+            pool.apply_async(
+                func=workflow_function, args=(placement_group,), kwds=kwargs_
+            )
+        )
+        # results.append(workflow_function(placement_group, **kwargs_ ))
 
     xdss = []
     for result in results:
@@ -506,13 +546,13 @@ def distribute_workflow(workflow_function: FunctionType, placements: pd.DataFram
     pool.join()
 
     if intermediate_output_dir is None:
-        return xarray.concat(xdss, dim="location").sortby('location')
+        return xarray.concat(xdss, dim="location").sortby("location")
     else:
         # return load_workflow_result(xdss)
         return xdss
 
 
-def load_workflow_result(datasets, loader=xarray.load_dataset, sortby='location'):
+def load_workflow_result(datasets, loader=xarray.load_dataset, sortby="location"):
 
     if isinstance(datasets, str):
         if isdir(datasets):
@@ -521,12 +561,9 @@ def load_workflow_result(datasets, loader=xarray.load_dataset, sortby='location'
             datasets = glob(datasets)
 
     if len(datasets) == 1:
-        ds = xarray.load_dataset(datasets[0]).sortby('locations')
+        ds = xarray.load_dataset(datasets[0]).sortby("locations")
     else:
-        ds = xarray.concat(
-            map(loader, datasets),
-            dim="location"
-        )
+        ds = xarray.concat(map(loader, datasets), dim="location")
 
     if sortby is not None:
         ds = ds.sortby(sortby)
@@ -534,7 +571,7 @@ def load_workflow_result(datasets, loader=xarray.load_dataset, sortby='location'
     return ds
 
 
-class WorkflowQueue():
+class WorkflowQueue:
     """The WorkflowQueue object allows for the queueing of multiple RESKit workflow simulations
     which are then executed in parallel
 
@@ -594,6 +631,7 @@ class WorkflowQueue():
 
         if jobs > 1:
             from multiprocessing import Pool
+
             pool = Pool(jobs)
 
         results = OrderedDict()
