@@ -310,8 +310,8 @@ class PTRWorkflowManager(SolarWorkflowManager):
         assert 'eta_shdw' in self.sim_data.keys()
         
         #estimate parameters
-        nominal_sf_efficiency = np.max(self.eta_ptr_max \
-                                        * self.eta_cleaness \
+        nominal_sf_efficiency = np.max(self.sim_data['ptr_data']['eta_ptr_max'] \
+                                        * self.sim_data['ptr_data']['eta_cleaness'] \
                                         * np.cos(np.deg2rad(self.sim_data['theta'])) \
                                         * self.sim_data['IAM'] \
                                         * self.sim_data['eta_shdw'])
@@ -340,7 +340,9 @@ class PTRWorkflowManager(SolarWorkflowManager):
         assert 'lat' in self.placements.columns
         assert 'lon' in self.placements.columns
         assert 'elev' in self.placements.columns
-
+        assert 'azimuth' in self.placements.columns
+        assert hasattr(self, 'time_index')
+        assert self.sim_data['ptr_data']['SF_density_direct'] < 1
 
         #set up empty array
         #self.sim_data['hour_angle_degree'] = np.empty(shape=(self._numtimesteps, self._numlocations))
@@ -625,19 +627,22 @@ class PTRWorkflowManager(SolarWorkflowManager):
         Generation. 2015, 9(2), 120-130. Available from: 10.1049/iet-rpg.2013.0377.
         """
         method = method.lower()
-        assert 'solar_altitude_angle_degree' in self.sim_data.keys()
+        
         
         if method =='wagner2011':
             # equation 2.38 from [1]	WAGNER, Michael J. and Paul GILMAN. Technical Manual for the SAM Physical Trough Model, 2011.
             # keep in mind, that cos(zenith) is replaced by sin(solar altitude angle)
             # value output is limited to 0... 1
-            self.sim_data['eta_shdw'] = np.minimum(np.abs(np.sin(np.deg2rad(self.sim_data['solar_altitude_angle_degree']))) / SF_density, 1)
+            #self.sim_data['eta_shdw'] = np.minimum(np.abs(np.sin(np.deg2rad(self.sim_data['solar_altitude_angle_degree']))) / SF_density, 1)
+            assert 'tracking_angle' in self.sim_data.keys()
+            assert 'solar_zenith_degree' in self.sim_data.keys()
             
             self.sim_data['eta_shdw'] = np.minimum(np.abs(np.cos(np.deg2rad(self.sim_data['tracking_angle']))) / SF_density, 1) #TODO
             self.sim_data['eta_shdw'][self.sim_data['solar_zenith_degree']>90] = 0
 
         elif method == 'gafurov2015':
             warning('The method gafurov2015 for shadow losses is not fully implemented!')
+            assert 'solar_altitude_angle_degree' in self.sim_data.keys()
             self.sim_data['eta_shdw'] = np.sin(np.deg2rad(self.sim_data['solar_altitude_angle_degree'])) / ( SF_density * np.cos(np.deg2rad(self.sim_data['theta'])) )
 
         return self
@@ -685,14 +690,10 @@ class PTRWorkflowManager(SolarWorkflowManager):
         # IAM: 1
         # eta_shdw: 1
         # A_aperture_sf: m^2
-        # direct_normal_irradiance: W/m^2
+        # direct_normal_irradiance: W/m^2        
 
-        self.eta_ptr_max = eta_ptr_max
-        self.eta_cleaness = eta_cleaness
-        
-
-        self.sim_data['HeattoHTF_W'] = self.eta_ptr_max \
-                                        * self.eta_cleaness \
+        self.sim_data['HeattoHTF_W'] = eta_ptr_max \
+                                        * eta_cleaness \
                                         * np.cos(np.deg2rad(self.sim_data['theta'])) \
                                         * self.sim_data['IAM'] \
                                         * self.sim_data['eta_shdw'] \
@@ -701,9 +702,9 @@ class PTRWorkflowManager(SolarWorkflowManager):
                                         * self.placements['aperture_area_m2'].values \
                                         * self.sim_data['direct_normal_irradiance']
 
-        self.sim_data['P_DNI'] = self.placements['aperture_area_m2'].values * self.sim_data['direct_normal_irradiance']
+        #self.sim_data['P_DNI'] = self.placements['aperture_area_m2'].values * self.sim_data['direct_normal_irradiance']
 
-        self.sim_data['P_DNI_eta_opt'] = self.placements['aperture_area_m2'].values * self.sim_data['direct_normal_irradiance'] * eta_ptr_max
+        #self.sim_data['P_DNI_eta_opt'] = self.placements['aperture_area_m2'].values * self.sim_data['direct_normal_irradiance'] * eta_ptr_max
 
 
         return self
@@ -1065,8 +1066,8 @@ class PTRWorkflowManager(SolarWorkflowManager):
         
             # Q_sf,des is the design point power output of the plant
             # P_pb_des is the design point power output of the plant
-            nominal_sf_efficiency = np.max(self.eta_ptr_max \
-                                            * self.eta_cleaness \
+            nominal_sf_efficiency = np.max(self.sim_data['ptr_data']['eta_ptr_max'] \
+                                            * self.sim_data['ptr_data']['eta_cleaness'] \
                                             * np.cos(np.deg2rad(self.sim_data['theta'])) \
                                             * self.sim_data['IAM'] \
                                             * self.sim_data['eta_shdw'])
@@ -1186,8 +1187,8 @@ class PTRWorkflowManager(SolarWorkflowManager):
         assert 'eta_shdw' in self.sim_data.keys()
         
         #estimate parameters
-        nominal_sf_efficiency = np.max(self.eta_ptr_max \
-                                        * self.eta_cleaness \
+        nominal_sf_efficiency = np.max(self.sim_data['ptr_data']['eta_ptr_max'] \
+                                        * self.sim_data['ptr_data']['eta_cleaness'] \
                                         * np.cos(np.deg2rad(self.sim_data['theta'])) \
                                         * self.sim_data['IAM'] \
                                         * self.sim_data['eta_shdw'])
