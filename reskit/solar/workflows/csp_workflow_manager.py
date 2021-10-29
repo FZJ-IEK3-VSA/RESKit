@@ -273,7 +273,57 @@ class PTRWorkflowManager(SolarWorkflowManager):
 
         return self
 
+    def apply_azimuth(self):
+        """
+        """
+        orientation = self.sim_data['ptr_data']['orientation']
+        accepted_orientation = [
+            'northsouth',
+            'eastwest',
+            'song2013'
+        ]
+        assert orientation in accepted_orientation
+        
+        if orientation == 'northsouth':
+            self.placements['azimuth'] = 180
+        elif orientation == 'eastwest':
+            self.placements['azimuth'] = 90
+        elif orientation == 'song2013':
+            
+            def apply_song2013(lat):
+                ''' apply song 2013: if latitude is between -46° and +46°, use northsouth orientation, else eastwest orientation'''
+                
+                if lat < 46.06 and lat > -46.06:
+                    # northsouth
+                    return 180
+                else:
+                    # eastwest
+                    return 90
+            
+            self.placements['azimuth'] = self.placements['lat'].apply(apply_song2013)
+    
+    def apply_capacity(self):
+        assert 'aperture_area_m2' in self.placements.keys()
+        assert 'direct_normal_irradiance' in self.sim_data.keys()
+        assert 'theta' in self.sim_data.keys()
+        assert 'IAM' in self.sim_data.keys()
+        assert 'eta_shdw' in self.sim_data.keys()
+        
+        #estimate parameters
+        nominal_sf_efficiency = np.max(self.eta_ptr_max \
+                                        * self.eta_cleaness \
+                                        * np.cos(np.deg2rad(self.sim_data['theta'])) \
+                                        * self.sim_data['IAM'] \
+                                        * self.sim_data['eta_shdw'])
+        #nominal_efficiency_power_block = 0.3774 # 37.74% efficency of the power block at nominal power, from gafurov2013
+        nominal_receiver_heat_losses = 0.06 # 6% losses nominal heat losses, from gafurov2013
+        
+        I_DNI_nom = np.minimum(self.sim_data['direct_normal_irradiance'].max(axis=0), self.sim_data['ptr_data']['I_DNI_nom'])
 
+        Q_sf_des = nominal_sf_efficiency * self.placements['aperture_area_m2'].values * I_DNI_nom * (1-nominal_receiver_heat_losses) #W
+        
+        self.placements['capacity_sf_W_th'] = Q_sf_des
+    
     def calculateSolarPosition(self):
         """calculates the solar position in terms of hour angle and declination from time series and location series of the current object
 
@@ -296,32 +346,14 @@ class PTRWorkflowManager(SolarWorkflowManager):
         #self.sim_data['hour_angle_degree'] = np.empty(shape=(self._numtimesteps, self._numlocations))
         #self.sim_data['declination_angle_degree'] = np.empty(shape=(self._numtimesteps, self._numlocations))
         self.sim_data['solar_zenith_degree'] = np.empty(shape=(self._numtimesteps, self._numlocations))
-        self.sim_data['aoi_northsouth'] = np.empty(shape=(self._numtimesteps, self._numlocations))
-        self.sim_data['aoi_eastwest'] = np.empty(shape=(self._numtimesteps, self._numlocations))
-
+        self.sim_data['solar_azimuth_degree'] = np.empty(shape=(self._numtimesteps, self._numlocations))
+        self.sim_data['theta'] = np.empty(shape=(self._numtimesteps, self._numlocations))
+        self.sim_data['tracking_angle'] = np.empty(shape=(self._numtimesteps, self._numlocations))
 
 
 
         # iterate trough all location
-        for location_iter, row in enumerate(self.placements[['lon', 'lat', 'elev']].itertuples()):
-            
-
-
-            #calculate the solar hour angle with pv lib
-            # self.sim_data['hour_angle_degree'][:, location_iter] = \
-            #     pvlib.solarposition.hour_angle(
-            #         times=self.time_index,
-            #         longitude=row.lon,
-            #         equation_of_time=pvlib.solarposition.equation_of_time_pvcdrom(dayofyear=self.time_index.day_of_year.values)
-            #         )
-            #         # equation_of_time is the deviation betwee real time and solar time
-
-
-
-            # #calculate the solar declonation angle with pv lib
-            # self.sim_data['declination_angle_degree'][:, location_iter] = \
-            #     pvlib.solarposition.declination_cooper69(dayofyear=self.time_index.day_of_year.values) * 180 / np.pi
-
+        for location_iter, row in enumerate(self.placements[['lon', 'lat', 'elev', 'azimuth']].itertuples()):
 
             #calculate the solar position
             _solarpos = \
@@ -337,6 +369,77 @@ class PTRWorkflowManager(SolarWorkflowManager):
 
 
             self.sim_data['solar_zenith_degree'][:, location_iter] = _solarpos['apparent_zenith'].values
+            self.sim_data['solar_azimuth_degree'][:, location_iter] = _solarpos['azimuth'].values
+
+            #calculate aoi
+            truetracking_angles = pvlib.tracking.singleaxis(
+                apparent_zenith=_solarpos['apparent_zenith'],
+                apparent_azimuth=_solarpos['azimuth'],
+                axis_tilt=0,
+                axis_azimuth=row.azimuth,
+                max_angle=90,
+                backtrack=False,  # for true-tracking
+                gcr=self.sim_data['ptr_data']['SF_density_direct'])  # irrelevant for true-tracking
+
+            self.sim_data['theta'][:, location_iter] = np.nan_to_num(truetracking_angles['aoi'].values)
+            self.sim_data['tracking_angle'][:, location_iter] = np.nan_to_num(truetracking_angles['tracker_theta'].values)
+
+            #from [1]	KALOGIROU, Soteris A. Environmental Characteristics. In: Soteris Kalogirou, ed. Solar energy engineering. Processes and systems. Waltham, Mass: Academic Press, 2014, pp. 51-123.
+            # fromula 2.12
+        
+        self.sim_data['solar_altitude_angle_degree'] = np.rad2deg(np.arcsin(np.cos(np.deg2rad(self.sim_data['solar_zenith_degree']))))
+
+        return self
+    
+        
+    def calculateSolarPosition_old(self):
+        """calculates the solar position in terms of hour angle and declination from time series and location series of the current object
+
+        Returns:
+            [CSPWorkflowManager]: Updated CSPWorkflowManager with new values for sim_data['values'][timeserie_iter, location_iter]. The calculated values are:
+                                    - solar_zenith_degree: solar zenith angle
+                                    - solar_altitude_angle_degree: solar altitude (elevation) angle in degrees
+                                    - aoi_northsouth: angle of incidence for northsouth-orientation of trough
+                                    - aoi_eastwest: angle of incidence for eastwest-orientation of trough
+
+        """
+
+        #check for inputs
+        assert 'lat' in self.placements.columns
+        assert 'lon' in self.placements.columns
+        assert 'elev' in self.placements.columns
+
+
+        #set up empty array
+        #self.sim_data['hour_angle_degree'] = np.empty(shape=(self._numtimesteps, self._numlocations))
+        #self.sim_data['declination_angle_degree'] = np.empty(shape=(self._numtimesteps, self._numlocations))
+        self.sim_data['solar_zenith_degree'] = np.empty(shape=(self._numtimesteps, self._numlocations))
+        self.sim_data['solar_azimuth_degree'] = np.empty(shape=(self._numtimesteps, self._numlocations))
+        self.sim_data['aoi_northsouth'] = np.empty(shape=(self._numtimesteps, self._numlocations))
+        self.sim_data['aoi_eastwest'] = np.empty(shape=(self._numtimesteps, self._numlocations))
+        self.sim_data['tracking_angle_northsouth'] = np.empty(shape=(self._numtimesteps, self._numlocations))
+        self.sim_data['tracking_angle_eastwest'] = np.empty(shape=(self._numtimesteps, self._numlocations))
+
+
+
+        # iterate trough all location
+        for location_iter, row in enumerate(self.placements[['lon', 'lat', 'elev']].itertuples()):
+
+            #calculate the solar position
+            _solarpos = \
+                pvlib.solarposition.get_solarposition(
+                    time=self.time_index,
+                    latitude=row.lat,
+                    longitude=row.lon,
+                    #altitude=row.elev,
+                    #pressure=self.sim_data["surface_pressure"][:, location_iter], #TODO: insert here
+                    #temperature=self.sim_data["surface_air_temperature"][:, location_iter], #TODO: insert here
+                    #method='nrel_numba'
+                )
+
+
+            self.sim_data['solar_zenith_degree'][:, location_iter] = _solarpos['apparent_zenith'].values
+            self.sim_data['solar_azimuth_degree'][:, location_iter] = _solarpos['azimuth'].values
 
             #calculate aoi
             truetracking_angles = pvlib.tracking.singleaxis(
@@ -346,9 +449,10 @@ class PTRWorkflowManager(SolarWorkflowManager):
                 axis_azimuth=180,
                 max_angle=90,
                 backtrack=False,  # for true-tracking
-                gcr=0.5)  # irrelevant for true-tracking
+                gcr=self.sim_data['ptr_data']['SF_density_direct'])  # irrelevant for true-tracking
 
             self.sim_data['aoi_northsouth'][:, location_iter] = np.nan_to_num(truetracking_angles['aoi'].values)
+            self.sim_data['tracking_angle_northsouth'][:, location_iter] = np.nan_to_num(truetracking_angles['tracker_theta'].values)
 
             #calculate aoi
             truetracking_angles = pvlib.tracking.singleaxis(
@@ -358,9 +462,10 @@ class PTRWorkflowManager(SolarWorkflowManager):
                 axis_azimuth=90,
                 max_angle=180,
                 backtrack=False,  # for true-tracking
-                gcr=0.5)  # irrelevant for true-tracking
+                gcr=self.sim_data['ptr_data']['SF_density_direct'])  # irrelevant for true-tracking
 
             self.sim_data['aoi_eastwest'][:, location_iter] = np.nan_to_num(truetracking_angles['aoi'].values)
+            self.sim_data['tracking_angle_eastwest'][:, location_iter] = np.nan_to_num(truetracking_angles['tracker_theta'].values)
 
             #from [1]	KALOGIROU, Soteris A. Environmental Characteristics. In: Soteris Kalogirou, ed. Solar energy engineering. Processes and systems. Waltham, Mass: Academic Press, 2014, pp. 51-123.
             # fromula 2.12
@@ -369,8 +474,8 @@ class PTRWorkflowManager(SolarWorkflowManager):
 
         return self
 
-
-    def calculateCosineLossesParabolicTrough(self, orientation: str = 'song2013'):
+    
+    def calculateCosineLossesParabolicTrough_old(self, orientation: str = 'song2013'):
         """[calculate the cosine losses of a parabolic trough CSP solar field.
         Based on https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=6893622 or
         "SONG, Y. Q., Y. XIANG, Y. B. LIAO, B. ZHANG, L. WU, and H. T. ZHANG. How to decide the alignment of the parabolic
@@ -422,50 +527,49 @@ class PTRWorkflowManager(SolarWorkflowManager):
             costheta_northsouth = costheta_northsouth * (_solar_altitude >0)
             '''
 
-            # costheta_northsouth = 1 - ((np.cos(_latitude) * np.cos(_declination) * np.cos(_hour_angle) + np.sin(_latitude) * np.sin(_declination))\
-            #     / np.sqrt( np.square(np.cos(_latitude) * np.sin(_declination) - np.sin(_latitude) * np.cos(_declination) * np.cos(_hour_angle))
-            #                 + np.square(np.cos(_latitude) * np.cos(_declination) * np.cos(_hour_angle) +  np.sin(_latitude) * np.sin(_declination))))
+        #     # costheta_northsouth = 1 - ((np.cos(_latitude) * np.cos(_declination) * np.cos(_hour_angle) + np.sin(_latitude) * np.sin(_declination))\
+        #     #     / np.sqrt( np.square(np.cos(_latitude) * np.sin(_declination) - np.sin(_latitude) * np.cos(_declination) * np.cos(_hour_angle))
+        #     #                 + np.square(np.cos(_latitude) * np.cos(_declination) * np.cos(_hour_angle) +  np.sin(_latitude) * np.sin(_declination))))
             
-            theta_northsouth = self.sim_data['aoi_northsouth']#.flatten(order='F')
+        #     theta_northsouth = self.sim_data['aoi_northsouth']#.flatten(order='F')
 
 
-        #calculate the cos of theta for a east/ west oreintation
-        #formula (7) from Song How to decide the alignment of the parabolic trough collector according to the local latitude 2013
+        # #calculate the cos of theta for a east/ west oreintation
+        # #formula (7) from Song How to decide the alignment of the parabolic trough collector according to the local latitude 2013
         
-        if orientation in ['eastwest', 'song2013']:
+        # if orientation in ['eastwest', 'song2013']:
             
-            '''
-            #calculation
-            theta_eastwest = np.arccos(np.sqrt( (np.square(np.sin(_declination))-1) * np.square(np.sin(_hour_angle)) + 1 ))
-            theta_eastwest = np.rad2deg(theta_eastwest)
+        #     '''
+        #     #calculation
+        #     theta_eastwest = np.arccos(np.sqrt( (np.square(np.sin(_declination))-1) * np.square(np.sin(_hour_angle)) + 1 ))
+        #     theta_eastwest = np.rad2deg(theta_eastwest)
 
-            # when sun altidude is negative (after sunset), set values to 0
-            theta_eastwest = theta_eastwest * (_solar_altitude >0)
-            '''
+        #     # when sun altidude is negative (after sunset), set values to 0
+        #     theta_eastwest = theta_eastwest * (_solar_altitude >0)
+        #     '''
 
-            theta_eastwest = self.sim_data['aoi_eastwest']#.flatten(order='F')
+        #     theta_eastwest = self.sim_data['aoi_eastwest']#.flatten(order='F')
 
 
         if orientation == 'northsouth':
-            theta = theta_northsouth #forced northsouth orientation
+            theta = self.sim_data['aoi_northsouth'] #forced northsouth orientation
+            tracking_angle = self.sim_data['tracking_angle_northsouth']
             
         elif orientation == 'eastwest':
-            theta = theta_eastwest #forced eastwest orientation
+            theta = self.sim_data['aoi_eastwest'] #forced eastwest orientation
+            tracking_angle = self.sim_data['tracking_angle_eastwest']
             
         elif orientation == 'song2013':
             # apply song 2013:
             # if latitude is between -46° and +46°, use northsouth orientation, else eastwest orientation
-            _isns = np.logical_and(_latitude < 46.06 /180*np.pi, _latitude > -46.06 /180*np.pi)
+            _isns = np.logical_and(_latitude < 46.06, _latitude > -46.06)
 
-            theta = _isns * theta_northsouth + np.logical_not(_isns) * theta_eastwest
-
+            theta = _isns * self.sim_data['aoi_northsouth'] + np.logical_not(_isns) * self.sim_data['aoi_eastwest']
+            tracking_angle = _isns * self.sim_data['tracking_angle_northsouth'] + np.logical_not(_isns) * self.sim_data['tracking_angle_eastwest']
 
         # change array to 2D
-        self.sim_data['theta'] = theta #p.reshape(
-        #     a=theta,
-        #     newshape=(self._numtimesteps, self._numlocations),
-        #     order='F'
-        # )
+        self.sim_data['theta'] = theta
+        self.sim_data['tracking_angle'] = tracking_angle
 
         return self
 
@@ -499,7 +603,7 @@ class PTRWorkflowManager(SolarWorkflowManager):
             - a3 * np.power(_theta, 3) / np.cos(np.deg2rad(_theta))
 
         #replace nan with zero
-        self.sim_data['IAM'] = np.nan_to_num(_IAM, nan = 0)
+        self.sim_data['IAM'] = np.maximum(np.nan_to_num(_IAM, nan = 0), 0)
 
         return self
 
@@ -526,8 +630,11 @@ class PTRWorkflowManager(SolarWorkflowManager):
         if method =='wagner2011':
             # equation 2.38 from [1]	WAGNER, Michael J. and Paul GILMAN. Technical Manual for the SAM Physical Trough Model, 2011.
             # keep in mind, that cos(zenith) is replaced by sin(solar altitude angle)
-            # value output is limited to 0.5 ... 1
+            # value output is limited to 0... 1
             self.sim_data['eta_shdw'] = np.minimum(np.abs(np.sin(np.deg2rad(self.sim_data['solar_altitude_angle_degree']))) / SF_density, 1)
+            
+            self.sim_data['eta_shdw'] = np.minimum(np.abs(np.cos(np.deg2rad(self.sim_data['tracking_angle']))) / SF_density, 1) #TODO
+            self.sim_data['eta_shdw'][self.sim_data['solar_zenith_degree']>90] = 0
 
         elif method == 'gafurov2015':
             warning('The method gafurov2015 for shadow losses is not fully implemented!')
@@ -658,7 +765,7 @@ class PTRWorkflowManager(SolarWorkflowManager):
             deltat = self.time_index[1] - self.time_index[0]
             deltat = deltat.total_seconds() #seconds
             #temperature
-            _temperature = np.empty_like(self.sim_data['HeattoHTF_W'])
+            _temperature = np.zeros_like(self.sim_data['HeattoHTF_W'])
             _temperature[0, :] = self.sim_data['surface_air_temperature'][0,:] + 100 #initial temperature
             #losses
             _losses = np.zeros_like(self.sim_data['HeattoHTF_W'])
@@ -990,12 +1097,18 @@ class PTRWorkflowManager(SolarWorkflowManager):
             self.sim_data['PL_sf_track'] = PL_sf_track
             self.sim_data['PL_sf_pumping'] = PL_sf_pumping
 
-            self.sim_data['Parasitics_solarfield_W'] = PL_sf_track + self.sim_data['P_heating_W'] + PL_sf_pumping
-            self.sim_data['Parasitics_plant_W'] = (PL_plant_fix + PL_plant_pumping + PL_plant_other) * np.ones_like(self.sim_data['Parasitics_solarfield_W'])
-            self.sim_data['Parasitics_total_W'] = self.sim_data['Parasitics_solarfield_W'] + self.sim_data['Parasitics_plant_W']
+            self.sim_data['Parasitics_solarfield_W_el'] = PL_sf_track + self.sim_data['P_heating_W'] + PL_sf_pumping
+            self.sim_data['Parasitics_plant_W_el'] = (PL_plant_fix + PL_plant_pumping + PL_plant_other) * np.ones_like(self.sim_data['Parasitics_solarfield_W'])
+            self.sim_data['Parasitics_total_W_el'] = self.sim_data['Parasitics_solarfield_W'] + self.sim_data['Parasitics_plant_W']
 
         return self
 
+    def calculateCapacityFactors(self):
+        
+        if not 'capacity_sf_W_th' in self.placements.columns:
+            self.apply_capacity() 
+        assert 'HeattoPlant_W' in self.sim_data.keys()
+        self.sim_data['capacity_factor'] = self.sim_data['HeattoPlant_W'] / self.placements['capacity_sf_W_el']
     
     def calculateEconomics_SolarField(self, WACC: float = 8, lifetime: float = 25,  calculationmethod: str = 'franzmann2021', params: dict = {}):
         '''Calculating the cost for internal heat from CSP
