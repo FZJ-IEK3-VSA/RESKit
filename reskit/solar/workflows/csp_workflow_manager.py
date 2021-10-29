@@ -1099,8 +1099,8 @@ class PTRWorkflowManager(SolarWorkflowManager):
             self.sim_data['PL_sf_pumping'] = PL_sf_pumping
 
             self.sim_data['Parasitics_solarfield_W_el'] = PL_sf_track + self.sim_data['P_heating_W'] + PL_sf_pumping
-            self.sim_data['Parasitics_plant_W_el'] = (PL_plant_fix + PL_plant_pumping + PL_plant_other) * np.ones_like(self.sim_data['Parasitics_solarfield_W'])
-            self.sim_data['Parasitics_total_W_el'] = self.sim_data['Parasitics_solarfield_W'] + self.sim_data['Parasitics_plant_W']
+            self.sim_data['Parasitics_plant_W_el'] = (PL_plant_fix + PL_plant_pumping + PL_plant_other) * np.ones_like(self.sim_data['Parasitics_solarfield_W_el'])
+            self.sim_data['Parasitics_total_W_el'] = self.sim_data['Parasitics_solarfield_W_el'] + self.sim_data['Parasitics_plant_W_el']
 
         return self
 
@@ -1109,7 +1109,7 @@ class PTRWorkflowManager(SolarWorkflowManager):
         if not 'capacity_sf_W_th' in self.placements.columns:
             self.apply_capacity() 
         assert 'HeattoPlant_W' in self.sim_data.keys()
-        self.sim_data['capacity_factor'] = self.sim_data['HeattoPlant_W'] / self.placements['capacity_sf_W_el']
+        self.sim_data['capacity_factor'] = self.sim_data['HeattoPlant_W'] / np.tile(self.placements['capacity_sf_W_th'], (8760,1))
     
     def calculateEconomics_SolarField(self, WACC: float = 8, lifetime: float = 25,  calculationmethod: str = 'franzmann2021', params: dict = {}):
         '''Calculating the cost for internal heat from CSP
