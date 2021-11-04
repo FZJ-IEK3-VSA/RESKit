@@ -15,7 +15,7 @@ def pt_pv_placements() -> pd.DataFrame:
     df['capacity'] = 2000
     return df
 
-
+@pytest.mark.skip(reason="no era5 atm")
 def test_openfield_pv_era5(pt_pv_placements):
     gen = openfield_pv_era5(
         placements=pt_pv_placements,
