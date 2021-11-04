@@ -5,7 +5,9 @@ class Parameters:
     loader/setter functions.
     """
     def __init__(self):
-        #TODO possibly already add loader here so initialization means new parameter set (if optional! json path is given)
+        """
+        This class is initialized without any arguments.
+        """
         pass
 
     def load_custom_params_set(self):
@@ -17,7 +19,9 @@ class Parameters:
     
 class OnshoreParameters(Parameters):
     """
-    This class holds all onshore wind related parameters.
+    This class holds all onshore-wind specific techno-economic base parameter 
+    assumptions as static attributes as well as specific methods to manipulate 
+    onshore parameters.
     """
     # static baseline turbine attributes
     constant_rotor_diam=True 
@@ -95,12 +99,9 @@ class OnshoreParameters(Parameters):
 
 class OffshoreParameters(Parameters):
     """
-
-
-    Parameters
-    ----------
-    Parameters : [type]
-        [description]
+    This class holds all offshore-wind specific techno-economic base parameter 
+    assumptions as static attributes as well as specific methods to manipulate 
+    offshore parameters.
     """
     distance_to_bus=3
     foundation="monopile" 
@@ -111,10 +112,13 @@ class OffshoreParameters(Parameters):
     turbine_row_spacing=9
 
     def __init__(self):
+        """
+        This class is initiated without passing arguments.
+        """
         pass
 
     def load_individual_params(self,         
-            distance_to_bus =None,
+            distance_to_bus=None,
             foundation=None,
             mooring_count =None,
             anchor=None,
@@ -122,7 +126,8 @@ class OffshoreParameters(Parameters):
             turbine_spacing =None,
             turbine_row_spacing=None,
     ):
-        """[summary]
+        """
+        [Summary]
 
         Parameters
         ----------
