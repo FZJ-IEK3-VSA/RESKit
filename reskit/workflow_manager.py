@@ -8,6 +8,7 @@ from collections import OrderedDict, namedtuple
 from types import FunctionType
 import xarray
 from typing import Union, List, OrderedDict
+from . import weather as rk_weather
 from glob import glob
 from osgeo import ogr
 
