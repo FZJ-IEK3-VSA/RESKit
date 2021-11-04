@@ -94,6 +94,10 @@ class Era5Source(NCSource):
         dirname(__file__),
         "data",
         "ERA5_total_sky_direct_solar_radiation_at_surface_mean.tiff")
+    LONG_RUN_AVERAGE_DNI_new = join(
+        dirname(__file__),
+        "data",
+        "ERA5_DNI_mean.tif")
 
     MAX_LON_DIFFERENCE = 0.26
     MAX_LAT_DIFFERENCE = 0.26
