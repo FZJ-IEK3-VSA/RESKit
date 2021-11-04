@@ -7,4 +7,4 @@ from . import wind
 from . import solar
 
 from ._test import TEST_DATA
-from .parameters.parameters import Parameters, OnshoreParameters, OffshoreParameters
+from .parameters.parameters import OnshoreParameters, OffshoreParameters
