@@ -80,13 +80,13 @@ def offshore_turbine_capex(capacity, hub_height, rotor_diam, depth, distance_to_
     # TODO: Generalize this function further(like with the onshore cost model)
 
     # retrieve default values if base values are not given explicitly
-    if distance_to_bus is None: distance_to_bus=Parameters.onshore['distance_to_bus']
-    if foundation is None: foundation=Parameters.onshore['foundation']
-    if mooring_count is None: mooring_count=Parameters.onshore['mooring_count']
-    if anchor is None: anchor=Parameters.onshore['anchor']
-    if turbine_count is None: turbine_count=Parameters.onshore['turbine_count']
-    if turbine_spacing is None: turbine_spacing=Parameters.onshore['turbine_spacing']
-    if turbine_row_spacing is None: turbine_row_spacing=Parameters.onshore['turbine_row_spacing']
+    if distance_to_bus is None: distance_to_bus=Parameters.offshore['distance_to_bus']
+    if foundation is None: foundation=Parameters.offshore['foundation']
+    if mooring_count is None: mooring_count=Parameters.offshore['mooring_count']
+    if anchor is None: anchor=Parameters.offshore['anchor']
+    if turbine_count is None: turbine_count=Parameters.offshore['turbine_count']
+    if turbine_spacing is None: turbine_spacing=Parameters.offshore['turbine_spacing']
+    if turbine_row_spacing is None: turbine_row_spacing=Parameters.offshore['turbine_row_spacing']
 
     # PREPROCESS INPUTS
     cp = np.array(capacity / 1000)
