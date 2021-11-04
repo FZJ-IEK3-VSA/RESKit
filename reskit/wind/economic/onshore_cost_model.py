@@ -1,7 +1,8 @@
 import numpy as np
+from reskit.parameters.parameters import Parameters
 
 
-def onshore_turbine_capex(capacity, hub_height, rotor_diam, base_capex=1100 * 4200, base_capacity=4200, base_hub_height=120, base_rotor_diam=136, tcc_share=0.673, bos_share=0.229, **k):
+def onshore_turbine_capex(capacity, hub_height, rotor_diam, base_capex=None, base_capacity=None, base_hub_height=None, base_rotor_diam=None, tcc_share=None, bos_share=None, **k):
     """    
     A cost and scaling model (CSM) to calculate the total cost of a 3-bladed, direct drive onshore wind turbine according to Fingersh et al. [1] and Maples et al. [2].
     A CSM normalization is done such that a chosen baseline turbine, with a capacity of 4200 kW, hub height of 120 m, and rotor diameter of 136 m, corresponds to a expected typical specific cost of 1100 Eur/kW in a 2050 European context according to Ryberg et al. [4]
@@ -57,6 +58,13 @@ def onshore_turbine_capex(capacity, hub_height, rotor_diam, base_capex=1100 * 42
     [3] Stehly, T., Heimiller, D., & Scott, G. (2016). Cost of Wind Energy Review. Technical Report. https://www.nrel.gov/docs/fy18osti/70363.pdf
     [4] Ryberg, D. S., Caglayan, D. G., Schmitt, S., Linßen, J., Stolten, D., & Robinius, M. (2019). The future of European onshore wind energy potential: Detailed distribution and simulation of advanced turbine designs. Energy. https://doi.org/10.1016/j.energy.2019.06.052
     """
+    # retrieve default values if base values are not given explicitly
+    if base_capex is None: base_capex=Parameters.onshore['base_capex']
+    if base_capacity is None: base_capacity=Parameters.onshore['base_capacity']
+    if base_hub_height is None: base_hub_height=Parameters.onshore['base_hub_height']
+    if base_rotor_diam is None: base_rotor_diam=Parameters.onshore['base_rotor_diam']
+    if tcc_share is None: tcc_share=Parameters.onshore['tcc_share']
+    if bos_share is None: bos_share=Parameters.onshore['bos_share']
 
     # PREPROCESS INPUTS
     rd = np.array(rotor_diam)
@@ -82,7 +90,7 @@ def onshore_turbine_capex(capacity, hub_height, rotor_diam, base_capex=1100 * 42
     return total_costs
 
 
-def onshore_tcc(cp, hh, rd, gdp_escalator=1, blade_material_escalator=1, blades=3):
+def onshore_tcc(cp, hh, rd, gdp_escalator=None, blade_material_escalator=None, blades=None):
     """
     A function to determine the turbine capital cost (TCC) of a 3 blade standar onshore wind turbine based capacity, hub height and rotor diameter values according to the cost model by Fingersh et al. [1].
 
@@ -111,6 +119,11 @@ def onshore_tcc(cp, hh, rd, gdp_escalator=1, blade_material_escalator=1, blades=
     [1] Fingersh, L., Hand, M., & Laxson, A. (2006). Wind Turbine Design Cost and Scaling Model. NREL. https://www.nrel.gov/docs/fy07osti/40566.pdf
 
     """
+    # retrieve default values if base values are not given explicitly
+    if gdp_escalator is None: gdp_escalator=Parameters.onshore['gdp_escalator']
+    if blade_material_escalator is None: blade_material_escalator=Parameters.onshore['blade_material_escalator']
+    if blades is None: blades=Parameters.onshore['blades']
+
     rr = rd / 2
     sa = np.pi * rr * rr
 
