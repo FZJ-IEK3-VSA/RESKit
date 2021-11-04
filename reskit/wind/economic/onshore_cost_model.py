@@ -1,5 +1,5 @@
 import numpy as np
-from reskit.parameters.parameters import Parameters
+from reskit.parameters.parameters import OnshoreParameters
 
 
 def onshore_turbine_capex(capacity, hub_height, rotor_diam, base_capex=None, base_capacity=None, base_hub_height=None, base_rotor_diam=None, tcc_share=None, bos_share=None, **k):
@@ -59,12 +59,12 @@ def onshore_turbine_capex(capacity, hub_height, rotor_diam, base_capex=None, bas
     [4] Ryberg, D. S., Caglayan, D. G., Schmitt, S., Linßen, J., Stolten, D., & Robinius, M. (2019). The future of European onshore wind energy potential: Detailed distribution and simulation of advanced turbine designs. Energy. https://doi.org/10.1016/j.energy.2019.06.052
     """
     # retrieve default values if base values are not given explicitly
-    if base_capex is None: base_capex=Parameters.onshore['base_capex']
-    if base_capacity is None: base_capacity=Parameters.onshore['base_capacity']
-    if base_hub_height is None: base_hub_height=Parameters.onshore['base_hub_height']
-    if base_rotor_diam is None: base_rotor_diam=Parameters.onshore['base_rotor_diam']
-    if tcc_share is None: tcc_share=Parameters.onshore['tcc_share']
-    if bos_share is None: bos_share=Parameters.onshore['bos_share']
+    if base_capex is None: base_capex=OnshoreParameters.base_capex
+    if base_capacity is None: base_capacity=OnshoreParameters.base_capacity
+    if base_hub_height is None: base_hub_height=OnshoreParameters.base_hub_height
+    if base_rotor_diam is None: base_rotor_diam=OnshoreParameters.base_rotor_diam
+    if tcc_share is None: tcc_share=OnshoreParameters.tcc_share
+    if bos_share is None: bos_share=OnshoreParameters.bos_share
 
     # PREPROCESS INPUTS
     rd = np.array(rotor_diam)
@@ -120,9 +120,9 @@ def onshore_tcc(cp, hh, rd, gdp_escalator=None, blade_material_escalator=None, b
 
     """
     # retrieve default values if base values are not given explicitly
-    if gdp_escalator is None: gdp_escalator=Parameters.onshore['gdp_escalator']
-    if blade_material_escalator is None: blade_material_escalator=Parameters.onshore['blade_material_escalator']
-    if blades is None: blades=Parameters.onshore['blades']
+    if gdp_escalator is None: gdp_escalator=OnshoreParameters.gdp_escalator
+    if blade_material_escalator is None: blade_material_escalator=OnshoreParameters.blade_material_escalator
+    if blades is None: blades=OnshoreParameters.blades
 
     rr = rd / 2
     sa = np.pi * rr * rr
