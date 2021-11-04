@@ -1,5 +1,5 @@
 from reskit.solar.workflows.workflows import (
-    openfield_pv_era5,
+    #openfield_pv_era5,
     openfield_pv_merra_ryberg2019,
     openfield_pv_sarah_unvalidated)
 from reskit import TEST_DATA
