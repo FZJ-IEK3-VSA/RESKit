@@ -6,9 +6,10 @@
 import numpy as np
 import pandas as pd
 from .power_curve import compute_specific_power
+from reskit.parameters.parameters import Parameters
 
 
-def onshore_turbine_from_avg_wind_speed(wind_speed, constant_rotor_diam=True, base_capacity=4200, base_hub_height=120, base_rotor_diam=136, reference_wind_speed=6.7, min_tip_height=20, min_specific_power=180):
+def onshore_turbine_from_avg_wind_speed(wind_speed, constant_rotor_diam=None, base_capacity=None, base_hub_height=None, base_rotor_diam=None, reference_wind_speed=None, min_tip_height=None, min_specific_power=None):
     """ 
     Suggest onshore turbine design characteristics (capacity, hub height, rotor diameter, specific power) for a 2050 European context based on an average wind speed value.
     The default values and the function's normalization correspond to the baseline turbine design considered by Ryberg et al. [1] for a wind speed equal to 6.7 m/s. See notes.
@@ -53,6 +54,15 @@ def onshore_turbine_from_avg_wind_speed(wind_speed, constant_rotor_diam=True, ba
     [1] David S. Ryberg, Dilara C. Caglayan, Sabrina Schmitt, Jochen Linssen, Detlef Stolten, Martin Robinius - The Future of European Onshore Wind Energy Potential: 
     Detailed Distributionand Simulation of Advanced Turbine Designs, Energy, 2019, available at https://www.sciencedirect.com/science/article/abs/pii/S0360544219311818
     """
+    # retrieve default values if base values are not given explicitly
+    if constant_rotor_diam is None: constant_rotor_diam=Parameters.onshore['constant_rotor_diam']
+    if base_capacity is None: base_capacity=Parameters.onshore['base_capacity']
+    if base_hub_height is None: base_hub_height=Parameters.onshore['base_hub_height']
+    if base_rotor_diam is None: base_rotor_diam=Parameters.onshore['base_rotor_diam']
+    if reference_wind_speed is None: reference_wind_speed=Parameters.onshore['reference_wind_speed']
+    if min_tip_height is None: min_tip_height=Parameters.onshore['min_tip_height']
+    if min_specific_power is None: min_specific_power=Parameters.onshore['min_specific_power']
+    
     wind_speed = np.array(wind_speed)
     multi = wind_speed.size > 1
     
