@@ -6,7 +6,7 @@
 import numpy as np
 import pandas as pd
 from .power_curve import compute_specific_power
-from reskit.parameters.parameters import Parameters
+from reskit.parameters.parameters import OnshoreParameters
 
 
 def onshore_turbine_from_avg_wind_speed(wind_speed, constant_rotor_diam=None, base_capacity=None, base_hub_height=None, base_rotor_diam=None, reference_wind_speed=None, min_tip_height=None, min_specific_power=None):
@@ -55,13 +55,13 @@ def onshore_turbine_from_avg_wind_speed(wind_speed, constant_rotor_diam=None, ba
     Detailed Distributionand Simulation of Advanced Turbine Designs, Energy, 2019, available at https://www.sciencedirect.com/science/article/abs/pii/S0360544219311818
     """
     # retrieve default values if base values are not given explicitly
-    if constant_rotor_diam is None: constant_rotor_diam=Parameters.onshore['constant_rotor_diam']
-    if base_capacity is None: base_capacity=Parameters.onshore['base_capacity']
-    if base_hub_height is None: base_hub_height=Parameters.onshore['base_hub_height']
-    if base_rotor_diam is None: base_rotor_diam=Parameters.onshore['base_rotor_diam']
-    if reference_wind_speed is None: reference_wind_speed=Parameters.onshore['reference_wind_speed']
-    if min_tip_height is None: min_tip_height=Parameters.onshore['min_tip_height']
-    if min_specific_power is None: min_specific_power=Parameters.onshore['min_specific_power']
+    if constant_rotor_diam is None: constant_rotor_diam=OnshoreParameters.constant_rotor_diam
+    if base_capacity is None: base_capacity=OnshoreParameters.base_capacity
+    if base_hub_height is None: base_hub_height=OnshoreParameters.base_hub_height
+    if base_rotor_diam is None: base_rotor_diam=OnshoreParameters.base_rotor_diam
+    if reference_wind_speed is None: reference_wind_speed=OnshoreParameters.reference_wind_speed
+    if min_tip_height is None: min_tip_height=OnshoreParameters.min_tip_height
+    if min_specific_power is None: min_specific_power=OnshoreParameters.min_specific_power
     
     wind_speed = np.array(wind_speed)
     multi = wind_speed.size > 1
