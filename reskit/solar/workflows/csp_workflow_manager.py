@@ -275,6 +275,17 @@ class PTRWorkflowManager(SolarWorkflowManager):
 
     def apply_azimuth(self):
         """
+        Applies the azimuth angle for each placement. Three options:
+        'northsouth':
+            azimuth is always 180° (N-S)
+        'eastwerst':
+            azimuth is always 90° (E-W)
+        'song2013':
+            azimuth determined by lat: if |lat|<46: N-S, else: E-W
+        
+        params:
+        orientation: str
+            see above
         """
         orientation = self.sim_data['ptr_data']['orientation']
         accepted_orientation = [
@@ -366,7 +377,7 @@ class PTRWorkflowManager(SolarWorkflowManager):
                     #altitude=row.elev,
                     #pressure=self.sim_data["surface_pressure"][:, location_iter], #TODO: insert here
                     #temperature=self.sim_data["surface_air_temperature"][:, location_iter], #TODO: insert here
-                    #method='nrel_numba'
+                    method='nrel_numba'
                 )
 
 
@@ -1138,7 +1149,7 @@ class PTRWorkflowManager(SolarWorkflowManager):
         
         dt = (self._time_index_[1] - self._time_index_[0]) / pd.Timedelta(hours=1)
         # calculate the average annual heat production
-        self.sim_data['annualHeat_Wh'] = self.sim_data['HeattoPlant_W'].mean(axis=0)  * ((self._time_index_[-1] - self._time_index_[0]) / pd.Timedelta(hours=1))
+        self.placements['annualHeat_Wh'] = self.sim_data['HeattoPlant_W'].mean(axis=0)  * ((self._time_index_[-1] - self._time_index_[0]) / pd.Timedelta(hours=1))
         
         if calculationmethod == 'franzmann2021':
             #assert 'CAPEX_solar_field_USD_per_m^2_aperture' in params.keys(), "'CAPEX_solar_field_USD_per_m^2_aperture' needs to be in params"
@@ -1146,7 +1157,7 @@ class PTRWorkflowManager(SolarWorkflowManager):
             #assert 'fixOPEX_%_CAPEX_per_a' in params.keys(), "'_CAPEX_per_a' needs to be in params"
             #assert 'indirect_cost_%_CAPEX' in params.keys(), "'indirect_cost_USD' needs to be in params"
             
-            self.sim_data['CAPEX_SF_USD'] = (self.placements['aperture_area_m2'] * params['CAPEX_solar_field_USD_per_m^2_aperture'] \
+            self.placements['CAPEX_SF_USD'] = (self.placements['aperture_area_m2'] * params['CAPEX_solar_field_USD_per_m^2_aperture'] \
                         + self.placements['land_area_m2'] * params['CAPEX_land_USD_per_m^2_land']) \
                         * (1 + params['CAPEX_indirect_cost_%_CAPEX'] / 100)
                  
@@ -1155,21 +1166,21 @@ class PTRWorkflowManager(SolarWorkflowManager):
             pass
         
         #calcualte annual Costs
-        self.sim_data['Capex_SF_USD_per_a'] = self.sim_data['CAPEX_SF_USD'] * self.sim_data['annuity']
-        self.sim_data['opexFix_SF_USD_per_a'] = self.sim_data['CAPEX_SF_USD'] * params['OPEX_%_CAPEX'] / 100
+        self.placements['Capex_SF_USD_per_a'] = self.placements['CAPEX_SF_USD'] * self.sim_data['annuity']
+        self.placements['opexFix_SF_USD_per_a'] = self.placements['CAPEX_SF_USD'] * params['OPEX_%_CAPEX'] / 100
         
         #calculate opex
         if 'Parasitics_solarfield_W' in self.sim_data.keys():
             dt = (self._time_index_[1] - self._time_index_[0]) / pd.Timedelta(hours=1) 
-            self.sim_data['opexVar_SF_USD_per_a'] = self.sim_data['Parasitics_solarfield_W'].sum() / 1000 * dt * params['electricity_price_USD_per_kWh']
+            self.placements['opexVar_SF_USD_per_a'] = self.sim_data['Parasitics_solarfield_W'].sum() / 1000 * dt * params['electricity_price_USD_per_kWh']
         else:
-            self.sim_data['opexVar_SF_USD_per_a'] = 0
+            self.placements['opexVar_SF_USD_per_a'] = 0
 
         #calculate annual Totex
-        self.sim_data['Totex_SF_USD_per_a'] = self.sim_data['Capex_SF_USD_per_a'] + self.sim_data['opexFix_SF_USD_per_a'] + self.sim_data['opexVar_SF_USD_per_a']
+        self.placements['Totex_SF_USD_per_a'] = self.placements['Capex_SF_USD_per_a'] + self.placements['opexFix_SF_USD_per_a'] + self.placements['opexVar_SF_USD_per_a']
 
         #Cost relative to Heat
-        self.sim_data['LCO_Heat_SF_USD_per_Wh'] = self.sim_data['Totex_SF_USD_per_a'] / self.sim_data['annualHeat_Wh']
+        self.placements['LCO_Heat_SF_USD_per_Wh'] = self.placements['Totex_SF_USD_per_a'] / self.placements['annualHeat_Wh']
 
         
 
