@@ -99,7 +99,7 @@ def csp_ptr_V1(
     wf.calculateDegradationLosses(efficencyDropPerYear=ptr_data['efficencyDropPerYear'], lifetime=ptr_data['lifetime'])
     wf.calculateHeattoHTF(eta_ptr_max=ptr_data['eta_ptr_max'], eta_cleaness=ptr_data['eta_cleaness'])
 
-    wf.apply_capacity()
+    wf.apply_capacity_sf()
     
     if verbose:
         toc = time.time()
@@ -149,6 +149,10 @@ def csp_ptr_V1(
                                         'OPEX_%_CAPEX': ptr_data['OPEX_%_CAPEX'],
                                      }
                                      )    
+
+    wf.optimize_heat_output_4D()
+    wf.calculateEconomics_Plant_Storage_4D()
+    wf.optimal_Plant_Configuration_4D()
 
     if verbose:
         toc = time.time()
