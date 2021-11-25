@@ -2,7 +2,8 @@ from reskit.wind.workflows.workflows import (
     onshore_wind_merra_ryberg2019_europe,
     offshore_wind_merra_caglayan2019,
     offshore_wind_era5,
-    onshore_wind_era5)
+    onshore_wind_era5
+)
 from reskit import TEST_DATA
 import pytest
 import numpy as np

@@ -5,8 +5,9 @@ stages:
 
 test:
   stage: test
-  tags: 
-    - linux
+  # Uncomment, once Calamari is running again
+  #tags: 
+  #  - linux
 
   script: 
     - conda install mamba -c conda-forge
