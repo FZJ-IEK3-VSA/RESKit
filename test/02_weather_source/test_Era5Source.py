@@ -25,7 +25,7 @@ def test_Era5Source___init__():
     rawLons = raw["longitude"][:]
     rawTimes = pd.DatetimeIndex(
         nc.num2date(raw["time"][:], raw["time"].units, only_use_cftime_datetimes=False, only_use_python_datetimes=True)
-    ) + pd.Timedelta(minutes=30)
+    ) - pd.Timedelta(minutes=30)
 
     # Unbounded source
     ms = Era5Source(TEST_DATA['era5-like'], verbose=False)

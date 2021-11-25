@@ -112,7 +112,7 @@ def openfield_pv_merra_ryberg2019(placements, merra_path, global_solar_atlas_ghi
     return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
 
-def openfield_pv_era5(placements, era5_path, global_solar_atlas_ghi_path, global_solar_atlas_dni_path, module="WINAICO WSx-240P6", elev=300, tracking="fixed", inverter=None, inverter_kwargs={}, tracking_args={}, output_netcdf_path=None, output_variables=None, use_new= True):
+def openfield_pv_era5(placements, era5_path, global_solar_atlas_ghi_path, global_solar_atlas_dni_path, module="WINAICO WSx-240P6", elev=300, tracking="fixed", inverter=None, inverter_kwargs={}, tracking_args={}, output_netcdf_path=None, output_variables=None):
     """
 
     openfield_pv_era5_unvalidated(placements, era5_path, global_solar_atlas_ghi_path, global_solar_atlas_dni_path, module="WINAICO WSx-240P6", elev=300, tracking="fixed", inverter=None, inverter_kwargs={}, tracking_args={}, output_netcdf_path=None, output_variables=None)
@@ -188,8 +188,11 @@ def openfield_pv_era5(placements, era5_path, global_solar_atlas_ghi_path, global
         source_type="ERA5",
         source=era5_path,
         set_time_index=True,
+        time_index_from = 'direct_horizontal_irradiance',
         verbose=False
     )
+    # If there is a need to resimulate old data, this line must be inserted.
+    #wf.sim_data['global_horizontal_irradiance'] = wf.sim_data['global_horizontal_irradiance_archive']
 
     wf.determine_solar_position()
     wf.filter_positive_solar_elevation()
@@ -202,34 +205,10 @@ def openfield_pv_era5(placements, era5_path, global_solar_atlas_ghi_path, global
         real_long_run_average=global_solar_atlas_ghi_path,
         real_lra_scaling=1000 / 24,  # cast to hourly average kWh
     )
-
-    #DEBUG
-    import numpy as np
-    wf.sim_data['factors_old_LRA'] = np.ones_like(wf.sim_data['direct_normal_irradiance'])
-    wf.sim_data['factors_new_LRA'] = np.ones_like(wf.sim_data['direct_normal_irradiance'])
-    print('old path', rk_weather.Era5Source.LONG_RUN_AVERAGE_DNI)
-    wf.adjust_variable_to_long_run_average(
-        variable='factors_old_LRA',
-        source_long_run_average=rk_weather.Era5Source.LONG_RUN_AVERAGE_DNI,
-        real_long_run_average=global_solar_atlas_dni_path,
-        real_lra_scaling=1000 / 24,  # cast to hourly average kWh
-    )
-    print('new path', rk_weather.Era5Source.LONG_RUN_AVERAGE_DNI_new)
-    wf.adjust_variable_to_long_run_average(
-        variable='factors_new_LRA',
-        source_long_run_average=rk_weather.Era5Source.LONG_RUN_AVERAGE_DNI_new,
-        real_long_run_average=global_solar_atlas_dni_path,
-        real_lra_scaling=1000 / 24,  # cast to hourly average kWh
-    )
-
-    if use_new:
-        source_long_run_average = rk_weather.Era5Source.LONG_RUN_AVERAGE_DNI_new
-    else:
-        source_long_run_average = rk_weather.Era5Source.LONG_RUN_AVERAGE_DNI
-
+    
     wf.adjust_variable_to_long_run_average(
         variable='direct_normal_irradiance',
-        source_long_run_average=source_long_run_average, #rk_weather.Era5Source.LONG_RUN_AVERAGE_DNI,
+        source_long_run_average=rk_weather.Era5Source.LONG_RUN_AVERAGE_DNI,
         real_long_run_average=global_solar_atlas_dni_path,
         real_lra_scaling=1000 / 24,  # cast to hourly average kWh
     )

@@ -6,6 +6,13 @@ import geokit as gk
 import pytest
 
 
+def print_testresults(variable):
+    print('mean: ', variable[0:140,:].mean())
+    print('std: ', variable[0:140,:].std())
+    print('min: ', variable[0:140,:].min())
+    print('max: ', variable[0:140,:].max())
+
+
 def test_SolarWorkflowManager___init__() -> SolarWorkflowManager:
     # (self, placements):
     placements = pd.DataFrame()
@@ -135,15 +142,16 @@ def test_SolarWorkflowManager_determine_solar_position(pt_SolarWorkflowManager_l
 
     assert man.sim_data['solar_azimuth'].shape == (140, 5)
 
-    assert np.isclose(man.sim_data['solar_azimuth'].mean(), 181.18049599584418)
-    assert np.isclose(man.sim_data['solar_azimuth'].std(), 89.33598643954603)
-    assert np.isclose(man.sim_data['solar_azimuth'].min(), 23.100292572931437)
-    assert np.isclose(man.sim_data['solar_azimuth'].max(), 355.64231142513387)
 
-    assert np.isclose(man.sim_data['apparent_solar_zenith'].mean(), 108.73247461743844)
-    assert np.isclose(man.sim_data['apparent_solar_zenith'].std(), 26.694682563653146)
-    assert np.isclose(man.sim_data['apparent_solar_zenith'].min(), 72.98965034012224)
-    assert np.isclose(man.sim_data['apparent_solar_zenith'].max(), 152.40246572645646)
+    assert np.isclose(man.sim_data['solar_azimuth'].mean(), 181.75084452775852)
+    assert np.isclose(man.sim_data['solar_azimuth'].std(), 90.18959294069582)
+    assert np.isclose(man.sim_data['solar_azimuth'].min(), 23.100292572931437)
+    assert np.isclose(man.sim_data['solar_azimuth'].max(), 355.8650905234781)
+
+    assert np.isclose(man.sim_data['apparent_solar_zenith'].mean(), 108.93266465908583)
+    assert np.isclose(man.sim_data['apparent_solar_zenith'].std(), 26.914599770957278)
+    assert np.isclose(man.sim_data['apparent_solar_zenith'].min(), 72.98977919840057)
+    assert np.isclose(man.sim_data['apparent_solar_zenith'].max(), 152.49005970814673)
 
     return man
 
@@ -166,6 +174,9 @@ def test_SolarWorkflowManager_filter_positive_solar_elevation(pt_SolarWorkflowMa
     man = pt_SolarWorkflowManager_solpos
 
     man.filter_positive_solar_elevation()
+
+    print_testresults(man.sim_data['solar_azimuth'])
+    print_testresults(man.sim_data['apparent_solar_zenith'])
 
     assert man.sim_data['solar_azimuth'].shape == (54, 5)
     assert np.isclose(man.sim_data['solar_azimuth'].mean(), 177.8281611330465)
