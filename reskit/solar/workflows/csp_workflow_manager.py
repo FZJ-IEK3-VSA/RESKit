@@ -99,21 +99,6 @@ class PTRWorkflowManager(SolarWorkflowManager):
         self._numlocations = self.placements.shape[0]
         return self
 
-
-    def easycalc(self):
-        """[do some easy caclution of the heat generation of the solar field based on factors]
-
-        Returns:
-            [CSPWorkflowManager]: [Updated CSPWorkflowManager with new value for self.sim_data['Heat_kW']]
-        """
-        area_usage = 0.5
-        geometric_efficiency = 0.7
-
-        self.sim_data['Heat_kW'] = np.multiply(self.placements['Area'].to_numpy(), self.sim_data['direct_normal_irradiance']) * area_usage * geometric_efficiency
-
-        return self
-    
-
     # def adjust_variable_to_long_run_average(
     #     self,
     #     variable: str,
@@ -375,7 +360,7 @@ class PTRWorkflowManager(SolarWorkflowManager):
                     time=self.time_index,
                     latitude=row.lat,
                     longitude=row.lon,
-                    #altitude=row.elev,
+                    altitude=row.elev,
                     #pressure=self.sim_data["surface_pressure"][:, location_iter], #TODO: insert here
                     #temperature=self.sim_data["surface_air_temperature"][:, location_iter], #TODO: insert here
                     method='nrel_numba'
@@ -1033,13 +1018,13 @@ class PTRWorkflowManager(SolarWorkflowManager):
             warn('Wrong calculation for heat losses of heat transfer fluid selected. Losses will be set to zero.')
             _losses = np.zeros_like(self.sim_data['HeattoHTF_W'], dtype = float)
             self.sim_data['HeattoPlant_W'] = self.sim_data['HeattoHTF_W'] - _losses
-            self.sim_data['HeatLosses_W'] = _losses
+            self.sim_data['Heat_Losses_W'] = _losses
 
         else:
             warn('Wrong calculation for heat losses of heat transfer fluid selected. Losses will be set to zero.')
             _losses = np.zeros_like(self.sim_data['HeattoHTF_W'], dtype = float)
             self.sim_data['HeattoPlant_W'] = self.sim_data['HeattoHTF_W'] - _losses
-            self.sim_data['HeatLosses_W'] = _losses
+            self.sim_data['Heat_Losses_W'] = _losses
         
         
 
@@ -1078,42 +1063,42 @@ class PTRWorkflowManager(SolarWorkflowManager):
         
             # Q_sf,des is the design point power output of the plant
             # P_pb_des is the design point power output of the plant
-            nominal_sf_efficiency = np.max(self.ptr_data['eta_ptr_max'] \
-                                            * self.ptr_data['eta_cleaness'] \
-                                            * np.cos(np.deg2rad(self.sim_data['theta'])) \
-                                            * self.sim_data['IAM'] \
-                                            * self.sim_data['eta_shdw'])
-            nominal_efficiency_power_block = 0.3774 # 37.74% efficency of the power block at nominal power, from gafurov2013
-            nominal_receiver_heat_losses = 0.06 # 6% losses nominal heat losses, from gafurov2013
-            SM = 2
+            nominal_efficiency_power_block = self.ptr_data['eta_powerplant_1'] # 37.74% efficency of the power block at nominal power, from gafurov2013
+            SM = 3.5
 
-            Q_sf_des = nominal_sf_efficiency * self.placements['aperture_area_m2'].values * params['I_DNI_nom'] * (1-nominal_receiver_heat_losses) #W
+            Q_sf_des = self.placements['capacity_sf_W_th'] #W
             P_pb_des = Q_sf_des * nominal_efficiency_power_block / SM
+            
+            P_pb = self.sim_data['HeattoPlant_W'] * nominal_efficiency_power_block
 
             # PL_csp,fix
-            PL_plant_fix = params['PL_plant_fix'] * P_pb_des
+            PL_plant_fix = params['PL_plant_fix'] * P_pb
 
             #PL_sf_track 
-            PL_sf_track = params['PL_sf_track'] * P_pb_des * (self.sim_data['solar_zenith_degree'] < 90)
+            PL_sf_track = params['PL_sf_track'] * P_pb_des[None, :] * (self.sim_data['solar_zenith_degree'] < 90)
 
             #PL_sf_night = self.sim_data['P_heating_W']
 
             #PL_sf_pumping
-            PL_sf_pumping = params['PL_sf_pumping'] * Q_sf_des * np.power(self.sim_data['HeattoPlant_W'] / Q_sf_des, 3)
+            PL_sf_pumping = params['PL_sf_pumping'] * Q_sf_des[None, :] * np.power(self.sim_data['HeattoPlant_W'] / Q_sf_des[None, :], 3)
 
             #PL_plant_pumping
-            PL_plant_pumping = params['PL_plant_pumping'] * Q_sf_des
+            PL_plant_pumping = params['PL_plant_pumping'] * self.sim_data['HeattoPlant_W']
 
             #PL_plant_other
-            PL_plant_other = params['PL_plant_other'] * P_pb_des
+            PL_plant_other = params['PL_plant_other'] * P_pb
 
             self.sim_data['PL_sf_track'] = PL_sf_track
             self.sim_data['PL_sf_pumping'] = PL_sf_pumping
 
             self.sim_data['Parasitics_solarfield_W_el'] = PL_sf_track + self.sim_data['P_heating_W'] + PL_sf_pumping
-            self.sim_data['Parasitics_plant_W_el'] = (PL_plant_fix + PL_plant_pumping + PL_plant_other) * np.ones_like(self.sim_data['Parasitics_solarfield_W_el'])
+            self.sim_data['Parasitics_plant_W_el'] = (PL_plant_fix + PL_plant_pumping + PL_plant_other)#[None, :] * np.ones_like(self.sim_data['Parasitics_solarfield_W_el']) #issue #10  
             self.sim_data['Parasitics_total_W_el'] = self.sim_data['Parasitics_solarfield_W_el'] + self.sim_data['Parasitics_plant_W_el']
+            
+            self.placements['Parasitics_solarfield_Wh_el_per_a'] = self.sim_data['Parasitics_solarfield_W_el'].sum(axis=0)
 
+            assert not np.isnan(self.sim_data['Parasitics_total_W_el']).any()
+            
         return self
 
     def calculateCapacityFactors(self):
@@ -1173,23 +1158,226 @@ class PTRWorkflowManager(SolarWorkflowManager):
         opexFix_SF_USD_per_a = self.placements['CAPEX_SF_USD'] * params['OPEX_%_CAPEX'] / 100
         
         #calculate opex
-        if 'Parasitics_solarfield_W' in self.sim_data.keys():
-            dt = (self._time_index_[1] - self._time_index_[0]) / pd.Timedelta(hours=1) 
-            opexVar_SF_USD_per_a = self.sim_data['Parasitics_solarfield_W'].sum() / 1000 * dt * params['electricity_price_USD_per_kWh']
-        else:
-            opexVar_SF_USD_per_a = 0
+        dt = (self._time_index_[1] - self._time_index_[0]) / pd.Timedelta(hours=1) 
+        opexVar_SF_USD_per_a = self.sim_data['Parasitics_solarfield_W_el'].sum() / 1000 * dt * params['electricity_price_USD_per_kWh']
+
 
         #calculate annual Totex
         self.placements['Totex_SF_USD_per_a'] = Capex_SF_USD_per_a + opexFix_SF_USD_per_a + opexVar_SF_USD_per_a
 
         #Cost relative to Heat
-        self.placements['LCO_Heat_SF_USD_per_Wh'] = self.placements['Totex_SF_USD_per_a'] / self.placements['annualHeatfromSF_Wh']
+        self.placements['LCO_Heat_SF_USDct_per_kWh'] = self.placements['Totex_SF_USD_per_a'] / self.placements['annualHeatfromSF_Wh'] * 1E2 * 1E3 # USD/Wh to USDct/kWh
 
         
 
         return self
     
     
+    def optimize_plant_size(self):
+        '''returns the optimal pLant configuration for each placement by finding the lowest expeected LCOE: sm_opt, tes opt
+        '''
+        
+        #check inputs
+        assert not np.isnan(self.placements['capacity_sf_W_th']).any()
+        assert not np.isnan(self.sim_data['HeattoPlant_W']).any()
+
+        self.sm = np.array([1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5])
+        self.tes = np.array([0, 3, 6, 9, 12, 15, 18])
+        
+        #make lsit with all sizing combinations
+        sizing_tuples = []
+        for sm in self.sm:
+            for tes in self.tes:
+                sizing_tuples.append((sm, tes))
+        
+        assert len(sizing_tuples) == len(self.sm)*len(self.tes)
+        
+        
+        #loop all sizing combinations
+        #dimensions: [time(days), placements, SM, TES]
+        dailyHeatOutput_Wh_4D = np.nan*np.ones(shape=(365, len(self.placements), len(self.sm), len(self.tes))) #TODO: remove
+        TOTEX_USD_per_a_3D = np.nan*np.ones(shape=(len(self.placements), len(self.sm), len(self.tes))) #TODO: remove
+        Power_output_plant_net_Wh_per_a_3D = np.nan*np.ones(shape=(len(self.placements), len(self.sm), len(self.tes))) #TODO: remove
+        LCOE_USDct_per_kWh_el_3D = np.nan*np.ones(shape=(len(self.placements), len(self.sm), len(self.tes)))
+        for size in sizing_tuples:
+            sm = size[0]
+            tes = size[1]
+            
+            #get index
+            i_sm = np.where(self.sm == sm)[0][0]
+            i_tes = np.where(self.tes == tes)[0][0]
+            
+            
+            ##################################
+            ### 1) get opt thermal output  ###
+            ##################################
+            
+            #get thermal size of the power plant
+            Heatflux_powerplant_des_input_W_th = self.placements['capacity_sf_W_th'] / sm
+            Heat_Storage_des_Wh_th = Heatflux_powerplant_des_input_W_th * tes
+            
+            #get direct power to plant
+            Heatflux_direct_powerplant_W_th = np.minimum(self.sim_data['HeattoPlant_W'], Heatflux_powerplant_des_input_W_th)
+            
+            #get heat to be stored
+            Heatflux_to_storage_W_th = np.maximum(self.sim_data['HeattoPlant_W'] - Heatflux_direct_powerplant_W_th,0)
+            
+            
+            #aggregate to daily
+            aggregate_by_day = np.eye(365).repeat(24, axis=1)
+            self.aggregate_by_day = aggregate_by_day
+            
+            #aggregate the stored heat for each day
+            Heat_to_storage_daily_Wh_th = np.einsum('ij,jk', aggregate_by_day, Heatflux_to_storage_W_th)
+            Heat_direct_powerplant_daily_Wh_th = np.einsum('ij,jk', aggregate_by_day, Heatflux_direct_powerplant_W_th)
+            del Heatflux_direct_powerplant_W_th, Heatflux_to_storage_W_th
+            
+            #limit dayliy heat output from storage by storage size
+            Heat_stored_daily_Wh_th = np.minimum(Heat_to_storage_daily_Wh_th, Heat_Storage_des_Wh_th)
+            del Heat_to_storage_daily_Wh_th
+            
+            #calculate heat which is unstored
+            Heat_unstored_daily_Wh_th = Heat_stored_daily_Wh_th * self.ptr_data['storage_efficiency_1']**2
+            del Heat_stored_daily_Wh_th
+            
+            #max heat processable by power plant
+            Heat_max_des_powerplant_daily_Wh_th = Heatflux_powerplant_des_input_W_th * 24 # h/day
+            
+            #calculate actually used heat
+            Heat_total_used_daily_Wh_th = np.minimum((Heat_direct_powerplant_daily_Wh_th + Heat_unstored_daily_Wh_th), Heat_max_des_powerplant_daily_Wh_th)
+            del Heat_direct_powerplant_daily_Wh_th, Heat_unstored_daily_Wh_th, Heat_max_des_powerplant_daily_Wh_th
+            
+            #remember that one
+            dailyHeatOutput_Wh_4D[:,:,i_sm, i_tes] = Heat_total_used_daily_Wh_th #TODO: remove this, only dbg
+            #Heat_total_used_daily_Wh_th = Heat_total_used_daily_Wh_th.sum(axis=0)
+
+            ##################################
+            ### 2) get cost                ###
+            ##################################
+            
+            CAPEX_total_USD = self._get_capex(
+                A_aperture_m2=self.placements['aperture_area_m2'],
+                A_land_m2=self.placements['land_area_m2'],
+                Qdot_field_des_W=self.placements['capacity_sf_W_th'],
+                eta_des_power_plant=self.ptr_data['eta_powerplant_1'],
+                sm=sm,
+                tes=tes,
+                c_field_per_aperture_area_USD_per_m2=self.ptr_data['CAPEX_solar_field_USD_per_m^2_aperture'],
+                c_land_per_land_area_USD_per_m2=self.ptr_data['CAPEX_land_USD_per_m^2_land'],
+                c_storage_USD_per_kWh_th=self.ptr_data['CAPEX_storage_cost_USD_per_kWh'],
+                c_plant_USD_per_kW_el=self.ptr_data['CAPEX_plant_cost_USD_per_kW'],
+                c_indirect_cost_perc_per_direct_Capex=self.ptr_data['CAPEX_indirect_cost_%_CAPEX'],
+            )
+            #annual cost
+            CAPEX_total_USD_per_a = CAPEX_total_USD * self.sim_data['annuity']
+            
+            OPEX_USD_per_a = self._get_opex(
+                CAPEX_total_USD=CAPEX_total_USD,
+                OPEX_fix_perc_CAPEX_per_a=self.ptr_data['OPEX_%_CAPEX'],
+                auxilary_power_Wh_per_a=self.sim_data['Parasitics_solarfield_W_el'].sum(axis=0),
+                electricity_price_USD_per_kWh=self.ptr_data['electricity_price_USD_per_kWh'],
+            )
+            
+            TOTEX_USD_per_a = self._get_totex(
+                CAPEX_total_USD_per_a=CAPEX_total_USD_per_a,
+                OPEX_USD_per_a=OPEX_USD_per_a,
+            )
+            # #TODO: remove
+            # #capex plant
+            # Power_powerplant_des_W_el = Heatflux_powerplant_des_input_W_th * self.ptr_data['eta_powerplant_1']
+            # CAPEX_Plant_USD = self.ptr_data['CAPEX_plant_cost_USD_per_kW'] * Power_powerplant_des_W_el / 1000 #W --> kW
+            
+            # #capex storage
+            # CAPEX_Storage_USD = self.ptr_data['CAPEX_storage_cost_USD_per_kWh'] * Heat_Storage_des_Wh_th / 1000 #Wh-->kWh
+            
+            # #solar field
+            # CAPEX_Field_USD = self.ptr_data['CAPEX_solar_field_USD_per_m^2_aperture'] * self.placements['aperture_area_m2']
+            # CAPEX_Land_USD =  self.ptr_data['CAPEX_land_USD_per_m^2_land'] * self.placements['land_area_m2']
+            
+            # #indirect costs
+            # CAPEX_Indirect_USD = (CAPEX_Plant_USD + CAPEX_Storage_USD + CAPEX_Field_USD + CAPEX_Land_USD) * self.ptr_data['CAPEX_indirect_cost_%_CAPEX']/100
+            
+            # CAPEX_total_USD = (CAPEX_Plant_USD + CAPEX_Storage_USD + CAPEX_Field_USD + CAPEX_Land_USD + CAPEX_Indirect_USD)
+            
+            # #annual cost
+            # CAPEX_total_USD_per_a = CAPEX_total_USD * self.sim_data['annuity']
+            # OPEX_fix_USD_per_a = CAPEX_total_USD * self.ptr_data['OPEX_%_CAPEX'] / 100
+            # OPEX_var_USD_per_a = self.ptr_data['electricity_price_USD_per_kWh'] * self.sim_data['Parasitics_solarfield_W_el'].sum(axis=0) / 1000 * 1 # W --> kWh
+            # #totex
+            # TOTEX_USD_per_a = CAPEX_total_USD_per_a + OPEX_fix_USD_per_a + OPEX_var_USD_per_a
+            
+            TOTEX_USD_per_a_3D[:,i_sm, i_tes] = TOTEX_USD_per_a #TODO: remove this, only dbg
+            
+            ##################################
+            ### 3) Electric Output         ###
+            ##################################
+            
+            #calcualte average rel load of the plant
+            rel_load_plant_daily_1 = 0.5 + 0.5 * np.divide(Heat_total_used_daily_Wh_th, Heatflux_powerplant_des_input_W_th[None, :]*24)
+        
+            # calcualte plant efficiency
+            efficiency_daily_1 = self._get_plant_efficiency(rel_load_plant=rel_load_plant_daily_1, eta_nom=self.ptr_data['eta_powerplant_1'])
+            del rel_load_plant_daily_1
+            
+            # gross power output
+            Power_output_plant_gross_daily_Wh = Heat_total_used_daily_Wh_th * efficiency_daily_1
+            del efficiency_daily_1
+            #plant parasitics
+            Parasitics_plant_daily_Wh_el = np.einsum('ij,jk', aggregate_by_day, self.sim_data['Parasitics_plant_W_el']) *1#h   #issue #10
+            #net power output
+            Power_output_plant_net_daily_Wh = np.maximum(Power_output_plant_gross_daily_Wh - Parasitics_plant_daily_Wh_el,0)
+            del Parasitics_plant_daily_Wh_el, Power_output_plant_gross_daily_Wh
+            
+            #sum up
+            Power_output_plant_net_Wh_per_a = Power_output_plant_net_daily_Wh.sum(axis=0).squeeze()
+            Power_output_plant_net_Wh_per_a_3D[:,i_sm, i_tes] = Power_output_plant_net_Wh_per_a #TODO: remove this, only dbg
+            
+            ##################################
+            ### 4) LCOE                    ###
+            ##################################
+            
+            LCOE_USD_per_kWh_el = np.nan_to_num(TOTEX_USD_per_a[None,:] / Power_output_plant_net_Wh_per_a * 1E5, nan=0) #USD/Wh --> USDct/kWh
+            
+            LCOE_USDct_per_kWh_el_3D[:,i_sm, i_tes] = LCOE_USD_per_kWh_el #TODO: remove this, only dbg
+            
+        #check if all is written
+        assert not np.isnan(LCOE_USDct_per_kWh_el_3D).any()
+        
+        #container for opt variables
+        if not hasattr(self, 'opt_data'):
+            self.opt_data = {}    
+        self.opt_data['dailyHeatOutput_Wh_4D_new'] = dailyHeatOutput_Wh_4D
+        self.opt_data['TOTEX_USD_per_a_3D_new'] = TOTEX_USD_per_a_3D
+        self.opt_data['LCOE_USDct_per_kWh_el_3D_new'] = LCOE_USDct_per_kWh_el_3D
+        
+        ##################################
+        ### 5) opt                     ###
+        ##################################
+
+        #find minimum:
+        #dimensions: [placements]
+        sm_opt = []
+        tes_opt = []
+        #sm_opt_i = []
+        #tes_opt_i = []
+        #loop placemnts(I did not find a function wich gives the argmin along two axes (1,2))
+        for i in range(0, len(self.placements)):
+            temp = LCOE_USDct_per_kWh_el_3D[i,:,:]
+            #find minimum index
+            sm_opt_index, tes_opt_index = np.unravel_index(np.argmin(temp, axis=None), temp.shape)
+            #append
+            sm_opt.append(self.sm[sm_opt_index])
+            tes_opt.append(self.tes[tes_opt_index])
+            #sm_opt_i.append(sm_opt_index)
+            #tes_opt_i.append(tes_opt_index)
+        
+
+        # set minimum values to placement df
+        self.placements['sm_opt'] = sm_opt
+        self.placements['tes_opt'] = tes_opt
+        self.placements['storage_capacity_kWh_th'] = self.placements['capacity_sf_W_th'] / sm_opt * tes_opt / 1000
+        self.placements['power_plant_capacity_W_el'] = self.placements['capacity_sf_W_th'] / sm_opt * self.ptr_data['eta_powerplant_1']
+
     def optimize_heat_output_4D(self):
         '''calculates the heat usage for different type of plant configuration: SM and TES
             Calcualtes the following variables:
@@ -1219,10 +1407,11 @@ class PTRWorkflowManager(SolarWorkflowManager):
 
         Q_sf_des = self.placements['capacity_sf_W_th'] # nominal_sf_efficiency * self.placements['aperture_area_m2'].values * I_DNI_nom * (1-nominal_receiver_heat_losses) #W
 
-        self.sm = np.array([1, 1.5, 2, 2.5, 3, 3.5, 4.5, 5, 5.5, 6, 6.5, 7]) #np.array([2.1])
-        self.tes = np.array([0, 1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 ,20]) #np.array([7.5])
+        self.sm = np.array([1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5])#, 5.5, 6, 6.5, 7]) #np.array([2.1])
+        self.tes = np.array([0, 3, 6, 9, 12, 15, 18])#([0, 1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])#, 16, 17, 18, 19 ,20]) #np.array([7.5])
         
-        self.opt_data = {} #container for opt variables
+        if not hasattr(self, 'opt_data'):
+            self.opt_data = {} #container for opt variables
         self.opt_data['dimensions'] = [
             self.sim_data['HeattoPlant_W'].shape[0], #time
             self.sim_data['HeattoPlant_W'].shape[1], #placements
@@ -1345,7 +1534,7 @@ class PTRWorkflowManager(SolarWorkflowManager):
         
         #limit daily output
         #dimensions: [time(days), placements, SM, TES]
-        dailyHeatOutput_Wh_4D = np.minimum((dailyHeatDirect_Wh_4D + dailyHeatStored_Wh_4D * self.ptr_data['storage_efficiency_1']), maxDailyHeatPlant_W_4D)
+        dailyHeatOutput_Wh_4D = np.minimum((dailyHeatDirect_Wh_4D + dailyHeatStored_Wh_4D * self.ptr_data['storage_efficiency_1']**2), maxDailyHeatPlant_W_4D)
         del maxDailyHeatPlant_W_4D, dailyHeatDirect_Wh_4D
         
         
@@ -1375,7 +1564,6 @@ class PTRWorkflowManager(SolarWorkflowManager):
         # #dimensions: [placements, SM, TES]
         # annualHeat_Wh_3D = np.minimum(annualHeatstoreable_Wh_3D, maxAnnualHeatPlant_W_3D)
         return self
-    
     
     def calculateEconomics_Plant_Storage_4D(self):
         ''' Calculate the Capex for the Plant for placements, and variations of TES and SM
@@ -1444,30 +1632,13 @@ class PTRWorkflowManager(SolarWorkflowManager):
         # cost per heat
         #dimensions: [placements, SM, TES]
         # LCO_Heat_USD_per_Wh = TOTEX_CSP_USD_per_a_3D / self.opt_data['annualHeat_Wh_3D']
-        
-#         #find minimum:
-#         #dimensions: [placements]
-#         sm_opt = []
-#         tes_opt = []
-#         #loop placemnts(I did not find a function wich gives the argmin along two axes (1,2))
-#         for i in range(0, self.opt_data['dimensions'][1]):
-#             temp = LCO_Heat_USD_per_Wh[i,:,:]
-#             #find minimum index
-#             min_tuple = np.unravel_index(np.argmin(temp, axis=None), temp.shape)
-#             #append
-#             sm_opt.append(self.sm[min_tuple[0]])
-#             tes_opt.append(self.tes[min_tuple[1]])
-
-        # self.placements['SM_opt'] = sm_opt
-        # self.placements['TES_opt_h'] = tes_opt
-        # self.sim_data['LCO_Heat_USD_per_Wh'] = LCO_Heat_USD_per_Wh
+ 
         self.opt_data['TOTEX_CSP_USD_per_a_3D'] = TOTEX_CSP_USD_per_a_3D #TODO: remove
         self.opt_data['TOTEX_SF_USD_per_a_3D'] = TOTEX_SF_USD_per_a_3D #TODO: remove
         self.opt_data['TOTEX_Plant_storage_USD_per_a_3D'] = TOTEX_Plant_storage_USD_per_a_3D
 
         return self
-            
-        
+             
     def optimal_Plant_Configuration_4D(self):
         #Calculate average LCOE
         
@@ -1488,22 +1659,19 @@ class PTRWorkflowManager(SolarWorkflowManager):
         ) * 24 #h/dey
         
         #dimensions: [time(days), placements, SM, TES]
-        rel_load_plant_4D = self.opt_data['dailyHeatOutput_Wh_4D'] / Q_plant_des_Wh_per_day_4D
+        rel_load_plant_4D = 0.5 + 0.5 * (self.opt_data['dailyHeatOutput_Wh_4D'] / Q_plant_des_Wh_per_day_4D)
         
-        #Gafurov2015: 
-        # rel_efficiency [%] = 54.92 + 112.73 * rel - 104.63 * rel^2 + 37.05 * rel^3
         #dimensions: [time(days), placements, SM, TES]
-        efficiency_daily_averaged_1_4D = (0.5492 \
-                + 1.1273 * rel_load_plant_4D \
-                - 1.0463 * rel_load_plant_4D**2 \
-                + 0.3705 * rel_load_plant_4D**3) * self.ptr_data['eta_powerplant_1']
+        efficiency_daily_averaged_1_4D = self._get_plant_efficiency(rel_load_plant=rel_load_plant_4D, eta_nom=self.ptr_data['eta_powerplant_1'])
         del rel_load_plant_4D
         
+        efficiency_daily_averaged_1_4D = self.ptr_data['eta_powerplant_1']
         #dimensions: [time(days), placements, SM, TES]
         self.opt_data['dailyPowerOutput_Wh_4D'] = efficiency_daily_averaged_1_4D * self.opt_data['dailyHeatOutput_Wh_4D']
         del efficiency_daily_averaged_1_4D
+        self.opt_data['annualPowerOutput_Wh_3D'] = self.opt_data['dailyPowerOutput_Wh_4D'].sum(axis=0)
         
-        LCOE_USD_per_Wh = self.opt_data['TOTEX_CSP_USD_per_a_3D'] / self.opt_data['annualHeat_Wh_3D']
+        LCOE_USD_per_Wh = self.opt_data['TOTEX_CSP_USD_per_a_3D'] / self.opt_data['annualPowerOutput_Wh_3D']
         
         #find minimum:
         #dimensions: [placements]
@@ -1527,7 +1695,7 @@ class PTRWorkflowManager(SolarWorkflowManager):
         self.opt_data['LCOE_USD_per_Wh'] = LCOE_USD_per_Wh
         self.placements['sm_opt'] = sm_opt
         self.placements['tes_opt'] = tes_opt
-        self.placements['storage_capacity_kWh_th'] = self.placements['capacity_sf_W_th'] / sm_opt * tes_opt
+        self.placements['storage_capacity_kWh_th'] = self.placements['capacity_sf_W_th'] / sm_opt * tes_opt / 1000
         self.placements['power_plant_capacity_W_el'] = self.placements['capacity_sf_W_th'] / sm_opt * self.ptr_data['eta_powerplant_1']
         
         #select the corresponding sm-colum from 'directHeatUsage_Wh_3D_ts'
@@ -1544,10 +1712,132 @@ class PTRWorkflowManager(SolarWorkflowManager):
         # ) #dimensions 'dailyPowerOutput_Wh_4D': [time(days), placements, SM, TES]
         return self
 
+    def calculate_electrical_output(self):
+        '''from sm and tes opt, calculate the electrical output.
+            idea: as much energy as possible will be stored to be flexible,
+            the rest is forced to be depending on solar radiation
+        '''
+    
+        assert 'storage_capacity_kWh_th' in self.placements.columns    
+        assert 'power_plant_capacity_W_el' in self.placements.columns
+        
+        pass
+        # heat_flexible = 1
+        # self.sim_data['HeattoPlant_W']
+        # self.sim_data['Parasitics_plant_W_el']
+        
+        #aggregate_by_day
+        dt = (self._time_index_[1] - self._time_index_[0]) / pd.Timedelta(hours=1)
+        if hasattr(self, 'aggregate_by_day'):
+            aggregate_by_day = self.aggregate_by_day
+        else:
+            aggregate_by_day = np.eye(365).repeat(24, axis=1)
+        HeattoPlant_per_day_Wh = np.einsum('ij,jk', aggregate_by_day, self.sim_data['HeattoPlant_W']) * dt
+        Parasitics_plant_per_day_Wh_el = np.einsum('ij,jk', aggregate_by_day, self.sim_data['Parasitics_plant_W_el']) * dt
+        
+        #calculate stored and directly used heat per day
+        # heat transfered into the storage (preferred, as max dispatchability is good)
+        Heat_stored_per_day_Wh = np.minimum(HeattoPlant_per_day_Wh, self.placements['storage_capacity_kWh_th']*1000)
+        # heat transfered directly to the plant (2nd option)
+        Heat_directly_per_day_Wh = HeattoPlant_per_day_Wh - Heat_stored_per_day_Wh
+        # heat output from the storage
+        Heat_from_storage_per_day_Wh = Heat_stored_per_day_Wh * self.ptr_data['storage_efficiency_1']**2
+        # total heat useable
+        Heat_total_per_day_Wh = Heat_from_storage_per_day_Wh+Heat_directly_per_day_Wh
+                
+        
+        # calculate rel load and efficiency
+        
+        # max thermal input the power plant is capable of
+        steps_per_day = pd.Timedelta(hours=24) / (self._time_index_[1] - self._time_index_[0])
+        power_plant_max_heat_Wh = self.placements['power_plant_capacity_W_el'].values / self.ptr_data['eta_powerplant_1'] * steps_per_day
+        # rel load is defined as the ratio of daily output to maximal output.
+        # As the Poweplant wont output the total power over the whole day, the formula is corrected by:
+        # rel_load* = 0.5 * 0.5 + rel_load
+        rel_load_plant= 0.5 + 0.5 * (Heat_total_per_day_Wh / power_plant_max_heat_Wh)
+        
+        #Gafurov2015: 
+        # rel_efficiency [1] = 54.92 + 112.73 * rel - 104.63 * rel^2 + 37.05 * rel^3
+        #dimensions: [time(days), placements, SM, TES]
+        efficiency_daily_averaged_1 = self._get_plant_efficiency(rel_load_plant=rel_load_plant, eta_nom=self.ptr_data['eta_powerplant_1'])
+        del rel_load_plant
+        
+        #calculate gross power output: Heat * daily efficiency
+        #calculate net power output : power gross - parasitic * share (share distributes the parasitic evenly to each output power)
+        
+        #bound
+        Power_gross_bound_per_day_Wh = Heat_directly_per_day_Wh * efficiency_daily_averaged_1
+        share = np.nan_to_num(Heat_directly_per_day_Wh/Heat_total_per_day_Wh, 0)
+        Power_net_bound_per_day_Wh = Power_gross_bound_per_day_Wh - (Parasitics_plant_per_day_Wh_el * share)
+        
+        #dispatchable
+        Power_gross_dispatchable_per_day_Wh = Heat_from_storage_per_day_Wh * efficiency_daily_averaged_1
+        share = np.nan_to_num(Heat_from_storage_per_day_Wh/Heat_total_per_day_Wh, 0)
+        Power_net_dispatchable_per_day_Wh = Power_gross_dispatchable_per_day_Wh - (Parasitics_plant_per_day_Wh_el * share)
+        
+        
+        #add up for total output
+        Power_net_total_per_day_Wh = Power_net_bound_per_day_Wh + Power_net_dispatchable_per_day_Wh
+        
+        #get avrg cf
+        Power_net_total_Wh_per_a = Power_net_total_per_day_Wh.sum(axis=0)
+        steps_per_year = pd.Timedelta(hours=8760) / (self._time_index_[1] - self._time_index_[0])
+        Power_cf = Power_net_total_Wh_per_a / (self.placements['power_plant_capacity_W_el'].values * steps_per_year)
+        
+        self.placements['Power_net_total_Wh_per_a'] = Power_net_total_Wh_per_a
+        self.placements['Power_net_bound_%_per_a'] = np.nan_to_num(Power_net_bound_per_day_Wh.sum(axis=0) / Power_net_total_Wh_per_a) * 100 #%
+    
+    def calculate_LCOE(self):
+        '''calculates the LCOE from plant and storage sizes, SF totex and Net power output
+        '''
+        #calculate_economics
+        CAPEX_total_USD = self._get_capex(
+                A_aperture_m2=self.placements['aperture_area_m2'],
+                A_land_m2=self.placements['land_area_m2'],
+                Qdot_field_des_W=self.placements['capacity_sf_W_th'],
+                eta_des_power_plant=self.ptr_data['eta_powerplant_1'],
+                sm=self.placements['sm_opt'],
+                tes=self.placements['tes_opt'],
+                c_field_per_aperture_area_USD_per_m2=self.ptr_data['CAPEX_solar_field_USD_per_m^2_aperture'],
+                c_land_per_land_area_USD_per_m2=self.ptr_data['CAPEX_land_USD_per_m^2_land'],
+                c_storage_USD_per_kWh_th=self.ptr_data['CAPEX_storage_cost_USD_per_kWh'],
+                c_plant_USD_per_kW_el=self.ptr_data['CAPEX_plant_cost_USD_per_kW'],
+                c_indirect_cost_perc_per_direct_Capex=self.ptr_data['CAPEX_indirect_cost_%_CAPEX'],
+            )
+            #annual cost
+        CAPEX_total_USD_per_a = CAPEX_total_USD * self.sim_data['annuity']
+        
+        OPEX_USD_per_a = self._get_opex(
+            CAPEX_total_USD=CAPEX_total_USD,
+            OPEX_fix_perc_CAPEX_per_a=self.ptr_data['OPEX_%_CAPEX'],
+            auxilary_power_Wh_per_a=self.sim_data['Parasitics_solarfield_W_el'].sum(axis=0),
+            electricity_price_USD_per_kWh=self.ptr_data['electricity_price_USD_per_kWh'],
+        )
+        
+        TOTEX_USD_per_a = self._get_totex(
+            CAPEX_total_USD_per_a=CAPEX_total_USD_per_a,
+            OPEX_USD_per_a=OPEX_USD_per_a,
+        )
+        # #TODO: remove
+        # #plant and storage
+        # plant_cost = self.placements['power_plant_capacity_W_el'] * self.ptr_data['CAPEX_plant_cost_USD_per_kW'] / 1000
+        # storage_cost = self.placements['storage_capacity_kWh_th'] * self.ptr_data['CAPEX_storage_cost_USD_per_kWh']
+        # # total capex for plant and storage including indirect costs
+        # capex_stroage_plant = (plant_cost + storage_cost) * (1 + self.ptr_data['CAPEX_indirect_cost_%_CAPEX'] / 100)
+        # capex_stroage_plant_yearly = capex_stroage_plant * self.sim_data['annuity']
+        # #opex and totex
+        # opex_fix_stroage_plant_yearly = capex_stroage_plant_yearly * self.ptr_data['OPEX_%_CAPEX']/100
+        # totex_storage_plant_yearly = capex_stroage_plant_yearly + opex_fix_stroage_plant_yearly
 
+        # #total totex for solar field, land, plant and storage (including indirect costs)
+        # totex_all_yearly = totex_storage_plant_yearly + self.placements['Totex_SF_USD_per_a']
+        
+        self.placements['CAPEX_total_USD'] = CAPEX_total_USD
+        self.placements['lcoe_USDct_per_kWh_el'] = TOTEX_USD_per_a / self.placements['Power_net_total_Wh_per_a'] *1E2 * 1E3 #USD/WH to USDct/kWh
+    
+    
     ### Try to increase speed of PV-Lib by dropping one loop. Aparently, multiple locations are not supported by PV-Lib. If there are performance
     ### issues, try again. So keep this in mind here 
-    #
     def calculateSolarPositionfaster(self):
         """
         DOES NOT WORK PV LIP DOES NOT SUPPORT MULTIPLE LOCATIONS
@@ -1620,3 +1910,176 @@ class PTRWorkflowManager(SolarWorkflowManager):
             np.rad2deg(np.arcsin(np.cos(np.deg2rad(self.sim_data['solar_zenith_degree_fast']))))
 
         return self
+    
+    def _applyVariation(self):
+        '''if DNI_factor and _T_offset in placements, manipulate the input time series in order to calculate the DNI/T_amb variation
+        '''
+        dni_factor_name = 'DNI_factor'
+        t_amb_offset_name = 'T_offset_K'
+        
+        if dni_factor_name in self.placements.columns and t_amb_offset_name in self.placements.columns:
+            # data want to be manipulated.
+            # print warnings
+            print('\n________________________\nWaring, Dev function started The results are not valid any more!\nOnly use this, if you are familiar with code.\nStarting to manipulate DNI and T_amb.')
+            print('Factors for DNI [1]:')
+            print(self.placements[dni_factor_name].unique())
+            print('Offset for T_amb [K]:')
+            print(self.placements[t_amb_offset_name].unique())
+            
+            #do manipulation
+            f_DNI_np = np.tile(self.placements[dni_factor_name].values.T, (8760,1))
+            self.sim_data['direct_normal_irradiance'] = self.sim_data['direct_normal_irradiance'] * f_DNI_np
+
+            d_T_np = np.tile(self.placements[t_amb_offset_name].values.T, (8760,1))
+            self.sim_data['surface_air_temperature'] = self.sim_data['surface_air_temperature'] + d_T_np
+
+            #get annual values
+            self.placements['mean_DNI_W_per_m2'] = self.sim_data['direct_normal_irradiance'].mean(axis=0)
+            self.placements['mean_T_amb_K'] = self.sim_data['surface_air_temperature'].mean(axis=0)
+        else:
+            pass #no manipulation, should be default case
+        
+    def _get_capex(
+        self,
+        A_aperture_m2,
+        A_land_m2,
+        Qdot_field_des_W,
+        eta_des_power_plant,
+        sm,
+        tes,
+        c_field_per_aperture_area_USD_per_m2,
+        c_land_per_land_area_USD_per_m2,
+        c_storage_USD_per_kWh_th,
+        c_plant_USD_per_kW_el,
+        c_indirect_cost_perc_per_direct_Capex,
+    ):
+        '''calculate the initial capex in USD (Invest)
+
+        Parameters
+        ----------
+        A_aperture_m2 : [type]
+            [description]
+        A_land_m2 : [type]
+            [description]
+        Qdot_field_des_W : [type]
+            [description]
+        eta_des_power_plant : [type]
+            [description]
+        sm : [type]
+            [description]
+        tes : [type]
+            [description]
+        c_field_per_aperture_area_USD_per_m2 : [type]
+            [description]
+        c_land_per_land_area_USD_per_m2 : [type]
+            [description]
+        c_storage_USD_per_kWh_th : [type]
+            [description]
+        c_plant_USD_per_kW_el : [type]
+            [description]
+        c_indirect_cost_perc_per_direct_Capex : [type]
+            [description]
+        annuity : [type]
+            [description]
+
+        Returns
+        -------
+        np.nparray
+            [description]
+        '''
+        
+        Power_powerplant_des_W_el = Qdot_field_des_W / sm * eta_des_power_plant
+        Heat_storage_des_kWh_th = Qdot_field_des_W / sm * tes
+        CAPEX_Plant_USD = c_plant_USD_per_kW_el * Power_powerplant_des_W_el / 1000 #W --> kW
+        
+        #capex storage
+        CAPEX_Storage_USD = c_storage_USD_per_kWh_th * Heat_storage_des_kWh_th / 1000 #Wh-->kWh
+        
+        #solar field
+        CAPEX_Field_USD = c_field_per_aperture_area_USD_per_m2 * A_aperture_m2
+        CAPEX_Land_USD =  c_land_per_land_area_USD_per_m2 * A_land_m2
+        
+        #indirect costs
+        CAPEX_Indirect_USD = (CAPEX_Plant_USD + CAPEX_Storage_USD + CAPEX_Field_USD + CAPEX_Land_USD) * c_indirect_cost_perc_per_direct_Capex/100
+        
+        CAPEX_total_USD = (CAPEX_Plant_USD + CAPEX_Storage_USD + CAPEX_Field_USD + CAPEX_Land_USD + CAPEX_Indirect_USD)
+        
+        return CAPEX_total_USD
+        
+    def _get_opex(
+        self,
+        CAPEX_total_USD,
+        OPEX_fix_perc_CAPEX_per_a,
+        auxilary_power_Wh_per_a,
+        electricity_price_USD_per_kWh    
+    ):    
+        '''calculate the opex
+
+        Parameters
+        ----------
+        CAPEX_total_USD : [type]
+            [description]
+        OPEX_fix_perc_CAPEX_per_a : [type]
+            [description]
+        auxilary_power_Wh_per_a : [type]
+            [description]
+        electricity_price_USD_per_kWh : [type]
+            [description]
+        '''
+        OPEX_fix_USD_per_a = CAPEX_total_USD * OPEX_fix_perc_CAPEX_per_a / 100
+        OPEX_var_USD_per_a = electricity_price_USD_per_kWh * auxilary_power_Wh_per_a / 1000 * 1 # W --> kWh
+        OPEX_USD_per_a = OPEX_fix_USD_per_a + OPEX_var_USD_per_a
+        return OPEX_USD_per_a
+    
+    def _get_totex(
+        self,
+        CAPEX_total_USD_per_a,
+        OPEX_USD_per_a,
+    ):
+        '''calculate totex from capex and opex
+
+        Parameters
+        ----------
+        CAPEX_total_USD_per_a : [type]
+            [description]
+        OPEX_USD_per_a : [type]
+            [description]
+
+        Returns
+        -------
+        [type]
+            [description]
+        '''
+        TOTEX_USD_per_a = CAPEX_total_USD_per_a + OPEX_USD_per_a
+        return TOTEX_USD_per_a
+    
+    
+    
+    def _get_plant_efficiency(
+        self,
+        rel_load_plant,
+        eta_nom
+    ):
+        '''calculate the efficiency for the powerplant depending on its size
+
+        Parameters
+        ----------
+        rel_load_plant : [type]
+            [description]
+        eta_nom : [type]
+            [description]
+
+        Returns
+        -------
+        [type]
+            [description]
+        '''
+        #Gafurov2015: 
+        # rel_efficiency [1] = 54.92 + 112.73 * rel - 104.63 * rel^2 + 37.05 * rel^3
+        eta_plant = (0.5492 \
+                    + 1.1273 * rel_load_plant \
+                    - 1.0463 * rel_load_plant**2 \
+                    + 0.3705 * rel_load_plant**3) * eta_nom
+        return eta_plant
+    
+    

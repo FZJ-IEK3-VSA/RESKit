@@ -1,9 +1,10 @@
 #%%
-import matplotlib
 import reskit as rk
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.colors import LinearSegmentedColormap
+from matplotlib import cm
 
 #%%
 
@@ -19,7 +20,7 @@ placements = placements.loc[placements.index.repeat(repeats)].reset_index(drop=T
 #%%
 out = rk.solar.workflows.workflows.csp_ptr_V1(
     placements=placements, 
-    era5_path=r'/storage/internal/data/gears/weather/ERA5/processed/4/7/6/2015/', #r'C:\Users\d.franzmann\data\ERA5\7\6',
+    era5_path= r'C:\Users\d.franzmann\data\ERA5\7\6', #r'/storage/internal/data/gears/weather/ERA5/processed/4/7/6/2015/', #r'C:\Users\d.franzmann\data\ERA5\7\6',
     global_solar_atlas_dni_path = 'default_local',
     datasetname='Dataset_SolarSalt_2030',
     verbose = True,
@@ -27,38 +28,29 @@ out = rk.solar.workflows.workflows.csp_ptr_V1(
 
 print('Simulation done')
 
-#%%
-#check dni
-
-#%matplotlib
-plt.ion
-start = 4800
-end = 4848
-fig, axs = plt.subplots(2)
-axs[0].plot(out.sim_data['direct_normal_irradiance'][start:end,0], label='dni')
-axs[0].plot(out.sim_data['direct_horizontal_irradiance'][start:end,0], label='dhi')
-axs[0].legend()
-
-axs[1].plot(out.sim_data['Parasitics_solarfield_W'][start:end,0], label='T_HTF')
 
 # %%
 #plot sm / tes optimization:
 #%matplotlib
 plt.ion()
 
+#data_key = 'TOTEX_Plant_storage_USD_per_a_3D'
+#data_key = 'annualPowerOutput_Wh_3D'
 data_key = 'LCOE_USD_per_Wh'
-#'est_LCOE_USD_per_kWh'
-#'LCO_Heat_USD_per_Wh'
-#'plant_storage_cost_per_heat_USD_per_Wh_3D'
-# #'annualHeatStored_Wh_3D'
-# #'speccosts_USD_per_kW_sf_2D'
-# #'annualHeat_Wh_3D'
+#data_key = 'annualHeat_Wh_3D'
 
 
-data = out.opt_data[data_key][0,:,:]
+if data_key == 'LCOE_USD_per_Wh':
+    factor = 1E5 / 1.21
+    showname = 'LCOE EURct/kWh'
+else:
+    factor=1
+    showname = data_key
+
+data = out.opt_data[data_key][0,:,:]*factor
 
 
-fig = plt.figure()
+fig = plt.figure(dpi = 600)
 ax = fig.add_subplot(111, projection='3d')
 
 sm = out.sm#out.placements['sm']
@@ -68,16 +60,80 @@ sm_2D = np.tile(sm[:], (len(tes), 1)).T
 tes_2D = np.tile(tes, (len(sm), 1))
 
 ax.plot_surface(sm_2D, tes_2D, data)
-#ax.plot_surface(sm_2D, tes_2D, out.sim_data['TOTEX_CSP_USD_per_a_3D'][0,:,:])
-#ax.plot_surface(sm_2D, tes_2D, out.sim_data['TOTEX_SF_USD_per_a_3D'][0,:,:])
-#ax.plot_surface(sm_2D, tes_2D, out.sim_data['TOTEX_Plant_storage_USD_per_a_3D'][0,:,:])
 
 ax.set_xlabel('SM')
 ax.set_ylabel('TES')
-ax.set_zlabel(data_key)
-
-
+ax.set_zlabel(showname)
+ax.set_title(showname)
+#ax.set_zlim(3.5, 5)
 
 # %%
 
+#plot sm / tes optimization:
+#%matplotlib
+plt.ion()
+
+#data_key = 'TOTEX_CSP_USD_per_a_3D'
+#data_key = 'annualPowerOutput_Wh_3D'
+data_key = 'LCOE_USD_per_Wh'
+#data_key = 'annualHeat_Wh_3D'
+
+if data_key == 'LCOE_USD_per_Wh':
+    factor = 1E5 / 1.21
+    showname = 'LCOE EURct/kWh'
+else:
+    factor=1
+    showname = data_key
+
+data = out.opt_data[data_key][0,:,:] * factor
+
+
+fig, ax = plt.subplots(dpi=1000)
+
+sm = out.sm
+tes = out.tes
+
+cmap = cm.get_cmap('Blues', 100)
+
+cmap = LinearSegmentedColormap.from_list(
+    'peter',
+    [cmap(20), cmap(100)],
+    N=len(tes),
+    )
+
+for i, tes_i in enumerate(tes):
+    
+    
+    data_i = data[:,i]
+    
+    ax.plot(
+        sm,
+        data_i,
+        label = f'TES: {tes_i}h',
+        color = cmap(i)      
+    )
+
+ax.set_xlabel('SM')
+ax.set_ylabel(showname)
+ax.set_title(showname)
+ax.grid('on')
+ax.legend(loc='upper right')
+#ax.set_ylim((8, 20))
+
+# %%
+
+#curtailment
+location_id = 2
+cf = out.sim_data['capacity_factor'][:,location_id].copy()
+cf_curtailed = cf.copy()
+cf_curtailed[cf_curtailed>1]=1
+
+start = 2250
+stop = 2400
+
+fig,axs = plt.subplots(2)
+axs[0].plot(cf[start:stop], label='cf')
+axs[0].plot(cf_curtailed[start:stop], label='cf_curt')
+axs[1].plot(out.sim_data['direct_normal_irradiance'][:,location_id][start:stop])
+plt.legend()
 # %%

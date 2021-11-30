@@ -1,8 +1,11 @@
 from logging import warning
+
+from reskit import workflow_manager
 from ... import weather as rk_weather
 from .solar_workflow_manager import SolarWorkflowManager
 from .csp_workflow_manager import PTRWorkflowManager
 from .CSP_data.database_loader import load_dataset
+from numba import jit
 import numpy as np
 import time
 
@@ -42,7 +45,9 @@ def csp_ptr_V1(
     
     # 3) read in Input data
     if verbose:
-        tic = time.time()
+        tic_start = time.time()
+        print('Simulation started for {n_placements} placements.'.format(n_placements=len(wf.placements)))
+        print('Reading in Weather data.')
     wf.read(
         variables=[#"global_horizontal_irradiance",
                    "direct_horizontal_irradiance",
@@ -56,9 +61,9 @@ def csp_ptr_V1(
         verbose=verbose)
     
     if verbose:
-        toc = time.time()
-        print('Data read in within {dt}s.'.format(dt = str(toc-tic)))
-    
+        tic_read = time.time()
+        print('Data read in within {dt}s.'.format(dt = str(tic_read-tic_start)))
+        print('Starting preanalysis.')
     # 4) get length of timesteps for later numpy sizing 
 
     wf.get_timesteps()
@@ -83,6 +88,7 @@ def csp_ptr_V1(
 
 
     #TODO: implement if working
+    print('WARN WARN WARN: LRA skipped!')
     # if global_solar_atlas_dni_path != None:
     #     wf.adjust_variable_to_long_run_average(
     #         variable='direct_horizontal_irradiance',
@@ -90,6 +96,9 @@ def csp_ptr_V1(
     #         real_long_run_average=global_solar_atlas_dni_path,
     #         real_lra_scaling=1000 / 24,  # cast to hourly average kWh
     # )
+
+    # manipulationof input values for variation calculation
+    wf._applyVariation()
 
     # 6) doing selfmade calulations until Heat to HTF
     #wf.calculateCosineLossesParabolicTrough(orientation=ptr_data['orientation']) shifted
@@ -102,16 +111,16 @@ def csp_ptr_V1(
     wf.apply_capacity_sf()
     
     if verbose:
-        toc = time.time()
-        print('Preanalysis within {dt}s.'.format(dt = str(toc-tic)))   
-    
+        tic_pre = time.time()
+        print('Preanalysis within {dt}s.'.format(dt = str(tic_pre-tic_read)))   
+        print('Starting core simulation of the solar field.')
     # 7) calculation heat to plant with loss model
     wf.applyHTFHeatLossModel(
         calculationmethod='dersch2018',
         params={'b': ptr_data['b'],
             'relTMplant': ptr_data['relTMplant'],
             'maxHTFTemperature': ptr_data['maxHTFTemperature'],
-            'JITaccelerate': JITaccelerate,
+            'JITaccelerate': JITaccelerate, #TODO: from ptr manager
             'minHTFTemperature': ptr_data['minHTFTemperature'],
             'inletHTFTemperature': ptr_data['inletHTFTemperature'],
             'add_losses_coefficient': ptr_data['add_losses_coefficient'],
@@ -150,13 +159,29 @@ def csp_ptr_V1(
                                      }
                                      )    
 
-    wf.optimize_heat_output_4D()
-    wf.calculateEconomics_Plant_Storage_4D()
-    wf.optimal_Plant_Configuration_4D()
-
     if verbose:
-        toc = time.time()
-        print('Total simulation done in in {dt}s.'.format(dt = str(toc-tic)))
+        tic_sf_sim = time.time()
+        print('Solar field simulation done in {dt}s.'.format(dt = str(tic_sf_sim-tic_pre)))
+        print('Starting optimizing plant electric output.')
+    
+    wf.optimize_plant_size()
+    
+    # wf.optimize_heat_output_4D()
+    # wf.calculateEconomics_Plant_Storage_4D()
+    # wf.optimal_Plant_Configuration_4D()
+    
+    if verbose:
+        tic_opt_plant = time.time()
+        print('Optimal Sizing done in  {dt}s.'.format(dt = str(tic_opt_plant-tic_sf_sim)))
+        
+        
+    wf.calculate_electrical_output()
+    wf.calculate_LCOE()
+        
+        
+    if verbose:
+        tic_final = time.time()
+        print('Total simulation done in {dt}s.'.format(dt = str(tic_final-tic_start)))
 
     if return_self == True:
         return wf
