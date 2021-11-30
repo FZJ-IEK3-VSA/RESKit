@@ -1784,6 +1784,9 @@ class PTRWorkflowManager(SolarWorkflowManager):
         steps_per_year = pd.Timedelta(hours=8760) / (self._time_index_[1] - self._time_index_[0])
         Power_cf = Power_net_total_Wh_per_a / (self.placements['power_plant_capacity_W_el'].values * steps_per_year)
         
+        #save data
+        self.sim_data['Power_net_total_per_day_Wh'] = Power_net_total_per_day_Wh
+        self.sim_data['Power_net_bound_per_day_Wh'] = Power_net_bound_per_day_Wh
         self.placements['Power_net_total_Wh_per_a'] = Power_net_total_Wh_per_a
         self.placements['Power_net_bound_%_per_a'] = np.nan_to_num(Power_net_bound_per_day_Wh.sum(axis=0) / Power_net_total_Wh_per_a) * 100 #%
     
