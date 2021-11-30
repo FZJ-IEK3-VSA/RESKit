@@ -38,9 +38,6 @@ class PTRWorkflowManager(SolarWorkflowManager):
         self.module = None
 
         self.check_placements()
-        assert 'land_area_m2' in placements.columns or \
-                'aperture_area_m2' in placements.columns or \
-                'area' in placements.columns, 'InputError: Placements need an area column "land_area_m2". Please add a size in m^2 (e.g.: 2.5E6)'
         
     def check_placements(self):
         assert hasattr(self, 'placements')
@@ -49,7 +46,8 @@ class PTRWorkflowManager(SolarWorkflowManager):
         assert 'lon' in self.placements.columns or 'longitude' in self.placements.columns
         assert 'land_area_m2' in self.placements.columns \
             or 'aperture_area_m2' in self.placements.columns \
-            or 'area' in self.placements.columns
+            or 'area' in self.placements.columns \
+            or 'area_m2' in self.placements.columns
     
     def loadPTRdata(self, datasetname:str):
         '''loads the dataset with the name datasetname.
@@ -85,7 +83,13 @@ class PTRWorkflowManager(SolarWorkflowManager):
             self.placements['land_area_m2'] = self.placements['area']
             self.placements.drop('area', axis=1)
             self.placements['aperture_area_m2'] = self.placements['land_area_m2'] * self.ptr_data['SF_density_total']
-        
+
+        if 'area_m2' in  columns and not 'aperture_area_m2' in columns and not 'land_area_m2' in columns:
+            warn('Key "area" is assumed to be the land area. Abort if wrong!')
+            self.placements['land_area_m2'] = self.placements['area_m2']
+            self.placements.drop('area_m2', axis=1)
+            self.placements['aperture_area_m2'] = self.placements['land_area_m2'] * self.ptr_data['SF_density_total']
+
         #only aperture_area_m2 in placements
         elif 'aperture_area_m2' in columns and not 'land_area_m2' in columns:
             self.placements['aperture_area_m2'] = self.placements['land_area_m2'] * self.ptr_data['SF_density_total']
