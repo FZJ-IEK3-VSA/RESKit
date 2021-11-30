@@ -8,8 +8,11 @@ from collections import OrderedDict, namedtuple
 from types import FunctionType
 import xarray
 from typing import Union, List, OrderedDict
-from glob import glob
 from . import weather as rk_weather
+from glob import glob
+from osgeo import ogr
+
+# from . import weather as rk_weather
 
 
 class WorkflowManager:
@@ -41,14 +44,24 @@ class WorkflowManager:
         self.placements = placements.copy()
         self.locs = None
 
+        # Check if input file contains a geometry collumn
+        ispoint = False
         if "geom" in placements.columns:
+            if self.placements["geom"].loc[0].GetGeometryName() == "POINT":
+                ispoint = True
+
+        if ispoint:
             self.locs = gk.LocationSet(placements.geom)
             self.placements["lon"] = self.locs.lons
             self.placements["lat"] = self.locs.lats
             del self.placements["geom"]
-
-        assert "lon" in self.placements.columns
-        assert "lat" in self.placements.columns
+        else:
+            assert (
+                "lon" in self.placements.columns
+            ), "if geom are not point geometries, dataframe must contain lon columns"
+            assert (
+                "lat" in self.placements.columns
+            ), "if geom are not point geometries, dataframe must contain lat columns"
 
         if self.locs is None:
             self.locs = gk.LocationSet(self.placements[["lon", "lat"]].values)
@@ -105,15 +118,15 @@ class WorkflowManager:
         variables : str or list of strings
             The variables (or variables) to be read from the specified source
             - If a path to a weather source is given, then only the 'standard' variables
-                configured for that source type are available (see the doc string for the 
+                configured for that source type are available (see the doc string for the
                 weather source you are interested in)
-            - If either 'elevated_wind_speed' or 'surface_wind_speed' is included in the 
-                variable list, then the members `.elevated_wind_speed_height` and 
+            - If either 'elevated_wind_speed' or 'surface_wind_speed' is included in the
+                variable list, then the members `.elevated_wind_speed_height` and
                 `.surface_wind_speed_height`, respectfully, are also added. These are constants
-                which specify what the 'native' wind speed height is, which depends on the source 
-            - A pre-loaded NCSource can also be given, thus allowing for any variable in the 
-                source to be specifed in the `variables` list. But the user needs to take care 
-                of initializing the NCSource and loading the data they want 
+                which specify what the 'native' wind speed height is, which depends on the source
+            - A pre-loaded NCSource can also be given, thus allowing for any variable in the
+                source to be specifed in the `variables` list. But the user needs to take care
+                of initializing the NCSource and loading the data they want
 
         source_type : str
             The type of weather datasource which is to be loaded. Can be one of:
@@ -125,18 +138,18 @@ class WorkflowManager:
             The source to read weathre variables from
 
         set_time_index : bool, optional
-            If True, instructs the workflow manager to set the time index to that which is read 
+            If True, instructs the workflow manager to set the time index to that which is read
               from the weather source
             - By default False
 
         spatial_interpolation_mode : str, optional
-            The spatial interpolation mode to use while reading data from the weather source at 
+            The spatial interpolation mode to use while reading data from the weather source at
             each of the placement coordinates
             - By default "bilinear"
 
         temporal_reindex_method : str, optional
             In the event of missing data, this algorithm is used to fill in the missing data.
-            - Can be, for example, "nearest", "ffill", "bfill", "interpolate" 
+            - Can be, for example, "nearest", "ffill", "bfill", "interpolate"
             - By default "nearest"
 
         Returns
@@ -228,25 +241,25 @@ class WorkflowManager:
 
         source_long_run_average : Union[str, float, np.ndarray]
             The variable's native long run average (the average in the weather file)
-            - If a string is given, it is expected to be a path to a raster file which can be 
+            - If a string is given, it is expected to be a path to a raster file which can be
               used to look up the average values from using the coordinates in `.placements`
             - If a numpy ndarray (or derivative) is given, the shape must be one of (time, placements)
-              or at least (placements) 
+              or at least (placements)
 
         real_long_run_average : Union[str, float, np.ndarray]
             The variables 'true' long run average
-            - If a string is given, it is expected to be a path to a raster file which can be 
+            - If a string is given, it is expected to be a path to a raster file which can be
               used to look up the average values from using the coordinates in `.placements`
             - If a numpy ndarray (or derivative) is given, the shape must be one of (time, placements)
               or at least (placements)
 
         real_lra_scaling : float, optional
-            An optional scaling factor to apply to the values derived from `real_long_run_average`. 
+            An optional scaling factor to apply to the values derived from `real_long_run_average`.
             - This is primarily useful when `real_long_run_average` is a path to a raster file
             - By default 1
 
         spatial_interpolation : str, optional
-            When either `source_long_run_average` or `real_long_run_average` are a path to a raster 
+            When either `source_long_run_average` or `real_long_run_average` are a path to a raster
             file, this input specifies which interpolation algorithm should be used
             - Options are: "near", "linear-spline", "cubic-spline", "average"
             - By default "linear-spline"
@@ -297,7 +310,7 @@ class WorkflowManager:
               `.sim_data`
 
         variables : Union[str, List[str]], optional
-            The vairable or variables to apply the loss factor to 
+            The vairable or variables to apply the loss factor to
             - By default ["capacity_factor"]
 
 
@@ -349,8 +362,8 @@ class WorkflowManager:
             - By default None
 
         output_variables : List[str], optional
-            If given, specifies the variables which should be included in the resulting 
-            dataset. Otherwise all suitable variables found in `.placements`, `.workflow_parameters`, 
+            If given, specifies the variables which should be included in the resulting
+            dataset. Otherwise all suitable variables found in `.placements`, `.workflow_parameters`,
             `.sim_data`, and `.time_index` will be included
             - Only variables of numeric or string type are suitable due to NetCDF4 limitations
             - By default None
@@ -443,8 +456,8 @@ def distribute_workflow(
 ) -> xarray.Dataset:
     """Distributes a RESKit simulation workflow across multiple CPUs
 
-    Parallelism is achieved by breaking up the placements dataframe into placement groups via  
-      KMeans grouping  
+    Parallelism is achieved by breaking up the placements dataframe into placement groups via
+      KMeans grouping
 
     Parameters
     ----------
@@ -452,8 +465,8 @@ def distribute_workflow(
         The workflow function to be parallelized
         - All RESKit workflow functions should be suitable here
         - If you want to make your own function, the only requirement is that its first argument
-          should be a pandas DataFrame in the form of a placements table (i.e. has a 'lat' and 
-          'lon' column) 
+          should be a pandas DataFrame in the form of a placements table (i.e. has a 'lat' and
+          'lon' column)
         - Don't forget that that all inputs required for the workflow function are still required,
           and are passed on as constants through any specified `kwargs`
 
@@ -463,18 +476,18 @@ def distribute_workflow(
             ['lon','lat','capacity','hub_height','rotor_diam',]
 
     jobs : int, optional
-        The number of parallel jobs 
+        The number of parallel jobs
         - By default 2
 
     max_batch_size : int, optional
         If given, limits the maximum number of total placements which are simulated in parallel
-        - Use this to reduce the memory requirements of the simulations (in turn increasing 
-          overall simulation time)  
+        - Use this to reduce the memory requirements of the simulations (in turn increasing
+          overall simulation time)
         - By default None
 
     intermediate_output_dir : str, optional
-        In case of very large outputs (which are too large to be joined into a singular XArray dataset), 
-          use this to write the individual simulation results to the specified directory  
+        In case of very large outputs (which are too large to be joined into a singular XArray dataset),
+          use this to write the individual simulation results to the specified directory
         - By default None
 
     **kwargs:
@@ -585,7 +598,7 @@ class WorkflowQueue:
         The workflow function to be parallelized
         - All RESKit workflow functions should be suitable here
         - Don't forget that that all inputs required for the workflow function are still required,
-          and are passed on either as constants through `kwargs` specified in the initializer, or 
+          and are passed on either as constants through `kwargs` specified in the initializer, or
           else in the subsequent '.append(...)' calls
 
     **kwargs:
@@ -608,8 +621,8 @@ class WorkflowQueue:
             The access key to use for this simulation set
 
         **kwargs:
-            All other keyword arguments are passed on to the simulation 
-            for only this simulation 
+            All other keyword arguments are passed on to the simulation
+            for only this simulation
         """
         self.queue[key] = kwargs
 
