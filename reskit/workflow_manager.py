@@ -379,6 +379,10 @@ class WorkflowManager:
             times = [
                 np.datetime64(dt.tz_convert("UTC").tz_convert(None)) for dt in times
             ]
+        times_days = np.unique(times.date)
+        if len(times_days) == 366:
+            # old tiles where shifted by 1 hour, so the last day of the previous year also appears. catch this problem whti this if clause
+            times_days = times_days[1:]
         xds = OrderedDict()
         encoding = dict()
 
@@ -388,7 +392,9 @@ class WorkflowManager:
         else:
             location_coords = np.arange(self.placements.shape[0])
 
+        #write placements
         for c in self.placements.columns:
+            #check if c in requestet output_variables
             if output_variables is not None:
                 if c not in output_variables:
                     continue
@@ -406,8 +412,10 @@ class WorkflowManager:
                     dims=["location"],
                     coords=dict(location=location_coords),
                 )
-
+                
+        #write sim_data
         for key in self.sim_data.keys():
+            #check if key in requestet output_variables
             if output_variables is not None:
                 if key not in output_variables:
                     continue
@@ -421,7 +429,25 @@ class WorkflowManager:
                 coords=dict(time=times, location=location_coords),
             )
             encoding[key] = dict(zlib=True)
+        
+        #write sim_data_daily, only if exists
+        if hasattr(self, 'sim_data_daily'):
+            for key in self.sim_data_daily.keys():
+                #check if key in requestet output_variables
+                if output_variables is not None:
+                    if key not in output_variables:
+                        continue
 
+                tmp = np.full((len(times_days), self.locs.count), np.nan)
+                tmp[:, :] = self.sim_data_daily[key]
+
+                xds[key] = xarray.DataArray(
+                    tmp,
+                    dims=["time_days", "location"],
+                    coords=dict(time_days=times_days, location=location_coords),
+                )
+                encoding[key] = dict(zlib=True)
+        
         if _intermediate_dict:
             return xds
 

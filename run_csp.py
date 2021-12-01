@@ -24,7 +24,8 @@ out = rk.solar.workflows.workflows.csp_ptr_V1(
     global_solar_atlas_dni_path = 'default_local',
     datasetname='Dataset_SolarSalt_2030',
     verbose = True,
-    JITaccelerate=False)
+    JITaccelerate=False,
+    return_self=False)
 
 print('Simulation done')
 
