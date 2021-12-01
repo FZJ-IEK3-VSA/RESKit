@@ -35,7 +35,8 @@ class PTRWorkflowManager(SolarWorkflowManager):
         super().__init__(placements)
         self._time_sel_ = None
         self._time_index_ = None
-        self.module = None
+        #self.module = None
+        self.sim_data_daily = dict()
 
         self.check_placements()
         
@@ -1100,6 +1101,7 @@ class PTRWorkflowManager(SolarWorkflowManager):
             self.sim_data['Parasitics_total_W_el'] = self.sim_data['Parasitics_solarfield_W_el'] + self.sim_data['Parasitics_plant_W_el']
             
             self.placements['Parasitics_solarfield_Wh_el_per_a'] = self.sim_data['Parasitics_solarfield_W_el'].sum(axis=0)
+            self.placements['Parasitics_plant_Wh_el_per_a'] = self.sim_data['Parasitics_plant_W_el'].sum(axis=0)
 
             assert not np.isnan(self.sim_data['Parasitics_total_W_el']).any()
             
@@ -1788,6 +1790,9 @@ class PTRWorkflowManager(SolarWorkflowManager):
         steps_per_year = pd.Timedelta(hours=8760) / (self._time_index_[1] - self._time_index_[0])
         Power_cf = Power_net_total_Wh_per_a / (self.placements['power_plant_capacity_W_el'].values * steps_per_year)
         
+        #save data
+        self.sim_data_daily['Power_net_total_per_day_Wh'] = Power_net_total_per_day_Wh
+        self.sim_data_daily['Power_net_bound_per_day_Wh'] = Power_net_bound_per_day_Wh
         self.placements['Power_net_total_Wh_per_a'] = Power_net_total_Wh_per_a
         self.placements['Power_net_bound_%_per_a'] = np.nan_to_num(Power_net_bound_per_day_Wh.sum(axis=0) / Power_net_total_Wh_per_a) * 100 #%
     
