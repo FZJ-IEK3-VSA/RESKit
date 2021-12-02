@@ -5,5 +5,6 @@ from . import weather
 from .workflow_manager import WorkflowManager, WorkflowQueue, distribute_workflow, load_workflow_result
 from . import wind
 from . import solar
+from . import csp
 
 from ._test import TEST_DATA

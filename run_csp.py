@@ -18,7 +18,7 @@ repeats = int(3/3)
 placements = placements.loc[placements.index.repeat(repeats)].reset_index(drop=True)
     
 #%%
-out = rk.solar.workflows.workflows.csp_ptr_V1(
+out = rk.csp.CSP_PTR_ERA5(
     placements=placements, 
     era5_path= r'C:\Users\d.franzmann\data\ERA5\7\6', #r'/storage/internal/data/gears/weather/ERA5/processed/4/7/6/2015/', #r'C:\Users\d.franzmann\data\ERA5\7\6',
     global_solar_atlas_dni_path = 'default_local',
