@@ -47,7 +47,7 @@ class WorkflowManager:
         # Check if input file contains a geometry collumn
         ispoint = False
         if "geom" in placements.columns:
-            if self.placements["geom"].loc[0].GetGeometryName() == "POINT":
+            if self.placements["geom"].iloc[0].GetGeometryName() == "POINT":
                 ispoint = True
 
         if ispoint:
