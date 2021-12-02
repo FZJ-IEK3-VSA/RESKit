@@ -58,7 +58,7 @@ def csp_ptr_V1(
         source_type="ERA5",
         source=era5_path,
         set_time_index=True,
-        verbose=verbose)
+        verbose=False)
     
     if verbose:
         tic_read = time.time()
@@ -151,10 +151,10 @@ def csp_ptr_V1(
                                      lifetime=ptr_data['lifetime'],
                                      calculationmethod='franzmann2021',
                                      params={
-                                        'CAPEX_solar_field_USD_per_m^2_aperture': ptr_data['CAPEX_solar_field_USD_per_m^2_aperture'], 
-                                        'CAPEX_land_USD_per_m^2_land': ptr_data['CAPEX_land_USD_per_m^2_land'],
+                                        'CAPEX_solar_field_EUR_per_m^2_aperture': ptr_data['CAPEX_solar_field_EUR_per_m^2_aperture'], 
+                                        'CAPEX_land_EUR_per_m^2_land': ptr_data['CAPEX_land_EUR_per_m^2_land'],
                                         'CAPEX_indirect_cost_%_CAPEX': ptr_data['CAPEX_indirect_cost_%_CAPEX'],
-                                        'electricity_price_USD_per_kWh': ptr_data['electricity_price_USD_per_kWh'],
+                                        'electricity_price_EUR_per_kWh': ptr_data['electricity_price_EUR_per_kWh'],
                                         'OPEX_%_CAPEX': ptr_data['OPEX_%_CAPEX'],
                                      }
                                      )    
