@@ -19,10 +19,9 @@ dependencies:
   - numpy
   - scipy
   - scikit-learn
-  - gdal>2.2.0,<3.0.0
+  - gdal>2.2.0,<=3.2.1
   - netCDF4>=1.5.3
   - xarray
   - pvlib>=0.7.2
   - pip:
-      - https://github.com/FZJ-IEK3-VSA/geokit/archive/v1.2.7.zip
       - -e .
