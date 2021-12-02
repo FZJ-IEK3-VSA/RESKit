@@ -1,8 +1,9 @@
 import numpy as np
 from .onshore_cost_model import onshore_tcc
+from reskit.parameters.parameters import OffshoreParameters
 
 
-def offshore_turbine_capex(capacity, hub_height, rotor_diam, depth, distance_to_shore, distance_to_bus=3, foundation="monopile", mooring_count=3, anchor="DEA", turbine_count=80, turbine_spacing=5, turbine_row_spacing=9):
+def offshore_turbine_capex(capacity, hub_height, rotor_diam, depth, distance_to_shore, distance_to_bus=None, foundation=None, mooring_count=None, anchor=None, turbine_count=None, turbine_spacing=None, turbine_row_spacing=None):
     """
     A cost and scaling model (CSM) to calculate the total cost of a 3-bladed, direct drive offshore wind turbine according to the cost model proposed by Fingersh et al. [1] and Maples et al. [2].
     The CSM distinguises between seaflor-fixed foundation types; "monopile" and "jacket" and floating foundation types; "semisubmersible" and "spar".
@@ -77,6 +78,15 @@ def offshore_turbine_capex(capacity, hub_height, rotor_diam, depth, distance_to_
     """
 
     # TODO: Generalize this function further(like with the onshore cost model)
+
+    # retrieve default values if base values are not given explicitly
+    if distance_to_bus is None: distance_to_bus=OffshoreParameters.distance_to_bus
+    if foundation is None: foundation=OffshoreParameters.foundation
+    if mooring_count is None: mooring_count=OffshoreParameters.mooring_count
+    if anchor is None: anchor=OffshoreParameters.anchor
+    if turbine_count is None: turbine_count=OffshoreParameters.turbine_count
+    if turbine_spacing is None: turbine_spacing=OffshoreParameters.turbine_spacing
+    if turbine_row_spacing is None: turbine_row_spacing=OffshoreParameters.turbine_row_spacing
 
     # PREPROCESS INPUTS
     cp = np.array(capacity / 1000)
