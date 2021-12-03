@@ -5,15 +5,17 @@ stages:
 
 test:
   stage: test
-  # Uncomment, once Calamari is running again
-  #tags: 
-  #  - linux
+  tags: 
+   - linux
 
   script: 
     - conda install mamba -c conda-forge
-    - mamba env update -n reskit --file=requirements.yml
-    - mamba env update -n reskit --file=requirements-dev.yml
-    - mamba info --envs
+    - mamba create -n reskit
     - source activate reskit
+    - git clone --branch dev https://CIGlaes:${GeokitAccessToken}@jugit.fz-juelich.de/iek-3/shared-code/geokit.git
+    - cd geokit
+    - mamba env update -n reskit --file=requirements-dev.yml
+    - cd ..
+    - mamba env update -n reskit --file=requirements-dev.yml
     - python -m pip install -e .
     - python -m pytest --cov=reskit test/

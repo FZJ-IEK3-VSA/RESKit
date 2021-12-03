@@ -89,6 +89,29 @@ def pt_WorkflowManager_loaded(pt_WorkflowManager_initialized: WorkflowManager) -
 
     return man
 
+def test_WorkflowManager_spatial_disagregation(pt_WorkflowManager_initialized: WorkflowManager) -> WorkflowManager:
+    man = pt_WorkflowManager_initialized
+    
+    man.read(
+        variables=['global_horizontal_irradiance',
+                   "direct_horizontal_irradiance",],
+        source_type="ERA5",
+        source=rk.TEST_DATA['era5-like'],
+        set_time_index=True,
+        verbose=False,
+        spatial_interpolation_mode='bilinear',
+        temporal_reindex_method='nearest')
+
+    man.spatial_disaggregation(
+        variable='global_horizontal_irradiance',
+        source_high_resolution=TEST_DATA['gsa-ghi-like.tif'],
+        source_low_resolution=rk.weather.GSAmeanSource.GHI_with_ERA5_pixel,
+    )
+    man.spatial_disaggregation(
+        variable='direct_horizontal_irradiance',
+        source_high_resolution=TEST_DATA['gsa-ghi-like.tif'],
+        source_low_resolution=rk.weather.GSAmeanSource.GHI_with_ERA5_pixel,
+    )
 
 def test_WorkflowManager_adjust_variable_to_long_run_average(pt_WorkflowManager_loaded: WorkflowManager) -> WorkflowManager:
     man = pt_WorkflowManager_loaded
@@ -106,6 +129,45 @@ def test_WorkflowManager_adjust_variable_to_long_run_average(pt_WorkflowManager_
     assert np.isclose(man.sim_data['elevated_wind_speed'].min(), 0.5486170217294893)
     assert np.isclose(man.sim_data['elevated_wind_speed'].max(), 13.853410433409616)
 
+def test_WorkflowManager_adjust_variable_to_long_run_average_() -> WorkflowManager:
+    
+    columns = ['lat', 'lon', 'capacity']
+    data = [
+        [50.475, 6.1, 100.1], #middle
+        [50.0085, 6.1, 100.1], #corner
+        [40, 6.1, 100.1], #outside
+    ]
+
+    placements = pd.DataFrame(data, columns=columns)
+
+    # make dummy wf
+    wf = rk.solar.SolarWorkflowManager(placements)
+    wf.sim_data['test_nearest'] = np.ones(shape=(1,placements.shape[0]))
+    wf.sim_data['test_source'] = np.ones(shape=(1,placements.shape[0]))
+
+    #test fallback to interpolation 'nearest'
+    wf.adjust_variable_to_long_run_average(
+        variable='test_nearest',
+        source_long_run_average=rk.weather.Era5Source.LONG_RUN_AVERAGE_GHI,
+        real_long_run_average=TEST_DATA['gsa-ghi-like.tif'],
+        real_lra_scaling=1000 / 24,  # cast to hourly average kWh
+        nodata_fallback='nan'
+    )
+    #test fallback to 'source' if nan
+    wf.adjust_variable_to_long_run_average(
+        variable='test_source',
+        source_long_run_average=rk.weather.Era5Source.LONG_RUN_AVERAGE_GHI,
+        real_long_run_average=TEST_DATA['gsa-ghi-like.tif'],
+        real_lra_scaling=1000 / 24,  # cast to hourly average kWh
+        nodata_fallback='source'
+    )
+
+    assert np.isclose(wf.sim_data['test_nearest'][0][0], 0.95539191)
+    assert np.isclose(wf.sim_data['test_nearest'][0][1], 0.97695767)
+    assert np.isnan(wf.sim_data['test_nearest'][0][2])
+    assert np.isclose(wf.sim_data['test_source'][0][0], 0.95539191)
+    assert np.isclose(wf.sim_data['test_source'][0][1], 0.97695767)
+    assert np.isclose(wf.sim_data['test_source'][0][2], 1)
 
 def test_WorkflowManager_apply_loss_factor(pt_WorkflowManager_loaded: WorkflowManager) -> WorkflowManager:
     man = pt_WorkflowManager_loaded
