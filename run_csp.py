@@ -13,14 +13,14 @@ placements = pd.DataFrame()
 #noor 2 ptr plant, morocco
 placements['lon'] = [ -6.8, -6.8, -6.8]     # Longitude [ 6.083, 6.083, 5.583] #
 placements['lat'] = [ 31.0, 31.4, 31.0,]   # Latitude [ 50.775, 50.775, 50.775,] #
-placements['area'] = [1E6, 5E6, 6E6]
+placements['area_m2'] = [1E6, 5E6, 6E6]
 repeats = int(3/3)
 placements = placements.loc[placements.index.repeat(repeats)].reset_index(drop=True)
     
 #%%
 out = rk.csp.CSP_PTR_ERA5(
     placements=placements, 
-    era5_path= r'C:\Users\d.franzmann\data\ERA5\7\6', #r'/storage/internal/data/gears/weather/ERA5/processed/4/7/6/2015/', #r'C:\Users\d.franzmann\data\ERA5\7\6',
+    era5_path= r'/storage/internal/data/gears/weather/ERA5/processed/4/7/6/2015/', #r'/storage/internal/data/gears/weather/ERA5/processed/4/7/6/2015/', #r'C:\Users\d.franzmann\data\ERA5\7\6',
     global_solar_atlas_dni_path = 'default_local',
     datasetname='Dataset_SolarSalt_2030',
     verbose = True,
