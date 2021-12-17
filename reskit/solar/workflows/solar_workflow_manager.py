@@ -523,7 +523,7 @@ class SolarWorkflowManager(WorkflowManager):
         dni_flat = self.sim_data['direct_horizontal_irradiance']
         zen = np.radians(self.sim_data['apparent_solar_zenith'])
 
-        self.sim_data['direct_normal_irradiance'] = dni_flat / np.cos(zen)
+        self.sim_data['direct_normal_irradiance'] = dni_flat / np.maximum(np.cos(zen), 0.2)
         
         #catch outliners from zero devision
         index_out = (dni_flat < 25) & (np.cos(zen) < 0.05)
