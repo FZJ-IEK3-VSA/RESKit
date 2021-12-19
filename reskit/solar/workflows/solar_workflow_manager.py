@@ -654,11 +654,11 @@ class SolarWorkflowManager(WorkflowManager):
         azimuth = self.sim_data.get("system_azimuth", self.placements['azimuth'].values)
         tilt = self.sim_data.get("system_tilt", self.placements['tilt'].values)
 
-        self.sim_data['angle_of_incidence'] = pvlib.irradiance.aoi(
+        self.sim_data['angle_of_incidence'] = np.nan_to_num(pvlib.irradiance.aoi(
             tilt,
             azimuth,
             self.sim_data['apparent_solar_zenith'],
-            self.sim_data['solar_azimuth'])
+            self.sim_data['solar_azimuth']),0)
 
         return self
 
