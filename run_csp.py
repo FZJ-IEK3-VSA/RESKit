@@ -20,12 +20,15 @@ placements = placements.loc[placements.index.repeat(repeats)].reset_index(drop=T
 #%%
 out = rk.csp.CSP_PTR_ERA5(
     placements=placements, 
-    era5_path= r'/storage/internal/data/gears/weather/ERA5/processed/4/7/6/2015/', #r'/storage/internal/data/gears/weather/ERA5/processed/4/7/6/2015/', #r'C:\Users\d.franzmann\data\ERA5\7\6',
+    era5_path= r'C:\Users\d.franzmann\data\ERA5\7\6', #r'/storage/internal/data/gears/weather/ERA5/processed/4/7/6/2015/', #r'C:\Users\d.franzmann\data\ERA5\7\6',
     global_solar_atlas_dni_path = 'default_local',
     datasetname='Dataset_SolarSalt_2030',
     verbose = True,
     JITaccelerate=False,
-    return_self=False)
+    return_self=True,
+    debug_vars=True,
+    onlynightuse=False,
+)
 
 print('Simulation done')
 

@@ -3,11 +3,47 @@ from logging import warning
 from reskit import workflow_manager
 from ... import weather as rk_weather
 from .csp_workflow_manager import PTRWorkflowManager
+from .dataset_handler import dataset_handler
 import numpy as np
 import time
 
-
 def CSP_PTR_ERA5(
+    placements,
+    era5_path,
+    global_solar_atlas_dni_path,
+    global_solar_atlas_tamb_path,
+    datasets = None,
+    cost_year = 2050,
+    HTF_sel = ['SolarSalt', 'Heliosol', 'Therminol'],
+    elev_path = None,
+    output_netcdf_path=None,
+    output_variables=None,
+    return_self=True,
+    JITaccelerate = False,
+    verbose = False,
+    debug_vars = False,
+    onlynightuse=True,
+    fullvariation=False,
+    ):
+    
+    if not datasets==None: 
+        datasets = ['Dataset_' + htf + '_' + str(cost_year)for htf in HTF_sel]
+    
+    d = dataset_handler(HTF_sel)
+    p, q, r = d.split_placements(
+        placements=placements,
+        gsa_dni_path=global_solar_atlas_dni_path,
+        gsa_tamb_path=global_solar_atlas_tamb_path,
+        )
+    pass
+    #1) split up placements for each htf
+    #2) run each simulation
+    #3) merge data
+    
+    
+    
+
+def CSP_PTR_ERA5_specific_dataset(
     placements,
     era5_path,
     global_solar_atlas_dni_path,
@@ -106,7 +142,7 @@ def CSP_PTR_ERA5(
     wf.calculateShadowLosses(method='wagner2011', SF_density=ptr_data['SF_density_direct'])
     wf.calculateWindspeedLosses(max_windspeed_threshold=ptr_data['maxWindspeed'])
     wf.calculateDegradationLosses(efficencyDropPerYear=ptr_data['efficencyDropPerYear'], lifetime=ptr_data['lifetime'])
-    wf.calculateHeattoHTF(eta_ptr_max=ptr_data['eta_ptr_max'], eta_cleaness=ptr_data['eta_cleaness'])
+    wf.calculateHeattoHTF(eta_ptr_max=ptr_data['eta_ptr_max'], eta_cleaness=ptr_data['eta_cleaness'], eta_other = ptr_data['eta_other'])
 
     wf.apply_capacity_sf()
     if not debug_vars:
@@ -138,7 +174,7 @@ def CSP_PTR_ERA5(
 
     # 8) calculate Parasitic Losses of the plant
     wf.calculateParasitics(
-        calculationmethod='gafurov2013',
+        calculationmethod='dersch2018',#'gafurov2013',
         params={
             'I_DNI_nom': ptr_data['I_DNI_nom'],
             'PL_plant_fix': ptr_data['PL_plant_fix'],
@@ -148,8 +184,6 @@ def CSP_PTR_ERA5(
             'PL_plant_other': ptr_data['PL_plant_other'],
         }
         )
-    if not debug_vars:
-        del wf.sim_data['P_heating_W']
     
     #9) calculate economics
     # Todo: adjust size of annual_heat... from 1D to 2D, or change the storage type
@@ -170,7 +204,7 @@ def CSP_PTR_ERA5(
         print('Solar field simulation done in {dt}s.'.format(dt = str(tic_sf_sim-tic_pre)))
         print('Starting optimizing plant electric output.')
     
-    wf.optimize_plant_size(onlynightuse=onlynightuse, fullvariation=fullvariation)
+    wf.optimize_plant_size(onlynightuse=onlynightuse, fullvariation=fullvariation, debug_vars=debug_vars)
     
     # wf.optimize_heat_output_4D()
     # wf.calculateEconomics_Plant_Storage_4D()
@@ -181,7 +215,7 @@ def CSP_PTR_ERA5(
         print('Optimal Sizing done in  {dt}s.'.format(dt = str(tic_opt_plant-tic_sf_sim)))
         
         
-    wf.calculate_electrical_output()
+    wf.calculate_electrical_output(onlynightuse=onlynightuse,debug_vars=debug_vars)
     wf.calculate_LCOE()
     wf.calculateCapacityFactors()
         

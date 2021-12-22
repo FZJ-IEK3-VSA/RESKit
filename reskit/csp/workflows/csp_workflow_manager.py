@@ -324,6 +324,7 @@ class PTRWorkflowManager(SolarWorkflowManager):
         Q_sf_des = nominal_sf_efficiency * self.placements['aperture_area_m2'].values * I_DNI_nom * (1-nominal_receiver_heat_losses) #W
         
         self.placements['capacity_sf_W_th'] = Q_sf_des
+        self.placements['I_DNI_nom_W_per_m2'] = I_DNI_nom
     
     def calculateSolarPosition(self):
         """calculates the solar position in terms of hour angle and declination from time series and location series of the current object
@@ -346,10 +347,7 @@ class PTRWorkflowManager(SolarWorkflowManager):
         assert self.ptr_data['SF_density_direct'] < 1
 
         #set up empty array
-        #self.sim_data['hour_angle_degree'] = np.empty(shape=(self._numtimesteps, self._numlocations))
-        #self.sim_data['declination_angle_degree'] = np.empty(shape=(self._numtimesteps, self._numlocations))
         self.sim_data['solar_zenith_degree'] = np.empty(shape=(self._numtimesteps, self._numlocations))
-        #self.sim_data['solar_azimuth_degree'] = np.empty(shape=(self._numtimesteps, self._numlocations))
         self.sim_data['theta'] = np.empty(shape=(self._numtimesteps, self._numlocations))
         self.sim_data['tracking_angle'] = np.empty(shape=(self._numtimesteps, self._numlocations))
 
@@ -394,188 +392,6 @@ class PTRWorkflowManager(SolarWorkflowManager):
 
         return self
     
-        
-    def calculateSolarPosition_old(self):
-        """calculates the solar position in terms of hour angle and declination from time series and location series of the current object
-
-        Returns:
-            [CSPWorkflowManager]: Updated CSPWorkflowManager with new values for sim_data['values'][timeserie_iter, location_iter]. The calculated values are:
-                                    - solar_zenith_degree: solar zenith angle
-                                    - solar_altitude_angle_degree: solar altitude (elevation) angle in degrees
-                                    - aoi_northsouth: angle of incidence for northsouth-orientation of trough
-                                    - aoi_eastwest: angle of incidence for eastwest-orientation of trough
-
-        """
-
-        #check for inputs
-        assert 'lat' in self.placements.columns
-        assert 'lon' in self.placements.columns
-        assert 'elev' in self.placements.columns
-
-
-        #set up empty array
-        #self.sim_data['hour_angle_degree'] = np.empty(shape=(self._numtimesteps, self._numlocations))
-        #self.sim_data['declination_angle_degree'] = np.empty(shape=(self._numtimesteps, self._numlocations))
-        self.sim_data['solar_zenith_degree'] = np.empty(shape=(self._numtimesteps, self._numlocations))
-        #self.sim_data['solar_azimuth_degree'] = np.empty(shape=(self._numtimesteps, self._numlocations))
-        self.sim_data['aoi_northsouth'] = np.empty(shape=(self._numtimesteps, self._numlocations))
-        self.sim_data['aoi_eastwest'] = np.empty(shape=(self._numtimesteps, self._numlocations))
-        self.sim_data['tracking_angle_northsouth'] = np.empty(shape=(self._numtimesteps, self._numlocations))
-        self.sim_data['tracking_angle_eastwest'] = np.empty(shape=(self._numtimesteps, self._numlocations))
-
-
-
-        # iterate trough all location
-        for location_iter, row in enumerate(self.placements[['lon', 'lat', 'elev']].itertuples()):
-
-            #calculate the solar position
-            _solarpos = \
-                pvlib.solarposition.get_solarposition(
-                    time=self.time_index,
-                    latitude=row.lat,
-                    longitude=row.lon,
-                    #altitude=row.elev,
-                    #pressure=self.sim_data["surface_pressure"][:, location_iter], #TODO: insert here
-                    #temperature=self.sim_data["surface_air_temperature"][:, location_iter], #TODO: insert here
-                    #method='nrel_numba'
-                )
-
-
-            self.sim_data['solar_zenith_degree'][:, location_iter] = _solarpos['apparent_zenith'].values
-            #self.sim_data['solar_azimuth_degree'][:, location_iter] = _solarpos['azimuth'].values
-
-            #calculate aoi
-            truetracking_angles = pvlib.tracking.singleaxis(
-                apparent_zenith=_solarpos['apparent_zenith'],
-                apparent_azimuth=_solarpos['azimuth'],
-                axis_tilt=0,
-                axis_azimuth=180,
-                max_angle=90,
-                backtrack=False,  # for true-tracking
-                gcr=self.ptr_data['SF_density_direct'])  # irrelevant for true-tracking
-
-            self.sim_data['aoi_northsouth'][:, location_iter] = np.nan_to_num(truetracking_angles['aoi'].values)
-            self.sim_data['tracking_angle_northsouth'][:, location_iter] = np.nan_to_num(truetracking_angles['tracker_theta'].values)
-
-            #calculate aoi
-            truetracking_angles = pvlib.tracking.singleaxis(
-                apparent_zenith=_solarpos['apparent_zenith'],
-                apparent_azimuth=_solarpos['azimuth'],
-                axis_tilt=0,
-                axis_azimuth=90,
-                max_angle=180,
-                backtrack=False,  # for true-tracking
-                gcr=self.ptr_data['SF_density_direct'])  # irrelevant for true-tracking
-
-            self.sim_data['aoi_eastwest'][:, location_iter] = np.nan_to_num(truetracking_angles['aoi'].values)
-            self.sim_data['tracking_angle_eastwest'][:, location_iter] = np.nan_to_num(truetracking_angles['tracker_theta'].values)
-
-            #from [1]	KALOGIROU, Soteris A. Environmental Characteristics. In: Soteris Kalogirou, ed. Solar energy engineering. Processes and systems. Waltham, Mass: Academic Press, 2014, pp. 51-123.
-            # fromula 2.12
-        
-        self.sim_data['solar_altitude_angle_degree'] = np.rad2deg(np.arcsin(np.cos(np.deg2rad(self.sim_data['solar_zenith_degree']))))
-
-        return self
-
-    
-    def calculateCosineLossesParabolicTrough_old(self, orientation: str = 'song2013'):
-        """[calculate the cosine losses of a parabolic trough CSP solar field.
-        Based on https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=6893622 or
-        "SONG, Y. Q., Y. XIANG, Y. B. LIAO, B. ZHANG, L. WU, and H. T. ZHANG. How to decide the alignment of the parabolic
-        trough collector according to the local latitude. 2013 International Conference on Materials for Renewable Energy
-        and Environment (ICMREE 2013). Chengdu, China, 19 - 21 August 2013 ; [proceedings. Piscataway, NJ: IEEE, 2013, pp. 94-97."]
-
-        Returns:
-            [type]: [description]
-        """
-        
-        #spellcheck input
-        orientation = orientation.lower()
-        assert orientation in ['northsouth', 'eastwest', 'song2013']
-        # northsouth: north south
-        # eastwest: east west
-        # song2013: apply logic form song 2013 to dertermine the orientation of solar fields
-        assert 'aoi_northsouth' in self.sim_data.keys()
-        assert 'aoi_eastwest' in self.sim_data.keys()
-        #assert 'solar_altitude_angle_degree' in self.sim_data.keys()
-        assert 'lat' in list(self.placements.columns)
-
-
-
-
-        # write data all locations to one 1-D array
-        #_hour_angle = self.sim_data['hour_angle_degree'].flatten(order='F')
-        #_declination = self.sim_data['declination_angle_degree'].flatten(order='F')
-        #_solar_altitude = self.sim_data['solar_altitude_angle_degree'].flatten(order='F')
-        _latitude = np.tile(self.placements['lat'].values, (self.time_index.shape[0],1))#self.placements['lat']#.repeat(self.time_index.shape[0])
-
-        #degree to radians
-        #_hour_angle = np.deg2rad(_hour_angle)
-        #_declination = np.deg2rad(_declination) 
-        #_solar_altitude = np.deg2rad(_solar_altitude)
-
-        #calculate the cos of theta for a north / south oreintation
-        #formula (6) from Song How to decide the alignment of the parabolic trough collector according to the local latitude 2013
-        
-        if orientation in ['northsouth', 'song2013']:
-            '''
-            Sz = np.cos(_latitude) * np.cos(_declination) * np.cos(_hour_angle) + np.sin(_latitude) * np.sin(_declination)
-            Sx = - np.cos(_declination) * np.sin(_hour_angle)
-            Sy = np.cos(_latitude) * np.sin(_declination) - np.sin(_latitude) * np.cos(_declination) * np.cos(_hour_angle)
-
-            theta_northsouth = np.arccos(1 - ( np.abs(Sz) / np.sqrt(np.square(Sy) + np.square(Sz))) 
-            theta_northsouth = np.rad2deg(theta_northsouth)
-
-            # when sun altidude is negative (after sunset), set values to 0
-            costheta_northsouth = costheta_northsouth * (_solar_altitude >0)
-            '''
-
-        #     # costheta_northsouth = 1 - ((np.cos(_latitude) * np.cos(_declination) * np.cos(_hour_angle) + np.sin(_latitude) * np.sin(_declination))\
-        #     #     / np.sqrt( np.square(np.cos(_latitude) * np.sin(_declination) - np.sin(_latitude) * np.cos(_declination) * np.cos(_hour_angle))
-        #     #                 + np.square(np.cos(_latitude) * np.cos(_declination) * np.cos(_hour_angle) +  np.sin(_latitude) * np.sin(_declination))))
-            
-        #     theta_northsouth = self.sim_data['aoi_northsouth']#.flatten(order='F')
-
-
-        # #calculate the cos of theta for a east/ west oreintation
-        # #formula (7) from Song How to decide the alignment of the parabolic trough collector according to the local latitude 2013
-        
-        # if orientation in ['eastwest', 'song2013']:
-            
-        #     '''
-        #     #calculation
-        #     theta_eastwest = np.arccos(np.sqrt( (np.square(np.sin(_declination))-1) * np.square(np.sin(_hour_angle)) + 1 ))
-        #     theta_eastwest = np.rad2deg(theta_eastwest)
-
-        #     # when sun altidude is negative (after sunset), set values to 0
-        #     theta_eastwest = theta_eastwest * (_solar_altitude >0)
-        #     '''
-
-        #     theta_eastwest = self.sim_data['aoi_eastwest']#.flatten(order='F')
-
-
-        if orientation == 'northsouth':
-            theta = self.sim_data['aoi_northsouth'] #forced northsouth orientation
-            tracking_angle = self.sim_data['tracking_angle_northsouth']
-            
-        elif orientation == 'eastwest':
-            theta = self.sim_data['aoi_eastwest'] #forced eastwest orientation
-            tracking_angle = self.sim_data['tracking_angle_eastwest']
-            
-        elif orientation == 'song2013':
-            # apply song 2013:
-            # if latitude is between -46° and +46°, use northsouth orientation, else eastwest orientation
-            _isns = np.logical_and(_latitude < 46.06, _latitude > -46.06)
-
-            theta = _isns * self.sim_data['aoi_northsouth'] + np.logical_not(_isns) * self.sim_data['aoi_eastwest']
-            tracking_angle = _isns * self.sim_data['tracking_angle_northsouth'] + np.logical_not(_isns) * self.sim_data['tracking_angle_eastwest']
-
-        # change array to 2D
-        self.sim_data['theta'] = theta
-        self.sim_data['tracking_angle'] = tracking_angle
-
-        return self
-
 
     def calculateIAM(self, a1: float = 0.000884 , a2: float = 0.00005369, a3: float = 0):
         """ Calculates the IAM angle modifier from incidence angle. Formula and default values are from: 
@@ -673,7 +489,7 @@ class PTRWorkflowManager(SolarWorkflowManager):
         return self
 
 
-    def calculateHeattoHTF(self, eta_ptr_max: float = 0.742, eta_cleaness: float = 1):
+    def calculateHeattoHTF(self, eta_ptr_max: float = 0.742, eta_cleaness: float = 1, eta_other: float = 0.99):
         """Calculates the heat from Collector to heat transfer fluid. The result is before the heat losses of the HTF.
 
         Args: 
@@ -695,6 +511,7 @@ class PTRWorkflowManager(SolarWorkflowManager):
 
         self.sim_data['HeattoHTF_W'] = eta_ptr_max \
                                         * eta_cleaness \
+                                        * eta_other \
                                         * np.cos(np.deg2rad(self.sim_data['theta'])) \
                                         * self.sim_data['IAM'] \
                                         * self.sim_data['eta_shdw'] \
@@ -1050,6 +867,20 @@ class PTRWorkflowManager(SolarWorkflowManager):
                 PL_plant_other: Plant Pumping losses in % of design point power output
 
         '''
+         #### estimate design parameters:
+
+        
+        # Q_sf,des is the design point power output of the solar field
+        # P_pb_des is the design point power output of the plant
+        nominal_efficiency_power_block = self.ptr_data['eta_powerplant_1']
+        SM = 2
+
+        Q_sf_des = self.placements['capacity_sf_W_th'].values #W
+        P_pb_des = Q_sf_des * nominal_efficiency_power_block / SM
+        
+        P_pb = self.sim_data['HeattoPlant_W'] * nominal_efficiency_power_block
+        
+        
         if calculationmethod == 'gafurov2013':
             assert 'PL_plant_fix' in params.keys()
             assert 'PL_sf_track' in params.keys()
@@ -1060,30 +891,14 @@ class PTRWorkflowManager(SolarWorkflowManager):
 
             ##### CALCULATION
 
-            #### estimate design parameters:
-
-        
-            # Q_sf,des is the design point power output of the plant
-            # P_pb_des is the design point power output of the plant
-            nominal_efficiency_power_block = self.ptr_data['eta_powerplant_1'] # 37.74% efficency of the power block at nominal power, from gafurov2013
-            SM = 3.5
-
-            Q_sf_des = self.placements['capacity_sf_W_th'].values #W
-            P_pb_des = Q_sf_des * nominal_efficiency_power_block / SM
-            
-            P_pb = self.sim_data['HeattoPlant_W'] * nominal_efficiency_power_block
-
             # PL_csp,fix
             PL_plant_fix = params['PL_plant_fix'] * P_pb
 
             #PL_sf_track 
             PL_sf_track = params['PL_sf_track'] * P_pb_des * (self.sim_data['solar_zenith_degree'] < 90)
 
-            #PL_sf_night = self.sim_data['P_heating_W']
-
             #PL_sf_pumping
-            PL_sf_pumping = params['PL_sf_pumping'] * Q_sf_des * np.power(self.sim_data['HeattoPlant_W'] / Q_sf_des, 3)
-
+            PL_sf_pumping = params['PL_sf_pumping'] * Q_sf_des * np.power(self.sim_data['HeattoPlant_W'] / Q_sf_des , 3)
             #PL_plant_pumping
             PL_plant_pumping = params['PL_plant_pumping'] * self.sim_data['HeattoPlant_W']
 
@@ -1093,15 +908,39 @@ class PTRWorkflowManager(SolarWorkflowManager):
             #self.sim_data['PL_sf_track'] = PL_sf_track
             #self.sim_data['PL_sf_pumping'] = PL_sf_pumping
 
-            self.sim_data['Parasitics_solarfield_W_el'] = PL_sf_track + self.sim_data['P_heating_W'] + PL_sf_pumping
-            self.sim_data['Parasitics_plant_W_el'] = (PL_plant_fix + PL_plant_pumping + PL_plant_other)#[None, :] * np.ones_like(self.sim_data['Parasitics_solarfield_W_el']) #issue #10  
-            #self.sim_data['Parasitics_total_W_el'] = self.sim_data['Parasitics_solarfield_W_el'] + self.sim_data['Parasitics_plant_W_el']
+            self.sim_data['Parasitics_solarfield_W_el'] = PL_sf_track + PL_sf_pumping #+ self.sim_data['P_heating_W']#issue #13
+            self.sim_data['Parasitics_plant_W_el'] = (PL_plant_fix + PL_plant_pumping + PL_plant_other)
             
-            self.placements['Parasitics_solarfield_Wh_el_per_a'] = self.sim_data['Parasitics_solarfield_W_el'].sum(axis=0)
-            self.placements['Parasitics_plant_Wh_el_per_a'] = self.sim_data['Parasitics_plant_W_el'].sum(axis=0)
-
-            assert not np.isnan(self.sim_data['Parasitics_solarfield_W_el']).any()
-            assert not np.isnan(self.sim_data['Parasitics_plant_W_el']).any()
+        
+        elif calculationmethod == 'dersch2018':
+            
+            params['PL_sf_fixed_W_per_m^2_ap'] = 1 * 1.486
+            params['PL_sf_pumping_W_per_m^2_ap'] = 8.3
+            
+            assert 'PL_sf_fixed_W_per_m^2_ap' in params.keys()
+            assert 'PL_sf_pumping_W_per_m^2_ap' in params.keys()
+            
+            PL_sf_track = params['PL_sf_fixed_W_per_m^2_ap'] * self.placements['aperture_area_m2'].values * (self.sim_data['HeattoHTF_W']> 0)
+            PL_sf_pumping = params['PL_sf_pumping_W_per_m^2_ap'] * self.placements['aperture_area_m2'].values * \
+                    np.power(self.sim_data['HeattoPlant_W'] / Q_sf_des, 2) # * 830/self.placements['I_DNI_nom_W_per_m2'].values), 2) #used for valiadaton, as 830 as DNI_des is used in reference data
+            
+            self.sim_data['Parasitics_solarfield_W_el'] = PL_sf_track + PL_sf_pumping # + self.sim_data['P_heating_W']#issue #13
+            
+            #Plant from Gaforov
+            PL_plant_fix = params['PL_plant_fix'] * P_pb
+            PL_plant_pumping = params['PL_plant_pumping'] * self.sim_data['HeattoPlant_W']
+            PL_plant_other = params['PL_plant_other'] * P_pb
+            self.sim_data['Parasitics_plant_W_el'] = (PL_plant_fix + PL_plant_pumping + PL_plant_other)
+            
+        else:
+            raise ValueError('calculationmethod for parasitic losses not known. Use "gafurov2013" or "dersch2018"')
+        
+        self.sim_data['Parasitics_W_el'] = self.sim_data['Parasitics_solarfield_W_el'] + self.sim_data['Parasitics_plant_W_el']
+        self.placements['Parasitics_solarfield_Wh_el_per_a'] = self.sim_data['Parasitics_solarfield_W_el'].sum(axis=0)
+        self.placements['Parasitics_plant_Wh_el_per_a'] = self.sim_data['Parasitics_plant_W_el'].sum(axis=0)
+        
+        assert not np.isnan(self.sim_data['Parasitics_solarfield_W_el']).any()
+        assert not np.isnan(self.sim_data['Parasitics_plant_W_el']).any()
             
         return self
 
@@ -1164,7 +1003,7 @@ class PTRWorkflowManager(SolarWorkflowManager):
         
         #calculate opex
         dt = (self._time_index_[1] - self._time_index_[0]) / pd.Timedelta(hours=1) 
-        opexVar_SF_EUR_per_a = self.sim_data['Parasitics_solarfield_W_el'].sum() / 1000 * dt * params['electricity_price_EUR_per_kWh']
+        opexVar_SF_EUR_per_a = self.sim_data['Parasitics_solarfield_W_el'].sum(axis=0) / 1000 * dt * params['electricity_price_EUR_per_kWh']
 
 
         #calculate annual Totex
@@ -1178,8 +1017,15 @@ class PTRWorkflowManager(SolarWorkflowManager):
         return self
     
     
-    def optimize_plant_size(self, onlynightuse=True, fullvariation=False):
+    def optimize_plant_size(self, onlynightuse=True, fullvariation=False, debug_vars=False):
         '''returns the optimal pLant configuration for each placement by finding the lowest expeected LCOE: sm_opt, tes opt
+
+        Parameters
+        ----------
+        onlynightuse : bool, optional
+            allheat has to be stored, i order to be used contrary to PV, by default True
+        fullvariation : bool, optional
+            for plotting purpose, full variation can be set to true to caclucate variation over more values, by default False
         '''
         
         #check inputs
@@ -1187,10 +1033,9 @@ class PTRWorkflowManager(SolarWorkflowManager):
         assert not np.isnan(self.sim_data['HeattoPlant_W']).any()
 
         # for developers: use full variations
-        fullvariation = False
         if fullvariation:
             self.sm = np.array([1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5])
-            self.tes = np.array([3, 6, 9, 12, 15, 18])
+            self.tes = np.array([5, 6, 9, 12, 15, 18])
         else:
             self.sm = np.array([1.5, 2, 2.5, 3, 3.5])
             self.tes = np.array([9, 12, 15])
@@ -1206,9 +1051,10 @@ class PTRWorkflowManager(SolarWorkflowManager):
         
         #loop all sizing combinations
         #dimensions: [time(days), placements, SM, TES]
-        dailyHeatOutput_Wh_4D = np.nan*np.ones(shape=(365, len(self.placements), len(self.sm), len(self.tes))) #TODO: remove
-        TOTEX_EUR_per_a_3D = np.nan*np.ones(shape=(len(self.placements), len(self.sm), len(self.tes))) #TODO: remove
-        Power_output_plant_net_Wh_per_a_3D = np.nan*np.ones(shape=(len(self.placements), len(self.sm), len(self.tes))) #TODO: remove
+        if debug_vars:
+            dailyHeatOutput_Wh_4D = np.nan*np.ones(shape=(365, len(self.placements), len(self.sm), len(self.tes))) #TODO: remove
+            TOTEX_EUR_per_a_3D = np.nan*np.ones(shape=(len(self.placements), len(self.sm), len(self.tes))) #TODO: remove
+            Power_output_plant_net_Wh_per_a_3D = np.nan*np.ones(shape=(len(self.placements), len(self.sm), len(self.tes))) #TODO: remove
         LCOE_EURct_per_kWh_el_3D = np.nan*np.ones(shape=(len(self.placements), len(self.sm), len(self.tes)))
         for size in sizing_tuples:
             sm = size[0]
@@ -1243,6 +1089,8 @@ class PTRWorkflowManager(SolarWorkflowManager):
             
             #aggregate the stored heat for each day
             Heat_to_storage_daily_Wh_th = np.einsum('ij,jk', aggregate_by_day, Heatflux_to_storage_W_th)
+            Heat_heating_sf_daily_Wh_th = np.einsum('ij,jk', aggregate_by_day, self.sim_data['P_heating_W']) #13
+            
             if onlynightuse:
                 Heat_direct_powerplant_daily_Wh_th = 0
             else:
@@ -1254,7 +1102,8 @@ class PTRWorkflowManager(SolarWorkflowManager):
             del Heat_to_storage_daily_Wh_th
             
             #calculate heat which is unstored
-            Heat_unstored_daily_Wh_th = Heat_stored_daily_Wh_th * self.ptr_data['storage_efficiency_1']**2
+            Heat_unstored_daily_Wh_th = np.maximum(Heat_stored_daily_Wh_th * self.ptr_data['storage_efficiency_1'] - Heat_heating_sf_daily_Wh_th, 0) #13
+            P_backup_heating_daily_Wh_el = np.maximum(Heat_heating_sf_daily_Wh_th - Heat_stored_daily_Wh_th * self.ptr_data['storage_efficiency_1'],0)#13
             del Heat_stored_daily_Wh_th
             
             #max heat processable by power plant
@@ -1269,72 +1118,24 @@ class PTRWorkflowManager(SolarWorkflowManager):
             del Heat_direct_powerplant_daily_Wh_th, Heat_unstored_daily_Wh_th, Heat_max_des_powerplant_daily_Wh_th
             
             #remember that one
-            dailyHeatOutput_Wh_4D[:,:,i_sm, i_tes] = Heat_total_used_daily_Wh_th #TODO: remove this, only dbg
-            #Heat_total_used_daily_Wh_th = Heat_total_used_daily_Wh_th.sum(axis=0)
+            if debug_vars:
+                dailyHeatOutput_Wh_4D[:,:,i_sm, i_tes] = Heat_total_used_daily_Wh_th
 
             ##################################
             ### 2) get cost                ###
             ##################################
             
-            CAPEX_total_EUR = self._get_capex(
-                A_aperture_m2=self.placements['aperture_area_m2'],
-                A_land_m2=self.placements['land_area_m2'],
-                Qdot_field_des_W=self.placements['capacity_sf_W_th'],
-                eta_des_power_plant=self.ptr_data['eta_powerplant_1'],
-                sm=sm,
-                tes=tes,
-                c_field_per_aperture_area_EUR_per_m2=self.ptr_data['CAPEX_solar_field_EUR_per_m^2_aperture'],
-                c_land_per_land_area_EUR_per_m2=self.ptr_data['CAPEX_land_EUR_per_m^2_land'],
-                c_storage_EUR_per_kWh_th=self.ptr_data['CAPEX_storage_cost_EUR_per_kWh'],
-                c_plant_EUR_per_kW_el=self.ptr_data['CAPEX_plant_cost_EUR_per_kW'],
-                c_indirect_cost_perc_per_direct_Capex=self.ptr_data['CAPEX_indirect_cost_%_CAPEX'],
-            )
-            #annual cost
-            CAPEX_total_EUR_per_a = CAPEX_total_EUR * self.sim_data['annuity']
+            TOTEX_EUR_per_a = self._get_totex_from_self(sm_manipulation = sm, tes_manipulation = tes)
             
-            OPEX_EUR_per_a = self._get_opex(
-                CAPEX_total_EUR=CAPEX_total_EUR,
-                OPEX_fix_perc_CAPEX_per_a=self.ptr_data['OPEX_%_CAPEX'],
-                auxilary_power_Wh_per_a=self.sim_data['Parasitics_solarfield_W_el'].sum(axis=0),
-                electricity_price_EUR_per_kWh=self.ptr_data['electricity_price_EUR_per_kWh'],
-            )
-            
-            TOTEX_EUR_per_a = self._get_totex(
-                CAPEX_total_EUR_per_a=CAPEX_total_EUR_per_a,
-                OPEX_EUR_per_a=OPEX_EUR_per_a,
-            )
-            # #TODO: remove
-            # #capex plant
-            # Power_powerplant_des_W_el = Heatflux_powerplant_des_input_W_th * self.ptr_data['eta_powerplant_1']
-            # CAPEX_Plant_EUR = self.ptr_data['CAPEX_plant_cost_EUR_per_kW'] * Power_powerplant_des_W_el / 1000 #W --> kW
-            
-            # #capex storage
-            # CAPEX_Storage_EUR = self.ptr_data['CAPEX_storage_cost_EUR_per_kWh'] * Heat_Storage_des_Wh_th / 1000 #Wh-->kWh
-            
-            # #solar field
-            # CAPEX_Field_EUR = self.ptr_data['CAPEX_solar_field_EUR_per_m^2_aperture'] * self.placements['aperture_area_m2']
-            # CAPEX_Land_EUR =  self.ptr_data['CAPEX_land_EUR_per_m^2_land'] * self.placements['land_area_m2']
-            
-            # #indirect costs
-            # CAPEX_Indirect_EUR = (CAPEX_Plant_EUR + CAPEX_Storage_EUR + CAPEX_Field_EUR + CAPEX_Land_EUR) * self.ptr_data['CAPEX_indirect_cost_%_CAPEX']/100
-            
-            # CAPEX_total_EUR = (CAPEX_Plant_EUR + CAPEX_Storage_EUR + CAPEX_Field_EUR + CAPEX_Land_EUR + CAPEX_Indirect_EUR)
-            
-            # #annual cost
-            # CAPEX_total_EUR_per_a = CAPEX_total_EUR * self.sim_data['annuity']
-            # OPEX_fix_EUR_per_a = CAPEX_total_EUR * self.ptr_data['OPEX_%_CAPEX'] / 100
-            # OPEX_var_EUR_per_a = self.ptr_data['electricity_price_EUR_per_kWh'] * self.sim_data['Parasitics_solarfield_W_el'].sum(axis=0) / 1000 * 1 # W --> kWh
-            # #totex
-            # TOTEX_EUR_per_a = CAPEX_total_EUR_per_a + OPEX_fix_EUR_per_a + OPEX_var_EUR_per_a
-            
-            TOTEX_EUR_per_a_3D[:,i_sm, i_tes] = TOTEX_EUR_per_a #TODO: remove this, only dbg
+            if debug_vars:           
+                TOTEX_EUR_per_a_3D[:,i_sm, i_tes] = TOTEX_EUR_per_a
             
             ##################################
             ### 3) Electric Output         ###
             ##################################
             
             #calcualte average rel load of the plant
-            rel_load_plant_daily_1 = 0.5 + 0.5 * Heat_total_used_daily_Wh_th / (Heatflux_powerplant_des_input_W_th.values * operationalhours_per_day)
+            rel_load_plant_daily_1 = Heat_total_used_daily_Wh_th / (Heatflux_powerplant_des_input_W_th.values * operationalhours_per_day)
         
             # calcualte plant efficiency
             efficiency_daily_1 = self._get_plant_efficiency(rel_load_plant=rel_load_plant_daily_1, eta_nom=self.ptr_data['eta_powerplant_1'])
@@ -1344,14 +1145,17 @@ class PTRWorkflowManager(SolarWorkflowManager):
             Power_output_plant_gross_daily_Wh = Heat_total_used_daily_Wh_th * efficiency_daily_1
             del efficiency_daily_1
             #plant parasitics
-            Parasitics_plant_daily_Wh_el = np.einsum('ij,jk', aggregate_by_day, self.sim_data['Parasitics_plant_W_el']) *1#h   #issue #10
+            Parasitics_plant_daily_Wh_el = np.einsum('ij,jk', aggregate_by_day, self.sim_data['Parasitics_W_el']) *1#h #13
+            Parasitics_plant_daily_Wh_el += P_backup_heating_daily_Wh_el #13
             #net power output
             Power_output_plant_net_daily_Wh = np.maximum(Power_output_plant_gross_daily_Wh - Parasitics_plant_daily_Wh_el,0)
             del Parasitics_plant_daily_Wh_el, Power_output_plant_gross_daily_Wh
             
             #sum up
             Power_output_plant_net_Wh_per_a = Power_output_plant_net_daily_Wh.sum(axis=0).squeeze()
-            Power_output_plant_net_Wh_per_a_3D[:,i_sm, i_tes] = Power_output_plant_net_Wh_per_a #TODO: remove this, only dbg
+            
+            if debug_vars:
+                Power_output_plant_net_Wh_per_a_3D[:,i_sm, i_tes] = Power_output_plant_net_Wh_per_a
             
             ##################################
             ### 4) LCOE                    ###
@@ -1367,10 +1171,11 @@ class PTRWorkflowManager(SolarWorkflowManager):
         
         #container for opt variables
         if not hasattr(self, 'opt_data'):
-            self.opt_data = {}    
-        self.opt_data['dailyHeatOutput_Wh_4D_new'] = dailyHeatOutput_Wh_4D
-        self.opt_data['TOTEX_EUR_per_a_3D_new'] = TOTEX_EUR_per_a_3D
-        self.opt_data['LCOE_EURct_per_kWh_el_3D_new'] = LCOE_EURct_per_kWh_el_3D
+            self.opt_data = {}
+        if debug_vars:    
+            self.opt_data['dailyHeatOutput_Wh_4D_new'] = dailyHeatOutput_Wh_4D
+            self.opt_data['TOTEX_EUR_per_a_3D_new'] = TOTEX_EUR_per_a_3D
+            self.opt_data['LCOE_EURct_per_kWh_el_3D_new'] = LCOE_EURct_per_kWh_el_3D
         
         ##################################
         ### 5) opt                     ###
@@ -1380,8 +1185,6 @@ class PTRWorkflowManager(SolarWorkflowManager):
         #dimensions: [placements]
         sm_opt = []
         tes_opt = []
-        #sm_opt_i = []
-        #tes_opt_i = []
         #loop placemnts(I did not find a function wich gives the argmin along two axes (1,2))
         for i in range(0, len(self.placements)):
             temp = LCOE_EURct_per_kWh_el_3D[i,:,:]
@@ -1389,10 +1192,7 @@ class PTRWorkflowManager(SolarWorkflowManager):
             sm_opt_index, tes_opt_index = np.unravel_index(np.argmin(temp, axis=None), temp.shape)
             #append
             sm_opt.append(self.sm[sm_opt_index])
-            tes_opt.append(self.tes[tes_opt_index])
-            #sm_opt_i.append(sm_opt_index)
-            #tes_opt_i.append(tes_opt_index)
-        
+            tes_opt.append(self.tes[tes_opt_index])        
 
         # set minimum values to placement df
         self.placements['sm_opt'] = sm_opt
@@ -1554,7 +1354,7 @@ class PTRWorkflowManager(SolarWorkflowManager):
         
         #limit daily output
         #dimensions: [time(days), placements, SM, TES]
-        dailyHeatOutput_Wh_4D = np.minimum((dailyHeatDirect_Wh_4D + dailyHeatStored_Wh_4D * self.ptr_data['storage_efficiency_1']**2), maxDailyHeatPlant_W_4D)
+        dailyHeatOutput_Wh_4D = np.minimum((dailyHeatDirect_Wh_4D + dailyHeatStored_Wh_4D * self.ptr_data['storage_efficiency_1']), maxDailyHeatPlant_W_4D)
         del maxDailyHeatPlant_W_4D, dailyHeatDirect_Wh_4D
         
         
@@ -1732,7 +1532,7 @@ class PTRWorkflowManager(SolarWorkflowManager):
         # ) #dimensions 'dailyPowerOutput_Wh_4D': [time(days), placements, SM, TES]
         return self
 
-    def calculate_electrical_output(self, onlynightuse=True):
+    def calculate_electrical_output(self, onlynightuse=True, debug_vars = False):
         '''from sm and tes opt, calculate the electrical output.
             idea: as much energy as possible will be stored to be flexible,
             the rest is forced to be depending on solar radiation
@@ -1742,9 +1542,6 @@ class PTRWorkflowManager(SolarWorkflowManager):
         assert 'power_plant_capacity_W_el' in self.placements.columns
         
         pass
-        # heat_flexible = 1
-        # self.sim_data['HeattoPlant_W']
-        # self.sim_data['Parasitics_plant_W_el']
         
         #aggregate_by_day
         dt = (self._time_index_[1] - self._time_index_[0]) / pd.Timedelta(hours=1)
@@ -1753,7 +1550,8 @@ class PTRWorkflowManager(SolarWorkflowManager):
         else:
             aggregate_by_day = np.eye(365).repeat(24, axis=1)
         HeattoPlant_per_day_Wh = np.einsum('ij,jk', aggregate_by_day, self.sim_data['HeattoPlant_W']) * dt
-        Parasitics_plant_per_day_Wh_el = np.einsum('ij,jk', aggregate_by_day, self.sim_data['Parasitics_plant_W_el']) * dt
+        Parasitics_plant_per_day_Wh_el = np.einsum('ij,jk', aggregate_by_day, self.sim_data['Parasitics_W_el']) * dt #issue #13
+        Heat_heating_sf_daily_Wh_th = np.einsum('ij,jk', aggregate_by_day, self.sim_data['P_heating_W']) #issue #13
         
         # max thermal input the power plant is capable of
         if onlynightuse:
@@ -1765,26 +1563,35 @@ class PTRWorkflowManager(SolarWorkflowManager):
         #calculate stored and directly used heat per day
         # heat transfered into the storage (preferred, as max dispatchability is good)
         #limit by storage size
-        Heat_stored_per_day_Wh = np.minimum(HeattoPlant_per_day_Wh, self.placements['storage_capacity_kWh_th']*1000/self.ptr_data['storage_efficiency_1'])
+        Heat_stored_per_day_Wh = np.minimum(HeattoPlant_per_day_Wh, self.placements['storage_capacity_kWh_th']*1000)
         #limit by plant size
-        Heat_stored_per_day_Wh = np.minimum(HeattoPlant_per_day_Wh, power_plant_max_heat_Wh/self.ptr_data['storage_efficiency_1']**2)
+        Heat_stored_per_day_Wh = np.minimum(Heat_stored_per_day_Wh, power_plant_max_heat_Wh/self.ptr_data['storage_efficiency_1'])
         # heat transfered directly to the plant (2nd option)
         if onlynightuse:
             Heat_directly_per_day_Wh = 0
         else:
-            Heat_directly_per_day_Wh = np.minimum(HeattoPlant_per_day_Wh - Heat_stored_per_day_Wh, power_plant_max_heat_Wh - Heat_stored_per_day_Wh)
+            Heat_directly_per_day_Wh = np.minimum(
+                HeattoPlant_per_day_Wh - Heat_stored_per_day_Wh, # maximum heat abvailable
+                power_plant_max_heat_Wh - Heat_stored_per_day_Wh*self.ptr_data['storage_efficiency_1'] #maximum heat capable for the plant (cf_day=1)
+            )
         # heat output from the storage
-        Heat_from_storage_per_day_Wh = Heat_stored_per_day_Wh * self.ptr_data['storage_efficiency_1']**2
+        Heat_from_storage_per_day_Wh = np.maximum(Heat_stored_per_day_Wh * self.ptr_data['storage_efficiency_1'] - Heat_heating_sf_daily_Wh_th,0) #13
+        P_backup_heating_daily_Wh_el = np.maximum(Heat_heating_sf_daily_Wh_th - Heat_stored_per_day_Wh * self.ptr_data['storage_efficiency_1'],0) #13
+        Parasitics_plant_per_day_Wh_el += P_backup_heating_daily_Wh_el
+        
         # total heat useable
         Heat_total_per_day_Wh = Heat_from_storage_per_day_Wh+Heat_directly_per_day_Wh
         assert (Heat_total_per_day_Wh <= power_plant_max_heat_Wh*1.001).all()
+        if debug_vars:
+            self.placements['avrg_sf_efficiency_1'] = self.sim_data['HeattoPlant_W'].sum(axis=0) / (self.placements['aperture_area_m2'] * self.sim_data['direct_normal_irradiance'].sum(axis=0))
+            self.placements['Heat_after_curtailment_1'] = Heat_total_per_day_Wh.sum(axis=0) / self.sim_data['HeattoPlant_W'].sum(axis=0)
         # calculate rel load and efficiency
         
 
         # rel load is defined as the ratio of daily output to maximal output.
         # As the Poweplant wont output the total power over the whole day, the formula is corrected by:
         # rel_load* = 0.5 * 0.5 + rel_load
-        rel_load_plant= 0.5 + 0.5 * (Heat_total_per_day_Wh / power_plant_max_heat_Wh)
+        rel_load_plant= (Heat_total_per_day_Wh / power_plant_max_heat_Wh)
         
         #Gafurov2015: 
         # rel_efficiency [1] = 54.92 + 112.73 * rel - 104.63 * rel^2 + 37.05 * rel^3
@@ -1811,6 +1618,10 @@ class PTRWorkflowManager(SolarWorkflowManager):
         #add up for total output
         Power_net_total_per_day_Wh = Power_net_bound_per_day_Wh + Power_net_dispatchable_per_day_Wh
         
+        if debug_vars:
+            self.placements['mean_gross_turbine_efficiency_1'] = (Power_gross_dispatchable_per_day_Wh.sum(axis=0) + Power_gross_bound_per_day_Wh.sum(axis=0)) / Heat_total_per_day_Wh.sum(axis=0)
+            self.placements['turbine_gross_to_net'] = Power_net_total_per_day_Wh.sum(axis=0) / (Power_gross_dispatchable_per_day_Wh.sum(axis=0) + Power_gross_bound_per_day_Wh.sum(axis=0))
+            
         #get avrg cf
         Power_net_total_Wh_per_a = Power_net_total_per_day_Wh.sum(axis=0)
         steps_per_year = pd.Timedelta(hours=8760) / (self._time_index_[1] - self._time_index_[0])
@@ -1826,6 +1637,8 @@ class PTRWorkflowManager(SolarWorkflowManager):
         '''calculates the LCOE from plant and storage sizes, SF totex and Net power output
         '''
         #calculate_economics
+        TOTEX_EUR_per_a = self._get_totex_from_self()
+        
         CAPEX_total_EUR = self._get_capex(
                 A_aperture_m2=self.placements['aperture_area_m2'],
                 A_land_m2=self.placements['land_area_m2'],
@@ -1839,33 +1652,20 @@ class PTRWorkflowManager(SolarWorkflowManager):
                 c_plant_EUR_per_kW_el=self.ptr_data['CAPEX_plant_cost_EUR_per_kW'],
                 c_indirect_cost_perc_per_direct_Capex=self.ptr_data['CAPEX_indirect_cost_%_CAPEX'],
             )
-            #annual cost
-        CAPEX_total_EUR_per_a = CAPEX_total_EUR * self.sim_data['annuity']
+        #     #annual cost
+        # CAPEX_total_EUR_per_a = CAPEX_total_EUR * self.sim_data['annuity']
         
-        OPEX_EUR_per_a = self._get_opex(
-            CAPEX_total_EUR=CAPEX_total_EUR,
-            OPEX_fix_perc_CAPEX_per_a=self.ptr_data['OPEX_%_CAPEX'],
-            auxilary_power_Wh_per_a=self.sim_data['Parasitics_solarfield_W_el'].sum(axis=0),
-            electricity_price_EUR_per_kWh=self.ptr_data['electricity_price_EUR_per_kWh'],
-        )
+        # OPEX_EUR_per_a = self._get_opex(
+        #     CAPEX_total_EUR=CAPEX_total_EUR,
+        #     OPEX_fix_perc_CAPEX_per_a=self.ptr_data['OPEX_%_CAPEX'],
+        #     auxilary_power_Wh_per_a=self.sim_data['Parasitics_solarfield_W_el'].sum(axis=0),
+        #     electricity_price_EUR_per_kWh=self.ptr_data['electricity_price_EUR_per_kWh'],
+        # )
         
-        TOTEX_EUR_per_a = self._get_totex(
-            CAPEX_total_EUR_per_a=CAPEX_total_EUR_per_a,
-            OPEX_EUR_per_a=OPEX_EUR_per_a,
-        )
-        # #TODO: remove
-        # #plant and storage
-        # plant_cost = self.placements['power_plant_capacity_W_el'] * self.ptr_data['CAPEX_plant_cost_EUR_per_kW'] / 1000
-        # storage_cost = self.placements['storage_capacity_kWh_th'] * self.ptr_data['CAPEX_storage_cost_EUR_per_kWh']
-        # # total capex for plant and storage including indirect costs
-        # capex_stroage_plant = (plant_cost + storage_cost) * (1 + self.ptr_data['CAPEX_indirect_cost_%_CAPEX'] / 100)
-        # capex_stroage_plant_yearly = capex_stroage_plant * self.sim_data['annuity']
-        # #opex and totex
-        # opex_fix_stroage_plant_yearly = capex_stroage_plant_yearly * self.ptr_data['OPEX_%_CAPEX']/100
-        # totex_storage_plant_yearly = capex_stroage_plant_yearly + opex_fix_stroage_plant_yearly
-
-        # #total totex for solar field, land, plant and storage (including indirect costs)
-        # totex_all_yearly = totex_storage_plant_yearly + self.placements['Totex_SF_EUR_per_a']
+        # TOTEX_EUR_per_a = self._get_totex(
+        #     CAPEX_total_EUR_per_a=CAPEX_total_EUR_per_a,
+        #     OPEX_EUR_per_a=OPEX_EUR_per_a,
+        # )
         
         self.placements['CAPEX_total_EUR'] = CAPEX_total_EUR
         self.placements['lcoe_EURct_per_kWh_el'] = TOTEX_EUR_per_a / self.placements['Power_net_total_Wh_per_a'] *1E2 * 1E3 #EUR/WH to EURct/kWh
@@ -2088,6 +1888,67 @@ class PTRWorkflowManager(SolarWorkflowManager):
         TOTEX_EUR_per_a = CAPEX_total_EUR_per_a + OPEX_EUR_per_a
         return TOTEX_EUR_per_a
     
+    def _get_totex_from_self(self, sm_manipulation = None, tes_manipulation = None):
+        '''calcualtes CSP Totes per a
+
+        Returns
+        -------
+        TOTEX_EUR_per_a: pd.DataFrame
+        '''
+        
+        assert 'capacity_sf_W_th' in self.placements.columns
+        assert 'aperture_area_m2' in self.placements.columns
+        assert 'land_area_m2' in self.placements.columns
+        
+        assert hasattr(self, 'ptr_data')
+        
+        assert 'annuity' in self.sim_data.keys()
+        assert 'Parasitics_solarfield_W_el' in self.sim_data.keys()
+        
+        
+        #allow sm and tes manipulation
+        if sm_manipulation == None:
+            assert 'sm_opt' in self.placements.columns
+            sm = self.placements['sm_opt']
+        else: 
+            assert isinstance(sm_manipulation, int) or isinstance(sm_manipulation, float)
+            sm = sm_manipulation
+        
+        if tes_manipulation == None:
+            assert 'tes_opt' in self.placements.columns
+            tes = self.placements['tes_opt']
+        else: 
+            assert isinstance(tes_manipulation, np.int32) or isinstance(tes_manipulation, float) or isinstance(tes_manipulation, int)
+            tes = tes_manipulation
+        
+        CAPEX_total_EUR = self._get_capex(
+            A_aperture_m2=self.placements['aperture_area_m2'],
+            A_land_m2=self.placements['land_area_m2'],
+            Qdot_field_des_W=self.placements['capacity_sf_W_th'],
+            eta_des_power_plant=self.ptr_data['eta_powerplant_1'],
+            sm=sm,
+            tes=tes,
+            c_field_per_aperture_area_EUR_per_m2=self.ptr_data['CAPEX_solar_field_EUR_per_m^2_aperture'],
+            c_land_per_land_area_EUR_per_m2=self.ptr_data['CAPEX_land_EUR_per_m^2_land'],
+            c_storage_EUR_per_kWh_th=self.ptr_data['CAPEX_storage_cost_EUR_per_kWh'],
+            c_plant_EUR_per_kW_el=self.ptr_data['CAPEX_plant_cost_EUR_per_kW'],
+            c_indirect_cost_perc_per_direct_Capex=self.ptr_data['CAPEX_indirect_cost_%_CAPEX'],
+        )
+        #annual cost
+        CAPEX_total_EUR_per_a = CAPEX_total_EUR * self.sim_data['annuity']
+        
+        OPEX_EUR_per_a = self._get_opex(
+            CAPEX_total_EUR=CAPEX_total_EUR,
+            OPEX_fix_perc_CAPEX_per_a=self.ptr_data['OPEX_%_CAPEX'],
+            auxilary_power_Wh_per_a= 0,#self.sim_data['P_heating_W'].sum(axis=0),#self.sim_data['Parasitics_solarfield_W_el'].sum(axis=0), #not used, substracted from power plant output #issue #13
+            electricity_price_EUR_per_kWh=self.ptr_data['electricity_price_EUR_per_kWh'],
+        )
+        
+        TOTEX_EUR_per_a = self._get_totex(
+            CAPEX_total_EUR_per_a=CAPEX_total_EUR_per_a,
+            OPEX_EUR_per_a=OPEX_EUR_per_a,
+        )
+        return TOTEX_EUR_per_a
     
     
     def _get_plant_efficiency(

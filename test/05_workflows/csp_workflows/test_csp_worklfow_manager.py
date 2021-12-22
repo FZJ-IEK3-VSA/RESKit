@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from reskit.solar.workflows.csp_workflow_manager import PTRWorkflowManager
+from reskit.csp.workflows.csp_workflow_manager import PTRWorkflowManager
 import reskit as rk
 import pytest
 
@@ -81,7 +81,7 @@ def funct():
     wf.calculateDegradationLosses(efficencyDropPerYear=ptr_data['efficencyDropPerYear'], lifetime=ptr_data['lifetime'])
     wf.calculateHeattoHTF(eta_ptr_max=ptr_data['eta_ptr_max'], eta_cleaness=ptr_data['eta_cleaness'])
 
-    wf.apply_capacity()
+    #wf.apply_capacity()
      
     
     # 7) calculation heat to plant with loss model
@@ -139,10 +139,6 @@ def print_testresults(variable):
 
 
 
-
-
-
-
 ####################################
 #####       TEST Init         ######
 ####################################
@@ -180,8 +176,9 @@ def test_loadPTRdata(pt_PTRWorkflowManager_initialized):
     wfm = pt_PTRWorkflowManager_initialized
     
     ptr_data = wfm.loadPTRdata(datasetname='Initial')
-    assert 'ptr_data' in wfm.sim_data.keys()
-    assert ptr_data.shape  == (45,)
+    
+    assert hasattr(wfm, 'ptr_data')
+    # assert ptr_data.shape  == (45,)
     assert ptr_data['orientation'] == 'song2013'
     assert ptr_data['a1'] == 0.000884
     assert ptr_data['discretizationmethod'] == 'euler explicit'
@@ -235,22 +232,22 @@ def test_apply_elevation(pt_PTRWorkflowManager_initialized):
 def test_apply_azimuth(pt_PTRWorkflowManager_initialized):
     wfm = pt_PTRWorkflowManager_initialized
     
-    wfm.sim_data['ptr_data']=pd.Series()
-    wfm.sim_data['ptr_data']['orientation'] = 'northsouth'
+    wfm.ptr_data=pd.Series()
+    wfm.ptr_data['orientation'] = 'northsouth'
     wfm.apply_azimuth()
     assert np.isclose(wfm.placements['azimuth'].mean(), 180)
     assert np.isclose(wfm.placements['azimuth'].std(), 0)
     assert np.isclose(wfm.placements['azimuth'].min(), 180)
     assert np.isclose(wfm.placements['azimuth'].max(), 180)
 
-    wfm.sim_data['ptr_data']['orientation'] = 'eastwest'
+    wfm.ptr_data['orientation'] = 'eastwest'
     wfm.apply_azimuth()
     assert np.isclose(wfm.placements['azimuth'].mean(), 90)
     assert np.isclose(wfm.placements['azimuth'].std(), 0)
     assert np.isclose(wfm.placements['azimuth'].min(), 90)
     assert np.isclose(wfm.placements['azimuth'].max(), 90)
     
-    wfm.sim_data['ptr_data']['orientation'] = 'song2013'
+    wfm.ptr_data['orientation'] = 'song2013'
     wfm.placements.loc[0, 'lat'] = 30
     wfm.apply_azimuth()
     assert np.isclose(wfm.placements['azimuth'].mean(), 120)
@@ -320,14 +317,14 @@ def pt_PTRWorkflowManager_solarpos() -> PTRWorkflowManager:
     wfm.placements['elev'] = [90, 180, 180]
     wfm.time_index = pd.date_range("2014-12-31 23:30:00", periods=100, freq="H")
     wfm.get_timesteps()
-    wfm.sim_data['ptr_data'] = pd.Series()
-    wfm.sim_data['ptr_data']['SF_density_direct'] = 0.383
+    wfm.ptr_data = pd.Series()
+    wfm.ptr_data['SF_density_direct'] = 0.383
     return wfm
 
 # test calcualte solar position
 def test_calculateSolarPosition(pt_PTRWorkflowManager_solarpos):
     wfm = pt_PTRWorkflowManager_solarpos
-    print(wfm.sim_data['ptr_data']['SF_density_direct'])
+    print(wfm.ptr_data['SF_density_direct'])
     wfm.calculateSolarPosition()
 
     assert wfm.sim_data['solar_zenith_degree'].shape == (100, 3)
@@ -385,13 +382,15 @@ def test_calculateSolarPositionfaster(pt_PTRWorkflowManager_solarpos):
 def pt_PTRWorkflowManager_dni_from_trig(pt_PTRWorkflowManager_loaded: PTRWorkflowManager) -> PTRWorkflowManager:
     wfm = pt_PTRWorkflowManager_loaded
 
-    wfm.placements['azimuth'] = [90, 180, 180]
-    wfm.placements['elev'] = [90, 180, 180]
+    wfm.ptr_data = [90, 180, 180]
+    wfm.ptr_data = [90, 180, 180]
     wfm.get_timesteps()
-    wfm.sim_data['ptr_data'] = pd.Series()
-    wfm.sim_data['ptr_data']['SF_density_direct'] = 0.383    
+    wfm.ptr_data = pd.Series()
+    wfm.ptr_data['SF_density_direct'] = 0.383    
+    wfm.placements['elev'] = 0
+    wfm.placements['azimuth'] = 180
     
-    wfm.calculateSolarPosition()
+    wfm.calculateSolarPosition() #include this heres, as this is a mainly pv lib function
     return wfm
 
 # test dni calculation
@@ -598,7 +597,7 @@ def pt_PTRWorkflowManager_HeattoHTF(pt_PTRWorkflowManager_initialized) -> PTRWor
 def test_calculateHeattoHTF(pt_PTRWorkflowManager_HeattoHTF):
     wfm = pt_PTRWorkflowManager_HeattoHTF
     
-    wfm.calculateHeattoHTF(eta_ptr_max=0.8, eta_cleaness=0.99)
+    wfm.calculateHeattoHTF(eta_ptr_max=0.8, eta_cleaness=0.99, eta_other=1)
     
     print_testresults(wfm.sim_data['HeattoHTF_W'])
     assert np.isclose(wfm.sim_data['HeattoHTF_W'].mean(), 17292906.612040244)
@@ -651,9 +650,9 @@ def pt_PTRWorkflowManager_heat_loss() -> PTRWorkflowManager:
     wf.calculateShadowLosses(method='wagner2011', SF_density=ptr_data['SF_density_direct'])
     wf.calculateWindspeedLosses(max_windspeed_threshold=ptr_data['maxWindspeed'])
     wf.calculateDegradationLosses(efficencyDropPerYear=ptr_data['efficencyDropPerYear'], lifetime=ptr_data['lifetime'])
-    wf.calculateHeattoHTF(eta_ptr_max=ptr_data['eta_ptr_max'], eta_cleaness=ptr_data['eta_cleaness'])
+    wf.calculateHeattoHTF(eta_ptr_max=ptr_data['eta_ptr_max'], eta_cleaness=ptr_data['eta_cleaness'], eta_other=ptr_data['eta_other'])
 
-    wf.apply_capacity()
+    #wf.apply_capacity()
     
     return wf
 
@@ -743,7 +742,106 @@ def test_applyHTFHeatLossModel(pt_PTRWorkflowManager_heat_loss):
     assert np.isclose(wfm.sim_data['P_heating_W'].max(), 19115325.849862307)
 
 
+####################################
+#####  TEST Economics   ######
+####################################
 
+# test applyHTFHeatLossModel
+def test_get_capex(pt_PTRWorkflowManager_initialized):
+    wfm = pt_PTRWorkflowManager_initialized
+    
+    CAPEX_total_EUR = wfm._get_capex(
+        A_aperture_m2 = 3E5,
+        A_land_m2 = 1E6,
+        Qdot_field_des_W = 3E5*0.8*900,
+        eta_des_power_plant = 0.4,
+        sm = 2,
+        tes = 12,
+        c_field_per_aperture_area_EUR_per_m2 = 165.44,
+        c_land_per_land_area_EUR_per_m2 = 0.88,
+        c_storage_EUR_per_kWh_th = 25.52,
+        c_plant_EUR_per_kW_el = 1003.2,
+        c_indirect_cost_perc_per_direct_Capex = 11,
+    )
+    assert np.isclose(CAPEX_total_EUR, 140885817.6)
+
+
+def test_get_opex(pt_PTRWorkflowManager_initialized):
+    wfm = pt_PTRWorkflowManager_initialized
+    
+    OPEX_EUR_per_a = wfm._get_opex(
+        CAPEX_total_EUR=140885817.6,
+        OPEX_fix_perc_CAPEX_per_a=2,
+        auxilary_power_Wh_per_a=0,
+        electricity_price_EUR_per_kWh=0.05    
+    )
+    assert np.isclose(OPEX_EUR_per_a, 2.817716352E6)
+
+    OPEX_EUR_per_a = wfm._get_opex(
+        CAPEX_total_EUR=140885817.6,
+        OPEX_fix_perc_CAPEX_per_a=2,
+        auxilary_power_Wh_per_a=4.830819e+10,
+        electricity_price_EUR_per_kWh=0.05    
+    )
+    assert np.isclose(OPEX_EUR_per_a, 5233125.852)
+    
+def test_get_totex(pt_PTRWorkflowManager_initialized):
+    wfm = pt_PTRWorkflowManager_initialized
+    
+    TOTEX_EUR_per_a = wfm._get_totex(
+        CAPEX_total_EUR_per_a=10,
+        OPEX_EUR_per_a=2,
+    )
+    assert np.isclose(TOTEX_EUR_per_a, 12)
+
+@pytest.fixture
+def pt_PTRWorkflowManager_economics() -> PTRWorkflowManager:
+    wfm =  test_PTRWorkflowManager__init__()
+    
+    wfm.placements['aperture_area_m2'] = [3E5, 6E5, 3E5]
+    wfm.placements['land_area_m2'] = [1E6, 2E6, 1E6]
+    wfm.placements['capacity_sf_W_th'] = [3E5*0.8*900, 6E5*0.8*900, 3E5*0.8*900]
+    wfm.placements['sm_opt'] = [2, 2, 2]
+    wfm.placements['tes_opt'] = [12, 12, 12]
+
+    if not hasattr(wfm, 'sim_data'):
+        wfm.sim_data = {}
+    
+    wfm.sim_data['annuity'] = 0.093678779
+    a = 4.830819e+10
+    wfm.sim_data['Parasitics_solarfield_W_el'] = np.array([[a,a*2,a], [0,0,0]])
+    
+    if not hasattr(wfm, 'ptr_data'):
+        wfm.ptr_data = {}
+    wfm.ptr_data['eta_powerplant_1'] = 0.4
+    wfm.ptr_data['CAPEX_solar_field_EUR_per_m^2_aperture'] = 165.44
+    wfm.ptr_data['CAPEX_land_EUR_per_m^2_land'] = 0.88
+    wfm.ptr_data['CAPEX_storage_cost_EUR_per_kWh'] = 25.52
+    wfm.ptr_data['CAPEX_plant_cost_EUR_per_kW'] = 1003.2
+    wfm.ptr_data['CAPEX_indirect_cost_%_CAPEX'] = 11
+    wfm.ptr_data['OPEX_%_CAPEX'] = 2
+    wfm.ptr_data['electricity_price_EUR_per_kWh'] = 0.05
+
+  
+
+    return wfm
+
+def test_get_totex_from_self(pt_PTRWorkflowManager_economics):
+    wfm = pt_PTRWorkflowManager_economics
+    
+    TOTEX_EUR_per_a = wfm._get_totex_from_self()
+    #assert np.isclose(TOTEX_EUR_per_a.values, [18431137.22318471, 36862274.44636942, 18431137.22318471]).all() # use those values, if 'Parasitics_solarfield_W_el' are bought as varOPEX
+    assert np.isclose(TOTEX_EUR_per_a.values, [16.01572773E6, 2*16.01572773E6, 16.01572773E6]).all() # use those values, if 'Parasitics_solarfield_W_el' arent bought as varOPEX
+                      
+    TOTEX_EUR_per_a = wfm._get_totex_from_self(sm_manipulation=1, tes_manipulation = 10)
+    #assert np.isclose(TOTEX_EUR_per_a.values, [26681959.73652098, 53363919.47304196, 26681959.73652098]).all() # use those values, if 'Parasitics_solarfield_W_el' are bought as varOPEX
+    assert np.isclose(TOTEX_EUR_per_a.values, [24266550.23652098, 48533100.47304196, 24266550.23652098]).all() # use those values, if 'Parasitics_solarfield_W_el' arent bought as varOPEX
+    
+    #Test from Excel sheet. cannot calculate parasitic losses
+    wfm.sim_data['Parasitics_solarfield_W_el'] = np.array([[0,0,0], [0,0,0]])
+    TOTEX_EUR_per_a = wfm._get_totex_from_self()
+    assert np.isclose(TOTEX_EUR_per_a.values, [16.01572773E6, 2*16.01572773E6, 16.01572773E6]).all()
+    
 #TODO:
 # - calculate parastitics
 # - calculate economics
