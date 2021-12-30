@@ -324,7 +324,6 @@ def pt_PTRWorkflowManager_solarpos() -> PTRWorkflowManager:
 # test calcualte solar position
 def test_calculateSolarPosition(pt_PTRWorkflowManager_solarpos):
     wfm = pt_PTRWorkflowManager_solarpos
-    print(wfm.ptr_data['SF_density_direct'])
     wfm.calculateSolarPosition()
 
     assert wfm.sim_data['solar_zenith_degree'].shape == (100, 3)
@@ -334,25 +333,25 @@ def test_calculateSolarPosition(pt_PTRWorkflowManager_solarpos):
     print_testresults(wfm.sim_data['theta'])
     print_testresults(wfm.sim_data['tracking_angle'])
     
-    assert np.isclose(wfm.sim_data['solar_zenith_degree'].mean(), 111.28884958523207)
-    assert np.isclose(wfm.sim_data['solar_zenith_degree'].std(), 27.19582438410344)
-    assert np.isclose(wfm.sim_data['solar_zenith_degree'].min(), 73.48060369360721)
-    assert np.isclose(wfm.sim_data['solar_zenith_degree'].max(), 152.2150485738834)
+    assert np.isclose(wfm.sim_data['solar_zenith_degree'].mean(), 111.28957246057364)
+    assert np.isclose(wfm.sim_data['solar_zenith_degree'].std(), 27.195085020417622)
+    assert np.isclose(wfm.sim_data['solar_zenith_degree'].min(), 73.4811943930343)
+    assert np.isclose(wfm.sim_data['solar_zenith_degree'].max(), 152.2150485902235)
     
-    assert np.isclose(wfm.sim_data['solar_altitude_angle_degree'].mean(), -21.288849585232075)
-    assert np.isclose(wfm.sim_data['solar_altitude_angle_degree'].std(), 27.19582438410344)
-    assert np.isclose(wfm.sim_data['solar_altitude_angle_degree'].min(), -62.215048573883394)
-    assert np.isclose(wfm.sim_data['solar_altitude_angle_degree'].max(), 16.519396306392792)
+    assert np.isclose(wfm.sim_data['solar_altitude_angle_degree'].mean(), -21.28957246057363)
+    assert np.isclose(wfm.sim_data['solar_altitude_angle_degree'].std(), 27.195085020417622)
+    assert np.isclose(wfm.sim_data['solar_altitude_angle_degree'].min(), -62.21504859022348)
+    assert np.isclose(wfm.sim_data['solar_altitude_angle_degree'].max(), 16.518805606965696)
     
-    assert np.isclose(wfm.sim_data['theta'].mean(),15.392608923687673)
-    assert np.isclose(wfm.sim_data['theta'].std(), 25.062619458319485)
+    assert np.isclose(wfm.sim_data['theta'].mean(), 15.392752844414987)
+    assert np.isclose(wfm.sim_data['theta'].std(), 25.06289216984148)
     assert np.isclose(wfm.sim_data['theta'].min(), 0)
-    assert np.isclose(wfm.sim_data['theta'].max(), 74.30050715275098)
+    assert np.isclose(wfm.sim_data['theta'].max(), 74.30174498418555)
     
-    assert np.isclose(wfm.sim_data['tracking_angle'].mean(),9.898262191168975)
-    assert np.isclose(wfm.sim_data['tracking_angle'].std(), 38.08746359164498)
-    assert np.isclose(wfm.sim_data['tracking_angle'].min(), -82.73805605158628)
-    assert np.isclose(wfm.sim_data['tracking_angle'].max(), 89.33572729523335)
+    assert np.isclose(wfm.sim_data['tracking_angle'].mean(), 9.898689058532645)
+    assert np.isclose(wfm.sim_data['tracking_angle'].std(), 38.089414877200646)
+    assert np.isclose(wfm.sim_data['tracking_angle'].min(), -82.74319730966418)
+    assert np.isclose(wfm.sim_data['tracking_angle'].max(), 89.34864532943253)
 
  
 @pytest.mark.skip(reason="Function not used atm")
@@ -818,8 +817,8 @@ def pt_PTRWorkflowManager_economics() -> PTRWorkflowManager:
     wfm.ptr_data['CAPEX_land_EUR_per_m^2_land'] = 0.88
     wfm.ptr_data['CAPEX_storage_cost_EUR_per_kWh'] = 25.52
     wfm.ptr_data['CAPEX_plant_cost_EUR_per_kW'] = 1003.2
-    wfm.ptr_data['CAPEX_indirect_cost_%_CAPEX'] = 11
-    wfm.ptr_data['OPEX_%_CAPEX'] = 2
+    wfm.ptr_data['CAPEX_indirect_cost_perc_CAPEX'] = 11
+    wfm.ptr_data['OPEX_perc_CAPEX'] = 2
     wfm.ptr_data['electricity_price_EUR_per_kWh'] = 0.05
 
   

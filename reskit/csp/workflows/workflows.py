@@ -5,6 +5,7 @@ from ... import weather as rk_weather
 from .csp_workflow_manager import PTRWorkflowManager
 from .dataset_handler import dataset_handler
 import numpy as np
+import xarray as xr
 import time
 
 def CSP_PTR_ERA5(
@@ -14,7 +15,7 @@ def CSP_PTR_ERA5(
     global_solar_atlas_tamb_path,
     datasets = None,
     cost_year = 2050,
-    HTF_sel = ['SolarSalt', 'Heliosol', 'Therminol'],
+    HTF_sel = ['Heliosol', 'SolarSalt', 'Therminol'],
     elev_path = None,
     output_netcdf_path=None,
     output_variables=None,
@@ -26,20 +27,103 @@ def CSP_PTR_ERA5(
     fullvariation=False,
     ):
     
-    if not datasets==None: 
+    
+    #handle inputs for datasets
+    single_dataset = False
+    if datasets==None: 
+        #get datasets from HTF_sel and cost_year
         datasets = ['Dataset_' + htf + '_' + str(cost_year)for htf in HTF_sel]
+        if len(datasets)==1:
+            single_dataset=True
+            datasets=datasets[0]
+    elif isinstance(datasets, str):
+        #datasets=datasets
+        single_dataset=True
+    elif isinstance(datasets, list):
+        #datasets=datasets
+        if len(datasets)==1:
+            single_dataset=True
+            datasets=datasets[0]
+    else:
+        raise TypeError(f'datasets got unkown datatype')
     
-    d = dataset_handler(HTF_sel)
-    p, q, r = d.split_placements(
-        placements=placements,
-        gsa_dni_path=global_solar_atlas_dni_path,
-        gsa_tamb_path=global_solar_atlas_tamb_path,
+        
+    
+    if single_dataset: # only one dataset given 
+        output = CSP_PTR_ERA5_specific_dataset(
+            placements=placements,
+            era5_path=era5_path,
+            global_solar_atlas_dni_path=global_solar_atlas_dni_path,
+            datasetname =datasets,
+            elev_path = elev_path,
+            output_netcdf_path=output_netcdf_path,
+            output_variables=output_variables,
+            return_self=return_self,
+            JITaccelerate = JITaccelerate,
+            verbose = verbose,
+            debug_vars = debug_vars,
+            onlynightuse = onlynightuse,
+            fullvariation = fullvariation,
         )
-    pass
-    #1) split up placements for each htf
-    #2) run each simulation
-    #3) merge data
+        return output
     
+    else: #multiple datasets found
+        
+        #1) split up placements for each htf
+        d = dataset_handler(datasets)
+        placements = d.split_placements(
+            placements=placements,
+            gsa_dni_path=global_solar_atlas_dni_path,
+            gsa_tamb_path=global_solar_atlas_tamb_path,
+            )
+        del d
+        
+        #2) run each simulation
+        ouputs = []
+        for dataset in datasets:
+            #select placements for current dataset
+            placements_dataset = placements[placements['Dataset_opt'] == dataset]
+            
+            #skip empty batches
+            if len(placements_dataset) == 0:
+                continue
+            
+            #starting core simulation
+            output_dataset = CSP_PTR_ERA5_specific_dataset(
+                placements=placements_dataset,
+                era5_path=era5_path,
+                global_solar_atlas_dni_path=global_solar_atlas_dni_path,
+                datasetname =dataset,
+                elev_path = elev_path,
+                output_netcdf_path=output_netcdf_path,
+                output_variables=output_variables,
+                return_self=False,
+                JITaccelerate = JITaccelerate,
+                verbose = verbose,
+                debug_vars = debug_vars,
+                onlynightuse = onlynightuse,
+                fullvariation = fullvariation,
+            )
+            
+            #add dataset to column (force output this!)
+            if not 'datasetname' in output_dataset.variables:
+                output_dataset['datasetname'] = (output_dataset['lon']*0).astype(str)
+                output_dataset['datasetname'][:] = dataset
+            if 'Dataset_opt' in output_dataset.variables:
+                output_dataset = output_dataset.drop('Dataset_opt')
+
+            #set index from placements
+            output_dataset['location'] = placements_dataset.index
+            
+            #remember outputs for each dataset
+            ouputs.append(output_dataset)
+            del output_dataset
+            
+            
+        #3) merge data
+        #TODO: merge together
+        output = xr.concat(ouputs, dim = 'location').sortby('location')
+        return output
     
     
 
@@ -193,9 +277,9 @@ def CSP_PTR_ERA5_specific_dataset(
                                      params={
                                         'CAPEX_solar_field_EUR_per_m^2_aperture': ptr_data['CAPEX_solar_field_EUR_per_m^2_aperture'], 
                                         'CAPEX_land_EUR_per_m^2_land': ptr_data['CAPEX_land_EUR_per_m^2_land'],
-                                        'CAPEX_indirect_cost_%_CAPEX': ptr_data['CAPEX_indirect_cost_%_CAPEX'],
+                                        'CAPEX_indirect_cost_perc_CAPEX': ptr_data['CAPEX_indirect_cost_perc_CAPEX'],
                                         'electricity_price_EUR_per_kWh': ptr_data['electricity_price_EUR_per_kWh'],
-                                        'OPEX_%_CAPEX': ptr_data['OPEX_%_CAPEX'],
+                                        'OPEX_perc_CAPEX': ptr_data['OPEX_perc_CAPEX'],
                                      }
                                      )    
 

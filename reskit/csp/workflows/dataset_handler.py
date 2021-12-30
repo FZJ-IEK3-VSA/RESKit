@@ -13,38 +13,35 @@ class dataset_handler():
         assert isinstance(datasets, list)
         
         self.datasets = datasets
-        self.split_placements = None
     
     def split_placements(self, placements, gsa_dni_path, gsa_tamb_path):
         
         assert 'lat' in placements.columns
         assert 'lon' in placements.columns
         
-        placements['geom'] = placements[['lon', 'lat']].apply(lambda x: gk.geom.Point(x[0], x[1], srs=4326))
+        placements['geom'] = placements[['lon', 'lat']].apply(lambda x: gk.geom.point(x[0], x[1], srs=4326), axis=1)
         
-        placements['dni_gsa'] = gk.raster.interpolate_Values(
+        placements['dni_gsa'] = gk.raster.interpolateValues(
             source=gsa_dni_path,
             points=placements.geom
         ) * 1000/24       
         
-        placements['tamb_gsa'] = gk.raster.interpolate_Values(
+        placements['tamb_gsa'] = gk.raster.interpolateValues(
             source=gsa_tamb_path,
             points=placements.geom
         ) 
         
         mat_HTF_opt = self._get_opt_HTF_matrix()
         
-        placements['HTF_opt'] = placements[['dni_gsa', 'tamb_gsa']].apply(
-            lambda x: self._lookup(x[0], x[1], mat_HTF_opt)
+        placements['Dataset_opt'] = placements[['dni_gsa', 'tamb_gsa']].apply(
+            lambda x: self._lookup(x[0], x[1], mat_HTF_opt),
+            axis=1
         )
-        placements = placements.drop(['geom', 'dni_gsa', 'tamb_gsa'])
-        placements_Heliosol = placements[placements.HTF_opt == 'H']
-        placements_SolarSalt = placements[placements.HTF_opt == 'S']
-        placements_Therminol = placements[placements.HTF_opt == 'T']
+        placements = placements.drop(['geom', 'dni_gsa', 'tamb_gsa'], axis=1)
         
-        return placements_Heliosol, placements_SolarSalt, placements_Therminol
+        return placements
     
-    def _get_path_htf_opt(self):
+    def _get_path_dataset_opt(self):
         
         datasets = self.datasets
         def _list_to_str(li):
@@ -59,18 +56,18 @@ class dataset_handler():
         
         path = os.path.join(
             csp_data_path,
-            f'optimal_htf_selection{_list_to_str(datasetnames)}.csv'
+            f'optimal_htf_selection{_list_to_str(datasets)}.csv'
         )
         return path
 
     
     def _get_opt_HTF_matrix(self):
 
-        path = self._get_path_htf_opt()
+        path = self._get_path_dataset_opt()
         if os.path.isfile(path):
             htf_opt_matrix = pd.read_csv(path, index_col=[0], header=[0])
-            htf_opt_matrix.index = htf_opt_matrix.index.astype(int)
-            htf_opt_matrix.columns = htf_opt_matrix.columns.astype(int)
+            htf_opt_matrix.index = htf_opt_matrix.index.astype(float).astype(int)
+            htf_opt_matrix.columns = htf_opt_matrix.columns.astype(float).astype(int)
         else:
             print('No opt HTF matrix found. Calculating new Matrix.')
             htf_opt_matrix = self._calc_opt_HTF_matrix()
@@ -88,9 +85,10 @@ class dataset_handler():
             [matrix with opt htf for different T_amb and DNIs]
         '''
         dT_vector = np.arange(-40,30,10)
-        fDNI_vector = [.1, .25, .5, .75, 1.0, 1.25, 1.5]
+        fDNI_vector = [.25, .5, .75, 1.0, 1.25, 1.5]
         dT_matrix = np.tile(dT_vector, (len(fDNI_vector),1))
         fDNI_matrix = np.tile(fDNI_vector, (len(dT_vector),1)).T
+        variable_name = 'lcoe_EURct_per_kWh_el'
 
         n_placements = fDNI_matrix.size
 
@@ -106,10 +104,11 @@ class dataset_handler():
         
     
         era5_path=r'C:\Users\d.franzmann\data\ERA5\7\6'
-        era5_path=r'/storage/internal/data/gears/weather/ERA5/processed/4/7/6/2015'
+        #era5_path=r'/storage/internal/data/gears/weather/ERA5/processed/4/7/6/2015'
         datasetnames = self.datasets
         global_solar_atlas_dni_path = 'default_local'
 
+        outs = {}
         for datasetname in datasetnames:
             print('datasetname', datasetname)
             
@@ -126,46 +125,134 @@ class dataset_handler():
                 fullvariation=False,
                 #output_variables=['lcoe_EURct_per_kWh_el']
             )
-            out = out.placements[['mean_T_amb_K', 'mean_DNI_W_per_m2', 'lcoe_EURct_per_kWh_el']]
+            out = out.placements[['mean_T_amb_K', 'mean_DNI_W_per_m2', variable_name]]
             
-            if datasetname == 'Dataset_Heliosol_2030':
-                data_heliosol = out
-            elif datasetname == 'Dataset_SolarSalt_2030':
-                data_solarsalt = out
-            elif datasetname == 'Dataset_Therminol_2030':
-                data_therminol = out
+            outs[datasetname] = out  
+        
+        #make 2D matrix
+        pivots = {}
+        for key in outs:
+            pivots[key] = outs[key].pivot(index='mean_T_amb_K', columns='mean_DNI_W_per_m2', values=variable_name)
+            pivots[key][pivots[key]<0] = 1E9
+            pivots[key][np.isinf(pivots[key])] = 1E9
+            
+        #compare
+        def _getvaluedf(value, like):
+            out = like.copy()
+            out[:]= value
+            return out
+        
+        #empty dummy string
+        first_entry = list(pivots.keys())[0]
+        argmins = _getvaluedf('f', pivots[first_entry])
+        # check each dataset if it is min 
+        for key_comp in pivots:
+            ismin = _getvaluedf(True, pivots[first_entry])
+            
+            # compare element comp_key with all other keys
+            for key_ref in pivots:
+                #skip itself
+                if key_comp == key_ref:
+                    continue
+                isnotmin = pivots[key_ref] <= pivots[key_comp] # entries which are not min
+                ismin[isnotmin] = False
+            
+            # set values in argmin
+            argmins[ismin] = key_comp   
+        print(argmins)
+        print(argmins!='f')
+        assert (argmins!='f').all().all()
+             
+        argmins.to_csv(self._get_path_dataset_opt())
+        
+        return argmins
+        
+        
+
+        data_heliosol = outs['Dataset_Heliosol_2030']
+        data_solarsalt = outs['Dataset_SolarSalt_2030']
+        data_therminol = outs['Dataset_Therminol_2030']
+
+        
+        hel_exists = False
+        sol_exists = False
+        the_exists = False
+        
+        if 'data_heliosol' in locals():
+            hel_exists = True
+        if 'data_solarsalt' in locals():
+            sol_exists = True
+        if 'data_therminol' in locals():
+            the_exists = True
         
         variable_name = 'lcoe_EURct_per_kWh_el'
-        pivot_Heliosol = data_heliosol.pivot(index='mean_T_amb_K', columns='mean_DNI_W_per_m2', values=variable_name)
-        pivot_SolarSalt = data_solarsalt.pivot(index='mean_T_amb_K', columns='mean_DNI_W_per_m2', values=variable_name)
-        pivot_Therminol = data_therminol.pivot(index='mean_T_amb_K', columns='mean_DNI_W_per_m2', values=variable_name)
+        if hel_exists:
+            pivot_Heliosol = data_heliosol.pivot(index='mean_T_amb_K', columns='mean_DNI_W_per_m2', values=variable_name)
+        if sol_exists:
+            pivot_SolarSalt = data_solarsalt.pivot(index='mean_T_amb_K', columns='mean_DNI_W_per_m2', values=variable_name)
+            pivot_SolarSalt[pivot_SolarSalt<0] = 1E9
+            pivot_SolarSalt[np.isinf(pivot_SolarSalt)] = 1E9
+        if the_exists:
+            pivot_Therminol = data_therminol.pivot(index='mean_T_amb_K', columns='mean_DNI_W_per_m2', values=variable_name)
         
         
-        pivot_SolarSalt[pivot_SolarSalt<0] = 1E9
-        pivot_SolarSalt[np.isinf(pivot_SolarSalt)] = 1E9
+        #get min matrixes for each HTF
+        #heliosol
+        if hel_exists and sol_exists:
+            min_Heliosol = (pivot_Heliosol < pivot_SolarSalt)
+        if hel_exists and the_exists:
+            if hel_exists and sol_exists:   
+                min_Heliosol = min_Heliosol & (pivot_Heliosol <pivot_Therminol)
+            else:
+                min_Heliosol = (pivot_Heliosol <pivot_Therminol)
+        #heliosol
+        if hel_exists and sol_exists:    
+            min_SolarSalt = (pivot_SolarSalt < pivot_Heliosol)
+        if hel_exists and the_exists:
+            if hel_exists and sol_exists:
+                min_SolarSalt = min_SolarSalt & (pivot_SolarSalt <pivot_Therminol)
+            else:
+                min_SolarSalt = (pivot_SolarSalt <pivot_Therminol)
         
-        min_Heliosol = (pivot_Heliosol < pivot_SolarSalt) & (pivot_Heliosol <pivot_Therminol)
-        min_SolarSalt = (pivot_SolarSalt < pivot_Heliosol) & (pivot_SolarSalt <pivot_Therminol)
-        min_Therminol = (pivot_Therminol < pivot_SolarSalt) & (pivot_Therminol <pivot_Heliosol)
+        #therminol
+        if the_exists and sol_exists:        
+            min_Therminol = (pivot_Therminol < pivot_SolarSalt)
+        if the_exists and hel_exists:
+            if the_exists and sol_exists:
+                min_Therminol = min_Therminol & (pivot_Therminol <pivot_Heliosol)
+            else:
+                min_Therminol = (pivot_Therminol <pivot_Heliosol)
 
-        min = pivot_SolarSalt * min_SolarSalt \
-            + pivot_Heliosol * min_Heliosol\
-            + pivot_Therminol * min_Therminol
+        # min = pivot_SolarSalt * min_SolarSalt \
+        #     + pivot_Heliosol * min_Heliosol\
+        #     + pivot_Therminol * min_Therminol
         
         def _getstringdf(str, like):
             out = like.copy()
             out[:]= str
             return out
         
-        argmin =  _getstringdf('S', min_Heliosol) * min_SolarSalt \
-            + _getstringdf('H', min_Heliosol) * min_Heliosol \
-            +   _getstringdf('T', min_Heliosol) * min_Therminol
-            
+        if hel_exists:
+            min_Heliosol = _getstringdf('H', min_Heliosol) * min_Heliosol
+        if sol_exists:
+            min_SolarSalt = _getstringdf('S', min_SolarSalt) * min_SolarSalt
+        if the_exists:
+            min_Therminol = _getstringdf('T', min_Therminol) * min_Therminol
+        
+        if hel_exists and sol_exists and the_exists:
+            argmin = min_SolarSalt + min_Heliosol + min_Therminol
+        elif not hel_exists:
+            argmin = min_SolarSalt + min_Therminol
+        elif not sol_exists:
+            argmin =  min_Heliosol + min_Therminol
+        elif not the_exists:
+            argmin =  min_Heliosol + min_Therminol
+        
         argmin.to_csv(self._get_path_htf_opt())
 
         return argmin
     
-    def _lookup(x,y,table):
+    def _lookup(self, x,y,table):
         
         x_index = min(table.columns, key= lambda c: abs(c-x))
         y_index = min(table.index, key= lambda i: abs(i-y))

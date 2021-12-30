@@ -369,8 +369,7 @@ class PTRWorkflowManager(SolarWorkflowManager):
                 )
 
 
-            self.sim_data['solar_zenith_degree'][:, location_iter] = _solarpos['apparent_zenith'].values
-            #self.sim_data['solar_azimuth_degree'][:, location_iter] = _solarpos['azimuth'].values
+            self.sim_data['solar_zenith_degree'][:, location_iter] = np.nan_to_num(_solarpos['apparent_zenith'].values, 0)
 
             #calculate aoi
             truetracking_angles = pvlib.tracking.singleaxis(
@@ -382,8 +381,8 @@ class PTRWorkflowManager(SolarWorkflowManager):
                 backtrack=False,  # for true-tracking
                 gcr=self.ptr_data['SF_density_direct'])  # irrelevant for true-tracking
 
-            self.sim_data['theta'][:, location_iter] = np.nan_to_num(truetracking_angles['aoi'].values)
-            self.sim_data['tracking_angle'][:, location_iter] = np.nan_to_num(truetracking_angles['tracker_theta'].values)
+            self.sim_data['theta'][:, location_iter] = np.nan_to_num(truetracking_angles['aoi'].values, 0)
+            self.sim_data['tracking_angle'][:, location_iter] = np.nan_to_num(truetracking_angles['tracker_theta'].values, 0)
 
             #from [1]	KALOGIROU, Soteris A. Environmental Characteristics. In: Soteris Kalogirou, ed. Solar energy engineering. Processes and systems. Waltham, Mass: Academic Press, 2014, pp. 51-123.
             # fromula 2.12
@@ -991,7 +990,7 @@ class PTRWorkflowManager(SolarWorkflowManager):
             
             self.placements['CAPEX_SF_EUR'] = (self.placements['aperture_area_m2'] * params['CAPEX_solar_field_EUR_per_m^2_aperture'] \
                         + self.placements['land_area_m2'] * params['CAPEX_land_EUR_per_m^2_land']) \
-                        * (1 + params['CAPEX_indirect_cost_%_CAPEX'] / 100)
+                        * (1 + params['CAPEX_indirect_cost_perc_CAPEX'] / 100)
                  
             
         elif False:
@@ -999,7 +998,7 @@ class PTRWorkflowManager(SolarWorkflowManager):
         
         #calcualte annual Costs
         Capex_SF_EUR_per_a = self.placements['CAPEX_SF_EUR'] * self.sim_data['annuity']
-        opexFix_SF_EUR_per_a = self.placements['CAPEX_SF_EUR'] * params['OPEX_%_CAPEX'] / 100
+        opexFix_SF_EUR_per_a = self.placements['CAPEX_SF_EUR'] * params['OPEX_perc_CAPEX'] / 100
         
         #calculate opex
         dt = (self._time_index_[1] - self._time_index_[0]) / pd.Timedelta(hours=1) 
@@ -1400,7 +1399,7 @@ class PTRWorkflowManager(SolarWorkflowManager):
         '''
         assert 'CAPEX_plant_cost_EUR_per_kW' in self.ptr_data.index
         assert 'CAPEX_storage_cost_EUR_per_kWh' in self.ptr_data.index
-        assert 'CAPEX_indirect_cost_%_CAPEX' in self.ptr_data.index
+        assert 'CAPEX_indirect_cost_perc_CAPEX' in self.ptr_data.index
         assert 'eta_powerplant_1' in self.ptr_data.index
 
         #Cost estiamtations for plant and storage:
@@ -1412,12 +1411,12 @@ class PTRWorkflowManager(SolarWorkflowManager):
         #dimensions: [SM, TES]
         CAPEX_EUR_per_kW_SF_2D = (self.ptr_data['CAPEX_plant_cost_EUR_per_kW'] / sm_2D * self.ptr_data['eta_powerplant_1'] \
             + self.ptr_data['CAPEX_storage_cost_EUR_per_kWh'] * tes_2D / sm_2D) \
-                * (1 + self.ptr_data['CAPEX_indirect_cost_%_CAPEX']/100)
+                * (1 + self.ptr_data['CAPEX_indirect_cost_perc_CAPEX']/100)
         
         #yearly cost of storage and plant
         #dimensions: [SM, TES]
         CAPEX_EUR_per_a_kW_SF_2D = CAPEX_EUR_per_kW_SF_2D * self.sim_data['annuity']
-        varOPEX_EUR_per_a_kW_SF_2D = CAPEX_EUR_per_kW_SF_2D * self.ptr_data['OPEX_%_CAPEX'] / 100
+        varOPEX_EUR_per_a_kW_SF_2D = CAPEX_EUR_per_kW_SF_2D * self.ptr_data['OPEX_perc_CAPEX'] / 100
         fixOPEX_EUR_per_a_kW_SF_2D = 0
         del CAPEX_EUR_per_kW_SF_2D
 
@@ -1631,7 +1630,7 @@ class PTRWorkflowManager(SolarWorkflowManager):
         self.sim_data_daily['Power_net_total_per_day_Wh'] = Power_net_total_per_day_Wh
         self.sim_data_daily['Power_net_bound_per_day_Wh'] = Power_net_bound_per_day_Wh
         self.placements['Power_net_total_Wh_per_a'] = Power_net_total_Wh_per_a
-        self.placements['Power_net_bound_%_per_a'] = np.nan_to_num(Power_net_bound_per_day_Wh.sum(axis=0) / Power_net_total_Wh_per_a) * 100 #%
+        self.placements['Power_net_bound_perc_per_a'] = np.nan_to_num(Power_net_bound_per_day_Wh.sum(axis=0) / Power_net_total_Wh_per_a) * 100 #%
     
     def calculate_LCOE(self):
         '''calculates the LCOE from plant and storage sizes, SF totex and Net power output
@@ -1650,7 +1649,7 @@ class PTRWorkflowManager(SolarWorkflowManager):
                 c_land_per_land_area_EUR_per_m2=self.ptr_data['CAPEX_land_EUR_per_m^2_land'],
                 c_storage_EUR_per_kWh_th=self.ptr_data['CAPEX_storage_cost_EUR_per_kWh'],
                 c_plant_EUR_per_kW_el=self.ptr_data['CAPEX_plant_cost_EUR_per_kW'],
-                c_indirect_cost_perc_per_direct_Capex=self.ptr_data['CAPEX_indirect_cost_%_CAPEX'],
+                c_indirect_cost_perc_per_direct_Capex=self.ptr_data['CAPEX_indirect_cost_perc_CAPEX'],
             )
         #     #annual cost
         # CAPEX_total_EUR_per_a = CAPEX_total_EUR * self.sim_data['annuity']
@@ -1932,14 +1931,14 @@ class PTRWorkflowManager(SolarWorkflowManager):
             c_land_per_land_area_EUR_per_m2=self.ptr_data['CAPEX_land_EUR_per_m^2_land'],
             c_storage_EUR_per_kWh_th=self.ptr_data['CAPEX_storage_cost_EUR_per_kWh'],
             c_plant_EUR_per_kW_el=self.ptr_data['CAPEX_plant_cost_EUR_per_kW'],
-            c_indirect_cost_perc_per_direct_Capex=self.ptr_data['CAPEX_indirect_cost_%_CAPEX'],
+            c_indirect_cost_perc_per_direct_Capex=self.ptr_data['CAPEX_indirect_cost_perc_CAPEX'],
         )
         #annual cost
         CAPEX_total_EUR_per_a = CAPEX_total_EUR * self.sim_data['annuity']
         
         OPEX_EUR_per_a = self._get_opex(
             CAPEX_total_EUR=CAPEX_total_EUR,
-            OPEX_fix_perc_CAPEX_per_a=self.ptr_data['OPEX_%_CAPEX'],
+            OPEX_fix_perc_CAPEX_per_a=self.ptr_data['OPEX_perc_CAPEX'],
             auxilary_power_Wh_per_a= 0,#self.sim_data['P_heating_W'].sum(axis=0),#self.sim_data['Parasitics_solarfield_W_el'].sum(axis=0), #not used, substracted from power plant output #issue #13
             electricity_price_EUR_per_kWh=self.ptr_data['electricity_price_EUR_per_kWh'],
         )
