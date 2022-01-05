@@ -1,4 +1,5 @@
 from logging import warning
+from numpy.lib.arraysetops import isin
 
 from reskit import workflow_manager
 from ... import weather as rk_weather
@@ -12,7 +13,7 @@ def CSP_PTR_ERA5(
     placements,
     era5_path,
     global_solar_atlas_dni_path,
-    global_solar_atlas_tamb_path,
+    global_solar_atlas_tamb_path=None,
     datasets = None,
     cost_year = 2050,
     HTF_sel = ['Heliosol', 'SolarSalt', 'Therminol'],
@@ -46,6 +47,9 @@ def CSP_PTR_ERA5(
             datasets=datasets[0]
     else:
         raise TypeError(f'datasets got unkown datatype')
+    
+    if not single_dataset:
+        assert isinstance(global_solar_atlas_tamb_path, str)
     
         
     

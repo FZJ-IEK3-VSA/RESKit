@@ -28,7 +28,7 @@ out = rk.csp.CSP_PTR_ERA5(
     JITaccelerate=False,
     return_self=True,
     debug_vars=True,
-    onlynightuse=False,
+    onlynightuse=True,
 )
 
 print('Simulation done')

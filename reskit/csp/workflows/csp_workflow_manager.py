@@ -1096,7 +1096,7 @@ class PTRWorkflowManager(SolarWorkflowManager):
                 Heat_direct_powerplant_daily_Wh_th = np.einsum('ij,jk', aggregate_by_day, Heatflux_direct_powerplant_W_th)
             del Heatflux_direct_powerplant_W_th, Heatflux_to_storage_W_th
             
-            #limit dayliy heat output from storage by storage size
+            #limit daily heat output from storage by storage size
             Heat_stored_daily_Wh_th = np.minimum(Heat_to_storage_daily_Wh_th, Heat_Storage_des_Wh_th)
             del Heat_to_storage_daily_Wh_th
             
@@ -1120,17 +1120,9 @@ class PTRWorkflowManager(SolarWorkflowManager):
             if debug_vars:
                 dailyHeatOutput_Wh_4D[:,:,i_sm, i_tes] = Heat_total_used_daily_Wh_th
 
-            ##################################
-            ### 2) get cost                ###
-            ##################################
-            
-            TOTEX_EUR_per_a = self._get_totex_from_self(sm_manipulation = sm, tes_manipulation = tes)
-            
-            if debug_vars:           
-                TOTEX_EUR_per_a_3D[:,i_sm, i_tes] = TOTEX_EUR_per_a
             
             ##################################
-            ### 3) Electric Output         ###
+            ### 2) Electric Output         ###
             ##################################
             
             #calcualte average rel load of the plant
@@ -1144,8 +1136,8 @@ class PTRWorkflowManager(SolarWorkflowManager):
             Power_output_plant_gross_daily_Wh = Heat_total_used_daily_Wh_th * efficiency_daily_1
             del efficiency_daily_1
             #plant parasitics
-            Parasitics_plant_daily_Wh_el = np.einsum('ij,jk', aggregate_by_day, self.sim_data['Parasitics_W_el']) *1#h #13
-            Parasitics_plant_daily_Wh_el += P_backup_heating_daily_Wh_el #13
+            self.sim_data_daily['Parasitics_plant_daily_Wh_el'] = Parasitics_plant_daily_Wh_el = np.einsum('ij,jk', aggregate_by_day, self.sim_data['Parasitics_W_el']) *1#h #13
+            # Parasitics_plant_daily_Wh_el += P_backup_heating_daily_Wh_el #13
             #net power output
             Power_output_plant_net_daily_Wh = np.maximum(Power_output_plant_gross_daily_Wh - Parasitics_plant_daily_Wh_el,0)
             del Parasitics_plant_daily_Wh_el, Power_output_plant_gross_daily_Wh
@@ -1155,6 +1147,17 @@ class PTRWorkflowManager(SolarWorkflowManager):
             
             if debug_vars:
                 Power_output_plant_net_Wh_per_a_3D[:,i_sm, i_tes] = Power_output_plant_net_Wh_per_a
+            
+            
+            ##################################
+            ### 3) get cost                ###
+            ##################################
+            
+            TOTEX_EUR_per_a = self._get_totex_from_self(sm_manipulation=sm, tes_manipulation=tes, P_aux_manipulation=P_backup_heating_daily_Wh_el.sum(axis=0))
+            
+            if debug_vars:           
+                TOTEX_EUR_per_a_3D[:,i_sm, i_tes] = TOTEX_EUR_per_a
+            
             
             ##################################
             ### 4) LCOE                    ###
@@ -1563,27 +1566,43 @@ class PTRWorkflowManager(SolarWorkflowManager):
         # heat transfered into the storage (preferred, as max dispatchability is good)
         #limit by storage size
         Heat_stored_per_day_Wh = np.minimum(HeattoPlant_per_day_Wh, self.placements['storage_capacity_kWh_th']*1000)
+        Heat_from_storage_per_day_Wh = np.maximum(Heat_stored_per_day_Wh * self.ptr_data['storage_efficiency_1'],0)
+        #auxillary heating
+        Heat_from_storage_net_per_day_Wh = np.maximum(Heat_from_storage_per_day_Wh - Heat_heating_sf_daily_Wh_th,0)
+        self.sim_data_daily['P_backup_heating_daily_Wh_el'] = np.maximum(Heat_heating_sf_daily_Wh_th - Heat_from_storage_per_day_Wh, 0)
         #limit by plant size
-        Heat_stored_per_day_Wh = np.minimum(Heat_stored_per_day_Wh, power_plant_max_heat_Wh/self.ptr_data['storage_efficiency_1'])
+        Heat_from_storage_used_per_day_Wh = np.minimum(Heat_from_storage_net_per_day_Wh, power_plant_max_heat_Wh)
+        
         # heat transfered directly to the plant (2nd option)
         if onlynightuse:
             Heat_directly_per_day_Wh = 0
         else:
             Heat_directly_per_day_Wh = np.minimum(
                 HeattoPlant_per_day_Wh - Heat_stored_per_day_Wh, # maximum heat abvailable
-                power_plant_max_heat_Wh - Heat_stored_per_day_Wh*self.ptr_data['storage_efficiency_1'] #maximum heat capable for the plant (cf_day=1)
+                power_plant_max_heat_Wh - Heat_from_storage_used_per_day_Wh #maximum heat capable for the plant (cf_day=1)
             )
-        # heat output from the storage
-        Heat_from_storage_per_day_Wh = np.maximum(Heat_stored_per_day_Wh * self.ptr_data['storage_efficiency_1'] - Heat_heating_sf_daily_Wh_th,0) #13
-        P_backup_heating_daily_Wh_el = np.maximum(Heat_heating_sf_daily_Wh_th - Heat_stored_per_day_Wh * self.ptr_data['storage_efficiency_1'],0) #13
-        Parasitics_plant_per_day_Wh_el += P_backup_heating_daily_Wh_el
+        # # heat output from the storage
+        # Heat_from_storage_per_day_Wh = np.maximum(Heat_stored_per_day_Wh * self.ptr_data['storage_efficiency_1'],0) #13
+        # Heat_from_storage_usable_per_day_Wh = np.maximum(Heat_from_storage_per_day_Wh - Heat_heating_sf_daily_Wh_th,0)
+        # self.sim_data_daily['P_backup_heating_daily_Wh_el'] = np.maximum(Heat_heating_sf_daily_Wh_th - Heat_stored_per_day_Wh * self.ptr_data['storage_efficiency_1'],0) #13
+        # self.placements['P_backup_heating_Wh_el'] = self.sim_data_daily['P_backup_heating_daily_Wh_el'].sum(axis=0)
+        # self.placements['Q_sf_heating_from_storage_Wh_th'] = Heat_heating_sf_daily_Wh_th.sum(axis=0) - self.placements['P_backup_heating_Wh_el']
+        # #Parasitics_plant_per_day_Wh_el += P_backup_heating_daily_Wh_el
         
         # total heat useable
-        Heat_total_per_day_Wh = Heat_from_storage_per_day_Wh+Heat_directly_per_day_Wh
+        Heat_total_per_day_Wh = Heat_from_storage_used_per_day_Wh+Heat_directly_per_day_Wh
         assert (Heat_total_per_day_Wh <= power_plant_max_heat_Wh*1.001).all()
         if debug_vars:
             self.placements['avrg_sf_efficiency_1'] = self.sim_data['HeattoPlant_W'].sum(axis=0) / (self.placements['aperture_area_m2'] * self.sim_data['direct_normal_irradiance'].sum(axis=0))
             self.placements['Heat_after_curtailment_1'] = Heat_total_per_day_Wh.sum(axis=0) / self.sim_data['HeattoPlant_W'].sum(axis=0)
+            
+            self.placements['heat_dni_Wh'] = self.placements['aperture_area_m2'] * self.sim_data['direct_normal_irradiance'].sum(axis=0)
+            self.placements['heat_losses_sf_Wh'] = (self.placements['aperture_area_m2'] * self.sim_data['direct_normal_irradiance'].sum(axis=0)) - self.sim_data['HeattoPlant_W'].sum(axis=0)
+            self.placements['heat_losses_curtailment_storage_Wh'] = (self.sim_data['HeattoPlant_W']).sum(axis=0) - (Heat_stored_per_day_Wh).sum(axis=0)
+            self.placements['heating_sf_from_storage'] = Heat_from_storage_per_day_Wh.sum(axis=0) - Heat_from_storage_net_per_day_Wh.sum(axis=0)
+            self.placements['heating_sf_from_elec'] = self.sim_data_daily['P_backup_heating_daily_Wh_el'].sum(axis=0)
+            self.placements['heat_losses_curtailment_plant_Wh'] = (Heat_from_storage_net_per_day_Wh - Heat_from_storage_used_per_day_Wh).sum(axis=0)
+
         # calculate rel load and efficiency
         
 
@@ -1608,9 +1627,9 @@ class PTRWorkflowManager(SolarWorkflowManager):
         Power_net_bound_per_day_Wh = Power_gross_bound_per_day_Wh - (Parasitics_plant_per_day_Wh_el * share)
         
         #dispatchable
-        Power_gross_dispatchable_per_day_Wh = Heat_from_storage_per_day_Wh * efficiency_daily_averaged_1
+        Power_gross_dispatchable_per_day_Wh = Heat_from_storage_used_per_day_Wh * efficiency_daily_averaged_1
         #with np.seterr(divide='ignore', invalid='ignore'):
-        share = np.nan_to_num(Heat_from_storage_per_day_Wh/Heat_total_per_day_Wh, 0)
+        share = np.nan_to_num(Heat_from_storage_used_per_day_Wh/Heat_total_per_day_Wh, 0)
         Power_net_dispatchable_per_day_Wh = Power_gross_dispatchable_per_day_Wh - (Parasitics_plant_per_day_Wh_el * share)
         
         
@@ -1620,6 +1639,10 @@ class PTRWorkflowManager(SolarWorkflowManager):
         if debug_vars:
             self.placements['mean_gross_turbine_efficiency_1'] = (Power_gross_dispatchable_per_day_Wh.sum(axis=0) + Power_gross_bound_per_day_Wh.sum(axis=0)) / Heat_total_per_day_Wh.sum(axis=0)
             self.placements['turbine_gross_to_net'] = Power_net_total_per_day_Wh.sum(axis=0) / (Power_gross_dispatchable_per_day_Wh.sum(axis=0) + Power_gross_bound_per_day_Wh.sum(axis=0))
+            
+            self.placements['heat_losses_turbine_plant_Wh'] = Heat_total_per_day_Wh.sum(axis=0) - (Power_gross_dispatchable_per_day_Wh.sum(axis=0) + Power_gross_bound_per_day_Wh.sum(axis=0))
+            self.placements['heat_losses_turbine_aux_Wh'] = (Power_gross_dispatchable_per_day_Wh.sum(axis=0) + Power_gross_bound_per_day_Wh.sum(axis=0)) - Power_net_total_per_day_Wh.sum(axis=0)
+
             
         #get avrg cf
         Power_net_total_Wh_per_a = Power_net_total_per_day_Wh.sum(axis=0)
@@ -1887,7 +1910,7 @@ class PTRWorkflowManager(SolarWorkflowManager):
         TOTEX_EUR_per_a = CAPEX_total_EUR_per_a + OPEX_EUR_per_a
         return TOTEX_EUR_per_a
     
-    def _get_totex_from_self(self, sm_manipulation = None, tes_manipulation = None):
+    def _get_totex_from_self(self, sm_manipulation = None, tes_manipulation = None, P_aux_manipulation = None):
         '''calcualtes CSP Totes per a
 
         Returns
@@ -1902,23 +1925,33 @@ class PTRWorkflowManager(SolarWorkflowManager):
         assert hasattr(self, 'ptr_data')
         
         assert 'annuity' in self.sim_data.keys()
-        assert 'Parasitics_solarfield_W_el' in self.sim_data.keys()
         
         
         #allow sm and tes manipulation
-        if sm_manipulation == None:
+        if sm_manipulation is None:
             assert 'sm_opt' in self.placements.columns
             sm = self.placements['sm_opt']
         else: 
             assert isinstance(sm_manipulation, int) or isinstance(sm_manipulation, float)
             sm = sm_manipulation
         
-        if tes_manipulation == None:
+        if tes_manipulation is None:
             assert 'tes_opt' in self.placements.columns
             tes = self.placements['tes_opt']
         else: 
             assert isinstance(tes_manipulation, np.int32) or isinstance(tes_manipulation, float) or isinstance(tes_manipulation, int)
             tes = tes_manipulation
+            
+        # allow P_aux_manipulation
+        if P_aux_manipulation is None:
+            assert 'P_backup_heating_daily_Wh_el' in self.sim_data_daily.keys()
+            P_aux = self.sim_data_daily['P_backup_heating_daily_Wh_el'].sum(axis=0)
+        else: 
+            assert isinstance(P_aux_manipulation, np.ndarray)
+            assert len(P_aux_manipulation.shape) == 1 # one dimension for placements
+            assert len(P_aux_manipulation) == len(self.placements) # same len as placements
+            
+            P_aux = P_aux_manipulation
         
         CAPEX_total_EUR = self._get_capex(
             A_aperture_m2=self.placements['aperture_area_m2'],
@@ -1939,7 +1972,7 @@ class PTRWorkflowManager(SolarWorkflowManager):
         OPEX_EUR_per_a = self._get_opex(
             CAPEX_total_EUR=CAPEX_total_EUR,
             OPEX_fix_perc_CAPEX_per_a=self.ptr_data['OPEX_perc_CAPEX'],
-            auxilary_power_Wh_per_a= 0,#self.sim_data['P_heating_W'].sum(axis=0),#self.sim_data['Parasitics_solarfield_W_el'].sum(axis=0), #not used, substracted from power plant output #issue #13
+            auxilary_power_Wh_per_a= P_aux, #0, #self.sim_data['P_heating_W'].sum(axis=0),#self.sim_data['Parasitics_solarfield_W_el'].sum(axis=0), #not used, substracted from power plant output #issue #13
             electricity_price_EUR_per_kWh=self.ptr_data['electricity_price_EUR_per_kWh'],
         )
         

@@ -808,7 +808,10 @@ def pt_PTRWorkflowManager_economics() -> PTRWorkflowManager:
     
     wfm.sim_data['annuity'] = 0.093678779
     a = 4.830819e+10
-    wfm.sim_data['Parasitics_solarfield_W_el'] = np.array([[a,a*2,a], [0,0,0]])
+    
+    if not hasattr(wfm, 'sim_data_daily'):
+        wfm.sim_data_daily = {}
+    wfm.sim_data_daily['P_backup_heating_daily_Wh_el'] = np.array([[a,a*2,a], [0,0,0]])
     
     if not hasattr(wfm, 'ptr_data'):
         wfm.ptr_data = {}
@@ -829,15 +832,15 @@ def test_get_totex_from_self(pt_PTRWorkflowManager_economics):
     wfm = pt_PTRWorkflowManager_economics
     
     TOTEX_EUR_per_a = wfm._get_totex_from_self()
-    #assert np.isclose(TOTEX_EUR_per_a.values, [18431137.22318471, 36862274.44636942, 18431137.22318471]).all() # use those values, if 'Parasitics_solarfield_W_el' are bought as varOPEX
-    assert np.isclose(TOTEX_EUR_per_a.values, [16.01572773E6, 2*16.01572773E6, 16.01572773E6]).all() # use those values, if 'Parasitics_solarfield_W_el' arent bought as varOPEX
+    assert np.isclose(TOTEX_EUR_per_a.values, [18431137.22318471, 36862274.44636942, 18431137.22318471]).all() # use those values, if 'Parasitics_solarfield_W_el' are bought as varOPEX
+    # assert np.isclose(TOTEX_EUR_per_a.values, [16.01572773E6, 2*16.01572773E6, 16.01572773E6]).all() # use those values, if 'Parasitics_solarfield_W_el' arent bought as varOPEX
                       
     TOTEX_EUR_per_a = wfm._get_totex_from_self(sm_manipulation=1, tes_manipulation = 10)
-    #assert np.isclose(TOTEX_EUR_per_a.values, [26681959.73652098, 53363919.47304196, 26681959.73652098]).all() # use those values, if 'Parasitics_solarfield_W_el' are bought as varOPEX
-    assert np.isclose(TOTEX_EUR_per_a.values, [24266550.23652098, 48533100.47304196, 24266550.23652098]).all() # use those values, if 'Parasitics_solarfield_W_el' arent bought as varOPEX
+    assert np.isclose(TOTEX_EUR_per_a.values, [26681959.73652098, 53363919.47304196, 26681959.73652098]).all() # use those values, if 'Parasitics_solarfield_W_el' are bought as varOPEX
+    # assert np.isclose(TOTEX_EUR_per_a.values, [24266550.23652098, 48533100.47304196, 24266550.23652098]).all() # use those values, if 'Parasitics_solarfield_W_el' arent bought as varOPEX
     
     #Test from Excel sheet. cannot calculate parasitic losses
-    wfm.sim_data['Parasitics_solarfield_W_el'] = np.array([[0,0,0], [0,0,0]])
+    wfm.sim_data_daily['P_backup_heating_daily_Wh_el'] = np.array([[0,0,0], [0,0,0]])
     TOTEX_EUR_per_a = wfm._get_totex_from_self()
     assert np.isclose(TOTEX_EUR_per_a.values, [16.01572773E6, 2*16.01572773E6, 16.01572773E6]).all()
     
