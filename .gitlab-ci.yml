@@ -5,8 +5,8 @@ stages:
 
 test:
   stage: test
-  tags: 
-   - linux
+  # tags: 
+  #  - linux
 
   script: 
     - conda install mamba -c conda-forge
@@ -15,7 +15,13 @@ test:
     - git clone --branch dev https://CIGlaes:${GeokitAccessToken}@jugit.fz-juelich.de/iek-3/shared-code/geokit.git
     - cd geokit
     - mamba env update -n reskit --file=requirements-dev.yml
+    - python -m pip show geokit
     - cd ..
     - mamba env update -n reskit --file=requirements-dev.yml
-    - python -m pip install -e .
+    - cd geokit
+    - pip install -e .
+    - cd ..
+    - pip install -e .
+    - mamba info --envs
+    - python -m pip show geokit
     - python -m pytest --cov=reskit test/
