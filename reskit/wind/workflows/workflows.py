@@ -37,7 +37,7 @@ def onshore_wind_merra_ryberg2019_europe(placements, merra_path, gwa_50m_path, c
     """
 
     wf = WindWorkflowManager(placements)
-
+  
     wf.read(
         variables=['elevated_wind_speed',
                    "surface_pressure",
@@ -128,7 +128,7 @@ def offshore_wind_merra_caglayan2019(placements, merra_path, output_netcdf_path=
     return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
 
-def offshore_wind_era5(placements, era5_path, output_netcdf_path=None, output_variables=None):
+def offshore_wind_era5(placements, era5_path, gwa_100m_path=None, output_netcdf_path=None, output_variables=None):
     """
     Simulates offshore wind generation using NASA's ERA5 database [1].
 
@@ -162,6 +162,12 @@ def offshore_wind_era5(placements, era5_path, output_netcdf_path=None, output_va
         set_time_index=True,
         verbose=False)
 
+    # wf.adjust_variable_to_long_run_average(
+    #     variable='elevated_wind_speed',
+    #     source_long_run_average=rk_weather.Era5Source.LONG_RUN_AVERAGE_WINDSPEED,
+    #     real_long_run_average=gwa_100m_path
+    # )
+
     wf.set_roughness(0.0002)
 
     wf.logarithmic_projection_of_wind_speeds_to_hub_height()
@@ -184,7 +190,7 @@ def offshore_wind_era5(placements, era5_path, output_netcdf_path=None, output_va
     return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
 
-def onshore_wind_era5(placements, era5_path, gwa_100m_path, esa_cci_path, output_netcdf_path=None, output_variables=None):
+def onshore_wind_era5(placements, era5_path, gwa_100m_path, esa_cci_path, output_netcdf_path=None, output_variables=None, nodata_fallback = 'nan'):
     """
     Simulates onshore wind generation using ECMWF's ERA5 database [1]. 
     
@@ -204,6 +210,10 @@ def onshore_wind_era5(placements, era5_path, gwa_100m_path, esa_cci_path, output
         Path to a directory to put the output files, by default None
     output_variables : str, optional
         Restrict the output variables to these variables, by default None
+    nodata_fallback: str, optional
+        If no GWA available, use: (1) 'source' for ERA5 raw for simulation, (2) 'nan' for nan output
+        get flags for missing values:
+        - f'missing_values_{os.path.basename(path_to_LRA_source)}
 
     Returns
     -------
@@ -218,7 +228,12 @@ def onshore_wind_era5(placements, era5_path, gwa_100m_path, esa_cci_path, output
     """
 
     wf = WindWorkflowManager(placements)
-
+  
+    # limit the input placements longitude to range of -180...180
+    assert wf.placements["lon"].between(-180, 180, inclusive=True).any()
+    # limit the input placements latitude to range of -90...90
+    assert wf.placements["lat"].between(-90, 90, inclusive=True).any()
+    
     wf.read(
         variables=['elevated_wind_speed',
                    "surface_pressure",
@@ -229,10 +244,12 @@ def onshore_wind_era5(placements, era5_path, gwa_100m_path, esa_cci_path, output
         set_time_index=True,
         verbose=False)
 
+
     wf.adjust_variable_to_long_run_average(
         variable='elevated_wind_speed',
         source_long_run_average=rk_weather.Era5Source.LONG_RUN_AVERAGE_WINDSPEED,
-        real_long_run_average=gwa_100m_path
+        real_long_run_average=gwa_100m_path,
+        nodata_fallback = nodata_fallback,
     )
 
     wf.estimate_roughness_from_land_cover(
