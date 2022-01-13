@@ -8,3 +8,4 @@ from . import solar
 from . import csp
 
 from ._test import TEST_DATA
+from .parameters.parameters import OnshoreParameters, OffshoreParameters

@@ -2,6 +2,7 @@ import geokit as gk
 
 import pandas as pd
 import numpy as np
+import os
 from os import mkdir, environ
 from os.path import join, isfile, isdir
 from collections import OrderedDict, namedtuple
@@ -47,7 +48,7 @@ class WorkflowManager:
         # Check if input file contains a geometry collumn
         ispoint = False
         if "geom" in placements.columns:
-            if self.placements["geom"].loc[0].GetGeometryName() == "POINT":
+            if self.placements["geom"].iloc[0].GetGeometryName() == "POINT":
                 ispoint = True
 
         if ispoint:
@@ -65,6 +66,8 @@ class WorkflowManager:
 
         if self.locs is None:
             self.locs = gk.LocationSet(self.placements[["lon", "lat"]].values)
+        
+ 
 
         self.ext = gk.Extent.fromLocationSet(self.locs)
 
@@ -135,7 +138,7 @@ class WorkflowManager:
               should be "user"
 
         source : str or rk.weather.NCSource
-            The source to read weathre variables from
+            The source to read weather variables from
 
         set_time_index : bool, optional
             If True, instructs the workflow manager to set the time index to that which is read
@@ -177,7 +180,7 @@ class WorkflowManager:
             else:
                 raise RuntimeError("Unknown source_type")
 
-            source = source_constructor(source, bounds=self.ext, **kwargs)
+            source = source_constructor(source, bounds=self.ext, **kwargs) #Manipulate ext here
 
             # Load the requested variables
             source.sload(*variables)
@@ -198,7 +201,7 @@ class WorkflowManager:
         for var in variables:
             self.sim_data[var] = source.get(
                 var,
-                self.locs,
+                self.locs, #Manipulate locs here
                 interpolation=spatial_interpolation_mode,
                 force_as_data_frame=True,
             )
@@ -227,6 +230,7 @@ class WorkflowManager:
         real_long_run_average: Union[str, float, np.ndarray],
         real_lra_scaling: float = 1,
         spatial_interpolation: str = "linear-spline",
+        nodata_fallback: str= 'nan',
     ):
         """Adjusts the average mean of the specified variable to a known long-run-average
 
@@ -264,7 +268,11 @@ class WorkflowManager:
             - Options are: "near", "linear-spline", "cubic-spline", "average"
             - By default "linear-spline"
             - See for more info: geokit.raster.interpolateValues
-
+        
+        nodata_fallback: str, optional
+            When real_long_run_average has no data, it can be decided between fallbackoptions:
+            -'source': use source data
+            - 'nan': return np.nan for missing values
         Returns
         -------
         WorkflowManager
@@ -275,7 +283,15 @@ class WorkflowManager:
             real_lra = gk.raster.interpolateValues(
                 real_long_run_average, self.locs, mode=spatial_interpolation
             )
-            assert not np.isnan(real_lra).any() and (real_lra > 0).all()
+            #if getting values fails, it could be because of interpolation method.
+            # thise values will be replaced with the nearest interpolation method
+            if np.isnan(real_lra).any():
+                real_lra_near = gk.raster.interpolateValues(
+                real_long_run_average, self.locs, mode='near'
+                )
+                real_lra[np.isnan(real_lra)] = real_lra_near[np.isnan(real_lra)]
+
+            #assert not np.isnan(real_lra).any() and (real_lra > 0).all()
         else:
             real_lra = real_long_run_average
 
@@ -283,11 +299,80 @@ class WorkflowManager:
             source_lra = gk.raster.interpolateValues(
                 source_long_run_average, self.locs, mode=spatial_interpolation
             )
-            assert not np.isnan(source_lra).any() and (source_lra > 0).all()
+            #if getting values fails, it could be because of interpolation method.
+            # thise values will be replaced with the nearest interpolation method
+            if np.isnan(source_lra).any():
+                source_lra_nearest = gk.raster.interpolateValues(
+                source_long_run_average, self.locs, mode='near'
+                )
+                source_lra[np.isnan(source_lra)] = source_lra_nearest[np.isnan(source_lra)]
+            #assert not np.isnan(source_lra).any() and (source_lra > 0).all()
         else:
             source_lra = source_long_run_average
 
-        self.sim_data[variable] *= real_lra * real_lra_scaling / source_lra
+        #calulate scaling factor:
+        # nan result will stay nan results, as these placements cannot be calculated any more
+        factors = real_lra * real_lra_scaling / source_lra
+
+        #write info with missing values to sim_data:
+        self.placements[f'missing_values_{os.path.basename(real_long_run_average)}'] = \
+            np.isnan(factors)
+
+
+        if nodata_fallback.lower() == 'source':
+            factors[np.isnan(factors)] = 1
+
+        self.sim_data[variable] = factors * self.sim_data[variable]
+        return self
+
+    def spatial_disaggregation(
+        self,
+        variable: str,
+        source_high_resolution: Union[str, float, np.ndarray],
+        source_low_resolution: Union[str, float, np.ndarray],
+        real_lra_scaling: float = 1,
+        spatial_interpolation: str = "linear-spline",
+    ):
+        '''[summary]
+
+        Parameters
+        ----------
+        variable : str
+            [description]
+        source_long_run_average : Union[str, float, np.ndarray]
+            [description]
+        real_long_run_average : Union[str, float, np.ndarray]
+            [description]
+        real_lra_scaling : float, optional
+            [description], by default 1
+        spatial_interpolation : str, optional
+            [description], by default "linear-spline"
+        '''
+        #Get values from high resolution tiff file
+        if isinstance(source_high_resolution, str):
+            correction_values_high_res = gk.raster.interpolateValues(#TODO change here
+                source_high_resolution, self.locs, mode=spatial_interpolation
+            )
+            #assert not np.isnan(correction_values_high_res).any() and (correction_values_high_res > 0).all()
+        else:
+            correction_values_high_res = source_high_resolution
+
+        #Get values from low resolution tiff file (meaned over eg. ERA5)
+        if isinstance(source_low_resolution, str):
+            correction_values_low_res = gk.raster.interpolateValues(#TODO change here
+                source_low_resolution, self.locs, mode=spatial_interpolation
+            )
+            #assert not np.isnan(correction_values_low_res).any() and (correction_values_low_res > 0).all()
+        else:
+            correction_values_low_res = source_low_resolution
+
+        # correction factors:
+        factors = correction_values_high_res / correction_values_low_res
+        factors = np.nan_to_num(factors, nan=1/real_lra_scaling)
+        assert (factors > 0).all()
+
+        #update values
+        self.sim_data[variable] = self.sim_data[variable] * factors * real_lra_scaling
         return self
 
     # Stage 5: post processing
