@@ -184,10 +184,11 @@ def test_SolarWorkflowManager_filter_positive_solar_elevation(pt_SolarWorkflowMa
     assert np.isclose(man.sim_data['solar_azimuth'].min(), 124.71102348726265)
     assert np.isclose(man.sim_data['solar_azimuth'].max(), 231.1922838037285)
 
-    assert np.isclose(man.sim_data['apparent_solar_zenith'].mean(), 80.66305060580946)
-    assert np.isclose(man.sim_data['apparent_solar_zenith'].std(), 6.193300145511795)
-    assert np.isclose(man.sim_data['apparent_solar_zenith'].min(), 72.98965034012224)
-    assert np.isclose(man.sim_data['apparent_solar_zenith'].max(), 91.89378124249768)
+    
+    assert np.isclose(man.sim_data['apparent_solar_zenith'].mean(), 80.66303691482851)
+    assert np.isclose(man.sim_data['apparent_solar_zenith'].std(), 6.193123877473528)
+    assert np.isclose(man.sim_data['apparent_solar_zenith'].min(), 72.98977919840057)
+    assert np.isclose(man.sim_data['apparent_solar_zenith'].max(), 91.89378124249767)
 
     return man
 
@@ -196,10 +197,12 @@ def test_SolarWorkflowManager_determine_extra_terrestrial_irradiance(pt_SolarWor
     man = pt_SolarWorkflowManager_solpos
     man.determine_extra_terrestrial_irradiance()
 
+    print_testresults(man.sim_data['extra_terrestrial_irradiance'])
+
     assert man.sim_data['extra_terrestrial_irradiance'].shape == (140, 5)
-    assert np.isclose(man.sim_data['extra_terrestrial_irradiance'].mean(), 1413.998226484733)
-    assert np.isclose(man.sim_data['extra_terrestrial_irradiance'].std(), 0.019249481046559633)
-    assert np.isclose(man.sim_data['extra_terrestrial_irradiance'].min(), 1413.9625670547816)
+    assert np.isclose(man.sim_data['extra_terrestrial_irradiance'].mean(), 1413.9980694079702)
+    assert np.isclose(man.sim_data['extra_terrestrial_irradiance'].std(), 0.019625866056578487)
+    assert np.isclose(man.sim_data['extra_terrestrial_irradiance'].min(), 1413.940576307916)
     assert np.isclose(man.sim_data['extra_terrestrial_irradiance'].max(), 1414.0192010311885)
 
     return man
@@ -209,10 +212,12 @@ def test_SolarWorkflowManager_determine_air_mass(pt_SolarWorkflowManager_solpos:
     man = pt_SolarWorkflowManager_solpos
     man.determine_air_mass(model='kastenyoung1989')
 
+    print_testresults(man.sim_data['air_mass'])
+
     assert man.sim_data['air_mass'].shape == (140, 5)
-    assert np.isclose(man.sim_data['air_mass'].mean(), 21.68991900861127)
-    assert np.isclose(man.sim_data['air_mass'].std(), 10.849251271205912)
-    assert np.isclose(man.sim_data['air_mass'].min(), 3.3839264244992067)
+    assert np.isclose(man.sim_data['air_mass'].mean(), 21.689624010649034)
+    assert np.isclose(man.sim_data['air_mass'].std(), 10.849130623014739)
+    assert np.isclose(man.sim_data['air_mass'].min(), 3.383950740640421)
     assert np.isclose(man.sim_data['air_mass'].max(), 29.0)
 
     return man
@@ -232,11 +237,13 @@ def test_SolarWorkflowManager_apply_DIRINT_model(pt_SolarWorkflowManager_loaded2
     man = pt_SolarWorkflowManager_loaded2
     man.apply_DIRINT_model(use_pressure=True, use_dew_temperature=True)
 
+    print_testresults(man.sim_data['direct_normal_irradiance'])
+
     assert man.sim_data['direct_normal_irradiance'].shape == (54, 5)
-    assert np.isclose(man.sim_data['direct_normal_irradiance'].mean(), 145.1130469731831)
-    assert np.isclose(man.sim_data['direct_normal_irradiance'].std(), 229.4115609627865)
+    assert np.isclose(man.sim_data['direct_normal_irradiance'].mean(), 167.86780412863015)
+    assert np.isclose(man.sim_data['direct_normal_irradiance'].std(), 202.51729861336193)
     assert np.isclose(man.sim_data['direct_normal_irradiance'].min(), 0.0)
-    assert np.isclose(man.sim_data['direct_normal_irradiance'].max(), 706.2942463210451)
+    assert np.isclose(man.sim_data['direct_normal_irradiance'].max(), 720.1159360124137)
 
 
 @pytest.fixture
@@ -251,11 +258,13 @@ def test_SolarWorkflowManager_diffuse_horizontal_irradiance_from_trigonometry(pt
     man = pt_SolarWorkflowManager_dni
     man.diffuse_horizontal_irradiance_from_trigonometry()
 
+    print_testresults(man.sim_data['diffuse_horizontal_irradiance'])
+
     assert man.sim_data['diffuse_horizontal_irradiance'].shape == (54, 5)
-    assert np.isclose(man.sim_data['diffuse_horizontal_irradiance'].mean(), 55.12967978163645)
-    assert np.isclose(man.sim_data['diffuse_horizontal_irradiance'].std(), 41.80376491895811)
-    assert np.isclose(man.sim_data['diffuse_horizontal_irradiance'].min(), 0.0)
-    assert np.isclose(man.sim_data['diffuse_horizontal_irradiance'].max(), 140.13512724209937)
+    assert np.isclose(man.sim_data['diffuse_horizontal_irradiance'].mean(), 48.582931923941324)
+    assert np.isclose(man.sim_data['diffuse_horizontal_irradiance'].std(), 34.69121106889705)
+    assert np.isclose(man.sim_data['diffuse_horizontal_irradiance'].min(), 0.15659047212134164)
+    assert np.isclose(man.sim_data['diffuse_horizontal_irradiance'].max(), 124.98184251575456)
 
 
 def test_SolarWorkflowManager_direct_normal_irradiance_from_trigonometry(pt_SolarWorkflowManager_loaded2: SolarWorkflowManager) -> SolarWorkflowManager:
@@ -263,16 +272,20 @@ def test_SolarWorkflowManager_direct_normal_irradiance_from_trigonometry(pt_Sola
 
     man.direct_normal_irradiance_from_trigonometry()
 
+    print_testresults(man.sim_data['direct_normal_irradiance'])
+
     assert man.sim_data['direct_normal_irradiance'].shape == (54, 5)
-    assert np.isclose(man.sim_data['direct_normal_irradiance'].mean(), 193.62480029771262)
-    assert np.isclose(man.sim_data['direct_normal_irradiance'].std(), 252.973120077321)
-    assert np.isclose(man.sim_data['direct_normal_irradiance'].min(), -0.0)
-    assert np.isclose(man.sim_data['direct_normal_irradiance'].max(), 1309.323801737614)
+    assert np.isclose(man.sim_data['direct_normal_irradiance'].mean(), 158.21469197801994)
+    assert np.isclose(man.sim_data['direct_normal_irradiance'].std(), 179.6328322092467)
+    assert np.isclose(man.sim_data['direct_normal_irradiance'].min(), 0.0)
+    assert np.isclose(man.sim_data['direct_normal_irradiance'].max(), 616.5611489924958)
 
 
 @pytest.fixture
-def pt_SolarWorkflowManager_all_irrad(pt_SolarWorkflowManager_dni: SolarWorkflowManager) -> SolarWorkflowManager:
-    man = pt_SolarWorkflowManager_dni
+def pt_SolarWorkflowManager_all_irrad(pt_SolarWorkflowManager_loaded2: SolarWorkflowManager) -> SolarWorkflowManager:
+    man = pt_SolarWorkflowManager_loaded2
+    #man = pt_SolarWorkflowManager_dni
+    man.direct_normal_irradiance_from_trigonometry()
     man.diffuse_horizontal_irradiance_from_trigonometry()
 
     return man
@@ -286,26 +299,31 @@ def test_SolarWorkflowManager_permit_single_axis_tracking(pt_SolarWorkflowManage
         gcr=0.2857142857142857,
     )
 
-    assert man.sim_data['system_tilt'].shape == (54, 5)
-    assert np.isclose(man.sim_data['system_tilt'].mean(), 46.36776761902535)
-    assert np.isclose(man.sim_data['system_tilt'].std(), 14.57053047293401)
-    assert np.isclose(man.sim_data['system_tilt'].min(), 20.0)
-    assert np.isclose(man.sim_data['system_tilt'].max(), 74.30200035670491)
+    print_testresults(man.sim_data['system_tilt'])
+    print_testresults(man.sim_data['system_azimuth'])
 
-    assert np.isclose(man.sim_data['system_azimuth'].mean(), 185.84604997219606)
-    assert np.isclose(man.sim_data['system_azimuth'].std(), 52.78824101665198)
-    assert np.isclose(man.sim_data['system_azimuth'].min(), 99.71507906498667)
-    assert np.isclose(man.sim_data['system_azimuth'].max(), 264.1287322591819)
+    assert man.sim_data['system_tilt'].shape == (54, 5)
+    assert np.isclose(man.sim_data['system_tilt'].mean(), 46.36795184688052)
+    assert np.isclose(man.sim_data['system_tilt'].std(), 14.570819765672116)
+    assert np.isclose(man.sim_data['system_tilt'].min(), 20.0)
+    assert np.isclose(man.sim_data['system_tilt'].max(), 74.30021518311098)
+
+    assert np.isclose(man.sim_data['system_azimuth'].mean(), 185.84603169500053)
+    assert np.isclose(man.sim_data['system_azimuth'].std(), 52.78835501687092)
+    assert np.isclose(man.sim_data['system_azimuth'].min(), 99.71477147193693)
+    assert np.isclose(man.sim_data['system_azimuth'].max(), 264.12802748241154)
 
 
 def test_SolarWorkflowManager_determine_angle_of_incidence(pt_SolarWorkflowManager_all_irrad: SolarWorkflowManager) -> SolarWorkflowManager:
     man = pt_SolarWorkflowManager_all_irrad
     man.determine_angle_of_incidence()
 
+    print_testresults(man.sim_data['angle_of_incidence'])
+
     assert man.sim_data['angle_of_incidence'].shape == (54, 5)
-    assert np.isclose(man.sim_data['angle_of_incidence'].mean(), 56.594491190253066)
-    assert np.isclose(man.sim_data['angle_of_incidence'].std(), 12.023008726644628)
-    assert np.isclose(man.sim_data['angle_of_incidence'].min(), 33.45866725976779)
+    assert np.isclose(man.sim_data['angle_of_incidence'].mean(), 56.59448446923573)
+    assert np.isclose(man.sim_data['angle_of_incidence'].std(), 12.022866054675205)
+    assert np.isclose(man.sim_data['angle_of_incidence'].min(), 33.45888119832759)
     assert np.isclose(man.sim_data['angle_of_incidence'].max(), 80.25014934148591)
 
 
@@ -321,20 +339,25 @@ def test_SolarWorkflowManager_estimate_plane_of_array_irradiances(pt_SolarWorkfl
     man = pt_SolarWorkflowManager_aoi
     man.estimate_plane_of_array_irradiances(
         transposition_model='perez',
-        albedo=0.25
     )
+
+    print_testresults(man.sim_data['poa_global'])
+    print(man.sim_data['poa_direct'].mean())
+    print(man.sim_data['poa_diffuse'].mean())
+    print(man.sim_data['poa_sky_diffuse'].mean())
+    print(man.sim_data['poa_ground_diffuse'].mean())
 
     assert man.sim_data['poa_global'].shape == (54, 5)
 
-    assert np.isclose(man.sim_data['poa_global'].mean(), 172.40167667262685)
-    assert np.isclose(man.sim_data['poa_global'].std(), 185.23278499778525)
-    assert np.isclose(man.sim_data['poa_global'].min(), 0.0)
-    assert np.isclose(man.sim_data['poa_global'].max(), 631.7933238472692)
+    assert np.isclose(man.sim_data['poa_global'].mean(), 174.11992196172187)
+    assert np.isclose(man.sim_data['poa_global'].std(), 173.4474037663958)
+    assert np.isclose(man.sim_data['poa_global'].min(), 0.13328509297399485)
+    assert np.isclose(man.sim_data['poa_global'].max(), 621.2447325355588)
 
-    assert np.isclose(man.sim_data['poa_direct'].mean(), 89.60771030069739)
-    assert np.isclose(man.sim_data['poa_diffuse'].mean(), 82.7939663719295)
-    assert np.isclose(man.sim_data['poa_sky_diffuse'].mean(), 81.29036622039311)
-    assert np.isclose(man.sim_data['poa_ground_diffuse'].mean(), 1.5036001515364066)
+    assert np.isclose(man.sim_data['poa_direct'].mean(), 102.74712287621118)
+    assert np.isclose(man.sim_data['poa_diffuse'].mean(), 71.37279908551066)
+    assert np.isclose(man.sim_data['poa_sky_diffuse'].mean(), 69.85080250223847)
+    assert np.isclose(man.sim_data['poa_ground_diffuse'].mean(), 1.52199658327221)
 
 
 @pytest.fixture
@@ -353,36 +376,45 @@ def test_SolarWorkflowManager_cell_temperature_from_sapm(pt_SolarWorkflowManager
 
     man.cell_temperature_from_sapm(mounting='glass_open_rack')
 
+    print_testresults(man.sim_data['cell_temperature'])
+
     assert man.sim_data['cell_temperature'].shape == (54, 5)
-    assert np.isclose(man.sim_data['cell_temperature'].mean(), 6.450201026517998)
-    assert np.isclose(man.sim_data['cell_temperature'].std(), 6.224668629645448)
-    assert np.isclose(man.sim_data['cell_temperature'].min(), -3.2822840318732913)
-    assert np.isclose(man.sim_data['cell_temperature'].max(), 21.887346030975728)
+    assert np.isclose(man.sim_data['cell_temperature'].mean(), 6.700896196088481)
+    assert np.isclose(man.sim_data['cell_temperature'].std(), 5.647128705200129)
+    assert np.isclose(man.sim_data['cell_temperature'].min(), -3.2822952246943804)
+    assert np.isclose(man.sim_data['cell_temperature'].max(), 21.181626183824648)
 
     # roof top PV should run hotter than open-field
     man.cell_temperature_from_sapm(mounting='glass_close_roof')
 
+    print_testresults(man.sim_data['cell_temperature'])
+
     assert man.sim_data['cell_temperature'].shape == (54, 5)
-    assert np.isclose(man.sim_data['cell_temperature'].mean(), 9.127164473401596)
-    assert np.isclose(man.sim_data['cell_temperature'].std(), 9.01604763163867)
-    assert np.isclose(man.sim_data['cell_temperature'].min(), -3.2472441860793206)
-    assert np.isclose(man.sim_data['cell_temperature'].max(), 31.957054506634336)
+    assert np.isclose(man.sim_data['cell_temperature'].mean(), 9.406303607095017)
+    assert np.isclose(man.sim_data['cell_temperature'].std(), 8.25669361128076)
+    assert np.isclose(man.sim_data['cell_temperature'].min(), -3.2472615808752097)
+    assert np.isclose(man.sim_data['cell_temperature'].max(), 31.095795267573923)
 
 
 def test_SolarWorkflowManager_apply_angle_of_incidence_losses_to_poa(pt_SolarWorkflowManager_poa: SolarWorkflowManager) -> SolarWorkflowManager:
     man = pt_SolarWorkflowManager_poa
     man.apply_angle_of_incidence_losses_to_poa()
 
+    print_testresults(man.sim_data['poa_global'])
     assert man.sim_data['poa_global'].shape == (54, 5)
-    assert np.isclose(man.sim_data['poa_global'].mean(), 166.38901710226637)
-    assert np.isclose(man.sim_data['poa_global'].std(), 179.8283646632244)
-    assert np.isclose(man.sim_data['poa_global'].min(), 0.0)
-    assert np.isclose(man.sim_data['poa_global'].max(), 621.1083557294388)
+    assert np.isclose(man.sim_data['poa_global'].mean(), 168.7581881488339)
+    assert np.isclose(man.sim_data['poa_global'].std(), 169.56605012489317)
+    assert np.isclose(man.sim_data['poa_global'].min(), 0.12759789566504143)
+    assert np.isclose(man.sim_data['poa_global'].max(), 613.4267695866687)
 
-    assert np.isclose(man.sim_data['poa_direct'].mean(), 87.1801383592781)
-    assert np.isclose(man.sim_data['poa_diffuse'].mean(), 79.20887874298828)
-    assert np.isclose(man.sim_data['poa_sky_diffuse'].mean(), 78.02404701054911)
-    assert np.isclose(man.sim_data['poa_ground_diffuse'].mean(), 1.1848317324391617)
+    print(man.sim_data['poa_direct'].mean())
+    print(man.sim_data['poa_diffuse'].mean())
+    print(man.sim_data['poa_sky_diffuse'].mean())
+    print(man.sim_data['poa_ground_diffuse'].mean())
+    assert np.isclose(man.sim_data['poa_direct'].mean(), 100.51798150298093)
+    assert np.isclose(man.sim_data['poa_diffuse'].mean(), 68.24020664585301)
+    assert np.isclose(man.sim_data['poa_sky_diffuse'].mean(), 67.04092283286448)
+    assert np.isclose(man.sim_data['poa_ground_diffuse'].mean(), 1.1992838129885397)
 
 
 def test_SolarWorkflowManager_configure_cec_module(pt_SolarWorkflowManager_poa: SolarWorkflowManager) -> SolarWorkflowManager:
@@ -435,15 +467,20 @@ def test_SolarWorkflowManager_simulate_with_interpolated_single_diode_approximat
         module='WINAICO WSx-240P6',
     )
 
-    assert man.sim_data['capacity_factor'].shape == (54, 5)
-    assert np.isclose(man.sim_data['capacity_factor'].mean(), 0.23351805514914714)
-    assert np.isclose(man.sim_data['capacity_factor'].std(), 0.24968652796826563)
-    assert np.isclose(man.sim_data['capacity_factor'].min(), 0.0)
-    assert np.isclose(man.sim_data['capacity_factor'].max(), 0.8307926711175828)
+    print_testresults(man.sim_data['capacity_factor'])
 
-    assert np.isclose(man.sim_data['module_dc_power_at_mpp'].mean(), 56.135872313413785)
-    assert np.isclose(man.sim_data['module_dc_voltage_at_mpp'].mean(), 33.35582699308345)
-    assert np.isclose(man.sim_data['total_system_generation'].mean(), 712.9183321674747)
+    assert man.sim_data['capacity_factor'].shape == (54, 5)
+    assert np.isclose(man.sim_data['capacity_factor'].mean(), 0.2363674873981133)
+    assert np.isclose(man.sim_data['capacity_factor'].std(), 0.23436495032892843)
+    assert np.isclose(man.sim_data['capacity_factor'].min(), 0.00013602136544332003)
+    assert np.isclose(man.sim_data['capacity_factor'].max(), 0.8193065017891327)
+
+    print(man.sim_data['module_dc_power_at_mpp'].mean())
+    print(man.sim_data['module_dc_voltage_at_mpp'].mean())
+    print(man.sim_data['total_system_generation'].mean())
+    assert np.isclose(man.sim_data['module_dc_power_at_mpp'].mean(), 56.820853030607246)
+    assert np.isclose(man.sim_data['module_dc_voltage_at_mpp'].mean(), 37.39738372317519)
+    assert np.isclose(man.sim_data['total_system_generation'].mean(), 724.3133157683136)
 
 
 @pytest.fixture
@@ -466,11 +503,15 @@ def test_SolarWorkflowManager_apply_inverter_losses(pt_SolarWorkflowManager_sim:
         inverter='ABB__MICRO_0_25_I_OUTD_US_208__208V_',
         method='sandia')
 
+    print_testresults(man.sim_data['capacity_factor'])
     assert man.sim_data['capacity_factor'].shape == (54, 5)
-    assert np.isclose(man.sim_data['capacity_factor'].mean(), 0.22126327363987722)
-    assert np.isclose(man.sim_data['capacity_factor'].std(), 0.2418854551473775)
+    assert np.isclose(man.sim_data['capacity_factor'].mean(), 0.2233308735174432)
+    assert np.isclose(man.sim_data['capacity_factor'].std(), 0.22766053886973034)
     assert np.isclose(man.sim_data['capacity_factor'].min(), -0.00031199041565443107)
-    assert np.isclose(man.sim_data['capacity_factor'].max(), 0.8000614268453871)
+    assert np.isclose(man.sim_data['capacity_factor'].max(), 0.7889831406846927)
 
-    assert np.isclose(man.sim_data['total_system_generation'].mean(), 53.189920876837355)
-    assert np.isclose(man.sim_data['inverter_ac_power_at_mpp'].mean(), 53.189920876837355)
+    print(man.sim_data['total_system_generation'].mean())
+    print(man.sim_data['inverter_ac_power_at_mpp'].mean())
+
+    assert np.isclose(man.sim_data['total_system_generation'].mean(), 53.68695534660521)
+    assert np.isclose(man.sim_data['inverter_ac_power_at_mpp'].mean(), 53.68695534660521)
