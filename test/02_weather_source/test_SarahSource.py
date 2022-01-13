@@ -92,7 +92,7 @@ def test_SarahSource_sload_global_horizontal_irradiance(pt_SarahSource, pt_Bound
 
     a, b, c = (48, 61, 51), 36.67517813136183, 114
     assert pt_SarahSource.data[var].shape == a
-    assert np.isclose(pt_SarahSource.data[var].mean(), b)
+    assert np.isclose(pt_SarahSource.data[var].data.mean(), b)
     assert np.isclose(pt_SarahSource.data[var][24, 1, 2], c)
 
     pt_BoundedSarahSource.sload_global_horizontal_irradiance()
@@ -100,7 +100,7 @@ def test_SarahSource_sload_global_horizontal_irradiance(pt_SarahSource, pt_Bound
 
     a, b, c = (48, 14, 13), 46.84146062271062, 179
     assert pt_BoundedSarahSource.data[var].shape == a
-    assert np.isclose(pt_BoundedSarahSource.data[var].mean(), b)
+    assert np.isclose(pt_BoundedSarahSource.data[var].data.mean(), b)
     assert np.isclose(pt_BoundedSarahSource.data[var][24, 1, 2], c)
 
 
@@ -111,7 +111,7 @@ def test_SarahSource_sload_direct_normal_irradiance(pt_SarahSource, pt_BoundedSa
 
     a, b, c = (48, 61, 51), 73.67886799528554, 9
     assert pt_SarahSource.data[var].shape == a
-    assert np.isclose(pt_SarahSource.data[var].mean(), b)
+    assert np.isclose(pt_SarahSource.data[var].data.mean(), b)
     assert np.isclose(pt_SarahSource.data[var][24, 1, 2], c)
 
     pt_BoundedSarahSource.sload_direct_normal_irradiance()
@@ -119,7 +119,7 @@ def test_SarahSource_sload_direct_normal_irradiance(pt_SarahSource, pt_BoundedSa
 
     a, b, c = (48, 14, 13), 127.33505036630036, 173
     assert pt_BoundedSarahSource.data[var].shape == a
-    assert np.isclose(pt_BoundedSarahSource.data[var].mean(), b)
+    assert np.isclose(pt_BoundedSarahSource.data[var].data.mean(), b)
     assert np.isclose(pt_BoundedSarahSource.data[var][24, 1, 2], c)
 
 
