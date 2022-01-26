@@ -253,9 +253,8 @@ def openfield_pv_era5(placements, era5_path, global_solar_atlas_ghi_path, global
     if inverter is not None:
         wf.apply_inverter_losses(inverter=inverter, **inverter_kwargs)
 
-    #loss factor from preliminary validation. david franzmann, 29.06.2021
-    #loss factor from validation. edgar?
-    wf.apply_loss_factor(0.215, variables=['capacity_factor', 'total_system_generation'])
+    loss_factor = 0.115 #validation by d.franzmann, 2022/01/13
+    wf.apply_loss_factor(loss_factor, variables=['capacity_factor', 'total_system_generation'])
 
     return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
@@ -342,7 +341,8 @@ def openfield_pv_sarah_unvalidated(placements, sarah_path, era5_path, module="WI
                    "surface_dew_temperature", ],
         source_type="ERA5",
         source=era5_path,
-        set_time_index=False,
+        set_time_index=False,        
+        time_index_from = 'direct_horizontal_irradiance',
         verbose=False
     )
 
