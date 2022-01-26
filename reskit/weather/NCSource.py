@@ -85,7 +85,7 @@ class NCSource(object):
     MAX_LON_DIFFERENCE = None
     MAX_LAT_DIFFERENCE = None
 
-    def __init__(self, source, bounds=None, index_pad=0, time_name="time", lat_name="lat", lon_name="lon", tz=None, _max_lon_diff=0.6, _max_lat_diff=0.6, verbose=True, forward_fill=True, flip_lat=False, flip_lon=False, time_offset_minutes=None):
+    def __init__(self, source, bounds=None, index_pad=0, time_name="time", lat_name="lat", lon_name="lon", tz=None, _max_lon_diff=0.6, _max_lat_diff=0.6, verbose=True, forward_fill=True, flip_lat=False, flip_lon=False, time_offset_minutes=None,  time_index_from = None):
         """Initialize a generic netCDF4 file source
 
 
@@ -219,6 +219,11 @@ class NCSource(object):
         tmp["shape"] = [expectedShape[v] for v in tmp.index]
         tmp["path"] = [self.variables[v] for v in tmp.index]
         self.variables = tmp
+
+        #choose source for the time step extraction
+        if not time_index_from==None:
+            assert time_index_from in self.variables.index, f'ERA_5-key {time_index_from} not known. Check variable "time_index_from" and folder {source}'
+            self.variables["path"][time_name] = self.variables["path"][time_index_from]
 
         # set basic variables
         ds = nc.Dataset(self.variables["path"][lat_name], keepweakref=True)
