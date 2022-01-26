@@ -912,13 +912,15 @@ class PTRWorkflowManager(SolarWorkflowManager):
             
         
         elif calculationmethod == 'dersch2018':
-            
-            params['PL_sf_fixed_W_per_m^2_ap'] = 1 * 1.486
-            params['PL_sf_pumping_W_per_m^2_ap'] = 8.3
+                        
+
             
             assert 'PL_sf_fixed_W_per_m^2_ap' in params.keys()
             assert 'PL_sf_pumping_W_per_m^2_ap' in params.keys()
-            
+            assert 'PL_plant_fix' in params.keys()
+            assert 'PL_plant_pumping' in params.keys()
+            assert 'PL_plant_other' in params.keys()
+
             PL_sf_track = params['PL_sf_fixed_W_per_m^2_ap'] * self.placements['aperture_area_m2'].values * (self.sim_data['HeattoHTF_W']> 0)
             PL_sf_pumping = params['PL_sf_pumping_W_per_m^2_ap'] * self.placements['aperture_area_m2'].values * \
                     np.power(self.sim_data['HeattoPlant_W'] / Q_sf_des, 2) # * 830/self.placements['I_DNI_nom_W_per_m2'].values), 2) #used for valiadaton, as 830 as DNI_des is used in reference data
@@ -948,7 +950,7 @@ class PTRWorkflowManager(SolarWorkflowManager):
         if not 'capacity_sf_W_th' in self.placements.columns:
             self.apply_capacity_sf() 
         assert 'HeattoPlant_W' in self.sim_data.keys()
-        self.sim_data['capacity_factor_sf'] = self.sim_data['HeattoPlant_W'] / np.tile(self.placements['capacity_sf_W_th'], (8760,1))
+        self.sim_data['capacity_factor_sf'] = self.sim_data['HeattoPlant_W'] / np.tile(self.placements['capacity_sf_W_th'], (self.sim_data['HeattoPlant_W'].shape[0],1))
         self.sim_data_daily['capacity_factor_plant'] = self.sim_data_daily['Power_net_total_per_day_Wh'] / (self.placements['power_plant_capacity_W_el'].values*24)
         
     def calculateEconomics_SolarField(self, WACC: float = 8, lifetime: float = 25,  calculationmethod: str = 'franzmann2021', params: dict = {}):
@@ -972,6 +974,13 @@ class PTRWorkflowManager(SolarWorkflowManager):
         [type]
             [description]
         '''
+        assert 'HeattoPlant_W' in self.sim_data.keys()
+        assert 'Parasitics_solarfield_W_el' in self.sim_data.keys()
+        assert 'CAPEX_solar_field_EUR_per_m^2_aperture' in params.keys()
+        assert 'CAPEX_land_EUR_per_m^2_land' in params.keys()
+        assert 'CAPEX_indirect_cost_perc_CAPEX' in params.keys()
+        assert 'OPEX_perc_CAPEX' in params.keys()
+
         #calculate from percent to abs value
         if WACC > 1:
             WACC = WACC / 100
@@ -1624,13 +1633,13 @@ class PTRWorkflowManager(SolarWorkflowManager):
         Power_gross_bound_per_day_Wh = Heat_directly_per_day_Wh * efficiency_daily_averaged_1
         #with np.seterr(divide='ignore', invalid='ignore'):
         share = np.nan_to_num(Heat_directly_per_day_Wh/Heat_total_per_day_Wh, 0)
-        Power_net_bound_per_day_Wh = Power_gross_bound_per_day_Wh - (Parasitics_plant_per_day_Wh_el * share)
+        Power_net_bound_per_day_Wh = np.maximum(Power_gross_bound_per_day_Wh - (Parasitics_plant_per_day_Wh_el * share), 0)
         
         #dispatchable
         Power_gross_dispatchable_per_day_Wh = Heat_from_storage_used_per_day_Wh * efficiency_daily_averaged_1
         #with np.seterr(divide='ignore', invalid='ignore'):
         share = np.nan_to_num(Heat_from_storage_used_per_day_Wh/Heat_total_per_day_Wh, 0)
-        Power_net_dispatchable_per_day_Wh = Power_gross_dispatchable_per_day_Wh - (Parasitics_plant_per_day_Wh_el * share)
+        Power_net_dispatchable_per_day_Wh = np.maximum(Power_gross_dispatchable_per_day_Wh - (Parasitics_plant_per_day_Wh_el * share),0)
         
         
         #add up for total output
@@ -1932,14 +1941,14 @@ class PTRWorkflowManager(SolarWorkflowManager):
             assert 'sm_opt' in self.placements.columns
             sm = self.placements['sm_opt']
         else: 
-            assert isinstance(sm_manipulation, int) or isinstance(sm_manipulation, float)
+            assert isinstance(sm_manipulation, int) or isinstance(sm_manipulation, float) or isinstance(tes_manipulation, np.int64) or isinstance(tes_manipulation, np.int32)
             sm = sm_manipulation
         
         if tes_manipulation is None:
             assert 'tes_opt' in self.placements.columns
             tes = self.placements['tes_opt']
         else: 
-            assert isinstance(tes_manipulation, np.int32) or isinstance(tes_manipulation, float) or isinstance(tes_manipulation, int)
+            assert isinstance(tes_manipulation, np.int32) or isinstance(tes_manipulation, float) or isinstance(tes_manipulation, int) or isinstance(tes_manipulation, np.int64)
             tes = tes_manipulation
             
         # allow P_aux_manipulation

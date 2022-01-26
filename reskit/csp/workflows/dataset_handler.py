@@ -10,6 +10,13 @@ from reskit.csp.data import csp_data_path
 class dataset_handler():
     
     def __init__(self, datasets) -> None:
+        '''dataset_handelr, which applies usefulll functions for splitting up placements from different datasets
+
+        Parameters
+        ----------
+        datasets : list of strings
+            each string should be a valid key in the
+        '''
         assert isinstance(datasets, list)
         
         self.datasets = datasets
@@ -62,7 +69,13 @@ class dataset_handler():
 
     
     def _get_opt_HTF_matrix(self):
+        '''tries to find the opt matrix from the given datasets. if not possible, calculate a new one
 
+        Returns
+        -------
+        pd.DataFrame
+            lookup table with the optimal HTF fluid for each temperature and DNI
+        '''
         path = self._get_path_dataset_opt()
         if os.path.isfile(path):
             htf_opt_matrix = pd.read_csv(path, index_col=[0], header=[0])
@@ -103,10 +116,10 @@ class dataset_handler():
         print('placements:', len(placements))
         
     
-        era5_path=r'C:\Users\d.franzmann\data\ERA5\7\6'
-        #era5_path=r'/storage/internal/data/gears/weather/ERA5/processed/4/7/6/2015'
+        #era5_path=r'C:\Users\d.franzmann\data\ERA5\7\6'
+        era5_path=r'/storage/internal/data/gears/weather/ERA5/processed/4/7/6/2015'
         datasetnames = self.datasets
-        global_solar_atlas_dni_path = 'default_local'
+        global_solar_atlas_dni_path = 'default_cluster'
 
         outs = {}
         for datasetname in datasetnames:
@@ -265,7 +278,7 @@ class dataset_handler():
 
 if __name__ == '__main__':
     
-    datasetnames = ['Dataset_Heliosol_2030', 'Dataset_SolarSalt_2030', 'Dataset_Therminol_2030']
+    datasetnames = ['Dataset_Heliosol_2030', 'Dataset_SolarSalt_2030'] #, 'Dataset_Therminol_2030']
     
     d = dataset_handler(datasets=datasetnames)
     htf_opt_matrix = d._get_opt_HTF_matrix()

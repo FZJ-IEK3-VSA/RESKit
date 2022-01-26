@@ -131,10 +131,10 @@ def funct():
 
 
 def print_testresults(variable):
-    print('mean: ', variable[0:140,:].mean())
-    print('std: ', variable[0:140,:].std())
-    print('min: ', variable[0:140,:].min())
-    print('max: ', variable[0:140,:].max())
+    print('mean: ', variable.mean())
+    print('std: ', variable.std())
+    print('min: ', variable.min())
+    print('max: ', variable.max())
 
 
 
@@ -824,8 +824,6 @@ def pt_PTRWorkflowManager_economics() -> PTRWorkflowManager:
     wfm.ptr_data['OPEX_perc_CAPEX'] = 2
     wfm.ptr_data['electricity_price_EUR_per_kWh'] = 0.05
 
-  
-
     return wfm
 
 def test_get_totex_from_self(pt_PTRWorkflowManager_economics):
@@ -843,10 +841,323 @@ def test_get_totex_from_self(pt_PTRWorkflowManager_economics):
     wfm.sim_data_daily['P_backup_heating_daily_Wh_el'] = np.array([[0,0,0], [0,0,0]])
     TOTEX_EUR_per_a = wfm._get_totex_from_self()
     assert np.isclose(TOTEX_EUR_per_a.values, [16.01572773E6, 2*16.01572773E6, 16.01572773E6]).all()
+
+
+
+
+####################################
+#####  TEST Parasitics    ######
+####################################
+
+@pytest.fixture
+def pt_PTRWorkflowManager_parasitics() -> PTRWorkflowManager:
+    wfm =  test_PTRWorkflowManager__init__()
+    wfm.ptr_data = {}
+    wfm.ptr_data['eta_powerplant_1'] = 0.5
+    wfm.placements['capacity_sf_W_th'] = 58E6
+    wfm.placements['aperture_area_m2'] = 1E5
+    wfm.sim_data['HeattoPlant_W'] = dni_test * 1E5 * 0.7
+    wfm.sim_data['HeattoHTF_W'] = wfm.sim_data['HeattoPlant_W'] * 1E9 # do this big, as only the +- sign should be relevant
+    return wfm
+
+
+def test_calculateParasitics(pt_PTRWorkflowManager_parasitics):
     
-#TODO:
-# - calculate parastitics
-# - calculate economics
+    wfm = pt_PTRWorkflowManager_parasitics
+
+    params_gafurov={
+        'PL_plant_fix': 0.0055,
+        'PL_sf_track': 0.0026,
+        'PL_sf_pumping': 0.05,
+        'PL_plant_pumping': 0.003,
+        'PL_plant_other': 0.019,
+    }
+
+    params_dersch={
+        'PL_sf_fixed_W_per_m^2_ap': 1.486,
+        'PL_sf_pumping_W_per_m^2_ap': 8.3,
+        'PL_plant_fix': 0.0055,
+        'PL_plant_pumping': 0.003,
+        'PL_plant_other': 0.019,
+    }
+    
+    wfm.calculateParasitics(
+        calculationmethod='dersch2018',
+        params=params_dersch,
+    )
+
+
+    assert wfm.sim_data['Parasitics_W_el'].shape == (140, 3)
+    assert np.isclose(wfm.sim_data['Parasitics_W_el'].mean(), 142859.24061607895)
+    assert np.isclose(wfm.sim_data['Parasitics_W_el'].std(), 274684.3071016811)
+    assert np.isclose(wfm.sim_data['Parasitics_W_el'].min(), 0)
+    assert np.isclose(wfm.sim_data['Parasitics_W_el'].max(), 1183094.33567266)
+
+    assert np.isclose(wfm.sim_data['Parasitics_solarfield_W_el'].mean(), 70349.0500996118)
+    assert np.isclose(wfm.sim_data['Parasitics_solarfield_W_el'].std(), 127515.52803736902)
+    assert np.isclose(wfm.sim_data['Parasitics_solarfield_W_el'].min(), 0)
+    assert np.isclose(wfm.sim_data['Parasitics_solarfield_W_el'].max(), 560214.6209076601)
+
+    a = np.array([ 9690569.61684967, 10162240.40550065,  9693791.01948664])
+    assert np.isclose(wfm.placements['Parasitics_solarfield_Wh_el_per_a'].values, a).all()
+
+    b = np.array([10113416.57878985, 10692104.222701  ,  9648759.21542535])
+    assert np.isclose(wfm.placements['Parasitics_plant_Wh_el_per_a'].values, b).all()
+    
+    # assert wfm.sim_data['Parasitics_W_el'] = wfm.sim_data['Parasitics_solarfield_W_el'] + wfm.sim_data['Parasitics_plant_W_el']
+    # wfm.placements['Parasitics_solarfield_Wh_el_per_a']
+    # wfm.placements['Parasitics_plant_Wh_el_per_a']
+
+
+
+####################################
+#####  TEST calculateEconomics_SF  ######
+####################################
+
+@pytest.fixture
+def pt_PTRWorkflowManager_economics() -> PTRWorkflowManager:
+    wfm =  test_PTRWorkflowManager__init__()
+    wfm.ptr_data = {}
+    wfm.sim_data['HeattoPlant_W'] = dni_test * 1E5 * 0.7
+    wfm.sim_data['Parasitics_solarfield_W_el'] = dni_test * 1E5 * 0.76 * 0.1
+    wfm.placements['aperture_area_m2'] = 1E5
+    wfm.placements['land_area_m2'] = 1E5 / 0.3
+    
+
+    wfm._time_index_ = pd.date_range("2014-12-31 23:30:00", periods=100, freq="H")
+    
+    
+    return wfm
+
+
+def test_calculateEconomics_SolarField(pt_PTRWorkflowManager_economics):
+    wfm = pt_PTRWorkflowManager_economics
+    
+    params={
+        'CAPEX_solar_field_EUR_per_m^2_aperture': 100, 
+        'CAPEX_land_EUR_per_m^2_land': 1,
+        'CAPEX_indirect_cost_perc_CAPEX': 0.11,
+        'electricity_price_EUR_per_kWh': 0.05,
+        'OPEX_perc_CAPEX': 0.03,
+    }
+
+    wfm.calculateEconomics_SolarField(WACC=0.08,
+                                     lifetime=30,
+                                     calculationmethod='franzmann2021',
+                                     params=params
+                                     ) 
+    
+    assert 'annualHeatfromSF_Wh' in wfm.placements.columns
+    assert 'CAPEX_SF_EUR' in wfm.placements.columns
+    assert 'Totex_SF_EUR_per_a' in wfm.placements.columns
+    assert 'LCO_Heat_SF_EURct_per_kWh' in wfm.placements.columns
+    a = np.array([197.37246424, 186.73164379, 206.84040309])
+    assert np.isclose(wfm.placements['LCO_Heat_SF_EURct_per_kWh'].values, a).all()
+
+
+
+
+
+####################################
+#####  TEST def test_optimize_plant_size  ######
+####################################
+
+@pytest.fixture
+def pt_PTRWorkflowManager_optplant(pt_PTRWorkflowManager_economics) -> PTRWorkflowManager:
+    wfm =  pt_PTRWorkflowManager_economics
+
+    wfm.placements['capacity_sf_W_th'] = 58E6
+    dni = np.tile(dni_test, [63,1])[0:8760,:]
+    wfm.sim_data['HeattoPlant_W'] = dni * 1E5 * 0.7
+    wfm.sim_data['P_heating_W'] = (dni==0) * 1E5
+    wfm.sim_data['solar_zenith_degree'] = np.tile(zenith_test, [88,1])[0:8760,:]
+    wfm.sim_data['Parasitics_W_el'] = dni * 1E5 * 0.7 * 0.03
+    wfm.ptr_data['storage_efficiency_1'] = 0.99
+    wfm.ptr_data['eta_powerplant_1'] = 0.4
+    # wfm.sim_data['Parasitics_solarfield_W_el'] = dni_test * 1E5 * 0.76 * 0.1
+    # wfm.placements['aperture_area_m2'] = 1E5
+    # wfm.placements['land_area_m2'] = 1E5 / 0.3
+    
+
+    # wfm._time_index_ = pd.date_range("2014-12-31 23:30:00", periods=100, freq="H")
+    
+    
+    return wfm
+
+def test_optimize_plant_size(pt_PTRWorkflowManager_optplant):
+    wfm = pt_PTRWorkflowManager_optplant
+
+    debug_vars = False
+
+    #case 1:
+    onlynightuse = True
+    fullvariation = False
+    wfm.optimize_plant_size(onlynightuse=onlynightuse, fullvariation=fullvariation, debug_vars=debug_vars)
+
+    a = np.array([3.5, 3.5, 3.5])
+    b = np.array([15, 12, 15])
+    assert (wfm.placements['sm_opt'].values == a).all()
+    assert (wfm.placements['tes_opt'].values == b).all()
+
+    #case 2:
+    onlynightuse = False
+    fullvariation = False
+    wfm.optimize_plant_size(onlynightuse=onlynightuse, fullvariation=fullvariation, debug_vars=debug_vars)
+
+    a = np.array([3.5, 3.5, 3.5])
+    b = np.array([9, 9, 9])
+    assert (wfm.placements['sm_opt'].values == a).all()
+    assert (wfm.placements['tes_opt'].values == b).all()
+
+
+
+
+####################################
+#####  TEST calculate_electrical_output  ######
+####################################
+
+@pytest.fixture
+def pt_PTRWorkflowManager_calcElecOut() -> PTRWorkflowManager:
+    wfm =  test_PTRWorkflowManager__init__()
+
+    dni = np.tile(dni_test, [63,1])[0:8760,:]
+    wfm.sim_data['HeattoPlant_W'] = dni * 1E5 * 0.7
+    wfm.sim_data['P_heating_W'] = (dni==0) * 1E5
+    wfm.sim_data['Parasitics_W_el'] = dni * 1E5 * 0.7 * 0.03
+    wfm.sim_data['solar_zenith_degree'] = np.tile(zenith_test, [88,1])[0:8760,:]
+    wfm.sim_data['direct_normal_irradiance'] = dni
+    wfm.placements['power_plant_capacity_W_el'] = 5E6
+    wfm.placements['storage_capacity_kWh_th'] = 5E6*9/1000/0.4
+
+    wfm.ptr_data = {}
+    wfm.ptr_data['storage_efficiency_1'] = 0.99
+    wfm.ptr_data['eta_powerplant_1'] = 0.4
+
+    wfm._time_index_ = pd.date_range("2014-12-31 23:30:00", periods=8760, freq="H")
+        
+    
+    return wfm
+
+def test_calculate_electrical_output(pt_PTRWorkflowManager_calcElecOut):
+    wfm = pt_PTRWorkflowManager_calcElecOut
+
+
+    debug_vars = False
+
+    #case 1:
+    onlynightuse = True
+    wfm.calculate_electrical_output(onlynightuse=onlynightuse,debug_vars=debug_vars)
+
+    assert wfm.sim_data_daily['Power_net_total_per_day_Wh'].shape == (365, 3)
+    assert np.isclose(wfm.sim_data_daily['Power_net_total_per_day_Wh'].mean(), 26524777.959221434)
+    assert np.isclose(wfm.sim_data_daily['Power_net_total_per_day_Wh'].std(), 12725454.904320534)
+    assert np.isclose(wfm.sim_data_daily['Power_net_total_per_day_Wh'].min(), 0.0)
+    assert np.isclose(wfm.sim_data_daily['Power_net_total_per_day_Wh'].max(), 36665967.17670143)
+
+    assert wfm.sim_data_daily['Power_net_bound_per_day_Wh'].shape == (365, 3)
+    assert np.isclose(wfm.sim_data_daily['Power_net_bound_per_day_Wh'].mean(), 0)
+    assert np.isclose(wfm.sim_data_daily['Power_net_bound_per_day_Wh'].std(), 0)
+    assert np.isclose(wfm.sim_data_daily['Power_net_bound_per_day_Wh'].min(), 0)
+    assert np.isclose(wfm.sim_data_daily['Power_net_bound_per_day_Wh'].max(), 0)
+    
+    
+    #case 2:
+    onlynightuse = False
+    wfm.calculate_electrical_output(onlynightuse=onlynightuse,debug_vars=debug_vars)
+
+    assert wfm.sim_data_daily['Power_net_total_per_day_Wh'].shape == (365, 3)
+    assert np.isclose(wfm.sim_data_daily['Power_net_total_per_day_Wh'].mean(), 35885138.24915207)
+    assert np.isclose(wfm.sim_data_daily['Power_net_total_per_day_Wh'].std(), 23331667.68341452)
+    assert np.isclose(wfm.sim_data_daily['Power_net_total_per_day_Wh'].min(), 0.0)
+    assert np.isclose(wfm.sim_data_daily['Power_net_total_per_day_Wh'].max(), 80307702.4923343)
+
+    assert wfm.sim_data_daily['Power_net_bound_per_day_Wh'].shape == (365, 3)
+    assert np.isclose(wfm.sim_data_daily['Power_net_bound_per_day_Wh'].mean(), 9364395.790161656)
+    assert np.isclose(wfm.sim_data_daily['Power_net_bound_per_day_Wh'].std(), 12716518.611837856)
+    assert np.isclose(wfm.sim_data_daily['Power_net_bound_per_day_Wh'].min(), 0.0)
+    assert np.isclose(wfm.sim_data_daily['Power_net_bound_per_day_Wh'].max(), 41235946.71834937)
+
+
+
+####################################
+#####  TEST calculate_calculate_LCOE  ######
+####################################
+
+@pytest.fixture
+def pt_PTRWorkflowManager_calcLCOE(pt_PTRWorkflowManager_economics) -> PTRWorkflowManager:
+    wfm =  pt_PTRWorkflowManager_economics
+
+    wfm.placements['Power_net_total_Wh_per_a'] = 2E11  
+    
+    return wfm
+
+def test_calculate_LCOE(pt_PTRWorkflowManager_calcLCOE):
+    wfm = pt_PTRWorkflowManager_calcLCOE
+
+    wfm.calculate_LCOE()
+
+    a= np.array([ 9.21556861, 18.43113722,  9.21556861])
+    assert np.isclose(wfm.placements['lcoe_EURct_per_kWh_el'].values, a).all()
+
+
+
+
+
+####################################
+#####  TEST calculateCapacityFactors  ######
+####################################
+
+@pytest.fixture
+def pt_PTRWorkflowManager_calcCFs() -> PTRWorkflowManager:
+    wfm =  test_PTRWorkflowManager__init__()
+    wfm.placements['capacity_sf_W_th'] = 58E6
+    wfm.sim_data['HeattoPlant_W'] = dni_test * 1E5 * 0.7
+    wfm.placements['power_plant_capacity_W_el'] = 58E6 /2 * 0.4
+    wfm.sim_data_daily['Power_net_total_per_day_Wh'] = dni_test * 1E5 * 0.7 * 0.99 * 0.4 * 0.9
+    # wfm.ptr_data = {}
+    # wfm.sim_data['HeattoPlant_W'] = dni_test * 1E5 * 0.7
+    # wfm.sim_data['Parasitics_solarfield_W_el'] = dni_test * 1E5 * 0.76 * 0.1
+    # wfm.placements['aperture_area_m2'] = 1E5
+    # wfm.placements['land_area_m2'] = 1E5 / 0.3
+    
+
+    # wfm._time_index_ = pd.date_range("2014-12-31 23:30:00", periods=100, freq="H")
+    
+    
+    return wfm
+
+def test_calculateCapacityFactors(pt_PTRWorkflowManager_calcCFs):
+    wfm = pt_PTRWorkflowManager_calcCFs
+
+    wfm.calculateCapacityFactors()
+
+
+    assert wfm.sim_data['capacity_factor_sf'].shape== (140, 3)
+    assert np.isclose(wfm.sim_data['capacity_factor_sf'].mean(), 0.08197873433178876)
+    assert np.isclose(wfm.sim_data['capacity_factor_sf'].std(), 0.16908370937865658)
+    assert np.isclose(wfm.sim_data['capacity_factor_sf'].min(), 0)
+    assert np.isclose(wfm.sim_data['capacity_factor_sf'].max(), 0.7042167493103447)
+
+
+    assert wfm.sim_data_daily['capacity_factor_plant'].shape== (140, 3)
+    assert np.isclose(wfm.sim_data_daily['capacity_factor_plant'].mean(), 0.0060869210241353165)
+    assert np.isclose(wfm.sim_data_daily['capacity_factor_plant'].std(), 0.012554465421365252)
+    assert np.isclose(wfm.sim_data_daily['capacity_factor_plant'].min(), 0)
+    assert np.isclose(wfm.sim_data_daily['capacity_factor_plant'].max(), 0.0522880936362931)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

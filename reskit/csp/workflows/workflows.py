@@ -211,21 +211,18 @@ def CSP_PTR_ERA5_specific_dataset(
         global_solar_atlas_dni_path = r"R:\data\gears\geography\irradiance\global_solar_atlas_v2.5\World_DNI_GISdata_LTAy_AvgDailyTotals_GlobalSolarAtlas-v2_GEOTIFF\DNI.tif"
 
 
-    #TODO: implement if working
-    print('WARN WARN WARN: LRA skipped!')
-    # if global_solar_atlas_dni_path != None:
-    #     wf.adjust_variable_to_long_run_average(
-    #         variable='direct_horizontal_irradiance',
-    #         source_long_run_average=rk_weather.Era5Source.LONG_RUN_AVERAGE_DNI,
-    #         real_long_run_average=global_solar_atlas_dni_path,
-    #         real_lra_scaling=1000 / 24,  # cast to hourly average kWh
-    # )
+    if global_solar_atlas_dni_path != None:
+        wf.adjust_variable_to_long_run_average(
+            variable='direct_horizontal_irradiance',
+            source_long_run_average=rk_weather.Era5Source.LONG_RUN_AVERAGE_DNI,
+            real_long_run_average=global_solar_atlas_dni_path,
+            real_lra_scaling=1000 / 24,  # cast to hourly average kWh
+    )
 
     # manipulationof input values for variation calculation
-    wf._applyVariation()
+    wf._applyVariation() #only for developers, can be ignored otherwise
 
     # 6) doing selfmade calulations until Heat to HTF
-    #wf.calculateCosineLossesParabolicTrough(orientation=ptr_data['orientation']) shifted
     wf.calculateIAM(a1=ptr_data['a1'], a2=ptr_data['a2'], a3=ptr_data['a3'])
     wf.calculateShadowLosses(method='wagner2011', SF_density=ptr_data['SF_density_direct'])
     wf.calculateWindspeedLosses(max_windspeed_threshold=ptr_data['maxWindspeed'])
@@ -258,23 +255,22 @@ def CSP_PTR_ERA5_specific_dataset(
     
     if not debug_vars:
         del wf.sim_data['surface_air_temperature'], wf.sim_data['HTF_mean_temperature_C'], wf.sim_data['Heat_Losses_W'], wf.sim_data['theta'], wf.sim_data['IAM']
-    # wf.applyHTFHeatLossModel(calculationmethod='gafurov2013', params={'relHeatLosses': relHeatLosses, 'ratedFieldOutputHeat_W': ratedFieldOutputHeat_W})
 
     # 8) calculate Parasitic Losses of the plant
     wf.calculateParasitics(
         calculationmethod='dersch2018',#'gafurov2013',
         params={
-            'I_DNI_nom': ptr_data['I_DNI_nom'],
+            'PL_sf_fixed_W_per_m^2_ap': 1.486,
+            'PL_sf_pumping_W_per_m^2_ap': 8.3,
             'PL_plant_fix': ptr_data['PL_plant_fix'],
-            'PL_sf_track': ptr_data['PL_sf_track'],
-            'PL_sf_pumping': ptr_data['PL_sf_pumping'],
+            #'PL_sf_track': ptr_data['PL_sf_track'], #gafurov
+            #'PL_sf_pumping': ptr_data['PL_sf_pumping'], #gafurov
             'PL_plant_pumping': ptr_data['PL_plant_pumping'],
             'PL_plant_other': ptr_data['PL_plant_other'],
         }
         )
     
     #9) calculate economics
-    # Todo: adjust size of annual_heat... from 1D to 2D, or change the storage type
     wf.calculateEconomics_SolarField(WACC=ptr_data['WACC'],
                                      lifetime=ptr_data['lifetime'],
                                      calculationmethod='franzmann2021',
