@@ -915,7 +915,7 @@ def test_calculateParasitics(pt_PTRWorkflowManager_parasitics):
 ####################################
 
 @pytest.fixture
-def pt_PTRWorkflowManager_economics() -> PTRWorkflowManager:
+def pt_PTRWorkflowManager_economicsSF() -> PTRWorkflowManager:
     wfm =  test_PTRWorkflowManager__init__()
     wfm.ptr_data = {}
     wfm.sim_data['HeattoPlant_W'] = dni_test * 1E5 * 0.7
@@ -930,8 +930,8 @@ def pt_PTRWorkflowManager_economics() -> PTRWorkflowManager:
     return wfm
 
 
-def test_calculateEconomics_SolarField(pt_PTRWorkflowManager_economics):
-    wfm = pt_PTRWorkflowManager_economics
+def test_calculateEconomics_SolarField(pt_PTRWorkflowManager_economicsSF):
+    wfm = pt_PTRWorkflowManager_economicsSF
     
     params={
         'CAPEX_solar_field_EUR_per_m^2_aperture': 100, 
