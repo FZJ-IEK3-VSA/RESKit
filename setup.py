@@ -9,12 +9,14 @@ setup(
     include_package_data=True,
     install_requires=[
         "geokit>=1.2.4",
-        "numpy",
+        "numpy<1.22",
+        "numba",
         "pandas",
         "scipy",
         # "matplotlib",
         "pvlib>=0.7.2",
         "netCDF4>=1.5.3",
         "xarray",
+        "openpyxl",
     ]
 )
