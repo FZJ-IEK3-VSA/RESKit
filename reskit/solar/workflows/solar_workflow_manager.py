@@ -523,7 +523,11 @@ class SolarWorkflowManager(WorkflowManager):
         dni_flat = self.sim_data['direct_horizontal_irradiance']
         zen = np.radians(self.sim_data['apparent_solar_zenith'])
 
-        self.sim_data['direct_normal_irradiance'] = dni_flat / np.cos(zen)
+        self.sim_data['direct_normal_irradiance'] = dni_flat / np.maximum(np.cos(zen), 0.2)
+        
+        #catch outliners from zero devision
+        index_out = (dni_flat < 25) & (np.cos(zen) < 0.05)
+        self.sim_data['direct_normal_irradiance'][index_out] = 0
 
         index_out = (dni_flat < 25) & (np.cos(zen) < 0.05)
         self.sim_data['direct_normal_irradiance'][index_out] = 0
@@ -653,11 +657,11 @@ class SolarWorkflowManager(WorkflowManager):
         azimuth = self.sim_data.get("system_azimuth", self.placements['azimuth'].values)
         tilt = self.sim_data.get("system_tilt", self.placements['tilt'].values)
 
-        self.sim_data['angle_of_incidence'] = pvlib.irradiance.aoi(
+        self.sim_data['angle_of_incidence'] = np.nan_to_num(pvlib.irradiance.aoi(
             tilt,
             azimuth,
             self.sim_data['apparent_solar_zenith'],
-            self.sim_data['solar_azimuth'])
+            self.sim_data['solar_azimuth']),0)
 
         return self
 

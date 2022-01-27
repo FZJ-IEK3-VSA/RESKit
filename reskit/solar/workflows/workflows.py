@@ -1,6 +1,3 @@
-from logging import warning
-
-from reskit import workflow_manager
 from ... import weather as rk_weather
 from .solar_workflow_manager import SolarWorkflowManager
 import numpy as np
@@ -204,8 +201,11 @@ def openfield_pv_era5(placements, era5_path, global_solar_atlas_ghi_path, global
         source_type="ERA5",
         source=era5_path,
         set_time_index=True,
+        time_index_from = 'direct_horizontal_irradiance',
         verbose=False
     )
+    # If there is a need to resimulate old data, this line must be inserted.
+    #wf.sim_data['global_horizontal_irradiance'] = wf.sim_data['global_horizontal_irradiance_archive']
 
     wf.determine_solar_position()
     wf.filter_positive_solar_elevation()
@@ -225,13 +225,7 @@ def openfield_pv_era5(placements, era5_path, global_solar_atlas_ghi_path, global
         real_lra_scaling=1000 / 24,  # cast to hourly average kWh
         nodata_fallback = gsa_nodata_fallback,
     )
-
-    # wf.spatial_disaggregation(
-    #     variable='direct_normal_irradiance',
-    #     source_high_resolution=global_solar_atlas_dni_path,
-    #     source_low_resolution=rk_weather.GSAmeanSource.DNI_with_ERA5_pixel,
-    # )
-
+    
     wf.adjust_variable_to_long_run_average(
         variable='direct_normal_irradiance',
         source_long_run_average=rk_weather.Era5Source.LONG_RUN_AVERAGE_DNI,
@@ -260,9 +254,8 @@ def openfield_pv_era5(placements, era5_path, global_solar_atlas_ghi_path, global
     if inverter is not None:
         wf.apply_inverter_losses(inverter=inverter, **inverter_kwargs)
 
-    #loss factor from preliminary validation. david franzmann, 29.06.2021
-    #loss factor from validation. edgar?
-    wf.apply_loss_factor(0.215, variables=['capacity_factor', 'total_system_generation'])
+    loss_factor = 0.115 #validation by d.franzmann, 2022/01/13
+    wf.apply_loss_factor(loss_factor, variables=['capacity_factor', 'total_system_generation'])
 
     return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
@@ -349,7 +342,8 @@ def openfield_pv_sarah_unvalidated(placements, sarah_path, era5_path, module="WI
                    "surface_dew_temperature", ],
         source_type="ERA5",
         source=era5_path,
-        set_time_index=False,
+        set_time_index=False,        
+        time_index_from = 'direct_horizontal_irradiance',
         verbose=False
     )
 

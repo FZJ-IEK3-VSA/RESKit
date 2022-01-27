@@ -110,6 +110,7 @@ class WorkflowManager:
         set_time_index: bool = False,
         spatial_interpolation_mode: str = "bilinear",
         temporal_reindex_method: str = "nearest",
+        time_index_from = None,
         **kwargs
     ):
         """Reads the specified variables from the NetCDF4-style weather dataset, and then extracts
@@ -180,7 +181,10 @@ class WorkflowManager:
             else:
                 raise RuntimeError("Unknown source_type")
 
-            source = source_constructor(source, bounds=self.ext, **kwargs) #Manipulate ext here
+            if source_type == 'ERA5':
+                source = source_constructor(source, bounds=self.ext, time_index_from=time_index_from, **kwargs)
+            else:
+                source = source_constructor(source, bounds=self.ext, **kwargs)
 
             # Load the requested variables
             source.sload(*variables)
