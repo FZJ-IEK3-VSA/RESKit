@@ -16,17 +16,22 @@ placements['lat'] = [ 31.0, 31.4, 31.0,]   # Latitude [ 50.775, 50.775, 50.775,]
 placements['area_m2'] = [1E6, 5E6, 6E6]
 repeats = int(3/3)
 placements = placements.loc[placements.index.repeat(repeats)].reset_index(drop=True)
-    
+
+global_solar_atlas_dni_path = 'R:\data\gears\geography\irradiance\global_solar_atlas_v2.5\World_DNI_GISdata_LTAy_AvgDailyTotals_GlobalSolarAtlas-v2_GEOTIFF\DNI.tif'
+global_solar_atlas_tamb_path = "R:\data\gears\geography\irradiance\global_solar_atlas_v2.5\World_TEMP_GISdata_LTAy_GlobalSolarAtlas_GEOTIFF\TEMP.tif"
+
+global_solar_atlas_dni_path = '/storage/internal/data/gears/geography/irradiance/global_solar_atlas_v2.5/World_DNI_GISdata_LTAy_AvgDailyTotals_GlobalSolarAtlas-v2_GEOTIFF/DNI.tif'
+global_solar_atlas_tamb_path = "/storage/internal/data/gears/geography/irradiance/global_solar_atlas_v2.5/World_TEMP_GISdata_LTAy_GlobalSolarAtlas_GEOTIFF/TEMP.tif"
 #%%
 out = rk.csp.CSP_PTR_ERA5(
     placements=placements, 
-    era5_path= r'C:\Users\d.franzmann\data\ERA5\7\6', #r'/storage/internal/data/gears/weather/ERA5/processed/4/7/6/2015/', #r'C:\Users\d.franzmann\data\ERA5\7\6',
-    global_solar_atlas_dni_path = 'R:\data\gears\geography\irradiance\global_solar_atlas_v2.5\World_DNI_GISdata_LTAy_AvgDailyTotals_GlobalSolarAtlas-v2_GEOTIFF\DNI.tif',
-    global_solar_atlas_tamb_path = "R:\data\gears\geography\irradiance\global_solar_atlas_v2.5\World_TEMP_GISdata_LTAy_GlobalSolarAtlas_GEOTIFF\TEMP.tif",
+    era5_path= r'/storage/internal/data/gears/weather/ERA5/processed/4/7/6/2015/', #r'/storage/internal/data/gears/weather/ERA5/processed/4/7/6/2015/', #r'C:\Users\d.franzmann\data\ERA5\7\6',
+    global_solar_atlas_dni_path = global_solar_atlas_dni_path,
+    global_solar_atlas_tamb_path = global_solar_atlas_tamb_path,
     verbose = True,
     cost_year=2030,
     JITaccelerate=False,
-    return_self=True,
+    return_self=False,
     debug_vars=True,
     onlynightuse=True,
 )
