@@ -18,6 +18,7 @@ def pt_pv_placements() -> pd.DataFrame:
 # Make a placements dataframe
 
 #%%
+@pytest.mark.skip(reason='Not working on calamari')
 def test_CSP_PTR_ERA5(pt_pv_placements):
 
     #local
