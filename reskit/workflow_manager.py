@@ -327,6 +327,7 @@ class WorkflowManager:
             factors[np.isnan(factors)] = 1
 
         self.sim_data[variable] = factors * self.sim_data[variable]
+        self.placements[f'LRA_factor_{variable}'] = factors
         return self
 
     def spatial_disaggregation(

@@ -170,8 +170,8 @@ def CSP_PTR_ERA5_specific_dataset(
     # 3) read in Input data
     if verbose:
         tic_start = time.time()
-        print('Simulation started for {n_placements} placements.'.format(n_placements=len(wf.placements)))
-        print('Reading in Weather data.')
+        print('Simulation started for {n_placements} placements.'.format(n_placements=len(wf.placements)), flush=True)
+        print('Reading in Weather data.', flush=True)
     wf.read(
         variables=[#"global_horizontal_irradiance",
                    "direct_horizontal_irradiance",
@@ -186,8 +186,8 @@ def CSP_PTR_ERA5_specific_dataset(
     
     if verbose:
         tic_read = time.time()
-        print('Data read in within {dt}s.'.format(dt = str(tic_read-tic_start)))
-        print('Starting preanalysis.')
+        print('Data read in within {dt}s.'.format(dt = str(tic_read-tic_start)), flush=True)
+        print('Starting preanalysis.', flush=True)
     # 4) get length of timesteps for later numpy sizing 
 
     wf.get_timesteps()
@@ -205,18 +205,18 @@ def CSP_PTR_ERA5_specific_dataset(
     wf.direct_normal_irradiance_from_trigonometry()
     
     # do long run averaging for DNI
+    #TODO: remove
     if global_solar_atlas_dni_path == 'default_cluster':
         global_solar_atlas_dni_path = r"/storage/internal/data/gears/geography/irradiance/global_solar_atlas_v2.5/World_DNI_GISdata_LTAy_AvgDailyTotals_GlobalSolarAtlas-v2_GEOTIFF/DNI.tif"
     if global_solar_atlas_dni_path == 'default_local':
         global_solar_atlas_dni_path = r"R:\data\gears\geography\irradiance\global_solar_atlas_v2.5\World_DNI_GISdata_LTAy_AvgDailyTotals_GlobalSolarAtlas-v2_GEOTIFF\DNI.tif"
 
 
-    if global_solar_atlas_dni_path != None:
-        wf.adjust_variable_to_long_run_average(
-            variable='direct_horizontal_irradiance',
-            source_long_run_average=rk_weather.Era5Source.LONG_RUN_AVERAGE_DNI,
-            real_long_run_average=global_solar_atlas_dni_path,
-            real_lra_scaling=1000 / 24,  # cast to hourly average kWh
+    wf.adjust_variable_to_long_run_average(
+        variable='direct_normal_irradiance',
+        source_long_run_average=rk_weather.Era5Source.LONG_RUN_AVERAGE_DNI,
+        real_long_run_average=global_solar_atlas_dni_path,
+        real_lra_scaling=1000 / 24,  # cast to hourly average kWh
     )
 
     # manipulationof input values for variation calculation
@@ -236,8 +236,8 @@ def CSP_PTR_ERA5_specific_dataset(
         
     if verbose:
         tic_pre = time.time()
-        print('Preanalysis within {dt}s.'.format(dt = str(tic_pre-tic_read)))   
-        print('Starting core simulation of the solar field.')
+        print('Preanalysis within {dt}s.'.format(dt = str(tic_pre-tic_read)), flush=True)   
+        print('Starting core simulation of the solar field.', flush=True)
     # 7) calculation heat to plant with loss model
     wf.applyHTFHeatLossModel(
         calculationmethod='dersch2018',
@@ -285,8 +285,8 @@ def CSP_PTR_ERA5_specific_dataset(
 
     if verbose:
         tic_sf_sim = time.time()
-        print('Solar field simulation done in {dt}s.'.format(dt = str(tic_sf_sim-tic_pre)))
-        print('Starting optimizing plant electric output.')
+        print('Solar field simulation done in {dt}s.'.format(dt = str(tic_sf_sim-tic_pre)), flush=True)
+        print('Starting optimizing plant electric output.', flush=True)
     
     wf.optimize_plant_size(onlynightuse=onlynightuse, fullvariation=fullvariation, debug_vars=debug_vars)
     
@@ -296,7 +296,7 @@ def CSP_PTR_ERA5_specific_dataset(
     
     if verbose:
         tic_opt_plant = time.time()
-        print('Optimal Sizing done in  {dt}s.'.format(dt = str(tic_opt_plant-tic_sf_sim)))
+        print('Optimal Sizing done in  {dt}s.'.format(dt = str(tic_opt_plant-tic_sf_sim)), flush=True)
         
         
     wf.calculate_electrical_output(onlynightuse=onlynightuse,debug_vars=debug_vars)
@@ -305,7 +305,7 @@ def CSP_PTR_ERA5_specific_dataset(
         
     if verbose:
         tic_final = time.time()
-        print('Total simulation done in {dt}s.'.format(dt = str(tic_final-tic_start)))
+        print('Total simulation done in {dt}s.'.format(dt = str(tic_final-tic_start)), flush=True)
 
     if return_self == True:
         return wf

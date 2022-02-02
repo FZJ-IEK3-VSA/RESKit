@@ -2,6 +2,7 @@ from logging import warn, warning
 
 from reskit.csp.data.database_loader import load_dataset
 from reskit.solar.workflows.solar_workflow_manager import SolarWorkflowManager
+from ... import weather as rk_weather
 import numpy as np
 import pandas as pd
 import pvlib
@@ -319,7 +320,14 @@ class PTRWorkflowManager(SolarWorkflowManager):
         #nominal_efficiency_power_block = 0.3774 # 37.74% efficency of the power block at nominal power, from gafurov2013
         nominal_receiver_heat_losses = 0.06 # 6% losses nominal heat losses, from gafurov2013
         
-        I_DNI_nom = np.percentile(self.sim_data['direct_normal_irradiance'], 90, axis=0) #np.minimum(self.sim_data['direct_normal_irradiance'].max(axis=0), self.ptr_data['I_DNI_nom'])
+        # I_DNI_nom = np.percentile(self.sim_data['direct_normal_irradiance'], 90, axis=0) #np.minimum(self.sim_data['direct_normal_irradiance'].max(axis=0), self.ptr_data['I_DNI_nom'])
+        #TODO:
+        I_DNI_nom_ERA5 = gk.raster.interpolateValues(
+                rk_weather.Era5Source.DNI_90_PERC_QUANT,
+                self.locs,
+                mode='near',
+            )
+        I_DNI_nom = I_DNI_nom_ERA5 * self.placements['LRA_factor_direct_normal_irradiance'].values
 
         Q_sf_des = nominal_sf_efficiency * self.placements['aperture_area_m2'].values * I_DNI_nom * (1-nominal_receiver_heat_losses) #W
         

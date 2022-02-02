@@ -98,6 +98,10 @@ class Era5Source(NCSource):
         dirname(__file__),
         "data",
         "ERA5_DNI_mean.tif")
+    DNI_90_PERC_QUANT = join(
+        dirname(__file__),
+        "data",
+        "ERA5_DNI_percentile_90_2000_to_2020.tif")
 
     MAX_LON_DIFFERENCE = 0.26
     MAX_LAT_DIFFERENCE = 0.26
