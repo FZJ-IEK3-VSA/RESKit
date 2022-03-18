@@ -959,6 +959,7 @@ class PTRWorkflowManager(SolarWorkflowManager):
             self.apply_capacity_sf() 
         assert 'HeattoPlant_W' in self.sim_data.keys()
         self.sim_data['capacity_factor_sf'] = self.sim_data['HeattoPlant_W'] / np.tile(self.placements['capacity_sf_W_th'], (self.sim_data['HeattoPlant_W'].shape[0],1))
+        self.sim_data['capacity_factor_heat_FP_sf'] = -1 * self.sim_data['P_heating_W'] / np.tile(self.placements['capacity_sf_W_th'], (self.sim_data['HeattoPlant_W'].shape[0],1))
         self.sim_data_daily['capacity_factor_plant'] = self.sim_data_daily['Power_net_total_per_day_Wh'] / (self.placements['power_plant_capacity_W_el'].values*24)
         
     def calculateEconomics_SolarField(self, WACC: float = 8, lifetime: float = 25,  calculationmethod: str = 'franzmann2021', params: dict = {}):
