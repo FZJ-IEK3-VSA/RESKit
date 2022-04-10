@@ -182,6 +182,7 @@ def CSP_PTR_ERA5_specific_dataset(
         source_type="ERA5",
         source=era5_path,
         set_time_index=True,
+        time_index_from = 'direct_horizontal_irradiance',
         verbose=False)
     
     if verbose:

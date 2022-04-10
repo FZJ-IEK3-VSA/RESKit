@@ -5,7 +5,7 @@ from reskit import TEST_DATA
 import pytest
 
 #%%
-@pytest.fixture
+#@pytest.fixture
 def pt_pv_placements() -> pd.DataFrame:
     placements = pd.DataFrame()
     #noor 2 ptr plant, morocco
@@ -18,10 +18,10 @@ def pt_pv_placements() -> pd.DataFrame:
 # Make a placements dataframe
 
 #%%
-@pytest.mark.skip(reason='Not working on calamari')
+#@pytest.mark.skip(reason='Not working on calamari')
 def test_CSP_PTR_ERA5(pt_pv_placements):
 
-    #local
+    #local  
     era5_path = r"R:\data\gears\weather\ERA5\processed\4\7\6\2015"
     global_solar_atlas_dni_path = r'R:\data\gears\geography\irradiance\global_solar_atlas_v2.5\World_DNI_GISdata_LTAy_AvgDailyTotals_GlobalSolarAtlas-v2_GEOTIFF\DNI.tif'
     global_solar_atlas_tamb_path = r"R:\data\gears\geography\irradiance\global_solar_atlas_v2.5\World_TEMP_GISdata_LTAy_GlobalSolarAtlas_GEOTIFF\TEMP.tif"
@@ -97,3 +97,9 @@ def test_CSP_PTR_ERA5(pt_pv_placements):
     #lcoe_EURct_per_kWh_el
     a = np.array([15.04214996, 17.24473617, 15.04214996])
     assert np.isclose(out['lcoe_EURct_per_kWh_el'].values, a).all()
+
+
+if __name__ == '__main__':
+
+    placements = pt_pv_placements()
+    test_CSP_PTR_ERA5(placements)
