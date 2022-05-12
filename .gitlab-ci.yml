@@ -21,7 +21,7 @@ test:
     - cd geokit
     - pip install -e .
     #- source ~/.bashrc #refresh the path variables
-    - source dactivate reskit
+    - source deactivate
     - source activate reskit
     # instll reskit
     - cd ..
