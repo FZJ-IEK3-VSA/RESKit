@@ -20,11 +20,11 @@ test:
     # install geokit
     - cd geokit
     - pip install -e .
-    - pip show geokit
-    - pip show gdal
     - source ~/.bashrc #refresh the path variables
     # instll reskit
     - cd ..
+    - pip show geokit
+    - pip show gdal
     - pip install -e .
     - mamba info --envs
     - python -m pip show geokit
