@@ -15,12 +15,18 @@ test:
     - git clone --branch dev https://CIGlaes:${GeokitAccessToken}@jugit.fz-juelich.de/iek-3/shared-code/geokit.git
     - cd geokit
     - mamba env update -n reskit --file=requirements-dev.yml
-    - python -m pip show geokit
     - cd ..
     - mamba env update -n reskit --file=requirements-dev.yml
+    # install geokit
     - cd geokit
     - pip install -e .
+    #- source ~/.bashrc #refresh the path variables
+    - source deactivate
+    - source activate reskit
+    # instll reskit
     - cd ..
+    - pip show geokit
+    - pip show gdal
     - pip install -e .
     - mamba info --envs
     - python -m pip show geokit
