@@ -19,6 +19,7 @@ test:
     - mamba env update -n reskit --file=requirements-dev.yml
     - cd geokit
     - pip install -e .
+    - source ~/.bashrc #refresh the path variable
     - cd ..
     - pip install -e .
     - mamba info --envs
