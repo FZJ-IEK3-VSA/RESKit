@@ -493,7 +493,7 @@ class WorkflowManager:
             else:
                 write = True
                 for element in self.placements[c]:
-                    if not isinstance(element, str):
+                    if not isinstance(element, (str, bytearray)):
                         write = False
                         break
             if write:
