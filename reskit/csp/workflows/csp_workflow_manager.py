@@ -1054,9 +1054,12 @@ class PTRWorkflowManager(SolarWorkflowManager):
             self.sm = np.array([1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5])
             self.tes = np.array([5, 6, 9, 12, 15, 18])
         else:
-            self.sm = np.array([1.5, 2, 2.5, 3, 3.5])
-            self.tes = np.array([9, 12, 15])
-        
+            if onlynightuse:
+                self.sm = np.array([1.5, 2, 2.5])
+                self.tes = np.array([9, 12, 15])
+            else: 
+                self.sm = np.array([2.5, 3, 3.5, 4, 4.5])
+                self.tes = np.array([9, 12, 15])
         #make lsit with all sizing combinations
         sizing_tuples = []
         for sm in self.sm:
