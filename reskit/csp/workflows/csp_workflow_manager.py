@@ -514,7 +514,8 @@ class PTRWorkflowManager(SolarWorkflowManager):
         # IAM: 1
         # eta_shdw: 1
         # A_aperture_sf: m^2
-        # direct_normal_irradiance: W/m^2        
+        # direct_normal_irradiance: W/m^2      
+        assert ~np.isnan(self.sim_data['direct_normal_irradiance']).any()
 
         self.sim_data['HeattoHTF_W'] = eta_ptr_max \
                                         * eta_cleaness \
@@ -526,6 +527,8 @@ class PTRWorkflowManager(SolarWorkflowManager):
                                         * self.sim_data['eta_degradation'] \
                                         * self.placements['aperture_area_m2'].values \
                                         * self.sim_data['direct_normal_irradiance']
+
+        assert ~np.isnan(self.sim_data['HeattoHTF_W']).any()
 
         #self.sim_data['P_DNI'] = self.placements['aperture_area_m2'].values * self.sim_data['direct_normal_irradiance']
 

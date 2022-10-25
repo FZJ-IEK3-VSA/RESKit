@@ -218,6 +218,7 @@ def CSP_PTR_ERA5_specific_dataset(
         source_long_run_average=rk_weather.Era5Source.LONG_RUN_AVERAGE_DNI,
         real_long_run_average=global_solar_atlas_dni_path,
         real_lra_scaling=1000 / 24,  # cast to hourly average kWh
+        nodata_fallback="source",
     )
 
     # manipulationof input values for variation calculation
