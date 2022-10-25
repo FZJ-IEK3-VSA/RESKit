@@ -17,6 +17,6 @@ setup(
         "pvlib>=0.7.2",
         "netCDF4>=1.5.3",
         "xarray",
-        "openpyxl",
+        "gdal==3.4.2"
     ]
 )

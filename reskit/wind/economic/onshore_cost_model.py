@@ -33,10 +33,10 @@ def onshore_turbine_capex(capacity, hub_height, rotor_diam, base_capex=None, bas
         The baseline turbine's rotor diamter in m, by default 136
 
     tcc_share : float, optional
-        The baseline turbine's TCC percentage contribution in the total cost, by default 0.673
+        The baseline turbine's turbine capital cost (TCC) percentage contribution in the total cost, by default 0.673
 
     bos_share : float, optional
-        The baseline turbine's BOS percentage contribution in the total cost, by default 0.229 
+        The baseline turbine's balance of system costs (BOS) percentage contribution in the total cost, by default 0.229 
 
     Returns
     --------
@@ -112,7 +112,7 @@ def onshore_tcc(cp, hh, rd, gdp_escalator=None, blade_material_escalator=None, b
     Returns
     -------
     numeric or array-like
-        Turbine's TCC in monetary units.
+        Turbine's turbine capital cost (TCC) in monetary units.
 
     References
     ---------
@@ -230,7 +230,7 @@ def onshore_bos(cp, hh, rd):
     Returns
     -------
     numeric or array-like
-        Turbine's BOS in monetary units.
+        Turbine's balance of system costs (BOS) in monetary units.
 
     References
     ---------
