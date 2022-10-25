@@ -110,6 +110,7 @@ class WorkflowManager:
         set_time_index: bool = False,
         spatial_interpolation_mode: str = "bilinear",
         temporal_reindex_method: str = "nearest",
+        time_index_from = None,
         **kwargs
     ):
         """Reads the specified variables from the NetCDF4-style weather dataset, and then extracts
@@ -180,7 +181,10 @@ class WorkflowManager:
             else:
                 raise RuntimeError("Unknown source_type")
 
-            source = source_constructor(source, bounds=self.ext, **kwargs) #Manipulate ext here
+            if source_type == 'ERA5':
+                source = source_constructor(source, bounds=self.ext, time_index_from=time_index_from, **kwargs)
+            else:
+                source = source_constructor(source, bounds=self.ext, **kwargs)
 
             # Load the requested variables
             source.sload(*variables)
@@ -323,6 +327,7 @@ class WorkflowManager:
             factors[np.isnan(factors)] = 1
 
         self.sim_data[variable] = factors * self.sim_data[variable]
+        self.placements[f'LRA_factor_{variable}'] = factors
         return self
 
     def spatial_disaggregation(
@@ -464,6 +469,10 @@ class WorkflowManager:
             times = [
                 np.datetime64(dt.tz_convert("UTC").tz_convert(None)) for dt in times
             ]
+        times_days = np.unique(pd.DatetimeIndex(times).date).astype('datetime64')
+        if times_days[0].astype('datetime64[Y]') != times_days[-1].astype('datetime64[Y]'):
+            # old tiles where shifted by 1 hour, so the last day of the previous year also appears. catch this problem whti this if clause
+            times_days = times_days[1:]
         xds = OrderedDict()
         encoding = dict()
 
@@ -473,7 +482,9 @@ class WorkflowManager:
         else:
             location_coords = np.arange(self.placements.shape[0])
 
+        #write placements
         for c in self.placements.columns:
+            #check if c in requestet output_variables
             if output_variables is not None:
                 if c not in output_variables:
                     continue
@@ -491,8 +502,10 @@ class WorkflowManager:
                     dims=["location"],
                     coords=dict(location=location_coords),
                 )
-
+                
+        #write sim_data
         for key in self.sim_data.keys():
+            #check if key in requestet output_variables
             if output_variables is not None:
                 if key not in output_variables:
                     continue
@@ -506,7 +519,25 @@ class WorkflowManager:
                 coords=dict(time=times, location=location_coords),
             )
             encoding[key] = dict(zlib=True)
+        
+        #write sim_data_daily, only if exists
+        if hasattr(self, 'sim_data_daily'):
+            for key in self.sim_data_daily.keys():
+                #check if key in requestet output_variables
+                if output_variables is not None:
+                    if key not in output_variables:
+                        continue
 
+                tmp = np.full((len(times_days), self.locs.count), np.nan)
+                tmp[:, :] = self.sim_data_daily[key]
+
+                xds[key] = xarray.DataArray(
+                    tmp,
+                    dims=["time_days", "location"],
+                    coords=dict(time_days=times_days, location=location_coords),
+                )
+                encoding[key] = dict(zlib=True)
+        
         if _intermediate_dict:
             return xds
 
