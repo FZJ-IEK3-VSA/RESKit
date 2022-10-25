@@ -1004,8 +1004,8 @@ def test_optimize_plant_size(pt_PTRWorkflowManager_optplant):
     fullvariation = False
     wfm.optimize_plant_size(onlynightuse=onlynightuse, fullvariation=fullvariation, debug_vars=debug_vars)
 
-    a = np.array([3.5, 3.5, 3.5])
-    b = np.array([9, 9, 9])
+    a = np.array([4.5, 4.5, 4.5])
+    b = np.array([12, 9, 9])
     assert (wfm.placements['sm_opt'].values == a).all()
     assert (wfm.placements['tes_opt'].values == b).all()
 
@@ -1114,6 +1114,7 @@ def pt_PTRWorkflowManager_calcCFs() -> PTRWorkflowManager:
     wfm.sim_data['HeattoPlant_W'] = dni_test * 1E5 * 0.7
     wfm.placements['power_plant_capacity_W_el'] = 58E6 /2 * 0.4
     wfm.sim_data_daily['Power_net_total_per_day_Wh'] = dni_test * 1E5 * 0.7 * 0.99 * 0.4 * 0.9
+    wfm.sim_data['P_heating_W'] = dni_test * 1E5 * 0.7 / 10
     # wfm.ptr_data = {}
     # wfm.sim_data['HeattoPlant_W'] = dni_test * 1E5 * 0.7
     # wfm.sim_data['Parasitics_solarfield_W_el'] = dni_test * 1E5 * 0.76 * 0.1
@@ -1138,6 +1139,10 @@ def test_calculateCapacityFactors(pt_PTRWorkflowManager_calcCFs):
     assert np.isclose(wfm.sim_data['capacity_factor_sf'].min(), 0)
     assert np.isclose(wfm.sim_data['capacity_factor_sf'].max(), 0.7042167493103447)
 
+    assert wfm.sim_data['capacity_factor_heat_FP_sf'].shape== (140, 3)
+    assert np.isclose(wfm.sim_data['capacity_factor_heat_FP_sf'].min(), -0.07042167493103447)
+    assert np.isclose(wfm.sim_data['capacity_factor_heat_FP_sf'].max(), 0)
+    assert np.isclose(wfm.sim_data['capacity_factor_heat_FP_sf'].mean(), -0.008197873433178876)
 
     assert wfm.sim_data_daily['capacity_factor_plant'].shape== (140, 3)
     assert np.isclose(wfm.sim_data_daily['capacity_factor_plant'].mean(), 0.0060869210241353165)
