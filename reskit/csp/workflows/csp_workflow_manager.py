@@ -1058,7 +1058,7 @@ class PTRWorkflowManager(SolarWorkflowManager):
             self.tes = np.array([5, 6, 9, 12, 15, 18])
         else:
             if onlynightuse:
-                self.sm = np.array([1.5, 2, 2.5])
+                self.sm = np.array([1.5, 2, 2.5, 3, 3.5])
                 self.tes = np.array([9, 12, 15])
             else: 
                 self.sm = np.array([2.5, 3, 3.5, 4, 4.5])
@@ -1190,7 +1190,7 @@ class PTRWorkflowManager(SolarWorkflowManager):
             #with np.seterr(divide='ignore', invalid='ignore') #TODO: zero devision
             LCOE_EUR_per_kWh_el = np.nan_to_num(TOTEX_EUR_per_a.values / Power_output_plant_net_Wh_per_a * 1E5, nan=0) #EUR/Wh --> EURct/kWh
             
-            LCOE_EURct_per_kWh_el_3D[:,i_sm, i_tes] = LCOE_EUR_per_kWh_el #TODO: remove this, only dbg
+            LCOE_EURct_per_kWh_el_3D[:,i_sm, i_tes] = LCOE_EUR_per_kWh_el #thats the output of the loop
             
         #check if all is written
         assert not np.isnan(LCOE_EURct_per_kWh_el_3D).any()
