@@ -2,13 +2,13 @@
 
 # RESKit - **R**enewable **E**nergy **S**imulation tool**kit** for Python
 
-RESKit aids with the broad-scale simulation of renewable energy systems, primarily for the purpose of input generation to Energy System Design Models. Simulation tools currently exist for onshore and offshore wind turbines, as well as for solar PV systems, in addtion to general weather-data manipulation tools. Simulations are performed in the context of singular units, however high computational performance is nevertheless maintained. As a result, this tool allows for the simulation of millions of individual turbines and PV systems in a matter of minutes (on the right hardware).
+RESKit aids with the broad-scale simulation of renewable energy systems, primarily for the purpose of input generation to Energy System Design Models. Simulation tools currently exist for onshore and offshore wind turbines, as well as for solar photovoltaic (PV) systems, in addtion to general weather-data manipulation tools. Simulations are performed in the context of singular units, however high computational performance is nevertheless maintained. As a result, this tool allows for the simulation of millions of individual turbines and PV systems in a matter of minutes (on the right hardware).
 
 ## Features
 
 - High performance unit-level wind turbine and PV module simulations
   - Can generate synthetic wind turbine power curves
-  - Access to all PV modules in the most recent databases from Sandia and the CEC
+  - Access to all PV modules in the most recent databases from Sandia and the California Energy Commission (CEC)
 - Configurable to make use climate model datasets
 - Flexible & modular function designs
 
@@ -16,13 +16,13 @@ RESKit aids with the broad-scale simulation of renewable energy systems, primari
 
 The primary dependancies of RESKit are:
 
-1. netCDF4>=1.5.3
+1. netCDF4
 2. xarray
-3. PVLib>=0.7.2
-4. gdal>2.0.0,<3.0.0
+3. PVLib
+4. gdal
 5. <a href="https://github.com/FZJ-IEK3-VSA/geokit">GeoKit</a> >= 1.2.4
 
-If you can install these modules on you own, then the reskit module should be easily installable with:
+If you can install these modules on you own, then the RESKit module should be easily installable with:
 
 ```
 pip install git+https://github.com/FZJ-IEK3-VSA/reskit.git#egg=reskit
@@ -71,7 +71,7 @@ We are looking into making RESKit accessible in a docker container. Check back l
 
 ## Citation
 
-If you decide to use RES anywhere in a published work related to wind energy, please kindly cite us using the following
+If you decide to use RESkit anywhere in a published work related to wind energy, please kindly cite us using the following
 
 ```bibtex
 @article{RybergWind2019,
@@ -93,7 +93,7 @@ If you decide to use RES anywhere in a published work related to wind energy, pl
 
 MIT License
 
-Copyright (c) 2019 David Severin Ryberg (FZJ IEK-3), heidi Heinrichs (FZJ IEK-3), Martin Robinius (FZJ IEK-3), Detlef Stolten (FZJ IEK-3)
+Copyright (c) 2022 David Severin Ryberg (FZJ IEK-3), David Franzmann (FZJ IEK-3), Christoph Winkler (FZJ IEK-3), Heidi Heinrichs (FZJ IEK-3), Martin Robinius (FZJ IEK-3), Detlef Stolten (FZJ IEK-3)
 
 You should have received a copy of the MIT License along with this program.  
 If not, see <https://opensource.org/licenses/MIT>

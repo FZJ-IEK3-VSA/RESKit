@@ -161,7 +161,7 @@ def offshore_bos(cp, rd, hh, depth, distance_to_shore, distance_to_bus, foundati
     Returns
     -------
     numeric
-        Offshore turbine's BOS in monetary units.
+        Offshore turbine's balance of the system cost (BOS) in monetary units.
 
     Notes
     ------
