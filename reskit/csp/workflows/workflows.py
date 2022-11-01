@@ -26,6 +26,7 @@ def CSP_PTR_ERA5(
     debug_vars = False,
     onlynightuse=True,
     fullvariation=False,
+    _validation=False,
     ):
     
     
@@ -68,6 +69,7 @@ def CSP_PTR_ERA5(
             debug_vars = debug_vars,
             onlynightuse = onlynightuse,
             fullvariation = fullvariation,
+            _validation=_validation,
         )
         return output
     
@@ -107,6 +109,7 @@ def CSP_PTR_ERA5(
                 debug_vars = debug_vars,
                 onlynightuse = onlynightuse,
                 fullvariation = fullvariation,
+                _validation=_validation,
             )
             
             #add dataset to column (force output this!)
@@ -145,6 +148,7 @@ def CSP_PTR_ERA5_specific_dataset(
     debug_vars = False,
     onlynightuse=True,
     fullvariation=False,
+    _validation=False
     ):
     """ Calculates the heat output from the solar field based on parabolic trough technology. The workflow is not yet finally validated (but is still plausible).
         Date: 27.07.2021
@@ -209,17 +213,22 @@ def CSP_PTR_ERA5_specific_dataset(
     #TODO: remove
     if global_solar_atlas_dni_path == 'default_cluster':
         global_solar_atlas_dni_path = r"/storage/internal/data/gears/geography/irradiance/global_solar_atlas_v2.5/World_DNI_GISdata_LTAy_AvgDailyTotals_GlobalSolarAtlas-v2_GEOTIFF/DNI.tif"
-    if global_solar_atlas_dni_path == 'default_local':
-        global_solar_atlas_dni_path = r"R:\data\gears\geography\irradiance\global_solar_atlas_v2.5\World_DNI_GISdata_LTAy_AvgDailyTotals_GlobalSolarAtlas-v2_GEOTIFF\DNI.tif"
 
-
-    wf.adjust_variable_to_long_run_average(
-        variable='direct_normal_irradiance',
-        source_long_run_average=rk_weather.Era5Source.LONG_RUN_AVERAGE_DNI,
-        real_long_run_average=global_solar_atlas_dni_path,
-        real_lra_scaling=1000 / 24,  # cast to hourly average kWh
-        nodata_fallback="source",
-    )
+    if _validation:
+        # when doing the valitadion, the dni atlas was not finally processed,
+        # so it was replaced with 1. As only the plant and not the weather simulation
+        # was validated, this does not have an impact, as the same weather input
+        # was used
+        wf.placements["LRA_factor_direct_normal_irradiance"] = 1
+    else:
+        wf.adjust_variable_to_long_run_average(
+            variable='direct_normal_irradiance',
+            source_long_run_average=rk_weather.Era5Source.LONG_RUN_AVERAGE_DNI,
+            real_long_run_average=global_solar_atlas_dni_path,
+            real_lra_scaling=1000 / 24,  # cast to hourly average kWh
+            nodata_fallback="source",
+        )
+    
 
     # manipulationof input values for variation calculation
     wf._applyVariation() #only for developers, can be ignored otherwise
