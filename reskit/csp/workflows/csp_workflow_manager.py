@@ -1582,8 +1582,10 @@ class PTRWorkflowManager(SolarWorkflowManager):
         # max thermal input the power plant is capable of
         if onlynightuse:
             operationalhours_per_day = np.einsum('ij,jk', aggregate_by_day, (self.sim_data['solar_zenith_degree']>90))
+            operationalhours_per_day = np.maximum(operationalhours_per_day, 3) #for placements in the north, there might be days withoutnight. catch that
         else:
             operationalhours_per_day = 24
+        assert (operationalhours_per_day > 0).all()
         power_plant_max_heat_Wh = self.placements['power_plant_capacity_W_el'].values / self.ptr_data['eta_powerplant_1'] * operationalhours_per_day
         
         #calculate stored and directly used heat per day
@@ -1633,7 +1635,8 @@ class PTRWorkflowManager(SolarWorkflowManager):
         # rel load is defined as the ratio of daily output to maximal output.
         # As the Poweplant wont output the total power over the whole day, the formula is corrected by:
         # rel_load* = 0.5 * 0.5 + rel_load
-        rel_load_plant= (Heat_total_per_day_Wh / power_plant_max_heat_Wh)
+        rel_load_plant = (Heat_total_per_day_Wh / power_plant_max_heat_Wh)
+        assert ~np.isnan(rel_load_plant).any()
         
         #Gafurov2015: 
         # rel_efficiency [1] = 54.92 + 112.73 * rel - 104.63 * rel^2 + 37.05 * rel^3
