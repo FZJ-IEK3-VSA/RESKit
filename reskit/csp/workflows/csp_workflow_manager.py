@@ -328,9 +328,11 @@ class PTRWorkflowManager(SolarWorkflowManager):
                 mode='near',
             )
         I_DNI_nom = I_DNI_nom_ERA5 * self.placements['LRA_factor_direct_normal_irradiance'].values
+        I_DNI_nom[np.isnan(I_DNI_nom)] = 830 #default
 
         Q_sf_des = nominal_sf_efficiency * self.placements['aperture_area_m2'].values * I_DNI_nom * (1-nominal_receiver_heat_losses) #W
-        
+        assert ~np.isnan(Q_sf_des).any()
+
         self.placements['capacity_sf_W_th'] = Q_sf_des
         self.placements['I_DNI_nom_W_per_m2'] = I_DNI_nom
     
@@ -1058,8 +1060,8 @@ class PTRWorkflowManager(SolarWorkflowManager):
             self.tes = np.array([5, 6, 9, 12, 15, 18])
         else:
             if onlynightuse:
-                self.sm = np.array([1.5, 2, 2.5, 3, 3.5])
-                self.tes = np.array([9, 12, 15])
+                self.sm = np.array([1, 1.5, 2, 2.5, 3, 3.5])
+                self.tes = np.array([6, 9, 12, 15])
             else: 
                 self.sm = np.array([2.5, 3, 3.5, 4, 4.5])
                 self.tes = np.array([9, 12, 15])
@@ -1075,7 +1077,7 @@ class PTRWorkflowManager(SolarWorkflowManager):
         #loop all sizing combinations
         #dimensions: [time(days), placements, SM, TES]
         if debug_vars:
-            dailyHeatOutput_Wh_4D = np.nan*np.ones(shape=(365, len(self.placements), len(self.sm), len(self.tes))) #TODO: remove
+            dailyHeatOutput_Wh_4D = np.nan*np.ones(shape=(len(np.unique(self.time_index.date)), len(self.placements), len(self.sm), len(self.tes))) #TODO: remove
             TOTEX_EUR_per_a_3D = np.nan*np.ones(shape=(len(self.placements), len(self.sm), len(self.tes))) #TODO: remove
             Power_output_plant_net_Wh_per_a_3D = np.nan*np.ones(shape=(len(self.placements), len(self.sm), len(self.tes))) #TODO: remove
         LCOE_EURct_per_kWh_el_3D = np.nan*np.ones(shape=(len(self.placements), len(self.sm), len(self.tes)))
@@ -1107,7 +1109,7 @@ class PTRWorkflowManager(SolarWorkflowManager):
             
             
             #aggregate to daily
-            aggregate_by_day = np.eye(365).repeat(24, axis=1)
+            aggregate_by_day = np.eye(len(np.unique(self.time_index.date))).repeat(24, axis=1)
             self.aggregate_by_day = aggregate_by_day
             
             #aggregate the stored heat for each day
