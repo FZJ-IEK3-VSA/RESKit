@@ -979,7 +979,7 @@ def pt_PTRWorkflowManager_optplant(pt_PTRWorkflowManager_economics) -> PTRWorkfl
     # wfm.placements['land_area_m2'] = 1E5 / 0.3
     
 
-    # wfm._time_index_ = pd.date_range("2014-12-31 23:30:00", periods=100, freq="H")
+    wfm.time_index = pd.date_range("2015-01-01 00:30:00", periods=8760, freq="H")
     
     
     return wfm

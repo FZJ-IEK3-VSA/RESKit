@@ -1587,7 +1587,10 @@ class PTRWorkflowManager(SolarWorkflowManager):
             operationalhours_per_day = np.maximum(operationalhours_per_day, 3) #for placements in the north, there might be days withoutnight. catch that
         else:
             operationalhours_per_day = 24
-        assert (operationalhours_per_day > 0).all()
+        if isinstance(operationalhours_per_day, int):
+            assert operationalhours_per_day > 0
+        else:
+            assert (operationalhours_per_day > 0).all()
         power_plant_max_heat_Wh = self.placements['power_plant_capacity_W_el'].values / self.ptr_data['eta_powerplant_1'] * operationalhours_per_day
         
         #calculate stored and directly used heat per day
