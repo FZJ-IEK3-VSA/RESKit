@@ -179,6 +179,15 @@ class PTRWorkflowManager(SolarWorkflowManager):
     #     print('__')
     #     return self
 
+    def check_ERA5_input(self):
+        """Check inputs"""
+        assert (self.sim_data["direct_horizontal_irradiance"].mean(axis=0) < 1500).all()
+
+        if (self.sim_data["surface_wind_speed"].mean(axis=0) > 50).any():
+            self.sim_data["surface_wind_speed"][self.sim_data["surface_air_temperature"]>50] = 25
+        if (self.sim_data["surface_air_temperature"].mean(axis=0) > 100).any():
+            self.sim_data["surface_air_temperature"][self.sim_data["surface_air_temperature"]>100] = 25
+
     def direct_normal_irradiance_from_trigonometry(self):
         """
 
@@ -335,6 +344,12 @@ class PTRWorkflowManager(SolarWorkflowManager):
 
         self.placements['capacity_sf_W_th'] = Q_sf_des
         self.placements['I_DNI_nom_W_per_m2'] = I_DNI_nom
+        
+        if len(self.placements) >1:
+            assert ((self.sim_data['HeattoHTF_W'].mean(axis=0) / self.placements.capacity_sf_W_th) <1).all()
+        else:
+            assert (self.sim_data['HeattoHTF_W'].mean(axis=0) / self.placements.capacity_sf_W_th) <1
+
     
     def calculateSolarPosition(self):
         """calculates the solar position in terms of hour angle and declination from time series and location series of the current object
@@ -847,11 +862,10 @@ class PTRWorkflowManager(SolarWorkflowManager):
             self.sim_data['P_heating_W'] = _P_heating
             self.sim_data['HeattoPlant_W'] = _HeattoPlant
 
-        elif calculationmethod == "exact":
-            warn('Wrong calculation for heat losses of heat transfer fluid selected. Losses will be set to zero.')
-            _losses = np.zeros_like(self.sim_data['HeattoHTF_W'], dtype = float)
-            self.sim_data['HeattoPlant_W'] = self.sim_data['HeattoHTF_W'] - _losses
-            self.sim_data['Heat_Losses_W'] = _losses
+            if len(self.placements) > 1:
+                assert ((self.sim_data['HeattoPlant_W'].mean(axis=0) / self.sim_data['HeattoHTF_W'].mean(axis=0)) < 1).all()
+            else:
+                assert (self.sim_data['HeattoPlant_W'].mean(axis=0) / self.sim_data['HeattoHTF_W'].mean(axis=0)) < 1
 
         else:
             warn('Wrong calculation for heat losses of heat transfer fluid selected. Losses will be set to zero.')

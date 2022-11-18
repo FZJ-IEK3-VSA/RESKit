@@ -189,6 +189,8 @@ def CSP_PTR_ERA5_specific_dataset(
         time_index_from = 'direct_horizontal_irradiance',
         verbose=False)
     
+    wf.check_ERA5_input()
+
     if verbose:
         tic_read = time.time()
         print('Data read in within {dt}s.'.format(dt = str(tic_read-tic_start)), flush=True)
