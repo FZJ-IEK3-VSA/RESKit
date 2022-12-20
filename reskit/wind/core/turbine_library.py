@@ -84,14 +84,22 @@ def TurbineLibrary():
         turbineFiles = glob(join(dirname(__file__), "data", "turbines", "*.csv"))
 
         tmp = []
+        already_added_models = []
         for f in turbineFiles:
             try:
-                tmp.append(parse_turbine(f))
+                _parsed = parse_turbine(f)
+                model_id = parse_turbine(f)[1]["Model"]
+                if model_id in already_added_models:
+                    print(model_id, "already in Turbine Library")
+                    continue
+                else:
+                    tmp.append(_parsed)
+                    already_added_models.append(model_id)
             except:
                 print("failed to parse:", f)
 
         _Turbine_Library = pd.DataFrame([i.meta for i in tmp])
-        _Turbine_Library.set_index('Model', inplace=True)
-        _Turbine_Library['PowerCurve'] = [x.profile for x in tmp]
+        _Turbine_Library.set_index("Model", inplace=True)
+        _Turbine_Library["PowerCurve"] = [x.profile for x in tmp]
 
     return _Turbine_Library
