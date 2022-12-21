@@ -20,5 +20,5 @@ from .workflows.workflows import (
     offshore_wind_merra_caglayan2019,
     offshore_wind_era5,
     onshore_wind_era5,
-    wind_2023,
+    wind_era5_2023,
 )

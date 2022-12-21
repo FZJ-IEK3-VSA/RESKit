@@ -278,7 +278,7 @@ def onshore_wind_era5(placements, era5_path, gwa_100m_path, esa_cci_path, output
     return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
 
-def wind_2023(placements, era5_path, gwa_100m_path, esa_cci_path, output_netcdf_path=None, output_variables=None, nodata_fallback = 'nan'):
+def wind_era5_2023(placements, era5_path, gwa_100m_path, esa_cci_path, output_netcdf_path=None, output_variables=None, nodata_fallback = 'nan'):
     """
     Simulates onshore and offshore (200km from shoreline) wind generation using ECMWF's ERA5 database [1]. 
     

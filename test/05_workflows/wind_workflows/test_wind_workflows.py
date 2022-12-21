@@ -2,7 +2,8 @@ from reskit.wind.workflows.workflows import (
     onshore_wind_merra_ryberg2019_europe,
     offshore_wind_merra_caglayan2019,
     offshore_wind_era5,
-    onshore_wind_era5
+    onshore_wind_era5,
+    wind_era5_2023
 )
 from reskit import TEST_DATA
 import pytest
@@ -127,3 +128,31 @@ def test_onshore_wind_era5(pt_wind_placements):
     assert np.isclose(gen.capacity_factor.min(), -0.0005277)
     assert np.isclose(gen.capacity_factor.max(), 1.00026983)
     assert np.isclose(gen.capacity_factor.std(), 0.29887539)
+
+def test_wind_era5_2023(pt_wind_placements):
+    # placements, era5_path, gwa_100m_path, esa_cci_path, output_netcdf_path=None, output_variables=None):
+    gen = wind_era5_2023(
+        placements=pt_wind_placements,
+        era5_path=TEST_DATA['era5-like'],
+        gwa_100m_path=TEST_DATA['gwa100-like.tif'],
+        esa_cci_path=TEST_DATA['ESA_CCI_2018_clip.tif'],
+    )
+
+    assert gen.roughness.shape == (560, )
+    assert np.isclose(gen.roughness.mean(), 0.44921429)
+    assert np.isclose(gen.roughness.min(), 0.03)
+    assert np.isclose(gen.roughness.max(), 1.2)
+    assert np.isclose(gen.roughness.std(), 0.55593945)
+
+    assert gen.elevated_wind_speed.shape == (140, 560)
+
+    assert np.isclose(gen.elevated_wind_speed.mean(), 6.4555713)
+    assert np.isclose(gen.elevated_wind_speed.min(), 1.58508443)
+    assert np.isclose(gen.elevated_wind_speed.max(), 12.37486668)
+    assert np.isclose(gen.elevated_wind_speed.std(), 1.92203484)
+
+    assert gen.capacity_factor.shape == (140, 560)
+    assert np.isclose(gen.capacity_factor.mean(), 0.49122434)
+    assert np.isclose(gen.capacity_factor.min(), -0.00052774)
+    assert np.isclose(gen.capacity_factor.max(), 1.00026983)
+    assert np.isclose(gen.capacity_factor.std(), 0.29246822)
