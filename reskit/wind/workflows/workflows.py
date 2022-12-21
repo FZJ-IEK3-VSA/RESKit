@@ -280,7 +280,7 @@ def onshore_wind_era5(placements, era5_path, gwa_100m_path, esa_cci_path, output
 
 def wind_2023(placements, era5_path, gwa_100m_path, esa_cci_path, output_netcdf_path=None, output_variables=None, nodata_fallback = 'nan'):
     """
-    Simulates onshore wind generation using ECMWF's ERA5 database [1]. 
+    Simulates onshore and offshore (200km from shoreline) wind generation using ECMWF's ERA5 database [1]. 
     
     NOTE: Validation documentation is in progress...
 
@@ -291,7 +291,7 @@ def wind_2023(placements, era5_path, gwa_100m_path, esa_cci_path, output_netcdf_
     era5_path : str
         Path to the ERA5 data.
     gwa_100m_path : str
-        Path to the Global Wind Atlas at 100m [2] rater file.
+        Path to the Global Wind Atlas at 100m [2] raster file.
     esa_cci_path : str
         Path to the ESA CCI raster file [3].
     output_netcdf_path : str, optional
