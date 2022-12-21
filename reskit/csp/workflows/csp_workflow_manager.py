@@ -179,6 +179,15 @@ class PTRWorkflowManager(SolarWorkflowManager):
     #     print('__')
     #     return self
 
+    def check_ERA5_input(self):
+        """Check inputs"""
+        assert (self.sim_data["direct_horizontal_irradiance"].mean(axis=0) < 1500).all()
+
+        if (self.sim_data["surface_wind_speed"].mean(axis=0) > 50).any():
+            self.sim_data["surface_wind_speed"][self.sim_data["surface_air_temperature"]>50] = 25
+        if (self.sim_data["surface_air_temperature"].mean(axis=0) > 100).any():
+            self.sim_data["surface_air_temperature"][self.sim_data["surface_air_temperature"]>100] = 25
+
     def direct_normal_irradiance_from_trigonometry(self):
         """
 
@@ -328,11 +337,19 @@ class PTRWorkflowManager(SolarWorkflowManager):
                 mode='near',
             )
         I_DNI_nom = I_DNI_nom_ERA5 * self.placements['LRA_factor_direct_normal_irradiance'].values
+        I_DNI_nom[np.isnan(I_DNI_nom)] = 830 #default
 
         Q_sf_des = nominal_sf_efficiency * self.placements['aperture_area_m2'].values * I_DNI_nom * (1-nominal_receiver_heat_losses) #W
-        
+        assert ~np.isnan(Q_sf_des).any()
+
         self.placements['capacity_sf_W_th'] = Q_sf_des
         self.placements['I_DNI_nom_W_per_m2'] = I_DNI_nom
+        
+        if len(self.placements) >1:
+            assert ((self.sim_data['HeattoHTF_W'].mean(axis=0) / self.placements.capacity_sf_W_th) <1).all()
+        else:
+            assert (self.sim_data['HeattoHTF_W'].mean(axis=0) / self.placements.capacity_sf_W_th) <1
+
     
     def calculateSolarPosition(self):
         """calculates the solar position in terms of hour angle and declination from time series and location series of the current object
@@ -845,11 +862,10 @@ class PTRWorkflowManager(SolarWorkflowManager):
             self.sim_data['P_heating_W'] = _P_heating
             self.sim_data['HeattoPlant_W'] = _HeattoPlant
 
-        elif calculationmethod == "exact":
-            warn('Wrong calculation for heat losses of heat transfer fluid selected. Losses will be set to zero.')
-            _losses = np.zeros_like(self.sim_data['HeattoHTF_W'], dtype = float)
-            self.sim_data['HeattoPlant_W'] = self.sim_data['HeattoHTF_W'] - _losses
-            self.sim_data['Heat_Losses_W'] = _losses
+            if len(self.placements) > 1:
+                assert ((self.sim_data['HeattoPlant_W'].mean(axis=0) / self.sim_data['HeattoHTF_W'].mean(axis=0)) < 1).all()
+            else:
+                assert (self.sim_data['HeattoPlant_W'].mean(axis=0) / self.sim_data['HeattoHTF_W'].mean(axis=0)) < 1
 
         else:
             warn('Wrong calculation for heat losses of heat transfer fluid selected. Losses will be set to zero.')
@@ -1058,8 +1074,8 @@ class PTRWorkflowManager(SolarWorkflowManager):
             self.tes = np.array([5, 6, 9, 12, 15, 18])
         else:
             if onlynightuse:
-                self.sm = np.array([1.5, 2, 2.5])
-                self.tes = np.array([9, 12, 15])
+                self.sm = np.array([1, 1.5, 2, 2.5, 3, 3.5])
+                self.tes = np.array([6, 9, 12, 15])
             else: 
                 self.sm = np.array([2.5, 3, 3.5, 4, 4.5])
                 self.tes = np.array([9, 12, 15])
@@ -1075,7 +1091,7 @@ class PTRWorkflowManager(SolarWorkflowManager):
         #loop all sizing combinations
         #dimensions: [time(days), placements, SM, TES]
         if debug_vars:
-            dailyHeatOutput_Wh_4D = np.nan*np.ones(shape=(365, len(self.placements), len(self.sm), len(self.tes))) #TODO: remove
+            dailyHeatOutput_Wh_4D = np.nan*np.ones(shape=(len(np.unique(self.time_index.date)), len(self.placements), len(self.sm), len(self.tes))) #TODO: remove
             TOTEX_EUR_per_a_3D = np.nan*np.ones(shape=(len(self.placements), len(self.sm), len(self.tes))) #TODO: remove
             Power_output_plant_net_Wh_per_a_3D = np.nan*np.ones(shape=(len(self.placements), len(self.sm), len(self.tes))) #TODO: remove
         LCOE_EURct_per_kWh_el_3D = np.nan*np.ones(shape=(len(self.placements), len(self.sm), len(self.tes)))
@@ -1107,7 +1123,7 @@ class PTRWorkflowManager(SolarWorkflowManager):
             
             
             #aggregate to daily
-            aggregate_by_day = np.eye(365).repeat(24, axis=1)
+            aggregate_by_day = np.eye(len(np.unique(self.time_index.date))).repeat(24, axis=1)
             self.aggregate_by_day = aggregate_by_day
             
             #aggregate the stored heat for each day
@@ -1190,7 +1206,7 @@ class PTRWorkflowManager(SolarWorkflowManager):
             #with np.seterr(divide='ignore', invalid='ignore') #TODO: zero devision
             LCOE_EUR_per_kWh_el = np.nan_to_num(TOTEX_EUR_per_a.values / Power_output_plant_net_Wh_per_a * 1E5, nan=0) #EUR/Wh --> EURct/kWh
             
-            LCOE_EURct_per_kWh_el_3D[:,i_sm, i_tes] = LCOE_EUR_per_kWh_el #TODO: remove this, only dbg
+            LCOE_EURct_per_kWh_el_3D[:,i_sm, i_tes] = LCOE_EUR_per_kWh_el #thats the output of the loop
             
         #check if all is written
         assert not np.isnan(LCOE_EURct_per_kWh_el_3D).any()
@@ -1582,8 +1598,13 @@ class PTRWorkflowManager(SolarWorkflowManager):
         # max thermal input the power plant is capable of
         if onlynightuse:
             operationalhours_per_day = np.einsum('ij,jk', aggregate_by_day, (self.sim_data['solar_zenith_degree']>90))
+            operationalhours_per_day = np.maximum(operationalhours_per_day, 3) #for placements in the north, there might be days withoutnight. catch that
         else:
             operationalhours_per_day = 24
+        if isinstance(operationalhours_per_day, int):
+            assert operationalhours_per_day > 0
+        else:
+            assert (operationalhours_per_day > 0).all()
         power_plant_max_heat_Wh = self.placements['power_plant_capacity_W_el'].values / self.ptr_data['eta_powerplant_1'] * operationalhours_per_day
         
         #calculate stored and directly used heat per day
@@ -1633,7 +1654,8 @@ class PTRWorkflowManager(SolarWorkflowManager):
         # rel load is defined as the ratio of daily output to maximal output.
         # As the Poweplant wont output the total power over the whole day, the formula is corrected by:
         # rel_load* = 0.5 * 0.5 + rel_load
-        rel_load_plant= (Heat_total_per_day_Wh / power_plant_max_heat_Wh)
+        rel_load_plant = (Heat_total_per_day_Wh / power_plant_max_heat_Wh)
+        assert ~np.isnan(rel_load_plant).any()
         
         #Gafurov2015: 
         # rel_efficiency [1] = 54.92 + 112.73 * rel - 104.63 * rel^2 + 37.05 * rel^3
