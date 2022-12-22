@@ -6,7 +6,10 @@ from ... import weather as rk_weather
 import numpy as np
 import pandas as pd
 import pvlib
-from numba import jit
+try:
+    from numba import jit
+except error as e:
+    print("Could not load numba!")
 import time
 import geokit as gk
 from typing import Union
