@@ -8,7 +8,7 @@ import pandas as pd
 import pvlib
 try:
     from numba import jit
-except error as e:
+except Exception as e:
     print("Could not load numba!")
 import time
 import geokit as gk
