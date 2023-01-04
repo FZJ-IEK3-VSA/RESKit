@@ -9,7 +9,7 @@ import pvlib
 try:
     from numba import jit
 except Exception as e:
-    print("Could not load numba!")
+    print("FYI: Reskit loaded without numba.")
 import time
 import geokit as gk
 from typing import Union
