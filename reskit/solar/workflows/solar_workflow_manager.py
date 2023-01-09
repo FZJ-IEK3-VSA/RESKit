@@ -591,7 +591,7 @@ class SolarWorkflowManager(WorkflowManager):
         assert "tilt" in self.placements.columns
         assert "azimuth" in self.placements.columns
 
-        self.register_workflow_parameter("tracking_mode", "fixed")
+        self.register_workflow_parameter("tracking_mode", "single_axis")
         self.register_workflow_parameter("tracking_max_angle", max_angle)
         self.register_workflow_parameter("tracking_backtrack", backtrack)
         self.register_workflow_parameter("tracking_gcr", gcr)
