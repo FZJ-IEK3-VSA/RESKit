@@ -35,7 +35,7 @@ def openfield_pv_merra_ryberg2019(placements, merra_path, global_solar_atlas_ghi
 
     tracking: str
                 Option 1 is 'fixed' meaning that the module does not have any tracking capabilities.
-                Option 2 is 'single-axis' meaning that the module has single-axis tracking capabilities.
+                Option 2 is 'single_axis' meaning that the module has single_axis tracking capabilities.
 
 
     inverter: str
@@ -59,6 +59,8 @@ def openfield_pv_merra_ryberg2019(placements, merra_path, global_solar_atlas_ghi
 
     wf = SolarWorkflowManager(placements)
     wf.configure_cec_module(module)
+    # ensure the tracking parameter is correct
+    assert tracking in ['fixed', 'single_axis'], f"tracking must be either 'fixed' or 'single_axis'"
 
     if not "tilt" in wf.placements.columns:
         wf.estimate_tilt_from_latitude(convention="Ryberg2020")
@@ -147,7 +149,7 @@ def openfield_pv_era5(placements, era5_path, global_solar_atlas_ghi_path, global
                 Determines wether your PV system is fixed or not.
                 Default is fixed.
                 Option 1 is 'fixed' meaning that the module does not have any tracking capabilities.
-                Option 2 is 'single-axis' meaning that the module has single-axis tracking capabilities.
+                Option 2 is 'single_axis' meaning that the module has single_axis tracking capabilities.
 
     inverter: str
                 Determines wether you want to model your PV system with an inverter or not.
@@ -183,6 +185,8 @@ def openfield_pv_era5(placements, era5_path, global_solar_atlas_ghi_path, global
     assert wf.placements["lon"].between(-180, 180, inclusive=True).any()
     # limit the input placements latitude to range of -90...90
     assert wf.placements["lat"].between(-90, 90, inclusive=True).any()
+    # ensure the tracking parameter is correct
+    assert tracking in ['fixed', 'single_axis'], f"tracking must be either 'fixed' or 'single_axis'"
 
     if not "tilt" in wf.placements.columns:
         wf.estimate_tilt_from_latitude(convention="Ryberg2020")
@@ -295,7 +299,7 @@ def openfield_pv_sarah_unvalidated(placements, sarah_path, era5_path, module="WI
                 Determines wether your PV system is fixed or not.
                 Default is fixed.
                 Option 1 is 'fixed' meaning that the module does not have any tracking capabilities.
-                Option 2 is 'single-axis' meaning that the module has single-axis tracking capabilities.
+                Option 2 is 'single_axis' meaning that the module has single_axis tracking capabilities.
 
     inverter: str
                 Determines wether you want to model your PV system with an inverter or not.
@@ -318,6 +322,8 @@ def openfield_pv_sarah_unvalidated(placements, sarah_path, era5_path, module="WI
 
     wf = SolarWorkflowManager(placements)
     wf.configure_cec_module(module)
+    # ensure the tracking parameter is correct
+    assert tracking in ['fixed', 'single_axis'], f"tracking must be either 'fixed' or 'single_axis'"
 
     if not "tilt" in wf.placements.columns:
         wf.estimate_tilt_from_latitude(convention="Ryberg2020")
