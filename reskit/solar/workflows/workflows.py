@@ -110,7 +110,8 @@ def openfield_pv_merra_ryberg2019(placements, merra_path, global_solar_atlas_ghi
     if inverter is not None:
         wf.apply_inverter_losses(inverter=inverter, **inverter_kwargs)
 
-    wf.apply_loss_factor(0.20, variables=['capacity_factor', 'total_system_generation'])
+    variables=[_var for _var in ['capacity_factor', 'total_system_generation'] if _var in wf.sim_data.keys()]
+    wf.apply_loss_factor(0.20, variables=variables)
 
     return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
@@ -376,6 +377,7 @@ def openfield_pv_sarah_unvalidated(placements, sarah_path, era5_path, module="WI
     if inverter is not None:
         wf.apply_inverter_losses(inverter=inverter, **inverter_kwargs)
 
-    wf.apply_loss_factor(0.20, variables=['capacity_factor', 'total_system_generation'])
+    variables=[_var for _var in ['capacity_factor', 'total_system_generation'] if _var in wf.sim_data.keys()]
+    wf.apply_loss_factor(0.20, variables=variables)
 
     return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
