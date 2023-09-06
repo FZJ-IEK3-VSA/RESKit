@@ -182,9 +182,9 @@ def openfield_pv_era5(placements, era5_path, global_solar_atlas_ghi_path, global
     wf.configure_cec_module(module)
     
     # limit the input placements longitude to range of -180...180
-    assert wf.placements["lon"].between(-180, 180, inclusive=True).any()
+    assert wf.placements["lon"].between(-180, 180, inclusive='both').any()
     # limit the input placements latitude to range of -90...90
-    assert wf.placements["lat"].between(-90, 90, inclusive=True).any()
+    assert wf.placements["lat"].between(-90, 90, inclusive='both').any()
     # ensure the tracking parameter is correct
     assert tracking in ['fixed', 'single_axis'], f"tracking must be either 'fixed' or 'single_axis'"
 
