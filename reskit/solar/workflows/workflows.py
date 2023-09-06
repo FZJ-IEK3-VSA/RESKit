@@ -259,7 +259,8 @@ def openfield_pv_era5(placements, era5_path, global_solar_atlas_ghi_path, global
         wf.apply_inverter_losses(inverter=inverter, **inverter_kwargs)
 
     loss_factor = 0.115 #validation by d.franzmann, 2022/01/13
-    wf.apply_loss_factor(loss_factor, variables=['capacity_factor', 'total_system_generation'])
+    variables=[_var for _var in ['capacity_factor', 'total_system_generation'] if _var in wf.sim_data.keys()]
+    wf.apply_loss_factor(loss_factor, variables=variables)
 
     return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
