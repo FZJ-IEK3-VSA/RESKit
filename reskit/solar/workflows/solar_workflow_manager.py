@@ -1210,7 +1210,7 @@ class SolarWorkflowManager(WorkflowManager):
 
         return self
 
-    def generate_missing_params(self,**workflow_args):
+    def generate_missing_params(self,elev):
         
         if not "tilt" in self.placements.columns:
             self.estimate_tilt_from_latitude(convention="Ryberg2020")
@@ -1235,7 +1235,6 @@ class SolarWorkflowManager(WorkflowManager):
                 self.placements.loc[_wf.placements.azimuth.values.index,"azimuth"] == _wf.placements.azimuth.values
                 
         if not "elev" in self.placements.columns:
-            elev = workflow_args["elev"]
             self.apply_elevation(elev)
         else:
             # make sure all placements have not Nan values
@@ -1243,7 +1242,6 @@ class SolarWorkflowManager(WorkflowManager):
             print(f"Not all placements have elev values. Estimating")
             if not placements_without_param.empty:
                 _wf = SolarWorkflowManager(placements_without_param)
-                elev = workflow_args["elev"]
                 _wf.apply_elevation(elev)
                 self.placements.loc[_wf.placements.elev.values.index,"elev"] == _wf.placements.elev.values  
         
