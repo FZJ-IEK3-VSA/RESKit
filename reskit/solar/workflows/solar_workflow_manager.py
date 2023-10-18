@@ -1210,5 +1210,45 @@ class SolarWorkflowManager(WorkflowManager):
 
         return self
 
+    def generate_missing_params(self,**workflow_args):
+        
+        if not "tilt" in self.placements.columns:
+            self.estimate_tilt_from_latitude(convention="Ryberg2020")
+        else:
+            # make sure all placements have not Nan values
+            placements_without_param = self.placements[self.placements.tilt.isna()]
+            if not placements_without_param.empty:
+                print(f"Not all placements have tilt values. Estimating")
+                _wf = SolarWorkflowManager(placements_without_param)
+                _wf.estimate_tilt_from_latitude(convention="Ryberg2020")
+                self.placements.loc[_wf.placements.tilt.values.index,"tilt"] == _wf.placements.tilt.values
+            
+        if not "azimuth" in self.placements.columns:
+            self.estimate_azimuth_from_latitude()
+        else:
+            # make sure all placements have not Nan values
+            placements_without_param = self.placements[self.placements.azimuth.isna()]
+            if not placements_without_param.empty:
+                print(f"Not all placements have azimuth values. Estimating")
+                _wf = SolarWorkflowManager(placements_without_param)
+                _wf.estimate_azimuth_from_latitude
+                self.placements.loc[_wf.placements.azimuth.values.index,"azimuth"] == _wf.placements.azimuth.values
+                
+        if not "elev" in self.placements.columns:
+            elev = workflow_args["elev"]
+            self.apply_elevation(elev)
+        else:
+            # make sure all placements have not Nan values
+            placements_without_param = self.placements[self.placements.elev.isna()]
+            print(f"Not all placements have elev values. Estimating")
+            if not placements_without_param.empty:
+                _wf = SolarWorkflowManager(placements_without_param)
+                elev = workflow_args["elev"]
+                _wf.apply_elevation(elev)
+                self.placements.loc[_wf.placements.elev.values.index,"elev"] == _wf.placements.elev.values  
+        
+        return self
+        
+
     # def to_xarray(self, output_netcdf_path=None):
     #     xds = super().to_xarray(_intermediate_dict=True)

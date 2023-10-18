@@ -62,12 +62,8 @@ def openfield_pv_merra_ryberg2019(placements, merra_path, global_solar_atlas_ghi
     # ensure the tracking parameter is correct
     assert tracking in ['fixed', 'single_axis'], f"tracking must be either 'fixed' or 'single_axis'"
 
-    if not "tilt" in wf.placements.columns:
-        wf.estimate_tilt_from_latitude(convention="Ryberg2020")
-    if not "azimuth" in wf.placements.columns:
-        wf.estimate_azimuth_from_latitude()
-    if not "elev" in wf.placements.columns:
-        wf.apply_elevation(elev)
+    # estimates tilt, azimuth and elev
+    wf.generate_missing_params(elev)
 
     wf.read(
         variables=['surface_wind_speed',
@@ -188,12 +184,8 @@ def openfield_pv_era5(placements, era5_path, global_solar_atlas_ghi_path, global
     # ensure the tracking parameter is correct
     assert tracking in ['fixed', 'single_axis'], f"tracking must be either 'fixed' or 'single_axis'"
 
-    if not "tilt" in wf.placements.columns:
-        wf.estimate_tilt_from_latitude(convention="Ryberg2020")
-    if not "azimuth" in wf.placements.columns:
-        wf.estimate_azimuth_from_latitude()
-    if not "elev" in wf.placements.columns:
-        wf.apply_elevation(elev)
+    # estimates tilt, azimuth and elev
+    wf.generate_missing_params(elev)
 
     wf.read(
         variables=["global_horizontal_irradiance",
