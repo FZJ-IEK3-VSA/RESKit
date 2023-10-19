@@ -37,4 +37,5 @@ def test_levelized_cost_of_electricity_simplified():
         discount_rate=0.08
     )
 
-    assert np.isclose(lcoe, [0.05436811, 0.06200661, 0.07037258, 0.07957515]).all()
+    assert np.isclose(lcoe, [0.05436811, 0.06200661,
+                      0.07037258, 0.07957515]).all()

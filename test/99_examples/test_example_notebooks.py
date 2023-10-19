@@ -12,4 +12,5 @@ notebooks = glob(path.join(TEST_DIR, "..", "..", "..", "examples", "*.ipynb"))
 
 for notebook in notebooks:
     notebook_name = path.splitext(path.basename(notebook))[0]
-    globals()["test_" + notebook_name] = lambda: execute_notebook(notebook, notebook_name + ".ipynb")
+    globals()["test_" + notebook_name] = lambda: execute_notebook(notebook,
+                                                                  notebook_name + ".ipynb")

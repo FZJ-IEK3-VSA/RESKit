@@ -74,6 +74,7 @@ def test_offshore_wind_merra_caglayan2019(pt_wind_placements):
     assert np.isclose(gen.capacity_factor.max(), 0.97282235)
     assert np.isclose(gen.capacity_factor.std(), 0.29062806)
 
+
 def test_offshore_wind_era5(pt_wind_placements):
     # placements, era5_path, output_netcdf_path=None, output_variables=None):
     gen = offshore_wind_era5(
@@ -128,6 +129,7 @@ def test_onshore_wind_era5(pt_wind_placements):
     assert np.isclose(gen.capacity_factor.min(), -0.0005277)
     assert np.isclose(gen.capacity_factor.max(), 1.00026983)
     assert np.isclose(gen.capacity_factor.std(), 0.29887539)
+
 
 def test_wind_era5_2023(pt_wind_placements):
     # placements, era5_path, gwa_100m_path, esa_cci_path, output_netcdf_path=None, output_variables=None):

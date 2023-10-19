@@ -20,11 +20,13 @@ def pt_BoundedEra5Source():
 
 
 def test_Era5Source___init__():
-    raw = nc.Dataset(join(TEST_DATA['era5-like'], "surface_pressure.nc"), mode="r")
+    raw = nc.Dataset(
+        join(TEST_DATA['era5-like'], "surface_pressure.nc"), mode="r")
     rawLats = raw["latitude"][::-1]
     rawLons = raw["longitude"][:]
     rawTimes = pd.DatetimeIndex(
-        nc.num2date(raw["time"][:], raw["time"].units, only_use_cftime_datetimes=False, only_use_python_datetimes=True)
+        nc.num2date(raw["time"][:], raw["time"].units,
+                    only_use_cftime_datetimes=False, only_use_python_datetimes=True)
     ) - pd.Timedelta(minutes=30)
 
     # Unbounded source
@@ -36,9 +38,11 @@ def test_Era5Source___init__():
     assert (ms.time_index == rawTimes).all()
 
     # Initialize a Era5Source with Aachen boundaries
-    aachenExt = gk.Extent.fromVector(gk._test_data_['aachenShapefile.shp']).pad(0.5).fit(0.01)
+    aachenExt = gk.Extent.fromVector(
+        gk._test_data_['aachenShapefile.shp']).pad(0.5).fit(0.01)
 
-    ms = Era5Source(TEST_DATA['era5-like'], bounds=aachenExt, index_pad=1, verbose=False)
+    ms = Era5Source(TEST_DATA['era5-like'],
+                    bounds=aachenExt, index_pad=1, verbose=False)
 
     # ensure lats, lons and times are okay
     assert np.isclose(ms.lats[0], 49.5)
@@ -63,7 +67,8 @@ def test_Era5Source_loc_to_index(pt_Era5Source, pt_BoundedEra5Source):
     assert idx[0].xi == 4
     assert idx[1].xi == 6
 
-    idx = pt_Era5Source.loc_to_index([(6.03, 50.81), (6.44, 50.47), ], as_int=False)
+    idx = pt_Era5Source.loc_to_index(
+        [(6.03, 50.81), (6.44, 50.47), ], as_int=False)
     assert np.isclose(idx[0].yi, 7.240000000000009)
     assert np.isclose(idx[1].yi, 5.8799999999999955)
     assert np.isclose(idx[0].xi, 4.120000000000001)
@@ -79,7 +84,8 @@ def test_Era5Source_loc_to_index(pt_Era5Source, pt_BoundedEra5Source):
     assert idx[0].xi == 2
     assert idx[1].xi == 4
 
-    idx = pt_BoundedEra5Source.loc_to_index([(6.03, 50.81), (6.44, 50.47), ], as_int=False)
+    idx = pt_BoundedEra5Source.loc_to_index(
+        [(6.03, 50.81), (6.44, 50.47), ], as_int=False)
     assert np.isclose(idx[0].yi, 3.240000000000009)
     assert np.isclose(idx[1].yi, 1.8799999999999955)
     assert np.isclose(idx[0].xi, 2.120000000000001)
