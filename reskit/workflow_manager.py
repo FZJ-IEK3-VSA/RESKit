@@ -226,7 +226,7 @@ class WorkflowManager:
 
         return self
 
-    # Stage 3: Weather data adjusting & other intermediate steps
+        # Stage 3: Weather data adjusting & other intermediate steps
     def adjust_variable_to_long_run_average(
         self,
         variable: str,
@@ -234,7 +234,7 @@ class WorkflowManager:
         real_long_run_average: Union[str, float, np.ndarray],
         real_lra_scaling: float = 1,
         spatial_interpolation: str = "linear-spline",
-        nodata_fallback: str= 'nan',
+        nodata_fallback: str = 'nan',
     ):
         """Adjusts the average mean of the specified variable to a known long-run-average
 
@@ -272,59 +272,89 @@ class WorkflowManager:
             - Options are: "near", "linear-spline", "cubic-spline", "average"
             - By default "linear-spline"
             - See for more info: geokit.raster.interpolateValues
-        
-        nodata_fallback: str, optional
-            When real_long_run_average has no data, it can be decided between fallbackoptions:
-            -'source': use source data
-            - 'nan': return np.nan for missing values
+
+        nodata_fallback: float, str, callable, optional
+            When real_long_run_average has no data, one can decide between different fallback options, by default np.nan:
+            - np.nan or None : return np.nan for missing values in real_long_run_average
+            - float : Apply this float value as a scaling factor for all no-data locations only: source_long_run_average * nodata_fallback. 
+              NOTE: A value of 1.0 will return the source lra value in case of missing real lra values.
+            - str : Will be interpreted as a filepath to a raster with alternative absolute real_long_run_average values
+            - callable : any callable method taking the arguments (all iterables): 'locs' and 'source_long_run_average_value' 
+              (the locations as gk.geom.point objects and original value from source data). The output values will be considered as 
+              the new real_long_run_average for missing locations only. 
+            NOTE: np.nan will also be returned in case that the nodata fallback does not yield values either.
         Returns
         -------
         WorkflowManager
             Returns the invoking WorkflowManager (for chaining)
         """
+        if not (nodata_fallback is None or callable(nodata_fallback) or isinstance(nodata_fallback, (float, int, str))):
+            raise TypeError(
+                f"'nodata_fallback' must be a float or a Callable.")
+
+        def _get_lra_values_from_raster(fp):
+            assert isfile(
+                fp), f"File '{fp}' in adjust_variable_to_long_run_average() does not exist."
+            _lra = gk.raster.interpolateValues(
+                fp, self.locs, mode=spatial_interpolation
+            )
+            # if getting values fails, it could be because of interpolation method.
+            # these values will be replaced with the nearest interpolation method
+            if np.isnan(_lra).any():
+                _lra_near = gk.raster.interpolateValues(
+                    fp, self.locs, mode='near'
+                )
+                _lra[np.isnan(_lra)] = _lra_near[np.isnan(_lra)]
+            return _lra
 
         if isinstance(real_long_run_average, str):
-            real_lra = gk.raster.interpolateValues(
-                real_long_run_average, self.locs, mode=spatial_interpolation
-            )
-            #if getting values fails, it could be because of interpolation method.
-            # thise values will be replaced with the nearest interpolation method
-            if np.isnan(real_lra).any():
-                real_lra_near = gk.raster.interpolateValues(
-                real_long_run_average, self.locs, mode='near'
-                )
-                real_lra[np.isnan(real_lra)] = real_lra_near[np.isnan(real_lra)]
-
-            #assert not np.isnan(real_lra).any() and (real_lra > 0).all()
+            # assume a raster path
+            real_lra = _get_lra_values_from_raster(fp=real_long_run_average)
         else:
             real_lra = real_long_run_average
 
         if isinstance(source_long_run_average, str):
-            source_lra = gk.raster.interpolateValues(
-                source_long_run_average, self.locs, mode=spatial_interpolation
-            )
-            #if getting values fails, it could be because of interpolation method.
-            # thise values will be replaced with the nearest interpolation method
-            if np.isnan(source_lra).any():
-                source_lra_nearest = gk.raster.interpolateValues(
-                source_long_run_average, self.locs, mode='near'
-                )
-                source_lra[np.isnan(source_lra)] = source_lra_nearest[np.isnan(source_lra)]
-            #assert not np.isnan(source_lra).any() and (source_lra > 0).all()
+            # assue raster fp
+            source_lra = _get_lra_values_from_raster(
+                fp=source_long_run_average)
         else:
             source_lra = source_long_run_average
 
-        #calulate scaling factor:
+        # replace missing values with no-data fallback if needed
+        if isinstance(nodata_fallback, str) and nodata_fallback.lower() == 'source':
+            warnings.warn(
+                "'source' value for 'nodata_fallback' is deprecated and will be removed soon. Use 1.0 instead.", DeprecationWarning)
+            nodata_fallback = 1.0
+        if isinstance(nodata_fallback, str) and nodata_fallback.lower() == 'nan':
+            warnings.warn(
+                "'nan' value for 'nodata_fallback' is deprecated and will be removed soon. Use np.nan instead.", DeprecationWarning)
+            nodata_fallback = np.nan
+        if any(np.isnan(real_lra)):
+            if nodata_fallback is None or (not isinstance(nodata_fallback, str) and np.isnan(nodata_fallback)):
+                pass
+            elif isinstance(nodata_fallback, (int, float)):
+                # apply factor to source_lra to scale missing values
+                real_lra[np.isnan(real_lra)] = nodata_fallback * \
+                    source_lra[np.isnan(real_lra)]
+            elif callable(nodata_fallback):
+                # apply function to calculate missing values
+                real_lra[np.isnan(real_lra)] = nodata_fallback(
+                    locs=self.locs, source_long_run_average_value=source_lra)[np.isnan(real_lra)]
+            elif isinstance(nodata_fallback, str):
+                # assume this is yet another raster path as fallback and extract missing values
+                fallback_lra = _get_lra_values_from_raster(fp=nodata_fallback)
+                real_lra[np.isnan(real_lra)] = fallback_lra[np.isnan(real_lra)]
+
+        # calulate scaling factor:
         # nan result will stay nan results, as these placements cannot be calculated any more
         factors = real_lra * real_lra_scaling / source_lra
+        if any(np.isnan(real_lra)):
+            warnings.warn(
+                f"NaN values remaining in real lra after application of nodata_fallback.")
 
-        #write info with missing values to sim_data:
+        # write info with missing values to sim_data:
         self.placements[f'missing_values_{os.path.basename(real_long_run_average)}'] = \
             np.isnan(factors)
-
-
-        if nodata_fallback.lower() == 'source':
-            factors[np.isnan(factors)] = 1
 
         self.sim_data[variable] = factors * self.sim_data[variable]
         self.placements[f'LRA_factor_{variable}'] = factors
