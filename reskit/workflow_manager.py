@@ -12,6 +12,7 @@ from typing import Union, List, OrderedDict
 from . import weather as rk_weather
 from glob import glob
 from osgeo import ogr
+import warnings
 
 # from . import weather as rk_weather
 
@@ -410,8 +411,14 @@ class WorkflowManager:
         WorkflowManager
             Returns the invoking WorkflowManager (for chaining)
         """
+        # filter only existing variables
+        _variables = [
+            _var for _var in variables if _var in self.sim_data.keys()]
+        if len(_variables) < len(variables):
+            warnings.warn(
+                f"Loss factor could not be applied to the following requested variables because variables are not in sim_data: {', '.join(sorted(set(variables)-set(_variables)))}")
 
-        for var in variables:
+        for var in _variables:
             if isinstance(loss, FunctionType):
                 self.sim_data[var] *= 1 - loss(self.sim_data[var])
             else:
