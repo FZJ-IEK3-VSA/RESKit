@@ -8,7 +8,7 @@ from ...util import ResError
 def location_to_tilt(locs, convention="Ryberg2020", **kwargs):
     """
     def location_to_tilt(locs, convention="Ryberg2020", **kwargs)
-    
+
     Simple system tilt estimator based off latitude and longitude coordinates
 
 
@@ -25,7 +25,7 @@ def location_to_tilt(locs, convention="Ryberg2020", **kwargs):
                      - Can use the variable 'latitude'
                      - Ex. "latitude*0.76"
                      * A path to a raster file
-                     
+
     kwargs: Optional keyword arguments to use in geokit.raster.interpolateValues(...).
             Only applies when `convention` is a path to a raster file
 
@@ -49,7 +49,8 @@ def location_to_tilt(locs, convention="Ryberg2020", **kwargs):
     locs = gk.LocationSet(locs)
 
     if convention == 'Ryberg2020':
-        tilt = 42.327719357601396 * np.arctan(1.5 * np.radians(np.abs(locs.lats)))
+        tilt = 42.327719357601396 * \
+            np.arctan(1.5 * np.radians(np.abs(locs.lats)))
 
     elif isfile(convention):
         tilt = gk.raster.interpolateValues(convention, locs, **kwargs)

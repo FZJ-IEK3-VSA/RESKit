@@ -59,12 +59,18 @@ def onshore_turbine_capex(capacity, hub_height, rotor_diam, base_capex=None, bas
     [4] Ryberg, D. S., Caglayan, D. G., Schmitt, S., Linßen, J., Stolten, D., & Robinius, M. (2019). The future of European onshore wind energy potential: Detailed distribution and simulation of advanced turbine designs. Energy. https://doi.org/10.1016/j.energy.2019.06.052
     """
     # retrieve default values if base values are not given explicitly
-    if base_capex is None: base_capex=OnshoreParameters.base_capex
-    if base_capacity is None: base_capacity=OnshoreParameters.base_capacity
-    if base_hub_height is None: base_hub_height=OnshoreParameters.base_hub_height
-    if base_rotor_diam is None: base_rotor_diam=OnshoreParameters.base_rotor_diam
-    if tcc_share is None: tcc_share=OnshoreParameters.tcc_share
-    if bos_share is None: bos_share=OnshoreParameters.bos_share
+    if base_capex is None:
+        base_capex = OnshoreParameters.base_capex
+    if base_capacity is None:
+        base_capacity = OnshoreParameters.base_capacity
+    if base_hub_height is None:
+        base_hub_height = OnshoreParameters.base_hub_height
+    if base_rotor_diam is None:
+        base_rotor_diam = OnshoreParameters.base_rotor_diam
+    if tcc_share is None:
+        tcc_share = OnshoreParameters.tcc_share
+    if bos_share is None:
+        bos_share = OnshoreParameters.bos_share
 
     # PREPROCESS INPUTS
     rd = np.array(rotor_diam)
@@ -75,10 +81,12 @@ def onshore_turbine_capex(capacity, hub_height, rotor_diam, base_capex=None, bas
     # COMPUTE COSTS
     # normalizations chosen to make the default turbine (4200-cap, 120-hub, 136-rot) match both a total
     # cost of 1100 EUR/kW as well as matching the percentages given in [3]
-    tcc_scaling = base_capex * tcc_share / onshore_tcc(cp=base_capacity, hh=base_hub_height, rd=base_rotor_diam)
+    tcc_scaling = base_capex * tcc_share / \
+        onshore_tcc(cp=base_capacity, hh=base_hub_height, rd=base_rotor_diam)
     tcc = onshore_tcc(cp=cp, hh=hh, rd=rd) * tcc_scaling
 
-    bos_scaling = base_capex * bos_share / onshore_bos(cp=base_capacity, hh=base_hub_height, rd=base_rotor_diam)
+    bos_scaling = base_capex * bos_share / \
+        onshore_bos(cp=base_capacity, hh=base_hub_height, rd=base_rotor_diam)
     bos = onshore_bos(cp=cp, hh=hh, rd=rd) * bos_scaling
 
     # print(tcc_scaling, bos_scaling)
@@ -120,16 +128,20 @@ def onshore_tcc(cp, hh, rd, gdp_escalator=None, blade_material_escalator=None, b
 
     """
     # retrieve default values if base values are not given explicitly
-    if gdp_escalator is None: gdp_escalator=OnshoreParameters.gdp_escalator
-    if blade_material_escalator is None: blade_material_escalator=OnshoreParameters.blade_material_escalator
-    if blades is None: blades=OnshoreParameters.blades
+    if gdp_escalator is None:
+        gdp_escalator = OnshoreParameters.gdp_escalator
+    if blade_material_escalator is None:
+        blade_material_escalator = OnshoreParameters.blade_material_escalator
+    if blades is None:
+        blades = OnshoreParameters.blades
 
     rr = rd / 2
     sa = np.pi * rr * rr
 
     # Blade Cost
     singleBladeMass = 0.4948 * np.power(rr, 2.53)
-    singleBladeCost = ((0.4019 * np.power(rr, 3) - 21051) * blade_material_escalator + 2.7445 * np.power(rr, 2.5025) * gdp_escalator) * (1 - 0.28)
+    singleBladeCost = ((0.4019 * np.power(rr, 3) - 21051) * blade_material_escalator +
+                       2.7445 * np.power(rr, 2.5025) * gdp_escalator) * (1 - 0.28)
 
     # Hub
     hubMass = 0.945 * singleBladeMass + 5680.3
@@ -256,7 +268,8 @@ def onshore_bos(cp, hh, rd):
     assemblyAndInstallationCost = 1.965 * np.power((hh * rd), 1.1736)
 
     # Electrical Interface and connections
-    electricalInterfaceAndConnectionFactor = (3.49E-6 * np.power(cp, 2)) - (0.0221 * cp) + 109.7
+    electricalInterfaceAndConnectionFactor = (
+        3.49E-6 * np.power(cp, 2)) - (0.0221 * cp) + 109.7
     electricalInterfaceAndConnectionCost = electricalInterfaceAndConnectionFactor * cp
 
     # Engineering and permit factor

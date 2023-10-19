@@ -22,7 +22,8 @@ def rotate_from_lat_lon(lons, lats, lon_south_pole=18, lat_south_pole=-39.25):
     lons = np.radians(lons)
     lats = np.radians(lats)
 
-    theta = np.radians(90 + lat_south_pole)  # south pole is at 18 deg longitude
+    # south pole is at 18 deg longitude
+    theta = np.radians(90 + lat_south_pole)
     phi = np.radians(lon_south_pole)  # south pole is at -39.25 deg latitude
 
     x = np.cos(lons) * np.cos(lats)
@@ -63,7 +64,8 @@ def rotate_to_lat_lon(rlons, rlats, lon_south_pole=18, lat_south_pole=-39.25):
     rlons = np.radians(rlons)
     rlats = np.radians(rlats)
 
-    theta = -np.radians(90 + lat_south_pole)  # south pole is at 18 deg longitude
+    # south pole is at 18 deg longitude
+    theta = -np.radians(90 + lat_south_pole)
     phi = -np.radians(lon_south_pole)  # south pole is at -39.25 deg latitude
 
     x = np.cos(rlons) * np.cos(rlats)

@@ -44,7 +44,7 @@ def pt_WorkflowManager_initialized() -> WorkflowManager:
 def test_WorkflowManager_set_time_index(pt_WorkflowManager_initialized: WorkflowManager) -> WorkflowManager:
     man = pt_WorkflowManager_initialized
     man.set_time_index(pd.date_range("2020-01-01 00:00:00",
- "2020-02-01 00:00:00", freq="h"))
+                       "2020-02-01 00:00:00", freq="h"))
     assert man.time_index[10] == pd.Timestamp('2020-01-01 10:00:00')
     assert man._time_sel_ is None
     assert man._sim_shape_ == (len(man.time_index), 5)

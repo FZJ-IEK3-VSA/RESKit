@@ -32,7 +32,8 @@ def remove_leap_day(timeseries):
             else:
                 return timeseries[~sel, :]
         else:
-            raise ResError('Cannot handle array shape ' + str(timeseries.shape))
+            raise ResError('Cannot handle array shape ' +
+                           str(timeseries.shape))
 
     elif isinstance(timeseries, pd.Series) or isinstance(timeseries, pd.DataFrame):
         times = timeseries.index

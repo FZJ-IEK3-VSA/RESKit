@@ -12,9 +12,10 @@ def load_dataset(datasetname: str = 'Initial'):
     Returns:
         [pd.Series]: [description]
     """
-    
-    df = pd.read_excel(os.path.join(Path(__file__).absolute().parent, 'CSP_database.xlsx'), index_col=0)
-    
+
+    df = pd.read_excel(os.path.join(
+        Path(__file__).absolute().parent, 'CSP_database.xlsx'), index_col=0)
+
     assert datasetname in df.columns
 
     df = df[datasetname]
