@@ -4,7 +4,20 @@ import numpy as np
 import time
 
 
-def openfield_pv_merra_ryberg2019(placements, merra_path, global_solar_atlas_ghi_path, module="WINAICO WSx-240P6", elev=300, tracking="fixed", inverter=None, inverter_kwargs={}, tracking_args={}, output_netcdf_path=None, output_variables=None):
+def openfield_pv_merra_ryberg2019(
+        placements,
+        merra_path,
+        global_solar_atlas_ghi_path,
+        module="WINAICO WSx-240P6",
+        elev=300,
+        tracking="fixed",
+        inverter=None,
+        inverter_kwargs={},
+        tracking_args={},
+        output_netcdf_path=None,
+        output_variables=None,
+        tech_year=2050,
+):
     """
 
     openfield_pv_merra_ryberg2019(placements, merra_path, global_solar_atlas_ghi_path, module="WINAICO WSx-240P6", elev=300, tracking="fixed",
@@ -50,6 +63,12 @@ def openfield_pv_merra_ryberg2019(placements, merra_path, global_solar_atlas_ghi
     output_variables: str
         Output variables of the simulation that you want to save into your NETCDF Outputfile.
 
+    tech_year : int, optional
+                If given in combination with the projected module str names "WINAICO WSx-240P6" or
+                "LG Electronics LG370Q1C-A5", the effifiency will be scaled linearly to the given
+                year. Must then be between year of market introduction for that module and 2050. 
+                Will be ignored when non-projected existing module names or specific parameters
+                are given, can then be None. By default 2050.
 
     Returns
     -------
@@ -58,7 +77,7 @@ def openfield_pv_merra_ryberg2019(placements, merra_path, global_solar_atlas_ghi
     """
 
     wf = SolarWorkflowManager(placements)
-    wf.configure_cec_module(module)
+    wf.configure_cec_module(module, tech_year)
     # ensure the tracking parameter is correct
     assert tracking in [
         'fixed', 'single_axis'], f"tracking must be either 'fixed' or 'single_axis'"
@@ -107,7 +126,8 @@ def openfield_pv_merra_ryberg2019(placements, merra_path, global_solar_atlas_ghi
 
     wf.cell_temperature_from_sapm()
 
-    wf.simulate_with_interpolated_single_diode_approximation(module=module)
+    wf.simulate_with_interpolated_single_diode_approximation(
+        module=module, tech_year=tech_year)
 
     if inverter is not None:
         wf.apply_inverter_losses(inverter=inverter, **inverter_kwargs)
@@ -118,7 +138,22 @@ def openfield_pv_merra_ryberg2019(placements, merra_path, global_solar_atlas_ghi
     return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
 
-def openfield_pv_era5(placements, era5_path, global_solar_atlas_ghi_path, global_solar_atlas_dni_path, module="WINAICO WSx-240P6", elev=300, tracking="fixed", inverter=None, inverter_kwargs={}, tracking_args={}, gsa_nodata_fallback='source', output_netcdf_path=None, output_variables=None):
+def openfield_pv_era5(
+        placements,
+        era5_path,
+        global_solar_atlas_ghi_path,
+        global_solar_atlas_dni_path,
+        module="WINAICO WSx-240P6",
+        elev=300,
+        tracking="fixed",
+        inverter=None,
+        inverter_kwargs={},
+        tracking_args={},
+        gsa_nodata_fallback='source',
+        output_netcdf_path=None,
+        output_variables=None,
+        tech_year=2050,
+):
     """
 
     openfield_pv_era5_unvalidated(placements, era5_path, global_solar_atlas_ghi_path, global_solar_atlas_dni_path, module="WINAICO WSx-240P6", elev=300, tracking="fixed", inverter=None, inverter_kwargs={}, tracking_args={}, output_netcdf_path=None, output_variables=None)
@@ -175,6 +210,12 @@ def openfield_pv_era5(placements, era5_path, global_solar_atlas_ghi_path, global
     output_variables: str
                         Output variables of the simulation that you want to save into your NETCDF Outputfile.
 
+    tech_year : int, optional
+                If given in combination with the projected module str names "WINAICO WSx-240P6" or
+                "LG Electronics LG370Q1C-A5", the effifiency will be scaled linearly to the given
+                year. Must then be between year of market introduction for that module and 2050. 
+                Will be ignored when non-projected existing module names or specific parameters
+                are given, can then be None. By default 2050.
 
     Returns
     -------
@@ -183,7 +224,7 @@ def openfield_pv_era5(placements, era5_path, global_solar_atlas_ghi_path, global
     """
 
     wf = SolarWorkflowManager(placements)
-    wf.configure_cec_module(module)
+    wf.configure_cec_module(module, tech_year)
 
     # limit the input placements longitude to range of -180...180
     assert wf.placements["lon"].between(-180, 180, inclusive=True).any()
@@ -259,7 +300,8 @@ def openfield_pv_era5(placements, era5_path, global_solar_atlas_ghi_path, global
 
     wf.cell_temperature_from_sapm()
 
-    wf.simulate_with_interpolated_single_diode_approximation(module=module)
+    wf.simulate_with_interpolated_single_diode_approximation(
+        module=module, tech_year=tech_year)
 
     if inverter is not None:
         wf.apply_inverter_losses(inverter=inverter, **inverter_kwargs)
@@ -271,7 +313,20 @@ def openfield_pv_era5(placements, era5_path, global_solar_atlas_ghi_path, global
     return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
 
-def openfield_pv_sarah_unvalidated(placements, sarah_path, era5_path, module="WINAICO WSx-240P6", elev=300, tracking="fixed", inverter=None, inverter_kwargs={}, tracking_args={}, output_netcdf_path=None, output_variables=None):
+def openfield_pv_sarah_unvalidated(
+        placements,
+        sarah_path,
+        era5_path,
+        module="WINAICO WSx-240P6",
+        elev=300,
+        tracking="fixed",
+        inverter=None,
+        inverter_kwargs={},
+        tracking_args={},
+        output_netcdf_path=None,
+        output_variables=None,
+        tech_year=2050,
+):
     """
 
     openfield_pv_sarah_unvalidated(placements, sarah_path, era5_path, module="WINAICO WSx-240P6", elev=300, tracking="fixed", inverter=None, inverter_kwargs={}, tracking_args={}, output_netcdf_path=None, output_variables=None)
@@ -319,6 +374,12 @@ def openfield_pv_sarah_unvalidated(placements, sarah_path, era5_path, module="WI
     output_variables: str
                         Output variables of the simulation that you want to save into your NETCDF Outputfile.
 
+    tech_year : int, optional
+                If given in combination with the projected module str names "WINAICO WSx-240P6" or
+                "LG Electronics LG370Q1C-A5", the effifiency will be scaled linearly to the given
+                year. Must then be between year of market introduction for that module and 2050. 
+                Will be ignored when non-projected existing module names or specific parameters
+                are given, can then be None. By default 2050.
 
     Returns
     -------
@@ -327,7 +388,7 @@ def openfield_pv_sarah_unvalidated(placements, sarah_path, era5_path, module="WI
     """
 
     wf = SolarWorkflowManager(placements)
-    wf.configure_cec_module(module)
+    wf.configure_cec_module(module, tech_year)
     # ensure the tracking parameter is correct
     assert tracking in [
         'fixed', 'single_axis'], f"tracking must be either 'fixed' or 'single_axis'"
@@ -378,7 +439,8 @@ def openfield_pv_sarah_unvalidated(placements, sarah_path, era5_path, module="WI
 
     wf.cell_temperature_from_sapm()
 
-    wf.simulate_with_interpolated_single_diode_approximation(module=module)
+    wf.simulate_with_interpolated_single_diode_approximation(
+        module=module, tech_year=tech_year)
 
     if inverter is not None:
         wf.apply_inverter_losses(inverter=inverter, **inverter_kwargs)
