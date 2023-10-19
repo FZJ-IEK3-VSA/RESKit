@@ -8,6 +8,7 @@ from types import FunctionType
 import warnings
 from scipy.interpolate import RectBivariateSpline
 import json
+import numbers
 
 # from reskit import solarpower
 
@@ -121,7 +122,7 @@ class SolarWorkflowManager(WorkflowManager):
         self.placements['azimuth'].values[self.locs.lats < 0] = 0
         return self
 
-    def apply_elevation(self, elev):
+    def apply_elevation(self, elev, fallback_elev=0):
         """
 
         apply_elevation(self)
@@ -130,24 +131,55 @@ class SolarWorkflowManager(WorkflowManager):
 
         Parameters
         ----------
-        elev: str, list
-              If a string is given it must be a path to a rasterfile including the elevations.
-              If a list is given it has to include the elevations at each location.
+        elev: str, int, iterable
+            If a string is given it must be a path to a rasterfile including the elevations.
+            If an iterable is given it has to include the elevations at each location and be 
+            of equal length to self.placements dataframe.
+            If an integer is given, it will be applied to all locations equally.
 
+        fallback_elev: int, optional
+            The fallback value that will be used in case that elev is a raster path and the 
+            extraction of the elevation from raster fails (applied only to no-data locations).
+            By default 0.
 
         Returns
         -------
         Returns a reference to the invoking SolarWorkflowManager object
 
         """
-
-        if isinstance(elev, str):
+        assert isinstance(
+            fallback_elev, int), f"'fallback_elev' must be an integer elevantion in [m]."
+        if elev is None and 'elev' in self.placements.columns:
+            # elevation is already an attribute in the placements dataframe, do nothing if no external elev given
+            pass
+        elif isinstance(elev, str):
+            # assume we have a str formatted elevation raster path
             clipped_elev = self.ext.pad(0.5).rasterMosaic(elev)
-            self.placements['elev'] = gk.raster.interpolateValues(
+            _elevs = gk.raster.interpolateValues(
                 clipped_elev,
                 self.locs)
+            if np.isnan(_elevs).any():
+                # if getting values fails, it could be because of interpolation method
+                # replace by 'near' interpolation
+                _elevs_near = gk.raster.interpolateValues(
+                    elev, self.locs, mode='near'
+                )
+                _elevs[np.isnan(_elevs)] = _elevs_near[np.isnan(_elevs)]
+            if np.isnan(_elevs).any():
+                # if we still have nans, replace nans by fallback value
+                _elevs[np.isnan(_elevs)] = (
+                    np.ones(shape=_elevs.shape)*fallback_elev)[np.isnan(_elevs)]
+            self.placements['elev'] = _elevs
         else:
-            self.placements['elev'] = elev
+            # try to just set elev as new column, works with scalars and iterables, and check if we have numeric values
+            try:
+                self.placements['elev'] = elev
+                assert all([isinstance(x, numbers.Number)
+                           for x in self.placements['elev']])
+            except:
+                # else rise a type error
+                raise TypeError(
+                    f"'elev' must be given as a path to a raster file or an integer or an iterable thereof with equal length to the dataframe length.")
 
         return self
 
