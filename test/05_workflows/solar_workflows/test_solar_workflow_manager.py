@@ -84,26 +84,50 @@ def test_SolarWorkflowManager_estimate_azimuth_from_latitude(pt_SolarWorkflowMan
 
 def test_SolarWorkflowManager_apply_elevation(pt_SolarWorkflowManager_initialized):
     man = pt_SolarWorkflowManager_initialized
-    man.apply_elevation(120)
 
+    # first test None case without elev attribute in placements
+    man.apply_elevation(elev=None, fallback_elev=-1000)
+    # must yield fallback value for all locations
+    assert np.isclose(
+        man.placements['elev'],
+        [-1000, -1000. - 1000, -1000, -1000]
+    ).all()
+
+    # now test using the elevation from the placements dataframe
+    base_elev = [90, 80, 70, 60, 50]
+    man.placements['elev'] = base_elev
+    man.apply_elevation(elev=None, fallback_elev=-1000)
+    # the elev data must not have been altered when None and 'elev' in attribute
+    assert np.isclose(
+        man.placements['elev'],
+        base_elev
+    ).all()
+
+    # then test scalar value
+    man.apply_elevation(elev=120, fallback_elev=-1000)
+    # must yield this value for all locs
     assert np.isclose(
         man.placements['elev'],
         [120, 120, 120, 120, 120]
     ).all()
 
-    man.apply_elevation(rk.TEST_DATA['gwa50-like.tif'])  # not an elevation file, but still a raster
-
-    assert np.isclose(
-        man.placements['elev'],
-        [4.81529235, 4.54979848, 4.83163261, 5.10659551, 5.07869386]
-    ).all()
-
+    # next test iterable as new elev
     new_elev = [100, 120, 140, 160, 2000]
-    man.apply_elevation(new_elev)
-
+    man.apply_elevation(elev=new_elev, fallback_elev=-1000)
+    # must yield the same iterable
     assert np.isclose(
         man.placements['elev'],
         new_elev
+    ).all()
+
+    # last test raster elevation
+    man.apply_elevation(
+        elev=rk.TEST_DATA['clc-aachen_clipped.tif'], fallback_elev=-1000)  # not an elevation file, but still a raster
+    # must yield raster values, with fallback value for those placements outside the actual file coverage
+    assert np.isclose(
+        man.placements['elev'],
+        # TODO these values were from rk.TEST_DATA['gwa50-like.tif'], adapt to CLC values and fallbacks depending on which are outside
+        [4.81529235, 4.54979848, 4.83163261, 5.10659551, 5.07869386]
     ).all()
 
     return man
