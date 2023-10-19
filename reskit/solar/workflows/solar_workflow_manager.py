@@ -900,7 +900,11 @@ class SolarWorkflowManager(WorkflowManager):
 
         return self
 
-    def configure_cec_module(self, module="WINAICO WSx-240P6"):
+    def configure_cec_module(
+            self,
+            module="WINAICO WSx-240P6",
+            tech_year=2050,
+    ):
         """
         configure_cec_module(self, module="WINAICO WSx-240P6")
 
@@ -916,6 +920,12 @@ class SolarWorkflowManager(WorkflowManager):
                 * A dict containing a set of module parameters, including:
                     T_NOCT, A_c, N_s, I_sc_ref, V_oc_ref, I_mp_ref, V_mp_ref, alpha_sc, 
                     beta_oc, a_ref, I_L_ref, I_o_ref, R_s, R_sh_ref, Adjust, gamma_r, PTC
+        tech_year : int, optional
+            If given in combination with the projected module str names "WINAICO WSx-240P6" or
+            "LG Electronics LG370Q1C-A5", the effifiency will be scaled linearly to the given
+            year. Must then be between year of market comparison in analysis (2019) and 2050. 
+            Will be ignored when non-projected existing module names or specific parameters
+            are given, can then be None. By default 2050.
 
         Returns
         -------
@@ -927,37 +937,63 @@ class SolarWorkflowManager(WorkflowManager):
 
 
         """
+        def _interpolate_module_params(projected_module, original_module_name, tech_year, start_year):
+            if not isinstance(tech_year, int):
+                raise TypeError(
+                    f"tech_year must be an integer when projected module is selected")
+            # avoid extrapolations
+            if not start_year <= tech_year <= 2050:
+                raise ValueError(
+                    f"tech_year must be between {start_year} and 2050 (max. projection) for this module")
+
+            # get the original (unprojected) module parameters
+            db = pvlib.pvsystem.retrieve_sam("CECMod")
+            original_module = getattr(db, original_module_name)
+            # scale module parameters to tech_year
+            module = pd.Series(index=projected_module.index)
+            for param, val_proj in zip(projected_module.index, projected_module):
+                if param == 'Date':
+                    module[param] = str(tech_year)
+                elif param in ['Version']:
+                    # ignore, set dummy nan
+                    module[param] = np.nan
+                elif isinstance(val_proj, (int, float, np.integer)):
+                    module[param] = original_module[param] + \
+                        (val_proj-original_module[param]) * \
+                        (tech_year-start_year)/(2050-start_year)
+                else:
+                    assert val_proj == original_module[
+                        param], f"parameter '{param}' is not the same for original ({original_module[param]}) and projected ({val_proj}) modules"
+                    module[param] = val_proj
+
+            return module
 
         if isinstance(module, str):
+
             self.register_workflow_parameter("module_name", module)
 
             if module == "WINAICO WSx-240P6":
-                module = pd.Series(dict(
+                # define projected module parameters
+                module_2050 = pd.Series(dict(
                     BIPV="N",
                     Date="6/2/2014",
                     T_NOCT=43,
-                    A_c=1.663,
-                    N_s=60,
-                    I_sc_ref=8.41,
-                    V_oc_ref=37.12,
-                    I_mp_ref=7.96,
-                    V_mp_ref=30.2,
-                    alpha_sc=0.001164,
-                    beta_oc=-0.12357,
-                    a_ref=1.6704,
-                    I_L_ref=8.961,
-                    I_o_ref=1.66e-11,
-                    R_s=0.405,
-                    R_sh_ref=326.74,
-                    Adjust=4.747,
-                    gamma_r=-0.383,
-                    Version="NRELv1",
                     PTC=220.2,
                     Technology="Multi-c-Si",
                 ))
+
+                # scale module parameters to tech_year
+                module = _interpolate_module_params(
+                    projected_module=module_2050,
+                    original_module_name='WINAICO_WSx_240P6',
+                    tech_year=tech_year,
+                    start_year=2019)
+
                 module.name = "WINAICO WSx-240P6"
+
             elif module == "LG Electronics LG370Q1C-A5":
-                module = pd.Series(dict(
+                # define projected module parameters
+                module_2050 = pd.Series(dict(
                     BIPV="N",
                     Date="12/14/2016",
                     T_NOCT=45.7,
@@ -980,8 +1016,20 @@ class SolarWorkflowManager(WorkflowManager):
                     PTC=347.2,
                     Technology="Mono-c-Si",
                 ))
+
+                # scale module parameters to tech_year
+                module = _interpolate_module_params(
+                    projected_module=module_2050,
+                    original_module_name='LG_Electronics_Inc__LG370Q1C_A5',
+                    tech_year=tech_year,
+                    start_year=2019)
+
                 module.name = "LG Electronics LG370Q1C-A5"
+
             elif isinstance(module, str):
+                if tech_year is not None:
+                    warnings.warn(
+                        f"NOTE: The tech_year argument is ignored when a specific module is given. Set tech_year to None to silence this warning.")
                 # Extract module parameters
                 db = pvlib.pvsystem.retrieve_sam("CECMod")
                 try:
@@ -990,44 +1038,20 @@ class SolarWorkflowManager(WorkflowManager):
                     raise RuntimeError(
                         "The module '{}' is not in the CEC database".format(module))
         else:
+            if tech_year is not None:
+                print(
+                    f"NOTE: The tech_year argument is ignored when specific module parameters are given.")
             module = pd.Series(module)
             assert "T_NOCT" in module.index
             assert "A_c" in module.index
-            assert "N_s" in module.index
-            assert "I_sc_ref" in module.index
-            assert "V_oc_ref" in module.index
-            assert "I_mp_ref" in module.index
-            assert "V_mp_ref" in module.index
-            assert "alpha_sc" in module.index
-            assert "beta_oc" in module.index
-            assert "a_ref" in module.index
-            assert "I_L_ref" in module.index
-            assert "I_o_ref" in module.index
-            assert "R_s" in module.index
-            assert "R_sh_ref" in module.index
-            assert "Adjust" in module.index
-            assert "gamma_r" in module.index
-            assert "PTC" in module.index
-
-            try:
-                module_desc = json.dumps(module)
-            except:
-                module_desc = "user-configured"
-            self.register_workflow_parameter("module_desc", module_desc)
-
-        # # Check if we need to add the Desoto parameters
-        # # defaults for EgRef and dEgdT taken from the note in the docstring for
-        # #  'pvlib.pvsystem.calcparams_desoto'
-        # if not "EgRef" in module:
-        #     module['EgRef'] = 1.121
-        # if not "dEgdT" in module:
-        #     module['dEgdT'] = -0.0002677
-
-        self.module = module
 
         return self
 
-    def simulate_with_interpolated_single_diode_approximation(self, module="WINAICO WSx-240P6"):
+    def simulate_with_interpolated_single_diode_approximation(
+            self,
+            module="WINAICO WSx-240P6",
+            tech_year=2050,
+    ):
         """
         simulate_with_interpolated_single_diode_approximation(self, module="WINAICO WSx-240P6")
 
@@ -1042,6 +1066,12 @@ class SolarWorkflowManager(WorkflowManager):
                 * A module found in the pvlib.pvsystem.retrieve_sam("CECMod") database
                 * "WINAICO WSx-240P6" -> Good for open-field applications
                 * "LG Electronics LG370Q1C-A5" -> Good for rooftop applications
+        tech_year : int, optional
+            If given in combination with the projected module str names "WINAICO WSx-240P6" or
+            "LG Electronics LG370Q1C-A5", the effifiency will be scaled linearly to the given
+            year. Must then be between year of market comparison in analysis (2019) and 2050. 
+            Will be ignored when non-projected existing module names or specific parameters
+            are given, can then be None. By default 2050.
 
         Returns
         -------
@@ -1082,7 +1112,7 @@ class SolarWorkflowManager(WorkflowManager):
         assert 'poa_global' in self.sim_data
         assert 'cell_temperature' in self.sim_data
 
-        self.configure_cec_module(module)
+        self.configure_cec_module(module, tech_year)
 
         sel = self.sim_data['poa_global'] > 0
 
