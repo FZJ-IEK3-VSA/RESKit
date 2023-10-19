@@ -85,7 +85,7 @@ class NCSource(object):
     MAX_LON_DIFFERENCE = None
     MAX_LAT_DIFFERENCE = None
 
-    def __init__(self, source, bounds=None, index_pad=0, time_name="time", lat_name="lat", lon_name="lon", tz=None, _max_lon_diff=0.6, _max_lat_diff=0.6, verbose=True, forward_fill=True, flip_lat=False, flip_lon=False, time_offset_minutes=None,  time_index_from = None):
+    def __init__(self, source, bounds=None, index_pad=0, time_name="time", lat_name="lat", lon_name="lon", tz=None, _max_lon_diff=0.6, _max_lat_diff=0.6, verbose=True, forward_fill=True, flip_lat=False, flip_lon=False, time_offset_minutes=None,  time_index_from=None):
         """Initialize a generic netCDF4 file source
 
 
@@ -213,15 +213,16 @@ class NCSource(object):
                             var, expectedShape[var], src))
             ds.close()
 
-        tmp = pd.DataFrame(columns=["name", "units", "path", ], index=self.variables.keys())
+        tmp = pd.DataFrame(
+            columns=["name", "units", "path", ], index=self.variables.keys())
         tmp["name"] = names
         tmp["units"] = units
         tmp["shape"] = [expectedShape[v] for v in tmp.index]
         tmp["path"] = [self.variables[v] for v in tmp.index]
         self.variables = tmp
 
-        #choose source for the time step extraction
-        if not time_index_from==None:
+        # choose source for the time step extraction
+        if not time_index_from == None:
             assert time_index_from in self.variables.index, f'ERA_5-key {time_index_from} not known. Check variable "time_index_from" and folder {source}'
             self.variables["path"][time_name] = self.variables["path"][time_index_from]
 
@@ -281,24 +282,35 @@ class NCSource(object):
                     top[:-1, :] = np.logical_and(top[1:, :], top[:-1, :])
                     bot[1:, :] = np.logical_and(bot[1:, :], bot[:-1, :])
 
-                self._lonStart = np.argmin((bot | left | top).all(0)) - 1 - index_pad
-                self._lonStop = self._lonN - np.argmin((bot | top | right).all(0)[::-1]) + 1 + index_pad
-                self._latStart = np.argmin((bot | left | right).all(1)) - 1 - index_pad
-                self._latStop = self._latN - np.argmax((left | top | right).all(1)[::-1]) + 1 + index_pad
+                self._lonStart = np.argmin(
+                    (bot | left | top).all(0)) - 1 - index_pad
+                self._lonStop = self._lonN - \
+                    np.argmin((bot | top | right).all(0)[::-1]) + 1 + index_pad
+                self._latStart = np.argmin(
+                    (bot | left | right).all(1)) - 1 - index_pad
+                self._latStop = self._latN - \
+                    np.argmax((left | top | right).all(1)
+                              [::-1]) + 1 + index_pad
 
             else:
-                tmp = np.logical_and(self._allLons >= self.bounds.xMin, self._allLons <= self.bounds.xMax)
+                tmp = np.logical_and(
+                    self._allLons >= self.bounds.xMin, self._allLons <= self.bounds.xMax)
                 self._lonStart = np.argmax(tmp) - 1
-                self._lonStop = self._lonStart + 1 + np.argmin(tmp[self._lonStart + 1:]) + 1
+                self._lonStop = self._lonStart + 1 + \
+                    np.argmin(tmp[self._lonStart + 1:]) + 1
 
-                tmp = np.logical_and(self._allLats >= self.bounds.yMin, self._allLats <= self.bounds.yMax)
+                tmp = np.logical_and(
+                    self._allLats >= self.bounds.yMin, self._allLats <= self.bounds.yMax)
                 self._latStart = np.argmax(tmp) - 1
-                self._latStop = self._latStart + 1 + np.argmin(tmp[self._latStart + 1:]) + 1
+                self._latStop = self._latStart + 1 + \
+                    np.argmin(tmp[self._latStart + 1:]) + 1
 
                 self._lonStart = max(0, self._lonStart - index_pad)
-                self._lonStop = min(self._allLons.size, self._lonStop + index_pad)
+                self._lonStop = min(self._allLons.size,
+                                    self._lonStop + index_pad)
                 self._latStart = max(0, self._latStart - index_pad)
-                self._latStop = min(self._allLats.size, self._latStop + index_pad)
+                self._latStop = min(self._allLats.size,
+                                    self._latStop + index_pad)
 
         else:
             self.bounds = None
@@ -317,8 +329,10 @@ class NCSource(object):
         self._flip_lon = flip_lon
 
         if self.dependent_coordinates:
-            self.lats = self._allLats[self._latStart:self._latStop, self._lonStart:self._lonStop]
-            self.lons = self._allLons[self._latStart:self._latStop, self._lonStart:self._lonStop]
+            self.lats = self._allLats[self._latStart:self._latStop,
+                                      self._lonStart:self._lonStop]
+            self.lons = self._allLons[self._latStart:self._latStop,
+                                      self._lonStart:self._lonStop]
 
             if flip_lat:
                 self.lats = self.lats[::-1, :]
@@ -347,7 +361,8 @@ class NCSource(object):
 
         if time_offset_minutes is not None:
             from datetime import timedelta
-            timeindex = [t + timedelta(minutes=time_offset_minutes) for t in timeindex]
+            timeindex = [t + timedelta(minutes=time_offset_minutes)
+                         for t in timeindex]
 
         self._timeindex_raw = pd.DatetimeIndex(timeindex)
         if not tz is None:
@@ -537,9 +552,11 @@ class NCSource(object):
         var = ds[variable]
 
         if height_idx is None:
-            tmp = var[:, self._latStart:self._latStop, self._lonStart:self._lonStop]
+            tmp = var[:, self._latStart:self._latStop,
+                      self._lonStart:self._lonStop]
         else:
-            tmp = var[:, height_idx, self._latStart:self._latStop, self._lonStart:self._lonStop]
+            tmp = var[:, height_idx, self._latStart:self._latStop,
+                      self._lonStart:self._lonStop]
 
         # process, maybe?
         if processor is not None:
@@ -551,10 +568,12 @@ class NCSource(object):
                 raise ResError("Time mismatch with variable %s. Expected %d, got %d" % (
                     variable, self.time_index.shape[0], tmp.shape[0]))
 
-            lastTimeIndex = nc.num2date(ds[self.time_name][-1], ds[self.time_name].units)
+            lastTimeIndex = nc.num2date(
+                ds[self.time_name][-1], ds[self.time_name].units)
 
             if not lastTimeIndex in self._timeindex_raw:
-                raise ResError("Filling is only intended to fill the last missing step")
+                raise ResError(
+                    "Filling is only intended to fill the last missing step")
             tmp = np.append(tmp, tmp[np.newaxis, -1, :, :], axis=0)
 
         # save the data
@@ -611,7 +630,8 @@ class NCSource(object):
             lonI = (locations.lons - self.lons[0]) / lon_step
 
             # Check for out of bounds
-            oob = (latI < 0) | (latI >= self._latN) | (lonI < 0) | (lonI >= self._lonN)
+            oob = (latI < 0) | (latI >= self._latN) | (
+                lonI < 0) | (lonI >= self._lonN)
             if oob.any():
                 if not outside_okay:
                     print("The following locations are out of bounds")
@@ -815,7 +835,8 @@ class NCSource(object):
                 as_int = True
             else:
                 as_int = False
-            indicies = self.loc_to_index(locations, outside_okay, as_int=as_int)
+            indicies = self.loc_to_index(
+                locations, outside_okay, as_int=as_int)
         else:
             # Assume indicies match locations
             indicies = _indicies
@@ -851,7 +872,8 @@ class NCSource(object):
 
             # ensure boundaries are okay
             if yiMin < 0 or xiMin < 0 or yiMax > self._latN or xiMax > self._lonN:
-                raise ResError("Insufficient data. Try expanding the boundary of the extracted data")
+                raise ResError(
+                    "Insufficient data. Try expanding the boundary of the extracted data")
 
             ##########
             # TODO: Update interpolation schemes to handle out-of-bounds indices

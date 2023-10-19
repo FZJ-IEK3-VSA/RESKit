@@ -35,9 +35,11 @@ def test_SarahSource___init__():
     assert (ms.time_index == rawTimes).all()
 
     # Initialize a SarahSource with Aachen boundaries
-    aachenExt = gk.Extent.fromVector(gk._test_data_['aachenShapefile.shp']).pad(0.5).fit(0.01)
+    aachenExt = gk.Extent.fromVector(
+        gk._test_data_['aachenShapefile.shp']).pad(0.5).fit(0.01)
 
-    ms = SarahSource(TEST_DATA['sarah-like'], bounds=aachenExt, index_pad=1, verbose=False)
+    ms = SarahSource(TEST_DATA['sarah-like'],
+                     bounds=aachenExt, index_pad=1, verbose=False)
 
     # ensure lats, lons and times are okay
     assert np.isclose(ms.lats[0], 49.9)
@@ -62,7 +64,8 @@ def test_SarahSource_loc_to_index(pt_SarahSource, pt_BoundedSarahSource):
     assert idx[0].xi == 21
     assert idx[1].xi == 29
 
-    idx = pt_SarahSource.loc_to_index([(6.03, 50.81), (6.44, 50.47), ], as_int=False)
+    idx = pt_SarahSource.loc_to_index(
+        [(6.03, 50.81), (6.44, 50.47), ], as_int=False)
     assert np.isclose(idx[0].yi, 36.200000000000045)
     assert np.isclose(idx[1].yi, 29.399999999999977)
     assert np.isclose(idx[0].xi, 20.600000000000005)
@@ -78,7 +81,8 @@ def test_SarahSource_loc_to_index(pt_SarahSource, pt_BoundedSarahSource):
     assert idx[0].xi == 3
     assert idx[1].xi == 11
 
-    idx = pt_BoundedSarahSource.loc_to_index([(6.03, 50.81), (6.44, 50.47), ], as_int=False)
+    idx = pt_BoundedSarahSource.loc_to_index(
+        [(6.03, 50.81), (6.44, 50.47), ], as_int=False)
     assert np.isclose(idx[0].yi, 8.19996948242192)
     assert np.isclose(idx[1].yi, 1.3999694824218523)
     assert np.isclose(idx[0].xi, 2.599998092651372)

@@ -84,7 +84,8 @@ class WindWorkflowManager(WorkflowManager):
                     specific_power=float(sppow),
                     cutout=float(cutout))
             else:
-                self.powerCurveLibrary[pc] = rk_wind_core.turbine_library.TurbineLibrary().loc[pc].PowerCurve
+                self.powerCurveLibrary[pc] = rk_wind_core.turbine_library.TurbineLibrary(
+                ).loc[pc].PowerCurve
 
     def set_roughness(self, roughness):
         """
@@ -143,11 +144,11 @@ class WindWorkflowManager(WorkflowManager):
         if consider_boundary_layer_height:
             # When the hub height is above the PBL, then only project to the PBL
             target_height = np.minimum(
-                    self.sim_data['boundary_layer_height'],
-                    self.placements['hub_height'].values)
+                self.sim_data['boundary_layer_height'],
+                self.placements['hub_height'].values)
 
             # When the PBL is below the elevated_wind_speed_height, then no projection
-            # should be performed. This can be effectlvely accomplished by setting the 
+            # should be performed. This can be effectlvely accomplished by setting the
             # target height to that of the elevated_wind_speed_height
             sel = target_height > self.elevated_wind_speed_height
             target_height[sel] = self.elevated_wind_speed_height
@@ -161,9 +162,9 @@ class WindWorkflowManager(WorkflowManager):
             target_height=target_height,
             roughness=self.placements['roughness'].values
         )
-        
+
         self.sim_data['elevated_wind_speed'] = tmp
-        
+
         self.elevated_wind_speed_height = self.placements['hub_height'].values
 
         return self
@@ -231,7 +232,8 @@ class WindWorkflowManager(WorkflowManager):
 
         for pckey, pc in self.powerCurveLibrary.items():
             sel = self.placements.powerCurve == pckey
-            gen[:, sel] = pc.simulate(self.sim_data['elevated_wind_speed'][:, sel])
+            gen[:, sel] = pc.simulate(
+                self.sim_data['elevated_wind_speed'][:, sel])
 
         self.sim_data['capacity_factor'] = gen
 
@@ -270,10 +272,12 @@ class WindWorkflowManager(WorkflowManager):
                 hh >= known_heights[hi],
                 hh < known_heights[hi + 1])
             if sel.any():
-                interpolated_vals[sel] = (hh[sel] - known_heights[hi]) / (known_heights[hi + 1] - known_heights[hi]) * (known_vals[hi + 1] - known_vals[hi]) + known_vals[hi]
+                interpolated_vals[sel] = (hh[sel] - known_heights[hi]) / (known_heights[hi + 1] -
+                                                                          known_heights[hi]) * (known_vals[hi + 1] - known_vals[hi]) + known_vals[hi]
 
         if np.isnan(interpolated_vals).any():
-            raise RuntimeError("Could not determine interpolation for all hub heights")
+            raise RuntimeError(
+                "Could not determine interpolation for all hub heights")
 
         self.placements[name] = interpolated_vals
         return self

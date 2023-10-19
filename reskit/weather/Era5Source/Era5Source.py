@@ -106,7 +106,7 @@ class Era5Source(NCSource):
     MAX_LON_DIFFERENCE = 0.26
     MAX_LAT_DIFFERENCE = 0.26
 
-    def __init__(self, source, bounds=None, index_pad=5, time_index_from = None, **kwargs):
+    def __init__(self, source, bounds=None, index_pad=5, time_index_from=None, **kwargs):
         """Initialize a ERA5 style netCDF4 file source
 
          Compared to the generic NCSource object, the following parameters are automatically set:
@@ -155,7 +155,7 @@ class Era5Source(NCSource):
          Era5Source
          """
 
-        #translate the mos common lear names for time_index_from
+        # translate the mos common lear names for time_index_from
         ERA5_names = {
             'global_horizontal_irradiance_archive': 'ssrd',
             'global_horizontal_irradiance': 'ssrd_t_adj',
@@ -165,10 +165,10 @@ class Era5Source(NCSource):
             'elevated_wind_speed': 'w100',
         }
         if time_index_from in ERA5_names.keys():
-            #if time_index_from is a known clear name use the dict
+            # if time_index_from is a known clear name use the dict
             time_index_from = ERA5_names[time_index_from]
         else:
-            #hope it is a well known ERA5 string. checkes in super.__init__ 
+            # hope it is a well known ERA5 string. checkes in super.__init__
             pass
 
         super().__init__(
@@ -182,8 +182,8 @@ class Era5Source(NCSource):
             _max_lat_diff=self.MAX_LAT_DIFFERENCE,
             tz=None,
             flip_lat=True,
-            time_offset_minutes=-30, #time convention -30
-            time_index_from = time_index_from,
+            time_offset_minutes=-30,  # time convention -30
+            time_index_from=time_index_from,
             **kwargs)
 
     loc_to_index = NCSource._loc_to_index_rect(0.25, 0.25)
