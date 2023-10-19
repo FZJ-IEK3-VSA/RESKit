@@ -88,7 +88,8 @@ class PowerCurve():
         from io import BytesIO
 
         plt.figure(figsize=(7, 3))
-        plt.plot(self.wind_speed, self.capacity_factor, color=(0, 91 / 255, 130 / 255), linewidth=3)
+        plt.plot(self.wind_speed, self.capacity_factor,
+                 color=(0, 91 / 255, 130 / 255), linewidth=3)
         plt.tick_params(labelsize=12)
         plt.xlabel("wind speed [m/s]", fontsize=13)
         plt.ylabel("capacity output", fontsize=13)
@@ -193,7 +194,8 @@ class PowerCurve():
         output = splev(wind_speed, powerCurveInterp)
 
         if isinstance(wind_speed, pd.DataFrame):
-            output = pd.DataFrame(output, index=wind_speed.index, columns=wind_speed.columns)
+            output = pd.DataFrame(
+                output, index=wind_speed.index, columns=wind_speed.columns)
 
         return output
 
@@ -286,10 +288,12 @@ class PowerCurve():
             if not wind_speed_counts.shape[0] == wind_speed_values.shape[0]:
                 raise ResError("Dimensional incompatibility")
 
-            wind_speed_values = np.reshape(wind_speed_values, (wind_speed_counts.shape[0], 1))
+            wind_speed_values = np.reshape(
+                wind_speed_values, (wind_speed_counts.shape[0], 1))
 
         # Estimate generation distribution
-        gen = np.interp(wind_speed_values, self.wind_speed, self.capacity_factor, left=0, right=0) * wind_speed_counts
+        gen = np.interp(wind_speed_values, self.wind_speed,
+                        self.capacity_factor, left=0, right=0) * wind_speed_counts
 
         meanGen = gen.sum(0) / wind_speed_counts.sum(0)
 
@@ -343,21 +347,25 @@ class PowerCurve():
                 print("WARNING: 'steps' may not be high enough to properly compute the convoluted power curve. Check results or use a higher number of steps")
 
         # Initialize vanilla power curve
-        selfInterp = splrep(ws, np.interp(ws, self.wind_speed, self.capacity_factor))
+        selfInterp = splrep(ws, np.interp(
+            ws, self.wind_speed, self.capacity_factor))
 
         cf = np.zeros(_steps)
         sel = ws < self.wind_speed.max()
         cf[sel] = splev(ws[sel], selfInterp)
 
-        cf[ws < self.wind_speed.min()] = 0  # set all windspeed less than cut-in speed to 0
-        cf[ws > self.wind_speed.max()] = 0  # set all windspeed greater than cut-out speed to 0 (just in case)
+        # set all windspeed less than cut-in speed to 0
+        cf[ws < self.wind_speed.min()] = 0
+        # set all windspeed greater than cut-out speed to 0 (just in case)
+        cf[ws > self.wind_speed.max()] = 0
         cf[cf < 0] = 0  # force a floor of 0
         # cf[cf>self[:,1].max()] = self[:,1].max() # force a ceiling of the max capacity
 
         # Begin convolution
         convolutedCF = np.zeros(_steps)
         for i, ws_ in enumerate(ws):
-            convolutedCF[i] = (norm.pdf(ws, loc=ws_, scale=scaling * ws_ + base) * cf).sum() * dws
+            convolutedCF[i] = (
+                norm.pdf(ws, loc=ws_, scale=scaling * ws_ + base) * cf).sum() * dws
 
         # Correct cutoff, maybe
         if not extend_beyond_cut_out:

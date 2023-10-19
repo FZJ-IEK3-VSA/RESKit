@@ -44,7 +44,8 @@ class CordexSource(NCSource):
                     lonMax = bounds.lonMax
                     latMax = bounds.latMax
                 else:
-                    print("Consider using a Bounds object or a gk.Extent object. They are safer!")
+                    print(
+                        "Consider using a Bounds object or a gk.Extent object. They are safer!")
                     lonMin, latMin, lonMax, latMax = bounds
 
                 bounds = Bounds(lonMin=lonMin - s.MAX_LON_DIFFERENCE,
@@ -52,7 +53,8 @@ class CordexSource(NCSource):
                                 lonMax=lonMax + s.MAX_LON_DIFFERENCE,
                                 latMax=latMax + s.MAX_LAT_DIFFERENCE,)
 
-        NCSource.__init__(s, path=path, bounds=bounds, timeName="time", latName="lat", lonName="lon", dependent_coordinates=True)
+        NCSource.__init__(s, path=path, bounds=bounds, timeName="time",
+                          latName="lat", lonName="lon", dependent_coordinates=True)
 
         # set maximal differences
         if domain == "EUR11":

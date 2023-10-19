@@ -111,7 +111,8 @@ clcCodeToRoughess[142] = 0.5  # Sport and leisure facilities
 clcCodeToRoughess[123] = 0.5  # Port areas
 clcCodeToRoughess[242] = 0.3  # Agro-forestry areas
 clcCodeToRoughess[243] = 0.3  # Complex cultivation patterns
-clcCodeToRoughess[244] = 0.3  # Land principally occupied by agriculture, with significant areas of natural vegetation
+# Land principally occupied by agriculture, with significant areas of natural vegetation
+clcCodeToRoughess[244] = 0.3
 clcCodeToRoughess[241] = 0.1  # Annual crops associated with permanent crops
 clcCodeToRoughess[221] = 0.1  # Fruit trees and berry plantations
 clcCodeToRoughess[222] = 0.1  # Vineyard
@@ -281,7 +282,8 @@ def roughness_from_clc(clc_path, loc, window_range=0):
     loc = gk.LocationSet(loc)
 
     # Get pixels values from clc
-    clcGridValues = gk.raster.interpolateValues(clc_path, loc, winRange=window_range, noDataOkay=True)
+    clcGridValues = gk.raster.interpolateValues(
+        clc_path, loc, winRange=window_range, noDataOkay=True)
 
     # make output array
     if window_range > 0:
@@ -306,7 +308,8 @@ def roughness_from_clc(clc_path, loc, window_range=0):
         clcGridValues = clcGridValues.astype(int)
 
         # Get the associated
-        outputs = [clcCodeToRoughess[clcGridToCode_v2006[val]] for val in clcGridValues]
+        outputs = [clcCodeToRoughess[clcGridToCode_v2006[val]]
+                   for val in clcGridValues]
 
     # Done!
     if len(outputs) == 1:
@@ -319,7 +322,8 @@ def roughness_from_clc(clc_path, loc, window_range=0):
 # Defined primarily from [2] DTU Wind Energy. (2019). Global Wind Atlas
 globCoverCodeToRoughess = OrderedDict()
 # GlobCover Number
-globCoverCodeToRoughess[210] = 0.0002  # Water Bodies # changed by Me from 0.0 to 0.0002
+# Water Bodies # changed by Me from 0.0 to 0.0002
+globCoverCodeToRoughess[210] = 0.0002
 globCoverCodeToRoughess[220] = 0.0004  # Permanant Snow and ice
 globCoverCodeToRoughess[200] = 0.005  # Bare areas
 globCoverCodeToRoughess[140] = 0.03  # Grasslands, savannas or lichens/mosses
@@ -372,37 +376,58 @@ cciCodeToRoughess[220] = 0.001  # Permanent snow and ice
 cciCodeToRoughess[200] = 0.005  # Bare areas
 cciCodeToRoughess[201] = 0.005  # Consolidated bare areas
 cciCodeToRoughess[202] = 0.005  # Unconsolidated bare areas
-cciCodeToRoughess[150] = 0.005  # Sparse vegetation (tree, shrub, herbaceous cover) (<15%)
+# Sparse vegetation (tree, shrub, herbaceous cover) (<15%)
+cciCodeToRoughess[150] = 0.005
 cciCodeToRoughess[151] = 0.005  # Sparse tree (<15%)
 cciCodeToRoughess[152] = 0.005  # Sparse shrub (<15%)
 cciCodeToRoughess[153] = 0.005  # Sparse herbaceous cover (<15%)
 cciCodeToRoughess[10] = 0.03  # Cropland, rainfed
 cciCodeToRoughess[11] = 0.03  # Herbaceous cover
 cciCodeToRoughess[120] = 0.03  # Shrubland
-cciCodeToRoughess[121] = 0.03  # Shrubland evergreen #barely exists, only near water bodies, ocean
-cciCodeToRoughess[122] = 0.03  # Shrubland deciduous #barely exists, only near water bodies, ocean
+# Shrubland evergreen #barely exists, only near water bodies, ocean
+cciCodeToRoughess[121] = 0.03
+# Shrubland deciduous #barely exists, only near water bodies, ocean
+cciCodeToRoughess[122] = 0.03
 cciCodeToRoughess[12] = 0.3  # Tree or shrub cover
-cciCodeToRoughess[110] = 0.03  # Mosaic herbaceous cover (>50%) / tree and shrub (<50%)
-cciCodeToRoughess[40] = 0.03  # Mosaic natural vegetation (tree, shrub, herbaceous cover) (>50%) / cropland (<50%)
-cciCodeToRoughess[180] = 0.03  # Shrub or herbaceous cover, flooded, fresh/saline/brakish water
+# Mosaic herbaceous cover (>50%) / tree and shrub (<50%)
+cciCodeToRoughess[110] = 0.03
+# Mosaic natural vegetation (tree, shrub, herbaceous cover) (>50%) / cropland (<50%)
+cciCodeToRoughess[40] = 0.03
+# Shrub or herbaceous cover, flooded, fresh/saline/brakish water
+cciCodeToRoughess[180] = 0.03
 cciCodeToRoughess[130] = 0.03  # Grassland
 cciCodeToRoughess[140] = 0.03  # Lichens and mosses
-cciCodeToRoughess[170] = 0.1  # Tree cover, flooded, saline water (areas around river deltas and ocean)
+# Tree cover, flooded, saline water (areas around river deltas and ocean)
+cciCodeToRoughess[170] = 0.1
 cciCodeToRoughess[20] = 0.1  # Cropland, irrigated or post-flooding
-cciCodeToRoughess[30] = 0.1  # Mosaic cropland (>50%) / natural vegetation (tree, shrub, herbaceous cover) (<50%)
-cciCodeToRoughess[160] = 0.5  # Tree cover, flooded, fresh or brakish water, barely exists
-cciCodeToRoughess[100] = 0.75  # Mosaic tree and shrub (>50%) / herbaceous cover (<50%)
-cciCodeToRoughess[50] = 0.75  # Tree cover, broadleaved, evergreen, closed to open (>15%)
-cciCodeToRoughess[60] = 0.75  # Tree cover, broadleaved, deciduous, closed to open (>15%)
-cciCodeToRoughess[61] = 0.75  # Tree cover, broadleaved, deciduous, closed (>40%)
-cciCodeToRoughess[62] = 0.75  # Tree cover, broadleaved, deciduous, open (15-40%)
-cciCodeToRoughess[70] = 0.75  # Tree cover, needleleaved, evergreen, closed to open (>15%)
-cciCodeToRoughess[71] = 0.75  # Tree cover, needleleaved, evergreen, closed (>40%)
-cciCodeToRoughess[72] = 0.75  # Tree cover, needleleaved, evergreen, open (15-40%)
-cciCodeToRoughess[80] = 0.75  # Tree cover, needleleaved, deciduous, closed to open (>15%)
-cciCodeToRoughess[81] = 0.75  # Tree cover, needleleaved, deciduous, closed (>40%)
-cciCodeToRoughess[82] = 0.75  # Tree cover, needleleaved, deciduous, open (15-40%)
-cciCodeToRoughess[90] = 0.75  # Tree cover, mixed leaf type (broadleaved and needleleaved)
+# Mosaic cropland (>50%) / natural vegetation (tree, shrub, herbaceous cover) (<50%)
+cciCodeToRoughess[30] = 0.1
+# Tree cover, flooded, fresh or brakish water, barely exists
+cciCodeToRoughess[160] = 0.5
+# Mosaic tree and shrub (>50%) / herbaceous cover (<50%)
+cciCodeToRoughess[100] = 0.75
+# Tree cover, broadleaved, evergreen, closed to open (>15%)
+cciCodeToRoughess[50] = 0.75
+# Tree cover, broadleaved, deciduous, closed to open (>15%)
+cciCodeToRoughess[60] = 0.75
+# Tree cover, broadleaved, deciduous, closed (>40%)
+cciCodeToRoughess[61] = 0.75
+# Tree cover, broadleaved, deciduous, open (15-40%)
+cciCodeToRoughess[62] = 0.75
+# Tree cover, needleleaved, evergreen, closed to open (>15%)
+cciCodeToRoughess[70] = 0.75
+# Tree cover, needleleaved, evergreen, closed (>40%)
+cciCodeToRoughess[71] = 0.75
+# Tree cover, needleleaved, evergreen, open (15-40%)
+cciCodeToRoughess[72] = 0.75
+# Tree cover, needleleaved, deciduous, closed to open (>15%)
+cciCodeToRoughess[80] = 0.75
+# Tree cover, needleleaved, deciduous, closed (>40%)
+cciCodeToRoughess[81] = 0.75
+# Tree cover, needleleaved, deciduous, open (15-40%)
+cciCodeToRoughess[82] = 0.75
+# Tree cover, mixed leaf type (broadleaved and needleleaved)
+cciCodeToRoughess[90] = 0.75
 cciCodeToRoughess[190] = 1.2  # Urban areas
 
 
@@ -495,8 +520,7 @@ def roughness_from_land_cover_source(source, loc, land_cover_type='clc'):
         roughness_from_land_cover_classification(classification, land_cover_type)
     """
     loc = gk.LocationSet(loc)
-    classifications = gk.raster.interpolateValues(source, loc, noDataOkay=False)
+    classifications = gk.raster.interpolateValues(
+        source, loc, noDataOkay=False)
 
     return roughness_from_land_cover_classification(classifications, land_cover_type=land_cover_type)
-
-

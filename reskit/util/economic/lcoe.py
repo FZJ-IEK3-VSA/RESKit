@@ -88,6 +88,7 @@ def levelized_cost_of_electricity(expenditures, productions, discount_rate=0.08)
         r = np.array(r)
 
     # Do summation and return
-    lcoe = (exp / np.power(1 + r, yr)).sum() / (pro / np.power(1 + r, yr)).sum()
+    lcoe = (exp / np.power(1 + r, yr)).sum() / \
+        (pro / np.power(1 + r, yr)).sum()
 
     return lcoe

@@ -40,7 +40,8 @@ def compute_air_density(temperature=20, pressure=101325, relative_humidity=0, de
     d = 1.83e-11
     e = -0.765e-8
 
-    Z = 1 - (p / T) * (a0 - a1 * t + a2 * np.power(t, 2) + (b0 + b1 * t) * xv + (c0 + c1 * t) * np.power(xv, 2)) + np.power(p / T, 2) * (d + e * np.power(xv, 2))
+    Z = 1 - (p / T) * (a0 - a1 * t + a2 * np.power(t, 2) + (b0 + b1 * t) * xv +
+                       (c0 + c1 * t) * np.power(xv, 2)) + np.power(p / T, 2) * (d + e * np.power(xv, 2))
 
     Ma = 28.96546e-3
     Mv = 18.01528e-3
