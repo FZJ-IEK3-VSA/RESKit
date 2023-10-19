@@ -9,7 +9,17 @@ from .power_curve import compute_specific_power
 from reskit.parameters.parameters import OnshoreParameters
 
 
-def onshore_turbine_from_avg_wind_speed(wind_speed, constant_rotor_diam=None, base_capacity=None, base_hub_height=None, base_rotor_diam=None, reference_wind_speed=None, min_tip_height=None, min_specific_power=None):
+def onshore_turbine_from_avg_wind_speed(
+        wind_speed,
+        constant_rotor_diam=None,
+        base_capacity=None,
+        base_hub_height=None,
+        base_rotor_diam=None,
+        reference_wind_speed=None,
+        min_tip_height=None,
+        min_specific_power=None,
+        max_hub_height=None,
+):
     """ 
     Suggest onshore turbine design characteristics (capacity, hub height, rotor diameter, specific power) for a 2050 European context based on an average wind speed value.
     The default values and the function's normalization correspond to the baseline turbine design considered by Ryberg et al. [1] for a wind speed equal to 6.7 m/s. See notes.
@@ -40,6 +50,11 @@ def onshore_turbine_from_avg_wind_speed(wind_speed, constant_rotor_diam=None, ba
     min_specific_power : numeric, optional
         Minimum specific power allowed in kw/m2, by default 180.
 
+    max_hub_height : numeric, optional
+        Maximum allowed hub height, any higher optimal hub height will be reduced to this 
+        value, by default 200.
+
+
     Returns
     -------
     dict or pandas DataFrame
@@ -69,6 +84,8 @@ def onshore_turbine_from_avg_wind_speed(wind_speed, constant_rotor_diam=None, ba
         min_tip_height = OnshoreParameters.min_tip_height
     if min_specific_power is None:
         min_specific_power = OnshoreParameters.min_specific_power
+    if max_hub_height is None:
+        max_hub_height = OnshoreParameters.max_hub_height
 
     wind_speed = np.array(wind_speed)
     multi = wind_speed.size > 1
@@ -99,15 +116,22 @@ def onshore_turbine_from_avg_wind_speed(wind_speed, constant_rotor_diam=None, ba
         (np.exp(-0.84976623 * np.log(reference_wind_speed) + 6.1879937))
     hub_height = scaling * np.exp(-0.84976623 * np.log(wind_speed) + 6.1879937)
     if multi:
-        lt20 = hub_height < (rotor_diam / 2 + min_tip_height)
-        if lt20.any():
+        lowerlt = hub_height < (rotor_diam / 2 + min_tip_height)
+        if lowerlt.any():
             if constant_rotor_diam:
-                hub_height[lt20] = rotor_diam / 2 + min_tip_height
+                hub_height[lowerlt] = rotor_diam / 2 + min_tip_height
             else:
-                hub_height[lt20] = rotor_diam[lt20] / 2 + min_tip_height
+                hub_height[lowerlt] = rotor_diam[lowerlt] / 2 + min_tip_height
+
+        upperlt = hub_height > max_hub_height
+        if upperlt.any():
+            hub_height[upperlt] = max_hub_height
+
     else:
         if hub_height < (rotor_diam / 2 + min_tip_height):
             hub_height = rotor_diam / 2 + min_tip_height
+        elif hub_height > max_hub_height:
+            hub_height = max_hub_height
 
     output = dict(capacity=capacity, hub_height=hub_height,
                   rotor_diam=rotor_diam, specific_power=specific_power)
