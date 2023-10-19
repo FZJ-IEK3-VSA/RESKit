@@ -128,3 +128,24 @@ def test_WindWorkflowManager_simulate(pt_WindWorkflowManager_loaded):
         man.sim_data['capacity_factor'].mean(), 0.4845866909936545)
     assert np.isclose(
         man.sim_data['capacity_factor'].std(), 0.32753677878391835)
+
+
+def test_WindWorkflowManager_apply_wake_correction_of_wind_speeds(pt_WindWorkflowManager_loaded):
+    man = pt_WindWorkflowManager_loaded
+
+    # set some generic windspeed values for testing
+    elev_ws = np.array(
+        [4.2, 6.8, 8.3, 12.2, 14.2, 13.1, 15.2, 10.8, 6.7, 4.2, 2.0])
+    man.sim_data['elevated_wind_speed'] = elev_ws
+
+    # first test with None value
+    man.apply_wake_correction_of_wind_speeds(wake_reduction_curve_name=None)
+    # must not change when None passed
+    assert np.isclose(
+        man.sim_data['elevated_wind_speed'].mean(), elev_ws.mean())
+
+    # now apply non-default curve
+    man.apply_wake_correction_of_wind_speeds(
+        wake_reduction_curve_name="dena_extreme1")
+    assert np.isclose(man.sim_data['elevated_wind_speed'].mean(), np.array(
+        [4.2, 6.8, 8.3, 12.2, 14.2, 13.1, 15.2, 10.8, 6.7, 4.2, 2.0]).mean())  # TODO @p.dunkel please adapt values
