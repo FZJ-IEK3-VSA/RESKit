@@ -283,7 +283,17 @@ def onshore_wind_era5(placements, era5_path, gwa_100m_path, esa_cci_path, output
     return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
 
-def wind_era5_2023(placements, era5_path, gwa_100m_path, esa_cci_path, output_netcdf_path=None, output_variables=None, nodata_fallback='nan'):
+def wind_era5_2023(
+        placements,
+        era5_path,
+        gwa_100m_path,
+        esa_cci_path,
+        output_netcdf_path=None,
+        output_variables=None,
+        nodata_fallback='nan',
+        wake_reduction_curve_name="dena_mean",
+        availability_factor=0.98,
+):
     """
     Simulates onshore and offshore (200km from shoreline) wind generation using ECMWF's ERA5 database [1]. 
 
@@ -307,6 +317,16 @@ def wind_era5_2023(placements, era5_path, gwa_100m_path, esa_cci_path, output_ne
         If no GWA available, use: (1) 'source' for ERA5 raw for simulation, (2) 'nan' for nan output
         get flags for missing values:
         - f'missing_values_{os.path.basename(path_to_LRA_source)}
+    wake_reduction_curve_name : str, optional
+        string value to describe the wake reduction method. None will cause no reduction, by default 
+        "dena_mean". Choose from (see more information here under wind_efficiency_curve_name[1]): "dena_mean", 
+        "knorr_mean", "dena_extreme1", "dena_extreme2", "knorr_extreme1", "knorr_extreme2", "knorr_extreme3",
+    availability_factor : float, otional
+        This factor accounts for all downtimes and applies an average reduction to the output curve, 
+        assuming a statistical deviation of the downtime occurences and a large enough turbine fleet.
+        By default 0.98 as suggested availability including technical availability of turbine and connector 
+        as well as outages for ecological reasons (e.g. bat protection). This does not include wake effects
+        (see above) or curtailment/outage for economical reasons or transmission grid congestion.
 
     Returns
     -------
@@ -358,6 +378,10 @@ def wind_era5_2023(placements, era5_path, gwa_100m_path, esa_cci_path, output_ne
 
     wf.apply_air_density_correction_to_wind_speeds()
 
+    # do wake reduction if applicable
+    wf.apply_wake_correction_of_wind_speeds(
+        wake_reduction_curve_name=wake_reduction_curve_name)
+
     # gaussian convolution of the power curve to account for statistical events in wind speed
     wf.convolute_power_curves(
         scaling=0.01,  # standard deviation of gaussian equals scaling*v + base
@@ -366,6 +390,9 @@ def wind_era5_2023(placements, era5_path, gwa_100m_path, esa_cci_path, output_ne
 
     # do simulation
     wf.simulate()
+
+    # apply availability factor
+    wf.apply_availability_factor(availability_factor=availability_factor)
 
     return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
