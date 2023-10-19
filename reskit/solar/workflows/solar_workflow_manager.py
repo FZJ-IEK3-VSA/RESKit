@@ -258,6 +258,11 @@ class SolarWorkflowManager(WorkflowManager):
             if key in solar_position_library:
                 _solpos_ = solar_position_library[key]
             else:
+                # make sure that no input is nan to avoid very hard-to-understand errors later on
+                _req = [self.time_index, row.lat, row.lon, row.elev, self.sim_data["surface_pressure"]
+                        [:, loc], self.sim_data["surface_air_temperature"][:, loc]]
+                assert not any([np.isnan(x).any() if hasattr(x, '__iter__') else np.isnan(
+                    x) for x in _req]), f"Arguments for pvlib.solarposition.spa_python() may not be NaN."
                 _solpos_ = pvlib.solarposition.spa_python(self.time_index,
                                                           latitude=row.lat,
                                                           longitude=row.lon,
