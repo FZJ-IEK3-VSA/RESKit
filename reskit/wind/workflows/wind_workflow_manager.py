@@ -1,6 +1,7 @@
 import geokit as gk
 import pandas as pd
 import numpy as np
+import windpowerlib
 
 from os import mkdir, environ
 from os.path import join, isfile, isdir
@@ -189,6 +190,43 @@ class WindWorkflowManager(WorkflowManager):
             pressure=self.sim_data['surface_pressure'],
             temperature=self.sim_data['surface_air_temperature'],
             height=self.elevated_wind_speed_height)
+
+        return self
+
+    def apply_wake_correction_of_wind_speeds(
+            self,
+            wake_reduction_curve_name="dena_mean",
+    ):
+        """
+        Applies a wind-speed dependent reduction factor to the wind speeds at elevated height,
+        based on 
+
+        Parameters
+        ----------
+        wake_reduction_curve_name : str, optional
+            string value to describe the wake reduction method. None will cause no reduction, 
+            by default "dena_mean". Choose from (see more information here under wind_efficiency_curve_name[1]):
+            * "dena_mean",
+            * "knorr_mean",
+            * "dena_extreme1",
+            * "dena_extreme2",
+            * "knorr_extreme1",
+            * "knorr_extreme2",
+            * "knorr_extreme3",
+
+        Return
+        ------
+            A reference to the invoking WindWorkflowManager
+        """
+        # return as is if no wake reduction shall be applied
+        if wake_reduction_curve_name is None:
+            return self
+
+        assert hasattr(self, "elevated_wind_speed_height")
+        self.sim_data['elevated_wind_speed'] = windpowerlib.wake_losses.reduce_wind_speed(
+            self.sim_data['elevated_wind_speed'],
+            wind_efficiency_curve_name=wake_reduction_curve_name
+        )
 
         return self
 
