@@ -14,7 +14,13 @@ def test_onshore_turbine_from_avg_wind_speed():
 
     output = onshore_turbine_from_avg_wind_speed(2)
     assert np.isclose(output['capacity'], 2614.8103974358564)
-    assert np.isclose(output['hub_height'], 335.2328677954964)
+    assert np.isclose(output['hub_height'], 200)
+    assert np.isclose(output['rotor_diam'], 136)
+    assert np.isclose(output['specific_power'], 180)
+
+    output = onshore_turbine_from_avg_wind_speed(2, max_hub_height=199)
+    assert np.isclose(output['capacity'], 2614.8103974358564)
+    assert np.isclose(output['hub_height'], 199)
     assert np.isclose(output['rotor_diam'], 136)
     assert np.isclose(output['specific_power'], 180)
 
