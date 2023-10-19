@@ -165,15 +165,7 @@ def test_WorkflowManager_adjust_variable_to_long_run_average_() -> WorkflowManag
         source_long_run_average=rk.weather.Era5Source.LONG_RUN_AVERAGE_GHI,
         real_long_run_average=TEST_DATA['gsa-ghi-like.tif'],
         real_lra_scaling=1000 / 24,  # cast to hourly average kWh
-        nodata_fallback='nan'
-    )
-    #test fallback to 'source' if nan
-    wf.adjust_variable_to_long_run_average(
-        variable='test_source',
-        source_long_run_average=rk.weather.Era5Source.LONG_RUN_AVERAGE_GHI,
-        real_long_run_average=TEST_DATA['gsa-ghi-like.tif'],
-        real_lra_scaling=1000 / 24,  # cast to hourly average kWh
-        nodata_fallback='source'
+        nodata_fallback=np.nan
     )
 
     assert np.isclose(wf.sim_data['test_nearest'][0][0], 0.95539191)
@@ -182,6 +174,35 @@ def test_WorkflowManager_adjust_variable_to_long_run_average_() -> WorkflowManag
     assert np.isclose(wf.sim_data['test_source'][0][0], 0.95539191)
     assert np.isclose(wf.sim_data['test_source'][0][1], 0.97695767)
     assert np.isclose(wf.sim_data['test_source'][0][2], 1)
+
+    # now test fallback to another raster with a different coordinate set
+
+    # define coordinates within and outside of the Aachen clipped CLC raster
+    columns = ['lat', 'lon', 'capacity']
+    data = [
+        [50.475, 6.1, 100.1],  # inside
+        [50.2, 6.1, 100.1],  # outside source
+        [40, 6.1, 100.1],  # outside fallback raster
+    ]
+    placements = pd.DataFrame(data, columns=columns)
+
+    # create new wf instance
+    wf = rk.solar.SolarWorkflowManager(placements)
+    wf.sim_data['test_raster'] = np.ones(shape=(1, placements.shape[0]))
+
+    # abuse the (slightly smaller) clc raster as main and the gsa-ghi-like raster (with order of magnitude 10x smaller) as fallback
+    wf.adjust_variable_to_long_run_average(
+        variable='test_raster',
+        source_long_run_average=rk.weather.Era5Source.LONG_RUN_AVERAGE_GHI,
+        real_long_run_average=TEST_DATA['clc-aachen_clipped.tif'],
+        real_lra_scaling=1000 / 24,  # cast to hourly average kWh
+        nodata_fallback=TEST_DATA['gsa-ghi-like.tif']
+    )
+
+    assert np.isclose(wf.sim_data['test_raster'][0][0], 0.95539191)
+    assert np.isclose(wf.sim_data['test_raster'][0][1], 0.97695767)
+    assert np.isnan(wf.sim_data['test_raster'][0][2])
+
 
 def test_WorkflowManager_apply_loss_factor(pt_WorkflowManager_loaded: WorkflowManager) -> WorkflowManager:
     man = pt_WorkflowManager_loaded
