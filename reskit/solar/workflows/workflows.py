@@ -60,7 +60,8 @@ def openfield_pv_merra_ryberg2019(placements, merra_path, global_solar_atlas_ghi
     wf = SolarWorkflowManager(placements)
     wf.configure_cec_module(module)
     # ensure the tracking parameter is correct
-    assert tracking in ['fixed', 'single_axis'], f"tracking must be either 'fixed' or 'single_axis'"
+    assert tracking in [
+        'fixed', 'single_axis'], f"tracking must be either 'fixed' or 'single_axis'"
 
     if not "tilt" in wf.placements.columns:
         wf.estimate_tilt_from_latitude(convention="Ryberg2020")
@@ -90,7 +91,8 @@ def openfield_pv_merra_ryberg2019(placements, merra_path, global_solar_atlas_ghi
 
     wf.determine_solar_position()
     wf.filter_positive_solar_elevation()
-    wf.determine_extra_terrestrial_irradiance(model="spencer", solar_constant=1370)
+    wf.determine_extra_terrestrial_irradiance(
+        model="spencer", solar_constant=1370)
     wf.determine_air_mass(model='kastenyoung1989')
     wf.apply_DIRINT_model()
     wf.diffuse_horizontal_irradiance_from_trigonometry()
@@ -110,7 +112,8 @@ def openfield_pv_merra_ryberg2019(placements, merra_path, global_solar_atlas_ghi
     if inverter is not None:
         wf.apply_inverter_losses(inverter=inverter, **inverter_kwargs)
 
-    wf.apply_loss_factor(0.20, variables=['capacity_factor', 'total_system_generation'])
+    wf.apply_loss_factor(
+        0.20, variables=['capacity_factor', 'total_system_generation'])
 
     return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
@@ -125,18 +128,18 @@ def openfield_pv_era5(placements, era5_path, global_solar_atlas_ghi_path, global
     Parameters
     ----------
     placements: Pandas Dataframe
-                    Locations that you want to do the simulations for.
-                    Columns need to be lat (latitudes), lon (longitudes), tilt and capacity.
+            Locations that you want to do the simulations for.
+            Columns need to be lat (latitudes), lon (longitudes), tilt and capacity.
 
     era5_path: str
-                Path to the ERA5 Data on your computer.
-                Can be a single ".nc" file, or a directory containing many ".nc" files.
+            Path to the ERA5 Data on your computer.
+            Can be a single ".nc" file, or a directory containing many ".nc" files.
 
     global_solar_atlas_ghi_path: str
-                                    Path to the global solar atlas ghi data on your computer.
+            Path to the global solar atlas ghi data on your computer.
 
     global_solar_atlas_dni_path: str
-                                    Path to the global solar atlas dni data on your computer.
+            Path to the global solar atlas dni data on your computer.
 
     module: str
             Name of the module that you wanna use for the simulation.
@@ -146,15 +149,15 @@ def openfield_pv_era5(placements, era5_path, global_solar_atlas_ghi_path, global
             Elevation that you want to model your PV system at.
 
     tracking: str
-                Determines wether your PV system is fixed or not.
-                Default is fixed.
-                Option 1 is 'fixed' meaning that the module does not have any tracking capabilities.
-                Option 2 is 'single_axis' meaning that the module has single_axis tracking capabilities.
+            Determines wether your PV system is fixed or not.
+            Default is fixed.
+            Option 1 is 'fixed' meaning that the module does not have any tracking capabilities.
+            Option 2 is 'single_axis' meaning that the module has single_axis tracking capabilities.
 
     inverter: str
-                Determines wether you want to model your PV system with an inverter or not.
-                Default is None.
-                See reskit.solar.SolarWorkflowManager.apply_inverter_losses for more usage information.
+            Determines wether you want to model your PV system with an inverter or not.
+            Default is None.
+            See reskit.solar.SolarWorkflowManager.apply_inverter_losses for more usage information.
     
     nodata_fallback: str, optional
         When real_long_run_average has no data, it can be decided between fallback options:
@@ -165,28 +168,27 @@ def openfield_pv_era5(placements, era5_path, global_solar_atlas_ghi_path, global
 
 
     output_netcdf_path: str
-                        Path to a file that you want to save your output NETCDF file at.
-                        Default is None
+            Path to a file that you want to save your output NETCDF file at.
+            Default is None
 
     output_variables: str
-                        Output variables of the simulation that you want to save into your NETCDF Outputfile.
-
+            Output variables of the simulation that you want to save into your NETCDF Outputfile.
 
     Returns
     -------
     A xarray dataset including all the output variables you defined as your output_variables.
-
     """
 
     wf = SolarWorkflowManager(placements)
     wf.configure_cec_module(module)
-    
+
     # limit the input placements longitude to range of -180...180
     assert wf.placements["lon"].between(-180, 180, inclusive=True).any()
     # limit the input placements latitude to range of -90...90
     assert wf.placements["lat"].between(-90, 90, inclusive=True).any()
     # ensure the tracking parameter is correct
-    assert tracking in ['fixed', 'single_axis'], f"tracking must be either 'fixed' or 'single_axis'"
+    assert tracking in [
+        'fixed', 'single_axis'], f"tracking must be either 'fixed' or 'single_axis'"
 
     if not "tilt" in wf.placements.columns:
         wf.estimate_tilt_from_latitude(convention="Ryberg2020")
@@ -205,7 +207,7 @@ def openfield_pv_era5(placements, era5_path, global_solar_atlas_ghi_path, global
         source_type="ERA5",
         source=era5_path,
         set_time_index=True,
-        time_index_from = 'direct_horizontal_irradiance',
+        time_index_from='direct_horizontal_irradiance',
         verbose=False
     )
     # If there is a need to resimulate old data, this line must be inserted.
@@ -229,7 +231,7 @@ def openfield_pv_era5(placements, era5_path, global_solar_atlas_ghi_path, global
         real_lra_scaling=1000 / 24,  # cast to hourly average kWh
         nodata_fallback = gsa_nodata_fallback,
     )
-    
+
     wf.adjust_variable_to_long_run_average(
         variable='direct_normal_irradiance',
         source_long_run_average=rk_weather.Era5Source.LONG_RUN_AVERAGE_DNI,
@@ -238,7 +240,8 @@ def openfield_pv_era5(placements, era5_path, global_solar_atlas_ghi_path, global
         nodata_fallback = gsa_nodata_fallback,
     )
 
-    wf.determine_extra_terrestrial_irradiance(model="spencer", solar_constant=1370)
+    wf.determine_extra_terrestrial_irradiance(
+        model="spencer", solar_constant=1370)
     wf.determine_air_mass(model='kastenyoung1989')
 
     wf.diffuse_horizontal_irradiance_from_trigonometry()
@@ -258,11 +261,11 @@ def openfield_pv_era5(placements, era5_path, global_solar_atlas_ghi_path, global
     if inverter is not None:
         wf.apply_inverter_losses(inverter=inverter, **inverter_kwargs)
 
-    loss_factor = 0.115 #validation by d.franzmann, 2022/01/13
-    wf.apply_loss_factor(loss_factor, variables=['capacity_factor', 'total_system_generation'])
+    loss_factor = 0.115  # validation by d.franzmann, 2022/01/13
+    wf.apply_loss_factor(loss_factor, variables=[
+                         'capacity_factor', 'total_system_generation'])
 
     return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
-
 
 
 def openfield_pv_sarah_unvalidated(placements, sarah_path, era5_path, module="WINAICO WSx-240P6", elev=300, tracking="fixed", inverter=None, inverter_kwargs={}, tracking_args={}, output_netcdf_path=None, output_variables=None):
@@ -323,7 +326,8 @@ def openfield_pv_sarah_unvalidated(placements, sarah_path, era5_path, module="WI
     wf = SolarWorkflowManager(placements)
     wf.configure_cec_module(module)
     # ensure the tracking parameter is correct
-    assert tracking in ['fixed', 'single_axis'], f"tracking must be either 'fixed' or 'single_axis'"
+    assert tracking in [
+        'fixed', 'single_axis'], f"tracking must be either 'fixed' or 'single_axis'"
 
     if not "tilt" in wf.placements.columns:
         wf.estimate_tilt_from_latitude(convention="Ryberg2020")
@@ -348,14 +352,15 @@ def openfield_pv_sarah_unvalidated(placements, sarah_path, era5_path, module="WI
                    "surface_dew_temperature", ],
         source_type="ERA5",
         source=era5_path,
-        set_time_index=False,        
-        time_index_from = 'direct_horizontal_irradiance',
+        set_time_index=False,
+        time_index_from='direct_horizontal_irradiance',
         verbose=False
     )
 
     wf.determine_solar_position()
     wf.filter_positive_solar_elevation()
-    wf.determine_extra_terrestrial_irradiance(model="spencer", solar_constant=1370)
+    wf.determine_extra_terrestrial_irradiance(
+        model="spencer", solar_constant=1370)
     wf.determine_air_mass(model='kastenyoung1989')
 
     wf.diffuse_horizontal_irradiance_from_trigonometry()
@@ -375,6 +380,7 @@ def openfield_pv_sarah_unvalidated(placements, sarah_path, era5_path, module="WI
     if inverter is not None:
         wf.apply_inverter_losses(inverter=inverter, **inverter_kwargs)
 
-    wf.apply_loss_factor(0.20, variables=['capacity_factor', 'total_system_generation'])
+    wf.apply_loss_factor(
+        0.20, variables=['capacity_factor', 'total_system_generation'])
 
     return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
