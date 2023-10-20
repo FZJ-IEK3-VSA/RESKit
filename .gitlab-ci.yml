@@ -17,4 +17,4 @@ test-code:
   extends: .test_template
   script:
     # Test code
-    - python -m pytest --cov=reskit reskit/test/
+    - python -m pytest --cov=reskit test/
