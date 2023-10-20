@@ -17,7 +17,7 @@ dependencies:
   - descartes
   - pandas
   - openpyxl
-  - numpy<1.22
+  - numpy
   - numba
   - scipy
   - scikit-learn
