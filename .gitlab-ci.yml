@@ -1,33 +1,20 @@
-image: continuumio/miniconda3:latest
+image: mambaorg/micromamba
 
 stages:
   - test
 
-test:
+.test_template:
   stage: test
-  # tags: 
-  #  - linux
+  before_script:
+    # create environment
+    - micromamba create -y -n reskit --file=requirements-dev.yml
+    - eval "$(micromamba shell hook --shell bash)"
+    - micromamba activate reskit
+    # Install reskit in editable mode
+    - python -m pip install -e . --no-deps
 
-  script: 
-    - conda install mamba -c conda-forge
-    - mamba create -n reskit
-    - source activate reskit
-    - git clone --branch dev https://CIGlaes:${GeokitAccessToken}@jugit.fz-juelich.de/iek-3/shared-code/geokit.git
-    - cd geokit
-    - mamba env update -n reskit --file=requirements-dev.yml
-    - cd ..
-    - mamba env update -n reskit --file=requirements-dev.yml
-    # install geokit
-    - cd geokit
-    - pip install -e .
-    #- source ~/.bashrc #refresh the path variables
-    - source deactivate
-    - source activate reskit
-    # instll reskit
-    - cd ..
-    - pip show geokit
-    - pip show gdal
-    - pip install -e .
-    - mamba info --envs
-    - python -m pip show geokit
-    - python -m pytest --cov=reskit test/
+test-code:
+  extends: .test_template
+  script:
+    # Test code
+    - python -m pytest --cov=reskit reskit/test/
