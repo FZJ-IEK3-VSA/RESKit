@@ -248,7 +248,7 @@ class WindWorkflowManager(WorkflowManager):
 
         return self
 
-    def simulate(self, cf_correction_factor=1.0, tolerance=0.03, timeout=300):
+    def simulate(self, cf_correction_factor=1.0, tolerance=0.01, timeout=60):
         """
         Applies the invoking power curve to the given wind speeds.
 
@@ -263,7 +263,7 @@ class WindWorkflowManager(WorkflowManager):
         timeout : int, optional
             The max. time allowed for iterative simulation of one batch until
             the tolerance is met, else a TimeOutError will be raised. By default
-            300 [s] i.e. 5 minutes.
+            60 [s] i.e. 1 minute.
 
         Return
         ------
@@ -286,15 +286,16 @@ class WindWorkflowManager(WorkflowManager):
         self.set_correction_factors(correction_factors=cf_correction_factor)
 
         # calculate a starting point generation value
-        gen = _sim(ws_correction_factors=np.array([1.0]) * len(self.locs))
+        gen = _sim(ws_correction_factors=np.array([1.0] * len(self.locs)))
         # calculate the target average cf
-        _target_cfs = np.nanmean(gen, axis=1) * self.correction_factors
+        _target_cfs = np.nanmean(gen, axis=0) * self.correction_factors
 
         # set the deviation based on corr factor
         _deviations = 1 / self.correction_factors
 
         # iterate until the target cf average is met
         _start = time.time()
+        _ws_corrs_i = np.array([1.0] * len(self.locs))
         while (abs(_deviations - 1) > tolerance).any():
             # safety fallback - exit in case of infinite loops
             if time.time() - _start > timeout:
@@ -302,15 +303,12 @@ class WindWorkflowManager(WorkflowManager):
                     f"The simulation did not reach the required tolerance within the given timeout. Increase tolerance or timeout."
                 )
 
-            # estimate a correction factor for the wind speed for this iteration
-            _ws_corrs_i = np.cbrt(_deviations)  # power law
+            # update the estimates correction factor for the wind speed for this iteration
+            _ws_corrs_i = _ws_corrs_i * np.cbrt(1 / _deviations)  # power law
             # calculate with an adapted ws correction
             gen = _sim(ws_correction_factors=_ws_corrs_i)
             # calculate the new deviation
-            _deviations = np.nanmean(gen, axis=1) / _target_cfs
-        print(
-            f"ITERATIVE CORRECTION TOOK {round(time.time()-_start,0)} SECONDS"
-        )  # TODO remove
+            _deviations = np.nanmean(gen, axis=0) / _target_cfs
 
         # write final generation into sim data
         self.sim_data["capacity_factor"] = gen
