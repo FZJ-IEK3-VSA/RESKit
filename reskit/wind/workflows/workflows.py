@@ -12,6 +12,15 @@ def onshore_wind_merra_ryberg2019_europe(
     output_netcdf_path=None,
     output_variables=None,
 ):
+
+def onshore_wind_merra_ryberg2019_europe(
+    placements,
+    merra_path,
+    gwa_50m_path,
+    clc2012_path,
+    output_netcdf_path=None,
+    output_variables=None,
+):
     # TODO: Add range limitation over Europe by checking placements
     """
     Simulates onshore wind generation in Europe using NASA's MERRA2 database [1].
