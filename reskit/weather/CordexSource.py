@@ -32,9 +32,7 @@ class CordexSource(NCSource):
     GWA100_CONTEXT_MEAN_SOURCE = None
 
     def __init__(s, path, bounds=None, domain="EUR11"):
-        print(
-            "WARNING: CordexSource has not been updated in awhile and is almost guarenteed to fail..."
-        )
+        print("WARNING: CordexSource has not been updated in awhile and is almost guarenteed to fail...")
 
         if not bounds is None:
             if isinstance(bounds, gk.Extent):
@@ -46,27 +44,15 @@ class CordexSource(NCSource):
                     lonMax = bounds.lonMax
                     latMax = bounds.latMax
                 else:
-                    print(
-                        "Consider using a Bounds object or a gk.Extent object. They are safer!"
-                    )
+                    print("Consider using a Bounds object or a gk.Extent object. They are safer!")
                     lonMin, latMin, lonMax, latMax = bounds
 
-                bounds = Bounds(
-                    lonMin=lonMin - s.MAX_LON_DIFFERENCE,
-                    latMin=latMin - s.MAX_LAT_DIFFERENCE,
-                    lonMax=lonMax + s.MAX_LON_DIFFERENCE,
-                    latMax=latMax + s.MAX_LAT_DIFFERENCE,
-                )
+                bounds = Bounds(lonMin=lonMin - s.MAX_LON_DIFFERENCE,
+                                latMin=latMin - s.MAX_LAT_DIFFERENCE,
+                                lonMax=lonMax + s.MAX_LON_DIFFERENCE,
+                                latMax=latMax + s.MAX_LAT_DIFFERENCE,)
 
-        NCSource.__init__(
-            s,
-            path=path,
-            bounds=bounds,
-            timeName="time",
-            latName="lat",
-            lonName="lon",
-            dependent_coordinates=True,
-        )
+        NCSource.__init__(s, path=path, bounds=bounds, timeName="time", latName="lat", lonName="lon", dependent_coordinates=True)
 
         # set maximal differences
         if domain == "EUR11":
@@ -100,11 +86,11 @@ class CordexSource(NCSource):
         # read raw data
         s.load(ghiName, name="ghi")
 
-    def loadTemperature(s, which="air", processor=lambda x: x - 273.15):
+    def loadTemperature(s, which='air', processor=lambda x: x - 273.15):
         """Temperature variable loader"""
-        if which.lower() == "air":
+        if which.lower() == 'air':
             varName = "tas"
-        elif which.lower() == "dew":
+        elif which.lower() == 'dew':
             varName = "dpas"
         else:
             raise ResMerraError("sub group '%s' not understood" % which)
@@ -112,5 +98,4 @@ class CordexSource(NCSource):
         # load
         s.load(varName, name=which + "_temp", processor=processor)
 
-    def loadPressure(s):
-        s.load("ps", name="pressure")
+    def loadPressure(s): s.load("ps", name='pressure')

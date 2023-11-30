@@ -66,6 +66,8 @@ class WorkflowManager:
 
         if self.locs is None:
             self.locs = gk.LocationSet(self.placements[["lon", "lat"]].values)
+        
+ 
 
         self.ext = gk.Extent.fromLocationSet(self.locs)
 
@@ -108,8 +110,8 @@ class WorkflowManager:
         set_time_index: bool = False,
         spatial_interpolation_mode: str = "bilinear",
         temporal_reindex_method: str = "nearest",
-        time_index_from=None,
-        **kwargs,
+        time_index_from = None,
+        **kwargs
     ):
         """Reads the specified variables from the NetCDF4-style weather dataset, and then extracts
         those variables for each of the coordinates configured in `.placements`. The resulting
@@ -179,10 +181,8 @@ class WorkflowManager:
             else:
                 raise RuntimeError("Unknown source_type")
 
-            if source_type == "ERA5":
-                source = source_constructor(
-                    source, bounds=self.ext, time_index_from=time_index_from, **kwargs
-                )
+            if source_type == 'ERA5':
+                source = source_constructor(source, bounds=self.ext, time_index_from=time_index_from, **kwargs)
             else:
                 source = source_constructor(source, bounds=self.ext, **kwargs)
 
@@ -205,7 +205,7 @@ class WorkflowManager:
         for var in variables:
             self.sim_data[var] = source.get(
                 var,
-                self.locs,  # Manipulate locs here
+                self.locs, #Manipulate locs here
                 interpolation=spatial_interpolation_mode,
                 force_as_data_frame=True,
             )
@@ -234,7 +234,7 @@ class WorkflowManager:
         real_long_run_average: Union[str, float, np.ndarray],
         real_lra_scaling: float = 1,
         spatial_interpolation: str = "linear-spline",
-        nodata_fallback: str = "nan",
+        nodata_fallback: str= 'nan',
     ):
         """Adjusts the average mean of the specified variable to a known long-run-average
 
@@ -287,15 +287,15 @@ class WorkflowManager:
             real_lra = gk.raster.interpolateValues(
                 real_long_run_average, self.locs, mode=spatial_interpolation
             )
-            # if getting values fails, it could be because of interpolation method.
+            #if getting values fails, it could be because of interpolation method.
             # thise values will be replaced with the nearest interpolation method
             if np.isnan(real_lra).any():
                 real_lra_near = gk.raster.interpolateValues(
-                    real_long_run_average, self.locs, mode="near"
+                real_long_run_average, self.locs, mode='near'
                 )
                 real_lra[np.isnan(real_lra)] = real_lra_near[np.isnan(real_lra)]
 
-            # assert not np.isnan(real_lra).any() and (real_lra > 0).all()
+            #assert not np.isnan(real_lra).any() and (real_lra > 0).all()
         else:
             real_lra = real_long_run_average
 
@@ -303,33 +303,31 @@ class WorkflowManager:
             source_lra = gk.raster.interpolateValues(
                 source_long_run_average, self.locs, mode=spatial_interpolation
             )
-            # if getting values fails, it could be because of interpolation method.
+            #if getting values fails, it could be because of interpolation method.
             # thise values will be replaced with the nearest interpolation method
             if np.isnan(source_lra).any():
                 source_lra_nearest = gk.raster.interpolateValues(
-                    source_long_run_average, self.locs, mode="near"
+                source_long_run_average, self.locs, mode='near'
                 )
-                source_lra[np.isnan(source_lra)] = source_lra_nearest[
-                    np.isnan(source_lra)
-                ]
-            # assert not np.isnan(source_lra).any() and (source_lra > 0).all()
+                source_lra[np.isnan(source_lra)] = source_lra_nearest[np.isnan(source_lra)]
+            #assert not np.isnan(source_lra).any() and (source_lra > 0).all()
         else:
             source_lra = source_long_run_average
 
-        # calulate scaling factor:
+        #calulate scaling factor:
         # nan result will stay nan results, as these placements cannot be calculated any more
         factors = real_lra * real_lra_scaling / source_lra
 
-        # write info with missing values to sim_data:
-        self.placements[
-            f"missing_values_{os.path.basename(real_long_run_average)}"
-        ] = np.isnan(factors)
+        #write info with missing values to sim_data:
+        self.placements[f'missing_values_{os.path.basename(real_long_run_average)}'] = \
+            np.isnan(factors)
 
-        if nodata_fallback.lower() == "source":
+
+        if nodata_fallback.lower() == 'source':
             factors[np.isnan(factors)] = 1
 
         self.sim_data[variable] = factors * self.sim_data[variable]
-        self.placements[f"LRA_factor_{variable}"] = factors
+        self.placements[f'LRA_factor_{variable}'] = factors
         return self
 
     def spatial_disaggregation(
@@ -340,7 +338,7 @@ class WorkflowManager:
         real_lra_scaling: float = 1,
         spatial_interpolation: str = "linear-spline",
     ):
-        """[summary]
+        '''[summary]
 
         Parameters
         ----------
@@ -354,31 +352,31 @@ class WorkflowManager:
             [description], by default 1
         spatial_interpolation : str, optional
             [description], by default "linear-spline"
-        """
-        # Get values from high resolution tiff file
+        '''
+        #Get values from high resolution tiff file
         if isinstance(source_high_resolution, str):
-            correction_values_high_res = gk.raster.interpolateValues(  # TODO change here
+            correction_values_high_res = gk.raster.interpolateValues(#TODO change here
                 source_high_resolution, self.locs, mode=spatial_interpolation
             )
-            # assert not np.isnan(correction_values_high_res).any() and (correction_values_high_res > 0).all()
+            #assert not np.isnan(correction_values_high_res).any() and (correction_values_high_res > 0).all()
         else:
             correction_values_high_res = source_high_resolution
 
-        # Get values from low resolution tiff file (meaned over eg. ERA5)
+        #Get values from low resolution tiff file (meaned over eg. ERA5)
         if isinstance(source_low_resolution, str):
-            correction_values_low_res = gk.raster.interpolateValues(  # TODO change here
+            correction_values_low_res = gk.raster.interpolateValues(#TODO change here
                 source_low_resolution, self.locs, mode=spatial_interpolation
             )
-            # assert not np.isnan(correction_values_low_res).any() and (correction_values_low_res > 0).all()
+            #assert not np.isnan(correction_values_low_res).any() and (correction_values_low_res > 0).all()
         else:
             correction_values_low_res = source_low_resolution
 
         # correction factors:
         factors = correction_values_high_res / correction_values_low_res
-        factors = np.nan_to_num(factors, nan=1 / real_lra_scaling)
+        factors = np.nan_to_num(factors, nan=1/real_lra_scaling)
         assert (factors > 0).all()
 
-        # update values
+        #update values
         self.sim_data[variable] = self.sim_data[variable] * factors * real_lra_scaling
         return self
 
@@ -471,10 +469,8 @@ class WorkflowManager:
             times = [
                 np.datetime64(dt.tz_convert("UTC").tz_convert(None)) for dt in times
             ]
-        times_days = np.unique(pd.DatetimeIndex(times).date).astype("datetime64")
-        if times_days[0].astype("datetime64[Y]") != times_days[-1].astype(
-            "datetime64[Y]"
-        ):
+        times_days = np.unique(pd.DatetimeIndex(times).date).astype('datetime64')
+        if times_days[0].astype('datetime64[Y]') != times_days[-1].astype('datetime64[Y]'):
             # old tiles where shifted by 1 hour, so the last day of the previous year also appears. catch this problem whti this if clause
             times_days = times_days[1:]
         xds = OrderedDict()
@@ -486,9 +482,9 @@ class WorkflowManager:
         else:
             location_coords = np.arange(self.placements.shape[0])
 
-        # write placements
+        #write placements
         for c in self.placements.columns:
-            # check if c in requestet output_variables
+            #check if c in requestet output_variables
             if output_variables is not None:
                 if c not in output_variables:
                     continue
@@ -506,10 +502,10 @@ class WorkflowManager:
                     dims=["location"],
                     coords=dict(location=location_coords),
                 )
-
-        # write sim_data
+                
+        #write sim_data
         for key in self.sim_data.keys():
-            # check if key in requestet output_variables
+            #check if key in requestet output_variables
             if output_variables is not None:
                 if key not in output_variables:
                     continue
@@ -523,11 +519,11 @@ class WorkflowManager:
                 coords=dict(time=times, location=location_coords),
             )
             encoding[key] = dict(zlib=True)
-
-        # write sim_data_daily, only if exists
-        if hasattr(self, "sim_data_daily"):
+        
+        #write sim_data_daily, only if exists
+        if hasattr(self, 'sim_data_daily'):
             for key in self.sim_data_daily.keys():
-                # check if key in requestet output_variables
+                #check if key in requestet output_variables
                 if output_variables is not None:
                     if key not in output_variables:
                         continue
@@ -541,7 +537,7 @@ class WorkflowManager:
                     coords=dict(time_days=times_days, location=location_coords),
                 )
                 encoding[key] = dict(zlib=True)
-
+        
         if _intermediate_dict:
             return xds
 
@@ -572,7 +568,7 @@ def distribute_workflow(
     jobs: int = 2,
     max_batch_size: int = None,
     intermediate_output_dir: str = None,
-    **kwargs,
+    **kwargs
 ) -> xarray.Dataset:
     """Distributes a RESKit simulation workflow across multiple CPUs
 

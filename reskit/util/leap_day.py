@@ -24,16 +24,15 @@ def remove_leap_day(timeseries):
         if timeseries.shape[0] == 8760:
             return timeseries
         elif timeseries.shape[0] == 8784:
-            times = pd.date_range(
-                "01-01-2000 00:00:00", "12-31-2000 23:00:00", freq="H"
-            )
+            times = pd.date_range("01-01-2000 00:00:00",
+                                  "12-31-2000 23:00:00", freq="H")
             sel = np.logical_and((times.day == 29), (times.month == 2))
             if len(timeseries.shape) == 1:
                 return timeseries[~sel]
             else:
                 return timeseries[~sel, :]
         else:
-            raise ResError("Cannot handle array shape " + str(timeseries.shape))
+            raise ResError('Cannot handle array shape ' + str(timeseries.shape))
 
     elif isinstance(timeseries, pd.Series) or isinstance(timeseries, pd.DataFrame):
         times = timeseries.index

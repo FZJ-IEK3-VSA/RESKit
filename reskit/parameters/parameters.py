@@ -4,7 +4,6 @@ class Parameters:
     the individual functions rely. The base parameter set can be updated by 
     loader/setter functions.
     """
-
     def __init__(self):
         """
         This class is initialized without any arguments.
@@ -17,38 +16,35 @@ class Parameters:
         overwrites the preset static attributes.
         """
         pass
-
-
+    
 class OnshoreParameters(Parameters):
     """
     This class holds all onshore-wind specific techno-economic base parameter 
     assumptions as static attributes as well as specific methods to manipulate 
     onshore parameters.
     """
-
     # static baseline turbine attributes
-    constant_rotor_diam = True
-    base_capacity = 4200  # [kW]
-    base_hub_height = 120  # [m]
-    base_rotor_diam = 136  # [m]
-    reference_wind_speed = 6.7  # [m/s]
-    min_tip_height = 20
-    min_specific_power = 180
+    constant_rotor_diam=True 
+    base_capacity=4200 #[kW]
+    base_hub_height=120 #[m]
+    base_rotor_diam=136 #[m]
+    reference_wind_speed=6.7 #[m/s]
+    min_tip_height=20 
+    min_specific_power=180
     # static economic attributes
-    base_capex_per_capacity = 1100  # [EUR/kW]
-    base_capex = base_capex_per_capacity * base_capacity  # [EUR]
-    tcc_share = 0.673  # [-]
-    bos_share = 0.229  # [-]
+    base_capex_per_capacity=1100 #[EUR/kW]
+    base_capex=base_capex_per_capacity*base_capacity #[EUR]
+    tcc_share=0.673 #[-]
+    bos_share=0.229 #[-]
     # static turbine design attributes
-    gdp_escalator = 1
-    blade_material_escalator = 1
-    blades = 3
+    gdp_escalator=1
+    blade_material_escalator=1
+    blades=3
 
     def __init__(self):
         pass
-
-    def load_individual_params(
-        self,
+    
+    def load_individual_params(self,         
         constant_rotor_diam=None,
         base_capacity=None,
         base_hub_height=None,
@@ -101,21 +97,19 @@ class OnshoreParameters(Parameters):
         """
         pass
 
-
 class OffshoreParameters(Parameters):
     """
     This class holds all offshore-wind specific techno-economic base parameter 
     assumptions as static attributes as well as specific methods to manipulate 
     offshore parameters.
     """
-
-    distance_to_bus = 3
-    foundation = "monopile"
-    mooring_count = 3
-    anchor = "DEA"
-    turbine_count = 80
-    turbine_spacing = 5
-    turbine_row_spacing = 9
+    distance_to_bus=3
+    foundation="monopile" 
+    mooring_count=3
+    anchor="DEA"
+    turbine_count=80 
+    turbine_spacing=5 
+    turbine_row_spacing=9
 
     def __init__(self):
         """
@@ -123,15 +117,14 @@ class OffshoreParameters(Parameters):
         """
         pass
 
-    def load_individual_params(
-        self,
-        distance_to_bus=None,
-        foundation=None,
-        mooring_count=None,
-        anchor=None,
-        turbine_count=None,
-        turbine_spacing=None,
-        turbine_row_spacing=None,
+    def load_individual_params(self,         
+            distance_to_bus=None,
+            foundation=None,
+            mooring_count =None,
+            anchor=None,
+            turbine_count=None,
+            turbine_spacing =None,
+            turbine_row_spacing=None,
     ):
         """
         [Summary]

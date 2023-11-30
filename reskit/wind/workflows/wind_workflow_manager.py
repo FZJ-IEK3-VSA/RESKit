@@ -39,41 +39,28 @@ class WindWorkflowManager(WorkflowManager):
 
     """
 
-    def __init__(
-        self,
-        placements,
-        synthetic_power_curve_cut_out=25,
-        synthetic_power_curve_rounding=1,
-    ):
+    def __init__(self, placements, synthetic_power_curve_cut_out=25, synthetic_power_curve_rounding=1):
         # Do basic workflow construction
         super().__init__(placements)
 
         # Check for basics
-        assert (
-            "capacity" in self.placements.columns
-        ), "Placement dataframe needs 'capacity' column"
-        assert (
-            "hub_height" in self.placements.columns
-        ), "Placement dataframe needs 'hub_height' column"
+        assert 'capacity' in self.placements.columns, "Placement dataframe needs 'capacity' column"
+        assert 'hub_height' in self.placements.columns, "Placement dataframe needs 'hub_height' column"
 
         # Check for power curve. If not found, make it!
         self.powerCurveLibrary = dict()
 
         # Should we automatically generate synthetic power curves?
         if not "powerCurve" in self.placements.columns:
-            assert (
-                "rotor_diam" in self.placements.columns
-            ), "Placement dataframe needs 'rotor_diam' or 'powerCurve' column"
+            assert 'rotor_diam' in self.placements.columns, "Placement dataframe needs 'rotor_diam' or 'powerCurve' column"
 
             specificPower = rk_wind_core.power_curve.compute_specific_power(
-                self.placements["capacity"], self.placements["rotor_diam"]
-            )
+                self.placements['capacity'],
+                self.placements['rotor_diam'])
 
             if synthetic_power_curve_rounding is not None:
-                specificPower = (
-                    np.round(specificPower / synthetic_power_curve_rounding)
-                    * synthetic_power_curve_rounding
-                )
+                specificPower = np.round(
+                    specificPower / synthetic_power_curve_rounding) * synthetic_power_curve_rounding
                 specificPower = specificPower.astype(int)
 
             powerCurve = []
@@ -81,28 +68,23 @@ class WindWorkflowManager(WorkflowManager):
                 pcid = "SPC:%d,%d" % (sppow, synthetic_power_curve_cut_out)
                 powerCurve.append(pcid)
 
-            self.placements["powerCurve"] = powerCurve
+            self.placements['powerCurve'] = powerCurve
 
         # Put power curves into the power curve library
         for pc in self.placements.powerCurve.values:
-            assert isinstance(
-                pc, str
-            ), "Power curve value needs to be a string, not " + type(pc)
+            assert isinstance(pc, str), \
+                "Power curve value needs to be a string, not " + type(pc)
 
             if pc in self.powerCurveLibrary:
                 continue
 
             if pc[:4] == "SPC:":
                 sppow, cutout = pc.split(":")[1].split(",")
-                self.powerCurveLibrary[
-                    pc
-                ] = rk_wind_core.power_curve.PowerCurve.from_specific_power(
-                    specific_power=float(sppow), cutout=float(cutout)
-                )
+                self.powerCurveLibrary[pc] = rk_wind_core.power_curve.PowerCurve.from_specific_power(
+                    specific_power=float(sppow),
+                    cutout=float(cutout))
             else:
-                self.powerCurveLibrary[pc] = (
-                    rk_wind_core.turbine_library.TurbineLibrary().loc[pc].PowerCurve
-                )
+                self.powerCurveLibrary[pc] = rk_wind_core.turbine_library.TurbineLibrary().loc[pc].PowerCurve
 
     def set_roughness(self, roughness):
         """
@@ -119,7 +101,7 @@ class WindWorkflowManager(WorkflowManager):
         ------
             A reference to the invoking WindWorkflowManager
         """
-        self.placements["roughness"] = roughness
+        self.placements['roughness'] = roughness
         return self
 
     def estimate_roughness_from_land_cover(self, path, source_type):
@@ -141,17 +123,12 @@ class WindWorkflowManager(WorkflowManager):
         --------
             A reference to the invoking WindWorkflowManager
         """
-        num = gk.raster.interpolateValues(path, self.locs, mode="near")
-        self.placements[
-            "roughness"
-        ] = rk_wind_core.logarithmic_profile.roughness_from_land_cover_classification(
-            num, source_type
-        )
+        num = gk.raster.interpolateValues(path, self.locs, mode='near')
+        self.placements['roughness'] = rk_wind_core.logarithmic_profile.roughness_from_land_cover_classification(
+            num, source_type)
         return self
 
-    def logarithmic_projection_of_wind_speeds_to_hub_height(
-        self, consider_boundary_layer_height=False
-    ):
+    def logarithmic_projection_of_wind_speeds_to_hub_height(self, consider_boundary_layer_height=False):
         """
         Projects the wind speed values to the hub height.
 
@@ -166,29 +143,28 @@ class WindWorkflowManager(WorkflowManager):
         if consider_boundary_layer_height:
             # When the hub height is above the PBL, then only project to the PBL
             target_height = np.minimum(
-                self.sim_data["boundary_layer_height"],
-                self.placements["hub_height"].values,
-            )
+                    self.sim_data['boundary_layer_height'],
+                    self.placements['hub_height'].values)
 
             # When the PBL is below the elevated_wind_speed_height, then no projection
-            # should be performed. This can be effectlvely accomplished by setting the
+            # should be performed. This can be effectlvely accomplished by setting the 
             # target height to that of the elevated_wind_speed_height
             sel = target_height > self.elevated_wind_speed_height
             target_height[sel] = self.elevated_wind_speed_height
 
         else:
-            target_height = self.placements["hub_height"].values
+            target_height = self.placements['hub_height'].values
 
         tmp = rk_wind_core.logarithmic_profile.apply_logarithmic_profile_projection(
-            self.sim_data["elevated_wind_speed"],
+            self.sim_data['elevated_wind_speed'],
             measured_height=self.elevated_wind_speed_height,
             target_height=target_height,
-            roughness=self.placements["roughness"].values,
+            roughness=self.placements['roughness'].values
         )
-
-        self.sim_data["elevated_wind_speed"] = tmp
-
-        self.elevated_wind_speed_height = self.placements["hub_height"].values
+        
+        self.sim_data['elevated_wind_speed'] = tmp
+        
+        self.elevated_wind_speed_height = self.placements['hub_height'].values
 
         return self
 
@@ -203,22 +179,15 @@ class WindWorkflowManager(WorkflowManager):
 
         """
 
-        assert (
-            "surface_air_temperature" in self.sim_data
-        ), "surface_air_temperature has not been read from a source"
-        assert (
-            "surface_pressure" in self.sim_data
-        ), "surface_pressure has not been read from a source"
+        assert "surface_air_temperature" in self.sim_data, "surface_air_temperature has not been read from a source"
+        assert "surface_pressure" in self.sim_data, "surface_pressure has not been read from a source"
         assert hasattr(self, "elevated_wind_speed_height")
 
-        self.sim_data[
-            "elevated_wind_speed"
-        ] = rk_wind_core.air_density_adjustment.apply_air_density_adjustment(
-            self.sim_data["elevated_wind_speed"],
-            pressure=self.sim_data["surface_pressure"],
-            temperature=self.sim_data["surface_air_temperature"],
-            height=self.elevated_wind_speed_height,
-        )
+        self.sim_data['elevated_wind_speed'] = rk_wind_core.air_density_adjustment.apply_air_density_adjustment(
+            self.sim_data['elevated_wind_speed'],
+            pressure=self.sim_data['surface_pressure'],
+            temperature=self.sim_data['surface_air_temperature'],
+            height=self.elevated_wind_speed_height)
 
         return self
 
@@ -241,9 +210,11 @@ class WindWorkflowManager(WorkflowManager):
         assert hasattr(self, "powerCurveLibrary")
 
         for key in self.powerCurveLibrary.keys():
-            self.powerCurveLibrary[key] = self.powerCurveLibrary[
-                key
-            ].convolute_by_gaussian(scaling=scaling, base=base, **kwargs)
+            self.powerCurveLibrary[key] = self.powerCurveLibrary[key].convolute_by_gaussian(
+                scaling=scaling,
+                base=base,
+                **kwargs
+            )
 
         return self
 
@@ -256,19 +227,17 @@ class WindWorkflowManager(WorkflowManager):
             A reference to the invoking WindWorkflowManager
         """
 
-        gen = np.zeros_like(self.sim_data["elevated_wind_speed"])
+        gen = np.zeros_like(self.sim_data['elevated_wind_speed'])
 
         for pckey, pc in self.powerCurveLibrary.items():
             sel = self.placements.powerCurve == pckey
-            gen[:, sel] = pc.simulate(self.sim_data["elevated_wind_speed"][:, sel])
+            gen[:, sel] = pc.simulate(self.sim_data['elevated_wind_speed'][:, sel])
 
-        self.sim_data["capacity_factor"] = gen
+        self.sim_data['capacity_factor'] = gen
 
         return self
 
-    def interpolate_raster_vals_to_hub_height(
-        self, name: str, height_to_raster_dict: dict, **kwargs
-    ):
+    def interpolate_raster_vals_to_hub_height(self, name: str, height_to_raster_dict: dict, **kwargs):
         """Given several raster datasets which correspond to a desired value (e.g. average wind speed) at 
         different altitudes, this function will read values for each placement location from each of these 
         datasets, and will then linearly interpolate them to the hub height of each turbine
@@ -290,18 +259,18 @@ class WindWorkflowManager(WorkflowManager):
         for h in known_heights:
             known_vals.append(
                 self.extract_raster_values_at_placements(
-                    height_to_raster_dict[h], **kwargs
-                )
-            )
+                    height_to_raster_dict[h],
+                    **kwargs
+                ))
 
         interpolated_vals = np.full_like(known_vals[0], np.nan)
-        hh = self.placements["hub_height"].values
+        hh = self.placements['hub_height'].values
         for hi in range(len(known_heights) - 1):
-            sel = np.logical_and(hh >= known_heights[hi], hh < known_heights[hi + 1])
+            sel = np.logical_and(
+                hh >= known_heights[hi],
+                hh < known_heights[hi + 1])
             if sel.any():
-                interpolated_vals[sel] = (hh[sel] - known_heights[hi]) / (
-                    known_heights[hi + 1] - known_heights[hi]
-                ) * (known_vals[hi + 1] - known_vals[hi]) + known_vals[hi]
+                interpolated_vals[sel] = (hh[sel] - known_heights[hi]) / (known_heights[hi + 1] - known_heights[hi]) * (known_vals[hi + 1] - known_vals[hi]) + known_vals[hi]
 
         if np.isnan(interpolated_vals).any():
             raise RuntimeError("Could not determine interpolation for all hub heights")

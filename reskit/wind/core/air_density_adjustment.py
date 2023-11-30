@@ -1,3 +1,4 @@
+
 import numpy as np
 
 
@@ -36,7 +37,7 @@ def apply_air_density_adjustment(wind_speed, pressure, temperature, height=0):
     R = 8.3144598  # Universal gas constant [N·m/(mol·K)]
     rhoSTD = 1.225  # Standard air density [kg/m3]
 
-    temperature = temperature + 273.15
+    temperature = (temperature + 273.15)
 
     # Get surface density
     rho = pressure * Ma / (R * temperature)
