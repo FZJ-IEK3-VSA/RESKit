@@ -3,7 +3,7 @@ import os
 import pandas as pd
 
 
-def load_dataset(datasetname: str = 'Initial'):
+def load_dataset(datasetname: str = "Initial"):
     """Returns the selected dataset as Sereis.
 
     Args:
@@ -13,8 +13,9 @@ def load_dataset(datasetname: str = 'Initial'):
         [pd.Series]: [description]
     """
 
-    df = pd.read_excel(os.path.join(
-        Path(__file__).absolute().parent, 'CSP_database.xlsx'), index_col=0)
+    df = pd.read_excel(
+        os.path.join(Path(__file__).absolute().parent, "CSP_database.xlsx"), index_col=0
+    )
 
     assert datasetname in df.columns
 
@@ -24,7 +25,7 @@ def load_dataset(datasetname: str = 'Initial'):
 
 
 if __name__ == "__main__":
-    df = load_dataset('Validation 1')
+    df = load_dataset("Validation 1")
     assert isinstance(df, pd.Series)
-    print(df['dataset name'])
+    print(df["dataset name"])
     print(df)

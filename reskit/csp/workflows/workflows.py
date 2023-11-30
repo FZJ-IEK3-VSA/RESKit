@@ -17,7 +17,7 @@ def CSP_PTR_ERA5(
     global_solar_atlas_tamb_path=None,
     datasets=None,
     cost_year=2050,
-    HTF_sel=['Heliosol', 'SolarSalt', 'Therminol'],
+    HTF_sel=["Heliosol", "SolarSalt", "Therminol"],
     elev_path=None,
     output_netcdf_path=None,
     output_variables=None,
@@ -29,12 +29,11 @@ def CSP_PTR_ERA5(
     fullvariation=False,
     _validation=False,
 ):
-
     # handle inputs for datasets
     single_dataset = False
     if datasets == None:
         # get datasets from HTF_sel and cost_year
-        datasets = ['Dataset_' + htf + '_' + str(cost_year)for htf in HTF_sel]
+        datasets = ["Dataset_" + htf + "_" + str(cost_year) for htf in HTF_sel]
         if len(datasets) == 1:
             single_dataset = True
             datasets = datasets[0]
@@ -47,7 +46,7 @@ def CSP_PTR_ERA5(
             single_dataset = True
             datasets = datasets[0]
     else:
-        raise TypeError(f'datasets got unkown datatype')
+        raise TypeError(f"datasets got unkown datatype")
 
     if not single_dataset:
         assert isinstance(global_solar_atlas_tamb_path, str)
@@ -72,7 +71,6 @@ def CSP_PTR_ERA5(
         return output
 
     else:  # multiple datasets found
-
         # 1) split up placements for each htf
         d = dataset_handler(datasets)
         placements = d.split_placements(
@@ -86,7 +84,7 @@ def CSP_PTR_ERA5(
         ouputs = []
         for dataset in datasets:
             # select placements for current dataset
-            placements_dataset = placements[placements['Dataset_opt'] == dataset]
+            placements_dataset = placements[placements["Dataset_opt"] == dataset]
 
             # skip empty batches
             if len(placements_dataset) == 0:
@@ -111,15 +109,14 @@ def CSP_PTR_ERA5(
             )
 
             # add dataset to column (force output this!)
-            if not 'datasetname' in output_dataset.variables:
-                output_dataset['datasetname'] = (
-                    output_dataset['lon']*0).astype(str)
-                output_dataset['datasetname'][:] = dataset
-            if 'Dataset_opt' in output_dataset.variables:
-                output_dataset = output_dataset.drop('Dataset_opt')
+            if not "datasetname" in output_dataset.variables:
+                output_dataset["datasetname"] = (output_dataset["lon"] * 0).astype(str)
+                output_dataset["datasetname"][:] = dataset
+            if "Dataset_opt" in output_dataset.variables:
+                output_dataset = output_dataset.drop("Dataset_opt")
 
             # set index from placements
-            output_dataset['location'] = placements_dataset.index
+            output_dataset["location"] = placements_dataset.index
 
             # remember outputs for each dataset
             ouputs.append(output_dataset)
@@ -127,7 +124,7 @@ def CSP_PTR_ERA5(
 
         # 3) merge data
         # TODO: merge together
-        output = xr.concat(ouputs, dim='location').sortby('location')
+        output = xr.concat(ouputs, dim="location").sortby("location")
         return output
 
 
@@ -135,7 +132,7 @@ def CSP_PTR_ERA5_specific_dataset(
     placements,
     era5_path,
     global_solar_atlas_dni_path,
-    datasetname='Validation 10',
+    datasetname="Validation 10",
     elev_path=None,
     output_netcdf_path=None,
     output_variables=None,
@@ -145,9 +142,9 @@ def CSP_PTR_ERA5_specific_dataset(
     debug_vars=False,
     onlynightuse=True,
     fullvariation=False,
-    _validation=False
+    _validation=False,
 ):
-    """ Calculates the heat output from the solar field based on parabolic trough technology. The workflow is not yet finally validated (but is still plausible).
+    """Calculates the heat output from the solar field based on parabolic trough technology. The workflow is not yet finally validated (but is still plausible).
         Date: 27.07.2021
         Author: David Franzmann IEK -3
 
@@ -171,9 +168,13 @@ def CSP_PTR_ERA5_specific_dataset(
     # 3) read in Input data
     if verbose:
         tic_start = time.time()
-        print('Simulation started for {n_placements} placements.'.format(
-            n_placements=len(wf.placements)), flush=True)
-        print('Reading in Weather data.', flush=True)
+        print(
+            "Simulation started for {n_placements} placements.".format(
+                n_placements=len(wf.placements)
+            ),
+            flush=True,
+        )
+        print("Reading in Weather data.", flush=True)
     wf.read(
         variables=[  # "global_horizontal_irradiance",
             "direct_horizontal_irradiance",
@@ -184,16 +185,19 @@ def CSP_PTR_ERA5_specific_dataset(
         source_type="ERA5",
         source=era5_path,
         set_time_index=True,
-        time_index_from='direct_horizontal_irradiance',
-        verbose=False)
+        time_index_from="direct_horizontal_irradiance",
+        verbose=False,
+    )
 
     wf.check_ERA5_input()
 
     if verbose:
         tic_read = time.time()
-        print('Data read in within {dt}s.'.format(
-            dt=str(tic_read-tic_start)), flush=True)
-        print('Starting preanalysis.', flush=True)
+        print(
+            "Data read in within {dt}s.".format(dt=str(tic_read - tic_start)),
+            flush=True,
+        )
+        print("Starting preanalysis.", flush=True)
     # 4) get length of timesteps for later numpy sizing
 
     wf.get_timesteps()
@@ -211,8 +215,8 @@ def CSP_PTR_ERA5_specific_dataset(
     wf.direct_normal_irradiance_from_trigonometry()
 
     # do long run averaging for DNI
-    #TODO: remove
-    if global_solar_atlas_dni_path == 'default_cluster':
+    # TODO: remove
+    if global_solar_atlas_dni_path == "default_cluster":
         global_solar_atlas_dni_path = r"/storage/internal/data/gears/geography/irradiance/global_solar_atlas_v2.5/World_DNI_GISdata_LTAy_AvgDailyTotals_GlobalSolarAtlas-v2_GEOTIFF/DNI.tif"
 
     if _validation:
@@ -223,7 +227,7 @@ def CSP_PTR_ERA5_specific_dataset(
         wf.placements["LRA_factor_direct_normal_irradiance"] = 1
     else:
         wf.adjust_variable_to_long_run_average(
-            variable='direct_normal_irradiance',
+            variable="direct_normal_irradiance",
             source_long_run_average=rk_weather.Era5Source.LONG_RUN_AVERAGE_DNI,
             real_long_run_average=global_solar_atlas_dni_path,
             real_lra_scaling=1000 / 24,  # cast to hourly average kWh
@@ -234,80 +238,110 @@ def CSP_PTR_ERA5_specific_dataset(
     wf._applyVariation()  # only for developers, can be ignored otherwise
 
     # 6) doing selfmade calulations until Heat to HTF
-    wf.calculateIAM(a1=ptr_data['a1'], a2=ptr_data['a2'], a3=ptr_data['a3'])
+    wf.calculateIAM(a1=ptr_data["a1"], a2=ptr_data["a2"], a3=ptr_data["a3"])
     wf.calculateShadowLosses(
-        method='wagner2011', SF_density=ptr_data['SF_density_direct'])
-    wf.calculateWindspeedLosses(
-        max_windspeed_threshold=ptr_data['maxWindspeed'])
+        method="wagner2011", SF_density=ptr_data["SF_density_direct"]
+    )
+    wf.calculateWindspeedLosses(max_windspeed_threshold=ptr_data["maxWindspeed"])
     wf.calculateDegradationLosses(
-        efficencyDropPerYear=ptr_data['efficencyDropPerYear'], lifetime=ptr_data['lifetime'])
+        efficencyDropPerYear=ptr_data["efficencyDropPerYear"],
+        lifetime=ptr_data["lifetime"],
+    )
     wf.calculateHeattoHTF(
-        eta_ptr_max=ptr_data['eta_ptr_max'], eta_cleaness=ptr_data['eta_cleaness'], eta_other=ptr_data['eta_other'])
+        eta_ptr_max=ptr_data["eta_ptr_max"],
+        eta_cleaness=ptr_data["eta_cleaness"],
+        eta_other=ptr_data["eta_other"],
+    )
 
     wf.apply_capacity_sf()
     if not debug_vars:
-        del wf.sim_data['surface_wind_speed'], wf.sim_data['tracking_angle'], wf.sim_data[
-            'solar_altitude_angle_degree'], wf.sim_data['direct_horizontal_irradiance']
-        del wf.sim_data['eta_wind'], wf.sim_data['eta_degradation'], wf.sim_data['eta_shdw']
+        del (
+            wf.sim_data["surface_wind_speed"],
+            wf.sim_data["tracking_angle"],
+            wf.sim_data["solar_altitude_angle_degree"],
+            wf.sim_data["direct_horizontal_irradiance"],
+        )
+        del (
+            wf.sim_data["eta_wind"],
+            wf.sim_data["eta_degradation"],
+            wf.sim_data["eta_shdw"],
+        )
 
     if verbose:
         tic_pre = time.time()
-        print('Preanalysis within {dt}s.'.format(
-            dt=str(tic_pre-tic_read)), flush=True)
-        print('Starting core simulation of the solar field.', flush=True)
+        print(
+            "Preanalysis within {dt}s.".format(dt=str(tic_pre - tic_read)), flush=True
+        )
+        print("Starting core simulation of the solar field.", flush=True)
     # 7) calculation heat to plant with loss model
     wf.applyHTFHeatLossModel(
-        calculationmethod='dersch2018',
-        params={'b': ptr_data['b'],
-                'relTMplant': ptr_data['relTMplant'],
-                'maxHTFTemperature': ptr_data['maxHTFTemperature'],
-                'JITaccelerate': JITaccelerate,  # TODO: from ptr manager
-                'minHTFTemperature': ptr_data['minHTFTemperature'],
-                'inletHTFTemperature': ptr_data['inletHTFTemperature'],
-                'add_losses_coefficient': ptr_data['add_losses_coefficient'],
-                'discretizationmethod': ptr_data['discretizationmethod']
-
-                }
+        calculationmethod="dersch2018",
+        params={
+            "b": ptr_data["b"],
+            "relTMplant": ptr_data["relTMplant"],
+            "maxHTFTemperature": ptr_data["maxHTFTemperature"],
+            "JITaccelerate": JITaccelerate,  # TODO: from ptr manager
+            "minHTFTemperature": ptr_data["minHTFTemperature"],
+            "inletHTFTemperature": ptr_data["inletHTFTemperature"],
+            "add_losses_coefficient": ptr_data["add_losses_coefficient"],
+            "discretizationmethod": ptr_data["discretizationmethod"],
+        },
     )
 
     if not debug_vars:
-        del wf.sim_data['surface_air_temperature'], wf.sim_data['HTF_mean_temperature_C'], wf.sim_data['Heat_Losses_W'], wf.sim_data['theta'], wf.sim_data['IAM']
+        del (
+            wf.sim_data["surface_air_temperature"],
+            wf.sim_data["HTF_mean_temperature_C"],
+            wf.sim_data["Heat_Losses_W"],
+            wf.sim_data["theta"],
+            wf.sim_data["IAM"],
+        )
 
     # 8) calculate Parasitic Losses of the plant
     wf.calculateParasitics(
-        calculationmethod='dersch2018',  # 'gafurov2013',
+        calculationmethod="dersch2018",  # 'gafurov2013',
         params={
-            'PL_sf_fixed_W_per_m^2_ap': 1.486,
-            'PL_sf_pumping_W_per_m^2_ap': 8.3,
-            'PL_plant_fix': ptr_data['PL_plant_fix'],
+            "PL_sf_fixed_W_per_m^2_ap": 1.486,
+            "PL_sf_pumping_W_per_m^2_ap": 8.3,
+            "PL_plant_fix": ptr_data["PL_plant_fix"],
             # 'PL_sf_track': ptr_data['PL_sf_track'], #gafurov
             # 'PL_sf_pumping': ptr_data['PL_sf_pumping'], #gafurov
-            'PL_plant_pumping': ptr_data['PL_plant_pumping'],
-            'PL_plant_other': ptr_data['PL_plant_other'],
-        }
+            "PL_plant_pumping": ptr_data["PL_plant_pumping"],
+            "PL_plant_other": ptr_data["PL_plant_other"],
+        },
     )
 
     # 9) calculate economics
-    wf.calculateEconomics_SolarField(WACC=ptr_data['WACC'],
-                                     lifetime=ptr_data['lifetime'],
-                                     calculationmethod='franzmann2021',
-                                     params={
-        'CAPEX_solar_field_EUR_per_m^2_aperture': ptr_data['CAPEX_solar_field_EUR_per_m^2_aperture'],
-        'CAPEX_land_EUR_per_m^2_land': ptr_data['CAPEX_land_EUR_per_m^2_land'],
-        'CAPEX_indirect_cost_perc_CAPEX': ptr_data['CAPEX_indirect_cost_perc_CAPEX'],
-        'electricity_price_EUR_per_kWh': ptr_data['electricity_price_EUR_per_kWh'],
-        'OPEX_perc_CAPEX': ptr_data['OPEX_perc_CAPEX'],
-    }
+    wf.calculateEconomics_SolarField(
+        WACC=ptr_data["WACC"],
+        lifetime=ptr_data["lifetime"],
+        calculationmethod="franzmann2021",
+        params={
+            "CAPEX_solar_field_EUR_per_m^2_aperture": ptr_data[
+                "CAPEX_solar_field_EUR_per_m^2_aperture"
+            ],
+            "CAPEX_land_EUR_per_m^2_land": ptr_data["CAPEX_land_EUR_per_m^2_land"],
+            "CAPEX_indirect_cost_perc_CAPEX": ptr_data[
+                "CAPEX_indirect_cost_perc_CAPEX"
+            ],
+            "electricity_price_EUR_per_kWh": ptr_data["electricity_price_EUR_per_kWh"],
+            "OPEX_perc_CAPEX": ptr_data["OPEX_perc_CAPEX"],
+        },
     )
 
     if verbose:
         tic_sf_sim = time.time()
-        print('Solar field simulation done in {dt}s.'.format(
-            dt=str(tic_sf_sim-tic_pre)), flush=True)
-        print('Starting optimizing plant electric output.', flush=True)
+        print(
+            "Solar field simulation done in {dt}s.".format(
+                dt=str(tic_sf_sim - tic_pre)
+            ),
+            flush=True,
+        )
+        print("Starting optimizing plant electric output.", flush=True)
 
-    wf.optimize_plant_size(onlynightuse=onlynightuse,
-                           fullvariation=fullvariation, debug_vars=debug_vars)
+    wf.optimize_plant_size(
+        onlynightuse=onlynightuse, fullvariation=fullvariation, debug_vars=debug_vars
+    )
 
     # wf.optimize_heat_output_4D()
     # wf.calculateEconomics_Plant_Storage_4D()
@@ -315,20 +349,25 @@ def CSP_PTR_ERA5_specific_dataset(
 
     if verbose:
         tic_opt_plant = time.time()
-        print('Optimal Sizing done in  {dt}s.'.format(
-            dt=str(tic_opt_plant-tic_sf_sim)), flush=True)
+        print(
+            "Optimal Sizing done in  {dt}s.".format(dt=str(tic_opt_plant - tic_sf_sim)),
+            flush=True,
+        )
 
-    wf.calculate_electrical_output(
-        onlynightuse=onlynightuse, debug_vars=debug_vars)
+    wf.calculate_electrical_output(onlynightuse=onlynightuse, debug_vars=debug_vars)
     wf.calculate_LCOE()
     wf.calculateCapacityFactors()
 
     if verbose:
         tic_final = time.time()
-        print('Total simulation done in {dt}s.'.format(
-            dt=str(tic_final-tic_start)), flush=True)
+        print(
+            "Total simulation done in {dt}s.".format(dt=str(tic_final - tic_start)),
+            flush=True,
+        )
 
     if return_self == True:
         return wf
     else:
-        return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
+        return wf.to_xarray(
+            output_netcdf_path=output_netcdf_path, output_variables=output_variables
+        )
