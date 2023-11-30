@@ -7,9 +7,10 @@ stages:
   stage: test
   before_script:
     # create environment
-    - micromamba create -y -n reskit --file=requirements-dev.yml
-    - eval "$(micromamba shell hook --shell bash)"
-    - micromamba activate reskit
+    #- micromamba create -y -n reskit --file=requirements-dev.yml
+    - micromamba install -y -n base --file=requirements-dev.yml
+    # - eval "$(micromamba shell hook --shell bash)"
+    # - micromamba activate reskit
     # Install reskit in editable mode
     - python -m pip install -e . --no-deps
 
