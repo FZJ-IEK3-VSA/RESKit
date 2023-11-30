@@ -1,7 +1,7 @@
 class Parameters:
     """
-    This class holds the base techno-economic parameter assumptions on which 
-    the individual functions rely. The base parameter set can be updated by 
+    This class holds the base techno-economic parameter assumptions on which
+    the individual functions rely. The base parameter set can be updated by
     loader/setter functions.
     """
 
@@ -21,10 +21,11 @@ class Parameters:
 
 class OnshoreParameters(Parameters):
     """
-    This class holds all onshore-wind specific techno-economic base parameter 
-    assumptions as static attributes as well as specific methods to manipulate 
+    This class holds all onshore-wind specific techno-economic base parameter
+    assumptions as static attributes as well as specific methods to manipulate
     onshore parameters.
     """
+
     # static baseline turbine attributes
     constant_rotor_diam = True
     base_capacity = 4200  # [kW]
@@ -37,7 +38,7 @@ class OnshoreParameters(Parameters):
     max_hub_height = 200
     # static economic attributes
     base_capex_per_capacity = 1100  # [EUR/kW]
-    base_capex = base_capex_per_capacity*base_capacity  # [EUR]
+    base_capex = base_capex_per_capacity * base_capacity  # [EUR]
     tcc_share = 0.673  # [-]
     bos_share = 0.229  # [-]
     # static turbine design attributes
@@ -48,23 +49,24 @@ class OnshoreParameters(Parameters):
     def __init__(self):
         pass
 
-    def load_individual_params(self,
-                               constant_rotor_diam=None,
-                               base_capacity=None,
-                               base_hub_height=None,
-                               base_rotor_diam=None,
-                               reference_wind_speed=None,
-                               min_tip_height=None,
-                               min_specific_power=None,
-                               base_capex_per_capacity=None,
-                               tcc_share=None,
-                               bos_share=None,
-                               gdp_escalator=None,
-                               blade_material_escalator=None,
-                               blades=None,
-                               ):
+    def load_individual_params(
+        self,
+        constant_rotor_diam=None,
+        base_capacity=None,
+        base_hub_height=None,
+        base_rotor_diam=None,
+        reference_wind_speed=None,
+        min_tip_height=None,
+        min_specific_power=None,
+        base_capex_per_capacity=None,
+        tcc_share=None,
+        bos_share=None,
+        gdp_escalator=None,
+        blade_material_escalator=None,
+        blades=None,
+    ):
         """
-        Function allows to load individual parameters into base parameter set 
+        Function allows to load individual parameters into base parameter set
         that is applied in several functions throughout reskit.
 
         Parameters
@@ -91,23 +93,24 @@ class OnshoreParameters(Parameters):
             Minimum specific power allowed in kw/m2, by default 180.
 
         base_capex : numeric, optional
-            The baseline turbine's capital costs in €, by default 1100*4200 [€/kW * kW] #TODO change to 
+            The baseline turbine's capital costs in €, by default 1100*4200 [€/kW * kW] #TODO change to
 
         tcc_share : float, optional
             The baseline turbine's TCC percentage contribution in the total cost, by default 0.673
 
         bos_share : float, optional
-            The baseline turbine's BOS percentage contribution in the total cost, by default 0.229 
+            The baseline turbine's BOS percentage contribution in the total cost, by default 0.229
         """
         pass
 
 
 class OffshoreParameters(Parameters):
     """
-    This class holds all offshore-wind specific techno-economic base parameter 
-    assumptions as static attributes as well as specific methods to manipulate 
+    This class holds all offshore-wind specific techno-economic base parameter
+    assumptions as static attributes as well as specific methods to manipulate
     offshore parameters.
     """
+
     distance_to_bus = 3
     foundation = "monopile"
     mooring_count = 3
@@ -122,15 +125,16 @@ class OffshoreParameters(Parameters):
         """
         pass
 
-    def load_individual_params(self,
-                               distance_to_bus=None,
-                               foundation=None,
-                               mooring_count=None,
-                               anchor=None,
-                               turbine_count=None,
-                               turbine_spacing=None,
-                               turbine_row_spacing=None,
-                               ):
+    def load_individual_params(
+        self,
+        distance_to_bus=None,
+        foundation=None,
+        mooring_count=None,
+        anchor=None,
+        turbine_count=None,
+        turbine_spacing=None,
+        turbine_row_spacing=None,
+    ):
         """
         [Summary]
 
