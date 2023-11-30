@@ -5,6 +5,7 @@ import reskit as rk
 import geokit as gk
 import xarray
 import pytest
+import osgeo
 
 
 def test_WorkflowManager___init__():
@@ -207,12 +208,14 @@ def test_WorkflowManager_adjust_variable_to_long_run_average_() -> WorkflowManag
         source_long_run_average=rk.weather.Era5Source.LONG_RUN_AVERAGE_GHI,
         real_long_run_average=TEST_DATA["gsa-ghi-like.tif"],
         real_lra_scaling=1000 / 24,  # cast to hourly average kWh
-        nodata_fallback=1.0,  # 1.0 means 1.0 x source data ( x real_lra_scaling)
+        nodata_fallback=1.0,  # 1.0 means 1.0 x source data (no real_lra_scaling)
         spatial_interpolation="near",
     )
     assert np.isclose(wf.sim_data["test_nearest"][0][0], 0.9558724)  # checked
     assert np.isclose(wf.sim_data["test_nearest"][0][1], 0.97806027)  # checked
-    assert np.isclose(wf.sim_data["test_source"][0][2], 1000 / 24)  # checked
+    assert np.isclose(
+        wf.sim_data["test_source"][0][2], 1
+    )  # checked, must be one since real_lra==source_lra, without scaling
 
     # TODO the following block must be removed 6/2024 once 'source' option is gone
     # test again with deprecated 'source' fallback
@@ -229,6 +232,29 @@ def test_WorkflowManager_adjust_variable_to_long_run_average_() -> WorkflowManag
     assert (
         wf.sim_data["test_source_deprecated"] == wf.sim_data["test_source"]
     ).all()  # checked
+
+    # test fallback to callable
+    def my_test_function(locs, source_long_run_average_value):
+        """Some random function to generate a lat/lon and source dependent value"""
+        assert [
+            isinstance(loc, osgeo.ogr.Geometry) for loc in locs
+        ]  # just make sure 'locs' is what we expect
+        return source_long_run_average_value * 2  # return 2 x source value
+
+    wf.sim_data["test_callable"] = np.ones(shape=(1, placements.shape[0]))
+    wf.adjust_variable_to_long_run_average(
+        variable="test_callable",
+        source_long_run_average=rk.weather.Era5Source.LONG_RUN_AVERAGE_GHI,
+        real_long_run_average=TEST_DATA["gsa-ghi-like.tif"],
+        real_lra_scaling=1000 / 24,  # cast to hourly average kWh
+        nodata_fallback=my_test_function,  # should yield 2 x source data (no real_lra_scaling)
+        spatial_interpolation="near",
+    )
+    assert np.isclose(wf.sim_data["test_callable"][0][0], 0.9558724)  # checked
+    assert np.isclose(wf.sim_data["test_callable"][0][1], 0.97806027)  # checked
+    assert np.isclose(
+        wf.sim_data["test_callable"][0][2], 2
+    )  # checked, my_test_function yields 2x source data, hence factor 2
 
     # now test fallback to another raster with a different coordinate set
     # define coordinates within and outside of the Aachen clipped CLC raster
@@ -252,7 +278,9 @@ def test_WorkflowManager_adjust_variable_to_long_run_average_() -> WorkflowManag
         spatial_interpolation="near",
     )
     assert np.isclose(wf2.sim_data["test_raster"][0][0], 8.04380701)
-    assert np.isclose(wf2.sim_data["test_raster"][0][1], 0.98268754)
+    assert np.isclose(
+        wf2.sim_data["test_raster"][0][1], 0.02358450101346743
+    )  # no correction applied to nodata_fallback raster values, hence the above x 24/1000
     assert np.isnan(wf2.sim_data["test_raster"][0][2])
 
 
