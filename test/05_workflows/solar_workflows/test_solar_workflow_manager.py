@@ -11,10 +11,6 @@ def print_testresults(variable):
     print("std: ", variable[0:140, :].std())
     print("min: ", variable[0:140, :].min())
     print("max: ", variable[0:140, :].max())
-    print("mean: ", variable[0:140, :].mean())
-    print("std: ", variable[0:140, :].std())
-    print("min: ", variable[0:140, :].min())
-    print("max: ", variable[0:140, :].max())
 
 
 def test_SolarWorkflowManager___init__() -> SolarWorkflowManager:
