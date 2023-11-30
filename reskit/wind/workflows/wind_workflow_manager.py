@@ -248,8 +248,8 @@ class WindWorkflowManager(WorkflowManager):
         return self
 
     def simulate(
-            self,
-            max_batch_size=None,
+        self,
+        max_batch_size=None,
     ):
         """
         Applies the invoking power curve to the given wind speeds.
@@ -266,23 +266,36 @@ class WindWorkflowManager(WorkflowManager):
             if not isinstance(max_batch_size, int) and max_batch_size > 0:
                 raise TypeError(f"max_batch_size must be an integer > 0")
         else:
-            max_batch_size = self.sim_data['elevated_wind_speed'].shape[1]
+            max_batch_size = self.sim_data["elevated_wind_speed"].shape[1]
 
         # calculate required No. of batches
         _batches = np.ceil(
-            self.sim_data['elevated_wind_speed'].shape[1]/max_batch_size)
+            self.sim_data["elevated_wind_speed"].shape[1] / max_batch_size
+        )
 
         # iterate over batches
         for _batch in range(int(_batches)):
-
             gen = np.zeros_like(
-                self.sim_data['elevated_wind_speed'][:, _batch*max_batch_size: (_batch+1)*max_batch_size])
+                self.sim_data["elevated_wind_speed"][
+                    :, _batch * max_batch_size : (_batch + 1) * max_batch_size
+                ]
+            )
 
             for pckey, pc in self.powerCurveLibrary.items():
-                sel = self.placements.iloc[_batch*max_batch_size: (
-                    _batch+1)*max_batch_size, :].powerCurve == pckey
-                gen[:, sel] = np.round(pc.simulate(self.sim_data['elevated_wind_speed']
-                                       [:, _batch*max_batch_size: (_batch+1)*max_batch_size][:, sel]), 3)
+                sel = (
+                    self.placements.iloc[
+                        _batch * max_batch_size : (_batch + 1) * max_batch_size, :
+                    ].powerCurve
+                    == pckey
+                )
+                gen[:, sel] = np.round(
+                    pc.simulate(
+                        self.sim_data["elevated_wind_speed"][
+                            :, _batch * max_batch_size : (_batch + 1) * max_batch_size
+                        ][:, sel]
+                    ),
+                    3,
+                )
                 # set values < 0 to zero. Prevents negative values
                 gen[gen < 0] = 0
 
@@ -291,7 +304,7 @@ class WindWorkflowManager(WorkflowManager):
             else:
                 tot_gen = np.concatenate([tot_gen, gen], axis=1)
 
-        self.sim_data['capacity_factor'] = tot_gen
+        self.sim_data["capacity_factor"] = tot_gen
 
         return self
 

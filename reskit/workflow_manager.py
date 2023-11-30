@@ -470,8 +470,11 @@ class WorkflowManager:
         """
         if isinstance(output_variables, str):
             output_variables = [output_variables]
-        if isinstance(output_variables, list) and not "RESKit_sim_order" in output_variables:
-            output_variables.append('RESKit_sim_order')
+        if (
+            isinstance(output_variables, list)
+            and not "RESKit_sim_order" in output_variables
+        ):
+            output_variables.append("RESKit_sim_order")
 
         times = self.time_index
         if times[0].tz is not None:
@@ -770,74 +773,75 @@ def load_workflow_result(datasets, loader=xarray.load_dataset, sortby="location"
 
 
 def execute_workflow_iteratively(
-        workflow,
-        weather_path_varname,
-        zoom=None,
-        **workflow_args,
+    workflow,
+    weather_path_varname,
+    zoom=None,
+    **workflow_args,
 ):
     """
     The function executes the indicated workflow iteratively, iterating over weather tiles. The appropriate weather
     tile per placement is extracted automatically and placements are batched together based on weather tile.
 
     workflow : RESkit workflow
-        Callable workflow function, e.g. reskit.wind.wind_era5_2023 
+        Callable workflow function, e.g. reskit.wind.wind_era5_2023
     weather_path_varname : str
-        Str formatted name of the weather path variable in this workflow, e.g. 'era5_path' for 
+        Str formatted name of the weather path variable in this workflow, e.g. 'era5_path' for
         reskit.wind.wind_era5_2023. Must must be a key of workflow_args.
     zoom : int, optional
         The zoom level of the weather tiles, required only if <X-TILE> or <Y-TILE> in weather path.
-    **workflow_args 
-        Passed on to the workflow specified above. Must contain 'placements' and the above 
+    **workflow_args
+        Passed on to the workflow specified above. Must contain 'placements' and the above
         weather_path_varname as keys.
     """
     # check key inputs
-    assert callable(
-        workflow), f"workflow must be a callable RESkit workflow function."
-    assert 'placements' in workflow_args.keys(
+    assert callable(workflow), f"workflow must be a callable RESkit workflow function."
+    assert (
+        "placements" in workflow_args.keys()
     ), f"'placements' is a mandatory argument/key in workflow_args"
-    assert weather_path_varname in workflow_args.keys(
+    assert (
+        weather_path_varname in workflow_args.keys()
     ), f"weather_path_varname ('{weather_path_varname}')  must be a key in workflow_args."
 
     # extract data needed for placement preparation
-    placements = workflow_args['placements']
+    placements = workflow_args["placements"]
     weather_path = workflow_args[weather_path_varname]
-    if 'output_netcdf_path' in workflow_args.keys():
-        output_netcdf_path = workflow_args['output_netcdf_path']
+    if "output_netcdf_path" in workflow_args.keys():
+        output_netcdf_path = workflow_args["output_netcdf_path"]
     else:
         output_netcdf_path = None
-    if 'output_variables' in workflow_args.keys():
-        output_variables = workflow_args['output_variables']
+    if "output_variables" in workflow_args.keys():
+        output_variables = workflow_args["output_variables"]
     else:
         output_variables = None
 
     # possibly generate dataframe from single locations and add actual weather filepath where needed
     if not weather_path_varname in placements.columns:
         placements = rk_util.get_dataframe_with_weather_tilepaths(
-            placements=placements,
-            weather_path=weather_path,
-            zoom=zoom)
+            placements=placements, weather_path=weather_path, zoom=zoom
+        )
 
     # remove output saving for the iterative function execution of sub dfs
-    workflow_args.update({'output_netcdf_path': None})
+    workflow_args.update({"output_netcdf_path": None})
 
     # iterate over weather tiles
     xrds_list = []
-    for i, tilepath in enumerate(placements['source'].unique()):
+    for i, tilepath in enumerate(placements["source"].unique()):
         # reduce placements to subset within the current tile and update function arguments with subset of placements and current weather path
-        placements_tile = placements[placements['source'] == tilepath]
+        placements_tile = placements[placements["source"] == tilepath]
         workflow_args.update(
-            {'placements': placements_tile, weather_path_varname: tilepath}, )
+            {"placements": placements_tile, weather_path_varname: tilepath},
+        )
         # execute workflow with subset and add to list of results
         print(
-            f"Now processing tile {i+1}/{len(placements['source'].unique())} with {len(placements_tile)} locations: {tilepath}")
+            f"Now processing tile {i+1}/{len(placements['source'].unique())} with {len(placements_tile)} locations: {tilepath}"
+        )
         xrds = workflow(**workflow_args)
         xrds = xrds.set_index(location="RESKit_sim_order")
         xrds_list.append(xrds)
 
     reskit_xr = xr.concat(xrds_list, dim="location")
     # create a dummy wfm instance for saving
-    wfm = WorkflowManager(
-        placements=placements.drop(columns='RESKit_sim_order'))
+    wfm = WorkflowManager(placements=placements.drop(columns="RESKit_sim_order"))
     wfm.to_netcdf(
         xds=reskit_xr,
         output_netcdf_path=output_netcdf_path,

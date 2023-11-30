@@ -5,14 +5,13 @@ import geokit as gk
 
 
 def test_weather_tilepaths():
-
     era5_path = f".../4/<X-TILE>/<Y-TILE>/2015"
 
-    df = gk.vector.extractFeatures(TEST_DATA['turbinePlacements.shp'])
-    df['hub_height'] = np.linspace(100, 130, df.shape[0])
-    df['capacity'] = 3000
-    df['rotor_diam'] = 170
-    df.loc[::2, 'rotor_diam'] = 150
+    df = gk.vector.extractFeatures(TEST_DATA["turbinePlacements.shp"])
+    df["hub_height"] = np.linspace(100, 130, df.shape[0])
+    df["capacity"] = 3000
+    df["rotor_diam"] = 170
+    df.loc[::2, "rotor_diam"] = 150
 
     output = get_dataframe_with_weather_tilepaths(
         placements=df,
