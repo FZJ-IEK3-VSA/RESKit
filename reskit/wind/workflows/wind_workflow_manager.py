@@ -290,6 +290,11 @@ class WindWorkflowManager(WorkflowManager):
         # calculate the target average cf
         _target_cfs = np.nanmean(gen, axis=0) * self.correction_factors
 
+        if (_target_cfs > 1).any():
+            raise ValueError(
+                f"The current correction factors lead to target capacity factors greater 1.0."
+            )
+
         # set the deviation based on corr factor
         _deviations = 1 / self.correction_factors
 
