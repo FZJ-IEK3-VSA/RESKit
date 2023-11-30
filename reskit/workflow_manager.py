@@ -279,11 +279,11 @@ class WorkflowManager:
             When real_long_run_average has no data, one can decide between different fallback options, by default np.nan:
             - np.nan or None : return np.nan for missing values in real_long_run_average
             - float : Apply this float value as a scaling factor for all no-data locations only: source_long_run_average * nodata_fallback.
-              NOTE: A value of 1.0 will return the source lra value in case of missing real lra values.
-            - str : Will be interpreted as a filepath to a raster with alternative absolute real_long_run_average values
+              NOTE: A value of 1.0 will return the source lra value in case of missing real lra values (no real_lra_scaling applied).
+            - str : Will be interpreted as a filepath to a raster with alternative absolute real_long_run_average values (no real_lra_scaling applied)
             - callable : any callable method taking the arguments (all iterables): 'locs' and 'source_long_run_average_value'
               (the locations as gk.geom.point objects and original value from source data). The output values will be considered as
-              the new real_long_run_average for missing locations only.
+              the new real_long_run_average for missing locations only (no real_lra_scaling applied).
             NOTE: np.nan will also be returned in case that the nodata fallback does not yield values either.
         Returns
         -------
@@ -341,24 +341,27 @@ class WorkflowManager:
         if any(np.isnan(real_lra)):
             # we are lacking long-run average values
             if nodata_fallback is None or (
-                not isinstance(nodata_fallback, str) and np.isnan(nodata_fallback)
+                isinstance(nodata_fallback, float) and np.isnan(nodata_fallback)
             ):
-                # do not do anything, nans will be returned for missing lra values
-                pass
+                # nans will be returned for missing lra values
+                fallback_lra = np.array([np.nan] * len(real_lra))
             elif isinstance(nodata_fallback, (int, float)):
                 # apply factor to source_lra to scale missing values
-                real_lra[np.isnan(real_lra)] = (
-                    nodata_fallback * source_lra[np.isnan(real_lra)]
-                )
+                fallback_lra = nodata_fallback * source_lra
             elif callable(nodata_fallback):
                 # apply function to calculate missing values
-                real_lra[np.isnan(real_lra)] = nodata_fallback(
+                fallback_lra = nodata_fallback(
                     locs=self.locs, source_long_run_average_value=source_lra
-                )[np.isnan(real_lra)]
+                )
             elif isinstance(nodata_fallback, str):
                 # assume this is yet another raster path as fallback and extract missing values
                 fallback_lra = _get_lra_values_from_raster(fp=nodata_fallback)
-                real_lra[np.isnan(real_lra)] = fallback_lra[np.isnan(real_lra)]
+
+            # divide by real_lra_scaling once to compensate multiplication below for scaling factor:
+            # nodata_fallback should not be multiplied by real_lra_scaling
+            fallback_lra = fallback_lra / real_lra_scaling
+            # set fallback values where real_lra is nan
+            real_lra[np.isnan(real_lra)] = fallback_lra[np.isnan(real_lra)]
 
         # calulate scaling factor:
         # nan result will stay nan results, as these placements cannot be calculated any more
