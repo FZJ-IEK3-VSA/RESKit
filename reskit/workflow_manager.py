@@ -311,17 +311,19 @@ class WorkflowManager:
                 _lra[np.isnan(_lra)] = _lra_near[np.isnan(_lra)]
             return _lra
 
-        if isinstance(real_long_run_average, str):
-            # assume a raster path
-            real_lra = _get_lra_values_from_raster(fp=real_long_run_average)
-        else:
-            real_lra = real_long_run_average
-
+        # first get source values
         if isinstance(source_long_run_average, str):
             # assue raster fp
             source_lra = _get_lra_values_from_raster(fp=source_long_run_average)
         else:
             source_lra = source_long_run_average
+
+        # then get lng-run average values for scaling
+        if isinstance(real_long_run_average, str):
+            # assume a raster path
+            real_lra = _get_lra_values_from_raster(fp=real_long_run_average)
+        else:
+            real_lra = real_long_run_average
 
         # replace missing values with no-data fallback if needed
         if isinstance(nodata_fallback, str) and nodata_fallback.lower() == "source":
@@ -337,9 +339,11 @@ class WorkflowManager:
             )
             nodata_fallback = np.nan
         if any(np.isnan(real_lra)):
+            # we are lacking long-run average values
             if nodata_fallback is None or (
                 not isinstance(nodata_fallback, str) and np.isnan(nodata_fallback)
             ):
+                # do not do anything, nans will be returned for missing lra values
                 pass
             elif isinstance(nodata_fallback, (int, float)):
                 # apply factor to source_lra to scale missing values
@@ -366,7 +370,7 @@ class WorkflowManager:
 
         # write info with missing values to sim_data:
         self.placements[
-            f"missing_values_{os.path.basename(real_long_run_average)}"
+            f"missing_values_{os.path.basename(real_long_run_average)}_nodata_fallback{nodata_fallback}"
         ] = np.isnan(factors)
 
         self.sim_data[variable] = factors * self.sim_data[variable]
