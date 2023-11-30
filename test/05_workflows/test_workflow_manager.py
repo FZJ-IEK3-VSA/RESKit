@@ -174,63 +174,86 @@ def test_WorkflowManager_adjust_variable_to_long_run_average(
 
 
 def test_WorkflowManager_adjust_variable_to_long_run_average_() -> WorkflowManager:
+    # create a test placements dataframe
     columns = ["lat", "lon", "capacity"]
     data = [
         [50.475, 6.1, 100.1],  # middle
         [50.0085, 6.1, 100.1],  # corner
         [40, 6.1, 100.1],  # outside
     ]
-
     placements = pd.DataFrame(data, columns=columns)
 
-    # make dummy wf
+    # make dummy wf instance
     wf = rk.solar.SolarWorkflowManager(placements)
-    wf.sim_data["test_nearest"] = np.ones(shape=(1, placements.shape[0]))
-    wf.sim_data["test_source"] = np.ones(shape=(1, placements.shape[0]))
 
     # test fallback to interpolation 'nearest'
+    wf.sim_data["test_nearest"] = np.ones(shape=(1, placements.shape[0]))
     wf.adjust_variable_to_long_run_average(
         variable="test_nearest",
         source_long_run_average=rk.weather.Era5Source.LONG_RUN_AVERAGE_GHI,
         real_long_run_average=TEST_DATA["gsa-ghi-like.tif"],
         real_lra_scaling=1000 / 24,  # cast to hourly average kWh
         nodata_fallback=np.nan,
+        spatial_interpolation="near",
     )
+    assert np.isclose(wf.sim_data["test_nearest"][0][0], 0.9558724)  # checked
+    assert np.isclose(wf.sim_data["test_nearest"][0][1], 0.97806027)  # checked
+    assert np.isnan(wf.sim_data["test_nearest"][0][2])  # checked
 
-    assert np.isclose(wf.sim_data["test_nearest"][0][0], 0.95539191)
-    assert np.isclose(wf.sim_data["test_nearest"][0][1], 0.97695767)
-    assert np.isnan(wf.sim_data["test_nearest"][0][2])
-    assert np.isclose(wf.sim_data["test_source"][0][0], 0.95539191)
-    assert np.isclose(wf.sim_data["test_source"][0][1], 0.97695767)
-    assert np.isclose(wf.sim_data["test_source"][0][2], 1)
+    # test fallback to source data
+    wf.sim_data["test_source"] = np.ones(shape=(1, placements.shape[0]))
+    wf.adjust_variable_to_long_run_average(
+        variable="test_source",
+        source_long_run_average=rk.weather.Era5Source.LONG_RUN_AVERAGE_GHI,
+        real_long_run_average=TEST_DATA["gsa-ghi-like.tif"],
+        real_lra_scaling=1000 / 24,  # cast to hourly average kWh
+        nodata_fallback=1.0,  # 1.0 means 1.0 x source data ( x real_lra_scaling)
+        spatial_interpolation="near",
+    )
+    assert np.isclose(wf.sim_data["test_nearest"][0][0], 0.9558724)  # checked
+    assert np.isclose(wf.sim_data["test_nearest"][0][1], 0.97806027)  # checked
+    assert np.isclose(wf.sim_data["test_source"][0][2], 1000 / 24)  # checked
+
+    # TODO the following block must be removed 6/2024 once 'source' option is gone
+    # test again with deprecated 'source' fallback
+    wf.sim_data["test_source_deprecated"] = np.ones(shape=(1, placements.shape[0]))
+    wf.adjust_variable_to_long_run_average(
+        variable="test_source_deprecated",
+        source_long_run_average=rk.weather.Era5Source.LONG_RUN_AVERAGE_GHI,
+        real_long_run_average=TEST_DATA["gsa-ghi-like.tif"],
+        real_lra_scaling=1000 / 24,  # cast to hourly average kWh
+        nodata_fallback="source",  # deprecated, but must yield the same result
+        spatial_interpolation="near",
+    )
+    # make sure the 'source' nodata_fallback yields the same as 1.0
+    assert (
+        wf.sim_data["test_source_deprecated"] == wf.sim_data["test_source"]
+    ).all()  # checked
 
     # now test fallback to another raster with a different coordinate set
-
     # define coordinates within and outside of the Aachen clipped CLC raster
     columns = ["lat", "lon", "capacity"]
-    data = [
+    data2 = [
         [50.475, 6.1, 100.1],  # inside
         [50.2, 6.1, 100.1],  # outside source
         [40, 6.1, 100.1],  # outside fallback raster
     ]
-    placements = pd.DataFrame(data, columns=columns)
-
-    # create new wf instance
-    wf = rk.solar.SolarWorkflowManager(placements)
-    wf.sim_data["test_raster"] = np.ones(shape=(1, placements.shape[0]))
-
+    placements2 = pd.DataFrame(data2, columns=columns)
+    wf2 = rk.solar.SolarWorkflowManager(placements2)
     # abuse the (slightly smaller) clc raster as main and the gsa-ghi-like raster (with order of magnitude 10x smaller) as fallback
-    wf.adjust_variable_to_long_run_average(
+    # the last point must still be outside of the fallback raster and will hence be nan
+    wf2.sim_data["test_raster"] = np.ones(shape=(1, placements.shape[0]))
+    wf2.adjust_variable_to_long_run_average(
         variable="test_raster",
         source_long_run_average=rk.weather.Era5Source.LONG_RUN_AVERAGE_GHI,
         real_long_run_average=TEST_DATA["clc-aachen_clipped.tif"],
         real_lra_scaling=1000 / 24,  # cast to hourly average kWh
         nodata_fallback=TEST_DATA["gsa-ghi-like.tif"],
+        spatial_interpolation="near",
     )
-
-    assert np.isclose(wf.sim_data["test_raster"][0][0], 0.95539191)
-    assert np.isclose(wf.sim_data["test_raster"][0][1], 0.97695767)
-    assert np.isnan(wf.sim_data["test_raster"][0][2])
+    assert np.isclose(wf2.sim_data["test_raster"][0][0], 8.04380701)
+    assert np.isclose(wf2.sim_data["test_raster"][0][1], 0.98268754)
+    assert np.isnan(wf2.sim_data["test_raster"][0][2])
 
 
 def test_WorkflowManager_apply_loss_factor(
