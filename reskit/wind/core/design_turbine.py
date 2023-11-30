@@ -10,17 +10,17 @@ from reskit.parameters.parameters import OnshoreParameters
 
 
 def onshore_turbine_from_avg_wind_speed(
-        wind_speed,
-        constant_rotor_diam=None,
-        base_capacity=None,
-        base_hub_height=None,
-        base_rotor_diam=None,
-        reference_wind_speed=None,
-        min_tip_height=None,
-        min_specific_power=None,
-        max_hub_height=None,
+    wind_speed,
+    constant_rotor_diam=None,
+    base_capacity=None,
+    base_hub_height=None,
+    base_rotor_diam=None,
+    reference_wind_speed=None,
+    min_tip_height=None,
+    min_specific_power=None,
+    max_hub_height=None,
 ):
-    """ 
+    """
     Suggest onshore turbine design characteristics (capacity, hub height, rotor diameter, specific power) for a 2050 European context based on an average wind speed value.
     The default values and the function's normalization correspond to the baseline turbine design considered by Ryberg et al. [1] for a wind speed equal to 6.7 m/s. See notes.
 
@@ -51,7 +51,7 @@ def onshore_turbine_from_avg_wind_speed(
         Minimum specific power allowed in kw/m2, by default 180.
 
     max_hub_height : numeric, optional
-        Maximum allowed hub height, any higher optimal hub height will be reduced to this 
+        Maximum allowed hub height, any higher optimal hub height will be reduced to this
         value, by default 200.
 
 
