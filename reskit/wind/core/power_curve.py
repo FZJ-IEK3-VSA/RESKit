@@ -7,7 +7,7 @@ from scipy.stats import norm
 
 from ...util import ResError
 
-_P = namedtuple('PowerCurve', 'ws cf')
+_P = namedtuple("PowerCurve", "ws cf")
 _synthetic_power_curve_data = None
 
 
@@ -25,7 +25,8 @@ def synthetic_power_curve_data() -> pd.DataFrame:
 
     if _synthetic_power_curve_data is None:
         _synthetic_power_curve_data = pd.read_csv(
-            join(dirname(__file__), "data", "synthetic_turbine_params.csv"), header=1)
+            join(dirname(__file__), "data", "synthetic_turbine_params.csv"), header=1
+        )
 
     return _synthetic_power_curve_data
 
@@ -51,7 +52,7 @@ def compute_specific_power(capacity, rotor_diam, **k):
     return capacity * 1000 / rotor_diam**2 / np.pi * 4
 
 
-class PowerCurve():
+class PowerCurve:
 
     """
     Creates a wind turbine's power curve represented by a set of (wind-speed,capacity-factor) pairs.
@@ -88,8 +89,12 @@ class PowerCurve():
         from io import BytesIO
 
         plt.figure(figsize=(7, 3))
-        plt.plot(self.wind_speed, self.capacity_factor,
-                 color=(0, 91 / 255, 130 / 255), linewidth=3)
+        plt.plot(
+            self.wind_speed,
+            self.capacity_factor,
+            color=(0, 91 / 255, 130 / 255),
+            linewidth=3,
+        )
         plt.tick_params(labelsize=12)
         plt.xlabel("wind speed [m/s]", fontsize=13)
         plt.ylabel("capacity output", fontsize=13)
@@ -100,7 +105,7 @@ class PowerCurve():
         plt.savefig(f, format="svg", dpi=100)
         plt.close()
         f.seek(0)
-        return f.read().decode('ascii')
+        return f.read().decode("ascii")
 
     @staticmethod
     def from_specific_power(specific_power, cutout=25):
@@ -109,8 +114,8 @@ class PowerCurve():
 
         Parameters
         ----------
-        specific_power : float 
-            Turbines's specific power in m/s 
+        specific_power : float
+            Turbines's specific power in m/s
 
         cutout : int, optional
             Cut out wind speed in m/s, by default 25
@@ -125,10 +130,12 @@ class PowerCurve():
 
         See also
         --------
-            PowerCurve.from_capacity_and_rotor_diam( <turbine capacity>, <turbine rotor diameter> )   
+            PowerCurve.from_capacity_and_rotor_diam( <turbine capacity>, <turbine rotor diameter> )
         """
         # Create ws
-        ws = [0, ]
+        ws = [
+            0,
+        ]
 
         spcd = synthetic_power_curve_data()
 
@@ -137,7 +144,9 @@ class PowerCurve():
         ws = np.array(ws)
 
         # create capacity factor output
-        cf = [0, ]
+        cf = [
+            0,
+        ]
         cf.extend(spcd.perc_capacity / 100)
         cf.extend([1] * 19)
         cf = np.array(cf)
@@ -173,7 +182,9 @@ class PowerCurve():
         --------
             PowerCurve.from_specific_power( <turbine specific power> )
         """
-        return PowerCurve.from_specific_power(compute_specific_power(capacity, rotor_diam))
+        return PowerCurve.from_specific_power(
+            compute_specific_power(capacity, rotor_diam)
+        )
 
     def simulate(self, wind_speed):
         """
@@ -195,7 +206,8 @@ class PowerCurve():
 
         if isinstance(wind_speed, pd.DataFrame):
             output = pd.DataFrame(
-                output, index=wind_speed.index, columns=wind_speed.columns)
+                output, index=wind_speed.index, columns=wind_speed.columns
+            )
 
         return output
 
@@ -247,7 +259,9 @@ class PowerCurve():
         meanCapFac = (gen * pdf).sum() * dws
         return meanCapFac
 
-    def expected_capacity_factor_from_distribution(self, wind_speed_values, wind_speed_counts):
+    def expected_capacity_factor_from_distribution(
+        self, wind_speed_values, wind_speed_counts
+    ):
         """
         Computes the expected average capacity factor of a wind turbine based on an explicitly-provided wind speed distribution
 
@@ -264,7 +278,7 @@ class PowerCurve():
         -------
             pc.expected_capacity_factor_from_distribution(
                 wind_speed_values=[  1,   2,   3,   4,   5,      6], # Units of m/s
-                wind_speed_counts=[0.1, 0.3, 0.5, 0.3, 0.1, 0.025 ]  # Units of "counts" 
+                wind_speed_counts=[0.1, 0.3, 0.5, 0.3, 0.1, 0.025 ]  # Units of "counts"
                 )
 
         Returns
@@ -289,18 +303,35 @@ class PowerCurve():
                 raise ResError("Dimensional incompatibility")
 
             wind_speed_values = np.reshape(
-                wind_speed_values, (wind_speed_counts.shape[0], 1))
+                wind_speed_values, (wind_speed_counts.shape[0], 1)
+            )
 
         # Estimate generation distribution
-        gen = np.interp(wind_speed_values, self.wind_speed,
-                        self.capacity_factor, left=0, right=0) * wind_speed_counts
+        gen = (
+            np.interp(
+                wind_speed_values,
+                self.wind_speed,
+                self.capacity_factor,
+                left=0,
+                right=0,
+            )
+            * wind_speed_counts
+        )
 
         meanGen = gen.sum(0) / wind_speed_counts.sum(0)
 
         # Done
         return meanGen
 
-    def convolute_by_gaussian(self, scaling=0.06, base=0.1, extend_beyond_cut_out=True, _min_speed=0.01, _max_speed=40, _steps=4000):
+    def convolute_by_gaussian(
+        self,
+        scaling=0.06,
+        base=0.1,
+        extend_beyond_cut_out=True,
+        _min_speed=0.01,
+        _max_speed=40,
+        _steps=4000,
+    ):
         """
         Convolutes a turbine power curve by a normal distribution function with wind-speed-dependent standard deviation.
 
@@ -344,11 +375,12 @@ class PowerCurve():
             if tmp < 0.25:  # manually checked threshold
                 raise ResError("Insufficient number of 'steps'")
             else:
-                print("WARNING: 'steps' may not be high enough to properly compute the convoluted power curve. Check results or use a higher number of steps")
+                print(
+                    "WARNING: 'steps' may not be high enough to properly compute the convoluted power curve. Check results or use a higher number of steps"
+                )
 
         # Initialize vanilla power curve
-        selfInterp = splrep(ws, np.interp(
-            ws, self.wind_speed, self.capacity_factor))
+        selfInterp = splrep(ws, np.interp(ws, self.wind_speed, self.capacity_factor))
 
         cf = np.zeros(_steps)
         sel = ws < self.wind_speed.max()
@@ -365,7 +397,8 @@ class PowerCurve():
         convolutedCF = np.zeros(_steps)
         for i, ws_ in enumerate(ws):
             convolutedCF[i] = (
-                norm.pdf(ws, loc=ws_, scale=scaling * ws_ + base) * cf).sum() * dws
+                norm.pdf(ws, loc=ws_, scale=scaling * ws_ + base) * cf
+            ).sum() * dws
 
         # Correct cutoff, maybe
         if not extend_beyond_cut_out:
@@ -383,7 +416,7 @@ class PowerCurve():
         Parameters
         ----------
         loss : numeric or function
-            If numeric, the value is applied at all capacity factors with: 
+            If numeric, the value is applied at all capacity factors with:
                 new_capacity_factors = [1-loss] * previous_capacity_factors
             If a function, it must take a numpy array representing capacity factor values as input, resulting in the equation:
                 new_capacity_factors = [1-loss(previous_capacity_factors)] * previous_capacity_factors
