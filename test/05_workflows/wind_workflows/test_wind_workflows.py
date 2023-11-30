@@ -138,6 +138,8 @@ def test_wind_era5_2023(pt_wind_placements):
         era5_path=TEST_DATA["era5-like"],
         gwa_100m_path=TEST_DATA["gwa100-like.tif"],
         esa_cci_path=TEST_DATA["ESA_CCI_2018_clip.tif"],
+        wake_reduction_curve_name=None,  # test without wake
+        availability_factor=1,  # test without availability reduction
     )
 
     assert gen.roughness.shape == (560,)
