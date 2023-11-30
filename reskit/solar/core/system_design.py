@@ -48,9 +48,8 @@ def location_to_tilt(locs, convention="Ryberg2020", **kwargs):
     """
     locs = gk.LocationSet(locs)
 
-    if convention == 'Ryberg2020':
-        tilt = 42.327719357601396 * \
-            np.arctan(1.5 * np.radians(np.abs(locs.lats)))
+    if convention == "Ryberg2020":
+        tilt = 42.327719357601396 * np.arctan(1.5 * np.radians(np.abs(locs.lats)))
 
     elif isfile(convention):
         tilt = gk.raster.interpolateValues(convention, locs, **kwargs)
