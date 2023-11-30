@@ -183,5 +183,19 @@ def test_WindWorkflowManager_apply_wake_correction_of_wind_speeds(
     man.apply_wake_correction_of_wind_speeds(wake_reduction_curve_name="dena_extreme1")
     assert np.isclose(
         man.sim_data["elevated_wind_speed"].mean(),
-        np.array([4.2, 6.8, 8.3, 12.2, 14.2, 13.1, 15.2, 10.8, 6.7, 4.2, 2.0]).mean(),
-    )  # TODO @p.dunkel please adapt values
+        np.array(
+            [
+                3.86104442,
+                6.15515544,
+                7.62432393,
+                11.61341259,
+                13.72409741,
+                12.56134965,
+                14.78894949,
+                10.15594642,
+                6.06158898,
+                3.86104442,
+                1.98132474,
+            ]
+        ).mean(),
+    )
