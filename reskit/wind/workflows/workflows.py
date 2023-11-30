@@ -4,7 +4,14 @@ from .wind_workflow_manager import WindWorkflowManager
 import numpy as np
 
 
-def onshore_wind_merra_ryberg2019_europe(placements, merra_path, gwa_50m_path, clc2012_path, output_netcdf_path=None, output_variables=None):
+def onshore_wind_merra_ryberg2019_europe(
+    placements,
+    merra_path,
+    gwa_50m_path,
+    clc2012_path,
+    output_netcdf_path=None,
+    output_variables=None,
+):
     # TODO: Add range limitation over Europe by checking placements
     """
     Simulates onshore wind generation in Europe using NASA's MERRA2 database [1].
@@ -40,32 +47,30 @@ def onshore_wind_merra_ryberg2019_europe(placements, merra_path, gwa_50m_path, c
     wf = WindWorkflowManager(placements)
 
     wf.read(
-        variables=['elevated_wind_speed',
-                   "surface_pressure",
-                   "surface_air_temperature"],
+        variables=[
+            "elevated_wind_speed",
+            "surface_pressure",
+            "surface_air_temperature",
+        ],
         source_type="MERRA",
         source=merra_path,
         set_time_index=True,
-        verbose=False)
-
-    wf.adjust_variable_to_long_run_average(
-        variable='elevated_wind_speed',
-        source_long_run_average=rk_weather.MerraSource.LONG_RUN_AVERAGE_WINDSPEED,
-        real_long_run_average=gwa_50m_path
+        verbose=False,
     )
 
-    wf.estimate_roughness_from_land_cover(
-        path=clc2012_path,
-        source_type="clc")
+    wf.adjust_variable_to_long_run_average(
+        variable="elevated_wind_speed",
+        source_long_run_average=rk_weather.MerraSource.LONG_RUN_AVERAGE_WINDSPEED,
+        real_long_run_average=gwa_50m_path,
+    )
+
+    wf.estimate_roughness_from_land_cover(path=clc2012_path, source_type="clc")
 
     wf.logarithmic_projection_of_wind_speeds_to_hub_height()
 
     wf.apply_air_density_correction_to_wind_speeds()
 
-    wf.convolute_power_curves(
-        scaling=0.06,
-        base=0.1
-    )
+    wf.convolute_power_curves(scaling=0.06, base=0.1)
 
     wf.simulate()
 
@@ -73,10 +78,14 @@ def onshore_wind_merra_ryberg2019_europe(placements, merra_path, gwa_50m_path, c
         loss=lambda x: rk_util.low_generation_loss(x, base=0.0, sharpness=5.0)
     )
 
-    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
+    return wf.to_xarray(
+        output_netcdf_path=output_netcdf_path, output_variables=output_variables
+    )
 
 
-def offshore_wind_merra_caglayan2019(placements, merra_path, output_netcdf_path=None, output_variables=None):
+def offshore_wind_merra_caglayan2019(
+    placements, merra_path, output_netcdf_path=None, output_variables=None
+):
     """
     Simulates offshore wind generation using NASA's MERRA2 database [1].
 
@@ -105,11 +114,14 @@ def offshore_wind_merra_caglayan2019(placements, merra_path, output_netcdf_path=
     wf = WindWorkflowManager(placements)
 
     wf.read(
-        variables=['elevated_wind_speed', ],
+        variables=[
+            "elevated_wind_speed",
+        ],
         source_type="MERRA",
         source=merra_path,
         set_time_index=True,
-        verbose=False)
+        verbose=False,
+    )
 
     wf.set_roughness(0.0002)
 
@@ -117,20 +129,29 @@ def offshore_wind_merra_caglayan2019(placements, merra_path, output_netcdf_path=
 
     wf.convolute_power_curves(
         scaling=0.04,  # TODO: Check values with Dil
-        base=0.5       # TODO: Check values with Dil
+        base=0.5,  # TODO: Check values with Dil
     )
 
     wf.simulate()
 
     wf.apply_loss_factor(
         loss=lambda x: rk_util.low_generation_loss(
-            x, base=0.1, sharpness=3.5)  # TODO: Check values with Dil
+            x, base=0.1, sharpness=3.5
+        )  # TODO: Check values with Dil
     )
 
-    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
+    return wf.to_xarray(
+        output_netcdf_path=output_netcdf_path, output_variables=output_variables
+    )
 
 
-def offshore_wind_era5(placements, era5_path, gwa_100m_path=None, output_netcdf_path=None, output_variables=None):
+def offshore_wind_era5(
+    placements,
+    era5_path,
+    gwa_100m_path=None,
+    output_netcdf_path=None,
+    output_variables=None,
+):
     """
     Simulates offshore wind generation using NASA's ERA5 database [1].
 
@@ -159,11 +180,14 @@ def offshore_wind_era5(placements, era5_path, gwa_100m_path=None, output_netcdf_
 
     wf.read(
         # Why we dont read P, T or boundary_layer_height?
-        variables=['elevated_wind_speed', ],
+        variables=[
+            "elevated_wind_speed",
+        ],
         source_type="ERA5",
         source=era5_path,
         set_time_index=True,
-        verbose=False)
+        verbose=False,
+    )
 
     # wf.adjust_variable_to_long_run_average(
     #     variable='elevated_wind_speed',
@@ -178,7 +202,7 @@ def offshore_wind_era5(placements, era5_path, gwa_100m_path=None, output_netcdf_
     # gaussian convolution of the power curve to account for statistical events in wind speed
     wf.convolute_power_curves(
         scaling=0.01,  # standard deviation of gaussian equals scaling*v + base
-        base=0.00  # values are derived from validation with real wind turbine data
+        base=0.00,  # values are derived from validation with real wind turbine data
     )
 
     # Adjust wind speeds
@@ -186,17 +210,28 @@ def offshore_wind_era5(placements, era5_path, gwa_100m_path=None, output_netcdf_
     # corrected_speed = windspeed * wind_speed_scaling + wind_speed_offset [m/s]
     wind_speed_scaling = 0.95
     wind_speed_offset = 0.0
-    wf.sim_data['elevated_wind_speed'] = np.maximum(
-        wf.sim_data['elevated_wind_speed'] * wind_speed_scaling + wind_speed_offset, 0)
+    wf.sim_data["elevated_wind_speed"] = np.maximum(
+        wf.sim_data["elevated_wind_speed"] * wind_speed_scaling + wind_speed_offset, 0
+    )
 
     wf.simulate()
 
-    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
+    return wf.to_xarray(
+        output_netcdf_path=output_netcdf_path, output_variables=output_variables
+    )
 
 
-def onshore_wind_era5(placements, era5_path, gwa_100m_path, esa_cci_path, output_netcdf_path=None, output_variables=None, nodata_fallback='nan'):
+def onshore_wind_era5(
+    placements,
+    era5_path,
+    gwa_100m_path,
+    esa_cci_path,
+    output_netcdf_path=None,
+    output_variables=None,
+    nodata_fallback="nan",
+):
     """
-    Simulates onshore wind generation using ECMWF's ERA5 database [1]. 
+    Simulates onshore wind generation using ECMWF's ERA5 database [1].
 
     NOTE: Validation documentation is in progress...
 
@@ -239,63 +274,68 @@ def onshore_wind_era5(placements, era5_path, gwa_100m_path, esa_cci_path, output
     assert wf.placements["lat"].between(-90, 90, inclusive=True).any()
 
     wf.read(
-        variables=['elevated_wind_speed',
-                   "surface_pressure",
-                   "surface_air_temperature",
-                   "boundary_layer_height"],
+        variables=[
+            "elevated_wind_speed",
+            "surface_pressure",
+            "surface_air_temperature",
+            "boundary_layer_height",
+        ],
         source_type="ERA5",
         source=era5_path,
         set_time_index=True,
-        verbose=False)
+        verbose=False,
+    )
 
     wf.adjust_variable_to_long_run_average(
-        variable='elevated_wind_speed',
+        variable="elevated_wind_speed",
         source_long_run_average=rk_weather.Era5Source.LONG_RUN_AVERAGE_WINDSPEED,
         real_long_run_average=gwa_100m_path,
         nodata_fallback=nodata_fallback,
     )
 
-    wf.estimate_roughness_from_land_cover(
-        path=esa_cci_path,
-        source_type="cci")
+    wf.estimate_roughness_from_land_cover(path=esa_cci_path, source_type="cci")
 
     wf.logarithmic_projection_of_wind_speeds_to_hub_height(
-        consider_boundary_layer_height=True)
+        consider_boundary_layer_height=True
+    )
 
     wf.apply_air_density_correction_to_wind_speeds()
 
     # gaussian convolution of the power curve to account for statistical events in wind speed
     wf.convolute_power_curves(
         scaling=0.01,  # standard deviation of gaussian equals scaling*v + base
-        base=0.00  # values are derived from validation with real wind turbine data
+        base=0.00,  # values are derived from validation with real wind turbine data
     )
 
     # Adjust wind speeds
     # elevated windspeds are corrected by a linear function by comparing to real wind turbine data.
     # corrected_speed = windspeed * 0.75 + 1.2 [m/s]
     # Empirically found to improve simulation accuracy
-    wf.sim_data['elevated_wind_speed'] = np.maximum(
-        wf.sim_data['elevated_wind_speed']*0.75 + 0.75, 0)
+    wf.sim_data["elevated_wind_speed"] = np.maximum(
+        wf.sim_data["elevated_wind_speed"] * 0.75 + 0.75, 0
+    )
 
     # do simulation
     wf.simulate()
 
-    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
+    return wf.to_xarray(
+        output_netcdf_path=output_netcdf_path, output_variables=output_variables
+    )
 
 
 def wind_era5_2023(
-        placements,
-        era5_path,
-        gwa_100m_path,
-        esa_cci_path,
-        output_netcdf_path=None,
-        output_variables=None,
-        nodata_fallback='nan',
-        wake_reduction_curve_name="dena_mean",
-        availability_factor=0.98,
+    placements,
+    era5_path,
+    gwa_100m_path,
+    esa_cci_path,
+    output_netcdf_path=None,
+    output_variables=None,
+    nodata_fallback="nan",
+    wake_reduction_curve_name="dena_mean",
+    availability_factor=0.98,
 ):
     """
-    Simulates onshore and offshore (200km from shoreline) wind generation using ECMWF's ERA5 database [1]. 
+    Simulates onshore and offshore (200km from shoreline) wind generation using ECMWF's ERA5 database [1].
 
     NOTE: Validation documentation is in progress...
 
@@ -318,13 +358,13 @@ def wind_era5_2023(
         get flags for missing values:
         - f'missing_values_{os.path.basename(path_to_LRA_source)}
     wake_reduction_curve_name : str, optional
-        string value to describe the wake reduction method. None will cause no reduction, by default 
-        "dena_mean". Choose from (see more information here under wind_efficiency_curve_name[1]): "dena_mean", 
+        string value to describe the wake reduction method. None will cause no reduction, by default
+        "dena_mean". Choose from (see more information here under wind_efficiency_curve_name[1]): "dena_mean",
         "knorr_mean", "dena_extreme1", "dena_extreme2", "knorr_extreme1", "knorr_extreme2", "knorr_extreme3",
     availability_factor : float, otional
-        This factor accounts for all downtimes and applies an average reduction to the output curve, 
+        This factor accounts for all downtimes and applies an average reduction to the output curve,
         assuming a statistical deviation of the downtime occurences and a large enough turbine fleet.
-        By default 0.98 as suggested availability including technical availability of turbine and connector 
+        By default 0.98 as suggested availability including technical availability of turbine and connector
         as well as outages for ecological reasons (e.g. bat protection). This does not include wake effects
         (see above) or curtailment/outage for economical reasons or transmission grid congestion.
 
@@ -348,28 +388,30 @@ def wind_era5_2023(
     assert wf.placements["lat"].between(-90, 90, inclusive=True).any()
 
     wf.read(
-        variables=['elevated_wind_speed',
-                   "surface_pressure",
-                   "surface_air_temperature",
-                   "boundary_layer_height"],
+        variables=[
+            "elevated_wind_speed",
+            "surface_pressure",
+            "surface_air_temperature",
+            "boundary_layer_height",
+        ],
         source_type="ERA5",
         source=era5_path,
         set_time_index=True,
-        verbose=False)
+        verbose=False,
+    )
 
     wf.adjust_variable_to_long_run_average(
-        variable='elevated_wind_speed',
+        variable="elevated_wind_speed",
         source_long_run_average=rk_weather.Era5Source.LONG_RUN_AVERAGE_WINDSPEED,
         real_long_run_average=gwa_100m_path,
         nodata_fallback=nodata_fallback,
     )
 
-    wf.estimate_roughness_from_land_cover(
-        path=esa_cci_path,
-        source_type="cci")
+    wf.estimate_roughness_from_land_cover(path=esa_cci_path, source_type="cci")
 
     wf.logarithmic_projection_of_wind_speeds_to_hub_height(
-        consider_boundary_layer_height=True)
+        consider_boundary_layer_height=True
+    )
 
     # Adjust wind speeds with global correction factors
     x = 0.722764112282280
@@ -380,12 +422,13 @@ def wind_era5_2023(
 
     # do wake reduction if applicable
     wf.apply_wake_correction_of_wind_speeds(
-        wake_reduction_curve_name=wake_reduction_curve_name)
+        wake_reduction_curve_name=wake_reduction_curve_name
+    )
 
     # gaussian convolution of the power curve to account for statistical events in wind speed
     wf.convolute_power_curves(
         scaling=0.01,  # standard deviation of gaussian equals scaling*v + base
-        base=0.00  # values are derived from validation with real wind turbine data
+        base=0.00,  # values are derived from validation with real wind turbine data
     )
 
     # do simulation
@@ -394,8 +437,12 @@ def wind_era5_2023(
     # apply availability factor
     wf.apply_availability_factor(availability_factor=availability_factor)
 
-    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
+    return wf.to_xarray(
+        output_netcdf_path=output_netcdf_path, output_variables=output_variables
+    )
 
 
-def mean_capacity_factor_from_sectoral_weibull(placements, a_rasters, k_rasters, f_rasters, output=None):
+def mean_capacity_factor_from_sectoral_weibull(
+    placements, a_rasters, k_rasters, f_rasters, output=None
+):
     pass
