@@ -2,8 +2,19 @@ import numpy as np
 from reskit.parameters.parameters import OnshoreParameters
 
 
-def onshore_turbine_capex(capacity, hub_height, rotor_diam, base_capex=None, base_capacity=None, base_hub_height=None, base_rotor_diam=None, tcc_share=None, bos_share=None, **k):
-    """    
+def onshore_turbine_capex(
+    capacity,
+    hub_height,
+    rotor_diam,
+    base_capex=None,
+    base_capacity=None,
+    base_hub_height=None,
+    base_rotor_diam=None,
+    tcc_share=None,
+    bos_share=None,
+    **k
+):
+    """
     A cost and scaling model (CSM) to calculate the total cost of a 3-bladed, direct drive onshore wind turbine according to Fingersh et al. [1] and Maples et al. [2].
     A CSM normalization is done such that a chosen baseline turbine, with a capacity of 4200 kW, hub height of 120 m, and rotor diameter of 136 m, corresponds to a expected typical specific cost of 1100 Eur/kW in a 2050 European context according to Ryberg et al. [4]
     The turbine cost includes the turbine capital cost (TCC) and balance of system costs (BOS), amounting to 67.3% and 22.9% respectively [3], as well as finantial costs equivalent to the the complementary percentage.
@@ -36,7 +47,7 @@ def onshore_turbine_capex(capacity, hub_height, rotor_diam, base_capex=None, bas
         The baseline turbine's turbine capital cost (TCC) percentage contribution in the total cost, by default 0.673
 
     bos_share : float, optional
-        The baseline turbine's balance of system costs (BOS) percentage contribution in the total cost, by default 0.229 
+        The baseline turbine's balance of system costs (BOS) percentage contribution in the total cost, by default 0.229
 
     Returns
     --------
@@ -81,12 +92,18 @@ def onshore_turbine_capex(capacity, hub_height, rotor_diam, base_capex=None, bas
     # COMPUTE COSTS
     # normalizations chosen to make the default turbine (4200-cap, 120-hub, 136-rot) match both a total
     # cost of 1100 EUR/kW as well as matching the percentages given in [3]
-    tcc_scaling = base_capex * tcc_share / \
-        onshore_tcc(cp=base_capacity, hh=base_hub_height, rd=base_rotor_diam)
+    tcc_scaling = (
+        base_capex
+        * tcc_share
+        / onshore_tcc(cp=base_capacity, hh=base_hub_height, rd=base_rotor_diam)
+    )
     tcc = onshore_tcc(cp=cp, hh=hh, rd=rd) * tcc_scaling
 
-    bos_scaling = base_capex * bos_share / \
-        onshore_bos(cp=base_capacity, hh=base_hub_height, rd=base_rotor_diam)
+    bos_scaling = (
+        base_capex
+        * bos_share
+        / onshore_bos(cp=base_capacity, hh=base_hub_height, rd=base_rotor_diam)
+    )
     bos = onshore_bos(cp=cp, hh=hh, rd=rd) * bos_scaling
 
     # print(tcc_scaling, bos_scaling)
@@ -98,7 +115,9 @@ def onshore_turbine_capex(capacity, hub_height, rotor_diam, base_capex=None, bas
     return total_costs
 
 
-def onshore_tcc(cp, hh, rd, gdp_escalator=None, blade_material_escalator=None, blades=None):
+def onshore_tcc(
+    cp, hh, rd, gdp_escalator=None, blade_material_escalator=None, blades=None
+):
     """
     A function to determine the turbine capital cost (TCC) of a 3 blade standar onshore wind turbine based capacity, hub height and rotor diameter values according to the cost model by Fingersh et al. [1].
 
@@ -140,8 +159,10 @@ def onshore_tcc(cp, hh, rd, gdp_escalator=None, blade_material_escalator=None, b
 
     # Blade Cost
     singleBladeMass = 0.4948 * np.power(rr, 2.53)
-    singleBladeCost = ((0.4019 * np.power(rr, 3) - 21051) * blade_material_escalator +
-                       2.7445 * np.power(rr, 2.5025) * gdp_escalator) * (1 - 0.28)
+    singleBladeCost = (
+        (0.4019 * np.power(rr, 3) - 21051) * blade_material_escalator
+        + 2.7445 * np.power(rr, 2.5025) * gdp_escalator
+    ) * (1 - 0.28)
 
     # Hub
     hubMass = 0.945 * singleBladeMass + 5680.3
@@ -206,22 +227,24 @@ def onshore_tcc(cp, hh, rd, gdp_escalator=None, blade_material_escalator=None, b
     towerCost = towerMass * 1.5
 
     # Add up the turbine capital cost
-    turbineCapitalCost = singleBladeCost * blades + \
-        hubCost + \
-        pitchSystemCost + \
-        noseConeCost + \
-        lowSpeedShaftCost + \
-        bearingCost + \
-        breakCouplingCost + \
-        generatorCost + \
-        electronicsCost + \
-        yawSystemCost + \
-        mainframeCost + \
-        platformAndRailingCost + \
-        electricalConnectionCost + \
-        hydraulicAndCoolingSystemCost + \
-        nacelleCost + \
-        towerCost
+    turbineCapitalCost = (
+        singleBladeCost * blades
+        + hubCost
+        + pitchSystemCost
+        + noseConeCost
+        + lowSpeedShaftCost
+        + bearingCost
+        + breakCouplingCost
+        + generatorCost
+        + electronicsCost
+        + yawSystemCost
+        + mainframeCost
+        + platformAndRailingCost
+        + electricalConnectionCost
+        + hydraulicAndCoolingSystemCost
+        + nacelleCost
+        + towerCost
+    )
 
     return turbineCapitalCost
 
@@ -257,11 +280,11 @@ def onshore_bos(cp, hh, rd):
     foundationCost = 303.24 * np.power((hh * sa), 0.4037)
 
     # Transportation
-    transporationCostFactor = 1.581E-5 * np.power(cp, 2) - 0.0375 * cp + 54.7
+    transporationCostFactor = 1.581e-5 * np.power(cp, 2) - 0.0375 * cp + 54.7
     transporationCost = transporationCostFactor * cp
 
     # Roads and civil work
-    roadsAndCivilWorkFactor = 2.17E-6 * np.power(cp, 2) - 0.0145 * cp + 69.54
+    roadsAndCivilWorkFactor = 2.17e-6 * np.power(cp, 2) - 0.0145 * cp + 69.54
     roadsAndCivilWorkCost = roadsAndCivilWorkFactor * cp
 
     # Assembly and installation
@@ -269,19 +292,22 @@ def onshore_bos(cp, hh, rd):
 
     # Electrical Interface and connections
     electricalInterfaceAndConnectionFactor = (
-        3.49E-6 * np.power(cp, 2)) - (0.0221 * cp) + 109.7
+        (3.49e-6 * np.power(cp, 2)) - (0.0221 * cp) + 109.7
+    )
     electricalInterfaceAndConnectionCost = electricalInterfaceAndConnectionFactor * cp
 
     # Engineering and permit factor
-    engineeringAndPermitCostFactor = 9.94E-4 * cp + 20.31
+    engineeringAndPermitCostFactor = 9.94e-4 * cp + 20.31
     engineeringAndPermitCost = engineeringAndPermitCostFactor * cp
 
     # Add up other costs
-    bosCosts = foundationCost + \
-        transporationCost + \
-        roadsAndCivilWorkCost + \
-        assemblyAndInstallationCost + \
-        electricalInterfaceAndConnectionCost +\
-        engineeringAndPermitCost
+    bosCosts = (
+        foundationCost
+        + transporationCost
+        + roadsAndCivilWorkCost
+        + assemblyAndInstallationCost
+        + electricalInterfaceAndConnectionCost
+        + engineeringAndPermitCost
+    )
 
     return bosCosts
