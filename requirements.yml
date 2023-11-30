@@ -3,26 +3,18 @@ channels:
   - conda-forge
   - pvlib
 dependencies:
-  # - python
-  # - pytest
-  # - pytest-cov
-  # - pylint
-  # - autopep8
-  # - jupyter
-  # - notebook
-  # - jupyterlab
+  - python
   - pip
   - matplotlib
   - descartes
-  - pandas
+  - pandas<2.0.0
+  - openpyxl
   - numpy
+  - numba
   - scipy
   - scikit-learn
-  #- gdal>=2.4.0,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*
-  - gdal=3.4.2
+  - geokit>=1.4.0
+  - gdal=3.4.*
   - netCDF4>=1.5.3
   - xarray
-  - pvlib>=0.9.0
-  - pip:
-      - https://github.com/FZJ-IEK3-VSA/geokit/archive/v1.2.6.zip
-      - .
+  - pvlib=0.9.0
