@@ -30,11 +30,17 @@ def rotate_from_lat_lon(lons, lats, lon_south_pole=18, lat_south_pole=-39.25):
     y = np.sin(lons) * np.cos(lats)
     z = np.sin(lats)
 
-    x_new = np.cos(theta) * np.cos(phi) * x + np.cos(theta) * \
-        np.sin(phi) * y + np.sin(theta) * z
+    x_new = (
+        np.cos(theta) * np.cos(phi) * x
+        + np.cos(theta) * np.sin(phi) * y
+        + np.sin(theta) * z
+    )
     y_new = -np.sin(phi) * x + np.cos(phi) * y
-    z_new = -np.sin(theta) * np.cos(phi) * x - np.sin(theta) * \
-        np.sin(phi) * y + np.cos(theta) * z
+    z_new = (
+        -np.sin(theta) * np.cos(phi) * x
+        - np.sin(theta) * np.sin(phi) * y
+        + np.cos(theta) * z
+    )
 
     rlonCoords = np.degrees(np.arctan2(y_new, x_new))
     rlatCoords = np.degrees(np.arcsin(z_new))
@@ -44,7 +50,7 @@ def rotate_from_lat_lon(lons, lats, lon_south_pole=18, lat_south_pole=-39.25):
 
 def rotate_to_lat_lon(rlons, rlats, lon_south_pole=18, lat_south_pole=-39.25):
     """This function un-does a spherical rotation to a set of given latitude and
-    longitude coordinates (in the rotated), yielding coordinates in the regular 
+    longitude coordinates (in the rotated), yielding coordinates in the regular
     longitude and latitude system.
 
     Parameters
@@ -72,10 +78,16 @@ def rotate_to_lat_lon(rlons, rlats, lon_south_pole=18, lat_south_pole=-39.25):
     y = np.sin(rlons) * np.cos(rlats)
     z = np.sin(rlats)
 
-    x_new = np.cos(theta) * np.cos(phi) * x + np.sin(phi) * \
-        y + np.sin(theta) * np.cos(phi) * z
-    y_new = -np.cos(theta) * np.sin(phi) * x + np.cos(phi) * \
-        y - np.sin(theta) * np.sin(phi) * z
+    x_new = (
+        np.cos(theta) * np.cos(phi) * x
+        + np.sin(phi) * y
+        + np.sin(theta) * np.cos(phi) * z
+    )
+    y_new = (
+        -np.cos(theta) * np.sin(phi) * x
+        + np.cos(phi) * y
+        - np.sin(theta) * np.sin(phi) * z
+    )
     z_new = -np.sin(theta) * x + np.cos(theta) * z
 
     lonCoords = np.degrees(np.arctan2(y_new, x_new))
