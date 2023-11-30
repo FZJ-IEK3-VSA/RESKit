@@ -18,3 +18,13 @@ test-code:
   script:
     # Test code
     - python -m pytest --cov=reskit test/
+
+test-formatting:
+  stage: test
+  image: pyfound/black:latest_release
+  script:
+  # Dry-run black auto-formatter. If the code needs reformatting this test
+  # will fail.
+  - black --version
+  - black --check reskit
+  - black --check test
