@@ -7,9 +7,10 @@ stages:
   stage: test
   before_script:
     # create environment
-    - micromamba create -y -n reskit --file=requirements-dev.yml
-    - eval "$(micromamba shell hook --shell bash)"
-    - micromamba activate reskit
+    #- micromamba create -y -n reskit --file=requirements-dev.yml
+    - micromamba install -y -n base --file=requirements-dev.yml
+    # - eval "$(micromamba shell hook --shell bash)"
+    # - micromamba activate reskit
     # Install reskit in editable mode
     - python -m pip install -e . --no-deps
 
@@ -18,3 +19,13 @@ test-code:
   script:
     # Test code
     - python -m pytest --cov=reskit test/
+
+# test-formatting:
+#   stage: test
+#   image: pyfound/black:latest_release
+#   script:
+#   # Dry-run black auto-formatter. If the code needs reformatting this test
+#   # will fail.
+#   - black --version
+#   - black --check FINE
+#   - black --check test
