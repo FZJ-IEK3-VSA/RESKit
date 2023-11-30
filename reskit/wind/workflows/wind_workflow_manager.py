@@ -306,6 +306,30 @@ class WindWorkflowManager(WorkflowManager):
 
         return self
 
+    def apply_availability_factor(self, availability_factor):
+        """
+        Applies a relative reduction factor to the energy output (capacity factor) time series
+        to statistically account for non-availabilities.
+
+        Parameters
+        ----------
+        availability_factor : float
+            Factor that will be applied to the output time series.
+
+        Return
+        ------
+            A reference to the invoking WindWorkflowManager
+        """
+        assert (
+            availability_factor > 0 and availability_factor <= 1
+        ), f"availability_factor must be between 0 and 1.0."
+
+        self.sim_data["capacity_factor"] = (
+            self.sim_data["capacity_factor"] * availability_factor
+        )
+
+        return self
+
     def interpolate_raster_vals_to_hub_height(
         self, name: str, height_to_raster_dict: dict, **kwargs
     ):
