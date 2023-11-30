@@ -16,12 +16,35 @@ def test_compute_specific_power():
 
 @pytest.fixture
 def pt_power_curve():
-    perf = np.array([(1, 0.0), (2, 0.0), (3, 0.0138095238095), (4, 0.0440476190476), (5, 0.0952380952381), (6, 0.177380952381),
-                     (7, 0.285714285714), (8, 0.42619047619), (9,
-                                                               0.583333333333), (10, 0.742857142857), (11, 0.871428571429),
-                     (12, 0.952380952381), (13, 0.988095238095), (14, 1.0), (15,
-                                                                             1.0), (16, 1.0), (17, 1.0), (18, 1.0), (19, 1.0),
-                     (20, 1.0), (21, 1.0), (22, 1.0), (23, 1.0), (24, 1.0), (25, 1.0), ])
+    perf = np.array(
+        [
+            (1, 0.0),
+            (2, 0.0),
+            (3, 0.0138095238095),
+            (4, 0.0440476190476),
+            (5, 0.0952380952381),
+            (6, 0.177380952381),
+            (7, 0.285714285714),
+            (8, 0.42619047619),
+            (9, 0.583333333333),
+            (10, 0.742857142857),
+            (11, 0.871428571429),
+            (12, 0.952380952381),
+            (13, 0.988095238095),
+            (14, 1.0),
+            (15, 1.0),
+            (16, 1.0),
+            (17, 1.0),
+            (18, 1.0),
+            (19, 1.0),
+            (20, 1.0),
+            (21, 1.0),
+            (22, 1.0),
+            (23, 1.0),
+            (24, 1.0),
+            (25, 1.0),
+        ]
+    )
     return PowerCurve(perf[:, 0], perf[:, 1])
 
 
@@ -63,14 +86,17 @@ def test_expected_capacity_factor_from_weibull(pt_power_curve):
 
 def test_expected_capacity_factor_from_distribution(pt_power_curve):
     output = pt_power_curve.expected_capacity_factor_from_distribution(
-        wind_speed_values=[0, 2, 4, 6, 8, 10],
-        wind_speed_counts=[5, 20, 5, 2, 5, 1])
+        wind_speed_values=[0, 2, 4, 6, 8, 10], wind_speed_counts=[5, 20, 5, 2, 5, 1]
+    )
 
     assert np.isclose(output, 0.0907581453633421)
 
 
 def test_PowerCurve_convolute_by_gaussian(pt_power_curve):
-    pc = pt_power_curve.convolute_by_gaussian(scaling=0.06, base=0.1, )
+    pc = pt_power_curve.convolute_by_gaussian(
+        scaling=0.06,
+        base=0.1,
+    )
 
     assert pc.wind_speed.shape == (100,)
     assert pc.wind_speed.shape == pc.capacity_factor.shape

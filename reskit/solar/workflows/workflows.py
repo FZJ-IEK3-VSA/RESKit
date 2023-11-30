@@ -4,7 +4,19 @@ import numpy as np
 import warnings
 
 
-def openfield_pv_merra_ryberg2019(placements, merra_path, global_solar_atlas_ghi_path, module="WINAICO WSx-240P6", elev=300, tracking="fixed", inverter=None, inverter_kwargs={}, tracking_args={}, output_netcdf_path=None, output_variables=None):
+def openfield_pv_merra_ryberg2019(
+    placements,
+    merra_path,
+    global_solar_atlas_ghi_path,
+    module="WINAICO WSx-240P6",
+    elev=300,
+    tracking="fixed",
+    inverter=None,
+    inverter_kwargs={},
+    tracking_args={},
+    output_netcdf_path=None,
+    output_variables=None,
+):
     """
 
     openfield_pv_merra_ryberg2019(placements, merra_path, global_solar_atlas_ghi_path, module="WINAICO WSx-240P6", elev=300, tracking="fixed",
@@ -61,9 +73,13 @@ def openfield_pv_merra_ryberg2019(placements, merra_path, global_solar_atlas_ghi
     wf.configure_cec_module(module)
     # ensure the tracking parameter is correct
     assert tracking in [
-        'fixed', 'single_axis'], f"tracking must be either 'fixed' or 'single_axis'"
+        "fixed",
+        "single_axis",
+    ], f"tracking must be either 'fixed' or 'single_axis'"
     assert tracking in [
-        'fixed', 'single_axis'], f"tracking must be either 'fixed' or 'single_axis'"
+        "fixed",
+        "single_axis",
+    ], f"tracking must be either 'fixed' or 'single_axis'"
 
     if not "tilt" in wf.placements.columns:
         wf.estimate_tilt_from_latitude(convention="Ryberg2020")
@@ -73,19 +89,21 @@ def openfield_pv_merra_ryberg2019(placements, merra_path, global_solar_atlas_ghi
         wf.apply_elevation(elev)
 
     wf.read(
-        variables=['surface_wind_speed',
-                   "surface_pressure",
-                   "surface_air_temperature",
-                   "surface_dew_temperature",
-                   "global_horizontal_irradiance"],
+        variables=[
+            "surface_wind_speed",
+            "surface_pressure",
+            "surface_air_temperature",
+            "surface_dew_temperature",
+            "global_horizontal_irradiance",
+        ],
         source_type="MERRA",
         source=merra_path,
         set_time_index=True,
-        verbose=False
+        verbose=False,
     )
 
     wf.adjust_variable_to_long_run_average(
-        variable='global_horizontal_irradiance',
+        variable="global_horizontal_irradiance",
         source_long_run_average=rk_weather.MerraSource.LONG_RUN_AVERAGE_GHI,
         real_long_run_average=global_solar_atlas_ghi_path,
         real_lra_scaling=1000 / 24,  # cast to hourly average kWh
@@ -93,9 +111,8 @@ def openfield_pv_merra_ryberg2019(placements, merra_path, global_solar_atlas_ghi
 
     wf.determine_solar_position()
     wf.filter_positive_solar_elevation()
-    wf.determine_extra_terrestrial_irradiance(
-        model="spencer", solar_constant=1370)
-    wf.determine_air_mass(model='kastenyoung1989')
+    wf.determine_extra_terrestrial_irradiance(model="spencer", solar_constant=1370)
+    wf.determine_air_mass(model="kastenyoung1989")
     wf.apply_DIRINT_model()
     wf.diffuse_horizontal_irradiance_from_trigonometry()
 
@@ -114,28 +131,30 @@ def openfield_pv_merra_ryberg2019(placements, merra_path, global_solar_atlas_ghi
     if inverter is not None:
         wf.apply_inverter_losses(inverter=inverter, **inverter_kwargs)
 
-    wf.apply_loss_factor(
-        0.20, variables=['capacity_factor', 'total_system_generation'])
+    wf.apply_loss_factor(0.20, variables=["capacity_factor", "total_system_generation"])
 
-    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
+    return wf.to_xarray(
+        output_netcdf_path=output_netcdf_path, output_variables=output_variables
+    )
 
 
 def openfield_pv_era5(
-        placements,
-        era5_path,
-        global_solar_atlas_ghi_path,
-        global_solar_atlas_dni_path,
-        module="WINAICO WSx-240P6",
-        elev=300, tracking="fixed",
-        inverter=None,
-        inverter_kwargs={},
-        tracking_args={},
-        DNI_nodata_fallback=1.0,
-        GHI_nodata_fallback=1.0,
-        output_netcdf_path=None,
-        output_variables=None,
-        gsa_nodata_fallback='source',
-        ):
+    placements,
+    era5_path,
+    global_solar_atlas_ghi_path,
+    global_solar_atlas_dni_path,
+    module="WINAICO WSx-240P6",
+    elev=300,
+    tracking="fixed",
+    inverter=None,
+    inverter_kwargs={},
+    tracking_args={},
+    DNI_nodata_fallback=1.0,
+    GHI_nodata_fallback=1.0,
+    output_netcdf_path=None,
+    output_variables=None,
+    gsa_nodata_fallback="source",
+):
     """
     Simulation of an openfield  PV openfield system based on ERA5 Data.
 
@@ -172,27 +191,27 @@ def openfield_pv_era5(
             Determines wether you want to model your PV system with an inverter or not.
             Default is None.
             See reskit.solar.SolarWorkflowManager.apply_inverter_losses for more usage information.
-    
+
     DNI_nodata_fallback: str, optional
             When global_solar_atlas_dni_path has no data, one can decide between different fallback options, by default 1.0:
             - np.nan or None : return np.nan for missing values in global_solar_atlas_dni_path
-            - float : Apply this float value as a scaling factor for all no-data locations only: source_long_run_average * DNI_nodata_fallback. 
+            - float : Apply this float value as a scaling factor for all no-data locations only: source_long_run_average * DNI_nodata_fallback.
                 NOTE: A value of 1.0 will return the source lra value in case of missing global_solar_atlas_dni_path values.
             - str : Will be interpreted as a filepath to a raster with alternative absolute global_solar_atlas_dni_path values
-            - callable : any callable method taking the arguments (all iterables): 'locs' and 'source_long_run_average_value' 
-                (the locations as gk.geom.point objects and original value from source data). The output values will be considered as 
-                the new real_long_run_average for missing locations only. 
+            - callable : any callable method taking the arguments (all iterables): 'locs' and 'source_long_run_average_value'
+                (the locations as gk.geom.point objects and original value from source data). The output values will be considered as
+                the new real_long_run_average for missing locations only.
             NOTE: np.nan will also be returned in case that the nodata fallback does not yield values either.
-        
+
     GHI_nodata_fallback: str, optional
             When global_solar_atlas_ghi_path has no data, one can decide between different fallback options, by default 1.0:
             - np.nan or None : return np.nan for missing values in global_solar_atlas_ghi_path
-            - float : Apply this float value as a scaling factor for all no-data locations only: source_long_run_average * GHI_nodata_fallback. 
+            - float : Apply this float value as a scaling factor for all no-data locations only: source_long_run_average * GHI_nodata_fallback.
                 NOTE: A value of 1.0 will return the source lra value in case of missing global_solar_atlas_ghi_path values.
             - str : Will be interpreted as a filepath to a raster with alternative absolute global_solar_atlas_ghi_path values
-            - callable : any callable method taking the arguments (all iterables): 'locs' and 'source_long_run_average_value' 
-                (the locations as gk.geom.point objects and original value from source data). The output values will be considered as 
-                the new real_long_run_average for missing locations only. 
+            - callable : any callable method taking the arguments (all iterables): 'locs' and 'source_long_run_average_value'
+                (the locations as gk.geom.point objects and original value from source data). The output values will be considered as
+                the new real_long_run_average for missing locations only.
             NOTE: np.nan will also be returned in case that the nodata fallback does not yield values either
 
     output_netcdf_path: str
@@ -201,8 +220,8 @@ def openfield_pv_era5(
 
     output_variables: str
             Output variables of the simulation that you want to save into your NETCDF Outputfile.
-    
-    gsa_nodata_fallback: str, optional 
+
+    gsa_nodata_fallback: str, optional
             NOTE: DEPRECATED! Will be removed soon!
             When real_long_run_average has no data, it can be decided between fallback options:
             -'source': use source data (ERA5 raw simulation)
@@ -224,7 +243,9 @@ def openfield_pv_era5(
     assert wf.placements["lat"].between(-90, 90, inclusive=True).any()
     # ensure the tracking parameter is correct
     assert tracking in [
-        'fixed', 'single_axis'], f"tracking must be either 'fixed' or 'single_axis'"
+        "fixed",
+        "single_axis",
+    ], f"tracking must be either 'fixed' or 'single_axis'"
 
     if not "tilt" in wf.placements.columns:
         wf.estimate_tilt_from_latitude(convention="Ryberg2020")
@@ -234,20 +255,22 @@ def openfield_pv_era5(
         wf.apply_elevation(elev)
 
     wf.read(
-        variables=["global_horizontal_irradiance",
-                   "direct_horizontal_irradiance",
-                   "surface_wind_speed",
-                   "surface_pressure",
-                   "surface_air_temperature",
-                   "surface_dew_temperature", ],
+        variables=[
+            "global_horizontal_irradiance",
+            "direct_horizontal_irradiance",
+            "surface_wind_speed",
+            "surface_pressure",
+            "surface_air_temperature",
+            "surface_dew_temperature",
+        ],
         source_type="ERA5",
         source=era5_path,
         set_time_index=True,
-        time_index_from='direct_horizontal_irradiance',
-        verbose=False
+        time_index_from="direct_horizontal_irradiance",
+        verbose=False,
     )
     # If there is a need to resimulate old data, this line must be inserted.
-    #wf.sim_data['global_horizontal_irradiance'] = wf.sim_data['global_horizontal_irradiance_archive']
+    # wf.sim_data['global_horizontal_irradiance'] = wf.sim_data['global_horizontal_irradiance_archive']
 
     wf.determine_solar_position()
     wf.filter_positive_solar_elevation()
@@ -261,45 +284,46 @@ def openfield_pv_era5(
     # )
 
     # TODO remove the following mid 2024, also remove gsa_nodata_fallback in workflow args
-    if gsa_nodata_fallback != 'source':
+    if gsa_nodata_fallback != "source":
         warnings.warn(
-            "'gsa_nodata_fallback' is deprecated and will be removed soon. Use 'GHI_nodata_fallback' and 'GHI_nodata_fallback' instead.", DeprecationWarning)
+            "'gsa_nodata_fallback' is deprecated and will be removed soon. Use 'GHI_nodata_fallback' and 'GHI_nodata_fallback' instead.",
+            DeprecationWarning,
+        )
         # deprecated gsa nodata fallback has been changed!
         if GHI_nodata_fallback != 1.0 or DNI_nodata_fallback == 1.0:
             # also, changes have been made to GHI and DNI fallbacks
             raise ValueError(
-                f"When GHI_nodata_fallback and DNI_nodata_fallback have been adapted, gsa_nodata_fallback must not be adapted (recommended to ignore, deprecated)")
+                f"When GHI_nodata_fallback and DNI_nodata_fallback have been adapted, gsa_nodata_fallback must not be adapted (recommended to ignore, deprecated)"
+            )
         else:
             # GHI and DNI fallbacks have not been changed, but 'source' has - adapt DNI and GHI fallbacks accordingly
-            if gsa_nodata_fallback == 'nan':
+            if gsa_nodata_fallback == "nan":
                 GHI_nodata_fallback = np.nan
                 DNI_nodata_fallback = np.nan
             else:
                 raise ValueError(
-                    f"'gsa_nodata_fallback' (deprecated) must be 'nan' or 'source'. Better use 'GHI_nodata_fallback' and 'GHI_nodata_fallback' instead, however.")
+                    f"'gsa_nodata_fallback' (deprecated) must be 'nan' or 'source'. Better use 'GHI_nodata_fallback' and 'GHI_nodata_fallback' instead, however."
+                )
 
     wf.adjust_variable_to_long_run_average(
-        variable='global_horizontal_irradiance',
+        variable="global_horizontal_irradiance",
         source_long_run_average=rk_weather.Era5Source.LONG_RUN_AVERAGE_GHI,
         real_long_run_average=global_solar_atlas_ghi_path,
         real_lra_scaling=1000 / 24,  # cast to hourly average kWh
         nodata_fallback=GHI_nodata_fallback,
     )
 
-
     wf.adjust_variable_to_long_run_average(
-        variable='direct_normal_irradiance',
+        variable="direct_normal_irradiance",
         source_long_run_average=rk_weather.Era5Source.LONG_RUN_AVERAGE_DNI,
         real_long_run_average=global_solar_atlas_dni_path,
         real_lra_scaling=1000 / 24,  # cast to hourly average kWh
         nodata_fallback=DNI_nodata_fallback,
     )
 
-    wf.determine_extra_terrestrial_irradiance(
-        model="spencer", solar_constant=1370)
-    wf.determine_extra_terrestrial_irradiance(
-        model="spencer", solar_constant=1370)
-    wf.determine_air_mass(model='kastenyoung1989')
+    wf.determine_extra_terrestrial_irradiance(model="spencer", solar_constant=1370)
+    wf.determine_extra_terrestrial_irradiance(model="spencer", solar_constant=1370)
+    wf.determine_air_mass(model="kastenyoung1989")
 
     wf.diffuse_horizontal_irradiance_from_trigonometry()
 
@@ -319,13 +343,28 @@ def openfield_pv_era5(
         wf.apply_inverter_losses(inverter=inverter, **inverter_kwargs)
 
     loss_factor = 0.115  # validation by d.franzmann, 2022/01/13
-    wf.apply_loss_factor(loss_factor, variables=[
-                         'capacity_factor', 'total_system_generation'])
+    wf.apply_loss_factor(
+        loss_factor, variables=["capacity_factor", "total_system_generation"]
+    )
 
-    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
+    return wf.to_xarray(
+        output_netcdf_path=output_netcdf_path, output_variables=output_variables
+    )
 
 
-def openfield_pv_sarah_unvalidated(placements, sarah_path, era5_path, module="WINAICO WSx-240P6", elev=300, tracking="fixed", inverter=None, inverter_kwargs={}, tracking_args={}, output_netcdf_path=None, output_variables=None):
+def openfield_pv_sarah_unvalidated(
+    placements,
+    sarah_path,
+    era5_path,
+    module="WINAICO WSx-240P6",
+    elev=300,
+    tracking="fixed",
+    inverter=None,
+    inverter_kwargs={},
+    tracking_args={},
+    output_netcdf_path=None,
+    output_variables=None,
+):
     """
 
     openfield_pv_sarah_unvalidated(placements, sarah_path, era5_path, module="WINAICO WSx-240P6", elev=300, tracking="fixed", inverter=None, inverter_kwargs={}, tracking_args={}, output_netcdf_path=None, output_variables=None)
@@ -384,7 +423,9 @@ def openfield_pv_sarah_unvalidated(placements, sarah_path, era5_path, module="WI
     wf.configure_cec_module(module)
     # ensure the tracking parameter is correct
     assert tracking in [
-        'fixed', 'single_axis'], f"tracking must be either 'fixed' or 'single_axis'"
+        "fixed",
+        "single_axis",
+    ], f"tracking must be either 'fixed' or 'single_axis'"
 
     if not "tilt" in wf.placements.columns:
         wf.estimate_tilt_from_latitude(convention="Ryberg2020")
@@ -394,31 +435,31 @@ def openfield_pv_sarah_unvalidated(placements, sarah_path, era5_path, module="WI
         wf.apply_elevation(elev)
 
     wf.read(
-        variables=["direct_normal_irradiance",
-                   "global_horizontal_irradiance"],
+        variables=["direct_normal_irradiance", "global_horizontal_irradiance"],
         source_type="SARAH",
         source=sarah_path,
         set_time_index=True,
-        verbose=False
+        verbose=False,
     )
 
     wf.read(
-        variables=["surface_wind_speed",
-                   "surface_pressure",
-                   "surface_air_temperature",
-                   "surface_dew_temperature", ],
+        variables=[
+            "surface_wind_speed",
+            "surface_pressure",
+            "surface_air_temperature",
+            "surface_dew_temperature",
+        ],
         source_type="ERA5",
         source=era5_path,
         set_time_index=False,
-        time_index_from='direct_horizontal_irradiance',
-        verbose=False
+        time_index_from="direct_horizontal_irradiance",
+        verbose=False,
     )
 
     wf.determine_solar_position()
     wf.filter_positive_solar_elevation()
-    wf.determine_extra_terrestrial_irradiance(
-        model="spencer", solar_constant=1370)
-    wf.determine_air_mass(model='kastenyoung1989')
+    wf.determine_extra_terrestrial_irradiance(model="spencer", solar_constant=1370)
+    wf.determine_air_mass(model="kastenyoung1989")
 
     wf.diffuse_horizontal_irradiance_from_trigonometry()
 
@@ -437,7 +478,8 @@ def openfield_pv_sarah_unvalidated(placements, sarah_path, era5_path, module="WI
     if inverter is not None:
         wf.apply_inverter_losses(inverter=inverter, **inverter_kwargs)
 
-    wf.apply_loss_factor(
-        0.20, variables=['capacity_factor', 'total_system_generation'])
+    wf.apply_loss_factor(0.20, variables=["capacity_factor", "total_system_generation"])
 
-    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
+    return wf.to_xarray(
+        output_netcdf_path=output_netcdf_path, output_variables=output_variables
+    )

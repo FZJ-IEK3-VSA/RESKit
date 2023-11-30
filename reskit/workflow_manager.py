@@ -110,7 +110,7 @@ class WorkflowManager:
         spatial_interpolation_mode: str = "bilinear",
         temporal_reindex_method: str = "nearest",
         time_index_from=None,
-        **kwargs
+        **kwargs,
     ):
         """Reads the specified variables from the NetCDF4-style weather dataset, and then extracts
         those variables for each of the coordinates configured in `.placements`. The resulting
@@ -180,9 +180,10 @@ class WorkflowManager:
             else:
                 raise RuntimeError("Unknown source_type")
 
-            if source_type == 'ERA5':
+            if source_type == "ERA5":
                 source = source_constructor(
-                    source, bounds=self.ext, time_index_from=time_index_from, **kwargs)
+                    source, bounds=self.ext, time_index_from=time_index_from, **kwargs
+                )
             else:
                 source = source_constructor(source, bounds=self.ext, **kwargs)
 
@@ -227,6 +228,7 @@ class WorkflowManager:
         return self
 
         # Stage 3: Weather data adjusting & other intermediate steps
+
     def adjust_variable_to_long_run_average(
         self,
         variable: str,
@@ -234,7 +236,7 @@ class WorkflowManager:
         real_long_run_average: Union[str, float, np.ndarray],
         real_lra_scaling: float = 1,
         spatial_interpolation: str = "linear-spline",
-        nodata_fallback: str = 'nan',
+        nodata_fallback: str = "nan",
     ):
         """Adjusts the average mean of the specified variable to a known long-run-average
 
@@ -276,34 +278,36 @@ class WorkflowManager:
         nodata_fallback: float, str, callable, optional
             When real_long_run_average has no data, one can decide between different fallback options, by default np.nan:
             - np.nan or None : return np.nan for missing values in real_long_run_average
-            - float : Apply this float value as a scaling factor for all no-data locations only: source_long_run_average * nodata_fallback. 
+            - float : Apply this float value as a scaling factor for all no-data locations only: source_long_run_average * nodata_fallback.
               NOTE: A value of 1.0 will return the source lra value in case of missing real lra values.
             - str : Will be interpreted as a filepath to a raster with alternative absolute real_long_run_average values
-            - callable : any callable method taking the arguments (all iterables): 'locs' and 'source_long_run_average_value' 
-              (the locations as gk.geom.point objects and original value from source data). The output values will be considered as 
-              the new real_long_run_average for missing locations only. 
+            - callable : any callable method taking the arguments (all iterables): 'locs' and 'source_long_run_average_value'
+              (the locations as gk.geom.point objects and original value from source data). The output values will be considered as
+              the new real_long_run_average for missing locations only.
             NOTE: np.nan will also be returned in case that the nodata fallback does not yield values either.
         Returns
         -------
         WorkflowManager
             Returns the invoking WorkflowManager (for chaining)
         """
-        if not (nodata_fallback is None or callable(nodata_fallback) or isinstance(nodata_fallback, (float, int, str))):
-            raise TypeError(
-                f"'nodata_fallback' must be a float or a Callable.")
+        if not (
+            nodata_fallback is None
+            or callable(nodata_fallback)
+            or isinstance(nodata_fallback, (float, int, str))
+        ):
+            raise TypeError(f"'nodata_fallback' must be a float or a Callable.")
 
         def _get_lra_values_from_raster(fp):
             assert isfile(
-                fp), f"File '{fp}' in adjust_variable_to_long_run_average() does not exist."
+                fp
+            ), f"File '{fp}' in adjust_variable_to_long_run_average() does not exist."
             _lra = gk.raster.interpolateValues(
                 fp, self.locs, mode=spatial_interpolation
             )
             # if getting values fails, it could be because of interpolation method.
             # these values will be replaced with the nearest interpolation method
             if np.isnan(_lra).any():
-                _lra_near = gk.raster.interpolateValues(
-                    fp, self.locs, mode='near'
-                )
+                _lra_near = gk.raster.interpolateValues(fp, self.locs, mode="near")
                 _lra[np.isnan(_lra)] = _lra_near[np.isnan(_lra)]
             return _lra
 
@@ -315,31 +319,38 @@ class WorkflowManager:
 
         if isinstance(source_long_run_average, str):
             # assue raster fp
-            source_lra = _get_lra_values_from_raster(
-                fp=source_long_run_average)
+            source_lra = _get_lra_values_from_raster(fp=source_long_run_average)
         else:
             source_lra = source_long_run_average
 
         # replace missing values with no-data fallback if needed
-        if isinstance(nodata_fallback, str) and nodata_fallback.lower() == 'source':
+        if isinstance(nodata_fallback, str) and nodata_fallback.lower() == "source":
             warnings.warn(
-                "'source' value for 'nodata_fallback' is deprecated and will be removed soon. Use 1.0 instead.", DeprecationWarning)
+                "'source' value for 'nodata_fallback' is deprecated and will be removed soon. Use 1.0 instead.",
+                DeprecationWarning,
+            )
             nodata_fallback = 1.0
-        if isinstance(nodata_fallback, str) and nodata_fallback.lower() == 'nan':
+        if isinstance(nodata_fallback, str) and nodata_fallback.lower() == "nan":
             warnings.warn(
-                "'nan' value for 'nodata_fallback' is deprecated and will be removed soon. Use np.nan instead.", DeprecationWarning)
+                "'nan' value for 'nodata_fallback' is deprecated and will be removed soon. Use np.nan instead.",
+                DeprecationWarning,
+            )
             nodata_fallback = np.nan
         if any(np.isnan(real_lra)):
-            if nodata_fallback is None or (not isinstance(nodata_fallback, str) and np.isnan(nodata_fallback)):
+            if nodata_fallback is None or (
+                not isinstance(nodata_fallback, str) and np.isnan(nodata_fallback)
+            ):
                 pass
             elif isinstance(nodata_fallback, (int, float)):
                 # apply factor to source_lra to scale missing values
-                real_lra[np.isnan(real_lra)] = nodata_fallback * \
-                    source_lra[np.isnan(real_lra)]
+                real_lra[np.isnan(real_lra)] = (
+                    nodata_fallback * source_lra[np.isnan(real_lra)]
+                )
             elif callable(nodata_fallback):
                 # apply function to calculate missing values
                 real_lra[np.isnan(real_lra)] = nodata_fallback(
-                    locs=self.locs, source_long_run_average_value=source_lra)[np.isnan(real_lra)]
+                    locs=self.locs, source_long_run_average_value=source_lra
+                )[np.isnan(real_lra)]
             elif isinstance(nodata_fallback, str):
                 # assume this is yet another raster path as fallback and extract missing values
                 fallback_lra = _get_lra_values_from_raster(fp=nodata_fallback)
@@ -350,14 +361,16 @@ class WorkflowManager:
         factors = real_lra * real_lra_scaling / source_lra
         if any(np.isnan(real_lra)):
             warnings.warn(
-                f"NaN values remaining in real lra after application of nodata_fallback.")
+                f"NaN values remaining in real lra after application of nodata_fallback."
+            )
 
         # write info with missing values to sim_data:
-        self.placements[f'missing_values_{os.path.basename(real_long_run_average)}'] = \
-            np.isnan(factors)
+        self.placements[
+            f"missing_values_{os.path.basename(real_long_run_average)}"
+        ] = np.isnan(factors)
 
         self.sim_data[variable] = factors * self.sim_data[variable]
-        self.placements[f'LRA_factor_{variable}'] = factors
+        self.placements[f"LRA_factor_{variable}"] = factors
         return self
 
     def spatial_disaggregation(
@@ -368,7 +381,7 @@ class WorkflowManager:
         real_lra_scaling: float = 1,
         spatial_interpolation: str = "linear-spline",
     ):
-        '''[summary]
+        """[summary]
 
         Parameters
         ----------
@@ -382,13 +395,15 @@ class WorkflowManager:
             [description], by default 1
         spatial_interpolation : str, optional
             [description], by default "linear-spline"
-        '''
+        """
         # Get values from high resolution tiff file
         if isinstance(source_high_resolution, str):
-            correction_values_high_res = gk.raster.interpolateValues(  # TODO change here
-                source_high_resolution, self.locs, mode=spatial_interpolation
+            correction_values_high_res = (
+                gk.raster.interpolateValues(  # TODO change here
+                    source_high_resolution, self.locs, mode=spatial_interpolation
+                )
             )
-            #assert not np.isnan(correction_values_high_res).any() and (correction_values_high_res > 0).all()
+            # assert not np.isnan(correction_values_high_res).any() and (correction_values_high_res > 0).all()
         else:
             correction_values_high_res = source_high_resolution
 
@@ -397,18 +412,17 @@ class WorkflowManager:
             correction_values_low_res = gk.raster.interpolateValues(  # TODO change here
                 source_low_resolution, self.locs, mode=spatial_interpolation
             )
-            #assert not np.isnan(correction_values_low_res).any() and (correction_values_low_res > 0).all()
+            # assert not np.isnan(correction_values_low_res).any() and (correction_values_low_res > 0).all()
         else:
             correction_values_low_res = source_low_resolution
 
         # correction factors:
         factors = correction_values_high_res / correction_values_low_res
-        factors = np.nan_to_num(factors, nan=1/real_lra_scaling)
+        factors = np.nan_to_num(factors, nan=1 / real_lra_scaling)
         assert (factors > 0).all()
 
         # update values
-        self.sim_data[variable] = self.sim_data[variable] * \
-            factors * real_lra_scaling
+        self.sim_data[variable] = self.sim_data[variable] * factors * real_lra_scaling
         return self
 
     # Stage 5: post processing
@@ -500,9 +514,10 @@ class WorkflowManager:
             times = [
                 np.datetime64(dt.tz_convert("UTC").tz_convert(None)) for dt in times
             ]
-        times_days = np.unique(pd.DatetimeIndex(
-            times).date).astype('datetime64')
-        if times_days[0].astype('datetime64[Y]') != times_days[-1].astype('datetime64[Y]'):
+        times_days = np.unique(pd.DatetimeIndex(times).date).astype("datetime64")
+        if times_days[0].astype("datetime64[Y]") != times_days[-1].astype(
+            "datetime64[Y]"
+        ):
             # old tiles where shifted by 1 hour, so the last day of the previous year also appears. catch this problem whti this if clause
             times_days = times_days[1:]
         xds = OrderedDict()
@@ -553,7 +568,7 @@ class WorkflowManager:
             encoding[key] = dict(zlib=True)
 
         # write sim_data_daily, only if exists
-        if hasattr(self, 'sim_data_daily'):
+        if hasattr(self, "sim_data_daily"):
             for key in self.sim_data_daily.keys():
                 # check if key in requestet output_variables
                 if output_variables is not None:
@@ -566,8 +581,7 @@ class WorkflowManager:
                 xds[key] = xarray.DataArray(
                     tmp,
                     dims=["time_days", "location"],
-                    coords=dict(time_days=times_days,
-                                location=location_coords),
+                    coords=dict(time_days=times_days, location=location_coords),
                 )
                 encoding[key] = dict(zlib=True)
 
@@ -601,7 +615,7 @@ def distribute_workflow(
     jobs: int = 2,
     max_batch_size: int = None,
     intermediate_output_dir: str = None,
-    **kwargs
+    **kwargs,
 ) -> xarray.Dataset:
     """Distributes a RESKit simulation workflow across multiple CPUs
 
@@ -677,8 +691,7 @@ def distribute_workflow(
     kmeans_groups = int(np.ceil(placements.shape[0] / max_batch_size))
     placement_groups = []
     for placement_group in _split_locs(placements, kmeans_groups):
-        kmeans_groups_level2 = int(
-            np.ceil(placement_group.shape[0] / max_batch_size))
+        kmeans_groups_level2 = int(np.ceil(placement_group.shape[0] / max_batch_size))
 
         for placement_sub_group in _split_locs(placement_group, kmeans_groups_level2):
             placement_groups.append(placement_sub_group)
@@ -691,8 +704,7 @@ def distribute_workflow(
         kwargs_ = kwargs.copy()
         if intermediate_output_dir is not None:
             kwargs_["output_netcdf_path"] = join(
-                intermediate_output_dir, "simulation_group_{:05d}.nc".format(
-                    gid)
+                intermediate_output_dir, "simulation_group_{:05d}.nc".format(gid)
             )
 
         results.append(
@@ -717,7 +729,6 @@ def distribute_workflow(
 
 
 def load_workflow_result(datasets, loader=xarray.load_dataset, sortby="location"):
-
     if isinstance(datasets, str):
         if isdir(datasets):
             datasets = glob(join(datasets, "*.nc"))
