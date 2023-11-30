@@ -3,6 +3,7 @@ import numpy as np
 from reskit.wind import WindWorkflowManager, PowerCurve
 import reskit as rk
 import pytest
+from reskit import TEST_DATA
 
 
 def test_WindWorkflowManager___init__():
@@ -164,7 +165,7 @@ def test_WindWorkflowManager_simulate(pt_WindWorkflowManager_loaded):
     assert np.isclose(man.sim_data["capacity_factor"].mean(), 0.4845866909936545)
     assert np.isclose(man.sim_data["capacity_factor"].std(), 0.32753677878391835)
 
-    # check again with powercurve correction
+    # check again with scalar powercurve correction
     correct_to = 0.5
     tolerance = 0.05
     man.simulate(cf_correction_factor=correct_to, tolerance=tolerance)
@@ -172,5 +173,18 @@ def test_WindWorkflowManager_simulate(pt_WindWorkflowManager_loaded):
     assert np.isclose(
         man.sim_data["capacity_factor"].mean(),
         0.4845866909936545 * correct_to,
+        rtol=tolerance,
+    )
+
+    # repeat with correction factor raster
+    correction_raster = TEST_DATA[
+        "dummy_correction_factors.tif"
+    ]  # abuse GSA raster for correction (mean ~2.9)
+    man.simulate(cf_correction_factor=correction_raster, tolerance=tolerance)
+
+    avg_corr_factor = 0.8348340150085444  # from dummy data
+    assert np.isclose(
+        man.sim_data["capacity_factor"].mean(),
+        0.4845866909936545 * avg_corr_factor,
         rtol=tolerance,
     )
