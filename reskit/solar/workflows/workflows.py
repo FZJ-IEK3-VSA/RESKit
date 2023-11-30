@@ -76,10 +76,6 @@ def openfield_pv_merra_ryberg2019(
         "fixed",
         "single_axis",
     ], f"tracking must be either 'fixed' or 'single_axis'"
-    assert tracking in [
-        "fixed",
-        "single_axis",
-    ], f"tracking must be either 'fixed' or 'single_axis'"
 
     if not "tilt" in wf.placements.columns:
         wf.estimate_tilt_from_latitude(convention="Ryberg2020")
@@ -321,7 +317,6 @@ def openfield_pv_era5(
         nodata_fallback=DNI_nodata_fallback,
     )
 
-    wf.determine_extra_terrestrial_irradiance(model="spencer", solar_constant=1370)
     wf.determine_extra_terrestrial_irradiance(model="spencer", solar_constant=1370)
     wf.determine_air_mass(model="kastenyoung1989")
 
