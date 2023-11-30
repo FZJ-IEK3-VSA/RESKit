@@ -93,7 +93,8 @@ class SarahSource(NCSource):
             _max_lon_diff=self.MAX_LON_DIFFERENCE,
             _max_lat_diff=self.MAX_LAT_DIFFERENCE,
             tz=None,
-            **kwargs)
+            **kwargs
+        )
 
     loc_to_index = NCSource._loc_to_index_rect(lat_step=0.05, lon_step=0.05)
 
@@ -105,8 +106,11 @@ class SarahSource(NCSource):
         variable 'direct_normal_irradiance' in the data library
         """
         self.load("DNI", name="direct_normal_irradiance")
-        sel = np.logical_or(self.data['direct_normal_irradiance'] < 0, np.isnan(self.data['direct_normal_irradiance']))
-        self.data['direct_normal_irradiance'][sel] = 0
+        sel = np.logical_or(
+            self.data["direct_normal_irradiance"] < 0,
+            np.isnan(self.data["direct_normal_irradiance"]),
+        )
+        self.data["direct_normal_irradiance"][sel] = 0
 
     def sload_global_horizontal_irradiance(self):
         """Standard loader function for the variable 'global_horizontal_irradiance'
@@ -115,5 +119,8 @@ class SarahSource(NCSource):
         variable 'global_horizontal_irradiance' in the data library
         """
         self.load("SIS", name="global_horizontal_irradiance")
-        sel = np.logical_or(self.data['global_horizontal_irradiance'] < 0, np.isnan(self.data['global_horizontal_irradiance']))
-        self.data['global_horizontal_irradiance'][sel] = 0
+        sel = np.logical_or(
+            self.data["global_horizontal_irradiance"] < 0,
+            np.isnan(self.data["global_horizontal_irradiance"]),
+        )
+        self.data["global_horizontal_irradiance"][sel] = 0

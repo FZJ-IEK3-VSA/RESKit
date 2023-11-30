@@ -9,7 +9,7 @@ from .power_curve import PowerCurve
 
 ##################################################
 # Make a turbine model library
-TurbineInfo = namedtuple('TurbineInfo', 'profile meta')
+TurbineInfo = namedtuple("TurbineInfo", "profile meta")
 
 rangeRE = re.compile("([0-9.]{1,})-([0-9.]{1,})")
 
@@ -31,14 +31,14 @@ def parse_turbine(path):
 
             if line == "" or line[0] == "#":
                 continue  # skip blank lines and comment lines
-            if 'power curve' in line.lower():
+            if "power curve" in line.lower():
                 break
 
-            sLine = line.split(',')
+            sLine = line.split(",")
             if sLine[0].lower() == "hubheight" or sLine[0].lower() == "hub_height":
                 heights = []
                 for h in sLine[1:]:
-                    h = h.replace("\"", "")
+                    h = h.replace('"', "")
                     h = h.strip()
                     h = h.replace(" ", "")
 
@@ -65,8 +65,7 @@ def parse_turbine(path):
 
         # Extract power profile
         tmp = pd.read_csv(fin)
-        tmp = np.array([(ws, output)
-                        for i, ws, output in tmp.iloc[:, :2].itertuples()])
+        tmp = np.array([(ws, output) for i, ws, output in tmp.iloc[:, :2].itertuples()])
         power = PowerCurve(tmp[:, 0], tmp[:, 1] / meta["Capacity"])
     return TurbineInfo(power, meta)
 

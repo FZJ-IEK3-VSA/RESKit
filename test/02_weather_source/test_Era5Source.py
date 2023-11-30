@@ -10,25 +10,32 @@ from os.path import join
 
 @pytest.fixture
 def pt_Era5Source():
-    return Era5Source(TEST_DATA['era5-like'], verbose=False)
+    return Era5Source(TEST_DATA["era5-like"], verbose=False)
 
 
 @pytest.fixture
 def pt_BoundedEra5Source():
-    aachenExt = gk.Extent.fromVector(gk._test_data_['aachenShapefile.shp'])
-    return Era5Source(TEST_DATA['era5-like'], bounds=aachenExt, index_pad=1, verbose=False)
+    aachenExt = gk.Extent.fromVector(gk._test_data_["aachenShapefile.shp"])
+    return Era5Source(
+        TEST_DATA["era5-like"], bounds=aachenExt, index_pad=1, verbose=False
+    )
 
 
 def test_Era5Source___init__():
-    raw = nc.Dataset(join(TEST_DATA['era5-like'], "surface_pressure.nc"), mode="r")
+    raw = nc.Dataset(join(TEST_DATA["era5-like"], "surface_pressure.nc"), mode="r")
     rawLats = raw["latitude"][::-1]
     rawLons = raw["longitude"][:]
     rawTimes = pd.DatetimeIndex(
-        nc.num2date(raw["time"][:], raw["time"].units, only_use_cftime_datetimes=False, only_use_python_datetimes=True)
+        nc.num2date(
+            raw["time"][:],
+            raw["time"].units,
+            only_use_cftime_datetimes=False,
+            only_use_python_datetimes=True,
+        )
     ) - pd.Timedelta(minutes=30)
 
     # Unbounded source
-    ms = Era5Source(TEST_DATA['era5-like'], verbose=False)
+    ms = Era5Source(TEST_DATA["era5-like"], verbose=False)
 
     # ensure lats, lons and times are okay
     assert (ms.lats == rawLats).all()
@@ -36,9 +43,13 @@ def test_Era5Source___init__():
     assert (ms.time_index == rawTimes).all()
 
     # Initialize a Era5Source with Aachen boundaries
-    aachenExt = gk.Extent.fromVector(gk._test_data_['aachenShapefile.shp']).pad(0.5).fit(0.01)
+    aachenExt = (
+        gk.Extent.fromVector(gk._test_data_["aachenShapefile.shp"]).pad(0.5).fit(0.01)
+    )
 
-    ms = Era5Source(TEST_DATA['era5-like'], bounds=aachenExt, index_pad=1, verbose=False)
+    ms = Era5Source(
+        TEST_DATA["era5-like"], bounds=aachenExt, index_pad=1, verbose=False
+    )
 
     # ensure lats, lons and times are okay
     assert np.isclose(ms.lats[0], 49.5)
@@ -57,13 +68,13 @@ def test_Era5Source_loc_to_index(pt_Era5Source, pt_BoundedEra5Source):
     assert idx.yi == 7
     assert idx.xi == 4
 
-    idx = pt_Era5Source.loc_to_index([(6.03, 50.81), (6.44, 50.47), ])
+    idx = pt_Era5Source.loc_to_index([(6.03, 50.81), (6.44, 50.47),])
     assert idx[0].yi == 7
     assert idx[1].yi == 6
     assert idx[0].xi == 4
     assert idx[1].xi == 6
 
-    idx = pt_Era5Source.loc_to_index([(6.03, 50.81), (6.44, 50.47), ], as_int=False)
+    idx = pt_Era5Source.loc_to_index([(6.03, 50.81), (6.44, 50.47),], as_int=False)
     assert np.isclose(idx[0].yi, 7.240000000000009)
     assert np.isclose(idx[1].yi, 5.8799999999999955)
     assert np.isclose(idx[0].xi, 4.120000000000001)
@@ -73,13 +84,15 @@ def test_Era5Source_loc_to_index(pt_Era5Source, pt_BoundedEra5Source):
     assert idx.yi == 3
     assert idx.xi == 2
 
-    idx = pt_BoundedEra5Source.loc_to_index([(6.03, 50.81), (6.44, 50.47), ])
+    idx = pt_BoundedEra5Source.loc_to_index([(6.03, 50.81), (6.44, 50.47),])
     assert idx[0].yi == 3
     assert idx[1].yi == 2
     assert idx[0].xi == 2
     assert idx[1].xi == 4
 
-    idx = pt_BoundedEra5Source.loc_to_index([(6.03, 50.81), (6.44, 50.47), ], as_int=False)
+    idx = pt_BoundedEra5Source.loc_to_index(
+        [(6.03, 50.81), (6.44, 50.47),], as_int=False
+    )
     assert np.isclose(idx[0].yi, 3.240000000000009)
     assert np.isclose(idx[1].yi, 1.8799999999999955)
     assert np.isclose(idx[0].xi, 2.120000000000001)
@@ -238,7 +251,9 @@ def test_Era5Source_sload_surface_dew_temperature(pt_Era5Source, pt_BoundedEra5S
     assert np.isclose(pt_BoundedEra5Source.data[var][33, 1, 2], c)
 
 
-def test_Era5Source_sload_direct_horizontal_irradiance(pt_Era5Source, pt_BoundedEra5Source):
+def test_Era5Source_sload_direct_horizontal_irradiance(
+    pt_Era5Source, pt_BoundedEra5Source
+):
     var = "direct_horizontal_irradiance"
     pt_Era5Source.sload_direct_horizontal_irradiance()
     assert var in pt_Era5Source.data
@@ -257,7 +272,9 @@ def test_Era5Source_sload_direct_horizontal_irradiance(pt_Era5Source, pt_Bounded
     assert np.isclose(pt_BoundedEra5Source.data[var][33, 1, 2], c)
 
 
-def test_Era5Source_sload_global_horizontal_irradiance(pt_Era5Source, pt_BoundedEra5Source):
+def test_Era5Source_sload_global_horizontal_irradiance(
+    pt_Era5Source, pt_BoundedEra5Source
+):
     var = "global_horizontal_irradiance"
     pt_Era5Source.sload_global_horizontal_irradiance()
     assert var in pt_Era5Source.data
@@ -287,16 +304,21 @@ def test_Era5Source_get(pt_Era5Source, pt_BoundedEra5Source):
     s2 = pt_BoundedEra5Source.get(var, pt)
     assert (s1 == s2).all()
     assert np.isclose(s1.values.mean(), 15.10422070986053)
-#     print(s1.values.mean())
+    #     print(s1.values.mean())
 
-    pts = [(6.03, 50.81), (6.44, 50.47), ]
+    pts = [
+        (6.03, 50.81),
+        (6.44, 50.47),
+    ]
     s1 = pt_Era5Source.get(var, pts)
     s2 = pt_BoundedEra5Source.get(var, pts)
     assert (s1 == s2).values.all()
     assert np.isclose(s1.values.mean(), 15.162205877864922)
-#     print(s1.values.mean())
+    #     print(s1.values.mean())
 
     pt = (6.03, 50.81)
     s1 = pt_Era5Source.get(var, pt, interpolation="bilinear")
     assert np.isclose(s1.values.mean(), 15.277533860286267)
+
+
 #     print(s1.values.mean())

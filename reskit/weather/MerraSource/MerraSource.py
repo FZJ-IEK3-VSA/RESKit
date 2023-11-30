@@ -74,14 +74,12 @@ class MerraSource(NCSource):
     SURFACE_WIND_SPEED_HEIGHT = 2
 
     LONG_RUN_AVERAGE_WINDSPEED = join(
-        dirname(__file__),
-        "data",
-        "merra_average_windspeed_50m-shifted.tif")
+        dirname(__file__), "data", "merra_average_windspeed_50m-shifted.tif"
+    )
 
     LONG_RUN_AVERAGE_GHI = join(
-        dirname(__file__),
-        "data",
-        "merra_average_SWGDN_1994-2015_globe.tif")
+        dirname(__file__), "data", "merra_average_SWGDN_1994-2015_globe.tif"
+    )
 
     MAX_LON_DIFFERENCE = 0.625
     MAX_LAT_DIFFERENCE = 0.5
@@ -145,7 +143,8 @@ class MerraSource(NCSource):
             _max_lon_diff=self.MAX_LON_DIFFERENCE,
             _max_lat_diff=self.MAX_LAT_DIFFERENCE,
             tz="GMT",
-            **kwargs)
+            **kwargs
+        )
 
     loc_to_index = NCSource._loc_to_index_rect(lat_step=0.5, lon_step=0.625)
 
@@ -183,7 +182,8 @@ class MerraSource(NCSource):
         Where '<X>' is the height specified by `MerraSource.ELEVATED_WIND_SPEED_HEIGHT`
         """
         self.data["elevated_wind_speed"] = self._load_wind_speed(
-            height=self.ELEVATED_WIND_SPEED_HEIGHT)
+            height=self.ELEVATED_WIND_SPEED_HEIGHT
+        )
 
     def sload_surface_wind_speed(self):
         """Standard loader function for the variable 'surface_wind_speed'
@@ -195,7 +195,8 @@ class MerraSource(NCSource):
         Where '<X>' is the height specified by `MerraSource.SURFACE_WIND_SPEED_HEIGHT`
         """
         self.data["surface_wind_speed"] = self._load_wind_speed(
-            height=self.SURFACE_WIND_SPEED_HEIGHT)
+            height=self.SURFACE_WIND_SPEED_HEIGHT
+        )
 
     def sload_wind_speed_at_2m(self):
         """Standard loader function for the variable 'wind_speed_at_2m'
@@ -238,7 +239,8 @@ class MerraSource(NCSource):
         Where '<X>' is the height specified by `MerraSource.ELEVATED_WIND_SPEED_HEIGHT`
         """
         self.data["elevated_wind_direction"] = self._load_wind_speed(
-            height=self.ELEVATED_WIND_SPEED_HEIGHT)
+            height=self.ELEVATED_WIND_SPEED_HEIGHT
+        )
 
     def sload_surface_wind_direction(self):
         """Standard loader function for the variable 'surface_wind_direction'
@@ -250,7 +252,8 @@ class MerraSource(NCSource):
         Where '<X>' is the height specified by `MerraSource.SURFACE_WIND_SPEED_HEIGHT`
         """
         self.data["surface_wind_direction"] = self._load_wind_speed(
-            height=self.SURFACE_WIND_SPEED_HEIGHT)
+            height=self.SURFACE_WIND_SPEED_HEIGHT
+        )
 
     def sload_wind_direction_at_2m(self):
         """Standard loader function for the variable 'wind_direction_at_2m'
@@ -285,7 +288,7 @@ class MerraSource(NCSource):
         Automatically reads the variable "PS" from the given MERRA2 source and saves it as the 
         variable 'surface_pressure' in the data library
         """
-        return self.load("PS", name='surface_pressure')
+        return self.load("PS", name="surface_pressure")
 
     def sload_surface_air_temperature(self):
         """Standard loader function for the variable 'surface_air_temperature'
@@ -295,7 +298,9 @@ class MerraSource(NCSource):
 
         Temperature values are also converted from kelvin to degrees celsius
         """
-        return self.load("T2M", name="surface_air_temperature", processor=lambda x: x - 273.15)
+        return self.load(
+            "T2M", name="surface_air_temperature", processor=lambda x: x - 273.15
+        )
 
     def sload_surface_dew_temperature(self):
         """Standard loader function for the variable 'surface_dew_temperature'
@@ -305,7 +310,9 @@ class MerraSource(NCSource):
 
         Temperature values are also converted from kelvin to degrees celsius
         """
-        return self.load("T2MDEW", name="surface_dew_temperature", processor=lambda x: x - 273.15)
+        return self.load(
+            "T2MDEW", name="surface_dew_temperature", processor=lambda x: x - 273.15
+        )
 
     def sload_global_horizontal_irradiance(self):
         """Standard loader function for the variable 'global_horizontal_irradiance'
