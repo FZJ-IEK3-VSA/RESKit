@@ -516,7 +516,7 @@ class WorkflowManager:
                 if key not in output_variables:
                     continue
 
-            tmp = np.full((len(self.time_index), self.locs.count), 0.0, dtype=np.float)
+            tmp = np.full((len(self.time_index), self.locs.count), 0.0, dtype=float)
             tmp[self._time_sel_, :] = self.sim_data[key]
 
             xds[key] = xarray.DataArray(
