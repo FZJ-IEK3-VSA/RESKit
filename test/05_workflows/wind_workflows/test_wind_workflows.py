@@ -97,7 +97,7 @@ def test_offshore_wind_era5(pt_wind_placements):
 
     assert gen.capacity_factor.shape == (140, 560)
     assert np.isclose(gen.capacity_factor.mean(), 0.60372735)
-    assert np.isclose(gen.capacity_factor.min(), -0.001)
+    assert np.isclose(gen.capacity_factor.min(), 0)
     assert np.isclose(gen.capacity_factor.max(), 1.0)
     assert np.isclose(gen.capacity_factor.std(), 0.32212478)
 
