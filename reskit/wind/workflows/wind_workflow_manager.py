@@ -288,6 +288,8 @@ class WindWorkflowManager(WorkflowManager):
                     ].powerCurve
                     == pckey
                 )
+                if not sel.any():
+                    continue
                 gen[:, sel] = np.round(
                     pc.simulate(
                         self.sim_data["elevated_wind_speed"][
