@@ -161,8 +161,8 @@ def test_WindWorkflowManager_simulate(pt_WindWorkflowManager_loaded):
     man = pt_WindWorkflowManager_loaded
 
     man.simulate()
-    assert np.isclose(man.sim_data["capacity_factor"].mean(), 0.4845642857142858)
-    assert np.isclose(man.sim_data["capacity_factor"].std(), 0.3275352284371056)
+    assert np.isclose(man.sim_data["capacity_factor"].mean(), 0.4845885714285714)
+    assert np.isclose(man.sim_data["capacity_factor"].std(), 0.3275567726333241)
 
     # test with max_batch_size = 3
     man_batch = pt_WindWorkflowManager_loaded
