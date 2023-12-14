@@ -306,12 +306,11 @@ class WindWorkflowManager(WorkflowManager):
 
         return self
 
-
     def simulate(
         self,
         max_batch_size=None,
-        cf_correction_factor=1.0, 
-        tolerance=0.01, 
+        cf_correction_factor=1.0,
+        tolerance=0.01,
         timeout=60,
     ):
         """
@@ -333,13 +332,13 @@ class WindWorkflowManager(WorkflowManager):
             The max. time allowed for iterative simulation of one batch until
             the tolerance is met, else a TimeOutError will be raised. By default
             60 [s] i.e. 1 minute.
-        
+
         Return
         ------
             A reference to the invoking WindWorkflowManager
         """
+
         def _sim(ws_correction_factors, _batch, max_batch_size):
-                
             _gen = np.zeros_like(
                 self.sim_data["elevated_wind_speed"][
                     :, _batch * max_batch_size : (_batch + 1) * max_batch_size
@@ -359,7 +358,8 @@ class WindWorkflowManager(WorkflowManager):
                     pc.simulate(
                         self.sim_data["elevated_wind_speed"][
                             :, _batch * max_batch_size : (_batch + 1) * max_batch_size
-                        ][:, sel] * ws_correction_factors[sel]
+                        ][:, sel]
+                        * ws_correction_factors[sel]
                     ),
                     3,
                 )
@@ -367,7 +367,7 @@ class WindWorkflowManager(WorkflowManager):
                 _gen[_gen < 0] = 0
 
             return _gen
-        
+
         if max_batch_size is not None:
             if not isinstance(max_batch_size, int) and max_batch_size > 0:
                 raise TypeError(f"max_batch_size must be an integer > 0")
@@ -383,7 +383,6 @@ class WindWorkflowManager(WorkflowManager):
 
         # iterate over batches
         for _batch in range(int(_batches)):
-
             # get and set correction factor
             self.set_correction_factors(correction_factors=cf_correction_factor)
 
@@ -394,19 +393,29 @@ class WindWorkflowManager(WorkflowManager):
                 len_locs = len(self.locs) - (_batch * max_batch_size)
             gen = _sim(
                 ws_correction_factors=np.array([1.0] * len_locs),
-                _batch = _batch, 
-                max_batch_size = max_batch_size,
-                )
+                _batch=_batch,
+                max_batch_size=max_batch_size,
+            )
             # calculate the target average cf
-            _target_cfs = np.nanmean(gen, axis=0) * self.correction_factors[_batch * max_batch_size : (_batch + 1) * max_batch_size]
-                
+            _target_cfs = (
+                np.nanmean(gen, axis=0)
+                * self.correction_factors[
+                    _batch * max_batch_size : (_batch + 1) * max_batch_size
+                ]
+            )
+
             if (_target_cfs > 1).any():
                 raise ValueError(
                     f"The current correction factors lead to target capacity factors greater 1.0."
                 )
 
             # set the deviation based on corr factor
-            _deviations = 1 / self.correction_factors[_batch * max_batch_size : (_batch + 1) * max_batch_size]
+            _deviations = (
+                1
+                / self.correction_factors[
+                    _batch * max_batch_size : (_batch + 1) * max_batch_size
+                ]
+            )
 
             # iterate until the target cf average is met
             _start = time.time()
@@ -423,13 +432,12 @@ class WindWorkflowManager(WorkflowManager):
                 # calculate with an adapted ws correction
                 gen = _sim(
                     ws_correction_factors=_ws_corrs_i,
-                    _batch = _batch, 
-                    max_batch_size = max_batch_size,
+                    _batch=_batch,
+                    max_batch_size=max_batch_size,
                 )
                 # calculate the new deviation
                 _deviations = np.nanmean(gen, axis=0) / _target_cfs
-            
-        
+
             if _batch == 0:
                 tot_gen = gen
             else:
