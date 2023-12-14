@@ -16,6 +16,7 @@ def openfield_pv_merra_ryberg2019(
     tracking_args={},
     output_netcdf_path=None,
     output_variables=None,
+    tech_year=2050,
 ):
     """
 
@@ -62,6 +63,12 @@ def openfield_pv_merra_ryberg2019(
     output_variables: str
         Output variables of the simulation that you want to save into your NETCDF Outputfile.
 
+    tech_year : int, optional
+                If given in combination with the projected module str names "WINAICO WSx-240P6" or
+                "LG Electronics LG370Q1C-A5", the effifiency will be scaled linearly to the given
+                year. Must then be between year of market introduction for that module and 2050.
+                Will be ignored when non-projected existing module names or specific parameters
+                are given, can then be None. By default 2050.
 
     Returns
     -------
@@ -70,7 +77,7 @@ def openfield_pv_merra_ryberg2019(
     """
 
     wf = SolarWorkflowManager(placements)
-    wf.configure_cec_module(module)
+    wf.configure_cec_module(module, tech_year)
     # ensure the tracking parameter is correct
     assert tracking in [
         "fixed",
@@ -118,7 +125,9 @@ def openfield_pv_merra_ryberg2019(
 
     wf.cell_temperature_from_sapm()
 
-    wf.simulate_with_interpolated_single_diode_approximation(module=module)
+    wf.simulate_with_interpolated_single_diode_approximation(
+        module=module, tech_year=tech_year
+    )
 
     if inverter is not None:
         wf.apply_inverter_losses(inverter=inverter, **inverter_kwargs)
@@ -146,6 +155,7 @@ def openfield_pv_era5(
     output_netcdf_path=None,
     output_variables=None,
     gsa_nodata_fallback="source",
+    tech_year=2050,
 ):
     """
     Simulation of an openfield  PV openfield system based on ERA5 Data.
@@ -220,6 +230,12 @@ def openfield_pv_era5(
             -'nan': return np.nan for missing values
             get flags for missing values:
             - f'missing_values_{os.path.basename(path_to_LRA_source)}
+    tech_year : int, optional
+                If given in combination with the projected module str names "WINAICO WSx-240P6" or
+                "LG Electronics LG370Q1C-A5", the effifiency will be scaled linearly to the given
+                year. Must then be between year of market introduction for that module and 2050.
+                Will be ignored when non-projected existing module names or specific parameters
+                are given, can then be None. By default 2050.
 
     Returns
     -------
@@ -227,7 +243,7 @@ def openfield_pv_era5(
     """
 
     wf = SolarWorkflowManager(placements)
-    wf.configure_cec_module(module)
+    wf.configure_cec_module(module, tech_year)
 
     # limit the input placements longitude to range of -180...180
     assert wf.placements["lon"].between(-180, 180, inclusive="both").any()
@@ -324,7 +340,9 @@ def openfield_pv_era5(
 
     wf.cell_temperature_from_sapm()
 
-    wf.simulate_with_interpolated_single_diode_approximation(module=module)
+    wf.simulate_with_interpolated_single_diode_approximation(
+        module=module, tech_year=tech_year
+    )
 
     if inverter is not None:
         wf.apply_inverter_losses(inverter=inverter, **inverter_kwargs)
@@ -351,6 +369,7 @@ def openfield_pv_sarah_unvalidated(
     tracking_args={},
     output_netcdf_path=None,
     output_variables=None,
+    tech_year=2050,
 ):
     """
 
@@ -399,6 +418,12 @@ def openfield_pv_sarah_unvalidated(
     output_variables: str
                         Output variables of the simulation that you want to save into your NETCDF Outputfile.
 
+    tech_year : int, optional
+                If given in combination with the projected module str names "WINAICO WSx-240P6" or
+                "LG Electronics LG370Q1C-A5", the effifiency will be scaled linearly to the given
+                year. Must then be between year of market introduction for that module and 2050.
+                Will be ignored when non-projected existing module names or specific parameters
+                are given, can then be None. By default 2050.
 
     Returns
     -------
@@ -407,7 +432,7 @@ def openfield_pv_sarah_unvalidated(
     """
 
     wf = SolarWorkflowManager(placements)
-    wf.configure_cec_module(module)
+    wf.configure_cec_module(module, tech_year)
     # ensure the tracking parameter is correct
     assert tracking in [
         "fixed",
@@ -460,7 +485,9 @@ def openfield_pv_sarah_unvalidated(
 
     wf.cell_temperature_from_sapm()
 
-    wf.simulate_with_interpolated_single_diode_approximation(module=module)
+    wf.simulate_with_interpolated_single_diode_approximation(
+        module=module, tech_year=tech_year
+    )
 
     if inverter is not None:
         wf.apply_inverter_losses(inverter=inverter, **inverter_kwargs)

@@ -1,3 +1,8 @@
+import json
+import numpy as np
+import os
+
+
 class Parameters:
     """
     This class holds the base techno-economic parameter assumptions on which
@@ -5,18 +10,79 @@ class Parameters:
     loader/setter functions.
     """
 
+    # if param is a key in the following dict, parameter values will be rounded to the given digits
+    rounding = {
+        "base_capacity": 0,
+        "base_hub_height": 0,
+        "base_rotor_diam": 0,
+        "min_tip_height": 0,
+        "min_specific_power": 0,
+    }
+
     def __init__(self):
         """
         This class is initialized without any arguments.
         """
         pass
 
-    def load_custom_params_set(self):
+    def load_and_set_custom_params(self, fp, year, subclass):
         """
-        This function loads a dictionary of parameters in json format and
-        overwrites the preset static attributes.
+        This function loads a dictionary of parameters in json format and writes the
+        parameter values into class attributes.
+
+        Parameters
+        ----------
+        fp : str
+            The filepath of a json file that contains the parameter names
+            and values as key/value pairs. Values can be dicts with
+            integer years as sub keys and the actual parameters as values
+            per year.
+
+        year : integer, optional
+            The year for which the parameter shall be returned. Can be
+            interpreted as a technical year or a cost year depending
+            on the parameter, by default 2050.
+
+        subclass : sub class instance
+            The sub class to which the attribute shall be added.
+
+        Returns:
+        --------
+            None
         """
-        pass
+        # check and load json data
+        assert (
+            os.path.isfile(fp) and fp.split(".")[-1] == "json"
+        ), f"fp must be an existing .json file"
+        with open(fp, "r") as fp:
+            json_params = json.load(fp)
+
+        for _param, _val in json_params.items():
+            # convert sub year keys to int where needed
+            if isinstance(_val, dict) and all([k.isnumeric() for k in _val.keys()]):
+                # assume we have a param with yar-dependent values, convert to ints and write back to json params
+                _val = {int(k): v for k, v in _val.items()}
+                # overwrite static class attributes with json values for the given year
+                _years = np.array([k for k in _val.keys()])
+                # avoid extrapolation
+                assert (
+                    year >= _years.min() and year <= _years.max()
+                ), f"'year' must be between the min. ({_years.min()}) and max. ({_years.max()}) given data years to avoid interpolation (check: )"
+                # get the nearest year below and above the passed 'year' (if not 'year' available)
+                _lower_year = _years[_years >= year].min()
+                _higher_year = _years[_years <= year].max()
+                # interpolate between the nearest years and return result
+                _val = _val[_lower_year] + (_val[_higher_year] - _val[_lower_year]) * (
+                    year - _lower_year
+                ) / (_higher_year - _lower_year)
+            # round the parameters where needed
+            if _param in self.rounding.keys():
+                if self.rounding[_param] == 0:
+                    _val = int(round(_val, 0))
+                else:
+                    _val = round(_val, self.rounding[_param])
+            # set the parameter value as class rttribute
+            setattr(subclass, _param, _val)
 
 
 class OnshoreParameters(Parameters):
@@ -46,8 +112,12 @@ class OnshoreParameters(Parameters):
     blade_material_escalator = 1
     blades = 3
 
-    def __init__(self):
-        pass
+    def __init__(self, fp=None, year=2050):
+        if not fp is None:
+            # extract json params from file
+            self.load_and_set_custom_params(fp=fp, year=year, subclass=self)
+        else:
+            pass
 
     def load_individual_params(
         self,
@@ -58,6 +128,7 @@ class OnshoreParameters(Parameters):
         reference_wind_speed=None,
         min_tip_height=None,
         min_specific_power=None,
+        max_hub_height=None,
         base_capex_per_capacity=None,
         tcc_share=None,
         bos_share=None,

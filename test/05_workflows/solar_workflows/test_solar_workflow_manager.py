@@ -573,12 +573,18 @@ def test_SolarWorkflowManager_configure_cec_module(
     pt_SolarWorkflowManager_poa: SolarWorkflowManager,
 ) -> SolarWorkflowManager:
     man = pt_SolarWorkflowManager_poa
-    man.configure_cec_module(module="WINAICO WSx-240P6")
+    man.configure_cec_module(module="WINAICO WSx-240P6", tech_year=2050)
     assert isinstance(man.module, pd.Series)
+
+    man.configure_cec_module(module="WINAICO WSx-240P6", tech_year=2030)
+    assert isinstance(man.module, pd.Series)
+    # check some sample values that must be adapted to 2030
+    assert man.module["a_ref"] == 1.5783541935483871  # checked
+    assert man.module["gamma_r"] == -0.4140129032258065  # checked
 
     db = rk.solar.workflows.solar_workflow_manager.pvlib.pvsystem.retrieve_sam("CECMod")
     random_module = db.columns[3]
-    man.configure_cec_module(module=random_module)
+    man.configure_cec_module(module=random_module, tech_year=None)
     assert isinstance(man.module, pd.Series)
 
     module = dict(
@@ -604,7 +610,7 @@ def test_SolarWorkflowManager_configure_cec_module(
         PTC=347.2,
         Technology="Mono-c-Si",
     )
-    man.configure_cec_module(module=module)
+    man.configure_cec_module(module=module, tech_year=None)
     assert isinstance(man.module, pd.Series)
 
 
