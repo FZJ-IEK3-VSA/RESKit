@@ -1,7 +1,7 @@
 from ... import weather as rk_weather
 from .solar_workflow_manager import SolarWorkflowManager
 import numpy as np
-import time
+import warnings
 
 
 def openfield_pv_merra_ryberg2019(
@@ -145,32 +145,30 @@ def openfield_pv_era5(
     inverter=None,
     inverter_kwargs={},
     tracking_args={},
-    gsa_nodata_fallback="source",
+    DNI_nodata_fallback=1.0,
+    GHI_nodata_fallback=1.0,
     output_netcdf_path=None,
     output_variables=None,
+    gsa_nodata_fallback="source",
 ):
     """
-
-    openfield_pv_era5_unvalidated(placements, era5_path, global_solar_atlas_ghi_path, global_solar_atlas_dni_path, module="WINAICO WSx-240P6", elev=300, tracking="fixed", inverter=None, inverter_kwargs={}, tracking_args={}, output_netcdf_path=None, output_variables=None)
-
-
     Simulation of an openfield  PV openfield system based on ERA5 Data.
 
     Parameters
     ----------
     placements: Pandas Dataframe
-                    Locations that you want to do the simulations for.
-                    Columns need to be lat (latitudes), lon (longitudes), tilt and capacity.
+            Locations that you want to do the simulations for.
+            Columns need to be lat (latitudes), lon (longitudes), tilt and capacity.
 
     era5_path: str
-                Path to the ERA5 Data on your computer.
-                Can be a single ".nc" file, or a directory containing many ".nc" files.
+            Path to the ERA5 Data on your computer.
+            Can be a single ".nc" file, or a directory containing many ".nc" files.
 
     global_solar_atlas_ghi_path: str
-                                    Path to the global solar atlas ghi data on your computer.
+            Path to the global solar atlas ghi data on your computer.
 
     global_solar_atlas_dni_path: str
-                                    Path to the global solar atlas dni data on your computer.
+            Path to the global solar atlas dni data on your computer.
 
     module: str
             Name of the module that you wanna use for the simulation.
@@ -180,36 +178,56 @@ def openfield_pv_era5(
             Elevation that you want to model your PV system at.
 
     tracking: str
-                Determines wether your PV system is fixed or not.
-                Default is fixed.
-                Option 1 is 'fixed' meaning that the module does not have any tracking capabilities.
-                Option 2 is 'single_axis' meaning that the module has single_axis tracking capabilities.
+            Determines wether your PV system is fixed or not.
+            Default is fixed.
+            Option 1 is 'fixed' meaning that the module does not have any tracking capabilities.
+            Option 2 is 'single_axis' meaning that the module has single_axis tracking capabilities.
 
     inverter: str
-                Determines wether you want to model your PV system with an inverter or not.
-                Default is None.
-                See reskit.solar.SolarWorkflowManager.apply_inverter_losses for more usage information.
+            Determines wether you want to model your PV system with an inverter or not.
+            Default is None.
+            See reskit.solar.SolarWorkflowManager.apply_inverter_losses for more usage information.
 
-    nodata_fallback: str, optional
-        When real_long_run_average has no data, it can be decided between fallback options:
-        -'source': use source data (ERA5 raw simulation)
-        -'nan': return np.nan for missing values
-        get flags for missing values:
-        - f'missing_values_{os.path.basename(path_to_LRA_source)}
+    DNI_nodata_fallback: str, optional
+            When global_solar_atlas_dni_path has no data, one can decide between different fallback options, by default 1.0:
+            - np.nan or None : return np.nan for missing values in global_solar_atlas_dni_path
+            - float : Apply this float value as a scaling factor for all no-data locations only: source_long_run_average * DNI_nodata_fallback.
+                NOTE: A value of 1.0 will return the source lra value in case of missing global_solar_atlas_dni_path values.
+            - str : Will be interpreted as a filepath to a raster with alternative absolute global_solar_atlas_dni_path values
+            - callable : any callable method taking the arguments (all iterables): 'locs' and 'source_long_run_average_value'
+                (the locations as gk.geom.point objects and original value from source data). The output values will be considered as
+                the new real_long_run_average for missing locations only.
+            NOTE: np.nan will also be returned in case that the nodata fallback does not yield values either.
 
+    GHI_nodata_fallback: str, optional
+            When global_solar_atlas_ghi_path has no data, one can decide between different fallback options, by default 1.0:
+            - np.nan or None : return np.nan for missing values in global_solar_atlas_ghi_path
+            - float : Apply this float value as a scaling factor for all no-data locations only: source_long_run_average * GHI_nodata_fallback.
+                NOTE: A value of 1.0 will return the source lra value in case of missing global_solar_atlas_ghi_path values.
+            - str : Will be interpreted as a filepath to a raster with alternative absolute global_solar_atlas_ghi_path values
+            - callable : any callable method taking the arguments (all iterables): 'locs' and 'source_long_run_average_value'
+                (the locations as gk.geom.point objects and original value from source data). The output values will be considered as
+                the new real_long_run_average for missing locations only.
+            NOTE: np.nan will also be returned in case that the nodata fallback does not yield values either
 
     output_netcdf_path: str
-                        Path to a file that you want to save your output NETCDF file at.
-                        Default is None
+            Path to a file that you want to save your output NETCDF file at.
+            Default is None
 
     output_variables: str
-                        Output variables of the simulation that you want to save into your NETCDF Outputfile.
+            Output variables of the simulation that you want to save into your NETCDF Outputfile.
 
+    gsa_nodata_fallback: str, optional
+            NOTE: DEPRECATED! Will be removed soon!
+            When real_long_run_average has no data, it can be decided between fallback options:
+            -'source': use source data (ERA5 raw simulation)
+            -'nan': return np.nan for missing values
+            get flags for missing values:
+            - f'missing_values_{os.path.basename(path_to_LRA_source)}
 
     Returns
     -------
     A xarray dataset including all the output variables you defined as your output_variables.
-
     """
 
     wf = SolarWorkflowManager(placements)
@@ -261,12 +279,34 @@ def openfield_pv_era5(
     #     source_low_resolution=rk_weather.GSAmeanSource.GHI_with_ERA5_pixel,
     # )
 
+    # TODO remove the following mid 2024, also remove gsa_nodata_fallback in workflow args
+    if gsa_nodata_fallback != "source":
+        warnings.warn(
+            "'gsa_nodata_fallback' is deprecated and will be removed soon. Use 'GHI_nodata_fallback' and 'GHI_nodata_fallback' instead.",
+            DeprecationWarning,
+        )
+        # deprecated gsa nodata fallback has been changed!
+        if GHI_nodata_fallback != 1.0 or DNI_nodata_fallback == 1.0:
+            # also, changes have been made to GHI and DNI fallbacks
+            raise ValueError(
+                f"When GHI_nodata_fallback and DNI_nodata_fallback have been adapted, gsa_nodata_fallback must not be adapted (recommended to ignore, deprecated)"
+            )
+        else:
+            # GHI and DNI fallbacks have not been changed, but 'source' has - adapt DNI and GHI fallbacks accordingly
+            if gsa_nodata_fallback == "nan":
+                GHI_nodata_fallback = np.nan
+                DNI_nodata_fallback = np.nan
+            else:
+                raise ValueError(
+                    f"'gsa_nodata_fallback' (deprecated) must be 'nan' or 'source'. Better use 'GHI_nodata_fallback' and 'GHI_nodata_fallback' instead, however."
+                )
+
     wf.adjust_variable_to_long_run_average(
         variable="global_horizontal_irradiance",
         source_long_run_average=rk_weather.Era5Source.LONG_RUN_AVERAGE_GHI,
         real_long_run_average=global_solar_atlas_ghi_path,
         real_lra_scaling=1000 / 24,  # cast to hourly average kWh
-        nodata_fallback=gsa_nodata_fallback,
+        nodata_fallback=GHI_nodata_fallback,
     )
 
     wf.adjust_variable_to_long_run_average(
@@ -274,7 +314,7 @@ def openfield_pv_era5(
         source_long_run_average=rk_weather.Era5Source.LONG_RUN_AVERAGE_DNI,
         real_long_run_average=global_solar_atlas_dni_path,
         real_lra_scaling=1000 / 24,  # cast to hourly average kWh
-        nodata_fallback=gsa_nodata_fallback,
+        nodata_fallback=DNI_nodata_fallback,
     )
 
     wf.determine_extra_terrestrial_irradiance(model="spencer", solar_constant=1370)
