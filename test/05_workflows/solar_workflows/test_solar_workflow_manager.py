@@ -111,7 +111,7 @@ def test_SolarWorkflowManager_apply_elevation(pt_SolarWorkflowManager_initialize
     man.apply_elevation(elev=None, fallback_elev=-1000)
     # must yield fallback value for all locations
     assert np.isclose(
-        man.placements["elev"], [-1000, -1000.0 - 1000, -1000, -1000]
+        man.placements["elev"], [-1000, -1000, -1000, -1000, -1000]
     ).all()
 
     # now test using the elevation from the placements dataframe
@@ -140,7 +140,7 @@ def test_SolarWorkflowManager_apply_elevation(pt_SolarWorkflowManager_initialize
     assert np.isclose(
         man.placements["elev"],
         # TODO these values were from rk.TEST_DATA['gwa50-like.tif'], adapt to CLC values and fallbacks depending on which are outside
-        [4.81529235, 4.54979848, 4.83163261, 5.10659551, 5.07869386],
+        [2, 36, 18, 18, 21],
     ).all()
 
     return man
