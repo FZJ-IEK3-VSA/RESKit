@@ -164,6 +164,7 @@ def test_WindWorkflowManager_simulate(pt_WindWorkflowManager_loaded):
     assert np.isclose(man.sim_data["capacity_factor"].mean(), 0.4845866909936545)
     assert np.isclose(man.sim_data["capacity_factor"].std(), 0.32753677878391835)
 
+
 def test_WindWorkflowManager_mixed_values___init___():
     placements = pd.DataFrame()
     placements["lon"] = [
