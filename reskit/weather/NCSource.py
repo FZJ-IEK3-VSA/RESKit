@@ -23,7 +23,7 @@ class NCSource(object):
     Note:
     -----
     Various constants can be set for a given weather source which can impact later simulation workflows.
-        Note that not all weather sources will have all of these constants available. Also more may be 
+        Note that not all weather sources will have all of these constants available. Also more may be
         implemented besides (so be sure to check the DocString for the source you intend to use).
 
     These constants include:
@@ -55,14 +55,14 @@ class NCSource(object):
             * Time range included in the long run averaging depends on the data source
 
         LONG_RUN_AVERAGE_GHI
-            A path to a raster file with the long-time average global horizontal irradiance 
+            A path to a raster file with the long-time average global horizontal irradiance
                 in each grid cell
             * Can be used in solar energy simulations
             * Calculated at the surface
             * Time range included in the long run averaging depends on the data source
 
         LONG_RUN_AVERAGE_DNI
-            A path to a raster file with the long-time average direct normal irradiance 
+            A path to a raster file with the long-time average direct normal irradiance
                 in each grid cell
             * Can be used in solar energy simulations
             * Calculated at the surface
@@ -85,7 +85,24 @@ class NCSource(object):
     MAX_LON_DIFFERENCE = None
     MAX_LAT_DIFFERENCE = None
 
-    def __init__(self, source, bounds=None, index_pad=0, time_name="time", lat_name="lat", lon_name="lon", tz=None, _max_lon_diff=0.6, _max_lat_diff=0.6, verbose=True, forward_fill=True, flip_lat=False, flip_lon=False, time_offset_minutes=None,  time_index_from = None):
+    def __init__(
+        self,
+        source,
+        bounds=None,
+        index_pad=0,
+        time_name="time",
+        lat_name="lat",
+        lon_name="lon",
+        tz=None,
+        _max_lon_diff=0.6,
+        _max_lat_diff=0.6,
+        verbose=True,
+        forward_fill=True,
+        flip_lat=False,
+        flip_lon=False,
+        time_offset_minutes=None,
+        time_index_from=None,
+    ):
         """Initialize a generic netCDF4 file source
 
 
@@ -100,18 +117,18 @@ class NCSource(object):
             The path to the main data file(s) to load
 
             If multiple files are given, or if a directory of netCDF4 files is given, then it is assumed
-            that all files ending with the extension '.nc' or '.nc4' should be managed by this object. 
+            that all files ending with the extension '.nc' or '.nc4' should be managed by this object.
             * Be sure that all the netCDF4 files given share the same time and spatial dimensions!
 
         bounds : Anything acceptable to geokit.Extent.load(), optional
             The boundaries of the data which is needed
               * Usage of this will help with memory mangement
               * If None, the full dataset is loaded in memory
-              * The actual extent of the loaded data depends on the source's 
+              * The actual extent of the loaded data depends on the source's
                 available data
 
         index_pad : int, optional
-            The padding to apply to the boundaries 
+            The padding to apply to the boundaries
               * Useful in case of interpolation
               * Units are in longitudinal degrees
 
@@ -133,7 +150,7 @@ class NCSource(object):
 
         forward_fill : bool, optional
             If True, then missing data in the weather file is forward-filled
-            * Generally, there should be no missing data at all. This option is only intended to 
+            * Generally, there should be no missing data at all. This option is only intended to
                 catch the rare scenarios where one or two timesteps are missing
 
         flip_lat : bool, optional
@@ -154,6 +171,7 @@ class NCSource(object):
         SarahSource
         Era5Source
         """
+
         # Collect sources
         def addSource(src):
             out = []
@@ -162,7 +180,11 @@ class NCSource(object):
                     out.extend(addSource(s))
             elif isinstance(src, str):
                 if isfile(src):  # Assume its an NC file
-                    out.extend([src, ])
+                    out.extend(
+                        [
+                            src,
+                        ]
+                    )
                 elif isdir(src):  # Assume its a directory of NC files
                     for s in glob(join(src, "*.nc")):
                         out.append(s)
@@ -172,6 +194,7 @@ class NCSource(object):
                     for s in glob(src):
                         out.extend(addSource(s))
             return out
+
         sources = addSource(source)
         if len(sources) == 0:
             raise ResError("No '.nc' or '.nc4' files found")
@@ -209,20 +232,31 @@ class NCSource(object):
 
                 else:
                     if ds[var].shape[1:] != expectedShape[var][1:]:
-                        raise ResError("Variable %s does not match expected shape %s. From %s" % (
-                            var, expectedShape[var], src))
+                        raise ResError(
+                            "Variable %s does not match expected shape %s. From %s"
+                            % (var, expectedShape[var], src)
+                        )
             ds.close()
 
-        tmp = pd.DataFrame(columns=["name", "units", "path", ], index=self.variables.keys())
+        tmp = pd.DataFrame(
+            columns=[
+                "name",
+                "units",
+                "path",
+            ],
+            index=self.variables.keys(),
+        )
         tmp["name"] = names
         tmp["units"] = units
         tmp["shape"] = [expectedShape[v] for v in tmp.index]
         tmp["path"] = [self.variables[v] for v in tmp.index]
         self.variables = tmp
 
-        #choose source for the time step extraction
-        if not time_index_from==None:
-            assert time_index_from in self.variables.index, f'ERA_5-key {time_index_from} not known. Check variable "time_index_from" and folder {source}'
+        # choose source for the time step extraction
+        if not time_index_from == None:
+            assert (
+                time_index_from in self.variables.index
+            ), f'ERA_5-key {time_index_from} not known. Check variable "time_index_from" and folder {source}'
             self.variables["path"][time_name] = self.variables["path"][time_index_from]
 
         # set basic variables
@@ -257,7 +291,8 @@ class NCSource(object):
                     self.bounds.yMin,
                     self.bounds.xMax + self.MAX_LON_DIFFERENCE / 2,
                     self.bounds.yMax,
-                    srs=gk.srs.EPSG4326)
+                    srs=gk.srs.EPSG4326,
+                )
 
             if abs(self.bounds.yMin - self.bounds.yMax) <= self.MAX_LAT_DIFFERENCE:
                 self.bounds = gk.Extent(
@@ -265,7 +300,8 @@ class NCSource(object):
                     self.bounds.yMin - self.MAX_LAT_DIFFERENCE / 2,
                     self.bounds.xMax,
                     self.bounds.yMax + self.MAX_LAT_DIFFERENCE / 2,
-                    srs=gk.srs.EPSG4326)
+                    srs=gk.srs.EPSG4326,
+                )
 
             # find slices which contains our extent
             if self.dependent_coordinates:
@@ -282,18 +318,36 @@ class NCSource(object):
                     bot[1:, :] = np.logical_and(bot[1:, :], bot[:-1, :])
 
                 self._lonStart = np.argmin((bot | left | top).all(0)) - 1 - index_pad
-                self._lonStop = self._lonN - np.argmin((bot | top | right).all(0)[::-1]) + 1 + index_pad
+                self._lonStop = (
+                    self._lonN
+                    - np.argmin((bot | top | right).all(0)[::-1])
+                    + 1
+                    + index_pad
+                )
                 self._latStart = np.argmin((bot | left | right).all(1)) - 1 - index_pad
-                self._latStop = self._latN - np.argmax((left | top | right).all(1)[::-1]) + 1 + index_pad
+                self._latStop = (
+                    self._latN
+                    - np.argmax((left | top | right).all(1)[::-1])
+                    + 1
+                    + index_pad
+                )
 
             else:
-                tmp = np.logical_and(self._allLons >= self.bounds.xMin, self._allLons <= self.bounds.xMax)
+                tmp = np.logical_and(
+                    self._allLons >= self.bounds.xMin, self._allLons <= self.bounds.xMax
+                )
                 self._lonStart = np.argmax(tmp) - 1
-                self._lonStop = self._lonStart + 1 + np.argmin(tmp[self._lonStart + 1:]) + 1
+                self._lonStop = (
+                    self._lonStart + 1 + np.argmin(tmp[self._lonStart + 1 :]) + 1
+                )
 
-                tmp = np.logical_and(self._allLats >= self.bounds.yMin, self._allLats <= self.bounds.yMax)
+                tmp = np.logical_and(
+                    self._allLats >= self.bounds.yMin, self._allLats <= self.bounds.yMax
+                )
                 self._latStart = np.argmax(tmp) - 1
-                self._latStop = self._latStart + 1 + np.argmin(tmp[self._latStart + 1:]) + 1
+                self._latStop = (
+                    self._latStart + 1 + np.argmin(tmp[self._latStart + 1 :]) + 1
+                )
 
                 self._lonStart = max(0, self._lonStart - index_pad)
                 self._lonStop = min(self._allLons.size, self._lonStop + index_pad)
@@ -317,24 +371,33 @@ class NCSource(object):
         self._flip_lon = flip_lon
 
         if self.dependent_coordinates:
-            self.lats = self._allLats[self._latStart:self._latStop, self._lonStart:self._lonStop]
-            self.lons = self._allLons[self._latStart:self._latStop, self._lonStart:self._lonStop]
+            self.lats = self._allLats[
+                self._latStart : self._latStop, self._lonStart : self._lonStop
+            ]
+            self.lons = self._allLons[
+                self._latStart : self._latStop, self._lonStart : self._lonStop
+            ]
 
             if flip_lat:
                 self.lats = self.lats[::-1, :]
             if flip_lon:
                 self.lons = self.lons[:, ::-1]
         else:
-            self.lats = self._allLats[self._latStart:self._latStop]
-            self.lons = self._allLons[self._lonStart:self._lonStop]
+            self.lats = self._allLats[self._latStart : self._latStop]
+            self.lons = self._allLons[self._lonStart : self._lonStop]
 
             if flip_lat:
                 self.lats = self.lats[::-1]
             if flip_lon:
                 self.lons = self.lons[::-1]
 
-        self.extent = gk.Extent(self.lons.min(), self.lats.min(),
-                                self.lons.max(), self.lats.max(), srs=gk.srs.EPSG4326)
+        self.extent = gk.Extent(
+            self.lons.min(),
+            self.lats.min(),
+            self.lons.max(),
+            self.lats.max(),
+            srs=gk.srs.EPSG4326,
+        )
 
         # compute time index
         self.time_name = time_name
@@ -342,11 +405,16 @@ class NCSource(object):
         ds = nc.Dataset(self.variables["path"][time_name], keepweakref=True)
         timeVar = ds[time_name]
         timeindex = nc.num2date(
-            timeVar[:], timeVar.units, only_use_cftime_datetimes=False, only_use_python_datetimes=True)
+            timeVar[:],
+            timeVar.units,
+            only_use_cftime_datetimes=False,
+            only_use_python_datetimes=True,
+        )
         ds.close()
 
         if time_offset_minutes is not None:
             from datetime import timedelta
+
             timeindex = [t + timedelta(minutes=time_offset_minutes) for t in timeindex]
 
         self._timeindex_raw = pd.DatetimeIndex(timeindex)
@@ -395,7 +463,8 @@ class NCSource(object):
         None
         """
         from pickle import dump
-        with open(path, 'wb') as fo:
+
+        with open(path, "wb") as fo:
             dump(self, fo)
 
     @staticmethod
@@ -413,13 +482,13 @@ class NCSource(object):
         NCSource
         """
         from pickle import load
-        with open(path, 'rb') as fo:
+
+        with open(path, "rb") as fo:
             out = load(fo)
         return out
 
     def list_standard_variables(self):
-        """Prints the standard variable loaders available to this weather source
-        """
+        """Prints the standard variable loaders available to this weather source"""
         for var in dir(self):
             if var[:6] == "sload_":
                 print(var)
@@ -430,7 +499,7 @@ class NCSource(object):
         Parameters:
         -----------
         *variables : str
-            The standard variables to read from the weather source 
+            The standard variables to read from the weather source
 
         Returns:
         --------
@@ -439,17 +508,17 @@ class NCSource(object):
 
         Raises:
         --------
-        RuntimeError 
+        RuntimeError
             If the given standard variable name is not known to the weather source
 
 
         Note:
         -----
-        The names of the standard variable do not refer to the names of the data within the source. 
+        The names of the standard variable do not refer to the names of the data within the source.
             Instead, they refer to common plain-english names which are translated to the source-
             specific names within the associated standard-loader function
 
-        You can see which standard loaders are are available for the weather source by seeing the 
+        You can see which standard loaders are are available for the weather source by seeing the
             class methods starting with the name "sload_"
 
         Common variable names include:
@@ -470,7 +539,7 @@ class NCSource(object):
         See Also:
         ---------
         NCSource.load( variable, name, height_index, processor )
-            - For more configurable data loading into the weather source 
+            - For more configurable data loading into the weather source
 
         """
         for var in variables:
@@ -478,16 +547,19 @@ class NCSource(object):
                 getattr(self, "sload_" + var)()
             else:
                 raise RuntimeError(
-                    var + " is not an acceptable key for this weather source")
+                    var + " is not an acceptable key for this weather source"
+                )
 
-    def load(self, variable, name=None, height_idx=None, processor=None, overwrite=False):
+    def load(
+        self, variable, name=None, height_idx=None, processor=None, overwrite=False
+    ):
         """Load a variable into the source's data table
 
         Parameters:
         -----------
         variable : str
             The variable within the currated datasources to load
-              * The variable must either be of dimension (time, lat, lon) or 
+              * The variable must either be of dimension (time, lat, lon) or
                 (time, height, lat, lon)
 
         name : str, optional
@@ -499,9 +571,9 @@ class NCSource(object):
             dimension
 
         processor : func, optional
-            A function to process the loaded data before loading it into the 
+            A function to process the loaded data before loading it into the
             the data library
-              * This function must take a single matrix argument with dimensions 
+              * This function must take a single matrix argument with dimensions
                 (time, lat, lon), and must return a matrix of the same shape
               * Example:If the NC file has temperature in Kelvin and you need C:
                   processor = lambda x: x+273.15
@@ -520,8 +592,8 @@ class NCSource(object):
         See Also:
         ---------
         sload( variable )
-            - For loading standard variables into the weather source using pre-configured calls 
-                to 'load' 
+            - For loading standard variables into the weather source using pre-configured calls
+                to 'load'
 
         """
         if name is None:
@@ -537,9 +609,14 @@ class NCSource(object):
         var = ds[variable]
 
         if height_idx is None:
-            tmp = var[:, self._latStart:self._latStop, self._lonStart:self._lonStop]
+            tmp = var[:, self._latStart : self._latStop, self._lonStart : self._lonStop]
         else:
-            tmp = var[:, height_idx, self._latStart:self._latStop, self._lonStart:self._lonStop]
+            tmp = var[
+                :,
+                height_idx,
+                self._latStart : self._latStop,
+                self._lonStart : self._lonStop,
+            ]
 
         # process, maybe?
         if processor is not None:
@@ -548,10 +625,14 @@ class NCSource(object):
         # forward fill the last time step since it can sometimes be missing
         if not tmp.shape[0] == self._timeindex_raw.shape[0]:
             if not self.fill:
-                raise ResError("Time mismatch with variable %s. Expected %d, got %d" % (
-                    variable, self.time_index.shape[0], tmp.shape[0]))
+                raise ResError(
+                    "Time mismatch with variable %s. Expected %d, got %d"
+                    % (variable, self.time_index.shape[0], tmp.shape[0])
+                )
 
-            lastTimeIndex = nc.num2date(ds[self.time_name][-1], ds[self.time_name].units)
+            lastTimeIndex = nc.num2date(
+                ds[self.time_name][-1], ds[self.time_name].units
+            )
 
             if not lastTimeIndex in self._timeindex_raw:
                 raise ResError("Filling is only intended to fill the last missing step")
@@ -573,7 +654,7 @@ class NCSource(object):
     @staticmethod
     def _loc_to_index_rect(lat_step, lon_step):
         def func(self, loc, outside_okay=False, as_int=True):
-            """Returns the closest X and Y indexes corresponding to a given location 
+            """Returns the closest X and Y indexes corresponding to a given location
             or set of locations
 
             Parameters:
@@ -589,11 +670,11 @@ class NCSource(object):
                 Determines if points which are outside the source's lat/lon grid
                 are allowed
                 * If True, points outside this space will return as None
-                * If False, an error is raised 
+                * If False, an error is raised
 
             Returns:
             --------
-            If a single location is given: tuple 
+            If a single location is given: tuple
                 * Format: (yIndex, xIndex)
                 * y index can be accessed with '.yi'
                 * x index can be accessed with '.xi'
@@ -630,11 +711,15 @@ class NCSource(object):
                 else:
                     return Index(yi=latI[0], xi=lonI[0])
             else:
-                return [None if _oob else Index(yi=y, xi=x) for _oob, y, x in zip(oob, latI, lonI)]
+                return [
+                    None if _oob else Index(yi=y, xi=x)
+                    for _oob, y, x in zip(oob, latI, lonI)
+                ]
+
         return func
 
     def loc_to_index(self, loc, outside_okay=False, as_int=True):
-        """Returns the closest X and Y indexes corresponding to a given location 
+        """Returns the closest X and Y indexes corresponding to a given location
         or set of locations
 
 
@@ -651,12 +736,12 @@ class NCSource(object):
             Determines if points which are outside the source's lat/lon grid
             are allowed
             * If True, points outside this space will return as None
-            * If False, an error is raised 
+            * If False, an error is raised
 
 
         Returns:
         --------
-        If a single location is given: tuple 
+        If a single location is given: tuple
             * Format: (yIndex, xIndex)
             * y index can be accessed with '.yi'
             * x index can be accessed with '.xi'
@@ -668,13 +753,13 @@ class NCSource(object):
 
         Note:
         -----
-        The default form of this function (which is the one used here) is not very efficient, ultimately 
+        The default form of this function (which is the one used here) is not very efficient, ultimately
             leading to much longer look-up than they otherwise need to be. When the weather source has
-            grid cells on a regular lat/lon grid then a more efficient form of this function can be 
-            configured using the function generator "_loc_to_index_rect". In these instances, this is 
+            grid cells on a regular lat/lon grid then a more efficient form of this function can be
+            configured using the function generator "_loc_to_index_rect". In these instances, this is
             the recommended function to use.
 
-        For example, if the weather source uses a latitude spacing of 0.5, and a longitude spacing of 
+        For example, if the weather source uses a latitude spacing of 0.5, and a longitude spacing of
             0.625, then the function generator can be used like:
 
             > source.loc_to_index = source._loc_to_index_rect(lat_step=0.5, lon_step=0.625)
@@ -697,20 +782,16 @@ class NCSource(object):
 
                 latDists = []
                 if latI < self._latN - 1:
-                    latDists.append(
-                        (self.lats[latI + 1, lonI] - self.lats[latI, lonI]))
+                    latDists.append((self.lats[latI + 1, lonI] - self.lats[latI, lonI]))
                 if latI > 0:
-                    latDists.append(
-                        (self.lats[latI, lonI] - self.lats[latI - 1, lonI]))
+                    latDists.append((self.lats[latI, lonI] - self.lats[latI - 1, lonI]))
                 latDistI = latDist[latI, lonI] / np.mean(latDists)
 
                 lonDists = []
                 if lonI < self._lonN - 1:
-                    lonDists.append(
-                        (self.lons[latI, lonI + 1] - self.lons[latI, lonI]))
+                    lonDists.append((self.lons[latI, lonI + 1] - self.lons[latI, lonI]))
                 if lonI > 0:
-                    lonDists.append(
-                        (self.lons[latI, lonI] - self.lons[latI, lonI - 1]))
+                    lonDists.append((self.lons[latI, lonI] - self.lons[latI, lonI - 1]))
                 lonDistI = lonDist[latI, lonI] / np.mean(lonDists)
 
             else:
@@ -732,10 +813,12 @@ class NCSource(object):
                 lonDistI = lonDist[lonI] / np.mean(lonDists)
 
             # Check for out of bounds
-            if np.abs(latDistI) > self._maximal_lat_difference or np.abs(lonDistI) > self._maximal_lon_difference:
+            if (
+                np.abs(latDistI) > self._maximal_lat_difference
+                or np.abs(lonDistI) > self._maximal_lon_difference
+            ):
                 if not outside_okay:
-                    raise ResError(
-                        "(%f,%f) are outside the boundaries" % (lat, lon))
+                    raise ResError("(%f,%f) are outside the boundaries" % (lat, lon))
                 else:
                     idx.append(None)
                     continue
@@ -754,7 +837,15 @@ class NCSource(object):
         else:
             return idx
 
-    def get(self, variable, locations, interpolation='near', force_as_data_frame=False, outside_okay=False, _indicies=None):
+    def get(
+        self,
+        variable,
+        locations,
+        interpolation="near",
+        force_as_data_frame=False,
+        outside_okay=False,
+        _indicies=None,
+    ):
         """
         Retrieve a time series for a variable from the source's data library at the given location(s)
 
@@ -775,24 +866,24 @@ class NCSource(object):
             interpolation : str, optional
                 The interpolation method to use
 
-                * 'near' => For each location, extract the time series from the source's 
+                * 'near' => For each location, extract the time series from the source's
                 closest lat/lon index
                 * 'bilinear' => For each location, use the time series of the source's
-                surrounding +/- 1 index locations to create an estimated time 
+                surrounding +/- 1 index locations to create an estimated time
                 series at the given location using a biliear interpolation scheme
                 * 'cubic' => For each location, use the time series of the source's
-                surrounding +/- 2 index locations to create an estimated time 
+                surrounding +/- 2 index locations to create an estimated time
                 series at the given location using a cubic scheme
 
             force_as_data_frame : bool, optional
-                If True, instructs the returned value to always take the form of a 
+                If True, instructs the returned value to always take the form of a
                 Pandas DataFrame regardless of how many locations are specified
 
             outside_okay : bool, optional
                 Determines if points which are outside the source's lat/lon grid
                 are allowed
                 * If True, points outside this space will return as None
-                * If False, an error is raised 
+                * If False, an error is raised
 
         Returns:
         --------
@@ -811,7 +902,7 @@ class NCSource(object):
         # Get the indicies
         if _indicies is None:
             # compute the closest indices
-            if not self.dependent_coordinates or interpolation == 'near':
+            if not self.dependent_coordinates or interpolation == "near":
                 as_int = True
             else:
                 as_int = False
@@ -821,17 +912,26 @@ class NCSource(object):
             indicies = _indicies
 
         if isinstance(indicies, Index):
-            indicies = [indicies, ]
+            indicies = [
+                indicies,
+            ]
 
         # Do interpolation
-        if interpolation == 'near':
+        if interpolation == "near":
             # arrange the output data
             tmp = []
             for i in indicies:
                 if not i is None:
                     tmp.append(self.data[variable][:, i.yi, i.xi])
                 else:
-                    tmp.append(np.array([np.nan, ] * self.time_index.size))
+                    tmp.append(
+                        np.array(
+                            [
+                                np.nan,
+                            ]
+                            * self.time_index.size
+                        )
+                    )
             output = np.column_stack(tmp)
 
         elif interpolation == "cubic" or interpolation == "bilinear":
@@ -851,7 +951,9 @@ class NCSource(object):
 
             # ensure boundaries are okay
             if yiMin < 0 or xiMin < 0 or yiMax > self._latN or xiMax > self._lonN:
-                raise ResError("Insufficient data. Try expanding the boundary of the extracted data")
+                raise ResError(
+                    "Insufficient data. Try expanding the boundary of the extracted data"
+                )
 
             ##########
             # TODO: Update interpolation schemes to handle out-of-bounds indices
@@ -859,8 +961,7 @@ class NCSource(object):
 
             if self.dependent_coordinates:  # do interpolations in 'index space'
                 if isinstance(indicies[0][0], int):
-                    raise ResError(
-                        "Index must be float type for interpolation")
+                    raise ResError("Index must be float type for interpolation")
 
                 gridYVals = np.arange(yiMin, yiMax + 1)
                 gridXVals = np.arange(xiMin, xiMax + 1)
@@ -869,8 +970,8 @@ class NCSource(object):
                 xInterp = [i.xi for i in indicies]
 
             else:  # do interpolation in the expected 'coordinate space'
-                gridYVals = self.lats[yiMin:yiMax + 1]
-                gridXVals = self.lons[xiMin:xiMax + 1]
+                gridYVals = self.lats[yiMin : yiMax + 1]
+                gridXVals = self.lons[xiMin : xiMax + 1]
 
                 yInterp = [loc.lat for loc in locations]
                 xInterp = [loc.lon for loc in locations]
@@ -882,8 +983,9 @@ class NCSource(object):
                 rbs = RectBivariateSpline(
                     gridYVals,
                     gridXVals,
-                    self.data[variable][ts, yiMin:yiMax + 1, xiMin:xiMax + 1],
-                    **rbsArgs)
+                    self.data[variable][ts, yiMin : yiMax + 1, xiMin : xiMax + 1],
+                    **rbsArgs,
+                )
 
                 # interpolate for each location
                 # lat/lon order switched to match index order
@@ -893,7 +995,8 @@ class NCSource(object):
 
         else:
             raise ResError(
-                "Interpolation scheme not one of: 'near', 'cubic', or 'bilinear'")
+                "Interpolation scheme not one of: 'near', 'cubic', or 'bilinear'"
+            )
 
         # Make output as Series objects
         if force_as_data_frame or (len(output.shape) > 1 and output.shape[1] > 1):

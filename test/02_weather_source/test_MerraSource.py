@@ -9,13 +9,15 @@ import netCDF4 as nc
 
 @pytest.fixture
 def pt_MerraSource():
-    return MerraSource(TEST_DATA['merra-like'], verbose=False)
+    return MerraSource(TEST_DATA["merra-like"], verbose=False)
 
 
 @pytest.fixture
 def pt_BoundedMerraSource():
-    aachenExt = gk.Extent.fromVector(gk._test_data_['aachenShapefile.shp'])
-    return MerraSource(TEST_DATA['merra-like'], bounds=aachenExt, index_pad=0, verbose=False)
+    aachenExt = gk.Extent.fromVector(gk._test_data_["aachenShapefile.shp"])
+    return MerraSource(
+        TEST_DATA["merra-like"], bounds=aachenExt, index_pad=0, verbose=False
+    )
 
 
 def test_constants():
@@ -24,15 +26,21 @@ def test_constants():
 
 
 def test_MerraSource___init__():
-    raw = nc.Dataset(TEST_DATA['merra-like.nc4'])
+    raw = nc.Dataset(TEST_DATA["merra-like.nc4"])
     rawLats = raw["lat"][:]
     rawLons = raw["lon"][:]
     rawTimes = pd.DatetimeIndex(
-        nc.num2date(raw["time"][:], raw["time"].units, only_use_cftime_datetimes=False, only_use_python_datetimes=True),
-        tz="GMT")
+        nc.num2date(
+            raw["time"][:],
+            raw["time"].units,
+            only_use_cftime_datetimes=False,
+            only_use_python_datetimes=True,
+        ),
+        tz="GMT",
+    )
 
     # Unbounded source
-    ms = MerraSource(TEST_DATA['merra-like.nc4'], verbose=False)
+    ms = MerraSource(TEST_DATA["merra-like.nc4"], verbose=False)
 
     # ensure lats, lons and times are okay
     assert (ms.lats == rawLats).all()
@@ -40,11 +48,15 @@ def test_MerraSource___init__():
     assert (ms.time_index == rawTimes).all()
 
     # Initialize a MerraSource with Aachen boundaries
-    aachenExt = gk.Extent.fromVector(gk._test_data_['aachenShapefile.shp']).pad(0.5).fit(0.01)
+    aachenExt = (
+        gk.Extent.fromVector(gk._test_data_["aachenShapefile.shp"]).pad(0.5).fit(0.01)
+    )
     aachenLats = np.array([50.0, 50.5, 51.0, 51.5])
     aachenLons = np.array([5.625, 6.250])
 
-    ms = MerraSource(TEST_DATA['merra-like.nc4'], bounds=aachenExt, index_pad=1, verbose=False)
+    ms = MerraSource(
+        TEST_DATA["merra-like.nc4"], bounds=aachenExt, index_pad=1, verbose=False
+    )
 
     # ensure lats, lons and times are okay
     assert np.isclose(ms.lats, aachenLats).all()
@@ -59,13 +71,24 @@ def test_MerraSource_loc_to_index(pt_MerraSource):
     assert idx.yi == 2
     assert idx.xi == 1
 
-    idx = pt_MerraSource.loc_to_index([(5.6, 50.1), (6.3, 50.8), ])
+    idx = pt_MerraSource.loc_to_index(
+        [
+            (5.6, 50.1),
+            (6.3, 50.8),
+        ]
+    )
     assert idx[0].yi == 2
     assert idx[1].yi == 4
     assert idx[0].xi == 1
     assert idx[1].xi == 2
 
-    idx = pt_MerraSource.loc_to_index([(5.6, 50.1), (6.3, 50.8), ], as_int=False)
+    idx = pt_MerraSource.loc_to_index(
+        [
+            (5.6, 50.1),
+            (6.3, 50.8),
+        ],
+        as_int=False,
+    )
     assert np.isclose(idx[0].yi, 2.200000000000003)
     assert np.isclose(idx[1].yi, 3.5999999999999943)
     assert np.isclose(idx[0].xi, 0.9599999999999994)
@@ -86,9 +109,11 @@ def test_MerraSource_sload_elevated_wind_speed(pt_MerraSource, pt_BoundedMerraSo
     assert "V50M" in pt_MerraSource.data
     assert "elevated_wind_speed" in pt_MerraSource.data
 
-    assert pt_MerraSource.data['elevated_wind_speed'].shape == (71, 7, 5)
-    assert np.isclose(pt_MerraSource.data['elevated_wind_speed'].mean(), 7.895609595070423)
-    assert np.isclose(pt_MerraSource.data['elevated_wind_speed'][60, 1, 3], 5.139748)
+    assert pt_MerraSource.data["elevated_wind_speed"].shape == (71, 7, 5)
+    assert np.isclose(
+        pt_MerraSource.data["elevated_wind_speed"].mean(), 7.895609595070423
+    )
+    assert np.isclose(pt_MerraSource.data["elevated_wind_speed"][60, 1, 3], 5.139748)
 
     pt_BoundedMerraSource.sload_elevated_wind_speed()
 
@@ -96,9 +121,13 @@ def test_MerraSource_sload_elevated_wind_speed(pt_MerraSource, pt_BoundedMerraSo
     assert "V50M" in pt_BoundedMerraSource.data
     assert "elevated_wind_speed" in pt_BoundedMerraSource.data
 
-    assert pt_BoundedMerraSource.data['elevated_wind_speed'].shape == (71, 4, 3)
-    assert np.isclose(pt_BoundedMerraSource.data['elevated_wind_speed'].mean(), 8.17508378722858)
-    assert np.isclose(pt_BoundedMerraSource.data['elevated_wind_speed'][60, 1, 2], 5.71493)
+    assert pt_BoundedMerraSource.data["elevated_wind_speed"].shape == (71, 4, 3)
+    assert np.isclose(
+        pt_BoundedMerraSource.data["elevated_wind_speed"].mean(), 8.17508378722858
+    )
+    assert np.isclose(
+        pt_BoundedMerraSource.data["elevated_wind_speed"][60, 1, 2], 5.71493
+    )
 
 
 def test_MerraSource_sload_surface_wind_speed(pt_MerraSource, pt_BoundedMerraSource):
@@ -107,9 +136,11 @@ def test_MerraSource_sload_surface_wind_speed(pt_MerraSource, pt_BoundedMerraSou
     assert "V2M" in pt_MerraSource.data
     assert "surface_wind_speed" in pt_MerraSource.data
 
-    assert pt_MerraSource.data['surface_wind_speed'].shape == (71, 7, 5)
-    assert np.isclose(pt_MerraSource.data['surface_wind_speed'].mean(), 3.772894397635815)
-    assert np.isclose(pt_MerraSource.data['surface_wind_speed'][60, 1, 2], 2.9491692)
+    assert pt_MerraSource.data["surface_wind_speed"].shape == (71, 7, 5)
+    assert np.isclose(
+        pt_MerraSource.data["surface_wind_speed"].mean(), 3.772894397635815
+    )
+    assert np.isclose(pt_MerraSource.data["surface_wind_speed"][60, 1, 2], 2.9491692)
 
     pt_BoundedMerraSource.sload_surface_wind_speed()
 
@@ -117,22 +148,25 @@ def test_MerraSource_sload_surface_wind_speed(pt_MerraSource, pt_BoundedMerraSou
     assert "V2M" in pt_BoundedMerraSource.data
     assert "surface_wind_speed" in pt_BoundedMerraSource.data
 
-    assert pt_BoundedMerraSource.data['surface_wind_speed'].shape == (71, 4, 3)
-    assert np.isclose(pt_BoundedMerraSource.data['surface_wind_speed'].mean(), 3.9790956022593895)
-    assert np.isclose(pt_BoundedMerraSource.data['surface_wind_speed'][60, 1, 2], 3.0793889)
+    assert pt_BoundedMerraSource.data["surface_wind_speed"].shape == (71, 4, 3)
+    assert np.isclose(
+        pt_BoundedMerraSource.data["surface_wind_speed"].mean(), 3.9790956022593895
+    )
+    assert np.isclose(
+        pt_BoundedMerraSource.data["surface_wind_speed"][60, 1, 2], 3.0793889
+    )
 
 
 def test_MerraSource_sload_wind_speed_at_2m(pt_MerraSource, pt_BoundedMerraSource):
-
     pt_MerraSource.sload_wind_speed_at_2m()
 
     assert "U2M" in pt_MerraSource.data
     assert "V2M" in pt_MerraSource.data
     assert "wind_speed_at_2m" in pt_MerraSource.data
 
-    assert pt_MerraSource.data['wind_speed_at_2m'].shape == (71, 7, 5)
-    assert np.isclose(pt_MerraSource.data['wind_speed_at_2m'].mean(), 3.772894397635815)
-    assert np.isclose(pt_MerraSource.data['wind_speed_at_2m'][60, 1, 2], 2.9491692)
+    assert pt_MerraSource.data["wind_speed_at_2m"].shape == (71, 7, 5)
+    assert np.isclose(pt_MerraSource.data["wind_speed_at_2m"].mean(), 3.772894397635815)
+    assert np.isclose(pt_MerraSource.data["wind_speed_at_2m"][60, 1, 2], 2.9491692)
 
     pt_BoundedMerraSource.sload_wind_speed_at_2m()
 
@@ -140,9 +174,13 @@ def test_MerraSource_sload_wind_speed_at_2m(pt_MerraSource, pt_BoundedMerraSourc
     assert "V2M" in pt_BoundedMerraSource.data
     assert "wind_speed_at_2m" in pt_BoundedMerraSource.data
 
-    assert pt_BoundedMerraSource.data['wind_speed_at_2m'].shape == (71, 4, 3)
-    assert np.isclose(pt_BoundedMerraSource.data['wind_speed_at_2m'].mean(), 3.9790956022593895)
-    assert np.isclose(pt_BoundedMerraSource.data['wind_speed_at_2m'][60, 1, 2], 3.0793889)
+    assert pt_BoundedMerraSource.data["wind_speed_at_2m"].shape == (71, 4, 3)
+    assert np.isclose(
+        pt_BoundedMerraSource.data["wind_speed_at_2m"].mean(), 3.9790956022593895
+    )
+    assert np.isclose(
+        pt_BoundedMerraSource.data["wind_speed_at_2m"][60, 1, 2], 3.0793889
+    )
 
 
 def test_MerraSource_sload_wind_speed_at_10m(pt_MerraSource, pt_BoundedMerraSource):
@@ -152,9 +190,11 @@ def test_MerraSource_sload_wind_speed_at_10m(pt_MerraSource, pt_BoundedMerraSour
     assert "V10M" in pt_MerraSource.data
     assert "wind_speed_at_10m" in pt_MerraSource.data
 
-    assert pt_MerraSource.data['wind_speed_at_10m'].shape == (71, 7, 5)
-    assert np.isclose(pt_MerraSource.data['wind_speed_at_10m'].mean(), 5.601739342303823)
-    assert np.isclose(pt_MerraSource.data['wind_speed_at_10m'][60, 1, 2], 4.2905645)
+    assert pt_MerraSource.data["wind_speed_at_10m"].shape == (71, 7, 5)
+    assert np.isclose(
+        pt_MerraSource.data["wind_speed_at_10m"].mean(), 5.601739342303823
+    )
+    assert np.isclose(pt_MerraSource.data["wind_speed_at_10m"][60, 1, 2], 4.2905645)
 
     pt_BoundedMerraSource.sload_wind_speed_at_10m()
 
@@ -162,9 +202,13 @@ def test_MerraSource_sload_wind_speed_at_10m(pt_MerraSource, pt_BoundedMerraSour
     assert "V10M" in pt_BoundedMerraSource.data
     assert "wind_speed_at_10m" in pt_BoundedMerraSource.data
 
-    assert pt_BoundedMerraSource.data['wind_speed_at_10m'].shape == (71, 4, 3)
-    assert np.isclose(pt_BoundedMerraSource.data['wind_speed_at_10m'].mean(), 5.872937412888791)
-    assert np.isclose(pt_BoundedMerraSource.data['wind_speed_at_10m'][60, 1, 2], 4.427459)
+    assert pt_BoundedMerraSource.data["wind_speed_at_10m"].shape == (71, 4, 3)
+    assert np.isclose(
+        pt_BoundedMerraSource.data["wind_speed_at_10m"].mean(), 5.872937412888791
+    )
+    assert np.isclose(
+        pt_BoundedMerraSource.data["wind_speed_at_10m"][60, 1, 2], 4.427459
+    )
 
 
 def test_MerraSource_sload_wind_speed_at_50m(pt_MerraSource, pt_BoundedMerraSource):
@@ -174,9 +218,11 @@ def test_MerraSource_sload_wind_speed_at_50m(pt_MerraSource, pt_BoundedMerraSour
     assert "V50M" in pt_MerraSource.data
     assert "wind_speed_at_50m" in pt_MerraSource.data
 
-    assert pt_MerraSource.data['wind_speed_at_50m'].shape == (71, 7, 5)
-    assert np.isclose(pt_MerraSource.data['wind_speed_at_50m'].mean(), 7.895609595070423)
-    assert np.isclose(pt_MerraSource.data['wind_speed_at_50m'][60, 1, 2], 6.225379)
+    assert pt_MerraSource.data["wind_speed_at_50m"].shape == (71, 7, 5)
+    assert np.isclose(
+        pt_MerraSource.data["wind_speed_at_50m"].mean(), 7.895609595070423
+    )
+    assert np.isclose(pt_MerraSource.data["wind_speed_at_50m"][60, 1, 2], 6.225379)
 
     pt_BoundedMerraSource.sload_wind_speed_at_50m()
 
@@ -184,12 +230,18 @@ def test_MerraSource_sload_wind_speed_at_50m(pt_MerraSource, pt_BoundedMerraSour
     assert "V50M" in pt_BoundedMerraSource.data
     assert "wind_speed_at_50m" in pt_BoundedMerraSource.data
 
-    assert pt_BoundedMerraSource.data['wind_speed_at_50m'].shape == (71, 4, 3)
-    assert np.isclose(pt_BoundedMerraSource.data['wind_speed_at_50m'].mean(), 8.17508378722858)
-    assert np.isclose(pt_BoundedMerraSource.data['wind_speed_at_50m'][60, 1, 2], 5.71493)
+    assert pt_BoundedMerraSource.data["wind_speed_at_50m"].shape == (71, 4, 3)
+    assert np.isclose(
+        pt_BoundedMerraSource.data["wind_speed_at_50m"].mean(), 8.17508378722858
+    )
+    assert np.isclose(
+        pt_BoundedMerraSource.data["wind_speed_at_50m"][60, 1, 2], 5.71493
+    )
 
 
-def test_MerraSource_sload_elevated_wind_direction(pt_MerraSource, pt_BoundedMerraSource):
+def test_MerraSource_sload_elevated_wind_direction(
+    pt_MerraSource, pt_BoundedMerraSource
+):
     var = "elevated_wind_direction"
     pt_MerraSource.sload_elevated_wind_direction()
     assert var in pt_MerraSource.data
@@ -208,7 +260,9 @@ def test_MerraSource_sload_elevated_wind_direction(pt_MerraSource, pt_BoundedMer
     assert np.isclose(pt_BoundedMerraSource.data[var][60, 1, 2], c)
 
 
-def test_MerraSource_sload_surface_wind_direction(pt_MerraSource, pt_BoundedMerraSource):
+def test_MerraSource_sload_surface_wind_direction(
+    pt_MerraSource, pt_BoundedMerraSource
+):
     var = "surface_wind_direction"
     pt_MerraSource.sload_surface_wind_direction()
     assert var in pt_MerraSource.data
@@ -303,7 +357,9 @@ def test_MerraSource_sload_surface_pressure(pt_MerraSource, pt_BoundedMerraSourc
     assert np.isclose(pt_BoundedMerraSource.data[var][60, 1, 2], c)
 
 
-def test_MerraSource_sload_surface_air_temperature(pt_MerraSource, pt_BoundedMerraSource):
+def test_MerraSource_sload_surface_air_temperature(
+    pt_MerraSource, pt_BoundedMerraSource
+):
     var = "surface_air_temperature"
     pt_MerraSource.sload_surface_air_temperature()
     assert var in pt_MerraSource.data
@@ -322,7 +378,9 @@ def test_MerraSource_sload_surface_air_temperature(pt_MerraSource, pt_BoundedMer
     assert np.isclose(pt_BoundedMerraSource.data[var][60, 1, 2], c)
 
 
-def test_MerraSource_sload_surface_dew_temperature(pt_MerraSource, pt_BoundedMerraSource):
+def test_MerraSource_sload_surface_dew_temperature(
+    pt_MerraSource, pt_BoundedMerraSource
+):
     var = "surface_dew_temperature"
     pt_MerraSource.sload_surface_dew_temperature()
     assert var in pt_MerraSource.data
@@ -341,7 +399,9 @@ def test_MerraSource_sload_surface_dew_temperature(pt_MerraSource, pt_BoundedMer
     assert np.isclose(pt_BoundedMerraSource.data[var][60, 1, 2], c)
 
 
-def test_MerraSource_sload_global_horizontal_irradiance(pt_MerraSource, pt_BoundedMerraSource):
+def test_MerraSource_sload_global_horizontal_irradiance(
+    pt_MerraSource, pt_BoundedMerraSource
+):
     var = "global_horizontal_irradiance"
     pt_MerraSource.sload_global_horizontal_irradiance()
     assert var in pt_MerraSource.data
@@ -372,7 +432,11 @@ def test_MerraSource_get(pt_MerraSource, pt_BoundedMerraSource):
     assert (s1 == s2).all()
     assert np.isclose(s1.values.mean(), 98274.750000)
 
-    pts = [(5.8, 50.2), (6.6, 51.2), (6.1, 50.8), ]
+    pts = [
+        (5.8, 50.2),
+        (6.6, 51.2),
+        (6.1, 50.8),
+    ]
     s1 = pt_MerraSource.get(var, pts)
     s2 = pt_BoundedMerraSource.get(var, pts)
     assert (s1 == s2).values.all()
