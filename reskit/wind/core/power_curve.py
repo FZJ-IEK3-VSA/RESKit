@@ -3,6 +3,7 @@ import numpy as np
 from os.path import join, dirname
 import pandas as pd
 from scipy.interpolate import splrep, splev
+from scipy.interpolate import PchipInterpolator
 from scipy.stats import norm
 
 from ...util import ResError
@@ -201,8 +202,9 @@ class PowerCurve:
             CorrespongDing capacity fators for the given wind speeds
 
         """
-        powerCurveInterp = splrep(self.wind_speed, self.capacity_factor)
-        output = splev(wind_speed, powerCurveInterp)
+
+        powerCurveInterp = PchipInterpolator(self.wind_speed, self.capacity_factor)
+        output = powerCurveInterp(wind_speed)
 
         if isinstance(wind_speed, pd.DataFrame):
             output = pd.DataFrame(
