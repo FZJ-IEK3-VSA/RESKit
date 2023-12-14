@@ -110,9 +110,7 @@ def test_SolarWorkflowManager_apply_elevation(pt_SolarWorkflowManager_initialize
     # first test None case without elev attribute in placements
     man.apply_elevation(elev=None, fallback_elev=-1000)
     # must yield fallback value for all locations
-    assert np.isclose(
-        man.placements["elev"], [-1000, -1000, -1000, -1000, -1000]
-    ).all()
+    assert np.isclose(man.placements["elev"], [-1000, -1000, -1000, -1000, -1000]).all()
 
     # now test using the elevation from the placements dataframe
     base_elev = [90, 80, 70, 60, 50]
