@@ -154,6 +154,10 @@ class SolarWorkflowManager(WorkflowManager):
         if elev is None and "elev" in self.placements.columns:
             # elevation is already an attribute in the placements dataframe, do nothing if no external elev given
             pass
+        elif elev is None:
+            # we don't have given elevation info, neither as elev arg nor in placements dataframe column
+            # set all values to fallback
+            self.placements["elev"]=[fallback_elev]*len(self.locs)
         elif isinstance(elev, str):
             # assume we have a str formatted elevation raster path
             clipped_elev = self.ext.pad(0.5).rasterMosaic(elev)
