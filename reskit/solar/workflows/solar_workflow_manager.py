@@ -1342,7 +1342,7 @@ class SolarWorkflowManager(WorkflowManager):
             if not placements_without_param.empty:
                 print(f"Not all placements have azimuth values. Estimating")
                 _wf = SolarWorkflowManager(placements_without_param)
-                _wf.estimate_azimuth_from_latitude
+                _wf.estimate_azimuth_from_latitude()
                 self.placements.loc[
                     _wf.placements.azimuth.index, "azimuth"
                 ] = _wf.placements.azimuth.values
