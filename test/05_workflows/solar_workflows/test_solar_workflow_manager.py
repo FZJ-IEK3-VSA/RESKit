@@ -605,7 +605,10 @@ def test_SolarWorkflowManager_apply_inverter_losses(
         man.sim_data["inverter_ac_power_at_mpp"].mean(), 53.68695534660521
     )
 
-def test_SolarWorkflowManager_nan_values_tilt_azimuth_elev___init__() -> SolarWorkflowManager:
+
+def test_SolarWorkflowManager_nan_values_tilt_azimuth_elev___init__() -> (
+    SolarWorkflowManager
+):
     # (self, placements):
     placements = pd.DataFrame()
     placements["lon"] = [
@@ -649,9 +652,9 @@ def test_SolarWorkflowManager_nan_values_tilt_azimuth_elev___init__() -> SolarWo
     # ensure the tracking parameter is correct
 
     # estimates tilt, azimuth and elev
-    elev = 300 #fallback elevation
+    elev = 300  # fallback elevation
     man.generate_missing_params(elev)
-    
+
     assert ~man.placements["tilt"].isna().any()
     assert ~man.placements["azimuth"].isna().any()
     assert ~man.placements["elev"].isna().any()
