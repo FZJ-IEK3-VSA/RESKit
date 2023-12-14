@@ -153,20 +153,21 @@ class SolarWorkflowManager(WorkflowManager):
         ), f"'fallback_elev' must be an integer elevantion in [m]."
         if elev is None and "elev" in self.placements.columns:
             # elevation is already an attribute in the placements dataframe, do nothing if no external elev given
-            return self
-        # else we must set elev
-        if elev is None:
-            # we do not have a specific elevation info, use fallback value
-            self.placements["elev"] = fallback_elev
+            pass
         elif isinstance(elev, str):
             # assume we have a str formatted elevation raster path
             clipped_elev = self.ext.pad(0.5).rasterMosaic(elev)
-            _elevs = gk.raster.interpolateValues(clipped_elev, self.locs)
-            if np.isnan(_elevs).any():
-                # if getting values fails, it could be because of interpolation method
-                # replace by 'near' interpolation
-                _elevs_near = gk.raster.interpolateValues(elev, self.locs, mode="near")
-                _elevs[np.isnan(_elevs)] = _elevs_near[np.isnan(_elevs)]
+            if clipped_elev is None:
+                _elevs = [np.nan] * len(self.locs)
+            else:
+                _elevs = gk.raster.interpolateValues(clipped_elev, self.locs)
+                if np.isnan(_elevs).any():
+                    # if getting values fails, it could be because of interpolation method
+                    # replace by 'near' interpolation
+                    _elevs_near = gk.raster.interpolateValues(
+                        clipped_elev, self.locs, mode="near"
+                    )
+                    _elevs[np.isnan(_elevs)] = _elevs_near[np.isnan(_elevs)]
             if np.isnan(_elevs).any():
                 # if we still have nans, replace nans by fallback value
                 _elevs[np.isnan(_elevs)] = (
@@ -183,7 +184,7 @@ class SolarWorkflowManager(WorkflowManager):
             except:
                 # else rise a type error
                 raise TypeError(
-                    f"If not None, 'elev' must be given as a path to a raster file or an integer or an iterable thereof with equal length to the dataframe length."
+                    f"'elev' must be given as a path to a raster file or an integer or an iterable thereof with equal length to the dataframe length."
                 )
 
         return self
