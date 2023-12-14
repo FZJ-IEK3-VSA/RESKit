@@ -61,14 +61,21 @@ class WindWorkflowManager(WorkflowManager):
         self.powerCurveLibrary = dict()
 
         # Should we automatically generate synthetic power curves?
-        if not "powerCurve" in self.placements.columns:
+        def generate_missing_synthetic_power_curves(self):
+            """
+            Generates synthetic power curves for all placements that do not have a power curve defined.
+            """
+            placements_wo_PC = self.placements[self.placements.powerCurve.isna()]
             assert (
-                "rotor_diam" in self.placements.columns
-            ), "Placement dataframe needs 'rotor_diam' or 'powerCurve' column"
+                "rotor_diam" in placements_wo_PC.columns
+            ), "Placements needs 'rotor_diam' or 'powerCurve' specified"
+
+            if len(placements_wo_PC) == 0:
+                return
 
             specificPower = rk_wind_core.power_curve.compute_specific_power(
-                self.placements["capacity"], self.placements["rotor_diam"]
-            )
+                placements_wo_PC["capacity"], placements_wo_PC["rotor_diam"]
+            ).astype(float)
 
             if synthetic_power_curve_rounding is not None:
                 specificPower = (
@@ -82,7 +89,18 @@ class WindWorkflowManager(WorkflowManager):
                 pcid = "SPC:%d,%d" % (sppow, synthetic_power_curve_cut_out)
                 powerCurve.append(pcid)
 
-            self.placements["powerCurve"] = powerCurve
+            self.placements.loc[
+                self.placements.powerCurve.isna(), "powerCurve"
+            ] = powerCurve
+
+        if not "powerCurve" in self.placements.columns:
+            assert (
+                "rotor_diam" in self.placements.columns
+            ), "Placement dataframe needs 'rotor_diam' or 'powerCurve' column"
+            self.placements["powerCurve"] = None
+            generate_missing_synthetic_power_curves(self)
+        else:
+            generate_missing_synthetic_power_curves(self)
 
         # Put power curves into the power curve library
         for pc in self.placements.powerCurve.values:
