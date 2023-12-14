@@ -11,6 +11,7 @@ def onshore_wind_merra_ryberg2019_europe(
     clc2012_path,
     output_netcdf_path=None,
     output_variables=None,
+    max_batch_size=25000,
 ):
     # TODO: Add range limitation over Europe by checking placements
     """
@@ -30,6 +31,9 @@ def onshore_wind_merra_ryberg2019_europe(
         Path to a directory to put the output files, by default None
     output_variables : str, optional
         Restrict the output variables to these variables, by default None
+    max_batch_size: int
+        The maximum number of locations to be simulated simultaneously, else multiple batches will be simulated
+        iteratively. Helps limiting RAM requirements but may affect runtime. By default 25 000.
 
     Returns
     -------
@@ -72,7 +76,7 @@ def onshore_wind_merra_ryberg2019_europe(
 
     wf.convolute_power_curves(scaling=0.06, base=0.1)
 
-    wf.simulate()
+    wf.simulate(max_batch_size=max_batch_size)
 
     wf.apply_loss_factor(
         loss=lambda x: rk_util.low_generation_loss(x, base=0.0, sharpness=5.0)
@@ -84,7 +88,11 @@ def onshore_wind_merra_ryberg2019_europe(
 
 
 def offshore_wind_merra_caglayan2019(
-    placements, merra_path, output_netcdf_path=None, output_variables=None
+    placements,
+    merra_path,
+    output_netcdf_path=None,
+    output_variables=None,
+    max_batch_size=25000,
 ):
     """
     Simulates offshore wind generation using NASA's MERRA2 database [1].
@@ -99,6 +107,9 @@ def offshore_wind_merra_caglayan2019(
         Path to a directory to put the output files, by default None
     output_variables : str, optional
         Restrict the output variables to these variables, by default None
+    max_batch_size: int
+        The maximum number of locations to be simulated simultaneously, else multiple batches will be simulated
+        iteratively. Helps limiting RAM requirements but may affect runtime. By default 25 000.
 
     Returns
     -------
@@ -132,7 +143,7 @@ def offshore_wind_merra_caglayan2019(
         base=0.5,  # TODO: Check values with Dil
     )
 
-    wf.simulate()
+    wf.simulate(max_batch_size=max_batch_size)
 
     wf.apply_loss_factor(
         loss=lambda x: rk_util.low_generation_loss(
@@ -151,6 +162,7 @@ def offshore_wind_era5(
     gwa_100m_path=None,
     output_netcdf_path=None,
     output_variables=None,
+    max_batch_size=25000,
 ):
     """
     Simulates offshore wind generation using NASA's ERA5 database [1].
@@ -165,6 +177,9 @@ def offshore_wind_era5(
         Path to a directory to put the output files, by default None
     output_variables : str, optional
         Restrict the output variables to these variables, by default None
+    max_batch_size: int
+        The maximum number of locations to be simulated simultaneously, else multiple batches will be simulated
+        iteratively. Helps limiting RAM requirements but may affect runtime. By default 25 000.
 
     Returns
     -------
@@ -213,7 +228,7 @@ def offshore_wind_era5(
         wf.sim_data["elevated_wind_speed"] * wind_speed_scaling + wind_speed_offset, 0
     )
 
-    wf.simulate()
+    wf.simulate(max_batch_size=max_batch_size)
 
     return wf.to_xarray(
         output_netcdf_path=output_netcdf_path, output_variables=output_variables
@@ -228,6 +243,7 @@ def onshore_wind_era5(
     output_netcdf_path=None,
     output_variables=None,
     nodata_fallback="nan",
+    max_batch_size=25000,
 ):
     """
     Simulates onshore wind generation using ECMWF's ERA5 database [1].
@@ -314,7 +330,7 @@ def onshore_wind_era5(
     )  # Empirically found to improve simulation accuracy
 
     # do simulation
-    wf.simulate()
+    wf.simulate(max_batch_size=max_batch_size)
 
     return wf.to_xarray(
         output_netcdf_path=output_netcdf_path, output_variables=output_variables
@@ -330,6 +346,7 @@ def wind_era5_2023(
     output_variables=None,
     nodata_fallback="nan",
     correction_factor=1.0,
+    max_batch_size=25000,
 ):
     """
     Simulates onshore and offshore (200km from shoreline) wind generation using ECMWF's ERA5 database [1].
@@ -358,6 +375,9 @@ def wind_era5_2023(
         The wind speeds will be adapted such that the average capacity factor output is
         scaled by the given factor. The factor may either be a float or a str formatted
         raster path containing local float correction factors.By default 1.0, i.e. no correction.
+    max_batch_size: int
+        The maximum number of locations to be simulated simultaneously, else multiple batches will be simulated
+        iteratively. Helps limiting RAM requirements but may affect runtime. By default 25 000.
 
     Returns
     -------
@@ -418,7 +438,7 @@ def wind_era5_2023(
     )
 
     # do simulation
-    wf.simulate(cf_correction_factor=correction_factor)
+    wf.simulate(cf_correction_factor=correction_factor, max_batch_size=max_batch_size)
 
     return wf.to_xarray(
         output_netcdf_path=output_netcdf_path, output_variables=output_variables

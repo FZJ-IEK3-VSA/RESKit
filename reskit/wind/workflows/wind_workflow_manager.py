@@ -248,9 +248,20 @@ class WindWorkflowManager(WorkflowManager):
 
         return self
 
-    def simulate(self, cf_correction_factor=1.0, tolerance=0.01, timeout=60):
+
+    def simulate(
+        self,
+        max_batch_size=None,
+        cf_correction_factor=1.0, 
+        tolerance=0.01, 
+        timeout=60,
+    ):
         """
         Applies the invoking power curve to the given wind speeds.
+
+        max_batch_size : int, optional
+            The maximum number of locations to be simulated simultaneously.
+            If None, no limits will be applied, by default None.
 
         cf_correction_factor : float, optional
             The average cf output will be adjusted by this ratio
@@ -264,59 +275,103 @@ class WindWorkflowManager(WorkflowManager):
             The max. time allowed for iterative simulation of one batch until
             the tolerance is met, else a TimeOutError will be raised. By default
             60 [s] i.e. 1 minute.
-
+        
         Return
         ------
             A reference to the invoking WindWorkflowManager
         """
-
-        # outsource the actual application of the powercurve to the windspeeds
-        def _sim(ws_correction_factors):
-            _gen = np.zeros_like(self.sim_data["elevated_wind_speed"])
-            for pckey, pc in self.powerCurveLibrary.items():
-                sel = self.placements.powerCurve == pckey
-                # correct wind speeds before/in pc.simulate()
-                _gen[:, sel] = pc.simulate(
-                    self.sim_data["elevated_wind_speed"][:, sel]
-                    * ws_correction_factors[sel]
-                )
-            return _gen
-
-        # get and set correction factor
-        self.set_correction_factors(correction_factors=cf_correction_factor)
-
-        # calculate a starting point generation value
-        gen = _sim(ws_correction_factors=np.array([1.0] * len(self.locs)))
-        # calculate the target average cf
-        _target_cfs = np.nanmean(gen, axis=0) * self.correction_factors
-
-        if (_target_cfs > 1).any():
-            raise ValueError(
-                f"The current correction factors lead to target capacity factors greater 1.0."
+        def _sim(ws_correction_factors, _batch, max_batch_size):
+                
+            _gen = np.zeros_like(
+                self.sim_data["elevated_wind_speed"][
+                    :, _batch * max_batch_size : (_batch + 1) * max_batch_size
+                ]
             )
 
-        # set the deviation based on corr factor
-        _deviations = 1 / self.correction_factors
+            for pckey, pc in self.powerCurveLibrary.items():
+                sel = (
+                    self.placements.iloc[
+                        _batch * max_batch_size : (_batch + 1) * max_batch_size, :
+                    ].powerCurve
+                    == pckey
+                )
+                if not sel.any():
+                    continue
+                _gen[:, sel] = np.round(
+                    pc.simulate(
+                        self.sim_data["elevated_wind_speed"][
+                            :, _batch * max_batch_size : (_batch + 1) * max_batch_size
+                        ][:, sel] * ws_correction_factors[sel]
+                    ),
+                    3,
+                )
+                # set values < 0 to zero. Prevents negative values
+                _gen[_gen < 0] = 0
 
-        # iterate until the target cf average is met
-        _start = time.time()
-        _ws_corrs_i = np.array([1.0] * len(self.locs))
-        while (abs(_deviations - 1) > tolerance).any():
-            # safety fallback - exit in case of infinite loops
-            if time.time() - _start > timeout:
-                raise TimeoutError(
-                    f"The simulation did not reach the required tolerance within the given timeout. Increase tolerance or timeout."
+            return _gen
+        
+        if max_batch_size is not None:
+            if not isinstance(max_batch_size, int) and max_batch_size > 0:
+                raise TypeError(f"max_batch_size must be an integer > 0")
+        else:
+            max_batch_size = self.sim_data["elevated_wind_speed"].shape[1]
+
+        # calculate required No. of batches
+        _batches = np.ceil(
+            self.sim_data["elevated_wind_speed"].shape[1] / max_batch_size
+        )
+
+        # iterate over batches
+        for _batch in range(int(_batches)):
+
+            # get and set correction factor
+            self.set_correction_factors(correction_factors=cf_correction_factor)
+
+            # calculate a starting point generation value
+            gen = _sim(
+                ws_correction_factors=np.array([1.0] * len(self.locs)),
+                _batch = _batch, 
+                max_batch_size = max_batch_size,
+                )
+            # calculate the target average cf
+            _target_cfs = np.nanmean(gen, axis=0) * self.correction_factors
+
+            if (_target_cfs > 1).any():
+                raise ValueError(
+                    f"The current correction factors lead to target capacity factors greater 1.0."
                 )
 
-            # update the estimates correction factor for the wind speed for this iteration
-            _ws_corrs_i = _ws_corrs_i * np.cbrt(1 / _deviations)  # power law
-            # calculate with an adapted ws correction
-            gen = _sim(ws_correction_factors=_ws_corrs_i)
-            # calculate the new deviation
-            _deviations = np.nanmean(gen, axis=0) / _target_cfs
+            # set the deviation based on corr factor
+            _deviations = 1 / self.correction_factors
 
-        # write final generation into sim data
-        self.sim_data["capacity_factor"] = gen
+            # iterate until the target cf average is met
+            _start = time.time()
+            _ws_corrs_i = np.array([1.0] * len(self.locs))
+            while (abs(_deviations - 1) > tolerance).any():
+                # safety fallback - exit in case of infinite loops
+                if time.time() - _start > timeout:
+                    raise TimeoutError(
+                        f"The simulation did not reach the required tolerance within the given timeout. Increase tolerance or timeout."
+                    )
+
+                # update the estimates correction factor for the wind speed for this iteration
+                _ws_corrs_i = _ws_corrs_i * np.cbrt(1 / _deviations)  # power law
+                # calculate with an adapted ws correction
+                gen = _sim(
+                    ws_correction_factors=_ws_corrs_i,
+                    _batch = _batch, 
+                    max_batch_size = max_batch_size,
+                )
+                # calculate the new deviation
+                _deviations = np.nanmean(gen, axis=0) / _target_cfs
+            
+        
+            if _batch == 0:
+                tot_gen = gen
+            else:
+                tot_gen = np.concatenate([tot_gen, gen], axis=1)
+
+        self.sim_data["capacity_factor"] = tot_gen
 
         return self
 
