@@ -107,38 +107,98 @@ def test_SolarWorkflowManager_estimate_azimuth_from_latitude(
 def test_SolarWorkflowManager_apply_elevation(pt_SolarWorkflowManager_initialized):
     man = pt_SolarWorkflowManager_initialized
 
+    fallback_elev = -1000
+
     # first test None case without elev attribute in placements
-    man.apply_elevation(elev=None, fallback_elev=-1000)
+    man.apply_elevation(elev=None, fallback_elev=fallback_elev)
     # must yield fallback value for all locations
-    assert np.isclose(man.placements["elev"], [-1000, -1000, -1000, -1000, -1000]).all()
+    assert np.isclose(
+        man.placements["elev"],
+        [fallback_elev, fallback_elev, fallback_elev, fallback_elev, fallback_elev],
+    ).all()
 
     # now test using the elevation from the placements dataframe
     base_elev = [90, 80, 70, 60, 50]
     man.placements["elev"] = base_elev
-    man.apply_elevation(elev=None, fallback_elev=-1000)
+    man.apply_elevation(elev=None, fallback_elev=fallback_elev)
     # the elev data must not have been altered when None and 'elev' in attribute
     assert np.isclose(man.placements["elev"], base_elev).all()
 
     # then test scalar value
-    man.apply_elevation(elev=120, fallback_elev=-1000)
+    man.apply_elevation(elev=120, fallback_elev=fallback_elev)
     # must yield this value for all locs
     assert np.isclose(man.placements["elev"], [120, 120, 120, 120, 120]).all()
 
     # next test iterable as new elev
     new_elev = [100, 120, 140, 160, 2000]
-    man.apply_elevation(elev=new_elev, fallback_elev=-1000)
+    man.apply_elevation(elev=new_elev, fallback_elev=fallback_elev)
     # must yield the same iterable
     assert np.isclose(man.placements["elev"], new_elev).all()
 
-    # last test raster elevation
-    man.apply_elevation(
-        elev=rk.TEST_DATA["clc-aachen_clipped.tif"], fallback_elev=-1000
+    # last test raster elevation, therefore redefine placements so that we also have a loc OUTSIDE the raster extent
+    placements2 = pd.DataFrame()
+    placements2["lon"] = [
+        6.083,
+        6.183,
+        6.083,
+        6.183,
+        7.083,  # this is outside the CLC aachen clipped raster
+    ]
+    placements2["lat"] = [
+        50.475,
+        50.575,
+        50.675,
+        50.775,
+        50.875,
+    ]
+    man2 = SolarWorkflowManager(placements2)
+
+    man2.apply_elevation(
+        elev=rk.TEST_DATA["clc-aachen_clipped.tif"], fallback_elev=fallback_elev
     )  # not an elevation file, but still a raster
     # must yield raster values, with fallback value for those placements outside the actual file coverage
     assert np.isclose(
-        man.placements["elev"],
-        # TODO these values were from rk.TEST_DATA['gwa50-like.tif'], adapt to CLC values and fallbacks depending on which are outside
-        [2, 36, 18, 18, 21],
+        man2.placements["elev"],
+        [
+            2,
+            36,
+            18,
+            18,
+            fallback_elev,
+        ],  # the last must be equal to fallback since outside raster
+    ).all()
+
+    # cover the case that raster clipped to extent is None since all placements are outside
+    placements3 = pd.DataFrame()
+    placements3["lon"] = [  # these are all outside the CLC aachen clipped raster
+        16.083,
+        16.183,
+        16.083,
+        16.183,
+        16.083,
+    ]
+    placements3["lat"] = [
+        50.475,
+        50.575,
+        50.675,
+        50.775,
+        50.875,
+    ]
+    man2 = SolarWorkflowManager(placements3)
+
+    man2.apply_elevation(
+        elev=rk.TEST_DATA["clc-aachen_clipped.tif"], fallback_elev=fallback_elev
+    )  # not an elevation file, but still a raster
+    # must yield raster values, with fallback value for those placements outside the actual file coverage
+    assert np.isclose(
+        man2.placements["elev"],
+        [
+            fallback_elev,
+            fallback_elev,
+            fallback_elev,
+            fallback_elev,
+            fallback_elev,
+        ],  # the last must be equal to fallback since outside raster
     ).all()
 
     return man
