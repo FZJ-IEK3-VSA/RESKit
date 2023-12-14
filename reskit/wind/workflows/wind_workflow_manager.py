@@ -2,6 +2,7 @@ import geokit as gk
 import pandas as pd
 import numpy as np
 import time
+import windpowerlib
 
 from os import mkdir, environ
 from os.path import join, isfile, isdir
@@ -241,6 +242,45 @@ class WindWorkflowManager(WorkflowManager):
 
         return self
 
+    def apply_wake_correction_of_wind_speeds(
+        self,
+        wake_reduction_curve_name="dena_mean",
+    ):
+        """
+        Applies a wind-speed dependent reduction factor to the wind speeds at elevated height,
+        based on
+
+        Parameters
+        ----------
+        wake_reduction_curve_name : str, optional
+            string value to describe the wake reduction method. None will cause no reduction,
+            by default "dena_mean". Choose from (see more information here under wind_efficiency_curve_name[1]):
+            * "dena_mean",
+            * "knorr_mean",
+            * "dena_extreme1",
+            * "dena_extreme2",
+            * "knorr_extreme1",
+            * "knorr_extreme2",
+            * "knorr_extreme3",
+
+        Return
+        ------
+            A reference to the invoking WindWorkflowManager
+        """
+        # return as is if no wake reduction shall be applied
+        if wake_reduction_curve_name is None:
+            return self
+
+        assert hasattr(self, "elevated_wind_speed_height")
+        self.sim_data[
+            "elevated_wind_speed"
+        ] = windpowerlib.wake_losses.reduce_wind_speed(
+            self.sim_data["elevated_wind_speed"],
+            wind_efficiency_curve_name=wake_reduction_curve_name,
+        )
+
+        return self
+
     def convolute_power_curves(self, scaling, base, **kwargs):
         """
         Convolutes a turbine power curve from a normal distribution function with wind-speed-dependent standard deviation.
@@ -396,6 +436,54 @@ class WindWorkflowManager(WorkflowManager):
                 tot_gen = np.concatenate([tot_gen, gen], axis=1)
 
         self.sim_data["capacity_factor"] = tot_gen
+
+        return self
+
+    def apply_availability_factor(self, availability_factor):
+        """
+        Applies a relative reduction factor to the energy output (capacity factor) time series
+        to statistically account for non-availabilities.
+
+        Parameters
+        ----------
+        availability_factor : float
+            Factor that will be applied to the output time series.
+
+        Return
+        ------
+            A reference to the invoking WindWorkflowManager
+        """
+        assert (
+            availability_factor > 0 and availability_factor <= 1
+        ), f"availability_factor must be between 0 and 1.0."
+
+        self.sim_data["capacity_factor"] = (
+            self.sim_data["capacity_factor"] * availability_factor
+        )
+
+        return self
+
+    def apply_availability_factor(self, availability_factor):
+        """
+        Applies a relative reduction factor to the energy output (capacity factor) time series
+        to statistically account for non-availabilities.
+
+        Parameters
+        ----------
+        availability_factor : float
+            Factor that will be applied to the output time series.
+
+        Return
+        ------
+            A reference to the invoking WindWorkflowManager
+        """
+        assert (
+            availability_factor > 0 and availability_factor <= 1
+        ), f"availability_factor must be between 0 and 1.0."
+
+        self.sim_data["capacity_factor"] = (
+            self.sim_data["capacity_factor"] * availability_factor
+        )
 
         return self
 
