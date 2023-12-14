@@ -8,6 +8,7 @@ from types import FunctionType
 import warnings
 from scipy.interpolate import RectBivariateSpline
 import json
+import numbers
 
 # from reskit import solarpower
 
@@ -122,7 +123,7 @@ class SolarWorkflowManager(WorkflowManager):
         self.placements["azimuth"].values[self.locs.lats < 0] = 0
         return self
 
-    def apply_elevation(self, elev):
+    def apply_elevation(self, elev, fallback_elev=0):
         """
 
         apply_elevation(self)
@@ -131,24 +132,64 @@ class SolarWorkflowManager(WorkflowManager):
 
         Parameters
         ----------
-        elev: str, list
-              If a string is given it must be a path to a rasterfile including the elevations.
-              If a list is given it has to include the elevations at each location.
+        elev: str, int, iterable
+            If a string is given it must be a path to a rasterfile including the elevations.
+            If an iterable is given it has to include the elevations at each location and be
+            of equal length to self.placements dataframe.
+            If an integer is given, it will be applied to all locations equally.
 
+        fallback_elev: int, optional
+            The fallback value that will be used in case that elev is a raster path and the
+            extraction of the elevation from raster fails (applied only to no-data locations).
+            By default 0.
 
         Returns
         -------
         Returns a reference to the invoking SolarWorkflowManager object
 
         """
-
-        if isinstance(elev, str):
+        assert isinstance(
+            fallback_elev, int
+        ), f"'fallback_elev' must be an integer elevantion in [m]."
+        if elev is None and "elev" in self.placements.columns:
+            # elevation is already an attribute in the placements dataframe, do nothing if no external elev given
+            pass
+        elif elev is None:
+            # we don't have given elevation info, neither as elev arg nor in placements dataframe column
+            # set all values to fallback
+            self.placements["elev"] = np.array([fallback_elev] * len(self.locs))
+        elif isinstance(elev, str):
+            # assume we have a str formatted elevation raster path
             clipped_elev = self.ext.pad(0.5).rasterMosaic(elev)
-            self.placements["elev"] = gk.raster.interpolateValues(
-                clipped_elev, self.locs
-            )
+            if clipped_elev is None:
+                _elevs = np.array([np.nan] * len(self.locs))
+            else:
+                _elevs = gk.raster.interpolateValues(clipped_elev, self.locs)
+                if np.isnan(_elevs).any():
+                    # if getting values fails, it could be because of interpolation method
+                    # replace by 'near' interpolation
+                    _elevs_near = gk.raster.interpolateValues(
+                        clipped_elev, self.locs, mode="near"
+                    )
+                    _elevs[np.isnan(_elevs)] = _elevs_near[np.isnan(_elevs)]
+            if np.isnan(_elevs).any():
+                # if we still have nans, replace nans by fallback value
+                _elevs[np.isnan(_elevs)] = (
+                    np.ones(shape=_elevs.shape) * fallback_elev
+                )[np.isnan(_elevs)]
+            self.placements["elev"] = _elevs
         else:
-            self.placements["elev"] = elev
+            # try to just set elev as new column, works with scalars and iterables, and check if we have numeric values
+            try:
+                self.placements["elev"] = elev
+                assert all(
+                    [isinstance(x, numbers.Number) for x in self.placements["elev"]]
+                )
+            except:
+                # else rise a type error
+                raise TypeError(
+                    f"'elev' must be given as a path to a raster file or an integer or an iterable thereof with equal length to the dataframe length."
+                )
 
         return self
 
@@ -228,6 +269,21 @@ class SolarWorkflowManager(WorkflowManager):
             if key in solar_position_library:
                 _solpos_ = solar_position_library[key]
             else:
+                # make sure that no input is nan to avoid very hard-to-understand errors later on
+                _req = [
+                    self.time_index,
+                    row.lat,
+                    row.lon,
+                    row.elev,
+                    self.sim_data["surface_pressure"][:, loc],
+                    self.sim_data["surface_air_temperature"][:, loc],
+                ]
+                assert not any(
+                    [
+                        np.isnan(x).any() if hasattr(x, "__iter__") else np.isnan(x)
+                        for x in _req
+                    ]
+                ), f"Arguments for pvlib.solarposition.spa_python() may not be NaN."
                 _solpos_ = pvlib.solarposition.spa_python(
                     self.time_index,
                     latitude=row.lat,
@@ -1317,6 +1373,48 @@ class SolarWorkflowManager(WorkflowManager):
         self.sim_data["capacity_factor"] = self.sim_data[
             "total_system_generation"
         ] / np.broadcast_to(total_capacity, self._sim_shape_)
+
+        return self
+
+    def generate_missing_params(self, elev):
+        if not "tilt" in self.placements.columns:
+            self.estimate_tilt_from_latitude(convention="Ryberg2020")
+        else:
+            # make sure all placements have not Nan values
+            placements_without_param = self.placements[self.placements.tilt.isna()]
+            if not placements_without_param.empty:
+                print(f"Not all placements have tilt values. Estimating")
+                _wf = SolarWorkflowManager(placements_without_param)
+                _wf.estimate_tilt_from_latitude(convention="Ryberg2020")
+                self.placements.loc[
+                    _wf.placements.tilt.index, "tilt"
+                ] = _wf.placements.tilt.values
+
+        if not "azimuth" in self.placements.columns:
+            self.estimate_azimuth_from_latitude()
+        else:
+            # make sure all placements have not Nan values
+            placements_without_param = self.placements[self.placements.azimuth.isna()]
+            if not placements_without_param.empty:
+                print(f"Not all placements have azimuth values. Estimating")
+                _wf = SolarWorkflowManager(placements_without_param)
+                _wf.estimate_azimuth_from_latitude()
+                self.placements.loc[
+                    _wf.placements.azimuth.index, "azimuth"
+                ] = _wf.placements.azimuth.values
+
+        if not "elev" in self.placements.columns:
+            self.apply_elevation(elev)
+        else:
+            # make sure all placements have not Nan values
+            placements_without_param = self.placements[self.placements.elev.isna()]
+            print(f"Not all placements have elev values. Estimating")
+            if not placements_without_param.empty:
+                _wf = SolarWorkflowManager(placements_without_param)
+                _wf.apply_elevation(elev)
+                self.placements.loc[
+                    _wf.placements.elev.index, "elev"
+                ] = _wf.placements.elev.values
 
         return self
 

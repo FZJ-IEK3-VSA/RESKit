@@ -106,22 +106,100 @@ def test_SolarWorkflowManager_estimate_azimuth_from_latitude(
 
 def test_SolarWorkflowManager_apply_elevation(pt_SolarWorkflowManager_initialized):
     man = pt_SolarWorkflowManager_initialized
-    man.apply_elevation(120)
 
-    assert np.isclose(man.placements["elev"], [120, 120, 120, 120, 120]).all()
+    fallback_elev = -1000
 
-    # not an elevation file, but still a raster
-    man.apply_elevation(rk.TEST_DATA["gwa50-like.tif"])
-
+    # first test None case without elev attribute in placements
+    man.apply_elevation(elev=None, fallback_elev=fallback_elev)
+    # must yield fallback value for all locations
     assert np.isclose(
         man.placements["elev"],
-        [4.81529235, 4.54979848, 4.83163261, 5.10659551, 5.07869386],
+        [fallback_elev, fallback_elev, fallback_elev, fallback_elev, fallback_elev],
     ).all()
 
-    new_elev = [100, 120, 140, 160, 2000]
-    man.apply_elevation(new_elev)
+    # now test using the elevation from the placements dataframe
+    base_elev = [90, 80, 70, 60, 50]
+    man.placements["elev"] = base_elev
+    man.apply_elevation(elev=None, fallback_elev=fallback_elev)
+    # the elev data must not have been altered when None and 'elev' in attribute
+    assert np.isclose(man.placements["elev"], base_elev).all()
 
+    # then test scalar value
+    man.apply_elevation(elev=120, fallback_elev=fallback_elev)
+    # must yield this value for all locs
+    assert np.isclose(man.placements["elev"], [120, 120, 120, 120, 120]).all()
+
+    # next test iterable as new elev
+    new_elev = [100, 120, 140, 160, 2000]
+    man.apply_elevation(elev=new_elev, fallback_elev=fallback_elev)
+    # must yield the same iterable
     assert np.isclose(man.placements["elev"], new_elev).all()
+
+    # last test raster elevation, therefore redefine placements so that we also have a loc OUTSIDE the raster extent
+    placements2 = pd.DataFrame()
+    placements2["lon"] = [
+        6.083,
+        6.183,
+        6.083,
+        6.183,
+        7.083,  # this is outside the CLC aachen clipped raster
+    ]
+    placements2["lat"] = [
+        50.475,
+        50.575,
+        50.675,
+        50.775,
+        50.875,
+    ]
+    man2 = SolarWorkflowManager(placements2)
+
+    man2.apply_elevation(
+        elev=rk.TEST_DATA["clc-aachen_clipped.tif"], fallback_elev=fallback_elev
+    )  # not an elevation file, but still a raster
+    # must yield raster values, with fallback value for those placements outside the actual file coverage
+    assert np.isclose(
+        man2.placements["elev"],
+        [
+            2,
+            36,
+            18,
+            18,
+            fallback_elev,
+        ],  # the last must be equal to fallback since outside raster
+    ).all()
+
+    # cover the case that raster clipped to extent is None since all placements are outside
+    placements3 = pd.DataFrame()
+    placements3["lon"] = [  # these are all outside the CLC aachen clipped raster
+        16.083,
+        16.183,
+        16.083,
+        16.183,
+        16.083,
+    ]
+    placements3["lat"] = [
+        50.475,
+        50.575,
+        50.675,
+        50.775,
+        50.875,
+    ]
+    man2 = SolarWorkflowManager(placements3)
+
+    man2.apply_elevation(
+        elev=rk.TEST_DATA["clc-aachen_clipped.tif"], fallback_elev=fallback_elev
+    )  # not an elevation file, but still a raster
+    # must yield raster values, with fallback value for those placements outside the actual file coverage
+    assert np.isclose(
+        man2.placements["elev"],
+        [
+            fallback_elev,
+            fallback_elev,
+            fallback_elev,
+            fallback_elev,
+            fallback_elev,
+        ],  # the last must be equal to fallback since outside raster
+    ).all()
 
     return man
 
@@ -604,3 +682,59 @@ def test_SolarWorkflowManager_apply_inverter_losses(
     assert np.isclose(
         man.sim_data["inverter_ac_power_at_mpp"].mean(), 53.68695534660521
     )
+
+
+def test_SolarWorkflowManager_nan_values_tilt_azimuth_elev___init__() -> (
+    SolarWorkflowManager
+):
+    # (self, placements):
+    placements = pd.DataFrame()
+    placements["lon"] = [
+        6.083,
+        6.183,
+        6.083,
+        6.183,
+        6.083,
+    ]
+    placements["lat"] = [
+        50.475,
+        50.575,
+        50.675,
+        50.775,
+        50.875,
+    ]
+    placements["capacity"] = [
+        2000,
+        2500,
+        3000,
+        3500,
+        4000,
+    ]
+    placements["tilt"] = [
+        20,
+        None,
+        30,
+        35,
+        40,
+    ]
+    placements["azimuth"] = [180, None, 180, 180, 180]
+    placements["elev"] = [100, None, None, 100, 180]
+
+    man = SolarWorkflowManager(placements)
+    man.configure_cec_module(module="WINAICO WSx-240P6")
+
+    # limit the input placements longitude to range of -180...180
+    assert man.placements["lon"].between(-180, 180, inclusive=True).any()
+    # limit the input placements latitude to range of -90...90
+    assert man.placements["lat"].between(-90, 90, inclusive=True).any()
+    # ensure the tracking parameter is correct
+
+    # estimates tilt, azimuth and elev
+    elev = 300  # fallback elevation
+    man.generate_missing_params(elev)
+
+    assert ~man.placements["tilt"].isna().any()
+    assert ~man.placements["azimuth"].isna().any()
+    assert ~man.placements["elev"].isna().any()
+
+    return man
