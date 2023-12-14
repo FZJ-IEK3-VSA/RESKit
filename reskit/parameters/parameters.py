@@ -34,6 +34,8 @@ class OnshoreParameters(Parameters):
     reference_wind_speed = 6.7  # [m/s]
     min_tip_height = 20
     min_specific_power = 180
+    # max. projection value from expert survey in Wiser et al. (2021)
+    max_hub_height = 200
     # static economic attributes
     base_capex_per_capacity = 1100  # [EUR/kW]
     base_capex = base_capex_per_capacity * base_capacity  # [EUR]
