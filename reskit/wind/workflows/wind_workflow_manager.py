@@ -313,6 +313,8 @@ class WindWorkflowManager(WorkflowManager):
         if max_batch_size is not None:
             if not isinstance(max_batch_size, int) and max_batch_size > 0:
                 raise TypeError(f"max_batch_size must be an integer > 0")
+            if max_batch_size > len(self.locs):
+                max_batch_size = len(self.locs)
         else:
             max_batch_size = self.sim_data["elevated_wind_speed"].shape[1]
 
@@ -328,21 +330,25 @@ class WindWorkflowManager(WorkflowManager):
             self.set_correction_factors(correction_factors=cf_correction_factor)
 
             # calculate a starting point generation value
+            if _batch == 0:
+                len_locs = ((_batch + 1) * max_batch_size) - (_batch * max_batch_size)
+            else:
+                len_locs = len(self.locs) - (_batch * max_batch_size)
             gen = _sim(
-                ws_correction_factors=np.array([1.0] * len(self.locs)),
+                ws_correction_factors=np.array([1.0] * len_locs),
                 _batch = _batch, 
                 max_batch_size = max_batch_size,
                 )
             # calculate the target average cf
-            _target_cfs = np.nanmean(gen, axis=0) * self.correction_factors
-
+            _target_cfs = np.nanmean(gen, axis=0) * self.correction_factors[_batch * max_batch_size : (_batch + 1) * max_batch_size]
+                
             if (_target_cfs > 1).any():
                 raise ValueError(
                     f"The current correction factors lead to target capacity factors greater 1.0."
                 )
 
             # set the deviation based on corr factor
-            _deviations = 1 / self.correction_factors
+            _deviations = 1 / self.correction_factors[_batch * max_batch_size : (_batch + 1) * max_batch_size]
 
             # iterate until the target cf average is met
             _start = time.time()
