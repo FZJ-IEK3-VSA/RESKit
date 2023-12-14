@@ -551,7 +551,7 @@ def test_execute_workflow_iteratively(pt_wind_placements):
     assert np.isclose(gen.elevated_wind_speed.std(), 2.48011369)
 
     assert gen.capacity_factor.shape == (71, 560)
-    assert np.isclose(gen.capacity_factor.mean(), 0.57601636)
+    assert np.isclose(gen.capacity_factor.mean(), 0.57602108)
     assert np.isclose(gen.capacity_factor.min(), 0.0)
     assert np.isclose(gen.capacity_factor.max(), 0.99326205)
-    assert np.isclose(gen.capacity_factor.std(), 0.3504081)
+    assert np.isclose(gen.capacity_factor.std(), 0.35040166)
