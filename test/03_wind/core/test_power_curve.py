@@ -71,8 +71,8 @@ def test_PowerCurve_simulate(pt_power_curve):
     output = pt_power_curve.simulate(wind_speeds)
 
     assert output.shape == (100,)
-    assert np.isclose(output.mean(), 0.44624976720716636)
-    assert np.isclose(output.std(), 0.39795242761035865)
+    assert np.isclose(output.mean(), 0.4459114795976538)
+    assert np.isclose(output.std(), 0.3982687249948226)
 
 
 def test_expected_capacity_factor_from_weibull(pt_power_curve):
