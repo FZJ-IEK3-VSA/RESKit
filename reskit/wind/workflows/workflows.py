@@ -179,10 +179,9 @@ def offshore_wind_era5(
     wf = WindWorkflowManager(placements)
 
     wf.read(
-        # Why we dont read P, T or boundary_layer_height?
         variables=[
             "elevated_wind_speed",
-        ],
+        ],  # Why we dont read P, T or boundary_layer_height?
         source_type="ERA5",
         source=era5_path,
         set_time_index=True,
@@ -310,10 +309,9 @@ def onshore_wind_era5(
     # Adjust wind speeds
     # elevated windspeds are corrected by a linear function by comparing to real wind turbine data.
     # corrected_speed = windspeed * 0.75 + 1.2 [m/s]
-    # Empirically found to improve simulation accuracy
     wf.sim_data["elevated_wind_speed"] = np.maximum(
         wf.sim_data["elevated_wind_speed"] * 0.75 + 0.75, 0
-    )
+    )  # Empirically found to improve simulation accuracy
 
     # do simulation
     wf.simulate()
@@ -331,6 +329,7 @@ def wind_era5_2023(
     output_netcdf_path=None,
     output_variables=None,
     nodata_fallback="nan",
+    correction_factor=1.0,
 ):
     """
     Simulates onshore and offshore (200km from shoreline) wind generation using ECMWF's ERA5 database [1].
@@ -355,6 +354,10 @@ def wind_era5_2023(
         If no GWA available, use: (1) 'source' for ERA5 raw for simulation, (2) 'nan' for nan output
         get flags for missing values:
         - f'missing_values_{os.path.basename(path_to_LRA_source)}
+    correction_factor: str, float, optional
+        The wind speeds will be adapted such that the average capacity factor output is
+        scaled by the given factor. The factor may either be a float or a str formatted
+        raster path containing local float correction factors.By default 1.0, i.e. no correction.
 
     Returns
     -------
@@ -415,7 +418,7 @@ def wind_era5_2023(
     )
 
     # do simulation
-    wf.simulate()
+    wf.simulate(cf_correction_factor=correction_factor)
 
     return wf.to_xarray(
         output_netcdf_path=output_netcdf_path, output_variables=output_variables

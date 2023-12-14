@@ -1,6 +1,7 @@
 import geokit as gk
 import pandas as pd
 import numpy as np
+import time
 
 from os import mkdir, environ
 from os.path import join, isfile, isdir
@@ -247,21 +248,74 @@ class WindWorkflowManager(WorkflowManager):
 
         return self
 
-    def simulate(self):
+    def simulate(self, cf_correction_factor=1.0, tolerance=0.01, timeout=60):
         """
         Applies the invoking power curve to the given wind speeds.
+
+        cf_correction_factor : float, optional
+            The average cf output will be adjusted by this ratio
+            via wind speed adaptations (no linear scaling). By default 1.0.
+
+        tolerance : float, optional
+            The max. deviation of the simulated average cf from the enforced
+            corrected value, by default 0.03, i.e. 3% absolute.
+
+        timeout : int, optional
+            The max. time allowed for iterative simulation of one batch until
+            the tolerance is met, else a TimeOutError will be raised. By default
+            60 [s] i.e. 1 minute.
 
         Return
         ------
             A reference to the invoking WindWorkflowManager
         """
 
-        gen = np.zeros_like(self.sim_data["elevated_wind_speed"])
+        # outsource the actual application of the powercurve to the windspeeds
+        def _sim(ws_correction_factors):
+            _gen = np.zeros_like(self.sim_data["elevated_wind_speed"])
+            for pckey, pc in self.powerCurveLibrary.items():
+                sel = self.placements.powerCurve == pckey
+                # correct wind speeds before/in pc.simulate()
+                _gen[:, sel] = pc.simulate(
+                    self.sim_data["elevated_wind_speed"][:, sel]
+                    * ws_correction_factors[sel]
+                )
+            return _gen
 
-        for pckey, pc in self.powerCurveLibrary.items():
-            sel = self.placements.powerCurve == pckey
-            gen[:, sel] = pc.simulate(self.sim_data["elevated_wind_speed"][:, sel])
+        # get and set correction factor
+        self.set_correction_factors(correction_factors=cf_correction_factor)
 
+        # calculate a starting point generation value
+        gen = _sim(ws_correction_factors=np.array([1.0] * len(self.locs)))
+        # calculate the target average cf
+        _target_cfs = np.nanmean(gen, axis=0) * self.correction_factors
+
+        if (_target_cfs > 1).any():
+            raise ValueError(
+                f"The current correction factors lead to target capacity factors greater 1.0."
+            )
+
+        # set the deviation based on corr factor
+        _deviations = 1 / self.correction_factors
+
+        # iterate until the target cf average is met
+        _start = time.time()
+        _ws_corrs_i = np.array([1.0] * len(self.locs))
+        while (abs(_deviations - 1) > tolerance).any():
+            # safety fallback - exit in case of infinite loops
+            if time.time() - _start > timeout:
+                raise TimeoutError(
+                    f"The simulation did not reach the required tolerance within the given timeout. Increase tolerance or timeout."
+                )
+
+            # update the estimates correction factor for the wind speed for this iteration
+            _ws_corrs_i = _ws_corrs_i * np.cbrt(1 / _deviations)  # power law
+            # calculate with an adapted ws correction
+            gen = _sim(ws_correction_factors=_ws_corrs_i)
+            # calculate the new deviation
+            _deviations = np.nanmean(gen, axis=0) / _target_cfs
+
+        # write final generation into sim data
         self.sim_data["capacity_factor"] = gen
 
         return self
@@ -307,4 +361,40 @@ class WindWorkflowManager(WorkflowManager):
             raise RuntimeError("Could not determine interpolation for all hub heights")
 
         self.placements[name] = interpolated_vals
+        return self
+
+    def set_correction_factors(self, correction_factors):
+        """
+        Gets the correction factors if necessary and sets them as class attribute.
+
+        Parameters
+        ----------
+        correction_factors : str, float
+            correction factor as float or path to the correction factor raster file
+
+        Return
+        --------
+            A reference to the invoking WindWorkflowManager
+        """
+        if isinstance(correction_factors, str):
+            if not isfile(correction_factors):
+                raise FileNotFoundError(
+                    f"correction_factors was passed as str but is not an existing file: {correction_factors}"
+                )
+            correction_factors = gk.raster.interpolateValues(
+                correction_factors, self.locs, mode="near"
+            )
+            assert not np.isnan(
+                correction_factors
+            ).any(), f"correction_factors extracted from raster must not be nan"
+        elif not isinstance(correction_factors, (float, int)):
+            raise TypeError(
+                f"correction_factors must either be a str formatted raster filepath or a float value"
+            )
+        else:
+            correction_factors = [correction_factors] * len(self.locs)
+
+        # write to attribute
+        self.correction_factors = np.array(correction_factors)
+
         return self
