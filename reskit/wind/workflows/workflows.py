@@ -428,6 +428,7 @@ def wind_era5_2023(
         source_long_run_average=rk_weather.Era5Source.LONG_RUN_AVERAGE_WINDSPEED,
         real_long_run_average=gwa_100m_path,
         nodata_fallback=nodata_fallback,
+        spatial_interpolation = "average",
     )
 
     wf.estimate_roughness_from_land_cover(path=esa_cci_path, source_type="cci")
