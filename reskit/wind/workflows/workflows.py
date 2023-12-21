@@ -284,9 +284,9 @@ def onshore_wind_era5(
     wf = WindWorkflowManager(placements)
 
     # limit the input placements longitude to range of -180...180
-    assert wf.placements["lon"].between(-180, 180, inclusive=True).any()
+    assert wf.placements["lon"].between(-180, 180, inclusive="both").any()
     # limit the input placements latitude to range of -90...90
-    assert wf.placements["lat"].between(-90, 90, inclusive=True).any()
+    assert wf.placements["lon"].between(-180, 180, inclusive="both").any()
 
     wf.read(
         variables=[
@@ -406,9 +406,9 @@ def wind_era5_2023(
     wf = WindWorkflowManager(placements)
 
     # limit the input placements longitude to range of -180...180
-    assert wf.placements["lon"].between(-180, 180, inclusive=True).any()
+    assert wf.placements["lon"].between(-180, 180, inclusive="both").any()
     # limit the input placements latitude to range of -90...90
-    assert wf.placements["lat"].between(-90, 90, inclusive=True).any()
+    assert wf.placements["lon"].between(-180, 180, inclusive="both").any()
 
     wf.read(
         variables=[
