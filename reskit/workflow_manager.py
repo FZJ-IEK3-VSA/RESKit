@@ -299,7 +299,7 @@ class WorkflowManager:
         ):
             raise TypeError(f"'nodata_fallback' must be a float or a Callable.")
 
-        def _get_lra_values_from_raster(fp):
+        def _get_lra_values_from_raster(fp,spatial_interpolation):
             assert isfile(
                 fp
             ), f"File '{fp}' in adjust_variable_to_long_run_average() does not exist."
@@ -316,14 +316,14 @@ class WorkflowManager:
         # first get source values
         if isinstance(source_long_run_average, str):
             # assue raster fp
-            source_lra = _get_lra_values_from_raster(fp=source_long_run_average)
+            source_lra = _get_lra_values_from_raster(fp=source_long_run_average,spatial_interpolation="linear-spline")
         else:
             source_lra = source_long_run_average
 
         # then get lng-run average values for scaling
         if isinstance(real_long_run_average, str):
             # assume a raster path
-            real_lra = _get_lra_values_from_raster(fp=real_long_run_average)
+            real_lra = _get_lra_values_from_raster(fp=real_long_run_average,spatial_interpolation=spatial_interpolation)
         else:
             real_lra = real_long_run_average
 
