@@ -18,3 +18,4 @@ dependencies:
   - netCDF4>=1.5.3
   - xarray
   - pvlib=0.9.0
+  - windpowerlib
