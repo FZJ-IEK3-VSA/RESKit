@@ -357,7 +357,7 @@ class WorkflowManager:
                 )
             elif isinstance(nodata_fallback, str):
                 # assume this is yet another raster path as fallback and extract missing values
-                fallback_lra = _get_lra_values_from_raster(fp=nodata_fallback)
+                fallback_lra = _get_lra_values_from_raster(fp=nodata_fallback,spatial_interpolation=spatial_interpolation)
 
             # divide by real_lra_scaling once to compensate multiplication below for scaling factor:
             # nodata_fallback should not be multiplied by real_lra_scaling
