@@ -349,6 +349,7 @@ def wind_era5_2023(
     max_batch_size=25000,
     wake_reduction_curve_name="dena_mean",
     availability_factor=0.98,
+    era5_lra_path = None,
 ):
     """
     Simulates onshore and offshore (200km from shoreline) wind generation using ECMWF's ERA5 database [1].
@@ -423,9 +424,11 @@ def wind_era5_2023(
         verbose=False,
     )
 
+    if not era5_lra_path:
+        era5_lra_path = rk_weather.Era5Source.LONG_RUN_AVERAGE_WINDSPEED
     wf.adjust_variable_to_long_run_average(
         variable="elevated_wind_speed",
-        source_long_run_average=rk_weather.Era5Source.LONG_RUN_AVERAGE_WINDSPEED,
+        source_long_run_average=era5_lra_path,
         real_long_run_average=gwa_100m_path,
         nodata_fallback=nodata_fallback,
         spatial_interpolation = "average",
