@@ -349,7 +349,7 @@ def wind_era5_2023(
     max_batch_size=25000,
     wake_reduction_curve_name="dena_mean",
     availability_factor=0.98,
-    era5_lra_path = None,
+    era5_lra_path=None,
 ):
     """
     Simulates onshore and offshore (200km from shoreline) wind generation using ECMWF's ERA5 database [1].
@@ -431,7 +431,7 @@ def wind_era5_2023(
         source_long_run_average=era5_lra_path,
         real_long_run_average=gwa_100m_path,
         nodata_fallback=nodata_fallback,
-        spatial_interpolation = "average",
+        spatial_interpolation="average",
     )
 
     wf.estimate_roughness_from_land_cover(path=esa_cci_path, source_type="cci")

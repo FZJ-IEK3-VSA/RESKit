@@ -299,7 +299,7 @@ class WorkflowManager:
         ):
             raise TypeError(f"'nodata_fallback' must be a float or a Callable.")
 
-        def _get_lra_values_from_raster(fp,spatial_interpolation):
+        def _get_lra_values_from_raster(fp, spatial_interpolation):
             assert isfile(
                 fp
             ), f"File '{fp}' in adjust_variable_to_long_run_average() does not exist."
@@ -316,14 +316,18 @@ class WorkflowManager:
         # first get source values
         if isinstance(source_long_run_average, str):
             # assue raster fp
-            source_lra = _get_lra_values_from_raster(fp=source_long_run_average,spatial_interpolation="linear-spline")
+            source_lra = _get_lra_values_from_raster(
+                fp=source_long_run_average, spatial_interpolation="linear-spline"
+            )
         else:
             source_lra = source_long_run_average
 
         # then get lng-run average values for scaling
         if isinstance(real_long_run_average, str):
             # assume a raster path
-            real_lra = _get_lra_values_from_raster(fp=real_long_run_average,spatial_interpolation=spatial_interpolation)
+            real_lra = _get_lra_values_from_raster(
+                fp=real_long_run_average, spatial_interpolation=spatial_interpolation
+            )
         else:
             real_lra = real_long_run_average
 
@@ -357,7 +361,9 @@ class WorkflowManager:
                 )
             elif isinstance(nodata_fallback, str):
                 # assume this is yet another raster path as fallback and extract missing values
-                fallback_lra = _get_lra_values_from_raster(fp=nodata_fallback,spatial_interpolation=spatial_interpolation)
+                fallback_lra = _get_lra_values_from_raster(
+                    fp=nodata_fallback, spatial_interpolation=spatial_interpolation
+                )
 
             # divide by real_lra_scaling once to compensate multiplication below for scaling factor:
             # nodata_fallback should not be multiplied by real_lra_scaling
