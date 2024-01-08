@@ -71,10 +71,15 @@ class Parameters:
                 # get the nearest year below and above the passed 'year' (if not 'year' available)
                 _lower_year = _years[_years >= year].min()
                 _higher_year = _years[_years <= year].max()
-                # interpolate between the nearest years and return result
-                _val = _val[_lower_year] + (_val[_higher_year] - _val[_lower_year]) * (
-                    year - _lower_year
-                ) / (_higher_year - _lower_year)
+                # get the actual value for that year
+                if _higher_year == _lower_year:
+                    # simply choose any year since both the same, here lower
+                    _val = _val[_lower_year]
+                else:
+                    # interpolate between the nearest years and return result
+                    _val = _val[_lower_year] + (
+                        _val[_higher_year] - _val[_lower_year]
+                    ) * (year - _lower_year) / (_higher_year - _lower_year)
             # round the parameters where needed
             if _param in self.rounding.keys():
                 if self.rounding[_param] == 0:
