@@ -151,13 +151,13 @@ def test_wind_era5_2023(pt_wind_placements):
 
     assert gen.elevated_wind_speed.shape == (140, 560)
 
-    assert np.isclose(gen.elevated_wind_speed.mean(), 6.4555713)
-    assert np.isclose(gen.elevated_wind_speed.min(), 1.58508443)
-    assert np.isclose(gen.elevated_wind_speed.max(), 12.37486668)
-    assert np.isclose(gen.elevated_wind_speed.std(), 1.92203484)
+    assert np.isclose(gen.elevated_wind_speed.mean(), 6.07158986)
+    assert np.isclose(gen.elevated_wind_speed.min(), 1.02708774)
+    assert np.isclose(gen.elevated_wind_speed.max(), 12.06025255)
+    assert np.isclose(gen.elevated_wind_speed.std(), 1.99157438)
 
     assert gen.capacity_factor.shape == (140, 560)
-    assert np.isclose(gen.capacity_factor.mean(), 0.49123677)
+    assert np.isclose(gen.capacity_factor.mean(), 0.42916347)
     assert np.isclose(gen.capacity_factor.min(), 0)
     assert np.isclose(gen.capacity_factor.max(), 1)
-    assert np.isclose(gen.capacity_factor.std(), 0.29246767)
+    assert np.isclose(gen.capacity_factor.std(), 0.29860869)

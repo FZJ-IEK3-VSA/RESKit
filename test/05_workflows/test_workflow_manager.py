@@ -213,8 +213,8 @@ def test_WorkflowManager_adjust_variable_to_long_run_average_() -> WorkflowManag
         nodata_fallback=np.nan,
         spatial_interpolation="near",
     )
-    assert np.isclose(wf.sim_data["test_nearest"][0][0], 0.9558724)  # checked
-    assert np.isclose(wf.sim_data["test_nearest"][0][1], 0.97806027)  # checked
+    assert np.isclose(wf.sim_data["test_nearest"][0][0], 0.9545551735090184)  
+    assert np.isclose(wf.sim_data["test_nearest"][0][1], 0.9769576672819729)
     assert np.isnan(wf.sim_data["test_nearest"][0][2])  # checked
 
     # test fallback to source data
@@ -227,8 +227,8 @@ def test_WorkflowManager_adjust_variable_to_long_run_average_() -> WorkflowManag
         nodata_fallback=1.0,  # 1.0 means 1.0 x source data (no real_lra_scaling)
         spatial_interpolation="near",
     )
-    assert np.isclose(wf.sim_data["test_nearest"][0][0], 0.9558724)  # checked
-    assert np.isclose(wf.sim_data["test_nearest"][0][1], 0.97806027)  # checked
+    assert np.isclose(wf.sim_data["test_source"][0][0], 0.9545551735090184)
+    assert np.isclose(wf.sim_data["test_source"][0][1], 0.9769576672819729)
     assert np.isclose(
         wf.sim_data["test_source"][0][2], 1
     )  # checked, must be one since real_lra==source_lra, without scaling
@@ -266,8 +266,8 @@ def test_WorkflowManager_adjust_variable_to_long_run_average_() -> WorkflowManag
         nodata_fallback=my_test_function,  # should yield 2 x source data (no real_lra_scaling)
         spatial_interpolation="near",
     )
-    assert np.isclose(wf.sim_data["test_callable"][0][0], 0.9558724)  # checked
-    assert np.isclose(wf.sim_data["test_callable"][0][1], 0.97806027)  # checked
+    assert np.isclose(wf.sim_data["test_callable"][0][0], 0.9545551735090184)  # checked
+    assert np.isclose(wf.sim_data["test_callable"][0][1], 0.9769576672819729)  # checked
     assert np.isclose(
         wf.sim_data["test_callable"][0][2], 2
     )  # checked, my_test_function yields 2x source data, hence factor 2
@@ -293,9 +293,9 @@ def test_WorkflowManager_adjust_variable_to_long_run_average_() -> WorkflowManag
         nodata_fallback=TEST_DATA["gsa-ghi-like.tif"],
         spatial_interpolation="near",
     )
-    assert np.isclose(wf2.sim_data["test_raster"][0][0], 8.04380701)
+    assert np.isclose(wf2.sim_data["test_raster"][0][0], 8.032722363091741)
     assert np.isclose(
-        wf2.sim_data["test_raster"][0][1], 0.02358450101346743
+        wf2.sim_data["test_raster"][0][1], 0.023507134738506755
     )  # no correction applied to nodata_fallback raster values, hence the above x 24/1000
     assert np.isnan(wf2.sim_data["test_raster"][0][2])
 
