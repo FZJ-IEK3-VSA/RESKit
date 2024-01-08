@@ -865,7 +865,6 @@ def execute_workflow_iteratively(
 
     # extract data needed for placement preparation
     placements = workflow_args["placements"]
-    weather_path = workflow_args[weather_path_varname]
     if "output_netcdf_path" in workflow_args.keys():
         output_netcdf_path = workflow_args["output_netcdf_path"]
     else:
@@ -877,9 +876,12 @@ def execute_workflow_iteratively(
 
     # possibly generate dataframe from single locations and add actual weather filepath where needed
     if not weather_path_varname in placements.columns:
+        weather_path = workflow_args[weather_path_varname]
         placements = rk_util.get_dataframe_with_weather_tilepaths(
             placements=placements, weather_path=weather_path, zoom=zoom
         )
+    if not 'RESKit_sim_order' in placements.columns:
+        placements["RESKit_sim_order"]=range(len(placements))
 
     # remove output saving for the iterative function execution of sub dfs
     workflow_args.update({"output_netcdf_path": None})
