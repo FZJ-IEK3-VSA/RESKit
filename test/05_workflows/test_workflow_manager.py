@@ -213,7 +213,7 @@ def test_WorkflowManager_adjust_variable_to_long_run_average_() -> WorkflowManag
         nodata_fallback=np.nan,
         spatial_interpolation="near",
     )
-    assert np.isclose(wf.sim_data["test_nearest"][0][0], 0.9545551735090184)  
+    assert np.isclose(wf.sim_data["test_nearest"][0][0], 0.9545551735090184)
     assert np.isclose(wf.sim_data["test_nearest"][0][1], 0.9769576672819729)
     assert np.isnan(wf.sim_data["test_nearest"][0][2])  # checked
 
