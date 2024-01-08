@@ -2,6 +2,7 @@ import geokit as gk
 import osgeo
 import pandas as pd
 from smopy import deg2num
+from copy import copy
 
 
 def get_tile_XY(zoom, lon=None, lat=None, geom=None):
@@ -37,8 +38,8 @@ def get_tile_XY(zoom, lon=None, lat=None, geom=None):
             isinstance(geom, osgeo.ogr.Geometry) and "POINT" in geom.GetGeometryName()
         ):
             raise ValueError(f"geom must be an osgeo.ogr.Geometry point geometry")
-        assert geom.GetSpatialReference() is None or geom.GetSpatialReference() == gk.srs.loadSRS(
-            4326
+        assert geom.GetSpatialReference() is None or geom.GetSpatialReference().IsSame(
+            gk.srs.loadSRS(4326)
         ), f"geom reference system must be EPSG:4326 or None (then EPSG:4326 is assumed)"
         # extract lat and lon
         lon = geom.GetX()
@@ -95,15 +96,17 @@ def get_dataframe_with_weather_tilepaths(placements, weather_path, zoom):
             assert all(
                 [
                     x.GetSpatialReference() is None
-                    or x.GetSpatialReference() == gk.srs.loadSRS(4326)
+                    or x.GetSpatialReference().IsSame(gk.srs.loadSRS(4326))
                     for x in placements
                 ]
-            ), f"All srs of objects in placements must be EPDG:4326"
+            ), f"All srs of objects in placements must be EPSG:4326"
             assert all(
                 ["POINT" in x.GetGeometryName() for x in placements]
             ), f"All geometries must be POINT features."
             # we have geometries, create a geom column and extract lat/lon
-            placements = pd.DataFrame(columns=["geom"], data=placements)
+            _placements = copy(placements)
+            placements = pd.DataFrame()
+            placements["geom"] = _placements
             placements["lon"] = placements["geom"].apply(lambda x: x.GetX())
             placements["lat"] = placements["geom"].apply(lambda x: x.GetY())
         else:
@@ -122,6 +125,21 @@ def get_dataframe_with_weather_tilepaths(placements, weather_path, zoom):
             placements["lon"] = placements.geom.apply(lambda x: x.GetX())
         if not "lat" in placements.columns:
             placements["lat"] = placements.geom.apply(lambda x: x.GetY())
+
+    # get the actual weather tilepath
+    def _get_tilepath(weather_path, zoom, lat, lon):
+        if "<X-TILE>" in weather_path or "<Y-TILE>" in weather_path:
+            assert isinstance(
+                zoom, int
+            ), f"zoom must be a positive integer tiling level if weather_path contains X/Y spacers"
+            _X, _Y = get_tile_XY(zoom=zoom, lon=lon, lat=lat, geom=None)
+            return (
+                weather_path.replace("<X-TILE>", str(_X))
+                .replace("<Y-TILE>", str(_Y))
+                .replace("<ZOOM>", str(zoom))
+            )
+        else:
+            return weather_path
 
     if weather_path is None:
         # the info must already be in the dataframe then
@@ -142,7 +160,7 @@ def get_dataframe_with_weather_tilepaths(placements, weather_path, zoom):
             placements["source"] = placements.apply(
                 lambda x: _get_tilepath(
                     weather_path=x.source, zoom=zoom, lon=x.lon, lat=x.lat
-                ),
+                ).replace("<ZOOM>", str(zoom)),
                 axis=1,
             )
     else:
@@ -150,18 +168,6 @@ def get_dataframe_with_weather_tilepaths(placements, weather_path, zoom):
         assert (
             not "source" in placements.columns
         ), f"If weather_path is given, placements must not have a 'source' attribute already"
-
-        def _get_tilepath(weather_path, zoom, lat, lon):
-            if "<X-TILE>" in weather_path or "<Y-TILE>" in weather_path:
-                assert isinstance(
-                    zoom, int
-                ), f"zoom must be a positive integer tiling level if weather_path contains X/Y spacers"
-                _X, _Y = get_tile_XY(zoom=zoom, lon=lon, lat=lat, geom=None)
-                return weather_path.replace("<X-TILE>", str(_X)).replace(
-                    "<Y-TILE>", str(_Y)
-                )
-            else:
-                return weather_path
 
         # add source column with the actual tile filepaths
         placements["source"] = placements.apply(
@@ -172,6 +178,6 @@ def get_dataframe_with_weather_tilepaths(placements, weather_path, zoom):
         )
 
     # add an id column to ensure correct order preservation
-    placements["RESKit_sim_order"] = range(len(placements))
+    # placements["RESKit_sim_order"] = range(len(placements)) #TODO remove
 
     return placements
