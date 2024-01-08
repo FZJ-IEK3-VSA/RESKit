@@ -1,4 +1,3 @@
-
 import pytest
 from reskit.solar.core.frank_correction import frank_correction_factors
 
