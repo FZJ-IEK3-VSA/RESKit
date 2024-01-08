@@ -177,7 +177,7 @@ class OffshoreParameters(Parameters):
 
     turbine_row_spacing : numeric, optional
         Spacing distance between rows of turbines. The value must be a multiplyer of rotor diameter. CSM valid for the range [4-10], by default 9
-    
+
     """
 
     distance_to_bus = 3
