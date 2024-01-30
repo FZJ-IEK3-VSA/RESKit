@@ -33,7 +33,7 @@ def onshore_wind_merra_ryberg2019_europe(
         Restrict the output variables to these variables, by default None
     max_batch_size: int
         The maximum number of locations to be simulated simultaneously, else multiple batches will be simulated
-        iteratively. Helps limiting RAM requirements but may affect runtime. By default 25 000.
+        iteratively. Helps limiting RAM requirements but may affect runtime. By default 25 000. Roughly 7GB RAM per 10k locations.
 
     Returns
     -------
@@ -109,7 +109,7 @@ def offshore_wind_merra_caglayan2019(
         Restrict the output variables to these variables, by default None
     max_batch_size: int
         The maximum number of locations to be simulated simultaneously, else multiple batches will be simulated
-        iteratively. Helps limiting RAM requirements but may affect runtime. By default 25 000.
+        iteratively. Helps limiting RAM requirements but may affect runtime. By default 25 000. Roughly 7GB RAM per 10k locations.
 
     Returns
     -------
@@ -179,7 +179,7 @@ def offshore_wind_era5(
         Restrict the output variables to these variables, by default None
     max_batch_size: int
         The maximum number of locations to be simulated simultaneously, else multiple batches will be simulated
-        iteratively. Helps limiting RAM requirements but may affect runtime. By default 25 000.
+        iteratively. Helps limiting RAM requirements but may affect runtime. By default 25 000. Roughly 7GB RAM per 10k locations.
 
     Returns
     -------
@@ -380,7 +380,7 @@ def wind_era5_2023(
         raster path containing local float correction factors.By default 1.0, i.e. no correction.
     max_batch_size: int
         The maximum number of locations to be simulated simultaneously, else multiple batches will be simulated
-        iteratively. Helps limiting RAM requirements but may affect runtime. By default 25 000.
+        iteratively. Helps limiting RAM requirements but may affect runtime. By default 25 000. Roughly 7GB RAM per 10k locations.
     wake_reduction_curve_name : str, optional
         string value to describe the wake reduction method. None will cause no reduction, by default
         "dena_mean". Choose from (see more information here under wind_efficiency_curve_name[1]): "dena_mean",
