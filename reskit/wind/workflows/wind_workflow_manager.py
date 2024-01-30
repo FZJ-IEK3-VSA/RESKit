@@ -90,9 +90,9 @@ class WindWorkflowManager(WorkflowManager):
                 pcid = "SPC:%d,%d" % (sppow, synthetic_power_curve_cut_out)
                 powerCurve.append(pcid)
 
-            self.placements.loc[
-                self.placements.powerCurve.isna(), "powerCurve"
-            ] = powerCurve
+            self.placements.loc[self.placements.powerCurve.isna(), "powerCurve"] = (
+                powerCurve
+            )
 
         if not "powerCurve" in self.placements.columns:
             assert (
@@ -114,10 +114,10 @@ class WindWorkflowManager(WorkflowManager):
 
             if pc[:4] == "SPC:":
                 sppow, cutout = pc.split(":")[1].split(",")
-                self.powerCurveLibrary[
-                    pc
-                ] = rk_wind_core.power_curve.PowerCurve.from_specific_power(
-                    specific_power=float(sppow), cutout=float(cutout)
+                self.powerCurveLibrary[pc] = (
+                    rk_wind_core.power_curve.PowerCurve.from_specific_power(
+                        specific_power=float(sppow), cutout=float(cutout)
+                    )
                 )
             else:
                 self.powerCurveLibrary[pc] = (
@@ -162,10 +162,10 @@ class WindWorkflowManager(WorkflowManager):
             A reference to the invoking WindWorkflowManager
         """
         num = gk.raster.interpolateValues(path, self.locs, mode="near")
-        self.placements[
-            "roughness"
-        ] = rk_wind_core.logarithmic_profile.roughness_from_land_cover_classification(
-            num, source_type
+        self.placements["roughness"] = (
+            rk_wind_core.logarithmic_profile.roughness_from_land_cover_classification(
+                num, source_type
+            )
         )
         return self
 
@@ -231,13 +231,13 @@ class WindWorkflowManager(WorkflowManager):
         ), "surface_pressure has not been read from a source"
         assert hasattr(self, "elevated_wind_speed_height")
 
-        self.sim_data[
-            "elevated_wind_speed"
-        ] = rk_wind_core.air_density_adjustment.apply_air_density_adjustment(
-            self.sim_data["elevated_wind_speed"],
-            pressure=self.sim_data["surface_pressure"],
-            temperature=self.sim_data["surface_air_temperature"],
-            height=self.elevated_wind_speed_height,
+        self.sim_data["elevated_wind_speed"] = (
+            rk_wind_core.air_density_adjustment.apply_air_density_adjustment(
+                self.sim_data["elevated_wind_speed"],
+                pressure=self.sim_data["surface_pressure"],
+                temperature=self.sim_data["surface_air_temperature"],
+                height=self.elevated_wind_speed_height,
+            )
         )
 
         return self
@@ -272,11 +272,11 @@ class WindWorkflowManager(WorkflowManager):
             return self
 
         assert hasattr(self, "elevated_wind_speed_height")
-        self.sim_data[
-            "elevated_wind_speed"
-        ] = windpowerlib.wake_losses.reduce_wind_speed(
-            self.sim_data["elevated_wind_speed"],
-            wind_efficiency_curve_name=wake_reduction_curve_name,
+        self.sim_data["elevated_wind_speed"] = (
+            windpowerlib.wake_losses.reduce_wind_speed(
+                self.sim_data["elevated_wind_speed"],
+                wind_efficiency_curve_name=wake_reduction_curve_name,
+            )
         )
 
         return self

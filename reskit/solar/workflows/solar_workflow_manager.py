@@ -1472,9 +1472,9 @@ class SolarWorkflowManager(WorkflowManager):
                 )
                 _wf = SolarWorkflowManager(placements_without_param)
                 _wf.estimate_tilt_from_latitude(convention=convention)
-                self.placements.loc[
-                    _wf.placements.tilt.index, "tilt"
-                ] = _wf.placements.tilt.values
+                self.placements.loc[_wf.placements.tilt.index, "tilt"] = (
+                    _wf.placements.tilt.values
+                )
 
         if not "azimuth" in self.placements.columns:
             self.estimate_azimuth_from_latitude()
@@ -1487,9 +1487,9 @@ class SolarWorkflowManager(WorkflowManager):
                 )
                 _wf = SolarWorkflowManager(placements_without_param)
                 _wf.estimate_azimuth_from_latitude()
-                self.placements.loc[
-                    _wf.placements.azimuth.index, "azimuth"
-                ] = _wf.placements.azimuth.values
+                self.placements.loc[_wf.placements.azimuth.index, "azimuth"] = (
+                    _wf.placements.azimuth.values
+                )
 
         if not "elev" in self.placements.columns:
             self.apply_elevation(elev)
@@ -1502,8 +1502,8 @@ class SolarWorkflowManager(WorkflowManager):
                 )
                 _wf = SolarWorkflowManager(placements_without_param)
                 _wf.apply_elevation(elev)
-                self.placements.loc[
-                    _wf.placements.elev.index, "elev"
-                ] = _wf.placements.elev.values
+                self.placements.loc[_wf.placements.elev.index, "elev"] = (
+                    _wf.placements.elev.values
+                )
 
         return self

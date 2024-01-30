@@ -1474,9 +1474,9 @@ class PTRWorkflowManager(SolarWorkflowManager):
             )
             del efficiency_daily_1
             # plant parasitics
-            self.sim_data_daily[
-                "Parasitics_plant_daily_Wh_el"
-            ] = Parasitics_plant_daily_Wh_el = (
+            self.sim_data_daily["Parasitics_plant_daily_Wh_el"] = (
+                Parasitics_plant_daily_Wh_el
+            ) = (
                 np.einsum("ij,jk", aggregate_by_day, self.sim_data["Parasitics_W_el"])
                 * 1
             )  # h #13
@@ -1493,9 +1493,9 @@ class PTRWorkflowManager(SolarWorkflowManager):
             ).squeeze()
 
             if debug_vars:
-                Power_output_plant_net_Wh_per_a_3D[
-                    :, i_sm, i_tes
-                ] = Power_output_plant_net_Wh_per_a
+                Power_output_plant_net_Wh_per_a_3D[:, i_sm, i_tes] = (
+                    Power_output_plant_net_Wh_per_a
+                )
 
             ##################################
             ### 3) get cost                ###
@@ -1848,9 +1848,9 @@ class PTRWorkflowManager(SolarWorkflowManager):
         self.opt_data["TOTEX_CSP_EUR_per_a_3D"] = TOTEX_CSP_EUR_per_a_3D
         # TODO: remove
         self.opt_data["TOTEX_SF_EUR_per_a_3D"] = TOTEX_SF_EUR_per_a_3D
-        self.opt_data[
-            "TOTEX_Plant_storage_EUR_per_a_3D"
-        ] = TOTEX_Plant_storage_EUR_per_a_3D
+        self.opt_data["TOTEX_Plant_storage_EUR_per_a_3D"] = (
+            TOTEX_Plant_storage_EUR_per_a_3D
+        )
 
         return self
 
@@ -2058,12 +2058,9 @@ class PTRWorkflowManager(SolarWorkflowManager):
             self.placements["heat_losses_curtailment_storage_Wh"] = (
                 self.sim_data["HeattoPlant_W"]
             ).sum(axis=0) - (Heat_stored_per_day_Wh).sum(axis=0)
-            self.placements[
-                "heating_sf_from_storage"
-            ] = Heat_from_storage_per_day_Wh.sum(
-                axis=0
-            ) - Heat_from_storage_net_per_day_Wh.sum(
-                axis=0
+            self.placements["heating_sf_from_storage"] = (
+                Heat_from_storage_per_day_Wh.sum(axis=0)
+                - Heat_from_storage_net_per_day_Wh.sum(axis=0)
             )
             self.placements["heating_sf_from_elec"] = self.sim_data_daily[
                 "P_backup_heating_daily_Wh_el"

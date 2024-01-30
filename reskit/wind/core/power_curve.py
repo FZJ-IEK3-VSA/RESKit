@@ -54,7 +54,6 @@ def compute_specific_power(capacity, rotor_diam, **k):
 
 
 class PowerCurve:
-
     """
     Creates a wind turbine's power curve represented by a set of (wind-speed,capacity-factor) pairs.
 
