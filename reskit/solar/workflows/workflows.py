@@ -151,7 +151,9 @@ def openfield_pv_era5(
     inverter_kwargs={},
     tracking_args={},
     DNI_nodata_fallback=1.0,
+    DNI_nodata_fallback_scaling=1.0,
     GHI_nodata_fallback=1.0,
+    GHI_nodata_fallback_scaling=1.0,
     output_netcdf_path=None,
     output_variables=None,
     gsa_nodata_fallback="source",
@@ -205,6 +207,10 @@ def openfield_pv_era5(
                 the new real_long_run_average for missing locations only.
             NOTE: np.nan will also be returned in case that the nodata fallback does not yield values either.
 
+    DNI_nodata_fallback_scaling: float, optional
+            The scaling factor that will be applied to the DNI nodata fallback e.g. in case of different units compared to source data.
+            By default 1.0, i.e. no effect.
+
     GHI_nodata_fallback: str, optional
             When global_solar_atlas_ghi_path has no data, one can decide between different fallback options, by default 1.0:
             - np.nan or None : return np.nan for missing values in global_solar_atlas_ghi_path
@@ -215,6 +221,10 @@ def openfield_pv_era5(
                 (the locations as gk.geom.point objects and original value from source data). The output values will be considered as
                 the new real_long_run_average for missing locations only.
             NOTE: np.nan will also be returned in case that the nodata fallback does not yield values either
+    
+    GHI_nodata_fallback_scaling: float, optional
+            The scaling factor that will be applied to the GHI nodata fallback e.g. in case of different units compared to source data.
+            By default 1.0, i.e. no effect.
 
     output_netcdf_path: str
             Path to a file that you want to save your output NETCDF file at.
@@ -230,6 +240,7 @@ def openfield_pv_era5(
             -'nan': return np.nan for missing values
             get flags for missing values:
             - f'missing_values_{os.path.basename(path_to_LRA_source)}
+
     tech_year : int, optional
                 If given in combination with the projected module str names "WINAICO WSx-240P6" or
                 "LG Electronics LG370Q1C-A5", the effifiency will be scaled linearly to the given
@@ -315,6 +326,7 @@ def openfield_pv_era5(
         real_long_run_average=global_solar_atlas_ghi_path,
         real_lra_scaling=1000 / 24,  # cast to hourly average kWh
         nodata_fallback=GHI_nodata_fallback,
+        nodata_fallback_scaling=GHI_nodata_fallback_scaling,
     )
 
     wf.adjust_variable_to_long_run_average(
@@ -323,6 +335,7 @@ def openfield_pv_era5(
         real_long_run_average=global_solar_atlas_dni_path,
         real_lra_scaling=1000 / 24,  # cast to hourly average kWh
         nodata_fallback=DNI_nodata_fallback,
+        nodata_fallback_scaling=DNI_nodata_fallback_scaling,
     )
 
     wf.determine_extra_terrestrial_irradiance(model="spencer", solar_constant=1370)

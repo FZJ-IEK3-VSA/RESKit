@@ -239,6 +239,7 @@ class WorkflowManager:
         real_lra_scaling: float = 1,
         spatial_interpolation: str = "linear-spline",
         nodata_fallback: str = "nan",
+        nodata_fallback_scaling: float = 1,
     ):
         """Adjusts the average mean of the specified variable to a known long-run-average
 
@@ -281,12 +282,18 @@ class WorkflowManager:
             When real_long_run_average has no data, one can decide between different fallback options, by default np.nan:
             - np.nan or None : return np.nan for missing values in real_long_run_average
             - float : Apply this float value as a scaling factor for all no-data locations only: source_long_run_average * nodata_fallback.
-              NOTE: A value of 1.0 will return the source lra value in case of missing real lra values (no real_lra_scaling applied).
-            - str : Will be interpreted as a filepath to a raster with alternative absolute real_long_run_average values (no real_lra_scaling applied)
+              NOTE: A value of 1.0 will return the source lra value in case of missing real lra values (no additional nodata_fallback_scaling applied).
+            - str : Will be interpreted as a filepath to a raster with alternative real_long_run_average values, scaled by nodata_fallback_scaling.
             - callable : any callable method taking the arguments (all iterables): 'locs' and 'source_long_run_average_value'
               (the locations as gk.geom.point objects and original value from source data). The output values will be considered as
-              the new real_long_run_average for missing locations only (no real_lra_scaling applied).
+              the new real_long_run_average for missing locations only (absolute data, no additional nodata_fallback_scaling applied).
             NOTE: np.nan will also be returned in case that the nodata fallback does not yield values either.
+
+        nodata_fallback_scaling: float
+            An optional scaling factor to apply to the values derived from `nodata_fallback`.
+            - This is primarily useful when `nodata_fallback` is a path to a raster file
+            - By default 1
+
         Returns
         -------
         WorkflowManager
@@ -303,14 +310,17 @@ class WorkflowManager:
             assert isfile(
                 fp
             ), f"File '{fp}' in adjust_variable_to_long_run_average() does not exist."
-            _lra = gk.raster.interpolateValues(
-                fp, self.locs, mode=spatial_interpolation
-            )
-            # if getting values fails, it could be because of interpolation method.
-            # these values will be replaced with the nearest interpolation method
-            if np.isnan(_lra).any():
-                _lra_near = gk.raster.interpolateValues(fp, self.locs, mode="near")
-                _lra[np.isnan(_lra)] = _lra_near[np.isnan(_lra)]
+            # execute with warnings filter since values outside of source data would trigger geokit UserWarning every time
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                _lra = gk.raster.interpolateValues(
+                    fp, self.locs, mode=spatial_interpolation
+                )
+                # if getting values fails, it could be because of interpolation method.
+                # these values will be replaced with the nearest interpolation method
+                if np.isnan(_lra).any():
+                    _lra_near = gk.raster.interpolateValues(fp, self.locs, mode="near")
+                    _lra[np.isnan(_lra)] = _lra_near[np.isnan(_lra)]
             return _lra
 
         # first get source values
@@ -353,20 +363,20 @@ class WorkflowManager:
                 fallback_lra = np.array([np.nan] * len(real_lra))
             elif isinstance(nodata_fallback, (int, float)):
                 # apply factor to source_lra to scale missing values
-                fallback_lra = nodata_fallback * source_lra
+                fallback_lra = nodata_fallback * source_lra # no additional scaling
             elif callable(nodata_fallback):
                 # apply function to calculate missing values
                 fallback_lra = nodata_fallback(
                     locs=self.locs, source_long_run_average_value=source_lra
-                )
+                ) # no additional scaling
             elif isinstance(nodata_fallback, str):
                 # assume this is yet another raster path as fallback and extract missing values
                 fallback_lra = _get_lra_values_from_raster(
                     fp=nodata_fallback, spatial_interpolation=spatial_interpolation
-                )
+                ) * nodata_fallback_scaling
 
-            # divide by real_lra_scaling once to compensate multiplication below for scaling factor:
-            # nodata_fallback should not be multiplied by real_lra_scaling
+            # divide by real_lra_scaling once to compensate later multiplication below for 
+            # scaling factor, nodata_fallback should not be multiplied by real_lra_scaling
             fallback_lra = fallback_lra / real_lra_scaling
             # set fallback values where real_lra is nan
             real_lra[np.isnan(real_lra)] = fallback_lra[np.isnan(real_lra)]
