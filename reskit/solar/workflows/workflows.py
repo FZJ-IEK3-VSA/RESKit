@@ -221,7 +221,7 @@ def openfield_pv_era5(
                 (the locations as gk.geom.point objects and original value from source data). The output values will be considered as
                 the new real_long_run_average for missing locations only.
             NOTE: np.nan will also be returned in case that the nodata fallback does not yield values either
-    
+
     GHI_nodata_fallback_scaling: float, optional
             The scaling factor that will be applied to the GHI nodata fallback e.g. in case of different units compared to source data.
             By default 1.0, i.e. no effect.

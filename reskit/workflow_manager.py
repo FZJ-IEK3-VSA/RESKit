@@ -363,19 +363,22 @@ class WorkflowManager:
                 fallback_lra = np.array([np.nan] * len(real_lra))
             elif isinstance(nodata_fallback, (int, float)):
                 # apply factor to source_lra to scale missing values
-                fallback_lra = nodata_fallback * source_lra # no additional scaling
+                fallback_lra = nodata_fallback * source_lra  # no additional scaling
             elif callable(nodata_fallback):
                 # apply function to calculate missing values
                 fallback_lra = nodata_fallback(
                     locs=self.locs, source_long_run_average_value=source_lra
-                ) # no additional scaling
+                )  # no additional scaling
             elif isinstance(nodata_fallback, str):
                 # assume this is yet another raster path as fallback and extract missing values
-                fallback_lra = _get_lra_values_from_raster(
-                    fp=nodata_fallback, spatial_interpolation=spatial_interpolation
-                ) * nodata_fallback_scaling
+                fallback_lra = (
+                    _get_lra_values_from_raster(
+                        fp=nodata_fallback, spatial_interpolation=spatial_interpolation
+                    )
+                    * nodata_fallback_scaling
+                )
 
-            # divide by real_lra_scaling once to compensate later multiplication below for 
+            # divide by real_lra_scaling once to compensate later multiplication below for
             # scaling factor, nodata_fallback should not be multiplied by real_lra_scaling
             fallback_lra = fallback_lra / real_lra_scaling
             # set fallback values where real_lra is nan

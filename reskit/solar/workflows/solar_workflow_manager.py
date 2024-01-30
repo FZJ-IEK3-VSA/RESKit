@@ -1467,7 +1467,9 @@ class SolarWorkflowManager(WorkflowManager):
             # make sure all placements have not Nan values
             placements_without_param = self.placements[self.placements.tilt.isna()]
             if not placements_without_param.empty:
-                print(f"Placements dataframe contains 'tilt' column yet not all placements have tilt values. Estimating based on convention={convention}")
+                print(
+                    f"Placements dataframe contains 'tilt' column yet not all placements have tilt values. Estimating based on convention={convention}"
+                )
                 _wf = SolarWorkflowManager(placements_without_param)
                 _wf.estimate_tilt_from_latitude(convention=convention)
                 self.placements.loc[
@@ -1480,7 +1482,9 @@ class SolarWorkflowManager(WorkflowManager):
             # make sure all placements have not Nan values
             placements_without_param = self.placements[self.placements.azimuth.isna()]
             if not placements_without_param.empty:
-                print(f"Placements dataframe contains 'azimuth' column yet not all placements have azimuth values. Estimating.")
+                print(
+                    f"Placements dataframe contains 'azimuth' column yet not all placements have azimuth values. Estimating."
+                )
                 _wf = SolarWorkflowManager(placements_without_param)
                 _wf.estimate_azimuth_from_latitude()
                 self.placements.loc[
@@ -1493,7 +1497,9 @@ class SolarWorkflowManager(WorkflowManager):
             # make sure all placements have not Nan values
             placements_without_param = self.placements[self.placements.elev.isna()]
             if not placements_without_param.empty:
-                print(f"Placements dataframe contains 'elev' column yet not all placements have elev values. Estimating based on elev={elev}")
+                print(
+                    f"Placements dataframe contains 'elev' column yet not all placements have elev values. Estimating based on elev={elev}"
+                )
                 _wf = SolarWorkflowManager(placements_without_param)
                 _wf.apply_elevation(elev)
                 self.placements.loc[
