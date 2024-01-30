@@ -441,8 +441,8 @@ def wind_era5_2023(
     )
 
     # Adjust wind speeds with global correction factors
-    x = 0.7506109812177267
-    b = 0.9064913929439484
+    x = 0.7506109812177267 # Correction factors from wind validation paper
+    b = 0.9064913929439484 # Correction factors from wind validation paper
     wf.sim_data["elevated_wind_speed"] = wf.sim_data["elevated_wind_speed"] * x + b
 
     wf.apply_air_density_correction_to_wind_speeds()
