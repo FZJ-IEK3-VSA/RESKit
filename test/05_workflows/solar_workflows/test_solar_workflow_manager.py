@@ -737,7 +737,7 @@ def test_SolarWorkflowManager_nan_values_tilt_azimuth_elev___init__() -> (
 
     # estimates tilt, azimuth and elev
     elev = 300  # fallback elevation
-    man.generate_missing_params(elev)
+    man.estimate_missing_params(elev)
 
     assert ~man.placements["tilt"].isna().any()
     assert ~man.placements["azimuth"].isna().any()

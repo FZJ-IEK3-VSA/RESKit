@@ -1460,7 +1460,7 @@ class SolarWorkflowManager(WorkflowManager):
 
         return self
 
-    def generate_missing_params(self, elev, convention="Ryberg2020"):
+    def estimate_missing_params(self, elev, convention="Ryberg2020"):
         if not "tilt" in self.placements.columns:
             self.estimate_tilt_from_latitude(convention=convention)
         else:

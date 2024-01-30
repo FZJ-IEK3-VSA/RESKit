@@ -85,7 +85,7 @@ def openfield_pv_merra_ryberg2019(
     ], f"tracking must be either 'fixed' or 'single_axis'"
 
     # estimates tilt, azimuth and elev
-    wf.generate_missing_params(elev)
+    wf.estimate_missing_params(elev)
 
     wf.read(
         variables=[
@@ -267,7 +267,7 @@ def openfield_pv_era5(
     ], f"tracking must be either 'fixed' or 'single_axis'"
 
     # estimates tilt, azimuth and elev
-    wf.generate_missing_params(elev)
+    wf.estimate_missing_params(elev)
 
     wf.read(
         variables=[
