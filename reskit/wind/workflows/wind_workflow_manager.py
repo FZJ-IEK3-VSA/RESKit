@@ -387,10 +387,12 @@ class WindWorkflowManager(WorkflowManager):
             self.set_correction_factors(correction_factors=cf_correction_factor)
 
             # calculate a starting point generation value
-            if _batch == 0:
-                len_locs = ((_batch + 1) * max_batch_size) - (_batch * max_batch_size)
-            else:
+            if _batch == int(_batches)-1:
+                # if the last batch, the length may be shorter if total placements No is not a multiple of max_batch_size
                 len_locs = len(self.locs) - (_batch * max_batch_size)
+            else:
+                # all batches besides possibly the last must be of length max_batch_size
+                len_locs = max_batch_size
             gen = _sim(
                 ws_correction_factors=np.array([1.0] * len_locs),
                 _batch=_batch,
