@@ -1,6 +1,8 @@
 import geokit as gk
 import pandas as pd
 import numpy as np
+import time
+import windpowerlib
 
 from os import mkdir, environ
 from os.path import join, isfile, isdir
@@ -60,14 +62,21 @@ class WindWorkflowManager(WorkflowManager):
         self.powerCurveLibrary = dict()
 
         # Should we automatically generate synthetic power curves?
-        if not "powerCurve" in self.placements.columns:
+        def generate_missing_synthetic_power_curves(self):
+            """
+            Generates synthetic power curves for all placements that do not have a power curve defined.
+            """
+            placements_wo_PC = self.placements[self.placements.powerCurve.isna()]
             assert (
-                "rotor_diam" in self.placements.columns
-            ), "Placement dataframe needs 'rotor_diam' or 'powerCurve' column"
+                "rotor_diam" in placements_wo_PC.columns
+            ), "Placements needs 'rotor_diam' or 'powerCurve' specified"
+
+            if len(placements_wo_PC) == 0:
+                return
 
             specificPower = rk_wind_core.power_curve.compute_specific_power(
-                self.placements["capacity"], self.placements["rotor_diam"]
-            )
+                placements_wo_PC["capacity"], placements_wo_PC["rotor_diam"]
+            ).astype(float)
 
             if synthetic_power_curve_rounding is not None:
                 specificPower = (
@@ -81,7 +90,18 @@ class WindWorkflowManager(WorkflowManager):
                 pcid = "SPC:%d,%d" % (sppow, synthetic_power_curve_cut_out)
                 powerCurve.append(pcid)
 
-            self.placements["powerCurve"] = powerCurve
+            self.placements.loc[self.placements.powerCurve.isna(), "powerCurve"] = (
+                powerCurve
+            )
+
+        if not "powerCurve" in self.placements.columns:
+            assert (
+                "rotor_diam" in self.placements.columns
+            ), "Placement dataframe needs 'rotor_diam' or 'powerCurve' column"
+            self.placements["powerCurve"] = None
+            generate_missing_synthetic_power_curves(self)
+        else:
+            generate_missing_synthetic_power_curves(self)
 
         # Put power curves into the power curve library
         for pc in self.placements.powerCurve.values:
@@ -94,10 +114,10 @@ class WindWorkflowManager(WorkflowManager):
 
             if pc[:4] == "SPC:":
                 sppow, cutout = pc.split(":")[1].split(",")
-                self.powerCurveLibrary[
-                    pc
-                ] = rk_wind_core.power_curve.PowerCurve.from_specific_power(
-                    specific_power=float(sppow), cutout=float(cutout)
+                self.powerCurveLibrary[pc] = (
+                    rk_wind_core.power_curve.PowerCurve.from_specific_power(
+                        specific_power=float(sppow), cutout=float(cutout)
+                    )
                 )
             else:
                 self.powerCurveLibrary[pc] = (
@@ -142,10 +162,10 @@ class WindWorkflowManager(WorkflowManager):
             A reference to the invoking WindWorkflowManager
         """
         num = gk.raster.interpolateValues(path, self.locs, mode="near")
-        self.placements[
-            "roughness"
-        ] = rk_wind_core.logarithmic_profile.roughness_from_land_cover_classification(
-            num, source_type
+        self.placements["roughness"] = (
+            rk_wind_core.logarithmic_profile.roughness_from_land_cover_classification(
+                num, source_type
+            )
         )
         return self
 
@@ -211,13 +231,52 @@ class WindWorkflowManager(WorkflowManager):
         ), "surface_pressure has not been read from a source"
         assert hasattr(self, "elevated_wind_speed_height")
 
-        self.sim_data[
-            "elevated_wind_speed"
-        ] = rk_wind_core.air_density_adjustment.apply_air_density_adjustment(
-            self.sim_data["elevated_wind_speed"],
-            pressure=self.sim_data["surface_pressure"],
-            temperature=self.sim_data["surface_air_temperature"],
-            height=self.elevated_wind_speed_height,
+        self.sim_data["elevated_wind_speed"] = (
+            rk_wind_core.air_density_adjustment.apply_air_density_adjustment(
+                self.sim_data["elevated_wind_speed"],
+                pressure=self.sim_data["surface_pressure"],
+                temperature=self.sim_data["surface_air_temperature"],
+                height=self.elevated_wind_speed_height,
+            )
+        )
+
+        return self
+
+    def apply_wake_correction_of_wind_speeds(
+        self,
+        wake_reduction_curve_name="dena_mean",
+    ):
+        """
+        Applies a wind-speed dependent reduction factor to the wind speeds at elevated height,
+        based on
+
+        Parameters
+        ----------
+        wake_reduction_curve_name : str, optional
+            string value to describe the wake reduction method. None will cause no reduction,
+            by default "dena_mean". Choose from (see more information here under wind_efficiency_curve_name[1]):
+            * "dena_mean",
+            * "knorr_mean",
+            * "dena_extreme1",
+            * "dena_extreme2",
+            * "knorr_extreme1",
+            * "knorr_extreme2",
+            * "knorr_extreme3",
+
+        Return
+        ------
+            A reference to the invoking WindWorkflowManager
+        """
+        # return as is if no wake reduction shall be applied
+        if wake_reduction_curve_name is None:
+            return self
+
+        assert hasattr(self, "elevated_wind_speed_height")
+        self.sim_data["elevated_wind_speed"] = (
+            windpowerlib.wake_losses.reduce_wind_speed(
+                self.sim_data["elevated_wind_speed"],
+                wind_efficiency_curve_name=wake_reduction_curve_name,
+            )
         )
 
         return self
@@ -247,22 +306,201 @@ class WindWorkflowManager(WorkflowManager):
 
         return self
 
-    def simulate(self):
+    def simulate(
+        self,
+        max_batch_size=None,
+        cf_correction_factor=1.0,
+        tolerance=0.01,
+        timeout=60,
+    ):
         """
         Applies the invoking power curve to the given wind speeds.
+        A max_batch_size can be set, splitting the simulation in batches.
+        If set, cf_correction_factor is applied iteratively to adjust avreage cf output.
+        Capacity factors are calculated in the subfunction _sim(), which is called iteratively.
+
+        max_batch_size : int, optional
+            The maximum number of locations to be simulated simultaneously.
+            If None, no limits will be applied, by default None.
+
+        cf_correction_factor : float, optional
+            The average cf output will be adjusted by this ratio
+            via wind speed adaptations (no linear scaling). By default 1.0.
+
+        tolerance : float, optional
+            The max. deviation of the simulated average cf from the enforced
+            corrected value, by default 0.03, i.e. 3% absolute.
+
+        timeout : int, optional
+            The max. time allowed for iterative simulation of one batch until
+            the tolerance is met, else a TimeOutError will be raised. By default
+            60 [s] i.e. 1 minute.
 
         Return
         ------
             A reference to the invoking WindWorkflowManager
         """
 
-        gen = np.zeros_like(self.sim_data["elevated_wind_speed"])
+        def _sim(ws_correction_factors, _batch, max_batch_size):
+            """
+            Applies the invoking power curve to the given wind speeds.
+            """
 
-        for pckey, pc in self.powerCurveLibrary.items():
-            sel = self.placements.powerCurve == pckey
-            gen[:, sel] = pc.simulate(self.sim_data["elevated_wind_speed"][:, sel])
+            _gen = np.zeros_like(
+                self.sim_data["elevated_wind_speed"][
+                    :, _batch * max_batch_size : (_batch + 1) * max_batch_size
+                ]
+            )
 
-        self.sim_data["capacity_factor"] = gen
+            for pckey, pc in self.powerCurveLibrary.items():
+                sel = (
+                    self.placements.iloc[
+                        _batch * max_batch_size : (_batch + 1) * max_batch_size, :
+                    ].powerCurve
+                    == pckey
+                )
+                if not sel.any():
+                    continue
+                _gen[:, sel] = np.round(
+                    pc.simulate(
+                        self.sim_data["elevated_wind_speed"][
+                            :, _batch * max_batch_size : (_batch + 1) * max_batch_size
+                        ][:, sel]
+                        * ws_correction_factors[sel]
+                    ),
+                    3,
+                )
+                # set values < 0 to zero. Prevents negative values
+                _gen[_gen < 0] = 0
+
+            return _gen
+
+        if max_batch_size is not None:
+            if not isinstance(max_batch_size, int) and max_batch_size > 0:
+                raise TypeError(f"max_batch_size must be an integer > 0")
+            if max_batch_size > len(self.locs):
+                max_batch_size = len(self.locs)
+        else:
+            max_batch_size = self.sim_data["elevated_wind_speed"].shape[1]
+
+        # calculate required No. of batches
+        _batches = np.ceil(
+            self.sim_data["elevated_wind_speed"].shape[1] / max_batch_size
+        )
+
+        # iterate over batches
+        for _batch in range(int(_batches)):
+            # get and set correction factor
+            self.set_correction_factors(correction_factors=cf_correction_factor)
+
+            # calculate a starting point generation value
+            if _batch == int(_batches) - 1:
+                # if the last batch, the length may be shorter if total placements No is not a multiple of max_batch_size
+                len_locs = len(self.locs) - (_batch * max_batch_size)
+            else:
+                # all batches besides possibly the last must be of length max_batch_size
+                len_locs = max_batch_size
+            gen = _sim(
+                ws_correction_factors=np.array([1.0] * len_locs),
+                _batch=_batch,
+                max_batch_size=max_batch_size,
+            )
+            # calculate the target average cf
+            _target_cfs = (
+                np.nanmean(gen, axis=0)
+                * self.correction_factors[
+                    _batch * max_batch_size : (_batch + 1) * max_batch_size
+                ]
+            )
+
+            if (_target_cfs > 1).any():
+                raise ValueError(
+                    f"The current correction factors lead to target capacity factors greater 1.0."
+                )
+
+            # set the deviation based on corr factor
+            _deviations = (
+                1
+                / self.correction_factors[
+                    _batch * max_batch_size : (_batch + 1) * max_batch_size
+                ]
+            )
+
+            # iterate until the target cf average is met
+            _start = time.time()
+            _ws_corrs_i = np.array([1.0] * len(self.locs))
+            while (abs(_deviations - 1) > tolerance).any():
+                # safety fallback - exit in case of infinite loops
+                if time.time() - _start > timeout:
+                    raise TimeoutError(
+                        f"The simulation did not reach the required tolerance within the given timeout. Increase tolerance or timeout."
+                    )
+
+                # update the estimates correction factor for the wind speed for this iteration
+                _ws_corrs_i = _ws_corrs_i * np.cbrt(1 / _deviations)  # power law
+                # calculate with an adapted ws correction
+                gen = _sim(
+                    ws_correction_factors=_ws_corrs_i,
+                    _batch=_batch,
+                    max_batch_size=max_batch_size,
+                )
+                # calculate the new deviation
+                _deviations = np.nanmean(gen, axis=0) / _target_cfs
+
+            if _batch == 0:
+                tot_gen = gen
+            else:
+                tot_gen = np.concatenate([tot_gen, gen], axis=1)
+
+        self.sim_data["capacity_factor"] = tot_gen
+
+        return self
+
+    def apply_availability_factor(self, availability_factor):
+        """
+        Applies a relative reduction factor to the energy output (capacity factor) time series
+        to statistically account for non-availabilities.
+
+        Parameters
+        ----------
+        availability_factor : float
+            Factor that will be applied to the output time series.
+
+        Return
+        ------
+            A reference to the invoking WindWorkflowManager
+        """
+        assert (
+            availability_factor > 0 and availability_factor <= 1
+        ), f"availability_factor must be between 0 and 1.0."
+
+        self.sim_data["capacity_factor"] = (
+            self.sim_data["capacity_factor"] * availability_factor
+        )
+
+        return self
+
+    def apply_availability_factor(self, availability_factor):
+        """
+        Applies a relative reduction factor to the energy output (capacity factor) time series
+        to statistically account for non-availabilities.
+
+        Parameters
+        ----------
+        availability_factor : float
+            Factor that will be applied to the output time series.
+
+        Return
+        ------
+            A reference to the invoking WindWorkflowManager
+        """
+        assert (
+            availability_factor > 0 and availability_factor <= 1
+        ), f"availability_factor must be between 0 and 1.0."
+
+        self.sim_data["capacity_factor"] = (
+            self.sim_data["capacity_factor"] * availability_factor
+        )
 
         return self
 
@@ -307,4 +545,40 @@ class WindWorkflowManager(WorkflowManager):
             raise RuntimeError("Could not determine interpolation for all hub heights")
 
         self.placements[name] = interpolated_vals
+        return self
+
+    def set_correction_factors(self, correction_factors):
+        """
+        Gets the correction factors if necessary and sets them as class attribute.
+
+        Parameters
+        ----------
+        correction_factors : str, float
+            correction factor as float or path to the correction factor raster file
+
+        Return
+        --------
+            A reference to the invoking WindWorkflowManager
+        """
+        if isinstance(correction_factors, str):
+            if not isfile(correction_factors):
+                raise FileNotFoundError(
+                    f"correction_factors was passed as str but is not an existing file: {correction_factors}"
+                )
+            correction_factors = gk.raster.interpolateValues(
+                correction_factors, self.locs, mode="near"
+            )
+            assert not np.isnan(
+                correction_factors
+            ).any(), f"correction_factors extracted from raster must not be nan"
+        elif not isinstance(correction_factors, (float, int)):
+            raise TypeError(
+                f"correction_factors must either be a str formatted raster filepath or a float value"
+            )
+        else:
+            correction_factors = [correction_factors] * len(self.locs)
+
+        # write to attribute
+        self.correction_factors = np.array(correction_factors)
+
         return self

@@ -8,6 +8,7 @@ from types import FunctionType
 import warnings
 from scipy.interpolate import RectBivariateSpline
 import json
+import numbers
 
 # from reskit import solarpower
 
@@ -122,7 +123,7 @@ class SolarWorkflowManager(WorkflowManager):
         self.placements["azimuth"].values[self.locs.lats < 0] = 0
         return self
 
-    def apply_elevation(self, elev):
+    def apply_elevation(self, elev, fallback_elev=0):
         """
 
         apply_elevation(self)
@@ -131,24 +132,64 @@ class SolarWorkflowManager(WorkflowManager):
 
         Parameters
         ----------
-        elev: str, list
-              If a string is given it must be a path to a rasterfile including the elevations.
-              If a list is given it has to include the elevations at each location.
+        elev: str, int, iterable
+            If a string is given it must be a path to a rasterfile including the elevations.
+            If an iterable is given it has to include the elevations at each location and be
+            of equal length to self.placements dataframe.
+            If an integer is given, it will be applied to all locations equally.
 
+        fallback_elev: int, optional
+            The fallback value that will be used in case that elev is a raster path and the
+            extraction of the elevation from raster fails (applied only to no-data locations).
+            By default 0.
 
         Returns
         -------
         Returns a reference to the invoking SolarWorkflowManager object
 
         """
-
-        if isinstance(elev, str):
+        assert isinstance(
+            fallback_elev, int
+        ), f"'fallback_elev' must be an integer elevantion in [m]."
+        if elev is None and "elev" in self.placements.columns:
+            # elevation is already an attribute in the placements dataframe, do nothing if no external elev given
+            pass
+        elif elev is None:
+            # we don't have given elevation info, neither as elev arg nor in placements dataframe column
+            # set all values to fallback
+            self.placements["elev"] = np.array([fallback_elev] * len(self.locs))
+        elif isinstance(elev, str):
+            # assume we have a str formatted elevation raster path
             clipped_elev = self.ext.pad(0.5).rasterMosaic(elev)
-            self.placements["elev"] = gk.raster.interpolateValues(
-                clipped_elev, self.locs
-            )
+            if clipped_elev is None:
+                _elevs = np.array([np.nan] * len(self.locs))
+            else:
+                _elevs = gk.raster.interpolateValues(clipped_elev, self.locs)
+                if np.isnan(_elevs).any():
+                    # if getting values fails, it could be because of interpolation method
+                    # replace by 'near' interpolation
+                    _elevs_near = gk.raster.interpolateValues(
+                        clipped_elev, self.locs, mode="near"
+                    )
+                    _elevs[np.isnan(_elevs)] = _elevs_near[np.isnan(_elevs)]
+            if np.isnan(_elevs).any():
+                # if we still have nans, replace nans by fallback value
+                _elevs[np.isnan(_elevs)] = (
+                    np.ones(shape=_elevs.shape) * fallback_elev
+                )[np.isnan(_elevs)]
+            self.placements["elev"] = _elevs
         else:
-            self.placements["elev"] = elev
+            # try to just set elev as new column, works with scalars and iterables, and check if we have numeric values
+            try:
+                self.placements["elev"] = elev
+                assert all(
+                    [isinstance(x, numbers.Number) for x in self.placements["elev"]]
+                )
+            except:
+                # else rise a type error
+                raise TypeError(
+                    f"'elev' must be given as a path to a raster file or an integer or an iterable thereof with equal length to the dataframe length."
+                )
 
         return self
 
@@ -228,6 +269,21 @@ class SolarWorkflowManager(WorkflowManager):
             if key in solar_position_library:
                 _solpos_ = solar_position_library[key]
             else:
+                # make sure that no input is nan to avoid very hard-to-understand errors later on
+                _req = [
+                    self.time_index,
+                    row.lat,
+                    row.lon,
+                    row.elev,
+                    self.sim_data["surface_pressure"][:, loc],
+                    self.sim_data["surface_air_temperature"][:, loc],
+                ]
+                assert not any(
+                    [
+                        np.isnan(x).any() if hasattr(x, "__iter__") else np.isnan(x)
+                        for x in _req
+                    ]
+                ), f"Arguments for pvlib.solarposition.spa_python() may not be NaN."
                 _solpos_ = pvlib.solarposition.spa_python(
                     self.time_index,
                     latitude=row.lat,
@@ -923,7 +979,11 @@ class SolarWorkflowManager(WorkflowManager):
 
         return self
 
-    def configure_cec_module(self, module="WINAICO WSx-240P6"):
+    def configure_cec_module(
+        self,
+        module="WINAICO WSx-240P6",
+        tech_year=2050,
+    ):
         """
         configure_cec_module(self, module="WINAICO WSx-240P6")
 
@@ -939,6 +999,12 @@ class SolarWorkflowManager(WorkflowManager):
                 * A dict containing a set of module parameters, including:
                     T_NOCT, A_c, N_s, I_sc_ref, V_oc_ref, I_mp_ref, V_mp_ref, alpha_sc,
                     beta_oc, a_ref, I_L_ref, I_o_ref, R_s, R_sh_ref, Adjust, gamma_r, PTC
+        tech_year : int, optional
+            If given in combination with the projected module str names "WINAICO WSx-240P6" or
+            "LG Electronics LG370Q1C-A5", the effifiency will be scaled linearly to the given
+            year. Must then be between year of market comparison in analysis (2019) and 2050.
+            Will be ignored when non-projected existing module names or specific parameters
+            are given, can then be None. By default 2050.
 
         Returns
         -------
@@ -951,11 +1017,48 @@ class SolarWorkflowManager(WorkflowManager):
 
         """
 
+        def _interpolate_module_params(
+            projected_module, original_module_name, tech_year, start_year
+        ):
+            if not isinstance(tech_year, int):
+                raise TypeError(
+                    f"tech_year must be an integer when projected module is selected"
+                )
+            # avoid extrapolations
+            if not start_year <= tech_year <= 2050:
+                raise ValueError(
+                    f"tech_year must be between {start_year} and 2050 (max. projection) for this module"
+                )
+
+            # get the original (unprojected) module parameters
+            db = pvlib.pvsystem.retrieve_sam("CECMod")
+            original_module = getattr(db, original_module_name)
+            # scale module parameters to tech_year
+            module = pd.Series(index=projected_module.index, dtype="float64")
+            for param, val_proj in zip(projected_module.index, projected_module):
+                if param == "Date":
+                    module[param] = str(tech_year)
+                elif param in ["Version"]:
+                    # ignore, set dummy nan
+                    module[param] = np.nan
+                elif isinstance(val_proj, (int, float, np.integer)):
+                    module[param] = original_module[param] + (
+                        val_proj - original_module[param]
+                    ) * (tech_year - start_year) / (2050 - start_year)
+                else:
+                    assert (
+                        val_proj == original_module[param]
+                    ), f"parameter '{param}' is not the same for original ({original_module[param]}) and projected ({val_proj}) modules"
+                    module[param] = val_proj
+
+            return module
+
         if isinstance(module, str):
             self.register_workflow_parameter("module_name", module)
 
             if module == "WINAICO WSx-240P6":
-                module = pd.Series(
+                # define projected module parameters
+                module_2050 = pd.Series(
                     dict(
                         BIPV="N",
                         Date="6/2/2014",
@@ -980,9 +1083,20 @@ class SolarWorkflowManager(WorkflowManager):
                         Technology="Multi-c-Si",
                     )
                 )
+
+                # scale module parameters to tech_year
+                module = _interpolate_module_params(
+                    projected_module=module_2050,
+                    original_module_name="WINAICO_WSx_240P6",
+                    tech_year=tech_year,
+                    start_year=2019,
+                )
+
                 module.name = "WINAICO WSx-240P6"
+
             elif module == "LG Electronics LG370Q1C-A5":
-                module = pd.Series(
+                # define projected module parameters
+                module_2050 = pd.Series(
                     dict(
                         BIPV="N",
                         Date="12/14/2016",
@@ -1007,8 +1121,22 @@ class SolarWorkflowManager(WorkflowManager):
                         Technology="Mono-c-Si",
                     )
                 )
+
+                # scale module parameters to tech_year
+                module = _interpolate_module_params(
+                    projected_module=module_2050,
+                    original_module_name="LG_Electronics_Inc__LG370Q1C_A5",
+                    tech_year=tech_year,
+                    start_year=2019,
+                )
+
                 module.name = "LG Electronics LG370Q1C-A5"
+
             elif isinstance(module, str):
+                if tech_year is not None:
+                    warnings.warn(
+                        f"NOTE: The tech_year argument is ignored when a specific module is given. Set tech_year to None to silence this warning."
+                    )
                 # Extract module parameters
                 db = pvlib.pvsystem.retrieve_sam("CECMod")
                 try:
@@ -1018,6 +1146,10 @@ class SolarWorkflowManager(WorkflowManager):
                         "The module '{}' is not in the CEC database".format(module)
                     )
         else:
+            if tech_year is not None:
+                print(
+                    f"NOTE: The tech_year argument is ignored when specific module parameters are given."
+                )
             module = pd.Series(module)
             assert "T_NOCT" in module.index
             assert "A_c" in module.index
@@ -1056,7 +1188,9 @@ class SolarWorkflowManager(WorkflowManager):
         return self
 
     def simulate_with_interpolated_single_diode_approximation(
-        self, module="WINAICO WSx-240P6"
+        self,
+        module="WINAICO WSx-240P6",
+        tech_year=2050,
     ):
         """
         simulate_with_interpolated_single_diode_approximation(self, module="WINAICO WSx-240P6")
@@ -1072,6 +1206,12 @@ class SolarWorkflowManager(WorkflowManager):
                 * A module found in the pvlib.pvsystem.retrieve_sam("CECMod") database
                 * "WINAICO WSx-240P6" -> Good for open-field applications
                 * "LG Electronics LG370Q1C-A5" -> Good for rooftop applications
+        tech_year : int, optional
+            If given in combination with the projected module str names "WINAICO WSx-240P6" or
+            "LG Electronics LG370Q1C-A5", the effifiency will be scaled linearly to the given
+            year. Must then be between year of market comparison in analysis (2019) and 2050.
+            Will be ignored when non-projected existing module names or specific parameters
+            are given, can then be None. By default 2050.
 
         Returns
         -------
@@ -1112,7 +1252,7 @@ class SolarWorkflowManager(WorkflowManager):
         assert "poa_global" in self.sim_data
         assert "cell_temperature" in self.sim_data
 
-        self.configure_cec_module(module)
+        self.configure_cec_module(module, tech_year)
 
         sel = self.sim_data["poa_global"] > 0
 
@@ -1320,5 +1460,50 @@ class SolarWorkflowManager(WorkflowManager):
 
         return self
 
-    # def to_xarray(self, output_netcdf_path=None):
-    #     xds = super().to_xarray(_intermediate_dict=True)
+    def estimate_missing_params(self, elev, convention="Ryberg2020"):
+        if not "tilt" in self.placements.columns:
+            self.estimate_tilt_from_latitude(convention=convention)
+        else:
+            # make sure all placements have not Nan values
+            placements_without_param = self.placements[self.placements.tilt.isna()]
+            if not placements_without_param.empty:
+                print(
+                    f"Placements dataframe contains 'tilt' column yet not all placements have tilt values. Estimating based on convention={convention}"
+                )
+                _wf = SolarWorkflowManager(placements_without_param)
+                _wf.estimate_tilt_from_latitude(convention=convention)
+                self.placements.loc[_wf.placements.tilt.index, "tilt"] = (
+                    _wf.placements.tilt.values
+                )
+
+        if not "azimuth" in self.placements.columns:
+            self.estimate_azimuth_from_latitude()
+        else:
+            # make sure all placements have not Nan values
+            placements_without_param = self.placements[self.placements.azimuth.isna()]
+            if not placements_without_param.empty:
+                print(
+                    f"Placements dataframe contains 'azimuth' column yet not all placements have azimuth values. Estimating."
+                )
+                _wf = SolarWorkflowManager(placements_without_param)
+                _wf.estimate_azimuth_from_latitude()
+                self.placements.loc[_wf.placements.azimuth.index, "azimuth"] = (
+                    _wf.placements.azimuth.values
+                )
+
+        if not "elev" in self.placements.columns:
+            self.apply_elevation(elev)
+        else:
+            # make sure all placements have not Nan values
+            placements_without_param = self.placements[self.placements.elev.isna()]
+            if not placements_without_param.empty:
+                print(
+                    f"Placements dataframe contains 'elev' column yet not all placements have elev values. Estimating based on elev={elev}"
+                )
+                _wf = SolarWorkflowManager(placements_without_param)
+                _wf.apply_elevation(elev)
+                self.placements.loc[_wf.placements.elev.index, "elev"] = (
+                    _wf.placements.elev.values
+                )
+
+        return self

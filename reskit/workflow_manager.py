@@ -12,6 +12,9 @@ from typing import Union, List, OrderedDict
 from . import weather as rk_weather
 from glob import glob
 from osgeo import ogr
+import warnings
+from . import util as rk_util
+import xarray as xr
 
 # from . import weather as rk_weather
 
@@ -226,7 +229,8 @@ class WorkflowManager:
 
         return self
 
-    # Stage 3: Weather data adjusting & other intermediate steps
+        # Stage 3: Weather data adjusting & other intermediate steps
+
     def adjust_variable_to_long_run_average(
         self,
         variable: str,
@@ -235,6 +239,7 @@ class WorkflowManager:
         real_lra_scaling: float = 1,
         spatial_interpolation: str = "linear-spline",
         nodata_fallback: str = "nan",
+        nodata_fallback_scaling: float = 1,
     ):
         """Adjusts the average mean of the specified variable to a known long-run-average
 
@@ -273,60 +278,124 @@ class WorkflowManager:
             - By default "linear-spline"
             - See for more info: geokit.raster.interpolateValues
 
-        nodata_fallback: str, optional
-            When real_long_run_average has no data, it can be decided between fallbackoptions:
-            -'source': use source data
-            - 'nan': return np.nan for missing values
+        nodata_fallback: float, str, callable, optional
+            When real_long_run_average has no data, one can decide between different fallback options, by default np.nan:
+            - np.nan or None : return np.nan for missing values in real_long_run_average
+            - float : Apply this float value as a scaling factor for all no-data locations only: source_long_run_average * nodata_fallback.
+              NOTE: A value of 1.0 will return the source lra value in case of missing real lra values (no additional nodata_fallback_scaling applied).
+            - str : Will be interpreted as a filepath to a raster with alternative real_long_run_average values, scaled by nodata_fallback_scaling.
+            - callable : any callable method taking the arguments (all iterables): 'locs' and 'source_long_run_average_value'
+              (the locations as gk.geom.point objects and original value from source data). The output values will be considered as
+              the new real_long_run_average for missing locations only (absolute data, no additional nodata_fallback_scaling applied).
+            NOTE: np.nan will also be returned in case that the nodata fallback does not yield values either.
+
+        nodata_fallback_scaling: float
+            An optional scaling factor to apply to the values derived from `nodata_fallback`.
+            - This is primarily useful when `nodata_fallback` is a path to a raster file
+            - By default 1
+
         Returns
         -------
         WorkflowManager
             Returns the invoking WorkflowManager (for chaining)
         """
+        if not (
+            nodata_fallback is None
+            or callable(nodata_fallback)
+            or isinstance(nodata_fallback, (float, int, str))
+        ):
+            raise TypeError(f"'nodata_fallback' must be a float or a Callable.")
 
-        if isinstance(real_long_run_average, str):
-            real_lra = gk.raster.interpolateValues(
-                real_long_run_average, self.locs, mode=spatial_interpolation
-            )
-            # if getting values fails, it could be because of interpolation method.
-            # thise values will be replaced with the nearest interpolation method
-            if np.isnan(real_lra).any():
-                real_lra_near = gk.raster.interpolateValues(
-                    real_long_run_average, self.locs, mode="near"
+        def _get_lra_values_from_raster(fp, spatial_interpolation):
+            assert isfile(
+                fp
+            ), f"File '{fp}' in adjust_variable_to_long_run_average() does not exist."
+            # execute with warnings filter since values outside of source data would trigger geokit UserWarning every time
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                _lra = gk.raster.interpolateValues(
+                    fp, self.locs, mode=spatial_interpolation
                 )
-                real_lra[np.isnan(real_lra)] = real_lra_near[np.isnan(real_lra)]
+                # if getting values fails, it could be because of interpolation method.
+                # these values will be replaced with the nearest interpolation method
+                if np.isnan(_lra).any():
+                    _lra_near = gk.raster.interpolateValues(fp, self.locs, mode="near")
+                    _lra[np.isnan(_lra)] = _lra_near[np.isnan(_lra)]
+            return _lra
 
-            # assert not np.isnan(real_lra).any() and (real_lra > 0).all()
+        # first get source values
+        if isinstance(source_long_run_average, str):
+            # assue raster fp
+            source_lra = _get_lra_values_from_raster(
+                fp=source_long_run_average, spatial_interpolation="linear-spline"
+            )
+        else:
+            source_lra = source_long_run_average
+
+        # then get lng-run average values for scaling
+        if isinstance(real_long_run_average, str):
+            # assume a raster path
+            real_lra = _get_lra_values_from_raster(
+                fp=real_long_run_average, spatial_interpolation=spatial_interpolation
+            )
         else:
             real_lra = real_long_run_average
 
-        if isinstance(source_long_run_average, str):
-            source_lra = gk.raster.interpolateValues(
-                source_long_run_average, self.locs, mode=spatial_interpolation
+        # replace missing values with no-data fallback if needed
+        if isinstance(nodata_fallback, str) and nodata_fallback.lower() == "source":
+            warnings.warn(
+                "'source' value for 'nodata_fallback' is deprecated and will be removed soon. Use 1.0 instead.",
+                DeprecationWarning,
             )
-            # if getting values fails, it could be because of interpolation method.
-            # thise values will be replaced with the nearest interpolation method
-            if np.isnan(source_lra).any():
-                source_lra_nearest = gk.raster.interpolateValues(
-                    source_long_run_average, self.locs, mode="near"
+            nodata_fallback = 1.0
+        if isinstance(nodata_fallback, str) and nodata_fallback.lower() == "nan":
+            warnings.warn(
+                "'nan' value for 'nodata_fallback' is deprecated and will be removed soon. Use np.nan instead.",
+                DeprecationWarning,
+            )
+            nodata_fallback = np.nan
+        if any(np.isnan(real_lra)):
+            # we are lacking long-run average values
+            if nodata_fallback is None or (
+                isinstance(nodata_fallback, float) and np.isnan(nodata_fallback)
+            ):
+                # nans will be returned for missing lra values
+                fallback_lra = np.array([np.nan] * len(real_lra))
+            elif isinstance(nodata_fallback, (int, float)):
+                # apply factor to source_lra to scale missing values
+                fallback_lra = nodata_fallback * source_lra  # no additional scaling
+            elif callable(nodata_fallback):
+                # apply function to calculate missing values
+                fallback_lra = nodata_fallback(
+                    locs=self.locs, source_long_run_average_value=source_lra
+                )  # no additional scaling
+            elif isinstance(nodata_fallback, str):
+                # assume this is yet another raster path as fallback and extract missing values
+                fallback_lra = (
+                    _get_lra_values_from_raster(
+                        fp=nodata_fallback, spatial_interpolation=spatial_interpolation
+                    )
+                    * nodata_fallback_scaling
                 )
-                source_lra[np.isnan(source_lra)] = source_lra_nearest[
-                    np.isnan(source_lra)
-                ]
-            # assert not np.isnan(source_lra).any() and (source_lra > 0).all()
-        else:
-            source_lra = source_long_run_average
+
+            # divide by real_lra_scaling once to compensate later multiplication below for
+            # scaling factor, nodata_fallback should not be multiplied by real_lra_scaling
+            fallback_lra = fallback_lra / real_lra_scaling
+            # set fallback values where real_lra is nan
+            real_lra[np.isnan(real_lra)] = fallback_lra[np.isnan(real_lra)]
 
         # calulate scaling factor:
         # nan result will stay nan results, as these placements cannot be calculated any more
         factors = real_lra * real_lra_scaling / source_lra
+        if any(np.isnan(real_lra)):
+            warnings.warn(
+                f"NaN values remaining in real lra after application of nodata_fallback."
+            )
 
         # write info with missing values to sim_data:
         self.placements[
-            f"missing_values_{os.path.basename(real_long_run_average)}"
+            f"missing_values_{os.path.basename(real_long_run_average)}_nodata_fallback{nodata_fallback}"
         ] = np.isnan(factors)
-
-        if nodata_fallback.lower() == "source":
-            factors[np.isnan(factors)] = 1
 
         self.sim_data[variable] = factors * self.sim_data[variable]
         self.placements[f"LRA_factor_{variable}"] = factors
@@ -413,8 +482,14 @@ class WorkflowManager:
         WorkflowManager
             Returns the invoking WorkflowManager (for chaining)
         """
+        # filter only existing variables
+        _variables = [_var for _var in variables if _var in self.sim_data.keys()]
+        if len(_variables) < len(variables):
+            warnings.warn(
+                f"Loss factor could not be applied to the following requested variables because variables are not in sim_data: {', '.join(sorted(set(variables)-set(_variables)))}"
+            )
 
-        for var in variables:
+        for var in _variables:
             if isinstance(loss, FunctionType):
                 self.sim_data[var] *= 1 - loss(self.sim_data[var])
             else:
@@ -467,6 +542,13 @@ class WorkflowManager:
         xarray.Dataset
             The resulting XArray dataset
         """
+        if isinstance(output_variables, str):
+            output_variables = [output_variables]
+        if (
+            isinstance(output_variables, list)
+            and not "RESKit_sim_order" in output_variables
+        ):
+            output_variables.append("RESKit_sim_order")
 
         times = self.time_index
         if times[0].tz is not None:
@@ -516,7 +598,7 @@ class WorkflowManager:
                 if key not in output_variables:
                     continue
 
-            tmp = np.full((len(self.time_index), self.locs.count), np.nan)
+            tmp = np.full((len(self.time_index), self.locs.count), 0.0, dtype=float)
             tmp[self._time_sel_, :] = self.sim_data[key]
 
             xds[key] = xarray.DataArray(
@@ -551,6 +633,65 @@ class WorkflowManager:
 
         for k, v in self.workflow_parameters.items():
             xds.attrs[k] = v
+
+        if output_netcdf_path is not None:
+            xds.to_netcdf(output_netcdf_path, encoding=encoding)
+            return output_netcdf_path
+        else:
+            return xds
+
+    def to_netcdf(
+        self,
+        xds: xarray.Dataset,
+        output_netcdf_path: str = None,
+        output_variables: List[str] = None,
+        _intermediate_dict=False,
+    ) -> str:
+        """Saves an XArray dataset to netCDF4 format
+
+        Note:
+        - The `.placements` data is automatically added to the XArray dataset along the 'locations' dimension
+        - The `workflow_parameters` data is autmatically added as dimensionless variables
+        - The `.sim_data` is automatically added along the dimensions (time, locations)
+        - The `.time_index` is automatically added along the dimension 'time'
+
+        Parameters
+        ----------
+        output_netcdf_path : str
+            If given, the XArray dataset will be written to disc at the specified path
+            - By default None
+
+        output_variables : List[str], optional
+            If given, specifies the variables which should be included in the resulting
+            dataset. Otherwise all suitable variables found in `.placements`, `.workflow_parameters`,
+            `.sim_data`, and `.time_index` will be included
+            - Only variables of numeric or string type are suitable due to NetCDF4 limitations
+            - By default None
+
+        Returns
+        -------
+        output_netcdf_path
+            The resulting output_netcdf_path
+        """
+        encoding = dict()
+
+        # write sim_data
+        for key in self.sim_data.keys():
+            # check if key in requestet output_variables
+            if output_variables is not None:
+                if key not in output_variables:
+                    continue
+            encoding[key] = dict(zlib=True)
+
+        # FIXME: WHAT IS THIS FOR?
+        # #write sim_data_daily, only if exists
+        # if hasattr(self, 'sim_data_daily'):
+        #     for key in self.sim_data_daily.keys():
+        #         #check if key in requestet output_variables
+        #         if output_variables is not None:
+        #             if key not in output_variables:
+        #                 continue
+        #         encoding[key] = dict(zlib=True)
 
         if output_netcdf_path is not None:
             xds.to_netcdf(output_netcdf_path, encoding=encoding)
@@ -703,6 +844,87 @@ def load_workflow_result(datasets, loader=xarray.load_dataset, sortby="location"
         ds = ds.sortby(sortby)
 
     return ds
+
+
+def execute_workflow_iteratively(
+    workflow,
+    weather_path_varname,
+    zoom=None,
+    **workflow_args,
+):
+    """
+    The function executes the indicated workflow iteratively, iterating over weather tiles. The appropriate weather
+    tile per placement is extracted automatically and placements are batched together based on weather tile.
+
+    workflow : RESkit workflow
+        Callable workflow function, e.g. reskit.wind.wind_era5_2023
+    weather_path_varname : str
+        Str formatted name of the weather path variable in this workflow, e.g. 'era5_path' for
+        reskit.wind.wind_era5_2023. Must must be a key of workflow_args.
+    zoom : int, optional
+        The zoom level of the weather tiles, required only if <X-TILE> or <Y-TILE> in weather path.
+    **workflow_args
+        Passed on to the workflow specified above. Must contain 'placements' and the above
+        weather_path_varname as keys.
+    """
+    # check key inputs
+    assert callable(workflow), f"workflow must be a callable RESkit workflow function."
+    assert (
+        "placements" in workflow_args.keys()
+    ), f"'placements' is a mandatory argument/key in workflow_args"
+    assert (
+        weather_path_varname in workflow_args.keys()
+    ), f"weather_path_varname ('{weather_path_varname}')  must be a key in workflow_args."
+
+    # extract data needed for placement preparation
+    placements = workflow_args["placements"]
+    if "output_netcdf_path" in workflow_args.keys():
+        output_netcdf_path = workflow_args["output_netcdf_path"]
+    else:
+        output_netcdf_path = None
+    if "output_variables" in workflow_args.keys():
+        output_variables = workflow_args["output_variables"]
+    else:
+        output_variables = None
+
+    # possibly generate dataframe from single locations and add actual weather filepath where needed
+    if not weather_path_varname in placements.columns:
+        weather_path = workflow_args[weather_path_varname]
+        placements = rk_util.get_dataframe_with_weather_tilepaths(
+            placements=placements, weather_path=weather_path, zoom=zoom
+        )
+    if not "RESKit_sim_order" in placements.columns:
+        placements["RESKit_sim_order"] = range(len(placements))
+
+    # remove output saving for the iterative function execution of sub dfs
+    workflow_args.update({"output_netcdf_path": None})
+
+    # iterate over weather tiles
+    xrds_list = []
+    for i, tilepath in enumerate(placements["source"].unique()):
+        # reduce placements to subset within the current tile and update function arguments with subset of placements and current weather path
+        placements_tile = placements[placements["source"] == tilepath]
+        workflow_args.update(
+            {"placements": placements_tile, weather_path_varname: tilepath},
+        )
+        # execute workflow with subset and add to list of results
+        print(
+            f"Now processing tile {i+1}/{len(placements['source'].unique())} with {len(placements_tile)} locations: {tilepath}"
+        )
+        xrds = workflow(**workflow_args)
+        xrds = xrds.set_index(location="RESKit_sim_order")
+        xrds_list.append(xrds)
+
+    reskit_xr = xr.concat(xrds_list, dim="location")
+    # create a dummy wfm instance for saving
+    wfm = WorkflowManager(placements=placements.drop(columns="RESKit_sim_order"))
+    wfm.to_netcdf(
+        xds=reskit_xr,
+        output_netcdf_path=output_netcdf_path,
+        output_variables=output_variables,
+    )
+
+    return reskit_xr
 
 
 class WorkflowQueue:

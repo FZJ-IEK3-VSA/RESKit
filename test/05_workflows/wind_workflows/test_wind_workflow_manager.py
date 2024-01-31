@@ -3,6 +3,7 @@ import numpy as np
 from reskit.wind import WindWorkflowManager, PowerCurve
 import reskit as rk
 import pytest
+from reskit import TEST_DATA
 
 
 def test_WindWorkflowManager___init__():
@@ -161,5 +162,102 @@ def test_WindWorkflowManager_simulate(pt_WindWorkflowManager_loaded):
     man = pt_WindWorkflowManager_loaded
 
     man.simulate()
-    assert np.isclose(man.sim_data["capacity_factor"].mean(), 0.4845866909936545)
-    assert np.isclose(man.sim_data["capacity_factor"].std(), 0.32753677878391835)
+    assert np.isclose(man.sim_data["capacity_factor"].mean(), 0.4845642857142858)
+    assert np.isclose(man.sim_data["capacity_factor"].std(), 0.3275352284371056)
+
+    # test with max_batch_size = 3
+    man_batch = pt_WindWorkflowManager_loaded
+
+    man_batch.simulate(max_batch_size=3)
+    assert np.isclose(
+        man_batch.sim_data["capacity_factor"].mean(),
+        man.sim_data["capacity_factor"].mean(),
+    )
+    assert np.isclose(
+        man_batch.sim_data["capacity_factor"].std(),
+        man.sim_data["capacity_factor"].std(),
+    )
+
+    # check again with scalar powercurve correction
+    correct_to = 0.5
+    tolerance = 0.05
+    man.simulate(cf_correction_factor=correct_to, tolerance=tolerance)
+
+    assert np.isclose(
+        man.sim_data["capacity_factor"].mean(),
+        0.4845866909936545 * correct_to,
+        rtol=tolerance,
+    )
+
+    # repeat with correction factor raster
+    correction_raster = TEST_DATA[
+        "dummy_correction_factors.tif"
+    ]  # abuse GSA raster for correction (mean ~2.9)
+    man.simulate(cf_correction_factor=correction_raster, tolerance=tolerance)
+
+    avg_corr_factor = 0.8348340150085444  # from dummy data
+    assert np.isclose(
+        man.sim_data["capacity_factor"].mean(),
+        0.4845866909936545 * avg_corr_factor,
+        rtol=tolerance,
+    )
+
+
+def test_WindWorkflowManager_mixed_values___init___():
+    placements = pd.DataFrame()
+    placements["lon"] = [
+        6.083,
+        6.183,
+        6.083,
+        6.183,
+        6.083,
+    ]
+    placements["lat"] = [
+        50.475,
+        50.575,
+        50.675,
+        50.775,
+        50.875,
+    ]
+    placements["hub_height"] = [
+        140,
+        140,
+        140,
+        140,
+        140,
+    ]
+    placements["capacity"] = [2000, 3000, 4000, 3600, 6000]
+    placements["rotor_diam"] = [136, 136, 136, 116, 136]
+    placements["powerCurve"] = [None, None, None, "V117-3600_Vestas", None]
+
+    man = WindWorkflowManager(
+        placements, synthetic_power_curve_cut_out=25, synthetic_power_curve_rounding=1
+    )
+
+    assert "SPC:138,25" in man.powerCurveLibrary and isinstance(
+        man.powerCurveLibrary["SPC:138,25"], PowerCurve
+    )
+    assert "SPC:207,25" in man.powerCurveLibrary and isinstance(
+        man.powerCurveLibrary["SPC:207,25"], PowerCurve
+    )
+    assert "SPC:275,25" in man.powerCurveLibrary and isinstance(
+        man.powerCurveLibrary["SPC:275,25"], PowerCurve
+    )
+    assert "V117-3600_Vestas" in man.powerCurveLibrary and isinstance(
+        man.powerCurveLibrary["V117-3600_Vestas"], PowerCurve
+    )
+    assert "SPC:413,25" in man.powerCurveLibrary and isinstance(
+        man.powerCurveLibrary["SPC:413,25"], PowerCurve
+    )
+
+    assert (man.placements["lon"] == placements["lon"]).all()
+    assert (man.placements["lat"] == placements["lat"]).all()
+    assert (man.placements["hub_height"] == placements["hub_height"]).all()
+    assert (man.placements["capacity"] == placements["capacity"]).all()
+    assert (man.placements["rotor_diam"] == placements["rotor_diam"]).all()
+    assert (
+        man.placements["powerCurve"]
+        == ["SPC:138,25", "SPC:207,25", "SPC:275,25", "V117-3600_Vestas", "SPC:413,25"]
+    ).all()
+
+    return man

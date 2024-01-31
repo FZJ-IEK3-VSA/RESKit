@@ -7,6 +7,7 @@ from .workflow_manager import (
     WorkflowQueue,
     distribute_workflow,
     load_workflow_result,
+    execute_workflow_iteratively,
 )
 from . import wind
 from . import solar
