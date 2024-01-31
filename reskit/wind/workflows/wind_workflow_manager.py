@@ -315,6 +315,9 @@ class WindWorkflowManager(WorkflowManager):
     ):
         """
         Applies the invoking power curve to the given wind speeds.
+        A max_batch_size can be set, splitting the simulation in batches.
+        If set, cf_correction_factor is applied iteratively to adjust avreage cf output.
+        Capacity factors are calculated in the subfunction _sim(), which is called iteratively.
 
         max_batch_size : int, optional
             The maximum number of locations to be simulated simultaneously.
@@ -339,6 +342,10 @@ class WindWorkflowManager(WorkflowManager):
         """
 
         def _sim(ws_correction_factors, _batch, max_batch_size):
+            """
+            Applies the invoking power curve to the given wind speeds.
+            """
+
             _gen = np.zeros_like(
                 self.sim_data["elevated_wind_speed"][
                     :, _batch * max_batch_size : (_batch + 1) * max_batch_size
