@@ -179,6 +179,8 @@ class WorkflowManager:
                 source_constructor = rk_weather.SarahSource
             elif source_type == "MERRA":
                 source_constructor = rk_weather.MerraSource
+            elif source_type == "ICON-LAM":
+                source_constructor = rk_weather.IconlamSource
             else:
                 raise RuntimeError("Unknown source_type")
 
