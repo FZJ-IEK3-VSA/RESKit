@@ -8,4 +8,5 @@ from .workflows.workflows import (
     openfield_pv_era5,
     openfield_pv_sarah_unvalidated,
     openfield_pv_iconlam,
+    openfield_pv_era5pure,
 )
