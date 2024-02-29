@@ -1269,7 +1269,11 @@ class SolarWorkflowManager(WorkflowManager):
         
         sel_total = self.sim_data["poa_global"] > 0
 
-        No_batches = np.floor(len(sel_total)/max_batch_size)
+        # if not given set max batch size to all placements if not given
+        if max_batch_size is None:
+            max_batch_size = sel_total.shape[1]
+        # get No. of batches required with current batch size
+        No_batches = np.ceil(len(sel_total)/max_batch_size)
 
         for i in range(No_batches):
             
