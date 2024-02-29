@@ -1273,15 +1273,15 @@ class SolarWorkflowManager(WorkflowManager):
         if max_batch_size is None:
             max_batch_size = sel_total.shape[1]
         # get No. of batches required with current batch size
-        No_batches = np.ceil(len(sel_total)/max_batch_size)
+        No_batches = np.ceil(sel_total.shape[1]/max_batch_size)
 
         for i in range(int(No_batches)):
             
             # Create sel array as False array of shape of sim data
             sel = np.zeros_like( 
-                self.sim_data["poa_global"]
+                self.sim_data["poa_global"],
+                dtype=bool,
             )
-            sel[sel==0]=False
             # write data only into the columns contained in current batch
             sel[ :, i*max_batch_size:(i+1)*max_batch_size] = sel_total[:, i*max_batch_size:(i+1)*max_batch_size]
 
