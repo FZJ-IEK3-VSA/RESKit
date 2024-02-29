@@ -1255,7 +1255,7 @@ class SolarWorkflowManager(WorkflowManager):
 
         self.configure_cec_module(module, tech_year)
 
-        self.sim_data["module_dc_power_at_mpp"] = np.zeros_like( 
+        self.sim_data["module_dc_power_at_mpp"] = np.zeros_like(
             self.sim_data["poa_global"]
         )
 
@@ -1263,27 +1263,27 @@ class SolarWorkflowManager(WorkflowManager):
             self.sim_data["poa_global"]
         )
 
-        self.sim_data["capacity_factor"] = np.zeros_like(
-            self.sim_data["poa_global"]
-        )
-        
+        self.sim_data["capacity_factor"] = np.zeros_like(self.sim_data["poa_global"])
+
         sel_total = self.sim_data["poa_global"] > 0
 
         # if not given set max batch size to all placements if not given
         if max_batch_size is None:
             max_batch_size = sel_total.shape[1]
         # get No. of batches required with current batch size
-        No_batches = np.ceil(sel_total.shape[1]/max_batch_size)
+        No_batches = np.ceil(sel_total.shape[1] / max_batch_size)
 
         for i in range(int(No_batches)):
-            
+
             # Create sel array as False array of shape of sim data
-            sel = np.zeros_like( 
+            sel = np.zeros_like(
                 self.sim_data["poa_global"],
                 dtype=bool,
             )
             # write data only into the columns contained in current batch
-            sel[ :, i*max_batch_size:(i+1)*max_batch_size] = sel_total[:, i*max_batch_size:(i+1)*max_batch_size]
+            sel[:, i * max_batch_size : (i + 1) * max_batch_size] = sel_total[
+                :, i * max_batch_size : (i + 1) * max_batch_size
+            ]
 
             poa = self.sim_data["poa_global"][sel]
             cell_temp = self.sim_data["cell_temperature"][sel]
@@ -1329,28 +1329,28 @@ class SolarWorkflowManager(WorkflowManager):
             interpolator = RectBivariateSpline(
                 _temp, _poa, gen["p_mp"].reshape(poaM.shape), kx=3, ky=3
             )
-            
-            self.sim_data["module_dc_power_at_mpp"][sel] = interpolator( #TIME CONSUMING!
+
+            self.sim_data["module_dc_power_at_mpp"][sel] = interpolator(
                 cell_temp, poa, grid=False
-            )
+            )  # TIME CONSUMING!
 
             interpolator = RectBivariateSpline(
                 _temp, _poa, gen["v_mp"].reshape(poaM.shape), kx=3, ky=3
             )
-            
-            self.sim_data["module_dc_voltage_at_mpp"][sel] = interpolator( #TIME CONSUMING!
-                cell_temp, poa, grid=False
-            )
 
-            self.sim_data["capacity_factor"][sel] = self.sim_data["module_dc_power_at_mpp"][sel] / (
-                self.module.I_mp_ref * self.module.V_mp_ref
-            )
+            self.sim_data["module_dc_voltage_at_mpp"][sel] = interpolator(
+                cell_temp, poa, grid=False
+            )  # TIME CONSUMING!
+
+            self.sim_data["capacity_factor"][sel] = self.sim_data[
+                "module_dc_power_at_mpp"
+            ][sel] / (self.module.I_mp_ref * self.module.V_mp_ref)
 
         # Estimate total system generation
         if "capacity" in self.placements.columns:
             self.sim_data["total_system_generation"] = self.sim_data[
                 "capacity_factor"
-            ]* np.broadcast_to(self.placements.capacity, self._sim_shape_)
+            ] * np.broadcast_to(self.placements.capacity, self._sim_shape_)
 
         if (
             "modules_per_string" in self.placements.columns

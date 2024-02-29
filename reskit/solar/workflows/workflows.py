@@ -127,7 +127,9 @@ def openfield_pv_merra_ryberg2019(
     wf.cell_temperature_from_sapm()
 
     wf.simulate_with_interpolated_single_diode_approximation(
-        module=module, tech_year=tech_year, max_batch_size=max_batch_size,
+        module=module,
+        tech_year=tech_year,
+        max_batch_size=max_batch_size,
     )
 
     if inverter is not None:
@@ -356,7 +358,9 @@ def openfield_pv_era5(
     wf.cell_temperature_from_sapm()
 
     wf.simulate_with_interpolated_single_diode_approximation(
-        module=module, tech_year=tech_year, max_batch_size=max_batch_size,
+        module=module,
+        tech_year=tech_year,
+        max_batch_size=max_batch_size,
     )
 
     if inverter is not None:
@@ -502,7 +506,9 @@ def openfield_pv_sarah_unvalidated(
     wf.cell_temperature_from_sapm()
 
     wf.simulate_with_interpolated_single_diode_approximation(
-        module=module, tech_year=tech_year, max_batch_size=max_batch_size,
+        module=module,
+        tech_year=tech_year,
+        max_batch_size=max_batch_size,
     )
 
     if inverter is not None:
