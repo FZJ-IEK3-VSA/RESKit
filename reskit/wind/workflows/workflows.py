@@ -346,7 +346,7 @@ def wind_era5_2023(
     output_variables=None,
     nodata_fallback="nan",
     correction_factor=1.0,
-    max_batch_size=25000,
+    max_batch_size=15000,
     wake_reduction_curve_name="dena_mean",
     availability_factor=0.98,
     era5_lra_path=None,
