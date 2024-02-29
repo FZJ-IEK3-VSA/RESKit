@@ -1191,7 +1191,7 @@ class SolarWorkflowManager(WorkflowManager):
         self,
         module="WINAICO WSx-240P6",
         tech_year=2050,
-        max_batch_size=7500,
+        max_batch_size=None,
     ):
         """
         simulate_with_interpolated_single_diode_approximation(self, module="WINAICO WSx-240P6")
