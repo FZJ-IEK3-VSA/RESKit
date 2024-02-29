@@ -1275,7 +1275,7 @@ class SolarWorkflowManager(WorkflowManager):
         # get No. of batches required with current batch size
         No_batches = np.ceil(len(sel_total)/max_batch_size)
 
-        for i in range(No_batches):
+        for i in range(int(No_batches)):
             
             # Create sel array as False array of shape of sim data
             sel = np.zeros_like( 
