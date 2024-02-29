@@ -1283,7 +1283,7 @@ class SolarWorkflowManager(WorkflowManager):
             )
             sel[sel==0]=False
             # write data only into the columns contained in current batch
-            sel.loc[i*max_batch_size:(i+1)*max_batch_size, :] = sel_total.loc[i*max_batch_size:(i+1)*max_batch_size, :]
+            sel[ :, i*max_batch_size:(i+1)*max_batch_size] = sel_total[:, i*max_batch_size:(i+1)*max_batch_size]
 
             poa = self.sim_data["poa_global"][sel]
             cell_temp = self.sim_data["cell_temperature"][sel]
