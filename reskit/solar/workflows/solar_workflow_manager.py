@@ -1191,6 +1191,7 @@ class SolarWorkflowManager(WorkflowManager):
         self,
         module="WINAICO WSx-240P6",
         tech_year=2050,
+        max_batch_size=7500,
     ):
         """
         simulate_with_interpolated_single_diode_approximation(self, module="WINAICO WSx-240P6")
@@ -1254,78 +1255,98 @@ class SolarWorkflowManager(WorkflowManager):
 
         self.configure_cec_module(module, tech_year)
 
-        sel = self.sim_data["poa_global"] > 0
-
-        poa = self.sim_data["poa_global"][sel]
-        cell_temp = self.sim_data["cell_temperature"][sel]
-
-        # Use RectBivariateSpline to speed up simulation, but at the cost of accuracy (should still be >99.996%)
-        maxpoa = np.nanmax(poa)
-
-        _poa = np.concatenate(
-            [
-                np.logspace(-1, np.log10(maxpoa / 10), 20, endpoint=False),
-                np.linspace(maxpoa / 10, maxpoa, 80),
-            ]
-        )
-        _temp = np.linspace(cell_temp.min(), cell_temp.max(), 100)
-        poaM, tempM = np.meshgrid(_poa, _temp)
-
-        sotoParams = pvlib.pvsystem.calcparams_desoto(
-            effective_irradiance=poaM.flatten(),
-            temp_cell=tempM.flatten(),
-            alpha_sc=self.module.alpha_sc,
-            a_ref=self.module.a_ref,
-            I_L_ref=self.module.I_L_ref,
-            I_o_ref=self.module.I_o_ref,
-            R_sh_ref=self.module.R_sh_ref,
-            R_s=self.module.R_s,
-            EgRef=1.121,  # PVLIB v0.7.2 Default
-            dEgdT=-0.0002677,  # PVLIB v0.7.2 Default
-            irrad_ref=1000,  # PVLIB v0.7.2 Default
-            temp_ref=25,  # PVLIB v0.7.2 Default
-        )
-
-        photoCur, satCur, resSeries, resShunt, nNsVth = sotoParams
-        gen = pvlib.pvsystem.singlediode(
-            photocurrent=photoCur,
-            saturation_current=satCur,
-            resistance_series=resSeries,
-            resistance_shunt=resShunt,
-            nNsVth=nNsVth,
-            ivcurve_pnts=None,  # PVLIB v0.7.2 Default
-            method="lambertw",  # PVLIB v0.7.2 Default
-        )
-
-        interpolator = RectBivariateSpline(
-            _temp, _poa, gen["p_mp"].reshape(poaM.shape), kx=3, ky=3
-        )
-        self.sim_data["module_dc_power_at_mpp"] = np.zeros_like(
+        self.sim_data["module_dc_power_at_mpp"] = np.zeros_like( 
             self.sim_data["poa_global"]
         )
-        self.sim_data["module_dc_power_at_mpp"][sel] = interpolator(
-            cell_temp, poa, grid=False
-        )
 
-        interpolator = RectBivariateSpline(
-            _temp, _poa, gen["v_mp"].reshape(poaM.shape), kx=3, ky=3
-        )
         self.sim_data["module_dc_voltage_at_mpp"] = np.zeros_like(
             self.sim_data["poa_global"]
         )
-        self.sim_data["module_dc_voltage_at_mpp"][sel] = interpolator(
-            cell_temp, poa, grid=False
-        )
 
-        self.sim_data["capacity_factor"] = self.sim_data["module_dc_power_at_mpp"] / (
-            self.module.I_mp_ref * self.module.V_mp_ref
+        self.sim_data["capacity_factor"] = np.zeros_like(
+            self.sim_data["poa_global"]
         )
+        
+        sel_total = self.sim_data["poa_global"] > 0
+
+        No_batches = np.floor(len(sel_total)/max_batch_size)
+
+        for i in range(No_batches):
+            
+            # Create sel array as False array of shape of sim data
+            sel = np.zeros_like( 
+                self.sim_data["poa_global"]
+            )
+            sel[sel==0]=False
+            # write data only into the columns contained in current batch
+            sel.loc[i*max_batch_size:(i+1)*max_batch_size, :] = sel_total.loc[i*max_batch_size:(i+1)*max_batch_size, :]
+
+            poa = self.sim_data["poa_global"][sel]
+            cell_temp = self.sim_data["cell_temperature"][sel]
+
+            # Use RectBivariateSpline to speed up simulation, but at the cost of accuracy (should still be >99.996%)
+            maxpoa = np.nanmax(poa)
+
+            _poa = np.concatenate(
+                [
+                    np.logspace(-1, np.log10(maxpoa / 10), 20, endpoint=False),
+                    np.linspace(maxpoa / 10, maxpoa, 80),
+                ]
+            )
+            _temp = np.linspace(cell_temp.min(), cell_temp.max(), 100)
+            poaM, tempM = np.meshgrid(_poa, _temp)
+
+            sotoParams = pvlib.pvsystem.calcparams_desoto(
+                effective_irradiance=poaM.flatten(),
+                temp_cell=tempM.flatten(),
+                alpha_sc=self.module.alpha_sc,
+                a_ref=self.module.a_ref,
+                I_L_ref=self.module.I_L_ref,
+                I_o_ref=self.module.I_o_ref,
+                R_sh_ref=self.module.R_sh_ref,
+                R_s=self.module.R_s,
+                EgRef=1.121,  # PVLIB v0.7.2 Default
+                dEgdT=-0.0002677,  # PVLIB v0.7.2 Default
+                irrad_ref=1000,  # PVLIB v0.7.2 Default
+                temp_ref=25,  # PVLIB v0.7.2 Default
+            )
+
+            photoCur, satCur, resSeries, resShunt, nNsVth = sotoParams
+            gen = pvlib.pvsystem.singlediode(
+                photocurrent=photoCur,
+                saturation_current=satCur,
+                resistance_series=resSeries,
+                resistance_shunt=resShunt,
+                nNsVth=nNsVth,
+                ivcurve_pnts=None,  # PVLIB v0.7.2 Default
+                method="lambertw",  # PVLIB v0.7.2 Default
+            )
+
+            interpolator = RectBivariateSpline(
+                _temp, _poa, gen["p_mp"].reshape(poaM.shape), kx=3, ky=3
+            )
+            
+            self.sim_data["module_dc_power_at_mpp"][sel] = interpolator( #TIME CONSUMING!
+                cell_temp, poa, grid=False
+            )
+
+            interpolator = RectBivariateSpline(
+                _temp, _poa, gen["v_mp"].reshape(poaM.shape), kx=3, ky=3
+            )
+            
+            self.sim_data["module_dc_voltage_at_mpp"][sel] = interpolator( #TIME CONSUMING!
+                cell_temp, poa, grid=False
+            )
+
+            self.sim_data["capacity_factor"][sel] = self.sim_data["module_dc_power_at_mpp"][sel] / (
+                self.module.I_mp_ref * self.module.V_mp_ref
+            )
 
         # Estimate total system generation
         if "capacity" in self.placements.columns:
             self.sim_data["total_system_generation"] = self.sim_data[
                 "capacity_factor"
-            ] * np.broadcast_to(self.placements.capacity, self._sim_shape_)
+            ]* np.broadcast_to(self.placements.capacity, self._sim_shape_)
 
         if (
             "modules_per_string" in self.placements.columns
