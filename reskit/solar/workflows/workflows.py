@@ -738,7 +738,7 @@ def openfield_pv_era5_unvalidated(
     #     loss_factor, variables=["capacity_factor", "total_system_generation"]
     # )
 
-    loss_factor = 0.1  # general loss_factor by s.chen, 2024/05/08
+    loss_factor = 0.107  # general loss_factor by s.chen, 2024/05/08
     wf.apply_loss_factor(
         loss_factor, variables=["capacity_factor", "total_system_generation"]
     )
@@ -878,7 +878,7 @@ def openfield_pv_iconlam(
     #     loss_factor, variables=["capacity_factor", "total_system_generation"]
     # )
 
-    loss_factor = 0.1  # general loss_factor by s.chen, 2024/05/08
+    loss_factor = 0.107  # general loss_factor by s.chen, 2024/05/08
     wf.apply_loss_factor(
         loss_factor, variables=["capacity_factor", "total_system_generation"]
     )
@@ -1016,7 +1016,7 @@ def openfield_pv_era5pure(
     #     loss_factor, variables=["capacity_factor", "total_system_generation"]
     # )
 
-    loss_factor = 0.1  # general loss_factor by s.chen, 2024/05/08
+    loss_factor = 0.107  # general loss_factor by s.chen, 2024/05/08
     wf.apply_loss_factor(
         loss_factor, variables=["capacity_factor", "total_system_generation"]
     )
