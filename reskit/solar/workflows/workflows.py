@@ -737,7 +737,7 @@ def openfield_pv_era5_unvalidated(
     wf.cell_temperature_from_sapm()
 
     wf.simulate_with_interpolated_single_diode_approximation(
-        module=module, 
+        module=module,
         tech_year=tech_year,
         max_batch_size=max_batch_size,
     )
@@ -879,7 +879,7 @@ def openfield_pv_iconlam(
     wf.cell_temperature_from_sapm()
 
     wf.simulate_with_interpolated_single_diode_approximation(
-        module=module, 
+        module=module,
         tech_year=tech_year,
         max_batch_size=max_batch_size,
     )
@@ -947,7 +947,7 @@ def openfield_pv_era5pure(
             Determines wether you want to model your PV system with an inverter or not.
             Default is None.
             See reskit.solar.SolarWorkflowManager.apply_inverter_losses for more usage information.
-    
+
     output_netcdf_path: str
             Path to a file that you want to save your output NETCDF file at.
             Default is None
@@ -1020,7 +1020,7 @@ def openfield_pv_era5pure(
     wf.cell_temperature_from_sapm()
 
     wf.simulate_with_interpolated_single_diode_approximation(
-        module=module, 
+        module=module,
         tech_year=tech_year,
         max_batch_size=max_batch_size,
     )
