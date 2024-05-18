@@ -762,7 +762,7 @@ def openfield_pv_era5_unvalidated(
 
 def openfield_pv_iconlam(
     placements,
-    iconlam_path,
+    icon_lam_path,
     module="WINAICO WSx-240P6",
     elev=300,
     tracking="fixed",
@@ -783,7 +783,7 @@ def openfield_pv_iconlam(
             Locations that you want to do the simulations for.
             Columns need to be lat (latitudes), lon (longitudes), tilt and capacity.
 
-    iconlam_path: str
+    icon_lam_path: str
             Path to the ICON-LAM Data on your computer.
             Can be a single ".nc" file, or a directory containing many ".nc" files.
 
@@ -851,7 +851,7 @@ def openfield_pv_iconlam(
             "surface_dew_temperature",
         ],
         source_type="ICON-LAM",
-        source=iconlam_path,
+        source=icon_lam_path,
         set_time_index=True,
         time_index_from="direct_horizontal_irradiance",
         spatial_interpolation_mode="near",
