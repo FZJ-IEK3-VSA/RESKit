@@ -53,6 +53,10 @@ class WorkflowManager:
         if "geom" in placements.columns:
             if self.placements["geom"].iloc[0].GetGeometryName() == "POINT":
                 ispoint = True
+            _srs = placements.geom.iloc[0].GetSpatialReference()
+        else:
+            # assume lat/lon values in EPSG:4326
+            _srs = gk.srs.loadSRS(4326)
 
         if ispoint:
             self.locs = gk.LocationSet(placements.geom)
@@ -70,7 +74,19 @@ class WorkflowManager:
         if self.locs is None:
             self.locs = gk.LocationSet(self.placements[["lon", "lat"]].values)
 
-        self.ext = gk.Extent.fromLocationSet(self.locs)
+        # get bounds of the extent
+        _bounds = list(self.locs.getBounds())
+        # if no extension in lon and/or lat direction, create incremental artificial width
+        if _bounds[0] == _bounds[2]:
+            _x = _bounds[0]
+            _bounds[0] = _x * 0.99999
+            _bounds[2] = _x * 1.00001
+        if _bounds[1] == _bounds[3]:
+            _y = _bounds[1]
+            _bounds[1] = _y * 0.99999
+            _bounds[3] = _y * 1.00001
+        # create extent attribute
+        self.ext = gk.Extent(_bounds, srs=_srs)
 
         # Initialize simulation data
         self.sim_data = OrderedDict()
