@@ -17,6 +17,7 @@ def openfield_pv_merra_ryberg2019(
     output_netcdf_path=None,
     output_variables=None,
     tech_year=2050,
+    max_batch_size=7500,
 ):
     """
 
@@ -126,7 +127,9 @@ def openfield_pv_merra_ryberg2019(
     wf.cell_temperature_from_sapm()
 
     wf.simulate_with_interpolated_single_diode_approximation(
-        module=module, tech_year=tech_year
+        module=module,
+        tech_year=tech_year,
+        max_batch_size=max_batch_size,
     )
 
     if inverter is not None:
@@ -158,6 +161,7 @@ def openfield_pv_era5(
     output_variables=None,
     gsa_nodata_fallback="source",
     tech_year=2050,
+    max_batch_size=7500,
 ):
     """
     Simulation of an openfield  PV openfield system based on ERA5 Data.
@@ -354,7 +358,9 @@ def openfield_pv_era5(
     wf.cell_temperature_from_sapm()
 
     wf.simulate_with_interpolated_single_diode_approximation(
-        module=module, tech_year=tech_year
+        module=module,
+        tech_year=tech_year,
+        max_batch_size=max_batch_size,
     )
 
     if inverter is not None:
@@ -383,6 +389,7 @@ def openfield_pv_sarah_unvalidated(
     output_netcdf_path=None,
     output_variables=None,
     tech_year=2050,
+    max_batch_size=7500,
 ):
     """
 
@@ -499,7 +506,9 @@ def openfield_pv_sarah_unvalidated(
     wf.cell_temperature_from_sapm()
 
     wf.simulate_with_interpolated_single_diode_approximation(
-        module=module, tech_year=tech_year
+        module=module,
+        tech_year=tech_year,
+        max_batch_size=max_batch_size,
     )
 
     if inverter is not None:

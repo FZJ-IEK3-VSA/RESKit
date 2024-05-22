@@ -916,7 +916,6 @@ def execute_workflow_iteratively(
     workflow_args.update({"output_netcdf_path": None})
 
     # iterate over weather tiles
-    xrds_list = []
     for i, tilepath in enumerate(placements["source"].unique()):
         # reduce placements to subset within the current tile and update function arguments with subset of placements and current weather path
         placements_tile = placements[placements["source"] == tilepath]
@@ -929,9 +928,11 @@ def execute_workflow_iteratively(
         )
         xrds = workflow(**workflow_args)
         xrds = xrds.set_index(location="RESKit_sim_order")
-        xrds_list.append(xrds)
+        if i == 0:
+            reskit_xr = xrds
+        else:
+            reskit_xr = xr.concat([reskit_xr, xrds], dim="location")
 
-    reskit_xr = xr.concat(xrds_list, dim="location")
     # create a dummy wfm instance for saving
     wfm = WorkflowManager(placements=placements.drop(columns="RESKit_sim_order"))
     wfm.to_netcdf(
