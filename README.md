@@ -65,6 +65,11 @@ conda env create --file requirements-dev.yml
 
 See the [Examples page](Examples/)
 
+If you intend to use ETHOS.RESKit.Wind please follow the following instructions:
+- Download ERA5 and further datasets: LINK
+If you have purchased PowerCurves from thewindpower.net, please use the following script to process them: LINK.
+You can find an example on how to use ETHOS.RESKit.Wind here: [ETHOS.RESKit.Wind.ipynb](Examples/ETHOS.RESKit.Wind.ipynb)
+
 ## Docker
 
 We are looking into making RESKit accessible in a docker container. Check back later for more info!
