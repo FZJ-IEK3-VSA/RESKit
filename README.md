@@ -46,29 +46,23 @@ git checkout dev
 2. RESkit should be installable to a new environment with:
 
 ```
-conda env create --file requirements.yml
+conda env create --file requirements-dev.yml
 ```
 
 2. (Alternative) Or into an existing environment with:
 
 ```
-conda env update --file requirements.yml -n <ENVIRONMENT-NAME>
-```
-
-2. (Alternative) If you want to install RESKit in editable mode, and also with jupyter notebook and with testing functionalities use:
-
-```
-conda env create --file requirements-dev.yml
+conda env update --file requirements-dev.yml -n <ENVIRONMENT-NAME>
 ```
 
 ## Examples
 
 See the [Examples page](Examples/)
 
-If you intend to use ETHOS.RESKit.Wind please follow the following instructions:
-- Download ERA5 and further datasets: LINK
-If you have purchased PowerCurves from thewindpower.net, please use the following script to process them: LINK.
-You can find an example on how to use ETHOS.RESKit.Wind here: [ETHOS.RESKit.Wind.ipynb](Examples/ETHOS.RESKit.Wind.ipynb)
+If you intend to use **ETHOS.RESKit.Wind** please follow the following instructions:
+1. Download ERA5 and further datasets: LINK
+2. (optional) If you have purchased PowerCurves from thewindpower.net, please use the following script to process them: [ETHOS.RESKit.Wind_process_power_curves.ipynb](Examples/ETHOS.RESKit.Wind_process_power_curves.ipynb)
+3. You can find an example on how to use ETHOS.RESKit.Wind here: [ETHOS.RESKit.Wind.ipynb](Examples/ETHOS.RESKit.Wind.ipynb)
 
 ## Docker
 
