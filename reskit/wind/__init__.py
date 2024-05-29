@@ -23,4 +23,6 @@ from .workflows.workflows import (
     offshore_wind_era5,
     onshore_wind_era5,
     wind_era5_2023,
+    onshore_wind_iconlam_2023,
+    onshore_wind_era5_pure_2023,
 )

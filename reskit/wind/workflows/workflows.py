@@ -469,6 +469,177 @@ def wind_era5_2023(
     )
 
 
+def onshore_wind_iconlam_2023(
+    placements,
+    icon_lam_path,
+    esa_cci_path,
+    output_netcdf_path=None,
+    output_variables=None,
+    max_batch_size=25000,
+):
+    """
+    Simulates onshore wind generation using high-resolution dynamically downscaled dataset ICON-LAM over southern Africa.
+
+    Parameters
+    ----------
+    placements : pandas Dataframe
+        A Dataframe object with the parameters needed by the simulation.
+    icon_lam_path : str
+        Path to the specified weather data.
+        May contain '<X-TILE>' and <Y-TILE>' spacers, in that case,
+        a zoom level value is expected and the correct tiles will be assigned for every
+        loation individually.
+    esa_cci_path : str
+        Path to the ESA CCI raster file [1].
+    output_netcdf_path : str, optional
+        Path to a directory to put the output files, by default None
+    output_variables : str, optional
+        Restrict the output variables to these variables, by default None
+    max_batch_size: int
+        The maximum number of locations to be simulated simultaneously, else multiple batches will be simulated
+        iteratively. Helps limiting RAM requirements but may affect runtime. By default 20 000.
+
+
+    Returns
+    -------
+    xarray.Dataset
+        A xarray dataset including all the output variables.
+
+    Sources
+    ------
+    [1] ESA. Land Cover CCI Product User Guide Version 2. Tech. Rep. (2017). Available at: maps.elie.ucl.ac.be/CCI/viewer/download/ESACCI-LC-Ph2-PUGv2_2.0.pdf
+    """
+
+    wf = WindWorkflowManager(placements)
+
+    # limit the input placements longitude to range of -180...180
+    assert wf.placements["lon"].between(-180, 180, inclusive=True).any()
+    # limit the input placements latitude to range of -90...90
+    assert wf.placements["lat"].between(-90, 90, inclusive=True).any()
+
+    # read data through wind workflow
+    # WindWorkflowManager=rk.wind.WindWorkflowManager
+    # wf = WindWorkflowManager(placements)
+    # read the variables
+    wf.read(
+        variables=[
+            "elevated_wind_speed",  # by default is a 100m!!
+            "surface_pressure",
+            "surface_air_temperature",
+            "boundary_layer_height",
+        ],
+        source_type="ICON-LAM",
+        source=icon_lam_path,
+        set_time_index=True,
+        spatial_interpolation_mode="near",
+        verbose=False,
+    )
+
+    # derive roughness value from land cover type
+    wf.estimate_roughness_from_land_cover(path=esa_cci_path, source_type="cci")
+
+    # consider boundary layer height on wind speed value, assume wind speed is all the same in the height
+    # that is larger than the height of the boundary layer and is equal to wind speed at the boundary layer height.
+    wf.logarithmic_projection_of_wind_speeds_to_hub_height(
+        consider_boundary_layer_height=False
+    )  # you can change it to True
+
+    # Apply density correction
+    wf.apply_air_density_correction_to_wind_speeds()
+
+    # Power curve convolution
+    # Ryberg, 2019, Energy: scaling factor of 0.06 and base value of 0.1, by default
+    wf.convolute_power_curves(scaling=0.01, base=0.00)
+
+    # simulate wind power
+    wf.simulate(max_batch_size=max_batch_size)
+
+    return wf.to_xarray(
+        output_netcdf_path=output_netcdf_path, output_variables=output_variables
+    )
+
+
+def onshore_wind_era5_pure_2023(
+    placements,
+    era5_path,
+    esa_cci_path,
+    output_netcdf_path=None,
+    output_variables=None,
+):
+    """
+    SChen: copied from
+    Simulates onshore wind generation using pure ECMWF's ERA5 database [1].
+
+    NOTE: Validation documentation is in progress...
+
+    Parameters
+    ----------
+    placements : pandas Dataframe
+        A Dataframe object with the parameters needed by the simulation.
+    era5_path : str
+        Path to the ERA5 data
+    esa_cci_path : str
+        Path to the ESA CCI raster file [2].
+    output_netcdf_path : str, optional
+        Path to a directory to put the output files, by default None
+    output_variables : str, optional
+        Restrict the output variables to these variables, by default None
+    max_batch_size: int
+        The maximum number of locations to be simulated simultaneously, else multiple batches will be simulated
+        iteratively. Helps limiting RAM requirements but may affect runtime. By default 20 000.
+
+    Returns
+    -------
+    xarray.Dataset
+        A xarray dataset including all the output variables you defined as your output variables.
+
+    Sources
+    ------
+    [1] European Centre for Medium-Range Weather Forecasts. (2019). ERA5 dataset. https://www.ecmwf.int/en/forecasts/datasets/reanalysis-datasets/era5
+    [2] ESA. Land Cover CCI Product User Guide Version 2. Tech. Rep. (2017). Available at: maps.elie.ucl.ac.be/CCI/viewer/download/ESACCI-LC-Ph2-PUGv2_2.0.pdf
+    """
+    wf = WindWorkflowManager(placements)
+
+    # limit the input placements longitude to range of -180...180
+    assert wf.placements["lon"].between(-180, 180, inclusive=True).any()
+    # limit the input placements latitude to range of -90...90
+    assert wf.placements["lat"].between(-90, 90, inclusive=True).any()
+
+    wf.read(
+        variables=[
+            "elevated_wind_speed",
+            "surface_pressure",
+            "surface_air_temperature",
+            "boundary_layer_height",
+        ],
+        source_type="ERA5",
+        source=era5_path,
+        set_time_index=True,
+        verbose=False,
+    )
+
+    wf.estimate_roughness_from_land_cover(path=esa_cci_path, source_type="cci")
+
+    wf.logarithmic_projection_of_wind_speeds_to_hub_height(
+        consider_boundary_layer_height=False
+    )
+
+    wf.apply_air_density_correction_to_wind_speeds()
+
+    # gaussian convolution of the power curve to account for statistical events in wind speed
+    wf.convolute_power_curves(
+        scaling=0.01,  # standard deviation of gaussian equals scaling*v + base
+        base=0.0,  # values are derived from validation with real wind turbine data
+    )
+
+    # do simulation
+    wf.simulate()
+
+    return wf.to_xarray(
+        output_netcdf_path=output_netcdf_path, output_variables=output_variables
+    )
+
+
 def mean_capacity_factor_from_sectoral_weibull(
     placements, a_rasters, k_rasters, f_rasters, output=None
 ):
