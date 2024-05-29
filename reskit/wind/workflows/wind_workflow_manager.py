@@ -311,7 +311,7 @@ class WindWorkflowManager(WorkflowManager):
         max_batch_size=None,
         cf_correction_factor=1.0,
         tolerance=0.01,
-        timeout=60,
+        max_iterations=10,
     ):
         """
         Applies the invoking power curve to the given wind speeds.
@@ -331,10 +331,10 @@ class WindWorkflowManager(WorkflowManager):
             The max. deviation of the simulated average cf from the enforced
             corrected value, by default 0.03, i.e. 3% absolute.
 
-        timeout : int, optional
-            The max. time allowed for iterative simulation of one batch until
-            the tolerance is met, else a TimeOutError will be raised. By default
-            60 [s] i.e. 1 minute.
+        max_iterations : int, optional
+            The max. No. of simulation iteratons allowed for iterative 
+            simulation of one batch until the tolerance is met, else a 
+            TimeOutError will be raised. By default 10 iterations..
 
         Return
         ------
@@ -427,13 +427,13 @@ class WindWorkflowManager(WorkflowManager):
             )
 
             # iterate until the target cf average is met
-            _start = time.time()
-            _ws_corrs_i = np.array([1.0] * len(self.locs))
+            _itercount = 0
+            _ws_corrs_i = np.array([1.0] * len(_deviations))
             while (abs(_deviations - 1) > tolerance).any():
                 # safety fallback - exit in case of infinite loops
-                if time.time() - _start > timeout:
+                if _itercount > max_iterations:
                     raise TimeoutError(
-                        f"The simulation did not reach the required tolerance within the given timeout. Increase tolerance or timeout."
+                        f"The simulation did not reach the required tolerance of {tolerance} within the given max. {max_iterations} iterations. Remaining max. absolute deviation is {round(abs(_deviations - 1),3)}. Increase tolerance or max_iterations value."
                     )
 
                 # update the estimates correction factor for the wind speed for this iteration
@@ -446,6 +446,9 @@ class WindWorkflowManager(WorkflowManager):
                 )
                 # calculate the new deviation
                 _deviations = np.nanmean(gen, axis=0) / _target_cfs
+
+                # increase iteration counter by 1
+                _itercount+=1
 
             if _batch == 0:
                 tot_gen = gen
