@@ -933,9 +933,8 @@ def execute_workflow_iteratively(
         if i == 0:
             reskit_xr = xrds
         else:
-            reskit_xr = xr.concat([reskit_xr, xrds], dim="location")
+            reskit_xr = xarray.concat([reskit_xr, xrds], dim="location")
 
-    reskit_xr = xarray.concat(xrds_list, dim="location")
     # create a dummy wfm instance for saving
     wfm = WorkflowManager(placements=placements.drop(columns="RESKit_sim_order"))
     wfm.to_netcdf(
