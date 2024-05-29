@@ -1,7 +1,7 @@
 import json
 import numpy as np
 import os
-
+import pandas as pd
 
 class Parameters:
     """
@@ -25,7 +25,7 @@ class Parameters:
         """
         pass
 
-    def load_and_set_custom_params(self, fp, year, subclass):
+    def load_and_set_custom_params(self, fp, year, subclass, verbose=False):
         """
         This function loads a dictionary of parameters in json format and writes the
         parameter values into class attributes.
@@ -50,45 +50,103 @@ class Parameters:
         --------
             None
         """
-        # check and load json data
-        assert (
-            os.path.isfile(fp) and fp.split(".")[-1] == "json"
-        ), f"fp must be an existing .json file"
-        with open(fp, "r") as fp:
-            json_params = json.load(fp)
-
-        for _param, _val in json_params.items():
-            # convert sub year keys to int where needed
-            if isinstance(_val, dict) and all([k.isnumeric() for k in _val.keys()]):
-                # assume we have a param with yar-dependent values, convert to ints and write back to json params
-                _val = {int(k): v for k, v in _val.items()}
-                # overwrite static class attributes with json values for the given year
-                _years = np.array([k for k in _val.keys()])
-                # avoid extrapolation
-                assert (
-                    year >= _years.min() and year <= _years.max()
-                ), f"'year' must be between the min. ({_years.min()}) and max. ({_years.max()}) given data years to avoid interpolation (check: )"
-                # get the nearest year below and above the passed 'year' (if not 'year' available)
-                _lower_year = _years[_years >= year].min()
-                _higher_year = _years[_years <= year].max()
-                # get the actual value for that year
-                if _higher_year == _lower_year:
-                    # simply choose any year since both the same, here lower
-                    _val = _val[_lower_year]
-                else:
-                    # interpolate between the nearest years and return result
-                    _val = _val[_lower_year] + (
-                        _val[_higher_year] - _val[_lower_year]
-                    ) * (year - _lower_year) / (_higher_year - _lower_year)
-            # round the parameters where needed
+        # check the input file
+        if not os.path.isfile(fp):
+            raise FileNotFoundError(f"Parameter filepath does not exist: {fp}")
+        
+        def _interpolate_vals(data, year):
+            """Interpolates values between neighboring years, or returns exact value when available."""
+            if isinstance(data, dict):
+                data=pd.Series(dict)
+            else:
+                assert isinstance(data, pd.Series), f"data must be of dict or pd.Series type. Here: {type(data)}: {data}"
+            # avoid extrapolation
+            assert (
+                year >= data.index.min() and year <= data.index.max()
+            ), f"'year' {year} must be between the min. ({data.index.min()}) and max. ({data.index.max()}) given data years to avoid interpolation."
+            # get the nearest year below and above the passed 'year' (if not 'year' available)
+            _lower_year = data.index[data.index >= year].min()
+            _higher_year = data.index[data.index <= year].max()
+            # get the actual value for that year
+            if _higher_year == _lower_year:
+                # simply choose any year since both the same, here lower
+                _val = data[_lower_year]
+            else:
+                # interpolate between the nearest years and return result
+                _val = data[_lower_year] + (
+                    data[_higher_year] - data[_lower_year]
+                ) * (year - _lower_year) / (_higher_year - _lower_year)
+            return _val
+        
+        def _round_val(_val):
             if _param in self.rounding.keys():
                 if self.rounding[_param] == 0:
                     _val = int(round(_val, 0))
                 else:
                     _val = round(_val, self.rounding[_param])
-            # set the parameter value as class rttribute
-            setattr(subclass, _param, _val)
+            return _val
+        
+        # handle json files
+        if os.path.splitext(os.path.basename(fp))[-1] == ".json":
+            # load data from json
+            with open(fp, "r") as fp:
+                json_params = json.load(fp)
+            # extract data from dict
+            for _param, _val in json_params.items():
+                # convert sub year keys to int where needed
+                if isinstance(_val, dict) and all([k.isnumeric() for k in _val.keys()]):
+                    # assume we have a param with yar-dependent values, convert to ints and write back to json params
+                    _val = {int(k): v for k, v in _val.items()}
+                    _val = _interpolate_vals(data=_val, year=year)
 
+                # round the parameters where needed
+                _val =_round_val(_val)
+                # set the parameter value as class rttribute
+                setattr(subclass, _param, _val)
+                if verbose:
+                    print(f"Baseline plant parameter '{_param}' set to: {_val}", flush=True)
+        
+        # handle csv baseline files
+        elif os.path.splitext(os.path.basename(fp))[-1] == ".csv":
+            
+            # load data from csv
+            params_df = pd.read_csv(fp)
+
+            # reset anc check index years
+            if all([c in params_df.columns for c in ["Unnamed: 0", "Index"]]) \
+                or not any([c in params_df.columns for c in ["Unnamed: 0", "Index"]]):
+                raise AttributeError(f"When loading baseline plant data from csv, a column 'Index' or 'Unnamed: 0' is expected (but not both) that contain the index years.")
+            try:
+                params_df.set_index('Index', drop=True, inplace=True)
+            except:
+                params_df.set_index('Unnamed: 0', drop=True, inplace=True)
+            if not all([isinstance(i, int) for i in params_df.index]):
+                raise TypeError(f"Index/Unnamed: 0 column in csv data must contain only integer year values.")
+
+            # check the csv columns, must all be baseline plant attrs
+            for _param in params_df.columns:
+                try:
+                    getattr(subclass, _param)
+                except:
+                    AttributeError(f"Baseline plant csv column '{_param}' is not an attribute of {subclass}.")
+            # make sure the year is avalailable in csv data
+            if not year in params_df.index:
+                raise AttributeError(f"Year '{year}' is not available in the input data. Select from: {', '.join([str(i) for i in params_df.index])}")
+
+            # now get and set the respective values
+            for _param in params_df.columns:
+                # get and interpolate where needed
+                _val = _interpolate_vals(data=params_df[_param], year=year)
+                # round if needed
+                _val = _round_val(_val)
+                # set as attr
+                setattr(subclass, _param, _val)
+                if verbose:
+                    print(f"Baseline plant parameter '{_param}' set to: {_val}", flush=True)
+
+        # other extensions cannot be processed
+        else:
+            raise TypeError(f"Baseline plant data file is expected to be a .json or .csv file.")
 
 class OnshoreParameters(Parameters):
     """
