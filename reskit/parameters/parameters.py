@@ -184,7 +184,6 @@ class OnshoreParameters(Parameters):
     bos_share : float, optional
         The baseline turbine's BOS percentage contribution in the total cost, by default 0.229
     """
-
     # static baseline turbine attributes
     constant_rotor_diam = True
     base_capacity = 4200  # [kW]
@@ -195,6 +194,9 @@ class OnshoreParameters(Parameters):
     min_specific_power = 180
     # max. projection value from expert survey in Wiser et al. (2021)
     max_hub_height = 200
+
+    # ECONOMIC ATTRIBUTES
+
     # static economic attributes
     base_capex_per_capacity = 1100  # [EUR/kW]
     base_capex = base_capex_per_capacity * base_capacity  # [EUR]
@@ -211,6 +213,12 @@ class OnshoreParameters(Parameters):
             self.load_and_set_custom_params(fp=fp, year=year, subclass=self)
         else:
             pass
+
+        # calculate turbine design limtis if not given
+        if self.min_specific_power is None:
+            self.min_specific_power = 0.586 * self.base_specific_power # Winkler (2024) #TODO confirm factors
+        if self.max_hub_height is None:
+            self.max_hub_height = 1.355 * self.base_hub_height # Winkler (2024) #TODO confirm factors
 
 
 class OffshoreParameters(Parameters):
