@@ -1,22 +1,21 @@
-import geokit as gk
-
-import pandas as pd
+# import base packages
+from collections import OrderedDict #TODO is this needed when
+import datetime
+from os.path import basename, join, isfile, isdir
 import numpy as np
-import os
-from os import mkdir, environ
-from os.path import join, isfile, isdir
-from collections import OrderedDict, namedtuple
+import pandas as pd
 from types import FunctionType
-import xarray
-from typing import Union, List, OrderedDict
-from . import weather as rk_weather
-from glob import glob
-from osgeo import ogr
+from typing import Union, List, OrderedDict #TODO remove OrderedDict here (duplicated with collections above?)
 import warnings
-from . import util as rk_util
-import xarray as xr
 
-# from . import weather as rk_weather
+# import third party packages
+import geokit as gk
+import xarray
+from glob import glob
+
+# import other modules
+from reskit import util as rk_util
+from reskit import weather as rk_weather
 
 
 class WorkflowManager:
@@ -410,7 +409,7 @@ class WorkflowManager:
 
         # write info with missing values to sim_data:
         self.placements[
-            f"missing_values_{os.path.basename(real_long_run_average)}_nodata_fallback{nodata_fallback}"
+            f"missing_values_{basename(real_long_run_average)}_nodata_fallback{nodata_fallback}"
         ] = np.isnan(factors)
 
         self.sim_data[variable] = factors * self.sim_data[variable]
@@ -925,13 +924,14 @@ def execute_workflow_iteratively(
         )
         # execute workflow with subset and add to list of results
         print(
+            datetime.datetime.now(),
             f"Now processing tile {i+1}/{len(placements['source'].unique())} with {len(placements_tile)} locations: {tilepath}"
         )
         xrds = workflow(**workflow_args)
         xrds = xrds.set_index(location="RESKit_sim_order")
         xrds_list.append(xrds)
 
-    reskit_xr = xr.concat(xrds_list, dim="location")
+    reskit_xr = xarray.concat(xrds_list, dim="location")
     # create a dummy wfm instance for saving
     wfm = WorkflowManager(placements=placements.drop(columns="RESKit_sim_order"))
     wfm.to_netcdf(
