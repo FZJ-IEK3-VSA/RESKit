@@ -334,12 +334,12 @@ class WindWorkflowManager(WorkflowManager):
             corrected value, by default 0.03, i.e. 3% absolute.
 
         max_iterations : int, optional
-            The max. No. of simulation iteratons allowed for iterative 
-            simulation of one batch until the tolerance is met, else a 
+            The max. No. of simulation iteratons allowed for iterative
+            simulation of one batch until the tolerance is met, else a
             TimeOutError will be raised. By default 10 iterations.
-        
+
         verbose : bool, optional
-            If True, additional status information will be printed, by 
+            If True, additional status information will be printed, by
             default True.
 
         Return
@@ -396,7 +396,7 @@ class WindWorkflowManager(WorkflowManager):
 
         # get and set correction factor
         self.set_correction_factors(correction_factors=cf_correction_factor)
-        
+
         # iterate over batches
         for _batch in range(int(_batches)):
             # calculate a starting point generation value
@@ -406,9 +406,12 @@ class WindWorkflowManager(WorkflowManager):
             else:
                 # all batches besides possibly the last must be of length max_batch_size
                 len_locs = max_batch_size
-            if verbose: 
-                print(datetime.datetime.now(), f"Based on max_batch_size={max_batch_size}, the total of {len(self.locs)} placements were split into {int(_batches)} sub batches. Proceeding with batch {_batch+1}/{int(_batches)} (id={_batch}) with {len_locs} placements.")
-            
+            if verbose:
+                print(
+                    datetime.datetime.now(),
+                    f"Based on max_batch_size={max_batch_size}, the total of {len(self.locs)} placements were split into {int(_batches)} sub batches. Proceeding with batch {_batch+1}/{int(_batches)} (id={_batch}) with {len_locs} placements.",
+                )
+
             # simulate first time to get the undistorted RESkit cfs
             gen = _sim(
                 ws_correction_factors=np.array([1.0] * len_locs),
@@ -432,7 +435,7 @@ class WindWorkflowManager(WorkflowManager):
             _deviations = np.nanmean(gen, axis=0) / _target_cfs
 
             # initialize the correction factors as 1.0 everywhere, will be adapted first thing if tolerance is not met by deviations
-            _ws_corrs_i = np.array([1.0] * len(_deviations)) 
+            _ws_corrs_i = np.array([1.0] * len(_deviations))
 
             # iterate until the target cf average is met, i.e. until absolute deltas of 1.0 and deviations are all less than tolerance
             _itercount = 0
@@ -444,8 +447,10 @@ class WindWorkflowManager(WorkflowManager):
                     )
                 # print deviation status for the current iteration
                 if verbose:
-                    print(datetime.datetime. now(), f"Maximum rel. deviation after {'initial simulation' if _itercount==0 else str(_itercount)+' additional iteration(s)'} is {round(max(abs(_deviations - 1)),4)}, Number/share of placements with deviation > tolerance ({tolerance}): {sum(abs(_deviations - 1)>tolerance)}ea./{round(100*sum(abs(_deviations - 1)>tolerance)/len(_deviations),2)}%. More iterations required.")
-
+                    print(
+                        datetime.datetime.now(),
+                        f"Maximum rel. deviation after {'initial simulation' if _itercount==0 else str(_itercount)+' additional iteration(s)'} is {round(max(abs(_deviations - 1)),4)}, Number/share of placements with deviation > tolerance ({tolerance}): {sum(abs(_deviations - 1)>tolerance)}ea./{round(100*sum(abs(_deviations - 1)>tolerance)/len(_deviations),2)}%. More iterations required.",
+                    )
                 # update the estimated correction factor for the wind speed for this iteration
                 _ws_corrs_i = _ws_corrs_i * np.cbrt(1 / _deviations)  # power law
                 # calculate with an adapted ws correction
@@ -458,16 +463,18 @@ class WindWorkflowManager(WorkflowManager):
                 _deviations = np.nanmean(gen, axis=0) / _target_cfs
 
                 # increase iteration counter by 1
-                _itercount+=1
+                _itercount += 1
             # when required tolerance is achieved, continue
-            if verbose: 
-                print(datetime.datetime. now(), f"Required tolerance of {tolerance} reached after {_itercount} additional iteration(s). Maximum remaining rel. deviation: {round(max(abs(_deviations - 1)),4)}.")
+            if verbose:
+                print(
+                    datetime.datetime.now(),
+                    f"Required tolerance of {tolerance} reached after {_itercount} additional iteration(s). Maximum remaining rel. deviation: {round(max(abs(_deviations - 1)),4)}.",
+                )
 
             if _batch == 0:
                 tot_gen = gen
             else:
                 tot_gen = np.concatenate([tot_gen, gen], axis=1)
-            
 
         self.sim_data["capacity_factor"] = tot_gen
 
