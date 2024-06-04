@@ -459,7 +459,27 @@ class WindWorkflowManager(WorkflowManager):
                     _batch=_batch,
                     max_batch_size=max_batch_size,
                 )
-                # calculate the new deviation
+                avg_gen = np.nanmean(gen, axis=0)
+
+                # calculate the new preliminary deviation factors
+                _deviations_new = avg_gen / _target_cfs
+                # get the deviations only of locations whose results diverged in the last step
+                _diverging = abs(_deviations_new) > abs(_deviations)
+                # make sure divergence occurs only at very low cfs (due to effects of cut-in windspeed)
+                assert all(
+                    (_diverging * avg_gen) < 0.05
+                ), f"Diverging placements with avg. cf > 0.05 found: {(_diverging*avg_gen)[(_diverging*avg_gen)>0.05]}"
+                del avg_gen, _deviations_new  # RAM
+                _diverging *= (
+                    _deviations  # set deviation values only for diverging locations
+                )
+                _diverging[_diverging == 0] = (
+                    1  # set other location deviations to 1, only here
+                )
+                # fix diverging location generation by scaling energy output linearly
+                # instead of wind speed by cubic root
+                gen = gen / _diverging
+                # now calculate the latest deviation factors after divergence fix
                 _deviations = np.nanmean(gen, axis=0) / _target_cfs
 
                 # increase iteration counter by 1
