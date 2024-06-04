@@ -415,7 +415,7 @@ class WindWorkflowManager(WorkflowManager):
                 )
 
             # simulate first time to get the undistorted RESkit cfs
-            sel = np.full(len_locs,True)
+            sel = np.full(len_locs, True)
             gen = _sim(
                 ws_correction_factors=np.array([1.0] * len_locs),
                 _batch=_batch,
@@ -456,8 +456,8 @@ class WindWorkflowManager(WorkflowManager):
                     print(
                         datetime.datetime.now(),
                         f"Maximum rel. deviation after {'initial simulation' if _itercount==0 else str(_itercount)+' additional iteration(s)'} is {round(max(abs(_deviations - 1)),4)}, Number/share of placements with deviation > tolerance ({tolerance}): {sum(abs(_deviations - 1)>tolerance)}/{len(_deviations)}. More iterations required.",
-                    )    
-                       
+                    )
+
                 # update the estimated correction factor for the wind speed for this iteration
                 # _non_contributing = sum(gen[:,]==1.0) / gen.shape[0]
                 # assert _non_contributing.max()<1.0, f"Locations with 8760 FLH/a found. Cannot be scaled."
@@ -466,11 +466,10 @@ class WindWorkflowManager(WorkflowManager):
                 # # _deviations_inv = 1 + (1/_deviations-1) * _weighing
                 # _ws_corrs_i = _ws_corrs_i * np.cbrt(1/_deviations_weighed)  # power law
                 # del _non_contributing, _weighing, _deviations_weighed
-                _ws_corrs_i = _ws_corrs_i * np.cbrt(1/_deviations)  # power law
+                _ws_corrs_i = _ws_corrs_i * np.cbrt(1 / _deviations)  # power law
 
-                
                 # calculate only off-tolerance locs with an adapted ws correction
-                sel = (abs(_deviations - 1) > tolerance)
+                sel = abs(_deviations - 1) > tolerance
                 # create a copy of gen
                 gen_new = gen.copy()
                 # simulate only the placements to be updated
@@ -485,8 +484,13 @@ class WindWorkflowManager(WorkflowManager):
                 avg_gen_new = np.nanmean(gen_new, axis=0)
 
                 # get those locs where an increase of ws did not lead to increased cf
-                # probably ws too high, exceeding cut-off windspeed 
-                _mismatch = ((((_ws_corrs_i-1) * (avg_gen_new/avg_gen-1))<0) * sel) | ((avg_gen_new>0.5) & (((gen_new==0)|(gen_new==1)).sum(axis=0)/8760>0.20))
+                # probably ws too high, exceeding cut-off windspeed
+                _mismatch = (
+                    (((_ws_corrs_i - 1) * (avg_gen_new / avg_gen - 1)) < 0) * sel
+                ) | (
+                    (avg_gen_new > 0.5)
+                    & (((gen_new == 0) | (gen_new == 1)).sum(axis=0) / 8760 > 0.20)
+                )
                 # these will be simulated differently by increasing cut-off wind speed
 
                 # calculate the new preliminary deviation factors
@@ -495,12 +499,12 @@ class WindWorkflowManager(WorkflowManager):
                 # (or did not converge by at least 100%/max_iterations of the deviation) or would now be nan
                 # and the iteration must not yet have reached its tolerance goal
                 _diverging = (
-                    ((
+                    (
                         abs(_deviations_new - 1)
                         > (1 - 1 / max_iterations) * abs(_deviations - 1)
                     )
                     | np.isnan(_deviations_new)
-                ) & (abs(_deviations_new - 1) > tolerance)) 
+                ) & (abs(_deviations_new - 1) > tolerance)
                 # make sure divergence occurs only at very low cfs (due to effects of cut-in windspeed)
                 _threshold = (
                     0.05  # limit for cf where cut-in wind speed explains divergence
@@ -539,13 +543,13 @@ class WindWorkflowManager(WorkflowManager):
                 )
 
             _max_cfs = gen.max(axis=0)
-            if (gen>1).any():
+            if (gen > 1).any():
                 print(
                     datetime.datetime.now(),
                     f"Required target cf could not be reached for some locations, cf will be reduced by factor max. {1/_max_cfs} in order to not exceed cf=1.0.",
                     flush=True,
                 )
-                _red = 1/_max_cfs
+                _red = 1 / _max_cfs
                 _red[_max_cfs <= 1] = 1
                 gen = gen * _red
 
