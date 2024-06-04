@@ -449,13 +449,13 @@ class WindWorkflowManager(WorkflowManager):
                 # safety fallback - exit in case of infinite loops
                 if _itercount > max_iterations:
                     raise TimeoutError(
-                        f"{str(datetime.datetime. now())} The simulation did not reach the required tolerance of {tolerance} within the given max. {max_iterations} iterations. Remaining max. absolute deviation is {round(max(abs(_deviations - 1)),4)}. Number/share of placements with deviation > {tolerance}: {sum(abs(_deviations - 1)>tolerance)}ea./{round(100*sum(abs(_deviations - 1)>tolerance)/len(_deviations),2)}%. Increase tolerance or max_iterations value."
+                        f"{str(datetime.datetime. now())} The simulation did not reach the required tolerance of {tolerance} within the given max. {max_iterations} iterations. Remaining max. absolute deviation is {round(max(abs(_deviations - 1)),4)}. Number of placements with deviation > {tolerance}: {sum(abs(_deviations - 1)>tolerance)}/{len(_deviations)}. Increase tolerance or max_iterations value."
                     )
                 # print deviation status for the current iteration
                 if verbose:
                     print(
                         datetime.datetime.now(),
-                        f"Maximum rel. deviation after {'initial simulation' if _itercount==0 else str(_itercount)+' additional iteration(s)'} is {round(max(abs(_deviations - 1)),4)}, Number/share of placements with deviation > tolerance ({tolerance}): {sum(abs(_deviations - 1)>tolerance)}ea./{round(100*sum(abs(_deviations - 1)>tolerance)/len(_deviations),2)}%. More iterations required.",
+                        f"Maximum rel. deviation after {'initial simulation' if _itercount==0 else str(_itercount)+' additional iteration(s)'} is {round(max(abs(_deviations - 1)),4)}, Number/share of placements with deviation > tolerance ({tolerance}): {sum(abs(_deviations - 1)>tolerance)}/{len(_deviations)}. More iterations required.",
                     )
                 print(
                     "cf of max deviation:", 
