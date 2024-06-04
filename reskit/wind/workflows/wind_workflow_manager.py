@@ -456,17 +456,18 @@ class WindWorkflowManager(WorkflowManager):
                     print(
                         datetime.datetime.now(),
                         f"Maximum rel. deviation after {'initial simulation' if _itercount==0 else str(_itercount)+' additional iteration(s)'} is {round(max(abs(_deviations - 1)),4)}, Number/share of placements with deviation > tolerance ({tolerance}): {sum(abs(_deviations - 1)>tolerance)}/{len(_deviations)}. More iterations required.",
-                    )
-                print(
-                    "cf of max deviation:", 
-                    np.nanmean(gen, axis=0)[_deviations==_deviations.max()], 
-                    "@ deviation factor -1 :",
-                    _deviations[_deviations==_deviations.max()]-1, 
-                    "and target cf:", 
-                    _target_cfs[_deviations==_deviations.max()],
-                    )                
+                    )    
+                       
                 # update the estimated correction factor for the wind speed for this iteration
-                _ws_corrs_i = _ws_corrs_i * np.cbrt(1 / _deviations)  # power law
+                # _non_contributing = sum(gen[:,]==1.0) / gen.shape[0]
+                # assert _non_contributing.max()<1.0, f"Locations with 8760 FLH/a found. Cannot be scaled."
+                # _weighing = 1 + _non_contributing / (1 - _non_contributing)
+                # _deviations_weighed = np.where(_deviations<1, _deviations/_weighing, _deviations*_weighing)
+                # # _deviations_inv = 1 + (1/_deviations-1) * _weighing
+                # _ws_corrs_i = _ws_corrs_i * np.cbrt(1/_deviations_weighed)  # power law
+                # del _non_contributing, _weighing, _deviations_weighed
+                _ws_corrs_i = _ws_corrs_i * np.cbrt(1/_deviations)  # power law
+
                 
                 # calculate only off-tolerance locs with an adapted ws correction
                 sel = (abs(_deviations - 1) > tolerance)
@@ -483,36 +484,43 @@ class WindWorkflowManager(WorkflowManager):
                 gen_new[:, sel] = _gen_new[:, sel]
                 avg_gen_new = np.nanmean(gen_new, axis=0)
 
+                # get those locs where an increase of ws did not lead to increased cf
+                # probably ws too high, exceeding cut-off windspeed 
+                _mismatch = ((((_ws_corrs_i-1) * (avg_gen_new/avg_gen-1))<0) * sel) | ((avg_gen_new>0.5) & (((gen_new==0)|(gen_new==1)).sum(axis=0)/8760>0.20))
+                # these will be simulated differently by increasing cut-off wind speed
+
                 # calculate the new preliminary deviation factors
                 _deviations_new = avg_gen_new / _target_cfs
                 # get the deviations only of locations whose results diverged in the last step
                 # (or did not converge by at least 100%/max_iterations of the deviation) or would now be nan
                 # and the iteration must not yet have reached its tolerance goal
                 _diverging = (
-                    (
+                    ((
                         abs(_deviations_new - 1)
                         > (1 - 1 / max_iterations) * abs(_deviations - 1)
                     )
                     | np.isnan(_deviations_new)
-                ) & (abs(_deviations_new - 1) > tolerance)
+                ) & (abs(_deviations_new - 1) > tolerance)) 
                 # make sure divergence occurs only at very low cfs (due to effects of cut-in windspeed)
                 _threshold = (
                     0.05  # limit for cf where cut-in wind speed explains divergence
                 )
                 assert all(
-                    (_diverging * _target_cfs) < _threshold
-                ), f"Diverging or insufficiently converging placements with avg. target cf >= {_threshold} found: {(_target_cfs)[(_diverging*_target_cfs)>=_threshold]}"
-                del avg_gen_new, _deviations_new  # RAM
-                _diverging = (
-                    _diverging * _deviations
+                    ((_diverging * _target_cfs) < _threshold) | _mismatch
+                ), f"Diverging or insufficiently converging (<{round(100 / max_iterations,1)}%) placements with avg. target cf >= {_threshold} found: {(_target_cfs)[(_diverging*_target_cfs)>=_threshold]}"
+                del _deviations_new  # RAM
+                _linear_corr = _diverging | _mismatch
+                _linear_corr = (
+                    _linear_corr * _deviations
                 )  # set deviation values only for diverging locations
-                _diverging[_diverging == 0] = (
+                _linear_corr[_linear_corr == 0] = (
                     1  # set other location deviations to 1, only here
                 )
                 # fix diverging location generation by scaling energy output linearly
                 # instead of wind speed by cubic root
-                gen = gen / _diverging
+                gen = gen / _linear_corr
                 # update corrected gen with latest gen (new) for other non-diverging locs
+                gen[:, _linear_corr == 1] = gen_new[:, _linear_corr == 1]
                 avg_gen = np.nanmean(gen, axis=0)
                 # now calculate the latest deviation factors after divergence fix
                 _deviations = avg_gen / _target_cfs
@@ -527,7 +535,19 @@ class WindWorkflowManager(WorkflowManager):
                 print(
                     datetime.datetime.now(),
                     f"Required tolerance of {tolerance} reached after {_itercount} additional iteration(s). Maximum remaining rel. deviation: {round(max(abs(_deviations - 1)),4)}.",
+                    flush=True,
                 )
+
+            _max_cfs = gen.max(axis=0)
+            if (gen>1).any():
+                print(
+                    datetime.datetime.now(),
+                    f"Required target cf could not be reached for some locations, cf will be reduced by factor max. {1/_max_cfs} in order to not exceed cf=1.0.",
+                    flush=True,
+                )
+                _red = 1/_max_cfs
+                _red[_max_cfs <= 1] = 1
+                gen = gen * _red
 
             if _batch == 0:
                 tot_gen = gen
