@@ -482,10 +482,14 @@ class WindWorkflowManager(WorkflowManager):
                 _deviations_new = avg_gen_new / _target_cfs
                 # get the deviations only of locations whose results diverged in the last step
                 # (or did not converge by at least 100%/max_iterations of the deviation) or would now be nan
+                # and the iteration must not yet have reached its tolerance goal
                 _diverging = (
-                    abs(_deviations_new - 1)
-                    > (1 - 1 / max_iterations) * abs(_deviations - 1)
-                ) | np.isnan(_deviations_new)
+                    (
+                        abs(_deviations_new - 1)
+                        > (1 - 1 / max_iterations) * abs(_deviations - 1)
+                    )
+                    | np.isnan(_deviations_new)
+                ) & (abs(_deviations_new - 1) > tolerance)
                 # make sure divergence occurs only at very low cfs (due to effects of cut-in windspeed)
                 _threshold = (
                     0.05  # limit for cf where cut-in wind speed explains divergence
