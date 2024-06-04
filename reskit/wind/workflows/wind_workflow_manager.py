@@ -347,7 +347,7 @@ class WindWorkflowManager(WorkflowManager):
             A reference to the invoking WindWorkflowManager
         """
 
-        def _sim(ws_correction_factors, _batch, max_batch_size):
+        def _sim(ws_correction_factors, _batch, max_batch_size, sel):
             """
             Applies the invoking power curve to the given wind speeds.
             """
@@ -359,20 +359,22 @@ class WindWorkflowManager(WorkflowManager):
             )
 
             for pckey, pc in self.powerCurveLibrary.items():
-                sel = (
+                _sel = (
                     self.placements.iloc[
                         _batch * max_batch_size : (_batch + 1) * max_batch_size, :
                     ].powerCurve
                     == pckey
                 )
-                if not sel.any():
+                # simulate only intersection of selection (sel) and power curve selection (_sel)
+                _sel = np.logical_and(_sel, sel)
+                if not _sel.any():
                     continue
-                _gen[:, sel] = np.round(
+                _gen[:, _sel] = np.round(
                     pc.simulate(
                         self.sim_data["elevated_wind_speed"][
                             :, _batch * max_batch_size : (_batch + 1) * max_batch_size
-                        ][:, sel]
-                        * ws_correction_factors[sel]
+                        ][:, _sel]
+                        * ws_correction_factors[_sel]
                     ),
                     3,
                 )
@@ -413,10 +415,12 @@ class WindWorkflowManager(WorkflowManager):
                 )
 
             # simulate first time to get the undistorted RESkit cfs
+            sel = np.full(len_locs,True)
             gen = _sim(
                 ws_correction_factors=np.array([1.0] * len_locs),
                 _batch=_batch,
                 max_batch_size=max_batch_size,
+                sel=sel,
             )
             # calculate the target average cf as product of raw RESkit cf and correction factor
             _target_cfs = (
@@ -451,13 +455,26 @@ class WindWorkflowManager(WorkflowManager):
                         datetime.datetime.now(),
                         f"Maximum rel. deviation after {'initial simulation' if _itercount==0 else str(_itercount)+' additional iteration(s)'} is {round(max(abs(_deviations - 1)),4)}, Number/share of placements with deviation > tolerance ({tolerance}): {sum(abs(_deviations - 1)>tolerance)}ea./{round(100*sum(abs(_deviations - 1)>tolerance)/len(_deviations),2)}%. More iterations required.",
                     )
+                print(
+                    "cf of max deviation:", 
+                    np.nanmean(gen, axis=0)[_deviations==_deviations.max()], 
+                    "@ deviation factor -1 :",
+                    _deviations[_deviations==_deviations.max()]-1, 
+                    "and target cf:", 
+                    _target_cfs[_deviations==_deviations.max()],
+                    )                
                 # update the estimated correction factor for the wind speed for this iteration
                 _ws_corrs_i = _ws_corrs_i * np.cbrt(1 / _deviations)  # power law
+                
+                sel = (abs(_deviations - 1) > tolerance)
+                print(f"Number of locations with deviation > tolerance ({tolerance}): {len(sel)} out of {len(_deviations)}")
+                
                 # calculate with an adapted ws correction
                 gen_new = _sim(
                     ws_correction_factors=_ws_corrs_i,
                     _batch=_batch,
                     max_batch_size=max_batch_size,
+                    sel=sel,
                 )
                 avg_gen_new = np.nanmean(gen_new, axis=0)
 
