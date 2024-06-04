@@ -468,16 +468,19 @@ class WindWorkflowManager(WorkflowManager):
                 # update the estimated correction factor for the wind speed for this iteration
                 _ws_corrs_i = _ws_corrs_i * np.cbrt(1 / _deviations)  # power law
                 
+                # calculate only off-tolerance locs with an adapted ws correction
                 sel = (abs(_deviations - 1) > tolerance)
-                print(f"Number of locations with deviation > tolerance ({tolerance}): {len(sel)} out of {len(_deviations)}")
-                
-                # calculate with an adapted ws correction
-                gen_new = _sim(
+                # create a copy of gen
+                gen_new = gen.copy()
+                # simulate only the placements to be updated
+                _gen_new = _sim(
                     ws_correction_factors=_ws_corrs_i,
                     _batch=_batch,
                     max_batch_size=max_batch_size,
                     sel=sel,
                 )
+                # update old gen data with new gen data where simulated
+                gen_new[:, sel] = _gen_new[:, sel]
                 avg_gen_new = np.nanmean(gen_new, axis=0)
 
                 # calculate the new preliminary deviation factors
