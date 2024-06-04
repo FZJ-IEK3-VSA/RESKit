@@ -422,9 +422,11 @@ class WindWorkflowManager(WorkflowManager):
                 max_batch_size=max_batch_size,
                 sel=sel,
             )
+            avg_gen = np.nanmean(gen, axis=0)
+
             # calculate the target average cf as product of raw RESkit cf and correction factor
             _target_cfs = (
-                np.nanmean(gen, axis=0)
+                avg_gen
                 * self.correction_factors[
                     _batch * max_batch_size : (_batch + 1) * max_batch_size
                 ]
@@ -436,7 +438,7 @@ class WindWorkflowManager(WorkflowManager):
                 )
 
             # set the initial deviation based on initial, undistorted generation vs target generation
-            _deviations = np.nanmean(gen, axis=0) / _target_cfs
+            _deviations = avg_gen / _target_cfs
 
             # initialize the correction factors as 1.0 everywhere, will be adapted first thing if tolerance is not met by deviations
             _ws_corrs_i = np.array([1.0] * len(_deviations))
@@ -508,12 +510,15 @@ class WindWorkflowManager(WorkflowManager):
                 # instead of wind speed by cubic root
                 gen = gen / _diverging
                 # update corrected gen with latest gen (new) for other non-diverging locs
-                gen[:, _diverging == 1] = gen_new[:, _diverging == 1]
+                avg_gen = np.nanmean(gen, axis=0)
                 # now calculate the latest deviation factors after divergence fix
-                _deviations = np.nanmean(gen, axis=0) / _target_cfs
+                _deviations = avg_gen / _target_cfs
 
                 # increase iteration counter by 1
                 _itercount += 1
+                # set the avg_gen_new as coming avg_gen
+                avg_gen = avg_gen_new.copy()
+
             # when required tolerance is achieved, continue
             if verbose:
                 print(
