@@ -944,12 +944,6 @@ class NCSource(object):
                 rbsArgs = dict(kx=1, ky=1)
 
             # Set up interpolation arrays
-            for i in indicies:
-                if i is None:
-
-                else:
-                    xi = i.xi
-                    yi = i.yi
             yiMin = np.round(min([i.yi for i in indicies]) - win).astype(int)
             yiMax = np.round(max([i.yi for i in indicies]) + win).astype(int)
             xiMin = np.round(min([i.xi for i in indicies]) - win).astype(int)
