@@ -197,7 +197,7 @@ class NCSource(object):
 
         sources = addSource(source)
         if len(sources) == 0:
-            raise ResError("No '.nc' or '.nc4' files found")
+            raise ResError(f"No '.nc' or '.nc4' files found for tile base path: {source}")
         sources.sort()
 
         # Collect all variable information
@@ -944,6 +944,12 @@ class NCSource(object):
                 rbsArgs = dict(kx=1, ky=1)
 
             # Set up interpolation arrays
+            for i in indicies:
+                if i is None:
+
+                else:
+                    xi = i.xi
+                    yi = i.yi
             yiMin = np.round(min([i.yi for i in indicies]) - win).astype(int)
             yiMax = np.round(max([i.yi for i in indicies]) + win).astype(int)
             xiMin = np.round(min([i.xi for i in indicies]) - win).astype(int)
