@@ -55,6 +55,12 @@ def get_tile_XY(zoom, lon=None, lat=None, geom=None):
     # get tile id
     X, Y = deg2num(lat, lon, zoom=zoom)
 
+    # deg_to_num cannot deal with extreme latitudes, set to Y edge tile manually
+    if Y < 0:
+        Y = 0
+    elif Y > (zoom**2 - 1):
+        Y = (zoom**2 - 1)
+
     return (X, Y)
 
 

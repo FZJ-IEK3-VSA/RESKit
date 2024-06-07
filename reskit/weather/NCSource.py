@@ -197,7 +197,7 @@ class NCSource(object):
 
         sources = addSource(source)
         if len(sources) == 0:
-            raise ResError("No '.nc' or '.nc4' files found")
+            raise ResError(f"No '.nc' or '.nc4' files found for tile base path: {source}")
         sources.sort()
 
         # Collect all variable information
@@ -943,11 +943,22 @@ class NCSource(object):
                 win = 2
                 rbsArgs = dict(kx=1, ky=1)
 
+            threshold = 89-(win-0.5)*abs(self.lats[0]-self.lats[1])
+            _locations = []
+            for loc in locations:
+                if abs(loc.lat) > abs(threshold):
+                    _locations.append((loc.lon, threshold))
+                else:
+                    _locations.append((loc.lon, loc.lat))
+            _locations = gk.LocationSet(_locations)
+            _indicies = self.loc_to_index(_locations, outside_okay, as_int=as_int)
+
+            
             # Set up interpolation arrays
-            yiMin = np.round(min([i.yi for i in indicies]) - win).astype(int)
-            yiMax = np.round(max([i.yi for i in indicies]) + win).astype(int)
-            xiMin = np.round(min([i.xi for i in indicies]) - win).astype(int)
-            xiMax = np.round(max([i.xi for i in indicies]) + win).astype(int)
+            yiMin = np.round(min([i.yi for i in _indicies]) - win).astype(int)
+            yiMax = np.round(max([i.yi for i in _indicies]) + win).astype(int)
+            xiMin = np.round(min([i.xi for i in _indicies]) - win).astype(int)
+            xiMax = np.round(max([i.xi for i in _indicies]) + win).astype(int)
 
             # ensure boundaries are okay
             if yiMin < 0 or xiMin < 0 or yiMax > self._latN or xiMax > self._lonN:
