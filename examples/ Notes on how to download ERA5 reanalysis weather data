@@ -1,21 +1,35 @@
 How to download ERA5 reanalysis weather data
 
 
-ERA5 is the fifth generation ECMWF reanalysis for the global climate and weather for the past 8 decades. Data is available from 1940 onwards gridded to a regular lat-lon grid of 0.25 degrees for the reanalysis and 0.5 degrees for the uncertainty estimate (0.5 and 1 degree respectively for ocean waves). There are four main subsets: hourly and monthly products, both on pressure levels (upper airfields) and single levels (atmospheric, ocean-wave and land surface quantities)
-ERA5 data can be downloaded through the Climate Data Store (CDS) infrastructure either via the CDS web interface or using the CDS API service. Here the procedure to use the CDS API service is explained. This procedure is recommended because it is faster and some data is only available through it.
+ERA5 is the fifth generation ECMWF reanalysis for the global climate and weather for the past 
+8 decades. Data is available from 1940 onwards gridded to a regular lat-lon grid of 0.25
+ degrees for the reanalysis and 0.5 degrees for the uncertainty estimate (0.5 and 1 degree
+  respectively for ocean waves). There are four main subsets: hourly and monthly products, 
+  both on pressure levels (upper airfields) and single levels (atmospheric, ocean-wave and land
+   surface quantities)
+
+ERA5 data can be downloaded through the Climate Data Store (CDS) infrastructure either via the
+ CDS web interface or using the CDS API service. Here the procedure to use the CDS API service
+  is explained. This procedure is recommended because it is faster and some data is only
+   available through it.
 
 
-requirements: A laptop with internet connection and +100GB free of sorage capacity, anaconda installed, an email account, Microsoft VS code or Jupyter Notebook installed. 
+requirements: A laptop with internet connection and +100GB free of sorage capacity, anaconda
+ installed, an email account, Microsoft VS code or Jupyter Notebook installed. 
 
 
 
-1. Register a CDS account in https://cds.climate.copernicus.eu/user/register . A valid CDS account is necessary to continue.
+1. Register a CDS account in https://cds.climate.copernicus.eu/user/register . 
+A valid CDS account is necessary to continue.
 
 
-2. Create a new conda environment (for example “CDS_env”) via <conda create -n "CDS_env" python=3.6 ipython> in your computer. If you are unfamiliar with anaconda, please check this page for mode information and its intallation steps: https://docs.anaconda.com/free/anaconda/install/
+2. Create a new conda environment (for example “CDS_env”) via <conda create -n "CDS_env"> 
+in your computer. If you are unfamiliar with anaconda, please check this page for mode
+ information and its intallation steps: https://docs.anaconda.com/free/anaconda/install/
 
 
-3. Activate the new environment (conda activate CDS_env) and install necessary packages for climate-related data handling:
+3. Activate the new environment (conda activate CDS_env) and install necessary packages for
+ climate-related data handling:
 
 
 
@@ -23,25 +37,43 @@ I.	Jupiter notebook (conda install -c anaconda jupyter)
 II.	Xarray (conda install -c anaconda xarray)
 III.	Pandas (conda install pandas)
 IV.	Numpy (pip install numpy)
-V.	CDO  (try one of the commands on this page: https://anaconda.org/conda-forge/cdo). Note: If one installation line takes too long to execute (more than 30 mins), you might cancel it and try the next one.
+V.	CDO  (try one of the commands on this page: https://anaconda.org/conda-forge/cdo). 
+Note: If one installation line takes too long to execute (more than 30 mins), 
+you might cancel it and try the next one.
 
 
-After the installation of the packages, follow the instructions for your operative system users description on this page: https://cds.climate.copernicus.eu/api-how-to to install the CDS API key and client. Be sure to be logged in to the web page as the instructions state.
+After the installation of the packages, follow the instructions for your operative system users
+ description on this page: https://cds.climate.copernicus.eu/api-how-to to install the CDS API
+  key and client. Be sure to be logged in to the web page as the instructions state.
 
 image
 
 
-Open a blank Jupyter notebook/window in VS code where you will create a script to download ERA5 climate data. The download process requires an internet connection.
+Open a blank Jupyter notebook/window in VS code where you will create a script to download ERA5
+ climate data. The download process requires an internet connection.
 
-Note: You can send up to two simultaneous requests per user. The downloading time depends on the amount of data requested and the workload of the ERA5 server at the time of request. You might want to consider splitting the amount of data in shorter timespans (individual months instead of a full year) and plan/schedule your downloading request when the ERA5 server is not so busy (weekends, holidays etc.). You can check the live status of the server here: https://cds.climate.copernicus.eu/live/.
+Note: You can send up to two simultaneous requests per user. The downloading time depends on
+ the amount of data requested and the workload of the ERA5 server at the time of request. You
+  might want to consider splitting the amount of data in shorter timespans (individual months
+   instead of a full year) and plan/schedule your downloading request when the ERA5 server is
+    not so busy (weekends, holidays etc.). You can check the live status of the server here:
+     https://cds.climate.copernicus.eu/live/.
 
 
-Have a look at this How_to_download_ERA5_data_public.ipynb to download ERA5 climate data. The purpose of this example script is to set the necessary input parameters for the API client, create a folder structure, and download some variables for the whole globe. You are free to copy the script or parts of it to prepare your own in the Jupyter Notebook/VS code that you opened in Step 5. Be aware that you must change some strings in this script according to your user/needs/preferences. For instance: you must select a directory where the files are going to be saved.
+Have a look at this How_to_download_ERA5_data_public.ipynb to download ERA5 climate data. The
+ purpose of this example script is to set the necessary input parameters for the API client,
+  create a folder structure, and download some variables for the whole globe. You are free to
+   copy the script or parts of it to prepare your own in the Jupyter Notebook/VS code that you
+    opened in Step 5. Be aware that you must change some strings in this script according to 
+    your user/needs/preferences. For instance: you must select a directory where the files are
+     going to be saved.
 
 
-If you can run the script of the previous step and you confirm that the files are saved, you are ready to start downloading any ERA5 climate data you want.
+If you can run the script of the previous step and you confirm that the files are saved, you
+ are ready to start downloading any ERA5 climate data you want.
 
 
-Further steps: Have a look at the CDS web interface API request (at the bottom of the page) for hints on modifications to the script on step 6.
+Further steps: Have a look at the CDS web interface API request (at the bottom of the page) for
+ hints on modifications to the script on step 6.
 
-Last update: 07.06.2024
+Last update: 27.06.2024
