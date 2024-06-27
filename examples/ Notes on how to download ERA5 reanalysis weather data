@@ -51,34 +51,38 @@ image
 
 
 Open a blank Jupyter notebook/window in VS code where you will create a script to download ERA5
- climate data. The download process requires an internet connection.
+climate data. The download process requires an internet connection.
 
 Note: You can send up to two simultaneous requests per user. The downloading time depends on
- the amount of data requested and the workload of the ERA5 server at the time of request. You
-  might want to consider splitting the amount of data in shorter timespans (individual months
-   instead of a full year) and plan/schedule your downloading request when the ERA5 server is
-    not so busy (weekends, holidays etc.). You can check the live status of the server here:
-     https://cds.climate.copernicus.eu/live/.
+the amount of data requested and the workload of the ERA5 server at the time of request. You
+might want to consider splitting the amount of data in shorter timespans (individual months
+instead of a full year) and plan/schedule your downloading request when the ERA5 server is
+not so busy (weekends, holidays etc.). You can check the live status of the server here:
+https://cds.climate.copernicus.eu/live/.
 
 
 Have a look at this How_to_download_ERA5_data_public.ipynb to download ERA5 climate data. The
- purpose of this example script is to set the necessary input parameters for the API client,
-  create a folder structure, and download some variables for the whole globe. You are free to
-   copy the script or parts of it to prepare your own in the Jupyter Notebook/VS code that you
-    opened in Step 5. Be aware that you must change some strings in this script according to 
-    your user/needs/preferences. For instance: you must select a directory where the files are
-     going to be saved.
+purpose of this example script is to set the necessary input parameters for the API client,
+create a folder structure, and download some variables for the whole globe. You are free to
+copy the script or parts of it to prepare your own in the Jupyter Notebook/VS code that you
+opened in Step 5. Be aware that you must change some strings in this script according to 
+your user/needs/preferences. For instance: you must select a directory where the files are
+going to be saved.
 
 
 If you can run the script of the previous step and you confirm that the files are saved, you
- are ready to start downloading any ERA5 climate data you want.
-   Note: You can have a look at the CDS web interface API request (at the bottom of the page)
-   for hints on modifications to the script on step 6.
+are ready to start downloading any ERA5 climate data you want.
+Note: You can have a look at the CDS web interface API request (at the bottom of the page)
+for hints on modifications to the script on step 6.
 
-After the downloads are complete, we will proceed to calculate the wind speed (ws) from its u and v vertors. For that, please check the WindSpeed_from_vectors_public.ipynb file.
+After the downloads are complete, we will proceed to calculate the wind speed (ws) from its U
+and V vectors. For that, please check the WindSpeed_from_vectors_public.ipynb file.
 
 
-Finally, addapt and run the Final_processing_public.ipynb script. This will shift +180 longitudes in the raw datasets to the expected [-180 to 180] longitude convention in ETHOS.RESkit.Wind. if no shift is required, it will just copy the files in a "processed" directory, which is used by ETHOS.RESkit.Wind
+Finally, adapt and run the Fix_longitudes_public.ipynb script. This will shift +180 
+longitudes in the ERA5 raw datasets to the expected [-180 to 180] longitude convention in ETHOS
+RESkit.Wind. If no shift is required, it will copy the files in a "processed" directory
+with a new file name which is required by ETHOS.RESkit.Wind
 
 
 
