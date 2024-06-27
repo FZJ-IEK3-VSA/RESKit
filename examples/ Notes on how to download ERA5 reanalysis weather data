@@ -77,7 +77,7 @@ If you can run the script of the previous step and you confirm that the files ar
 After the downloads are complete, we will proceed to calculate the wind speed (ws) from its u and v vertors. For that, please check the WindSpeed_from_vectors_public.ipynb file.
 
 
-Finally, addapt and run the Final_processing_public.ipynb script. This will shift +180 longitudes to the expected [-180 to 180] convention in RESkit.
+Finally, addapt and run the Final_processing_public.ipynb script. This will shift +180 longitudes in the raw datasets to the expected [-180 to 180] longitude convention in ETHOS.RESkit.Wind. if no shift is required, it will just copy the files in a "processed" directory, which is used by ETHOS.RESkit.Wind
 
 
 
