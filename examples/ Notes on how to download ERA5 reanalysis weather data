@@ -79,10 +79,7 @@ After the downloads are complete, we will proceed to calculate the wind speed (w
 and V vectors. For that, please check the WindSpeed_from_vectors_public.ipynb file.
 
 
-Finally, adapt and run the Fix_longitudes_public.ipynb script. This will shift +180 
-longitudes in the ERA5 raw datasets to the expected [-180 to 180] longitude convention in ETHOS
-RESkit.Wind. If no shift is required, it will copy the files in a "processed" directory
-with a new file name which is required by ETHOS.RESkit.Wind
+Once completed, ETHOS.RESKit.Wind will use the .nc files contained in the directory
 
 
 
