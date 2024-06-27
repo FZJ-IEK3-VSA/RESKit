@@ -37,7 +37,8 @@ I.	Jupiter notebook (conda install -c jupyter)
 II.	Xarray (conda install -c anaconda xarray)
 III.	Pandas (conda install pandas)
 IV.	Numpy (pip install numpy)
-V.	CDO  (try one of the commands on this page: https://anaconda.org/conda-forge/cdo). 
+V.  netCDF4 (pip install netCDF4)
+VI.	CDO  (try one of the commands on this page: https://anaconda.org/conda-forge/cdo). 
 Note: If one installation line takes too long to execute (more than 30 mins), 
 you might cancel it and try the next one.
 
