@@ -74,7 +74,10 @@ If you can run the script of the previous step and you confirm that the files ar
    Note: You can have a look at the CDS web interface API request (at the bottom of the page)
    for hints on modifications to the script on step 6.
 
-After the downloads are complete, we will proceed to calculate the wind speed (ws) from its u and v vertors. For that, please check the WindSpeed_from_vectors.ipynb file.
+After the downloads are complete, we will proceed to calculate the wind speed (ws) from its u and v vertors. For that, please check the WindSpeed_from_vectors_public.ipynb file.
+
+
+Finally, addapt and run the Final_processing_public.ipynb script. This will shift +180 longitudes to the expected [-180 to 180] convention in RESkit.
 
 
 
