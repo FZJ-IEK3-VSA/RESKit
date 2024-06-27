@@ -71,9 +71,11 @@ Have a look at this How_to_download_ERA5_data_public.ipynb to download ERA5 clim
 
 If you can run the script of the previous step and you confirm that the files are saved, you
  are ready to start downloading any ERA5 climate data you want.
+   Note: You can have a look at the CDS web interface API request (at the bottom of the page)
+   for hints on modifications to the script on step 6.
+
+After the downloads are complete, we will proceed to calculate the wind speed (ws) from its u and v vertors. For that, please check the WindSpeed_from_vectors.ipynb file.
 
 
-Further steps: Have a look at the CDS web interface API request (at the bottom of the page) for
- hints on modifications to the script on step 6.
 
 Last update: 27.06.2024
