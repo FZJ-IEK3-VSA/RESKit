@@ -479,7 +479,7 @@ def wind_config(
     placements,
     weather_path,
     weather_source_type,
-    real_lra_ws_path, #1
+    real_lra_ws_path,
     real_lra_ws_scaling,
     real_lra_ws_spatial_interpolation,
     real_lra_ws_nodata_fallback,
