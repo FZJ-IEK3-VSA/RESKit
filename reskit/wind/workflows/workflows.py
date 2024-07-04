@@ -583,8 +583,12 @@ def wind_config(
     [2] DTU Wind Energy. (2019). Global Wind Atlas. https://globalwindatlas.info/
     [3] ESA. Land Cover CCI Product User Guide Version 2. Tech. Rep. (2017). Available at: maps.elie.ucl.ac.be/CCI/viewer/download/ESACCI-LC-Ph2-PUGv2_2.0.pdf
     """
+    if ws_correction_func==1:
+        def _dummy_corr(x):
+            return x
+        ws_correction_func = _dummy_corr
     assert callable(ws_correction_func), \
-        f"ws_correction_func must be an executable with a single argument that can be passed as np.array."
+        f"ws_correction_func must be an executable with a single argument that can be passed as np.array (if not 1)."
 
     wf = WindWorkflowManager(placements)
 
