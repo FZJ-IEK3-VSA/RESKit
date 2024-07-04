@@ -91,7 +91,7 @@ class WindWorkflowManager(WorkflowManager):
                 pcid = "SPC:%d,%d" % (sppow, synthetic_power_curve_cut_out)
                 powerCurve.append(pcid)
 
-            self.placements.loc[self.placements.powerCurve.isna(), "powerCurve"] = (
+            self.placements.loc[placements_wo_PC.index, "powerCurve"] = (
                 powerCurve
             )
 
@@ -100,9 +100,7 @@ class WindWorkflowManager(WorkflowManager):
                 "rotor_diam" in self.placements.columns
             ), "Placement dataframe needs 'rotor_diam' or 'powerCurve' column"
             self.placements["powerCurve"] = None
-            generate_missing_synthetic_power_curves(self)
-        else:
-            generate_missing_synthetic_power_curves(self)
+        generate_missing_synthetic_power_curves(self)
 
         # Put power curves into the power curve library
         for pc in self.placements.powerCurve.values:
