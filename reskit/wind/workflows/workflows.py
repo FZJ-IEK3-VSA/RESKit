@@ -633,8 +633,8 @@ def wind_config(
 
     # gaussian convolution of the power curve to account for statistical events in wind speed
     wf.convolute_power_curves(
-        scaling=power_curve_scaling,  # standard deviation of gaussian equals scaling*v + base
-        base=power_curve_base,  # values are derived from validation with real wind turbine data
+        scaling=power_curve_scaling,
+        base=power_curve_base,
         **convolute_power_curves_args,
     )
 
