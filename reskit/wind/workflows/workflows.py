@@ -644,3 +644,177 @@ def mean_capacity_factor_from_sectoral_weibull(
     placements, a_rasters, k_rasters, f_rasters, output=None
 ):
     pass
+
+
+def wind_config(
+    placements,
+    weather_path,
+    weather_source_type,
+    real_lra_ws_path,
+    real_lra_ws_scaling,
+    real_lra_ws_spatial_interpolation,
+    real_lra_ws_nodata_fallback,
+    landcover_path, 
+    landcover_source_type,
+    ws_correction_func,
+    cf_correction_factor,
+    wake_reduction_curve_name,
+    availability_factor,
+    weather_lra_path,
+    consider_boundary_layer_height,
+    power_curve_scaling,
+    power_curve_base,
+    convolute_power_curves_args={},
+    output_variables=None,
+    max_batch_size=25000,
+    output_netcdf_path=None,
+):
+    """
+    A generic configuration workflow for wind simulations that allows 
+    flexible calibration of all arguments used in the workflow. 
+    NOTE: Only for calibration/validation purposes!
+
+    Parameters
+    ----------
+    placements : pandas Dataframe
+        A Dataframe object with the parameters needed by the simulation.
+    weather_path : str
+        Path to the temporally resolved weather data, e.g. ERA-5 or MERRA-2 etc.
+    real_lra_ws_path : str, float
+        Either a float/int (1.0 means no scaling) or a path to a raster 
+        with real long-run-average wind speeds, e.g. the Global Wind Atlas 
+        at the same height as the weather data.
+    real_lra_ws_scaling : float
+        Accounts for unit differences, set to 1.0 if both weather data and
+        real_lra_ws are in the same unit.
+    real_lra_ws_spatial_interpolation : str
+        The spatial interpolation how the real lra ws shall be extracted,
+        e.g. 'near', 'average', 'linear_spline', 'cubic_spline'
+    real_lra_ws_nodata_fallback : str, optional
+        If no real lra available, use: (1) 'source' for weather data raw 
+        lra for simulation, (2) 'nan' for nan output
+        get flags for missing values:
+        - f'missing_values_{os.path.basename(real_lra_ws_path)}
+    landcover_path : str
+        The path to the categorical landcover raster file.
+        Set to None if no hub height scaling at all shall be applied.
+    landcover_source_type : str
+        Determines the conversion of landcover categories into roughness
+        factors, e.g. 'cci', 'clc-code', 'clc', 'globCover', 'modis'.
+        Takes effect only if landcover_path is not None.
+    ws_correction_func : 1.0 or callable
+        An executable function that takes a numpy array as single input 
+        argument and returns an adapted windspeed. If 1.0 is passed, no
+        windspeed corrrection will be applied.
+    cf_correction_factor : float, str
+        The factor by which the output capacity factors will be corrected 
+        indirectly (via corresponding adaptation of the windspeeds). Can
+        be str formatted path to a raster with spatially resolved correction
+        factors, set to 1.0 to not apply any correction.
+    wake_reduction_curve_name : str
+        string value to describe the wake reduction method. None will 
+        cause no reduction. Else choose from (see more information here 
+        under wind_efficiency_curve_name[1]): "dena_mean","knorr_mean", 
+        "dena_extreme1", "dena_extreme2", "knorr_extreme1", 
+        "knorr_extreme2", "knorr_extreme3",
+    availability_factor : float
+        This factor accounts for all downtimes and applies an average reduction to the output curve,
+        assuming a statistical deviation of the downtime occurences and a large enough turbine fleet.
+    weather_lra_path : str
+        The path to a raster with the corresponding long-run-average 
+        windspeeds of the actual weather data (will be corrected to the 
+        real lra if given, else weather_lra_path has no effect)
+    consider_boundary_layer_height : bool
+        If True, boundary layer height will be considered.
+    power_curve_scaling : float
+        The scaling factor to smoothen the power curve, for details see:
+        convolute_power_curves()
+    power_curve_base : float
+        The base factor to smoothen the power curve, for details see:
+        convolute_power_curves()
+    convolute_power_curves_args : dict, optional
+        Further convolute_power_curve() arguments, for details see:
+        convolute_power_curves(). By default {}. 
+    output_variables : str, optional
+        Restrict the output variables to these variables, by default None
+    max_batch_size: int
+        The maximum number of locations to be simulated simultaneously, else multiple batches will be simulated
+        iteratively. Helps limiting RAM requirements but may affect runtime. By default 25 000. Roughly 7GB RAM per 10k locations.
+    output_netcdf_path : str, optional
+        Path to a directory to put the output files, by default None
+
+    Returns
+    -------
+    xarray.Dataset
+        A xarray dataset including all the output variables you defined as your output variables.
+    """
+    if ws_correction_func==1:
+        def _dummy_corr(x):
+            return x
+        ws_correction_func = _dummy_corr
+    assert callable(ws_correction_func), \
+        f"ws_correction_func must be an executable with a single argument that can be passed as np.array (if not 1)."
+
+    wf = WindWorkflowManager(placements)
+
+    # limit the input placements longitude to range of -180...180
+    assert wf.placements["lon"].between(-180, 180, inclusive="both").any()
+    # limit the input placements latitude to range of -90...90
+    assert wf.placements["lon"].between(-180, 180, inclusive="both").any()
+
+    wf.read(
+        variables=[
+            "elevated_wind_speed",
+            "surface_pressure",
+            "surface_air_temperature",
+            "boundary_layer_height",
+        ],
+        source_type=weather_source_type,
+        source=weather_path,
+        set_time_index=True,
+        verbose=False,
+    )
+
+    wf.adjust_variable_to_long_run_average(
+        variable="elevated_wind_speed",
+        source_long_run_average=weather_lra_path,
+        real_long_run_average=real_lra_ws_path,
+        nodata_fallback=real_lra_ws_nodata_fallback,
+        spatial_interpolation=real_lra_ws_spatial_interpolation,
+        real_lra_scaling=real_lra_ws_scaling,
+    )
+
+    if landcover_path:
+        wf.estimate_roughness_from_land_cover(path=landcover_path, source_type=landcover_source_type)
+
+        wf.logarithmic_projection_of_wind_speeds_to_hub_height(
+            consider_boundary_layer_height=consider_boundary_layer_height
+        )
+
+    # correct wind speeds
+    wf.sim_data["elevated_wind_speed"] = ws_correction_func(wf.sim_data["elevated_wind_speed"])
+
+
+    wf.apply_air_density_correction_to_wind_speeds()
+
+    # do wake reduction if applicable
+    wf.apply_wake_correction_of_wind_speeds(
+        wake_reduction_curve_name=wake_reduction_curve_name
+    )
+
+    # gaussian convolution of the power curve to account for statistical events in wind speed
+    wf.convolute_power_curves(
+        scaling=power_curve_scaling,
+        base=power_curve_base,
+        **convolute_power_curves_args,
+    )
+
+    # do simulation
+    wf.simulate(cf_correction_factor=cf_correction_factor, max_batch_size=max_batch_size)
+
+    # apply availability factor
+    wf.apply_availability_factor(availability_factor=availability_factor)
+
+    return wf.to_xarray(
+        output_netcdf_path=output_netcdf_path, output_variables=output_variables
+    )
