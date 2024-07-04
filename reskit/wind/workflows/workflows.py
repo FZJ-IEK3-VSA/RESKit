@@ -2,7 +2,9 @@ from ... import weather as rk_weather
 from ... import util as rk_util
 from .wind_workflow_manager import WindWorkflowManager
 import numpy as np
-
+import pandas as pd
+import os
+import yaml
 
 def onshore_wind_merra_ryberg2019_europe(
     placements,
@@ -538,7 +540,9 @@ def wind_config(
     ws_correction_func : 1.0 or callable
         An executable function that takes a numpy array as single input 
         argument and returns an adapted windspeed. If 1.0 is passed, no
-        windspeed corrrection will be applied.
+        windspeed corrrection will be applied. Can also be passed as tuple
+        of length 2 with data_type (e.g. 'linear' or 'ws_bins') and data
+        dict (dict or path to yaml) with parameters.
     cf_correction_factor : float, str
         The factor by which the output capacity factors will be corrected 
         indirectly (via corresponding adaptation of the windspeeds). Can
@@ -581,6 +585,49 @@ def wind_config(
         def _dummy_corr(x):
             return x
         ws_correction_func = _dummy_corr
+    elif isinstance(ws_correction_func, tuple):
+        assert len(ws_correction_func)==2
+        assert isinstance(ws_correction_func[0], str)
+        assert isinstance(ws_correction_func[1], (dict, str))
+        # helper function to generate the actual correction function
+        def build_ws_correction_function(type, data_dict):
+            """
+            type: str
+                type of correction function
+            data_dict: dict, str
+                dictionary or json file containing the data needed to 
+                build the correction function
+            """
+            if isinstance(data_dict, str):
+                assert os.path.isfile(data_dict), \
+                    f"data_dict is a str but not an existing file: {data_dict}"
+                assert os.path.splitext(data_dict)[-1] in ['.yaml', '.yml'], \
+                    f"data_dict must be a yaml file if given as str path."
+                with open(data_dict, "r") as f:
+                    data_dict = yaml.load(f, Loader=yaml.FullLoader)
+            if type == "linear":
+                assert "slope" in data_dict.keys()
+                assert "intercept" in data_dict.keys()
+                def correction_function(x):
+                    return data_dict["slope"] * x + data_dict["intercept"]
+                return correction_function
+            elif type == "ws_bins":
+                assert "ws_bins" in data_dict.keys()
+                # check if all keys are of instance pd.Interval
+                assert all(isinstance(ws_bin, pd.Interval) for ws_bin in data_dict["ws_bins"].keys())
+                ws_bins_correction = data_dict["ws_bins"]
+                def correction_function(x):
+                    # x is numpy array. modify x based on ws_bins
+                    corrected_x = x.copy()
+                    for ws_bin, factor in ws_bins_correction.items():
+                        mask = (x >= ws_bin.left) & (x < ws_bin.right)
+                        corrected_x[mask] = x[mask] * (1 - factor)
+                    return corrected_x
+                return correction_function
+            else:
+                raise ValueError("Invalid type")
+        # generate the actual ws corr func
+        ws_correction_func = build_ws_correction_function(ws_correction_func)
     assert callable(ws_correction_func), \
         f"ws_correction_func must be an executable with a single argument that can be passed as np.array (if not 1)."
 
