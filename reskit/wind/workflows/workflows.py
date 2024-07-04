@@ -485,7 +485,6 @@ def wind_config(
     real_lra_ws_nodata_fallback,
     landcover_path, 
     landcover_source_type,
-    
     ws_correction_func,
     cf_correction_factor,
     wake_reduction_curve_name,
@@ -532,32 +531,46 @@ def wind_config(
         Determines the conversion of landcover categories into roughness
         factors, e.g. 'cci', 'clc-code', 'clc', 'globCover', 'modis'.
         Takes effect only if landcover_path is not None.
-    ws_correction_func
-
-    esa_cci_path : str
-        Path to the ESA CCI raster file [3].
-    output_netcdf_path : str, optional
-        Path to a directory to put the output files, by default None
+    ws_correction_func : 1.0 or callable
+        An executable function that takes a numpy array as single input 
+        argument and returns an adapted windspeed. If 1.0 is passed, no
+        windspeed corrrection will be applied.
+    cf_correction_factor : float, str
+        The factor by which the output capacity factors will be corrected 
+        indirectly (via corresponding adaptation of the windspeeds). Can
+        be str formatted path to a raster with spatially resolved correction
+        factors, set to 1.0 to not apply any correction.
+    wake_reduction_curve_name : str
+        string value to describe the wake reduction method. None will 
+        cause no reduction. Else choose from (see more information here 
+        under wind_efficiency_curve_name[1]): "dena_mean","knorr_mean", 
+        "dena_extreme1", "dena_extreme2", "knorr_extreme1", 
+        "knorr_extreme2", "knorr_extreme3",
+    availability_factor : float
+        This factor accounts for all downtimes and applies an average reduction to the output curve,
+        assuming a statistical deviation of the downtime occurences and a large enough turbine fleet.
+    weather_lra_path : str
+        The path to a raster with the corresponding long-run-average 
+        windspeeds of the actual weather data (will be corrected to the 
+        real lra if given, else weather_lra_path has no effect)
+    consider_boundary_layer_height : bool
+        If True, boundary layer height will be considered.
+    power_curve_scaling : float
+        The scaling factor to smoothen the power curve, for details see:
+        convolute_power_curves()
+    power_curve_base : float
+        The base factor to smoothen the power curve, for details see:
+        convolute_power_curves()
+    convolute_power_curves_args : dict, optional
+        Further convolute_power_curve() arguments, for details see:
+        convolute_power_curves(). By default {}. 
     output_variables : str, optional
         Restrict the output variables to these variables, by default None
-    nodata_fallback: 
-    correction_factor: str, float, optional
-        The wind speeds will be adapted such that the average capacity factor output is
-        scaled by the given factor. The factor may either be a float or a str formatted
-        raster path containing local float correction factors.By default 1.0, i.e. no correction.
     max_batch_size: int
         The maximum number of locations to be simulated simultaneously, else multiple batches will be simulated
         iteratively. Helps limiting RAM requirements but may affect runtime. By default 25 000. Roughly 7GB RAM per 10k locations.
-    wake_reduction_curve_name : str, optional
-        string value to describe the wake reduction method. None will cause no reduction, by default
-        "dena_mean". Choose from (see more information here under wind_efficiency_curve_name[1]): "dena_mean",
-        "knorr_mean", "dena_extreme1", "dena_extreme2", "knorr_extreme1", "knorr_extreme2", "knorr_extreme3",
-    availability_factor : float, otional
-        This factor accounts for all downtimes and applies an average reduction to the output curve,
-        assuming a statistical deviation of the downtime occurences and a large enough turbine fleet.
-        By default 0.98 as suggested availability including technical availability of turbine and connector
-        as well as outages for ecological reasons (e.g. bat protection). This does not include wake effects
-        (see above) or curtailment/outage for economical reasons or transmission grid congestion.
+    output_netcdf_path : str, optional
+        Path to a directory to put the output files, by default None
 
     Returns
     -------
