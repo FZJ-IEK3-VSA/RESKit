@@ -581,9 +581,9 @@ def wind_config(
     xarray.Dataset
         A xarray dataset including all the output variables you defined as your output variables.
     """
-    if ws_correction_func==1:
+    if isinstance(ws_correction_func, (int, float)):
         def _dummy_corr(x):
-            return x
+            return ws_correction_func * x
         ws_correction_func = _dummy_corr
     elif isinstance(ws_correction_func, (tuple, list)):
         assert len(ws_correction_func)==2
