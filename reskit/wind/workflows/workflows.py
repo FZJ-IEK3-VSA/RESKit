@@ -582,8 +582,10 @@ def wind_config(
         A xarray dataset including all the output variables you defined as your output variables.
     """
     if isinstance(ws_correction_func, (int, float)):
+        import copy
+        factor = copy.copy(ws_correction_func)
         def _dummy_corr(x):
-            return ws_correction_func * x
+            return factor * x
         ws_correction_func = _dummy_corr
     elif isinstance(ws_correction_func, (tuple, list)):
         assert len(ws_correction_func)==2
@@ -614,8 +616,8 @@ def wind_config(
             elif type == "ws_bins":
                 import pandas as pd
                 assert "ws_bins" in data_dict.keys(), "data_dict must contain key 'ws_bins' with a dict of ws bins and factors."
-                ws_bins_dict = {}
                 if not all(isinstance(ws_bin, pd.Interval) for ws_bin in data_dict["ws_bins"].keys()):
+                    ws_bins_dict = {}
                     for range_str, factor in data_dict["ws_bins"].copy().items():
                         left, right = range_str.split('-')
                         left = float(left)
