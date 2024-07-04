@@ -479,12 +479,13 @@ def wind_config(
     placements,
     weather_path,
     weather_source_type,
-    lra_ws_path, #1
-    lra_ws_scaling,
-    lra_ws_spatial_interpolation,
+    real_lra_ws_path, #1
+    real_lra_ws_scaling,
+    real_lra_ws_spatial_interpolation,
+    real_lra_ws_nodata_fallback,
     landcover_path, 
     landcover_source_type,
-    lra_ws_nodata_fallback,
+    
     ws_correction_func,
     cf_correction_factor,
     wake_reduction_curve_name,
@@ -507,20 +508,39 @@ def wind_config(
     ----------
     placements : pandas Dataframe
         A Dataframe object with the parameters needed by the simulation.
-    era5_path : str
-        Path to the ERA5 data.
-    gwa_100m_path : str
-        Path to the Global Wind Atlas at 100m [2] raster file.
+    weather_path : str
+        Path to the temporally resolved weather data, e.g. ERA-5 or MERRA-2 etc.
+    real_lra_ws_path : str, float
+        Either a float/int (1.0 means no scaling) or a path to a raster 
+        with real long-run-average wind speeds, e.g. the Global Wind Atlas 
+        at the same height as the weather data.
+    real_lra_ws_scaling : float
+        Accounts for unit differences, set to 1.0 if both weather data and
+        real_lra_ws are in the same unit.
+    real_lra_ws_spatial_interpolation : str
+        The spatial interpolation how the real lra ws shall be extracted,
+        e.g. 'near', 'average', 'linear_spline', 'cubic_spline'
+    real_lra_ws_nodata_fallback : str, optional
+        If no real lra available, use: (1) 'source' for weather data raw 
+        lra for simulation, (2) 'nan' for nan output
+        get flags for missing values:
+        - f'missing_values_{os.path.basename(real_lra_ws_path)}
+    landcover_path : str
+        The path to the categorical landcover raster file.
+        Set to None if no hub height scaling at all shall be applied.
+    landcover_source_type : str
+        Determines the conversion of landcover categories into roughness
+        factors, e.g. 'cci', 'clc-code', 'clc', 'globCover', 'modis'.
+        Takes effect only if landcover_path is not None.
+    ws_correction_func
+
     esa_cci_path : str
         Path to the ESA CCI raster file [3].
     output_netcdf_path : str, optional
         Path to a directory to put the output files, by default None
     output_variables : str, optional
         Restrict the output variables to these variables, by default None
-    nodata_fallback: str, optional
-        If no GWA available, use: (1) 'source' for ERA5 raw for simulation, (2) 'nan' for nan output
-        get flags for missing values:
-        - f'missing_values_{os.path.basename(path_to_LRA_source)}
+    nodata_fallback: 
     correction_factor: str, float, optional
         The wind speeds will be adapted such that the average capacity factor output is
         scaled by the given factor. The factor may either be a float or a str formatted
