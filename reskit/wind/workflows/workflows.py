@@ -6,6 +6,7 @@ import pandas as pd
 import os
 import yaml
 
+
 def onshore_wind_merra_ryberg2019_europe(
     placements,
     merra_path,
@@ -657,7 +658,7 @@ def wind_config(
     real_lra_ws_scaling,
     real_lra_ws_spatial_interpolation,
     real_lra_ws_nodata_fallback,
-    landcover_path, 
+    landcover_path,
     landcover_source_type,
     ws_correction_func,
     cf_correction_factor,
@@ -672,8 +673,8 @@ def wind_config(
     output_netcdf_path=None,
 ):
     """
-    A generic configuration workflow for wind simulations that allows 
-    flexible calibration of all arguments used in the workflow. 
+    A generic configuration workflow for wind simulations that allows
+    flexible calibration of all arguments used in the workflow.
     NOTE: Only for calibration/validation purposes!
 
     Parameters
@@ -683,12 +684,12 @@ def wind_config(
     weather_path : str
         Path to the temporally resolved weather data, e.g. ERA-5 or MERRA-2 etc.
     weather_lra_ws_path : str
-        The path to a raster with the corresponding long-run-average 
-        windspeeds of the actual weather data (will be corrected to the 
+        The path to a raster with the corresponding long-run-average
+        windspeeds of the actual weather data (will be corrected to the
         real lra if given, else weather_lra_path has no effect)
     real_lra_ws_path : str, float
-        Either a float/int (1.0 means no scaling) or a path to a raster 
-        with real long-run-average wind speeds, e.g. the Global Wind Atlas 
+        Either a float/int (1.0 means no scaling) or a path to a raster
+        with real long-run-average wind speeds, e.g. the Global Wind Atlas
         at the same height as the weather data.
     real_lra_ws_scaling : float
         Accounts for unit differences, set to 1.0 if both weather data and
@@ -697,7 +698,7 @@ def wind_config(
         The spatial interpolation how the real lra ws shall be extracted,
         e.g. 'near', 'average', 'linear_spline', 'cubic_spline'
     real_lra_ws_nodata_fallback : str, optional
-        If no real lra available, use: (1) 'source' for weather data raw 
+        If no real lra available, use: (1) 'source' for weather data raw
         lra for simulation, (2) 'nan' for nan output
         get flags for missing values:
         - f'missing_values_{os.path.basename(real_lra_ws_path)}
@@ -709,21 +710,21 @@ def wind_config(
         factors, e.g. 'cci', 'clc-code', 'clc', 'globCover', 'modis'.
         Takes effect only if landcover_path is not None.
     ws_correction_func :float, callable, tuple, list
-        An executable function that takes a numpy array as single input 
+        An executable function that takes a numpy array as single input
         argument and returns an adapted windspeed. If 1.0 is passed, no
         windspeed corrrection will be applied. Can also be passed as tuple
-        or list of length 2 with data_type (e.g. 'linear' or 'ws_bins') 
+        or list of length 2 with data_type (e.g. 'linear' or 'ws_bins')
         and data dict (dict or path to yaml) with parameters.
     cf_correction_factor : float, str
-        The factor by which the output capacity factors will be corrected 
+        The factor by which the output capacity factors will be corrected
         indirectly (via corresponding adaptation of the windspeeds). Can
         be str formatted path to a raster with spatially resolved correction
         factors, set to 1.0 to not apply any correction.
     wake_reduction_curve_name : str
-        string value to describe the wake reduction method. None will 
-        cause no reduction. Else choose from (see more information here 
-        under wind_efficiency_curve_name[1]): "dena_mean","knorr_mean", 
-        "dena_extreme1", "dena_extreme2", "knorr_extreme1", 
+        string value to describe the wake reduction method. None will
+        cause no reduction. Else choose from (see more information here
+        under wind_efficiency_curve_name[1]): "dena_mean","knorr_mean",
+        "dena_extreme1", "dena_extreme2", "knorr_extreme1",
         "knorr_extreme2", "knorr_extreme3",
     availability_factor : float
         This factor accounts for all downtimes and applies an average reduction to the output curve,
@@ -738,7 +739,7 @@ def wind_config(
         convolute_power_curves()
     convolute_power_curves_args : dict, optional
         Further convolute_power_curve() arguments, for details see:
-        convolute_power_curves(). By default {}. 
+        convolute_power_curves(). By default {}.
     output_variables : str, optional
         Restrict the output variables to these variables, by default None
     max_batch_size: int
@@ -753,50 +754,71 @@ def wind_config(
         A xarray dataset including all the output variables you defined as your output variables.
     """
     if isinstance(ws_correction_func, (int, float)):
+        import copy
+
+        factor = copy.copy(ws_correction_func)
+
         def _dummy_corr(x):
-            return ws_correction_func * x
+            return factor * x
+
         ws_correction_func = _dummy_corr
     elif isinstance(ws_correction_func, (tuple, list)):
-        assert len(ws_correction_func)==2
+        assert len(ws_correction_func) == 2
         assert isinstance(ws_correction_func[0], str)
         assert isinstance(ws_correction_func[1], (dict, str))
+
         # helper function to generate the actual correction function
         def build_ws_correction_function(type, data_dict):
             """
             type: str
                 type of correction function
             data_dict: dict, str
-                dictionary or json file containing the data needed to 
+                dictionary or json file containing the data needed to
                 build the correction function
             """
             if isinstance(data_dict, str):
-                assert os.path.isfile(data_dict), \
-                    f"data_dict is a str but not an existing file: {data_dict}"
-                assert os.path.splitext(data_dict)[-1] in ['.yaml', '.yml'], \
-                    f"data_dict must be a yaml file if given as str path."
+                assert os.path.isfile(
+                    data_dict
+                ), f"data_dict is a str but not an existing file: {data_dict}"
+                assert os.path.splitext(data_dict)[-1] in [
+                    ".yaml",
+                    ".yml",
+                ], f"data_dict must be a yaml file if given as str path."
                 with open(data_dict, "r") as f:
                     data_dict = yaml.load(f, Loader=yaml.FullLoader)
             if type == "linear":
                 assert "slope" in data_dict.keys()
                 assert "intercept" in data_dict.keys()
+
                 def correction_function(x):
                     return data_dict["slope"] * x + data_dict["intercept"]
+
                 return correction_function
             elif type == "ws_bins":
                 import pandas as pd
-                assert "ws_bins" in data_dict.keys(), "data_dict must contain key 'ws_bins' with a dict of ws bins and factors."
-                ws_bins_dict = {}
-                if not all(isinstance(ws_bin, pd.Interval) for ws_bin in data_dict["ws_bins"].keys()):
+
+                assert (
+                    "ws_bins" in data_dict.keys()
+                ), "data_dict must contain key 'ws_bins' with a dict of ws bins and factors."
+                if not all(
+                    isinstance(ws_bin, pd.Interval)
+                    for ws_bin in data_dict["ws_bins"].keys()
+                ):
+                    ws_bins_dict = {}
                     for range_str, factor in data_dict["ws_bins"].copy().items():
-                        left, right = range_str.split('-')
+                        left, right = range_str.split("-")
                         left = float(left)
-                        right = float(right) if right != 'inf' else np.inf
-                        ws_bins_dict[pd.Interval(left, right, closed='right')] = factor
+                        right = float(right) if right != "inf" else np.inf
+                        ws_bins_dict[pd.Interval(left, right, closed="right")] = factor
                     data_dict["ws_bins"] = ws_bins_dict
-                
+
                 # check if all keys are of instance pd.Interval
-                assert all(isinstance(ws_bin, pd.Interval) for ws_bin in data_dict["ws_bins"].keys())
+                assert all(
+                    isinstance(ws_bin, pd.Interval)
+                    for ws_bin in data_dict["ws_bins"].keys()
+                )
                 ws_bins_correction = data_dict["ws_bins"]
+
                 def correction_function(x):
                     # x is numpy array. modify x based on ws_bins
                     corrected_x = x.copy()
@@ -804,16 +826,19 @@ def wind_config(
                         mask = (x >= ws_bin.left) & (x < ws_bin.right)
                         corrected_x[mask] = x[mask] * (1 - factor)
                     return corrected_x
+
                 return correction_function
             else:
                 raise ValueError("Invalid type")
+
         # generate the actual ws corr func
         ws_correction_func = build_ws_correction_function(
             type=ws_correction_func[0],
             data_dict=ws_correction_func[1],
         )
-    assert callable(ws_correction_func), \
-        f"ws_correction_func must be an executable with a single argument that can be passed as np.array (if not 1)."
+    assert callable(
+        ws_correction_func
+    ), f"ws_correction_func must be an executable with a single argument that can be passed as np.array (if not 1)."
 
     wf = WindWorkflowManager(placements)
 
@@ -845,15 +870,18 @@ def wind_config(
     )
 
     if landcover_path:
-        wf.estimate_roughness_from_land_cover(path=landcover_path, source_type=landcover_source_type)
+        wf.estimate_roughness_from_land_cover(
+            path=landcover_path, source_type=landcover_source_type
+        )
 
         wf.logarithmic_projection_of_wind_speeds_to_hub_height(
             consider_boundary_layer_height=consider_boundary_layer_height
         )
 
     # correct wind speeds
-    wf.sim_data["elevated_wind_speed"] = ws_correction_func(wf.sim_data["elevated_wind_speed"])
-
+    wf.sim_data["elevated_wind_speed"] = ws_correction_func(
+        wf.sim_data["elevated_wind_speed"]
+    )
 
     wf.apply_air_density_correction_to_wind_speeds()
 
@@ -870,7 +898,9 @@ def wind_config(
     )
 
     # do simulation
-    wf.simulate(cf_correction_factor=cf_correction_factor, max_batch_size=max_batch_size)
+    wf.simulate(
+        cf_correction_factor=cf_correction_factor, max_batch_size=max_batch_size
+    )
 
     # apply availability factor
     wf.apply_availability_factor(availability_factor=availability_factor)
