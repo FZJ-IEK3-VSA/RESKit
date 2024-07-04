@@ -537,12 +537,12 @@ def wind_config(
         Determines the conversion of landcover categories into roughness
         factors, e.g. 'cci', 'clc-code', 'clc', 'globCover', 'modis'.
         Takes effect only if landcover_path is not None.
-    ws_correction_func : 1.0 or callable
+    ws_correction_func :float, callable, tuple, list
         An executable function that takes a numpy array as single input 
         argument and returns an adapted windspeed. If 1.0 is passed, no
         windspeed corrrection will be applied. Can also be passed as tuple
-        of length 2 with data_type (e.g. 'linear' or 'ws_bins') and data
-        dict (dict or path to yaml) with parameters.
+        or list of length 2 with data_type (e.g. 'linear' or 'ws_bins') 
+        and data dict (dict or path to yaml) with parameters.
     cf_correction_factor : float, str
         The factor by which the output capacity factors will be corrected 
         indirectly (via corresponding adaptation of the windspeeds). Can
@@ -585,7 +585,7 @@ def wind_config(
         def _dummy_corr(x):
             return x
         ws_correction_func = _dummy_corr
-    elif isinstance(ws_correction_func, tuple):
+    elif isinstance(ws_correction_func, (tuple, list)):
         assert len(ws_correction_func)==2
         assert isinstance(ws_correction_func[0], str)
         assert isinstance(ws_correction_func[1], (dict, str))
@@ -627,7 +627,10 @@ def wind_config(
             else:
                 raise ValueError("Invalid type")
         # generate the actual ws corr func
-        ws_correction_func = build_ws_correction_function(ws_correction_func)
+        ws_correction_func = build_ws_correction_function(
+            type=ws_correction_func[0],
+            data_dict=ws_correction_func[1],
+        )
     assert callable(ws_correction_func), \
         f"ws_correction_func must be an executable with a single argument that can be passed as np.array (if not 1)."
 
