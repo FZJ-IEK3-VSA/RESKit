@@ -90,7 +90,7 @@ class WindWorkflowManager(WorkflowManager):
                 pcid = "SPC:%d,%d" % (sppow, synthetic_power_curve_cut_out)
                 powerCurve.append(pcid)
 
-            self.placements.loc[placements_wo_PC, "powerCurve"] = (
+            self.placements.loc[placements_wo_PC.index, "powerCurve"] = (
                 powerCurve
             )
 
