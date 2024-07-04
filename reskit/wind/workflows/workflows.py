@@ -783,7 +783,17 @@ def wind_config(
                     return data_dict["slope"] * x + data_dict["intercept"]
                 return correction_function
             elif type == "ws_bins":
-                assert "ws_bins" in data_dict.keys()
+                import pandas as pd
+                assert "ws_bins" in data_dict.keys(), "data_dict must contain key 'ws_bins' with a dict of ws bins and factors."
+                ws_bins_dict = {}
+                if not all(isinstance(ws_bin, pd.Interval) for ws_bin in data_dict["ws_bins"].keys()):
+                    for range_str, factor in data_dict["ws_bins"].copy().items():
+                        left, right = range_str.split('-')
+                        left = float(left)
+                        right = float(right) if right != 'inf' else np.inf
+                        ws_bins_dict[pd.Interval(left, right, closed='right')] = factor
+                    data_dict["ws_bins"] = ws_bins_dict
+                
                 # check if all keys are of instance pd.Interval
                 assert all(isinstance(ws_bin, pd.Interval) for ws_bin in data_dict["ws_bins"].keys())
                 ws_bins_correction = data_dict["ws_bins"]
