@@ -479,6 +479,7 @@ def wind_config(
     placements,
     weather_path,
     weather_source_type,
+    weather_lra_ws_path,
     real_lra_ws_path,
     real_lra_ws_scaling,
     real_lra_ws_spatial_interpolation,
@@ -489,7 +490,6 @@ def wind_config(
     cf_correction_factor,
     wake_reduction_curve_name,
     availability_factor,
-    weather_lra_path,
     consider_boundary_layer_height,
     power_curve_scaling,
     power_curve_base,
@@ -509,6 +509,10 @@ def wind_config(
         A Dataframe object with the parameters needed by the simulation.
     weather_path : str
         Path to the temporally resolved weather data, e.g. ERA-5 or MERRA-2 etc.
+    weather_lra_ws_path : str
+        The path to a raster with the corresponding long-run-average 
+        windspeeds of the actual weather data (will be corrected to the 
+        real lra if given, else weather_lra_path has no effect)
     real_lra_ws_path : str, float
         Either a float/int (1.0 means no scaling) or a path to a raster 
         with real long-run-average wind speeds, e.g. the Global Wind Atlas 
@@ -549,10 +553,6 @@ def wind_config(
     availability_factor : float
         This factor accounts for all downtimes and applies an average reduction to the output curve,
         assuming a statistical deviation of the downtime occurences and a large enough turbine fleet.
-    weather_lra_path : str
-        The path to a raster with the corresponding long-run-average 
-        windspeeds of the actual weather data (will be corrected to the 
-        real lra if given, else weather_lra_path has no effect)
     consider_boundary_layer_height : bool
         If True, boundary layer height will be considered.
     power_curve_scaling : float
@@ -606,7 +606,7 @@ def wind_config(
 
     wf.adjust_variable_to_long_run_average(
         variable="elevated_wind_speed",
-        source_long_run_average=weather_lra_path,
+        source_long_run_average=weather_lra_ws_path,
         real_long_run_average=real_lra_ws_path,
         nodata_fallback=real_lra_ws_nodata_fallback,
         spatial_interpolation=real_lra_ws_spatial_interpolation,
