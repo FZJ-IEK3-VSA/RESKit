@@ -499,9 +499,9 @@ def wind_config(
     output_netcdf_path=None,
 ):
     """
-    Simulates onshore and offshore (200km from shoreline) wind generation using ECMWF's ERA5 database [1].
-
-    NOTE: Validation documentation is in progress...
+    A generic configuration workflow for wind simulations that allows 
+    flexible calibration of all arguments used in the workflow. 
+    NOTE: Only for calibration/validation purposes!
 
     Parameters
     ----------
@@ -576,12 +576,6 @@ def wind_config(
     -------
     xarray.Dataset
         A xarray dataset including all the output variables you defined as your output variables.
-
-    Sources
-    ------
-    [1] European Centre for Medium-Range Weather Forecasts. (2019). ERA5 dataset. https://www.ecmwf.int/en/forecasts/datasets/reanalysis-datasets/era5
-    [2] DTU Wind Energy. (2019). Global Wind Atlas. https://globalwindatlas.info/
-    [3] ESA. Land Cover CCI Product User Guide Version 2. Tech. Rep. (2017). Available at: maps.elie.ucl.ac.be/CCI/viewer/download/ESACCI-LC-Ph2-PUGv2_2.0.pdf
     """
     if ws_correction_func==1:
         def _dummy_corr(x):
