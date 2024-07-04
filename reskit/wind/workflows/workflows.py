@@ -596,10 +596,10 @@ def wind_config(
     wf.adjust_variable_to_long_run_average(
         variable="elevated_wind_speed",
         source_long_run_average=weather_lra_path,
-        real_long_run_average=lra_ws_path,
-        nodata_fallback=lra_ws_nodata_fallback,
-        spatial_interpolation=lra_ws_spatial_interpolation,
-        real_lra_scaling=lra_ws_scaling,
+        real_long_run_average=real_lra_ws_path,
+        nodata_fallback=real_lra_ws_nodata_fallback,
+        spatial_interpolation=real_lra_ws_spatial_interpolation,
+        real_lra_scaling=real_lra_ws_scaling,
     )
 
     if landcover_path:
