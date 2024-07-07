@@ -197,7 +197,9 @@ class NCSource(object):
 
         sources = addSource(source)
         if len(sources) == 0:
-            raise ResError(f"No '.nc' or '.nc4' files found for tile base path: {source}")
+            raise ResError(
+                f"No '.nc' or '.nc4' files found for tile base path: {source}"
+            )
         sources.sort()
 
         # Collect all variable information
@@ -944,8 +946,8 @@ class NCSource(object):
                 rbsArgs = dict(kx=1, ky=1)
 
             # shift extreme latitudes to the highest/lowest possible lat, considering width of extraction window
-            threshold = 89-(win-0.5)*abs(self.lats[0]-self.lats[1])
-            _locations = [] 
+            threshold = 89 - (win - 0.5) * abs(self.lats[0] - self.lats[1])
+            _locations = []
             _shifted = 0
             for loc in locations:
                 if abs(loc.lat) > abs(threshold):
@@ -956,8 +958,11 @@ class NCSource(object):
             _locations = gk.LocationSet(_locations)
             _indicies = self.loc_to_index(_locations, outside_okay, as_int=as_int)
             if _shifted > 0:
-                print(f"NOTE: For {_shifted} locations exceeding the maximum latitude coverage, values were taken from the maximum available latitude.", flush=True)
-                        
+                print(
+                    f"NOTE: For {_shifted} locations exceeding the maximum latitude coverage, values were taken from the maximum available latitude.",
+                    flush=True,
+                )
+
             # Set up interpolation arrays
             if not isinstance(_indicies, list):
                 _indicies = [_indicies]
