@@ -619,16 +619,18 @@ def wind_config(
                 # convert tuple to dict first if needed
                 if isinstance(data_dict, (list, tuple)):
                     # assume that the polynomial factors a_i*x^^i are sorted (a_n, ..., a_2, a_1, a_0)
-                    data_dict = {i : v for i,v in enumerate(list(data_dict)[::-1])}
-                assert isinstance(data_dict, dict), \
-                    f"data_dict must be a dict if not given as a tuple of polynomial factors."
-                assert all([x%1==0 for x in data_dict.keys()]), \
-                    f"All data_dict keys must be integers i with values a_i, for all required polynomial factors a_i*x^^i."
-                
+                    data_dict = {i: v for i, v in enumerate(list(data_dict)[::-1])}
+                assert isinstance(
+                    data_dict, dict
+                ), f"data_dict must be a dict if not given as a tuple of polynomial factors."
+                assert all(
+                    [x % 1 == 0 for x in data_dict.keys()]
+                ), f"All data_dict keys must be integers i with values a_i, for all required polynomial factors a_i*x^^i."
+
                 def correction_function(x):
                     _func = 0
                     for deg, fac in data_dict.items():
-                        _func = _func + fac*x**int(deg)
+                        _func = _func + fac * x ** int(deg)
                     return _func
 
                 return correction_function
@@ -665,7 +667,9 @@ def wind_config(
 
                 return correction_function
             else:
-                raise ValueError(f"Invalid ws_correction_func type: {type}. Select from: 'polynomial', 'ws_bins'.")
+                raise ValueError(
+                    f"Invalid ws_correction_func type: {type}. Select from: 'polynomial', 'ws_bins'."
+                )
 
         # generate the actual ws corr func
         ws_correction_func = build_ws_correction_function(
