@@ -66,7 +66,10 @@ class WindWorkflowManager(WorkflowManager):
             """
             Generates synthetic power curves for all placements that do not have a power curve defined.
             """
-            placements_wo_PC = self.placements[self.placements.powerCurve.isna() | (self.placements.powerCurve == "nan")]
+            placements_wo_PC = self.placements[
+                self.placements.powerCurve.isna()
+                | (self.placements.powerCurve == "nan")
+            ]
             assert (
                 "rotor_diam" in placements_wo_PC.columns
             ), "Placements needs 'rotor_diam' or 'powerCurve' specified"
@@ -90,9 +93,7 @@ class WindWorkflowManager(WorkflowManager):
                 pcid = "SPC:%d,%d" % (sppow, synthetic_power_curve_cut_out)
                 powerCurve.append(pcid)
 
-            self.placements.loc[placements_wo_PC.index, "powerCurve"] = (
-                powerCurve
-            )
+            self.placements.loc[placements_wo_PC.index, "powerCurve"] = powerCurve
 
         if not "powerCurve" in self.placements.columns:
             assert (
