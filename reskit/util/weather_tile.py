@@ -57,9 +57,11 @@ def get_tile_XY(zoom, lon=None, lat=None, geom=None):
 
     # deg_to_num cannot deal with extreme latitudes, set to Y edge tile manually
     if Y < 0:
+        print(f"Locations (lat={lat}, lon={lon}) below the minimum tile Y-index (0) will be corrected to the lowest available tile index: 0 ")
         Y = 0
-    elif Y > (zoom**2 - 1):
-        Y = (zoom**2 - 1)
+    elif Y > ((2**zoom) - 1):
+        print(f"Locations (lat={lat}, lon={lon}) outside the maximum tile Y-index ({Y}) at zoom level {zoom} will be corrected to the outmost available tile index: {zoom**2 - 1} ")
+        Y = (2**zoom) - 1
 
     return (X, Y)
 
