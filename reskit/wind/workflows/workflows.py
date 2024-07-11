@@ -837,6 +837,42 @@ def wind_config(
                     return corrected_x
 
                 return correction_function
+            
+            elif type == "ws_double_bins":
+                import pandas as pd
+
+                if not all(
+                    isinstance(ws_bin, pd.Interval)
+                    for ws_bin in data_dict.keys()
+                ):
+                    # convert keys to pd.Interval
+                    def convert_interval(interval):
+                        left, right = interval.split("-")
+                        left = float(left)
+                        right = float(right) if right != "inf" else np.inf
+                        return pd.Interval(left, right, closed="right")
+                    
+                    ws_bins_correction = {}
+                    for mean_ws_bin, mean_ws_bin_dict in data_dict.items():
+                        mean_ws_bin_interval = convert_interval(mean_ws_bin)
+                        _mean_ws_bin_dict = {}
+                        for range_str, factor in mean_ws_bin_dict.copy().items():
+                            _mean_ws_bin_dict[convert_interval(range_str)] = factor
+                        ws_bins_correction[mean_ws_bin_interval] = _mean_ws_bin_dict
+                
+                def correction_function(x):
+                    mean_ws = x.mean(axis=0)
+                    
+                    corrected_x = x.copy()
+                    for mean_ws_bin, mean_ws_bin_dict in ws_bins_correction.items():
+                        mask_mean_ws = (mean_ws >= mean_ws_bin.left) & (mean_ws < mean_ws_bin.right)
+                        for ws_bin, factor in mean_ws_bin_dict.items():
+                            mask_hourly_ws = (x >= ws_bin.left) & (x < ws_bin.right)
+                            corrected_x[mask_mean_ws & mask_hourly_ws] = x[mask_mean_ws & mask_hourly_ws] * (1 - factor)
+                    return corrected_x
+                
+                return correction_function            
+        
             else:
                 raise ValueError(
                     f"Invalid ws_correction_func type: {type}. Select from: 'polynomial', 'ws_bins'."
