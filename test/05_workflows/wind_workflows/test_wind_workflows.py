@@ -139,7 +139,7 @@ def test_wind_era5_2023(pt_wind_placements):
         gwa_100m_path=TEST_DATA["gwa100-like.tif"],
         esa_cci_path=TEST_DATA["ESA_CCI_2018_clip.tif"],
         max_batch_size=300,
-        wake_reduction_curve_name=None,  # test without wake
+        wake_curve=None,  # test without wake
         availability_factor=1,  # test without availability reduction
     )
 
