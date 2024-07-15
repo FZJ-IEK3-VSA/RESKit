@@ -448,9 +448,7 @@ def wind_era5_2023(
     wf.apply_air_density_correction_to_wind_speeds()
 
     # do wake reduction if applicable
-    wf.apply_wake_correction_of_wind_speeds(
-        wake_curve=wake_curve
-    )
+    wf.apply_wake_correction_of_wind_speeds(wake_curve=wake_curve)
 
     # gaussian convolution of the power curve to account for statistical events in wind speed
     wf.convolute_power_curves(

@@ -84,8 +84,11 @@ def test_WindWorkflowManager_with_ws___init__():
     wind_speeds = np.random.randint(0, 16, size=(24, len(man.placements)))
     man.sim_data["elevated_wind_speed"] = wind_speeds
     # add wind speed height
-    man.elevated_wind_speed_height=np.random.randint(60, 140, size=(1, len(man.placements)))
+    man.elevated_wind_speed_height = np.random.randint(
+        60, 140, size=(1, len(man.placements))
+    )
     return man
+
 
 @pytest.fixture
 def pt_WindWorkflowManager_initialized() -> WindWorkflowManager:
@@ -176,8 +179,8 @@ def test_WindWorkflowManager_apply_wake_correction_of_wind_speeds():
     man.apply_wake_correction_of_wind_speeds(wake_curve=None)
 
     assert np.isclose(
-        man.sim_data["elevated_wind_speed"].mean(axis=0), 
-        np.array([7.29166667, 8.04166667, 8.66666667, 6.33333333, 7.04166667])
+        man.sim_data["elevated_wind_speed"].mean(axis=0),
+        np.array([7.29166667, 8.04166667, 8.66666667, 6.33333333, 7.04166667]),
     ).all()
 
     # now with scalar "wake_curve" function arg
@@ -186,10 +189,10 @@ def test_WindWorkflowManager_apply_wake_correction_of_wind_speeds():
     man.apply_wake_correction_of_wind_speeds(wake_curve="dena_mean")
 
     assert np.isclose(
-        man.sim_data["elevated_wind_speed"].mean(axis=0), 
-        np.array([6.375     , 7.08333333, 7.70833333, 5.375     , 6.125     ])
+        man.sim_data["elevated_wind_speed"].mean(axis=0),
+        np.array([6.375, 7.08333333, 7.70833333, 5.375, 6.125]),
     ).all()
-    
+
     # and last with location-specific column value
     man = test_WindWorkflowManager_with_ws___init__()
     man.placements["wake_curve"] = None
@@ -197,8 +200,8 @@ def test_WindWorkflowManager_apply_wake_correction_of_wind_speeds():
     man.apply_wake_correction_of_wind_speeds(wake_curve=None)
 
     assert np.isclose(
-        man.sim_data["elevated_wind_speed"].mean(axis=0), 
-        np.array([7.29166667, 8.04166667, 7.70833333, 6.33333333, 7.04166667])
+        man.sim_data["elevated_wind_speed"].mean(axis=0),
+        np.array([7.29166667, 8.04166667, 7.70833333, 6.33333333, 7.04166667]),
     ).all()
 
 
