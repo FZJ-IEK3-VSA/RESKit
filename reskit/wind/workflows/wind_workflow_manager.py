@@ -269,6 +269,32 @@ class WindWorkflowManager(WorkflowManager):
         """
         # return as is if no wake reduction shall be applied
         if wake_curve is None:
+            if not "wake_curve" in self.placements.columns:
+                # no wake effects to be applied
+                return self
+            else:
+                # we have no wake wake_curve value
+                # but use reduction curve name info in the placements df
+                print(f"Wake reduction curve names will be extracted from 'wake_curve' column in placements dataframe.", flush=True)
+                wake_curves=np.array(self.placements["wake_curve"])
+                if pd.isnull(wake_curves).all():
+                    print(f"All 'wake_curve' column entries are NaN, no wake effects willbe applied.", flush=True)
+                pass
+        else:
+            # use the given wake curve name
+            if "wake_curve" in self.placements.columns:
+                # prioritize wake_curve function arg over the wake_curve placements column
+                print(f"NOTE: 'wake_curve' column in placements not considered since 'wake_curve' workflow argument was given as: {wake_curve}", flush=True)
+            wake_curves = np.array([wake_curve]*len(self.placements))
+
+        # iterate over the possibly different wake reduction curves that are not NaN
+        for wake_curve_i in set(wake_curves[np.array([not pd.isnull(x) for x in wake_curves])]):
+            self.sim_data["elevated_wind_speed"][:, wake_curves==wake_curve_i] = (
+                windpowerlib.wake_losses.reduce_wind_speed(
+                    self.sim_data["elevated_wind_speed"][:, wake_curves==wake_curve_i],
+                    wind_efficiency_curve_name=wake_curve_i,
+                )
+            )
 
         return self
 
