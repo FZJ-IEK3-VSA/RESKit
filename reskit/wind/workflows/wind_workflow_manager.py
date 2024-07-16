@@ -253,8 +253,12 @@ class WindWorkflowManager(WorkflowManager):
         Parameters
         ----------
         wake_curve : str, optional
-            string value to describe the wake reduction method. None will cause no reduction,
-            by default "dena_mean". Choose from (see more information here under wind_efficiency_curve_name[1]):
+            string value to describe the wake reduction method. None will
+            cause no reduction. Location-sepcific values can also be
+            given in a 'wake_curve' column of the placements dataframe,
+            the latter will be overridden by the 'wake_curve' argument.
+            By default "dena_mean". Choose from (see more information
+            here under wind_efficiency_curve_name[1]):
             * "dena_mean",
             * "knorr_mean",
             * "dena_extreme1",
