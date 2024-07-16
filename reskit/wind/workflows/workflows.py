@@ -3,6 +3,7 @@ from ... import util as rk_util
 from .wind_workflow_manager import WindWorkflowManager
 import numpy as np
 import pandas as pd
+from pandas import Interval
 import os
 import yaml
 
@@ -640,7 +641,7 @@ def wind_config(
                     "ws_bins" in data_dict.keys()
                 ), "data_dict must contain key 'ws_bins' with a dict of ws bins and factors."
                 if not all(
-                    isinstance(ws_bin, pd.Interval)
+                    isinstance(ws_bin, Interval)
                     for ws_bin in data_dict["ws_bins"].keys()
                 ):
                     ws_bins_dict = {}
@@ -648,12 +649,12 @@ def wind_config(
                         left, right = range_str.split("-")
                         left = float(left)
                         right = float(right) if right != "inf" else np.inf
-                        ws_bins_dict[pd.Interval(left, right, closed="right")] = factor
+                        ws_bins_dict[Interval(left, right, closed="right")] = factor
                     data_dict["ws_bins"] = ws_bins_dict
 
-                # check if all keys are of instance pd.Interval
+                # check if all keys are of instance Interval
                 assert all(
-                    isinstance(ws_bin, pd.Interval)
+                    isinstance(ws_bin, Interval)
                     for ws_bin in data_dict["ws_bins"].keys()
                 )
                 ws_bins_correction = data_dict["ws_bins"]
@@ -669,17 +670,14 @@ def wind_config(
                 return correction_function
 
             elif type == "ws_double_bins":
-                import pandas as pd
 
-                if not all(
-                    isinstance(ws_bin, pd.Interval) for ws_bin in data_dict.keys()
-                ):
-                    # convert keys to pd.Interval
+                if not all(isinstance(ws_bin, Interval) for ws_bin in data_dict.keys()):
+                    # convert keys to pandas Interval
                     def convert_interval(interval):
                         left, right = interval.split("-")
                         left = float(left)
                         right = float(right) if right != "inf" else np.inf
-                        return pd.Interval(left, right, closed="right")
+                        return Interval(left, right, closed="right")
 
                     ws_bins_correction = {}
                     for mean_ws_bin, mean_ws_bin_dict in data_dict.items():
