@@ -350,7 +350,7 @@ def wind_era5_2023(
     nodata_fallback="nan",
     correction_factor=1.0,
     max_batch_size=25000,
-    wake_reduction_curve_name="dena_mean",
+    wake_curve="dena_mean",
     availability_factor=0.98,
     era5_lra_path=None,
 ):
@@ -384,7 +384,7 @@ def wind_era5_2023(
     max_batch_size: int
         The maximum number of locations to be simulated simultaneously, else multiple batches will be simulated
         iteratively. Helps limiting RAM requirements but may affect runtime. By default 25 000. Roughly 7GB RAM per 10k locations.
-    wake_reduction_curve_name : str, optional
+    wake_curve : str, optional
         string value to describe the wake reduction method. None will cause no reduction, by default
         "dena_mean". Choose from (see more information here under wind_efficiency_curve_name[1]): "dena_mean",
         "knorr_mean", "dena_extreme1", "dena_extreme2", "knorr_extreme1", "knorr_extreme2", "knorr_extreme3",
@@ -452,7 +452,7 @@ def wind_era5_2023(
 
     # do wake reduction if applicable
     wf.apply_wake_correction_of_wind_speeds(
-        wake_reduction_curve_name=wake_reduction_curve_name
+        wake_curve=wake_curve
     )
 
     # gaussian convolution of the power curve to account for statistical events in wind speed
@@ -491,7 +491,7 @@ def wind_config(
     landcover_source_type,
     ws_correction_func,
     cf_correction_factor,
-    wake_reduction_curve_name,
+    wake_curve,
     availability_factor,
     consider_boundary_layer_height,
     power_curve_scaling,
@@ -549,12 +549,7 @@ def wind_config(
         indirectly (via corresponding adaptation of the windspeeds). Can
         be str formatted path to a raster with spatially resolved correction
         factors, set to 1.0 to not apply any correction.
-    wake_reduction_curve_name : str
-        string value to describe the wake reduction method. None will
-        cause no reduction. Else choose from (see more information here
-        under wind_efficiency_curve_name[1]): "dena_mean","knorr_mean",
-        "dena_extreme1", "dena_extreme2", "knorr_extreme1",
-        "knorr_extreme2", "knorr_extreme3",
+    wake_curve : str, optional
     availability_factor : float
         This factor accounts for all downtimes and applies an average reduction to the output curve,
         assuming a statistical deviation of the downtime occurences and a large enough turbine fleet.
@@ -763,7 +758,7 @@ def wind_config(
 
     # do wake reduction if applicable
     wf.apply_wake_correction_of_wind_speeds(
-        wake_reduction_curve_name=wake_reduction_curve_name
+        wake_curve=wake_curve
     )
 
     # gaussian convolution of the power curve to account for statistical events in wind speed
