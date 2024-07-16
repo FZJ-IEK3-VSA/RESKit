@@ -3,6 +3,7 @@ from ... import util as rk_util
 from .wind_workflow_manager import WindWorkflowManager
 import numpy as np
 import pandas as pd
+from pandas import Interval
 import os
 import yaml
 
@@ -451,9 +452,7 @@ def wind_era5_2023(
     wf.apply_air_density_correction_to_wind_speeds()
 
     # do wake reduction if applicable
-    wf.apply_wake_correction_of_wind_speeds(
-        wake_curve=wake_curve
-    )
+    wf.apply_wake_correction_of_wind_speeds(wake_curve=wake_curve)
 
     # gaussian convolution of the power curve to account for statistical events in wind speed
     wf.convolute_power_curves(
@@ -721,13 +720,13 @@ def wind_config(
         be str formatted path to a raster with spatially resolved correction
         factors, set to 1.0 to not apply any correction.
     wake_curve : str, optional
-        string value to describe the wake reduction method. None will 
+        string value to describe the wake reduction method. None will
         cause no reduction, by default "dena_mean". Choose from (see more
         information here under wind_efficiency_curve_name[1]): "dena_mean",
-        "knorr_mean", "dena_extreme1", "dena_extreme2", "knorr_extreme1", 
-        "knorr_extreme2", "knorr_extreme3". Alternatively, the 
-        'wake_curve' str can also be provided per each location in a 
-        'wake_curve' column of the placements dataframe, 'wake_curve' 
+        "knorr_mean", "dena_extreme1", "dena_extreme2", "knorr_extreme1",
+        "knorr_extreme2", "knorr_extreme3". Alternatively, the
+        'wake_curve' str can also be provided per each location in a
+        'wake_curve' column of the placements dataframe, 'wake_curve'
         argument must then be None.
     availability_factor : float
         This factor accounts for all downtimes and applies an average reduction to the output curve,
@@ -813,7 +812,7 @@ def wind_config(
                     "ws_bins" in data_dict.keys()
                 ), "data_dict must contain key 'ws_bins' with a dict of ws bins and factors."
                 if not all(
-                    isinstance(ws_bin, pd.Interval)
+                    isinstance(ws_bin, Interval)
                     for ws_bin in data_dict["ws_bins"].keys()
                 ):
                     ws_bins_dict = {}
@@ -821,12 +820,12 @@ def wind_config(
                         left, right = range_str.split("-")
                         left = float(left)
                         right = float(right) if right != "inf" else np.inf
-                        ws_bins_dict[pd.Interval(left, right, closed="right")] = factor
+                        ws_bins_dict[Interval(left, right, closed="right")] = factor
                     data_dict["ws_bins"] = ws_bins_dict
 
-                # check if all keys are of instance pd.Interval
+                # check if all keys are of instance Interval
                 assert all(
-                    isinstance(ws_bin, pd.Interval)
+                    isinstance(ws_bin, Interval)
                     for ws_bin in data_dict["ws_bins"].keys()
                 )
                 ws_bins_correction = data_dict["ws_bins"]
@@ -840,21 +839,17 @@ def wind_config(
                     return corrected_x
 
                 return correction_function
-            
-            elif type == "ws_double_bins":
-                import pandas as pd
 
-                if not all(
-                    isinstance(ws_bin, pd.Interval)
-                    for ws_bin in data_dict.keys()
-                ):
-                    # convert keys to pd.Interval
+            elif type == "ws_double_bins":
+
+                if not all(isinstance(ws_bin, Interval) for ws_bin in data_dict.keys()):
+                    # convert keys to pandas Interval
                     def convert_interval(interval):
                         left, right = interval.split("-")
                         left = float(left)
                         right = float(right) if right != "inf" else np.inf
-                        return pd.Interval(left, right, closed="right")
-                    
+                        return Interval(left, right, closed="right")
+
                     ws_bins_correction = {}
                     for mean_ws_bin, mean_ws_bin_dict in data_dict.items():
                         mean_ws_bin_interval = convert_interval(mean_ws_bin)
@@ -862,20 +857,24 @@ def wind_config(
                         for range_str, factor in mean_ws_bin_dict.copy().items():
                             _mean_ws_bin_dict[convert_interval(range_str)] = factor
                         ws_bins_correction[mean_ws_bin_interval] = _mean_ws_bin_dict
-                
+
                 def correction_function(x):
                     mean_ws = x.mean(axis=0)
-                    
+
                     corrected_x = x.copy()
                     for mean_ws_bin, mean_ws_bin_dict in ws_bins_correction.items():
-                        mask_mean_ws = (mean_ws >= mean_ws_bin.left) & (mean_ws < mean_ws_bin.right)
+                        mask_mean_ws = (mean_ws >= mean_ws_bin.left) & (
+                            mean_ws < mean_ws_bin.right
+                        )
                         for ws_bin, factor in mean_ws_bin_dict.items():
                             mask_hourly_ws = (x >= ws_bin.left) & (x < ws_bin.right)
-                            corrected_x[mask_mean_ws & mask_hourly_ws] = x[mask_mean_ws & mask_hourly_ws] * (1 - factor)
+                            corrected_x[mask_mean_ws & mask_hourly_ws] = x[
+                                mask_mean_ws & mask_hourly_ws
+                            ] * (1 - factor)
                     return corrected_x
-                
-                return correction_function            
-        
+
+                return correction_function
+
             else:
                 raise ValueError(
                     f"Invalid ws_correction_func type: {type}. Select from: 'polynomial', 'ws_bins'."
@@ -936,9 +935,7 @@ def wind_config(
     wf.apply_air_density_correction_to_wind_speeds()
 
     # do wake reduction if applicable
-    wf.apply_wake_correction_of_wind_speeds(
-        wake_curve=wake_curve
-    )
+    wf.apply_wake_correction_of_wind_speeds(wake_curve=wake_curve)
 
     # gaussian convolution of the power curve to account for statistical events in wind speed
     wf.convolute_power_curves(
