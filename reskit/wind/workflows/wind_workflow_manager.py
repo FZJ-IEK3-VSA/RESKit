@@ -243,7 +243,7 @@ class WindWorkflowManager(WorkflowManager):
 
     def apply_wake_correction_of_wind_speeds(
         self,
-        wake_reduction_curve_name="dena_mean",
+        wake_curve="dena_mean",
     ):
         """
         Applies a wind-speed dependent reduction factor to the wind speeds at elevated height,
@@ -251,7 +251,7 @@ class WindWorkflowManager(WorkflowManager):
 
         Parameters
         ----------
-        wake_reduction_curve_name : str, optional
+        wake_curve : str, optional
             string value to describe the wake reduction method. None will cause no reduction,
             by default "dena_mean". Choose from (see more information here under wind_efficiency_curve_name[1]):
             * "dena_mean",
@@ -267,14 +267,14 @@ class WindWorkflowManager(WorkflowManager):
             A reference to the invoking WindWorkflowManager
         """
         # return as is if no wake reduction shall be applied
-        if wake_reduction_curve_name is None:
+        if wake_curve is None:
             return self
 
         assert hasattr(self, "elevated_wind_speed_height")
         self.sim_data["elevated_wind_speed"] = (
             windpowerlib.wake_losses.reduce_wind_speed(
                 self.sim_data["elevated_wind_speed"],
-                wind_efficiency_curve_name=wake_reduction_curve_name,
+                wind_efficiency_curve_name=wake_curve,
             )
         )
 
