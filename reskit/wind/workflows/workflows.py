@@ -769,7 +769,7 @@ def wind_config(
     elif isinstance(ws_correction_func, (tuple, list)):
         assert len(ws_correction_func) == 2
         assert isinstance(ws_correction_func[0], str)
-        assert isinstance(ws_correction_func[1], (dict, str))
+        assert isinstance(ws_correction_func[1], (dict, str, list, tuple))
 
         # helper function to generate the actual correction function
         def build_ws_correction_function(type, data_dict):
@@ -843,15 +843,17 @@ def wind_config(
                 return correction_function
 
             elif type == "ws_double_bins":
-
-                if not all(isinstance(ws_bin, Interval) for ws_bin in data_dict.keys()):
-                    # convert keys to pandas Interval
+                if not all(
+                    isinstance(ws_bin, Interval)
+                    for ws_bin in data_dict.keys()
+                ):
+                    # convert keys to pd.Interval
                     def convert_interval(interval):
                         left, right = interval.split("-")
                         left = float(left)
                         right = float(right) if right != "inf" else np.inf
                         return Interval(left, right, closed="right")
-
+                    
                     ws_bins_correction = {}
                     for mean_ws_bin, mean_ws_bin_dict in data_dict.items():
                         mean_ws_bin_interval = convert_interval(mean_ws_bin)
