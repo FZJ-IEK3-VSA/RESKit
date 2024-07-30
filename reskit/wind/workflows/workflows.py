@@ -496,6 +496,7 @@ def wind_config(
     power_curve_scaling,
     power_curve_base,
     convolute_power_curves_args={},
+    loss_factor_args={},
     output_variables=None,
     max_batch_size=25000,
     output_netcdf_path=None,
@@ -571,6 +572,11 @@ def wind_config(
     convolute_power_curves_args : dict, optional
         Further convolute_power_curve() arguments, for details see:
         convolute_power_curves(). By default {}.
+    loss_factor_args : dict, optional
+        Arguments that are passed to reskit.utils.low_generation_loss() 
+        besides the capacity factor. If empty dict ({}), no loss will be 
+        applied. For details see: reskit.utils.loss_factors.low_generation_loss()
+        By default {}.
     output_variables : str, optional
         Restrict the output variables to these variables, by default None
     max_batch_size: int
@@ -779,6 +785,11 @@ def wind_config(
     wf.simulate(
         cf_correction_factor=cf_correction_factor, max_batch_size=max_batch_size
     )
+
+    if loss_factor_args!={}:
+        wf.apply_loss_factor(
+            loss=lambda x: rk_util.low_generation_loss(x, **loss_factor_args)
+        )
 
     # apply availability factor
     wf.apply_availability_factor(availability_factor=availability_factor)
