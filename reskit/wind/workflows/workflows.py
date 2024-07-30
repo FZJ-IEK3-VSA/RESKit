@@ -573,8 +573,8 @@ def wind_config(
         Further convolute_power_curve() arguments, for details see:
         convolute_power_curves(). By default {}.
     loss_factor_args : dict, optional
-        Arguments that are passed to reskit.utils.low_generation_loss() 
-        besides the capacity factor. If empty dict ({}), no loss will be 
+        Arguments that are passed to reskit.utils.low_generation_loss()
+        besides the capacity factor. If empty dict ({}), no loss will be
         applied. For details see: reskit.utils.loss_factors.low_generation_loss()
         By default {}.
     output_variables : str, optional
@@ -676,17 +676,14 @@ def wind_config(
                 return correction_function
 
             elif type == "ws_double_bins":
-                if not all(
-                    isinstance(ws_bin, Interval)
-                    for ws_bin in data_dict.keys()
-                ):
+                if not all(isinstance(ws_bin, Interval) for ws_bin in data_dict.keys()):
                     # convert keys to pd.Interval
                     def convert_interval(interval):
                         left, right = interval.split("-")
                         left = float(left)
                         right = float(right) if right != "inf" else np.inf
                         return Interval(left, right, closed="right")
-                    
+
                     ws_bins_correction = {}
                     for mean_ws_bin, mean_ws_bin_dict in data_dict.items():
                         mean_ws_bin_interval = convert_interval(mean_ws_bin)
@@ -786,7 +783,7 @@ def wind_config(
         cf_correction_factor=cf_correction_factor, max_batch_size=max_batch_size
     )
 
-    if loss_factor_args!={}:
+    if loss_factor_args != {}:
         wf.apply_loss_factor(
             loss=lambda x: rk_util.low_generation_loss(x, **loss_factor_args)
         )
