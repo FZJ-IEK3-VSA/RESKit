@@ -459,13 +459,6 @@ class WindWorkflowManager(WorkflowManager):
                     )
 
                 # update the estimated correction factor for the wind speed for this iteration
-                # _non_contributing = sum(gen[:,]==1.0) / gen.shape[0]
-                # assert _non_contributing.max()<1.0, f"Locations with 8760 FLH/a found. Cannot be scaled."
-                # _weighing = 1 + _non_contributing / (1 - _non_contributing)
-                # _deviations_weighed = np.where(_deviations<1, _deviations/_weighing, _deviations*_weighing)
-                # # _deviations_inv = 1 + (1/_deviations-1) * _weighing
-                # _ws_corrs_i = _ws_corrs_i * np.cbrt(1/_deviations_weighed)  # power law
-                # del _non_contributing, _weighing, _deviations_weighed
                 _ws_corrs_i = _ws_corrs_i * np.cbrt(1 / _deviations)  # power law
 
                 # calculate only off-tolerance locs with an adapted ws correction
@@ -509,8 +502,12 @@ class WindWorkflowManager(WorkflowManager):
                 _threshold = (
                     0.05  # limit for cf where cut-in wind speed explains divergence
                 )
+                # make sure the target cf is not not NaN, possibly due to missing GWA cell value
+                assert not np.isnan(_target_cfs).any(), f"NaN in target cfs."
                 assert all(
-                    ((_diverging * _target_cfs) < _threshold) | _mismatch
+                    ((_diverging * _target_cfs) < _threshold) # typically very low avg cf locations
+                    | _mismatch # typically locations affected by ws > cutoff ws
+                    | np.isnan(_target_cfs) # would lead to error if non-NaN assert above is removed
                 ), f"Diverging or insufficiently converging (<{round(100 / max_iterations,1)}%) placements with avg. target cf >= {_threshold} found: {(_target_cfs)[(_diverging*_target_cfs)>=_threshold]}"
                 del _deviations_new  # RAM
                 _linear_corr = _diverging | _mismatch
@@ -546,7 +543,7 @@ class WindWorkflowManager(WorkflowManager):
             if (gen > 1).any():
                 print(
                     datetime.datetime.now(),
-                    f"Required target cf could not be reached for some locations, cf will be reduced by factor max. {1/_max_cfs} in order to not exceed cf=1.0.",
+                    f"Required target cf could not be reached for some locations, cf will be reduced by factor min/max. {np.nanmin(1/_max_cfs)}/{np.nanmax(1/_max_cfs)} in order to not exceed cf=1.0.",
                     flush=True,
                 )
                 _red = 1 / _max_cfs
