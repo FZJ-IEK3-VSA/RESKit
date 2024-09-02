@@ -505,9 +505,13 @@ class WindWorkflowManager(WorkflowManager):
                 # make sure the target cf is not not NaN, possibly due to missing GWA cell value
                 assert not np.isnan(_target_cfs).any(), f"NaN in target cfs."
                 assert all(
-                    ((_diverging * _target_cfs) < _threshold) # typically very low avg cf locations
-                    | _mismatch # typically locations affected by ws > cutoff ws
-                    | np.isnan(_target_cfs) # would lead to error if non-NaN assert above is removed
+                    (
+                        (_diverging * _target_cfs) < _threshold
+                    )  # typically very low avg cf locations
+                    | _mismatch  # typically locations affected by ws > cutoff ws
+                    | np.isnan(
+                        _target_cfs
+                    )  # would lead to error if non-NaN assert above is removed
                 ), f"Diverging or insufficiently converging (<{round(100 / max_iterations,1)}%) placements with avg. target cf >= {_threshold} found: {(_target_cfs)[(_diverging*_target_cfs)>=_threshold]}"
                 del _deviations_new  # RAM
                 _linear_corr = _diverging | _mismatch
