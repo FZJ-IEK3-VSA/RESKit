@@ -197,7 +197,9 @@ class NCSource(object):
 
         sources = addSource(source)
         if len(sources) == 0:
-            raise ResError("No '.nc' or '.nc4' files found")
+            raise ResError(
+                f"No '.nc' or '.nc4' files found for tile base path: {source}"
+            )
         sources.sort()
 
         # Collect all variable information
@@ -943,11 +945,31 @@ class NCSource(object):
                 win = 2
                 rbsArgs = dict(kx=1, ky=1)
 
+            # shift extreme latitudes to the highest/lowest possible lat, considering width of extraction window
+            threshold = 89 - (win - 0.5) * abs(self.lats[0] - self.lats[1])
+            _locations = []
+            _shifted = 0
+            for loc in locations:
+                if abs(loc.lat) > abs(threshold):
+                    _locations.append((loc.lon, threshold))
+                    _shifted += 1
+                else:
+                    _locations.append((loc.lon, loc.lat))
+            _locations = gk.LocationSet(_locations)
+            _indicies = self.loc_to_index(_locations, outside_okay, as_int=as_int)
+            if _shifted > 0:
+                print(
+                    f"NOTE: For {_shifted} locations exceeding the maximum latitude coverage, values were taken from the maximum available latitude.",
+                    flush=True,
+                )
+
             # Set up interpolation arrays
-            yiMin = np.round(min([i.yi for i in indicies]) - win).astype(int)
-            yiMax = np.round(max([i.yi for i in indicies]) + win).astype(int)
-            xiMin = np.round(min([i.xi for i in indicies]) - win).astype(int)
-            xiMax = np.round(max([i.xi for i in indicies]) + win).astype(int)
+            if not isinstance(_indicies, list):
+                _indicies = [_indicies]
+            yiMin = np.round(min([i.yi for i in _indicies]) - win).astype(int)
+            yiMax = np.round(max([i.yi for i in _indicies]) + win).astype(int)
+            xiMin = np.round(min([i.xi for i in _indicies]) - win).astype(int)
+            xiMax = np.round(max([i.xi for i in _indicies]) + win).astype(int)
 
             # ensure boundaries are okay
             if yiMin < 0 or xiMin < 0 or yiMax > self._latN or xiMax > self._lonN:
