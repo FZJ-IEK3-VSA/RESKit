@@ -388,7 +388,9 @@ def wind_era5_2023(
     wake_curve : str, optional
         string value to describe the wake reduction method. None will cause no reduction, by default
         "dena_mean". Choose from (see more information here under wind_efficiency_curve_name[1]): "dena_mean",
-        "knorr_mean", "dena_extreme1", "dena_extreme2", "knorr_extreme1", "knorr_extreme2", "knorr_extreme3",
+        "knorr_mean", "dena_extreme1", "dena_extreme2", "knorr_extreme1", "knorr_extreme2", "knorr_extreme3".
+        Alternatively, the 'wake_curve' str can also be provided per each location in a 'wake_curve' column
+        of the placements dataframe, 'wake_curve' argument must then be None.
     availability_factor : float, otional
         This factor accounts for all downtimes and applies an average reduction to the output curve,
         assuming a statistical deviation of the downtime occurences and a large enough turbine fleet.
