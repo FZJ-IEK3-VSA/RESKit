@@ -337,6 +337,17 @@ class WorkflowManager:
                 if np.isnan(_lra).any():
                     _lra_near = gk.raster.interpolateValues(fp, self.locs, mode="near")
                     _lra[np.isnan(_lra)] = _lra_near[np.isnan(_lra)]
+                # still nans, i.e. the cell itself is nan, but maybe its neighbors are not
+                # try the (nan)median of the surrounding cells
+                if np.isnan(_lra).any():
+
+                    def _nanmedian(vals, xOff, yOff):
+                        return np.nanmedian(vals)
+
+                    _lra_near = gk.raster.interpolateValues(
+                        fp, self.locs, mode="func", func=_nanmedian
+                    )
+                    _lra[np.isnan(_lra)] = _lra_near[np.isnan(_lra)]
             return _lra
 
         # first get source values
