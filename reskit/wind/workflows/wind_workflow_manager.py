@@ -466,66 +466,59 @@ class WindWorkflowManager(WorkflowManager):
                 # create a copy of gen
                 gen_new = gen.copy()
                 # simulate only the placements to be updated
-                _gen_new = _sim(
+                # update old gen data with new gen data where simulated
+                gen_new[:, sel] = _sim(
                     ws_correction_factors=_ws_corrs_i,
                     _batch=_batch,
                     max_batch_size=max_batch_size,
                     sel=sel,
-                )
-                # update old gen data with new gen data where simulated
-                gen_new[:, sel] = _gen_new[:, sel]
+                )[:, sel]
                 avg_gen_new = np.nanmean(gen_new, axis=0)
-
-                # get those locs where an increase of ws did not lead to increased cf
-                # probably ws too high, exceeding cut-off windspeed
-                _mismatch = (
-                    (((_ws_corrs_i - 1) * (avg_gen_new / avg_gen - 1)) < 0) * sel
-                ) | (
-                    (avg_gen_new > 0.5)
-                    & (((gen_new == 0) | (gen_new == 1)).sum(axis=0) / 8760 > 0.20)
-                )
-                # these will be simulated differently by increasing cut-off wind speed
 
                 # calculate the new preliminary deviation factors
                 _deviations_new = avg_gen_new / _target_cfs
-                # get the deviations only of locations whose results diverged in the last step
-                # (or did not converge by at least 100%/max_iterations of the deviation) or would now be nan
-                # and the iteration must not yet have reached its tolerance goal
-                _diverging = (
-                    (
+                
+                # identify those locations where the cf does not converge (sufficiently)                
+                # # must be min. 20% cf=0 or cf=1.0 (ensure that it's an edge effect)
+                _non_convs = (
                         abs(_deviations_new - 1)
                         > (1 - 1 / max_iterations) * abs(_deviations - 1)
                     )
-                    | np.isnan(_deviations_new)
-                ) & (abs(_deviations_new - 1) > tolerance)
-                # make sure divergence occurs only at very low cfs (due to effects of cut-in windspeed)
-                _threshold = (
-                    0.05  # limit for cf where cut-in wind speed explains divergence
-                )
+                
+                assert (((gen_new == 0) | (gen_new == 1)).sum(axis=0) / 8760 > 0.20), f"Non-converging placements with <20% cf=0 or cf=1.0 found: {((gen_new == 0) | (gen_new == 1)).sum(axis=0) / 8760}"
+
                 # make sure the target cf is not not NaN, possibly due to missing GWA cell value
                 assert not np.isnan(_target_cfs).any(), f"NaN in target cfs."
-                assert all(
-                    (
-                        (_diverging * _target_cfs) < _threshold
-                    )  # typically very low avg cf locations
-                    | _mismatch  # typically locations affected by ws > cutoff ws
-                    | np.isnan(
-                        _target_cfs
-                    )  # would lead to error if non-NaN assert above is removed
-                ), f"Diverging or insufficiently converging (<{round(100 / max_iterations,1)}%) placements with avg. target cf >= {_threshold} found: {(_target_cfs)[(_diverging*_target_cfs)>=_threshold]}"
+            
                 del _deviations_new  # RAM
-                _linear_corr = _diverging | _mismatch
-                _linear_corr = (
-                    _linear_corr * _deviations
-                )  # set deviation values only for diverging locations
-                _linear_corr[_linear_corr == 0] = (
-                    1  # set other location deviations to 1, only here
-                )
-                # fix diverging location generation by scaling energy output linearly
-                # instead of wind speed by cubic root
-                gen = gen / _linear_corr
-                # update corrected gen with latest gen (new) for other non-diverging locs
-                gen[:, _linear_corr == 1] = gen_new[:, _linear_corr == 1]
+
+                def correct_cf(arr, target_mean):
+                    FLH_old = np.sum(arr)
+                    FLH_target = target_mean * len(arr)
+                    FLH_diff = FLH_target - FLH_old
+
+                    dist_counter = 0
+                    arr_old = arr.copy()
+                    if FLH_diff > 0:
+                        while sum(arr) < FLH_target:
+                            delta_max = (1- arr[arr < 1].max())
+                            _arr = np.where(arr > 0.5 , arr + delta_max, arr * (1+delta_max))
+                            arr = np.where(arr < 1, _arr , arr)
+
+                    if FLH_diff < 0:
+                        while sum(arr) > FLH_target:
+                            delta_min = arr[arr > 0].min()
+                            _arr = np.where(arr < 0.5 , arr - delta_min, arr - (1-arr) * delta_min)
+                            arr = np.where(arr > 0, _arr , arr)
+                    return arr
+
+                # iterate over locations with diverging cfs
+                for i in range(len(_non_convs)):
+                    if _non_convs[i]:
+                        gen_new[:, i] = correct_cf(gen_new[:, i], _target_cfs[i])
+
+                gen[:, _non_convs] = gen_new[:, _non_convs]
+
                 avg_gen = np.nanmean(gen, axis=0)
                 # now calculate the latest deviation factors after divergence fix
                 _deviations = avg_gen / _target_cfs
