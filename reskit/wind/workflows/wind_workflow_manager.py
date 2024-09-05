@@ -477,19 +477,20 @@ class WindWorkflowManager(WorkflowManager):
 
                 # calculate the new preliminary deviation factors
                 _deviations_new = avg_gen_new / _target_cfs
-                
-                # identify those locations where the cf does not converge (sufficiently)                
+
+                # identify those locations where the cf does not converge (sufficiently)
                 # # must be min. 20% cf=0 or cf=1.0 (ensure that it's an edge effect)
-                _non_convs = (
-                        abs(_deviations_new - 1)
-                        > (1 - 1 / max_iterations) * abs(_deviations - 1)
-                    )
-                
-                assert (((gen_new == 0) | (gen_new == 1)).sum(axis=0) / 8760 > 0.20), f"Non-converging placements with <20% cf=0 or cf=1.0 found: {((gen_new == 0) | (gen_new == 1)).sum(axis=0) / 8760}"
+                _non_convs = abs(_deviations_new - 1) > (1 - 1 / max_iterations) * abs(
+                    _deviations - 1
+                )
+
+                assert ((gen_new == 0) | (gen_new == 1)).sum(
+                    axis=0
+                ) / 8760 > 0.20, f"Non-converging placements with <20% cf=0 or cf=1.0 found: {((gen_new == 0) | (gen_new == 1)).sum(axis=0) / 8760}"
 
                 # make sure the target cf is not not NaN, possibly due to missing GWA cell value
                 assert not np.isnan(_target_cfs).any(), f"NaN in target cfs."
-            
+
                 del _deviations_new  # RAM
 
                 def correct_cf(arr, target_mean):
@@ -501,15 +502,19 @@ class WindWorkflowManager(WorkflowManager):
                     arr_old = arr.copy()
                     if FLH_diff > 0:
                         while sum(arr) < FLH_target:
-                            delta_max = (1- arr[arr < 1].max())
-                            _arr = np.where(arr > 0.5 , arr + delta_max, arr * (1+delta_max))
-                            arr = np.where(arr < 1, _arr , arr)
+                            delta_max = 1 - arr[arr < 1].max()
+                            _arr = np.where(
+                                arr > 0.5, arr + delta_max, arr * (1 + delta_max)
+                            )
+                            arr = np.where(arr < 1, _arr, arr)
 
                     if FLH_diff < 0:
                         while sum(arr) > FLH_target:
                             delta_min = arr[arr > 0].min()
-                            _arr = np.where(arr < 0.5 , arr - delta_min, arr - (1-arr) * delta_min)
-                            arr = np.where(arr > 0, _arr , arr)
+                            _arr = np.where(
+                                arr < 0.5, arr - delta_min, arr - (1 - arr) * delta_min
+                            )
+                            arr = np.where(arr > 0, _arr, arr)
                     return arr
 
                 # iterate over locations with diverging cfs
