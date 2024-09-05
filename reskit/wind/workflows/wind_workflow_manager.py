@@ -430,7 +430,7 @@ class WindWorkflowManager(WorkflowManager):
         )
 
         # get and set correction factor
-        self.set_correction_factors(correction_factors=cf_correction_factor)
+        self.set_correction_factors(correction_factors=cf_correction_factor, verbose=verbose)
 
         # iterate over batches
         for _batch in range(int(_batches)):
@@ -687,7 +687,7 @@ class WindWorkflowManager(WorkflowManager):
         self.placements[name] = interpolated_vals
         return self
 
-    def set_correction_factors(self, correction_factors):
+    def set_correction_factors(self, correction_factors, verbose=True):
         """
         Gets the correction factors if necessary and sets them as class attribute.
 
@@ -704,6 +704,11 @@ class WindWorkflowManager(WorkflowManager):
             if not isfile(correction_factors):
                 raise FileNotFoundError(
                     f"correction_factors was passed as str but is not an existing file: {correction_factors}"
+                )
+            if verbose:
+                print(
+                    datetime.datetime.now(),
+                    f"Now extracting correction factors for a total of {len(self.locs)} placements from {correction_factors}:",
                 )
             correction_factors = gk.raster.interpolateValues(
                 correction_factors, self.locs, mode="near"
