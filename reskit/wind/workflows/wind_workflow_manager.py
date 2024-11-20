@@ -433,14 +433,17 @@ class WindWorkflowManager(WorkflowManager):
                 ]
             )
             # make sure that the average (usually annual) target cs is realistic in all locs
-            if isinstance(cf_correction_factor, (float, int)) and cf_correction_factor == 1:
+            if (
+                isinstance(cf_correction_factor, (float, int))
+                and cf_correction_factor == 1
+            ):
                 # we have no correction, but cfs may not be > 1
                 if (_target_cfs > 1).any():
                     raise ValueError(
                         f"The turbine parameters lead to average capacity factors greater 1.0."
                     )
             else:
-                # we correct values, make sure they do not get unrealistically close to 1.0 (needs room for some non-windy hours/year) 
+                # we correct values, make sure they do not get unrealistically close to 1.0 (needs room for some non-windy hours/year)
                 if (_target_cfs > 0.95).any():
                     warnings.warn(
                         f"The current correction factors lead to average target capacity factors greater 0.95. The correction factors at these locations will be adjusted such that the maximum target capacity factor is 0.95."
@@ -452,13 +455,17 @@ class WindWorkflowManager(WorkflowManager):
 
             # make sure the target cf is not not NaN, possibly due to missing GWA cell value
             if np.isnan(_target_cfs).any():
-                warnings.warn(f"WARNING: {len(self.locs[_batch*max_batch_size:(_batch+1)*max_batch_size][np.isnan(_target_cfs)])} NaNs detected in weather data LRA: {self.locs[_batch*max_batch_size:(_batch+1)*max_batch_size][np.isnan(_target_cfs)]}")
+                warnings.warn(
+                    f"WARNING: {len(self.locs[_batch*max_batch_size:(_batch+1)*max_batch_size][np.isnan(_target_cfs)])} NaNs detected in weather data LRA: {self.locs[_batch*max_batch_size:(_batch+1)*max_batch_size][np.isnan(_target_cfs)]}"
+                )
 
             # set the initial deviation based on initial, undistorted generation vs target generation
             _deviations_last = avg_gen_last / _target_cfs
 
             # calculate the min. required relative convergence per iteration to achieve tolerance after max. iterations
-            min_convergence = 1 - (tolerance/abs(_deviations_last-1))**(1/max_iterations)
+            min_convergence = 1 - (tolerance / abs(_deviations_last - 1)) ** (
+                1 / max_iterations
+            )
 
             # initialize the correction factors as 1.0 everywhere, will be adapted first thing if tolerance is not met by deviations
             _ws_corrs_current = np.array([1.0] * len(_deviations_last))
@@ -479,7 +486,9 @@ class WindWorkflowManager(WorkflowManager):
                     )
 
                 # update the estimated correction factor for the wind speed for this iteration
-                _ws_corrs_current = _ws_corrs_current * np.cbrt(1 / _deviations_last)  # power law
+                _ws_corrs_current = _ws_corrs_current * np.cbrt(
+                    1 / _deviations_last
+                )  # power law
 
                 # calculate only off-tolerance locs with an adapted ws correction
                 sel = abs(_deviations_last - 1) > tolerance
@@ -493,7 +502,7 @@ class WindWorkflowManager(WorkflowManager):
                 )
                 # write the old values into those locations who have met tolerance already (was zero so far)
                 gen_current[:, ~sel] = gen_last[:, ~sel]
-                
+
                 # calculate the average cf per location
                 avg_gen_current = np.nanmean(gen_current, axis=0)
 
@@ -502,17 +511,23 @@ class WindWorkflowManager(WorkflowManager):
 
                 # identify those locations where the cf does not converge (sufficiently)
                 # but exclude those that have reached the tolerance already (no further conversion)
-                _non_convs = np.isnan(_target_cfs) | (abs(_deviations_current - 1) > (1 - min_convergence) * abs(
-                    _deviations_last - 1
-                )) & (abs(_deviations_current-1)>tolerance)
-                if _non_convs.sum()>0:
-                    print(f"{_non_convs.sum()}/{len(_deviations_current)} placements ({round(_non_convs.sum()/len(_deviations_current)*100, 2)}%) did not converge (sufficiently). Average cf will be enforced.", flush=True)
+                _non_convs = np.isnan(_target_cfs) | (
+                    abs(_deviations_current - 1)
+                    > (1 - min_convergence) * abs(_deviations_last - 1)
+                ) & (abs(_deviations_current - 1) > tolerance)
+                if _non_convs.sum() > 0:
+                    print(
+                        f"{_non_convs.sum()}/{len(_deviations_current)} placements ({round(_non_convs.sum()/len(_deviations_current)*100, 2)}%) did not converge (sufficiently). Average cf will be enforced.",
+                        flush=True,
+                    )
 
-                if ((((gen_current == 0) | (gen_current == 1)).sum(
-                    axis=0
-                ) / 8760 < 0.15)[_non_convs]).any():
+                if (
+                    (
+                        ((gen_current == 0) | (gen_current == 1)).sum(axis=0) / 8760
+                        < 0.15
+                    )[_non_convs]
+                ).any():
                     f"{((((gen_current == 0) | (gen_current == 1)).sum(axis=0) / 8760 < 0.15)[_non_convs]).sum()}non-converging placements with <15% cf=0 or cf=1.0 found: {(((gen_current == 0) | (gen_current == 1)).sum(axis=0) / 8760)[_non_convs]}"
-
 
                 def correct_cf(arr, target_mean):
                     """Adapts average of 'arr' to 'target_mean' value without removing zeros/1.0s."""
@@ -521,49 +536,56 @@ class WindWorkflowManager(WorkflowManager):
                         _arr = np.empty(len(arr))
                         _arr[:] = np.nan
                         return _arr
-                    
+
                     FLH_in = np.sum(arr)
                     FLH_target = target_mean * len(arr)
                     FLH_diff = FLH_target - FLH_in
-                    _break=False
+                    _break = False
 
                     if FLH_diff > 0:
                         while sum(arr) < FLH_target:
                             delta_max = 1 - arr[arr < 1].max()
-                            _add = np.where(
-                                arr > 0.5, delta_max, arr * delta_max
+                            _add = np.where(arr > 0.5, delta_max, arr * delta_max)
+                            _add[arr == 1.0] = (
+                                0  # set delta to zero for cf=1 to have a correct total FLH delta
                             )
-                            _add[arr==1.0]=0 # set delta to zero for cf=1 to have a correct total FLH delta
                             # scale if needed
-                            if _add.sum()>(FLH_target-arr.sum()):
-                                _add = _add * (FLH_target-arr.sum())/_add.sum()
-                                _break=True
+                            if _add.sum() > (FLH_target - arr.sum()):
+                                _add = _add * (FLH_target - arr.sum()) / _add.sum()
+                                _break = True
                             arr = np.where(arr < 1, arr + _add, arr)
-                            if _break: break
+                            if _break:
+                                break
 
                     if FLH_diff < 0:
                         while sum(arr) > FLH_target:
                             delta_min = arr[arr > 0].min()
-                            _ded = np.where(
-                                arr < 0.5, delta_min, (1-arr) * delta_min
+                            _ded = np.where(arr < 0.5, delta_min, (1 - arr) * delta_min)
+                            _ded[arr == 0] = (
+                                0  # set delta to zero for cf=0 to have a correct total FLH delta
                             )
-                            _ded[arr==0]=0 # set delta to zero for cf=0 to have a correct total FLH delta
                             # scale if needed
-                            if _ded.sum()>(arr.sum()-FLH_target):
-                                _ded = _ded * abs(arr.sum()-FLH_target)/_ded.sum()
-                                _break=True
+                            if _ded.sum() > (arr.sum() - FLH_target):
+                                _ded = _ded * abs(arr.sum() - FLH_target) / _ded.sum()
+                                _break = True
                             arr = np.where(arr > 0, arr - _ded, arr)
-                            if _break: break
+                            if _break:
+                                break
 
                     return arr
 
                 # iterate over locations with diverging cfs
                 for i, _non_conv in enumerate(_non_convs):
                     if _non_conv:
-                        gen_current[:, i] = correct_cf(gen_current[:, i], _target_cfs[i])
+                        gen_current[:, i] = correct_cf(
+                            gen_current[:, i], _target_cfs[i]
+                        )
                         # ensure that the forced avg adaptation achieved a deviation < tolerance
-                        assert np.isnan(_target_cfs[i]) or abs(gen_current[:, i].mean()/_target_cfs[i]-1)<tolerance,\
-                            f"Tolerance was not met after enforced adaptation of average cf."
+                        assert (
+                            np.isnan(_target_cfs[i])
+                            or abs(gen_current[:, i].mean() / _target_cfs[i] - 1)
+                            < tolerance
+                        ), f"Tolerance was not met after enforced adaptation of average cf."
 
                 # calculate new current cf per location after convergence fix
                 avg_gen_current = np.nanmean(gen_current, axis=0)
@@ -571,7 +593,7 @@ class WindWorkflowManager(WorkflowManager):
                 _deviations_current = avg_gen_current / _target_cfs
 
                 # LAST STEP - RENAME FOR NEXT ITERATION
-                
+
                 # the "current" iteration becomes "last" for the next round
                 gen_last = gen_current.copy()
                 avg_gen_last = avg_gen_current.copy()
