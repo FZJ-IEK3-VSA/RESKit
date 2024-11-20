@@ -303,7 +303,9 @@ class WindWorkflowManager(WorkflowManager):
 
         # iterate over the possibly different wake reduction curves that are not NaN
         for wake_curve_i in set(
-            wake_curves[np.array([not((pd.isnull(x)) or (x == "None")) for x in wake_curves])]
+            wake_curves[
+                np.array([not ((pd.isnull(x)) or (x == "None")) for x in wake_curves])
+            ]
         ):
             self.sim_data["elevated_wind_speed"][:, wake_curves == wake_curve_i] = (
                 windpowerlib.wake_losses.reduce_wind_speed(

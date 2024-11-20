@@ -763,7 +763,7 @@ def wind_config(
         wf.logarithmic_projection_of_wind_speeds_to_hub_height(
             consider_boundary_layer_height=consider_boundary_layer_height
         )
-   
+
     # correct wind speeds
     wf.sim_data["elevated_wind_speed"] = ws_correction_func(
         wf.sim_data["elevated_wind_speed"]
@@ -774,11 +774,10 @@ def wind_config(
     # do wake reduction if applicable
     wf.apply_wake_correction_of_wind_speeds(wake_curve=wake_curve)
 
-
     if elevated_wind_speed is not None:
         print("Using provided elevated_wind_speed")
         wf.sim_data["elevated_wind_speed"] = elevated_wind_speed
-        
+
     # gaussian convolution of the power curve to account for statistical events in wind speed
     wf.convolute_power_curves(
         scaling=power_curve_scaling,
