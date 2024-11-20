@@ -374,7 +374,9 @@ class WorkflowManager:
                 DeprecationWarning,
             )
             nodata_fallback = np.nan
-        if any(np.isnan(real_lra)): #TODO currently all real_lra are replaced by fallback, is this intentional?
+        if any(
+            np.isnan(real_lra)
+        ):  # TODO currently all real_lra are replaced by fallback, is this intentional?
             # we are lacking long-run average values
             if nodata_fallback is None or (
                 isinstance(nodata_fallback, float) and np.isnan(nodata_fallback)
@@ -413,7 +415,9 @@ class WorkflowManager:
                     f"NaN values remaining in real lra after application of nodata_fallback."
                 )
             else:
-                raise ValueError(f"Missing values for variable '{variable}' and NaNs not allowed.")
+                raise ValueError(
+                    f"Missing values for variable '{variable}' and NaNs not allowed."
+                )
 
         # write info with missing values to sim_data:
         self.placements[
