@@ -3,6 +3,7 @@ import geokit as gk
 import pandas as pd
 import numpy as np
 import time
+import warnings
 import windpowerlib
 
 from os import mkdir, environ
@@ -449,133 +450,180 @@ class WindWorkflowManager(WorkflowManager):
 
             # simulate first time to get the undistorted RESkit cfs
             sel = np.full(len_locs, True)
-            gen = _sim(
+            gen_last = _sim(
                 ws_correction_factors=np.array([1.0] * len_locs),
                 _batch=_batch,
                 max_batch_size=max_batch_size,
                 sel=sel,
             )
-            avg_gen = np.nanmean(gen, axis=0)
+            avg_gen_last = np.nanmean(gen_last, axis=0)
 
             # calculate the target average cf as product of raw RESkit cf and correction factor
             _target_cfs = (
-                avg_gen
+                avg_gen_last
                 * self.correction_factors[
                     _batch * max_batch_size : (_batch + 1) * max_batch_size
                 ]
             )
             # make sure that the average (usually annual) target cs is realistic in all locs
-            if (_target_cfs > 1).any():
-                raise ValueError(
-                    f"The current correction factors lead to average target capacity factors greater 1.0."
-                )
+            if isinstance(cf_correction_factor, (float, int)) and cf_correction_factor == 1:
+                # we have no correction, but cfs may not be > 1
+                if (_target_cfs > 1).any():
+                    raise ValueError(
+                        f"The turbine parameters lead to average capacity factors greater 1.0."
+                    )
+            else:
+                # we correct values, make sure they do not get unrealistically close to 1.0 (needs room for some non-windy hours/year) 
+                if (_target_cfs > 0.95).any():
+                    warnings.warn(
+                        f"The current correction factors lead to average target capacity factors greater 0.95. The correction factors at these locations will be adjusted such that the maximum target capacity factor is 0.95."
+                    )
+                # get values where the target cf is greater than 0.95
+                _sel = _target_cfs > 0.95
+                # modify the target cfs such that 0.95 is the maximum target cf
+                _target_cfs[_sel] = 0.95
+
+            # make sure the target cf is not not NaN, possibly due to missing GWA cell value
+            if np.isnan(_target_cfs).any():
+                warnings.warn(f"WARNING: {len(self.locs[_batch*max_batch_size:(_batch+1)*max_batch_size][np.isnan(_target_cfs)])} NaNs detected in weather data LRA: {self.locs[_batch*max_batch_size:(_batch+1)*max_batch_size][np.isnan(_target_cfs)]}")
 
             # set the initial deviation based on initial, undistorted generation vs target generation
-            _deviations = avg_gen / _target_cfs
+            _deviations_last = avg_gen_last / _target_cfs
+
+            # calculate the min. required relative convergence per iteration to achieve tolerance after max. iterations
+            min_convergence = 1 - (tolerance/abs(_deviations_last-1))**(1/max_iterations)
 
             # initialize the correction factors as 1.0 everywhere, will be adapted first thing if tolerance is not met by deviations
-            _ws_corrs_i = np.array([1.0] * len(_deviations))
+            _ws_corrs_current = np.array([1.0] * len(_deviations_last))
 
             # iterate until the target cf average is met, i.e. until absolute deltas of 1.0 and deviations are all less than tolerance
             _itercount = 0
-            while (abs(_deviations - 1) > tolerance).any():
+            while (abs(_deviations_last - 1) > tolerance).any():
                 # safety fallback - exit in case of infinite loops
                 if _itercount > max_iterations:
                     raise TimeoutError(
-                        f"{str(datetime.datetime. now())} The simulation did not reach the required tolerance of {tolerance} within the given max. {max_iterations} iterations. Remaining max. absolute deviation is {round(max(abs(_deviations - 1)),4)}. Number of placements with deviation > {tolerance}: {sum(abs(_deviations - 1)>tolerance)}/{len(_deviations)}. Increase tolerance or max_iterations value."
+                        f"{str(datetime.datetime. now())} The simulation did not reach the required tolerance of {tolerance} within the given max. {max_iterations} iterations. Remaining max. absolute deviation is {round(max(abs(_deviations_last - 1)),4)}. Number of placements with deviation > {tolerance}: {sum(abs(_deviations_last - 1)>tolerance)}/{len(_deviations_last)}. Increase tolerance or max_iterations value."
                     )
                 # print deviation status for the current iteration
                 if verbose:
                     print(
                         datetime.datetime.now(),
-                        f"Maximum rel. deviation after {'initial simulation' if _itercount==0 else str(_itercount)+' additional iteration(s)'} is {round(max(abs(_deviations - 1)),4)}, Number/share of placements with deviation > tolerance ({tolerance}): {sum(abs(_deviations - 1)>tolerance)}/{len(_deviations)}. More iterations required.",
+                        f"Maximum rel. deviation after {'initial simulation' if _itercount==0 else str(_itercount)+' additional iteration(s)'} is {round(max(abs(_deviations_last - 1)),4)}, Number/share of placements with deviation > tolerance ({tolerance}): {sum(abs(_deviations_last - 1)>tolerance)}/{len(_deviations_last)}. More iterations required.",
                     )
 
                 # update the estimated correction factor for the wind speed for this iteration
-                _ws_corrs_i = _ws_corrs_i * np.cbrt(1 / _deviations)  # power law
+                _ws_corrs_current = _ws_corrs_current * np.cbrt(1 / _deviations_last)  # power law
 
                 # calculate only off-tolerance locs with an adapted ws correction
-                sel = abs(_deviations - 1) > tolerance
-                # create a copy of gen
-                gen_new = gen.copy()
+                sel = abs(_deviations_last - 1) > tolerance
                 # simulate only the placements to be updated
-                # update old gen data with new gen data where simulated
-                gen_new[:, sel] = _sim(
-                    ws_correction_factors=_ws_corrs_i,
+                # Note that gen_current contains zeros where not sel
+                gen_current = _sim(
+                    ws_correction_factors=_ws_corrs_current,
                     _batch=_batch,
                     max_batch_size=max_batch_size,
                     sel=sel,
-                )[:, sel]
-                avg_gen_new = np.nanmean(gen_new, axis=0)
+                )
+                # write the old values into those locations who have met tolerance already (was zero so far)
+                gen_current[:, ~sel] = gen_last[:, ~sel]
+                
+                # calculate the average cf per location
+                avg_gen_current = np.nanmean(gen_current, axis=0)
 
-                # calculate the new preliminary deviation factors
-                _deviations_new = avg_gen_new / _target_cfs
+                # calculate the new preliminary deviation factors from current simulated gen
+                _deviations_current = avg_gen_current / _target_cfs
 
                 # identify those locations where the cf does not converge (sufficiently)
-                # # must be min. 20% cf=0 or cf=1.0 (ensure that it's an edge effect)
-                _non_convs = abs(_deviations_new - 1) > (1 - 1 / max_iterations) * abs(
-                    _deviations - 1
-                )
+                # but exclude those that have reached the tolerance already (no further conversion)
+                _non_convs = np.isnan(_target_cfs) | (abs(_deviations_current - 1) > (1 - min_convergence) * abs(
+                    _deviations_last - 1
+                )) & (abs(_deviations_current-1)>tolerance)
+                if _non_convs.sum()>0:
+                    print(f"{_non_convs.sum()}/{len(_deviations_current)} placements ({round(_non_convs.sum()/len(_deviations_current)*100, 2)}%) did not converge (sufficiently). Average cf will be enforced.", flush=True)
 
-                assert ((gen_new == 0) | (gen_new == 1)).sum(
+                if ((((gen_current == 0) | (gen_current == 1)).sum(
                     axis=0
-                ) / 8760 > 0.20, f"Non-converging placements with <20% cf=0 or cf=1.0 found: {((gen_new == 0) | (gen_new == 1)).sum(axis=0) / 8760}"
+                ) / 8760 < 0.15)[_non_convs]).any():
+                    f"{((((gen_current == 0) | (gen_current == 1)).sum(axis=0) / 8760 < 0.15)[_non_convs]).sum()}non-converging placements with <15% cf=0 or cf=1.0 found: {(((gen_current == 0) | (gen_current == 1)).sum(axis=0) / 8760)[_non_convs]}"
 
-                # make sure the target cf is not not NaN, possibly due to missing GWA cell value
-                assert not np.isnan(_target_cfs).any(), f"NaN in target cfs."
-
-                del _deviations_new  # RAM
 
                 def correct_cf(arr, target_mean):
-                    FLH_old = np.sum(arr)
+                    """Adapts average of 'arr' to 'target_mean' value without removing zeros/1.0s."""
+                    # handle NaN target cfs
+                    if np.isnan(target_mean):
+                        _arr = np.empty(len(arr))
+                        _arr[:] = np.nan
+                        return _arr
+                    
+                    FLH_in = np.sum(arr)
                     FLH_target = target_mean * len(arr)
-                    FLH_diff = FLH_target - FLH_old
+                    FLH_diff = FLH_target - FLH_in
+                    _break=False
 
-                    dist_counter = 0
-                    arr_old = arr.copy()
                     if FLH_diff > 0:
                         while sum(arr) < FLH_target:
                             delta_max = 1 - arr[arr < 1].max()
-                            _arr = np.where(
-                                arr > 0.5, arr + delta_max, arr * (1 + delta_max)
+                            _add = np.where(
+                                arr > 0.5, delta_max, arr * delta_max
                             )
-                            arr = np.where(arr < 1, _arr, arr)
+                            _add[arr==1.0]=0 # set delta to zero for cf=1 to have a correct total FLH delta
+                            # scale if needed
+                            if _add.sum()>(FLH_target-arr.sum()):
+                                _add = _add * (FLH_target-arr.sum())/_add.sum()
+                                _break=True
+                            arr = np.where(arr < 1, arr + _add, arr)
+                            if _break: break
 
                     if FLH_diff < 0:
                         while sum(arr) > FLH_target:
                             delta_min = arr[arr > 0].min()
-                            _arr = np.where(
-                                arr < 0.5, arr - delta_min, arr - (1 - arr) * delta_min
+                            _ded = np.where(
+                                arr < 0.5, delta_min, (1-arr) * delta_min
                             )
-                            arr = np.where(arr > 0, _arr, arr)
+                            _ded[arr==0]=0 # set delta to zero for cf=0 to have a correct total FLH delta
+                            # scale if needed
+                            if _ded.sum()>(arr.sum()-FLH_target):
+                                _ded = _ded * abs(arr.sum()-FLH_target)/_ded.sum()
+                                _break=True
+                            arr = np.where(arr > 0, arr - _ded, arr)
+                            if _break: break
+
                     return arr
 
                 # iterate over locations with diverging cfs
-                for i in range(len(_non_convs)):
-                    if _non_convs[i]:
-                        gen_new[:, i] = correct_cf(gen_new[:, i], _target_cfs[i])
+                for i, _non_conv in enumerate(_non_convs):
+                    if _non_conv:
+                        gen_current[:, i] = correct_cf(gen_current[:, i], _target_cfs[i])
+                        # ensure that the forced avg adaptation achieved a deviation < tolerance
+                        assert np.isnan(_target_cfs[i]) or abs(gen_current[:, i].mean()/_target_cfs[i]-1)<tolerance,\
+                            f"Tolerance was not met after enforced adaptation of average cf."
 
-                gen[:, _non_convs] = gen_new[:, _non_convs]
+                # calculate new current cf per location after convergence fix
+                avg_gen_current = np.nanmean(gen_current, axis=0)
+                # now calculate the latest deviation factors after convergence fix
+                _deviations_current = avg_gen_current / _target_cfs
 
-                avg_gen = np.nanmean(gen, axis=0)
-                # now calculate the latest deviation factors after divergence fix
-                _deviations = avg_gen / _target_cfs
-
+                # LAST STEP - RENAME FOR NEXT ITERATION
+                
+                # the "current" iteration becomes "last" for the next round
+                gen_last = gen_current.copy()
+                avg_gen_last = avg_gen_current.copy()
+                _deviations_last = _deviations_current.copy()
+                # delete the "current" variables, will be recalculated next iteration
+                del gen_current, avg_gen_current, _deviations_current
                 # increase iteration counter by 1
                 _itercount += 1
-                # set the avg_gen_new as coming avg_gen
-                avg_gen = avg_gen_new.copy()
 
             # when required tolerance is achieved, continue
             if verbose:
                 print(
                     datetime.datetime.now(),
-                    f"Required tolerance of {tolerance} reached after {_itercount} additional iteration(s). Maximum remaining rel. deviation: {round(max(abs(_deviations - 1)),4)}.",
+                    f"Required tolerance of {tolerance} reached after {_itercount} additional iteration(s). Maximum remaining rel. deviation: {round(max(abs(_deviations_last - 1)),4)}.",
                     flush=True,
                 )
 
-            _max_cfs = gen.max(axis=0)
-            if (gen > 1).any():
+            _max_cfs = gen_last.max(axis=0)
+            if (gen_last > 1).any():
                 print(
                     datetime.datetime.now(),
                     f"Required target cf could not be reached for some locations, cf will be reduced by factor min/max. {np.nanmin(1/_max_cfs)}/{np.nanmax(1/_max_cfs)} in order to not exceed cf=1.0.",
@@ -583,12 +631,12 @@ class WindWorkflowManager(WorkflowManager):
                 )
                 _red = 1 / _max_cfs
                 _red[_max_cfs <= 1] = 1
-                gen = gen * _red
+                gen_last = gen_last * _red
 
             if _batch == 0:
-                tot_gen = gen
+                tot_gen = gen_last
             else:
-                tot_gen = np.concatenate([tot_gen, gen], axis=1)
+                tot_gen = np.concatenate([tot_gen, gen_last], axis=1)
 
         self.sim_data["capacity_factor"] = tot_gen
 
