@@ -240,6 +240,7 @@ class WorkflowManager:
         spatial_interpolation: str = "linear-spline",
         nodata_fallback: str = "nan",
         nodata_fallback_scaling: float = 1,
+        allow_nans: bool = True,
     ):
         """Adjusts the average mean of the specified variable to a known long-run-average
 
@@ -293,6 +294,9 @@ class WorkflowManager:
             An optional scaling factor to apply to the values derived from `nodata_fallback`.
             - This is primarily useful when `nodata_fallback` is a path to a raster file
             - By default 1
+
+        allow_nans : boolean, optional
+            If True, NaN values may remain after scaling, else an error will raised. By default True.
 
         Returns
         -------
@@ -354,7 +358,7 @@ class WorkflowManager:
                 DeprecationWarning,
             )
             nodata_fallback = np.nan
-        if any(np.isnan(real_lra)):
+        if any(np.isnan(real_lra)): #TODO currently all real_lra are replaced by fallback, is this intentional?
             # we are lacking long-run average values
             if nodata_fallback is None or (
                 isinstance(nodata_fallback, float) and np.isnan(nodata_fallback)
@@ -388,9 +392,12 @@ class WorkflowManager:
         # nan result will stay nan results, as these placements cannot be calculated any more
         factors = real_lra * real_lra_scaling / source_lra
         if any(np.isnan(real_lra)):
-            warnings.warn(
-                f"NaN values remaining in real lra after application of nodata_fallback."
-            )
+            if allow_nans:
+                warnings.warn(
+                    f"NaN values remaining in real lra after application of nodata_fallback."
+                )
+            else:
+                raise ValueError(f"Missing values for variable '{variable}' and NaNs not allowed.")
 
         # write info with missing values to sim_data:
         self.placements[
