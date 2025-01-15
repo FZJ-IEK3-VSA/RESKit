@@ -2,6 +2,10 @@ from ... import weather as rk_weather
 from ... import util as rk_util
 from .wind_workflow_manager import WindWorkflowManager
 import numpy as np
+import pandas as pd
+from pandas import Interval
+import os
+import yaml
 
 
 def onshore_wind_merra_ryberg2019_europe(
@@ -347,7 +351,7 @@ def wind_era5_2023(
     nodata_fallback="nan",
     correction_factor=1.0,
     max_batch_size=25000,
-    wake_reduction_curve_name="dena_mean",
+    wake_curve="dena_mean",
     availability_factor=0.98,
     era5_lra_path=None,
 ):
@@ -381,10 +385,12 @@ def wind_era5_2023(
     max_batch_size: int
         The maximum number of locations to be simulated simultaneously, else multiple batches will be simulated
         iteratively. Helps limiting RAM requirements but may affect runtime. By default 25 000. Roughly 7GB RAM per 10k locations.
-    wake_reduction_curve_name : str, optional
+    wake_curve : str, optional
         string value to describe the wake reduction method. None will cause no reduction, by default
         "dena_mean". Choose from (see more information here under wind_efficiency_curve_name[1]): "dena_mean",
-        "knorr_mean", "dena_extreme1", "dena_extreme2", "knorr_extreme1", "knorr_extreme2", "knorr_extreme3",
+        "knorr_mean", "dena_extreme1", "dena_extreme2", "knorr_extreme1", "knorr_extreme2", "knorr_extreme3".
+        Alternatively, the 'wake_curve' str can also be provided per each location in a 'wake_curve' column
+        of the placements dataframe, 'wake_curve' argument must then be None.
     availability_factor : float, otional
         This factor accounts for all downtimes and applies an average reduction to the output curve,
         assuming a statistical deviation of the downtime occurences and a large enough turbine fleet.
@@ -448,9 +454,7 @@ def wind_era5_2023(
     wf.apply_air_density_correction_to_wind_speeds()
 
     # do wake reduction if applicable
-    wf.apply_wake_correction_of_wind_speeds(
-        wake_reduction_curve_name=wake_reduction_curve_name
-    )
+    wf.apply_wake_correction_of_wind_speeds(wake_curve=wake_curve)
 
     # gaussian convolution of the power curve to account for statistical events in wind speed
     wf.convolute_power_curves(
@@ -473,3 +477,327 @@ def mean_capacity_factor_from_sectoral_weibull(
     placements, a_rasters, k_rasters, f_rasters, output=None
 ):
     pass
+
+
+def wind_config(
+    placements,
+    weather_path,
+    weather_source_type,
+    weather_lra_ws_path,
+    real_lra_ws_path,
+    real_lra_ws_scaling,
+    real_lra_ws_spatial_interpolation,
+    real_lra_ws_nodata_fallback,
+    landcover_path,
+    landcover_source_type,
+    ws_correction_func,
+    cf_correction_factor,
+    wake_curve,
+    availability_factor,
+    consider_boundary_layer_height,
+    power_curve_scaling,
+    power_curve_base,
+    convolute_power_curves_args={},
+    loss_factor_args={},
+    output_variables=None,
+    max_batch_size=25000,
+    output_netcdf_path=None,
+    elevated_wind_speed=None,
+):
+    """
+    A generic configuration workflow for wind simulations that allows
+    flexible calibration of all arguments used in the workflow.
+    NOTE: Only for calibration/validation purposes!
+
+    Parameters
+    ----------
+    placements : pandas Dataframe
+        A Dataframe object with the parameters needed by the simulation.
+    weather_path : str
+        Path to the temporally resolved weather data, e.g. ERA-5 or MERRA-2 etc.
+    weather_lra_ws_path : str
+        The path to a raster with the corresponding long-run-average
+        windspeeds of the actual weather data (will be corrected to the
+        real lra if given, else weather_lra_path has no effect)
+    real_lra_ws_path : str, float
+        Either a float/int (1.0 means no scaling) or a path to a raster
+        with real long-run-average wind speeds, e.g. the Global Wind Atlas
+        at the same height as the weather data.
+    real_lra_ws_scaling : float
+        Accounts for unit differences, set to 1.0 if both weather data and
+        real_lra_ws are in the same unit.
+    real_lra_ws_spatial_interpolation : str
+        The spatial interpolation how the real lra ws shall be extracted,
+        e.g. 'near', 'average', 'linear_spline', 'cubic_spline'
+    real_lra_ws_nodata_fallback : str, optional
+        If no real lra available, use: (1) 'source' for weather data raw
+        lra for simulation, (2) 'nan' for nan output
+        get flags for missing values:
+        - f'missing_values_{os.path.basename(real_lra_ws_path)}
+    landcover_path : str
+        The path to the categorical landcover raster file.
+        Set to None if no hub height scaling at all shall be applied.
+    landcover_source_type : str
+        Determines the conversion of landcover categories into roughness
+        factors, e.g. 'cci', 'clc-code', 'clc', 'globCover', 'modis'.
+        Takes effect only if landcover_path is not None.
+    ws_correction_func :float, callable, tuple, list
+        An executable function that takes a numpy array as single input
+        argument and returns an adapted windspeed. If 1.0 is passed, no
+        windspeed corrrection will be applied. Can also be passed as tuple
+        or list of length 2 with data_type (e.g. 'linear' or 'ws_bins')
+        and data dict (dict or path to yaml) with parameters.
+    cf_correction_factor : float, str
+        The factor by which the output capacity factors will be corrected
+        indirectly (via corresponding adaptation of the windspeeds). Can
+        be str formatted path to a raster with spatially resolved correction
+        factors, set to 1.0 to not apply any correction.
+    wake_curve : str, optional
+        string value to describe the wake reduction method. None will
+        cause no reduction, by default "dena_mean". Choose from (see more
+        information here under wind_efficiency_curve_name[1]): "dena_mean",
+        "knorr_mean", "dena_extreme1", "dena_extreme2", "knorr_extreme1",
+        "knorr_extreme2", "knorr_extreme3". Alternatively, the
+        'wake_curve' str can also be provided per each location in a
+        'wake_curve' column of the placements dataframe, 'wake_curve'
+        argument must then be None.
+    availability_factor : float
+        This factor accounts for all downtimes and applies an average reduction to the output curve,
+        assuming a statistical deviation of the downtime occurences and a large enough turbine fleet.
+    consider_boundary_layer_height : bool
+        If True, boundary layer height will be considered.
+    power_curve_scaling : float
+        The scaling factor to smoothen the power curve, for details see:
+        convolute_power_curves()
+    power_curve_base : float
+        The base factor to smoothen the power curve, for details see:
+        convolute_power_curves()
+    convolute_power_curves_args : dict, optional
+        Further convolute_power_curve() arguments, for details see:
+        convolute_power_curves(). By default {}.
+    loss_factor_args : dict, optional
+        Arguments that are passed to reskit.utils.low_generation_loss()
+        besides the capacity factor. If empty dict ({}), no loss will be
+        applied. For details see: reskit.utils.loss_factors.low_generation_loss()
+        By default {}.
+    output_variables : str, optional
+        Restrict the output variables to these variables, by default None
+    max_batch_size: int
+        The maximum number of locations to be simulated simultaneously, else multiple batches will be simulated
+        iteratively. Helps limiting RAM requirements but may affect runtime. By default 25 000. Roughly 7GB RAM per 10k locations.
+    output_netcdf_path : str, optional
+        Path to a directory to put the output files, by default None
+
+    Returns
+    -------
+    xarray.Dataset
+        A xarray dataset including all the output variables you defined as your output variables.
+    """
+    if isinstance(ws_correction_func, (int, float)):
+        import copy
+
+        factor = copy.copy(ws_correction_func)
+
+        def _dummy_corr(x):
+            return factor * x
+
+        ws_correction_func = _dummy_corr
+    elif isinstance(ws_correction_func, (tuple, list)):
+        assert len(ws_correction_func) == 2
+        assert isinstance(ws_correction_func[0], str)
+        assert isinstance(ws_correction_func[1], (dict, str, list, tuple))
+
+        # helper function to generate the actual correction function
+        def build_ws_correction_function(type, data_dict):
+            """
+            type: str
+                type of correction function
+            data_dict: dict, str
+                dictionary or json file containing the data needed to
+                build the correction function
+            """
+            if isinstance(data_dict, str):
+                assert os.path.isfile(
+                    data_dict
+                ), f"data_dict is a str but not an existing file: {data_dict}"
+                assert os.path.splitext(data_dict)[-1] in [
+                    ".yaml",
+                    ".yml",
+                ], f"data_dict must be a yaml file if given as str path."
+                with open(data_dict, "r") as f:
+                    data_dict = yaml.load(f, Loader=yaml.FullLoader)
+            if type == "polynomial":
+                # convert tuple to dict first if needed
+                if isinstance(data_dict, (list, tuple)):
+                    # assume that the polynomial factors a_i*x^^i are sorted (a_n, ..., a_2, a_1, a_0)
+                    data_dict = {i: v for i, v in enumerate(list(data_dict)[::-1])}
+                assert isinstance(
+                    data_dict, dict
+                ), f"data_dict must be a dict if not given as a tuple of polynomial factors."
+                assert all(
+                    [x % 1 == 0 for x in data_dict.keys()]
+                ), f"All data_dict keys must be integers i with values a_i, for all required polynomial factors a_i*x^^i."
+
+                def correction_function(x):
+                    _func = 0
+                    for deg, fac in data_dict.items():
+                        _func = _func + fac * x ** int(deg)
+                    return _func
+
+                return correction_function
+            elif type == "ws_bins":
+                assert (
+                    "ws_bins" in data_dict.keys()
+                ), "data_dict must contain key 'ws_bins' with a dict of ws bins and factors."
+                if not all(
+                    isinstance(ws_bin, Interval)
+                    for ws_bin in data_dict["ws_bins"].keys()
+                ):
+                    ws_bins_dict = {}
+                    for range_str, factor in data_dict["ws_bins"].copy().items():
+                        left, right = range_str.split("-")
+                        left = float(left)
+                        right = float(right) if right != "inf" else np.inf
+                        ws_bins_dict[Interval(left, right, closed="right")] = factor
+                    data_dict["ws_bins"] = ws_bins_dict
+
+                # check if all keys are of instance Interval
+                assert all(
+                    isinstance(ws_bin, Interval)
+                    for ws_bin in data_dict["ws_bins"].keys()
+                )
+                ws_bins_correction = data_dict["ws_bins"]
+
+                def correction_function(x):
+                    # x is numpy array. modify x based on ws_bins
+                    corrected_x = x.copy()
+                    for ws_bin, factor in ws_bins_correction.items():
+                        mask = (x >= ws_bin.left) & (x < ws_bin.right)
+                        corrected_x[mask] = x[mask] * (1 - factor)
+                    return corrected_x
+
+                return correction_function
+
+            elif type == "ws_double_bins":
+                if not all(isinstance(ws_bin, Interval) for ws_bin in data_dict.keys()):
+                    # convert keys to pd.Interval
+                    def convert_interval(interval):
+                        left, right = interval.split("-")
+                        left = float(left)
+                        right = float(right) if right != "inf" else np.inf
+                        return Interval(left, right, closed="right")
+
+                    ws_bins_correction = {}
+                    for mean_ws_bin, mean_ws_bin_dict in data_dict.items():
+                        mean_ws_bin_interval = convert_interval(mean_ws_bin)
+                        _mean_ws_bin_dict = {}
+                        for range_str, factor in mean_ws_bin_dict.copy().items():
+                            _mean_ws_bin_dict[convert_interval(range_str)] = factor
+                        ws_bins_correction[mean_ws_bin_interval] = _mean_ws_bin_dict
+
+                def correction_function(x):
+                    mean_ws = x.mean(axis=0)
+
+                    corrected_x = x.copy()
+                    for mean_ws_bin, mean_ws_bin_dict in ws_bins_correction.items():
+                        mask_mean_ws = (mean_ws >= mean_ws_bin.left) & (
+                            mean_ws < mean_ws_bin.right
+                        )
+                        for ws_bin, factor in mean_ws_bin_dict.items():
+                            mask_hourly_ws = (x >= ws_bin.left) & (x < ws_bin.right)
+                            corrected_x[mask_mean_ws & mask_hourly_ws] = x[
+                                mask_mean_ws & mask_hourly_ws
+                            ] * (1 - factor)
+                    return corrected_x
+
+                return correction_function
+
+            else:
+                raise ValueError(
+                    f"Invalid ws_correction_func type: {type}. Select from: 'polynomial', 'ws_bins'."
+                )
+
+        # generate the actual ws corr func
+        ws_correction_func = build_ws_correction_function(
+            type=ws_correction_func[0],
+            data_dict=ws_correction_func[1],
+        )
+    assert callable(
+        ws_correction_func
+    ), f"ws_correction_func must be an executable with a single argument that can be passed as np.array (if not 1)."
+
+    wf = WindWorkflowManager(placements)
+
+    # limit the input placements longitude to range of -180...180
+    assert wf.placements["lon"].between(-180, 180, inclusive="both").any()
+    # limit the input placements latitude to range of -90...90
+    assert wf.placements["lon"].between(-180, 180, inclusive="both").any()
+
+    wf.read(
+        variables=[
+            "elevated_wind_speed",
+            "surface_pressure",
+            "surface_air_temperature",
+            "boundary_layer_height",
+        ],
+        source_type=weather_source_type,
+        source=weather_path,
+        set_time_index=True,
+        verbose=False,
+    )
+
+    wf.adjust_variable_to_long_run_average(
+        variable="elevated_wind_speed",
+        source_long_run_average=weather_lra_ws_path,
+        real_long_run_average=real_lra_ws_path,
+        nodata_fallback=real_lra_ws_nodata_fallback,
+        spatial_interpolation=real_lra_ws_spatial_interpolation,
+        real_lra_scaling=real_lra_ws_scaling,
+    )
+
+    if landcover_path:
+        wf.estimate_roughness_from_land_cover(
+            path=landcover_path, source_type=landcover_source_type
+        )
+
+        wf.logarithmic_projection_of_wind_speeds_to_hub_height(
+            consider_boundary_layer_height=consider_boundary_layer_height
+        )
+
+    # correct wind speeds
+    wf.sim_data["elevated_wind_speed"] = ws_correction_func(
+        wf.sim_data["elevated_wind_speed"]
+    )
+
+    wf.apply_air_density_correction_to_wind_speeds()
+
+    # do wake reduction if applicable
+    wf.apply_wake_correction_of_wind_speeds(wake_curve=wake_curve)
+
+    if elevated_wind_speed is not None:
+        print("Using provided elevated_wind_speed")
+        wf.sim_data["elevated_wind_speed"] = elevated_wind_speed
+
+    # gaussian convolution of the power curve to account for statistical events in wind speed
+    wf.convolute_power_curves(
+        scaling=power_curve_scaling,
+        base=power_curve_base,
+        **convolute_power_curves_args,
+    )
+
+    # do simulation
+    wf.simulate(
+        cf_correction_factor=cf_correction_factor, max_batch_size=max_batch_size
+    )
+
+    if loss_factor_args != {}:
+        wf.apply_loss_factor(
+            loss=lambda x: rk_util.low_generation_loss(x, **loss_factor_args)
+        )
+
+    # apply availability factor
+    wf.apply_availability_factor(availability_factor=availability_factor)
+
+    return wf.to_xarray(
+        output_netcdf_path=output_netcdf_path, output_variables=output_variables
+    )

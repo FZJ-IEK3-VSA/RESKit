@@ -53,6 +53,10 @@ class WorkflowManager:
         if "geom" in placements.columns:
             if self.placements["geom"].iloc[0].GetGeometryName() == "POINT":
                 ispoint = True
+            _srs = placements.geom.iloc[0].GetSpatialReference()
+        else:
+            # assume lat/lon values in EPSG:4326
+            _srs = gk.srs.loadSRS(4326)
 
         if ispoint:
             self.locs = gk.LocationSet(placements.geom)
@@ -70,7 +74,19 @@ class WorkflowManager:
         if self.locs is None:
             self.locs = gk.LocationSet(self.placements[["lon", "lat"]].values)
 
-        self.ext = gk.Extent.fromLocationSet(self.locs)
+        # get bounds of the extent
+        _bounds = list(self.locs.getBounds())
+        # if no extension in lon and/or lat direction, create incremental artificial width
+        if _bounds[0] == _bounds[2]:
+            _x = _bounds[0]
+            _bounds[0] = _x * 0.99999
+            _bounds[2] = _x * 1.00001
+        if _bounds[1] == _bounds[3]:
+            _y = _bounds[1]
+            _bounds[1] = _y * 0.99999
+            _bounds[3] = _y * 1.00001
+        # create extent attribute
+        self.ext = gk.Extent(_bounds, srs=_srs)
 
         # Initialize simulation data
         self.sim_data = OrderedDict()
@@ -240,6 +256,7 @@ class WorkflowManager:
         spatial_interpolation: str = "linear-spline",
         nodata_fallback: str = "nan",
         nodata_fallback_scaling: float = 1,
+        allow_nans: bool = True,
     ):
         """Adjusts the average mean of the specified variable to a known long-run-average
 
@@ -294,6 +311,9 @@ class WorkflowManager:
             - This is primarily useful when `nodata_fallback` is a path to a raster file
             - By default 1
 
+        allow_nans : boolean, optional
+            If True, NaN values may remain after scaling, else an error will raised. By default True.
+
         Returns
         -------
         WorkflowManager
@@ -320,6 +340,17 @@ class WorkflowManager:
                 # these values will be replaced with the nearest interpolation method
                 if np.isnan(_lra).any():
                     _lra_near = gk.raster.interpolateValues(fp, self.locs, mode="near")
+                    _lra[np.isnan(_lra)] = _lra_near[np.isnan(_lra)]
+                # still nans, i.e. the cell itself is nan, but maybe its neighbors are not
+                # try the (nan)median of the surrounding cells
+                if np.isnan(_lra).any():
+
+                    def _nanmedian(vals, xOff, yOff):
+                        return np.nanmedian(vals)
+
+                    _lra_near = gk.raster.interpolateValues(
+                        fp, self.locs, mode="func", func=_nanmedian
+                    )
                     _lra[np.isnan(_lra)] = _lra_near[np.isnan(_lra)]
             return _lra
 
@@ -354,7 +385,9 @@ class WorkflowManager:
                 DeprecationWarning,
             )
             nodata_fallback = np.nan
-        if any(np.isnan(real_lra)):
+        if any(
+            np.isnan(real_lra)
+        ):  # TODO currently all real_lra are replaced by fallback, is this intentional?
             # we are lacking long-run average values
             if nodata_fallback is None or (
                 isinstance(nodata_fallback, float) and np.isnan(nodata_fallback)
@@ -388,9 +421,14 @@ class WorkflowManager:
         # nan result will stay nan results, as these placements cannot be calculated any more
         factors = real_lra * real_lra_scaling / source_lra
         if any(np.isnan(real_lra)):
-            warnings.warn(
-                f"NaN values remaining in real lra after application of nodata_fallback."
-            )
+            if allow_nans:
+                warnings.warn(
+                    f"NaN values remaining in real lra after application of nodata_fallback."
+                )
+            else:
+                raise ValueError(
+                    f"Missing values for variable '{variable}' and NaNs not allowed."
+                )
 
         # write info with missing values to sim_data:
         self.placements[
