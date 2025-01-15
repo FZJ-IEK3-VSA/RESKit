@@ -160,319 +160,6 @@ def offshore_wind_merra_caglayan2019(
     )
 
 
-def offshore_wind_era5(
-    placements,
-    era5_path,
-    gwa_100m_path=None,
-    output_netcdf_path=None,
-    output_variables=None,
-    max_batch_size=25000,
-):
-    """
-    Simulates offshore wind generation using NASA's ERA5 database [1].
-
-    Parameters
-    ----------
-    placements : pandas Dataframe
-        A Dataframe object with the parameters needed by the simulation.
-    era5_path : str
-        Path to the ERA5 data.
-    output_netcdf_path : str, optional
-        Path to a directory to put the output files, by default None
-    output_variables : str, optional
-        Restrict the output variables to these variables, by default None
-    max_batch_size: int
-        The maximum number of locations to be simulated simultaneously, else multiple batches will be simulated
-        iteratively. Helps limiting RAM requirements but may affect runtime. By default 25 000. Roughly 7GB RAM per 10k locations.
-
-    Returns
-    -------
-    xarray.Dataset
-        A xarray dataset including all the output variables you defined as your output variables.
-
-    Sources
-    ------
-    [1] European Centre for Medium-Range Weather Forecasts. (2019). ERA5 dataset. https://www.ecmwf.int/en/forecasts/datasets/reanalysis-datasets/era5.
-
-    """
-    wf = WindWorkflowManager(placements)
-
-    wf.read(
-        variables=[
-            "elevated_wind_speed",
-        ],  # Why we dont read P, T or boundary_layer_height?
-        source_type="ERA5",
-        source=era5_path,
-        set_time_index=True,
-        verbose=False,
-    )
-
-    # wf.adjust_variable_to_long_run_average(
-    #     variable='elevated_wind_speed',
-    #     source_long_run_average=rk_weather.Era5Source.LONG_RUN_AVERAGE_WINDSPEED,
-    #     real_long_run_average=gwa_100m_path
-    # )
-
-    wf.set_roughness(0.0002)
-
-    wf.logarithmic_projection_of_wind_speeds_to_hub_height()
-
-    # gaussian convolution of the power curve to account for statistical events in wind speed
-    wf.convolute_power_curves(
-        scaling=0.01,  # standard deviation of gaussian equals scaling*v + base
-        base=0.00,  # values are derived from validation with real wind turbine data
-    )
-
-    # Adjust wind speeds
-    # elevated windspeds are corrected by a linear function by comparing to real wind turbine data.
-    # corrected_speed = windspeed * wind_speed_scaling + wind_speed_offset [m/s]
-    wind_speed_scaling = 0.95
-    wind_speed_offset = 0.0
-    wf.sim_data["elevated_wind_speed"] = np.maximum(
-        wf.sim_data["elevated_wind_speed"] * wind_speed_scaling + wind_speed_offset, 0
-    )
-
-    wf.simulate(max_batch_size=max_batch_size)
-
-    return wf.to_xarray(
-        output_netcdf_path=output_netcdf_path, output_variables=output_variables
-    )
-
-
-def onshore_wind_era5(
-    placements,
-    era5_path,
-    gwa_100m_path,
-    esa_cci_path,
-    output_netcdf_path=None,
-    output_variables=None,
-    nodata_fallback="nan",
-    max_batch_size=25000,
-):
-    """
-    Simulates onshore wind generation using ECMWF's ERA5 database [1].
-
-    NOTE: Validation documentation is in progress...
-
-    Parameters
-    ----------
-    placements : pandas Dataframe
-        A Dataframe object with the parameters needed by the simulation.
-    era5_path : str
-        Path to the ERA5 data.
-    gwa_100m_path : str
-        Path to the Global Wind Atlas at 100m [2] rater file.
-    esa_cci_path : str
-        Path to the ESA CCI raster file [3].
-    output_netcdf_path : str, optional
-        Path to a directory to put the output files, by default None
-    output_variables : str, optional
-        Restrict the output variables to these variables, by default None
-    nodata_fallback: str, optional
-        If no GWA available, use: (1) 'source' for ERA5 raw for simulation, (2) 'nan' for nan output
-        get flags for missing values:
-        - f'missing_values_{os.path.basename(path_to_LRA_source)}
-
-    Returns
-    -------
-    xarray.Dataset
-        A xarray dataset including all the output variables you defined as your output variables.
-
-    Sources
-    ------
-    [1] European Centre for Medium-Range Weather Forecasts. (2019). ERA5 dataset. https://www.ecmwf.int/en/forecasts/datasets/reanalysis-datasets/era5
-    [2] DTU Wind Energy. (2019). Global Wind Atlas. https://globalwindatlas.info/
-    [3] ESA. Land Cover CCI Product User Guide Version 2. Tech. Rep. (2017). Available at: maps.elie.ucl.ac.be/CCI/viewer/download/ESACCI-LC-Ph2-PUGv2_2.0.pdf
-    """
-
-    wf = WindWorkflowManager(placements)
-
-    # limit the input placements longitude to range of -180...180
-    assert wf.placements["lon"].between(-180, 180, inclusive="both").any()
-    # limit the input placements latitude to range of -90...90
-    assert wf.placements["lon"].between(-180, 180, inclusive="both").any()
-
-    wf.read(
-        variables=[
-            "elevated_wind_speed",
-            "surface_pressure",
-            "surface_air_temperature",
-            "boundary_layer_height",
-        ],
-        source_type="ERA5",
-        source=era5_path,
-        set_time_index=True,
-        verbose=False,
-    )
-
-    wf.adjust_variable_to_long_run_average(
-        variable="elevated_wind_speed",
-        source_long_run_average=rk_weather.Era5Source.LONG_RUN_AVERAGE_WINDSPEED,
-        real_long_run_average=gwa_100m_path,
-        nodata_fallback=nodata_fallback,
-    )
-
-    wf.estimate_roughness_from_land_cover(path=esa_cci_path, source_type="cci")
-
-    wf.logarithmic_projection_of_wind_speeds_to_hub_height(
-        consider_boundary_layer_height=True
-    )
-
-    wf.apply_air_density_correction_to_wind_speeds()
-
-    # gaussian convolution of the power curve to account for statistical events in wind speed
-    wf.convolute_power_curves(
-        scaling=0.01,  # standard deviation of gaussian equals scaling*v + base
-        base=0.00,  # values are derived from validation with real wind turbine data
-    )
-
-    # Adjust wind speeds
-    # elevated windspeds are corrected by a linear function by comparing to real wind turbine data.
-    # corrected_speed = windspeed * 0.75 + 1.2 [m/s]
-    wf.sim_data["elevated_wind_speed"] = np.maximum(
-        wf.sim_data["elevated_wind_speed"] * 0.75 + 0.75, 0
-    )  # Empirically found to improve simulation accuracy
-
-    # do simulation
-    wf.simulate(max_batch_size=max_batch_size)
-
-    return wf.to_xarray(
-        output_netcdf_path=output_netcdf_path, output_variables=output_variables
-    )
-
-
-def wind_era5_2023(
-    placements,
-    era5_path,
-    gwa_100m_path,
-    esa_cci_path,
-    output_netcdf_path=None,
-    output_variables=None,
-    nodata_fallback="nan",
-    correction_factor=1.0,
-    max_batch_size=15000,
-    wake_curve="dena_mean",
-    availability_factor=0.98,
-    era5_lra_path=None,
-):
-    """
-    Simulates onshore and offshore (200km from shoreline) wind generation using ECMWF's ERA5 database [1].
-
-    NOTE: Validation documentation is in progress...
-
-    Parameters
-    ----------
-    placements : pandas Dataframe
-        A Dataframe object with the parameters needed by the simulation.
-    era5_path : str
-        Path to the ERA5 data.
-    gwa_100m_path : str
-        Path to the Global Wind Atlas at 100m [2] raster file.
-    esa_cci_path : str
-        Path to the ESA CCI raster file [3].
-    output_netcdf_path : str, optional
-        Path to a directory to put the output files, by default None
-    output_variables : str, optional
-        Restrict the output variables to these variables, by default None
-    nodata_fallback: str, optional
-        If no GWA available, use: (1) 'source' for ERA5 raw for simulation, (2) 'nan' for nan output
-        get flags for missing values:
-        - f'missing_values_{os.path.basename(path_to_LRA_source)}
-    correction_factor: str, float, optional
-        The wind speeds will be adapted such that the average capacity factor output is
-        scaled by the given factor. The factor may either be a float or a str formatted
-        raster path containing local float correction factors.By default 1.0, i.e. no correction.
-    max_batch_size: int
-        The maximum number of locations to be simulated simultaneously, else multiple batches will be simulated
-        iteratively. Helps limiting RAM requirements but may affect runtime. By default 25 000. Roughly 7GB RAM per 10k locations.
-    wake_curve : str, optional
-        string value to describe the wake reduction method. None will cause no reduction, by default
-        "dena_mean". Choose from (see more information here under wind_efficiency_curve_name[1]): "dena_mean",
-        "knorr_mean", "dena_extreme1", "dena_extreme2", "knorr_extreme1", "knorr_extreme2", "knorr_extreme3".
-        Alternatively, the 'wake_curve' str can also be provided per each location in a 'wake_curve' column
-        of the placements dataframe, 'wake_curve' argument must then be None.
-    availability_factor : float, otional
-        This factor accounts for all downtimes and applies an average reduction to the output curve,
-        assuming a statistical deviation of the downtime occurences and a large enough turbine fleet.
-        By default 0.98 as suggested availability including technical availability of turbine and connector
-        as well as outages for ecological reasons (e.g. bat protection). This does not include wake effects
-        (see above) or curtailment/outage for economical reasons or transmission grid congestion.
-
-    Returns
-    -------
-    xarray.Dataset
-        A xarray dataset including all the output variables you defined as your output variables.
-
-    Sources
-    ------
-    [1] European Centre for Medium-Range Weather Forecasts. (2019). ERA5 dataset. https://www.ecmwf.int/en/forecasts/datasets/reanalysis-datasets/era5
-    [2] DTU Wind Energy. (2019). Global Wind Atlas. https://globalwindatlas.info/
-    [3] ESA. Land Cover CCI Product User Guide Version 2. Tech. Rep. (2017). Available at: maps.elie.ucl.ac.be/CCI/viewer/download/ESACCI-LC-Ph2-PUGv2_2.0.pdf
-    """
-
-    wf = WindWorkflowManager(placements)
-
-    # limit the input placements longitude to range of -180...180
-    assert wf.placements["lon"].between(-180, 180, inclusive="both").any()
-    # limit the input placements latitude to range of -90...90
-    assert wf.placements["lon"].between(-180, 180, inclusive="both").any()
-
-    wf.read(
-        variables=[
-            "elevated_wind_speed",
-            "surface_pressure",
-            "surface_air_temperature",
-            "boundary_layer_height",
-        ],
-        source_type="ERA5",
-        source=era5_path,
-        set_time_index=True,
-        verbose=False,
-    )
-
-    if not era5_lra_path:
-        era5_lra_path = rk_weather.Era5Source.LONG_RUN_AVERAGE_WINDSPEED
-    wf.adjust_variable_to_long_run_average(
-        variable="elevated_wind_speed",
-        source_long_run_average=era5_lra_path,
-        real_long_run_average=gwa_100m_path,
-        nodata_fallback=nodata_fallback,
-        spatial_interpolation="average",
-    )
-
-    wf.estimate_roughness_from_land_cover(path=esa_cci_path, source_type="cci")
-
-    wf.logarithmic_projection_of_wind_speeds_to_hub_height(
-        consider_boundary_layer_height=True
-    )
-
-    # Adjust wind speeds with global correction factors
-    x = 0.7506109812177267  # Correction factors from wind validation paper
-    b = 0.9064913929439484  # Correction factors from wind validation paper
-    wf.sim_data["elevated_wind_speed"] = wf.sim_data["elevated_wind_speed"] * x + b
-
-    wf.apply_air_density_correction_to_wind_speeds()
-
-    # do wake reduction if applicable
-    wf.apply_wake_correction_of_wind_speeds(wake_curve=wake_curve)
-
-    # gaussian convolution of the power curve to account for statistical events in wind speed
-    wf.convolute_power_curves(
-        scaling=0.01,  # standard deviation of gaussian equals scaling*v + base
-        base=0.00,  # values are derived from validation with real wind turbine data
-    )
-
-    # do simulation
-    wf.simulate(cf_correction_factor=correction_factor, max_batch_size=max_batch_size)
-
-    # apply availability factor
-    wf.apply_availability_factor(availability_factor=availability_factor)
-
-    return wf.to_xarray(
-        output_netcdf_path=output_netcdf_path, output_variables=output_variables
-    )
-
-
 def onshore_wind_iconlam_2023(
     placements,
     icon_lam_path,
@@ -972,3 +659,49 @@ def wind_config(
     return wf.to_xarray(
         output_netcdf_path=output_netcdf_path, output_variables=output_variables
     )
+
+
+
+########################
+# DEPRECATED WORKFLOWS #
+########################
+
+# The following workflows are deprecated and can only be used by checking
+# out the respective commit status of RESkit
+
+def wind_era5_2023(**kwargs):
+    """
+    Simulates onshore and offshore (200km from shoreline) wind generation using ECMWF's ERA5 database [1].
+
+    Sources
+    ------
+    [1] European Centre for Medium-Range Weather Forecasts. (2019). ERA5 dataset. https://www.ecmwf.int/en/forecasts/datasets/reanalysis-datasets/era5
+    """
+    # this is the github commit url with the latest workflow status
+    commit_url = "tüdelü"
+    raise rk_util.RESKitDeprecationError(commit_url)
+
+def onshore_wind_era5(**kwargs):
+    """
+    Simulates onshore wind generation using ECMWF's ERA5 database [1].
+
+    Sources
+    ------
+    [1] European Centre for Medium-Range Weather Forecasts. (2019). ERA5 dataset. https://www.ecmwf.int/en/forecasts/datasets/reanalysis-datasets/era5
+    """
+    # this is the github commit url with the latest workflow status
+    commit_url = "tüdelü"
+    raise rk_util.RESKitDeprecationError(commit_url)
+
+def offshore_wind_era5(**kwargs):
+    """
+    Simulates offshore wind generation using NASA's ERA5 database [1].
+
+    Sources
+    ------
+    [1] European Centre for Medium-Range Weather Forecasts. (2019). ERA5 dataset. https://www.ecmwf.int/en/forecasts/datasets/reanalysis-datasets/era5.
+
+    """
+    # this is the github commit url with the latest workflow status
+    commit_url = "tüdelü"
+    raise rk_util.RESKitDeprecationError(commit_url)
