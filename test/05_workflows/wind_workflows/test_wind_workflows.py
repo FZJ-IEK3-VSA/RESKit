@@ -73,4 +73,3 @@ def test_offshore_wind_merra_caglayan2019(pt_wind_placements):
     assert np.isclose(gen.capacity_factor.min(), 0.00045005)
     assert np.isclose(gen.capacity_factor.max(), 0.97282235)
     assert np.isclose(gen.capacity_factor.std(), 0.29063037)
-
