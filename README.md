@@ -46,24 +46,23 @@ git checkout dev
 2. RESkit should be installable to a new environment with:
 
 ```
-conda env create --file requirements.yml
+conda env create --file requirements-dev.yml
 ```
 
 2. (Alternative) Or into an existing environment with:
 
 ```
-conda env update --file requirements.yml -n <ENVIRONMENT-NAME>
-```
-
-2. (Alternative) If you want to install RESKit in editable mode, and also with jupyter notebook and with testing functionalities use:
-
-```
-conda env create --file requirements-dev.yml
+conda env update --file requirements-dev.yml -n <ENVIRONMENT-NAME>
 ```
 
 ## Examples
 
 See the [Examples page](Examples/)
+
+If you intend to use **ETHOS.RESKit.Wind** please follow the following instructions:
+1. Download ERA5 and further datasets: LINK
+2. (optional) If you have purchased PowerCurves from thewindpower.net, please use the following script to process them: [ETHOS.RESKit.Wind_process_power_curves.ipynb](Examples/ETHOS.RESKit.Wind_process_power_curves.ipynb)
+3. You can find an example on how to use ETHOS.RESKit.Wind here: [ETHOS.RESKit.Wind.ipynb](Examples/ETHOS.RESKit.Wind.ipynb)
 
 ## Docker
 
@@ -98,14 +97,24 @@ Copyright (c) 2022 David Severin Ryberg (FZJ IEK-3), David Franzmann (FZJ IEK-3)
 You should have received a copy of the MIT License along with this program.  
 If not, see <https://opensource.org/licenses/MIT>
 
-## About Us
+## About Us 
 
-<a href="https://www.fz-juelich.de/iek/iek-3/EN/Home/home_node.html"><img src="http://fz-juelich.de/SharedDocs/Bilder/IEK/IEK-3/Abteilungen2015/VSA_DepartmentPicture_2017.jpg?__blob=normal" alt="Abteilung VSA"></a>
+<a href="https://www.fz-juelich.de/en/iek/iek-3"><img src="https://github.com/FZJ-IEK3-VSA/README_assets/blob/main/iek3-square.png?raw=True" alt="Institute image IEK-3" width="280" align="right" style="margin:0px 10px"/></a>
 
-We are the [Process and Systems Analysis](http://www.fz-juelich.de/iek/iek-3/EN/Forschung/_Process-and-System-Analysis/_node.html) department at the [Institute of Energy and Climate Research: Techno-economic Systems Analysis (IEK-3)](http://www.fz-juelich.de/iek/iek-3/EN/Home/home_node.html) belonging to the Forschungszentrum Jülich. Our interdisciplinary department's research is focusing on energy-related process and systems analyses. Data searches and system simulations are used to determine energy and mass balances, as well as to evaluate performance, emissions and costs of energy systems. The results are used for performing comparative assessment studies between the various systems. Our current priorities include the development of energy strategies, in accordance with the German Federal Government’s greenhouse gas reduction targets, by designing new infrastructures for sustainable and secure energy supply chains and by conducting cost analysis studies for integrating new technologies into future energy market frameworks.
+We are the <a href="https://www.fz-juelich.de/en/iek/iek-3">Institute of Energy and Climate Research - Techno-economic Systems Analysis (IEK-3)</a> belonging to the <a href="https://www.fz-juelich.de/en">Forschungszentrum Jülich</a>. Our interdisciplinary department's research is focusing on energy-related process and systems analyses. Data searches and system simulations are used to determine energy and mass balances, as well as to evaluate performance, emissions and costs of energy systems. The results are used for performing comparative assessment studies between the various systems. Our current priorities include the development of energy strategies, in accordance with the German Federal Government’s greenhouse gas reduction targets, by designing new infrastructures for sustainable and secure energy supply chains and by conducting cost analysis studies for integrating new technologies into future energy market frameworks.
 
-## Acknowledgment
+## Contributions and Support
+Every contributions are welcome:
+- If you have a question, you can start a [Discussion](https://github.com/FZJ-IEK3-VSA/RESKit/discussions). You will get a response as soon as possible.
+- If you want to report a bug, please open an [Issue](https://github.com/FZJ-IEK3-VSA/RESKit/issues/new). We will then take care of the issue as soon as possible.
+- If you want to contribute with additional features or code improvements, open a [Pull request](https://github.com/FZJ-IEK3-VSA/RESKit/pulls).
 
-This work was supported by the Helmholtz Association under the Joint Initiative ["Energy System 2050 – A Contribution of the Research Field Energy"](https://www.helmholtz.de/en/research/energy/energy_system_2050/).
+## Code of Conduct
+Please respect our [code of conduct](CODE_OF_CONDUCT.md).
 
-<a href="https://www.helmholtz.de/en/"><img src="https://www.helmholtz.de/fileadmin/user_upload/05_aktuelles/Marke_Design/logos/HG_LOGO_S_ENG_RGB.jpg" alt="Helmholtz Logo" width="200px" style="float:right"></a>
+## Acknowledgement
+This work was initially supported by the Helmholtz Association under the Joint Initiative ["Energy System 2050   A Contribution of the Research Field Energy"](https://www.helmholtz.de/en/research/energy/energy_system_2050/). 
+
+<p float="left">
+<a href="https://www.helmholtz.de/en/"><img src="https://www.helmholtz.de/fileadmin/user_upload/05_aktuelles/Marke_Design/logos/HG_LOGO_S_ENG_RGB.jpg" alt="Helmholtz Logo" width="200px"></a>
+</p>

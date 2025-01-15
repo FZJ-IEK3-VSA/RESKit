@@ -673,6 +673,7 @@ def wind_config(
     output_variables=None,
     max_batch_size=25000,
     output_netcdf_path=None,
+    elevated_wind_speed=None,
 ):
     """
     A generic configuration workflow for wind simulations that allows
@@ -943,6 +944,10 @@ def wind_config(
 
     # do wake reduction if applicable
     wf.apply_wake_correction_of_wind_speeds(wake_curve=wake_curve)
+
+    if elevated_wind_speed is not None:
+        print("Using provided elevated_wind_speed")
+        wf.sim_data["elevated_wind_speed"] = elevated_wind_speed
 
     # gaussian convolution of the power curve to account for statistical events in wind speed
     wf.convolute_power_curves(
