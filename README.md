@@ -1,34 +1,19 @@
-<a href="https://www.fz-juelich.de/iek/iek-3/EN/Home/home_node.html"><img src="http://www.fz-juelich.de/SharedDocs/Bilder/IBG/IBG-3/DE/Plant-soil-atmosphere%20exchange%20processes/INPLAMINT%20(BONARES)/Bild3.jpg?__blob=poster" alt="Forschungszentrum Juelich Logo" width="230px"></a>
-
 # RESKit - **R**enewable **E**nergy **S**imulation tool**kit** for Python
 
-RESKit aids with the broad-scale simulation of renewable energy systems, primarily for the purpose of input generation to Energy System Design Models. Simulation tools currently exist for onshore and offshore wind turbines, as well as for solar photovoltaic (PV) systems, in addtion to general weather-data manipulation tools. Simulations are performed in the context of singular units, however high computational performance is nevertheless maintained. As a result, this tool allows for the simulation of millions of individual turbines and PV systems in a matter of minutes (on the right hardware).
+RESKit aids with the broad-scale simulation of renewable energy systems, primarily for the purpose of input generation to Energy System Design Models. Simulation tools currently exist for onshore and offshore wind turbines, as well as for solar photovoltaic (PV) systems and concentrated spöar power (CSP), in addtion to general weather-data manipulation tools. Simulations are performed in the context of singular units, however high computational performance is nevertheless maintained. As a result, this tool allows for the simulation of millions of individual turbines and PV/CSP systems in a matter of minutes depending on the hardware.
 
 ## Features
 
-- High performance unit-level wind turbine and PV module simulations
-  - Can generate synthetic wind turbine power curves
-  - Access to all PV modules in the most recent databases from Sandia and the California Energy Commission (CEC)
-- Configurable to make use climate model datasets
+- High performance unit-level wind turbine, PV module and CSP simulations
+- Can generate synthetic wind turbine power curves
+- Access to all PV modules in the most recent databases from Sandia and the California Energy Commission (CEC)
+- Configurable to make use of different climate model datasets
+- Allows correction to real national capacity factor averages
 - Flexible & modular function designs
 
 ## Installation
 
-The primary dependancies of RESKit are:
-
-1. netCDF4
-2. xarray
-3. PVLib
-4. gdal
-5. <a href="https://github.com/FZJ-IEK3-VSA/geokit">GeoKit</a> >= 1.2.4
-
-If you can install these modules on you own, then the RESKit module should be easily installable with:
-
-```
-pip install git+https://github.com/FZJ-IEK3-VSA/reskit.git#egg=reskit
-```
-
-If, on the otherhand, you prefer an automated installation using Anaconda, then you should be able to follow these steps:
+Please follow these steps for an editable installation:
 
 1. First clone a local copy of the repository to your computer, and move into the created directory
 
@@ -53,6 +38,11 @@ conda env create --file requirements-dev.yml
 
 ```
 conda env update --file requirements-dev.yml -n <ENVIRONMENT-NAME>
+```
+
+3. Install an editable version of reskit (when in the reskit folder) via
+```
+pip install -e .
 ```
 
 ## Examples
@@ -99,9 +89,7 @@ If not, see <https://opensource.org/licenses/MIT>
 
 ## About Us 
 
-<a href="https://www.fz-juelich.de/en/iek/iek-3"><img src="https://github.com/FZJ-IEK3-VSA/README_assets/blob/main/iek3-square.png?raw=True" alt="Institute image IEK-3" width="280" align="right" style="margin:0px 10px"/></a>
-
-We are the <a href="https://www.fz-juelich.de/en/iek/iek-3">Institute of Energy and Climate Research - Techno-economic Systems Analysis (IEK-3)</a> belonging to the <a href="https://www.fz-juelich.de/en">Forschungszentrum Jülich</a>. Our interdisciplinary department's research is focusing on energy-related process and systems analyses. Data searches and system simulations are used to determine energy and mass balances, as well as to evaluate performance, emissions and costs of energy systems. The results are used for performing comparative assessment studies between the various systems. Our current priorities include the development of energy strategies, in accordance with the German Federal Government’s greenhouse gas reduction targets, by designing new infrastructures for sustainable and secure energy supply chains and by conducting cost analysis studies for integrating new technologies into future energy market frameworks.
+We are the <a href="https://www.fz-juelich.de/de/ice/ice-2">Institute of Energy and Climate Research - Jülich Systems Analysis (ICE-2)</a> belonging to the <a href="https://www.fz-juelich.de/en">Forschungszentrum Jülich</a>. Our interdisciplinary department's research is focusing on energy-related process and systems analyses. Data searches and system simulations are used to determine energy and mass balances, as well as to evaluate performance, emissions and costs of energy systems. The results are used for performing comparative assessment studies between the various systems. Our current priorities include the development of energy strategies, in accordance with the German Federal Government’s greenhouse gas reduction targets, by designing new infrastructures for sustainable and secure energy supply chains and by conducting cost analysis studies for integrating new technologies into future energy market frameworks.
 
 ## Contributions and Support
 Every contributions are welcome:
