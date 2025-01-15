@@ -632,9 +632,9 @@ def wind_era5_2023(**kwargs):
     ------
     [1] European Centre for Medium-Range Weather Forecasts. (2019). ERA5 dataset. https://www.ecmwf.int/en/forecasts/datasets/reanalysis-datasets/era5
     """
-    # this is the github commit url with the latest workflow status
-    commit_url = "tüdelü"
-    raise rk_util.RESKitDeprecationError(commit_url)
+    # this is the commit hash with the latest workflow status
+    commit_hash = "379645675cb1b2559ffa8d73c84be0dd0daef55e"
+    raise rk_util.RESKitDeprecationError(commit_hash)
 
 def onshore_wind_era5(**kwargs):
     """
@@ -644,9 +644,9 @@ def onshore_wind_era5(**kwargs):
     ------
     [1] European Centre for Medium-Range Weather Forecasts. (2019). ERA5 dataset. https://www.ecmwf.int/en/forecasts/datasets/reanalysis-datasets/era5
     """
-    # this is the github commit url with the latest workflow status
-    commit_url = "tüdelü"
-    raise rk_util.RESKitDeprecationError(commit_url)
+    # this is the commit hash with the latest workflow status
+    commit_hash = "379645675cb1b2559ffa8d73c84be0dd0daef55e"
+    raise rk_util.RESKitDeprecationError(commit_hash)
 
 def offshore_wind_era5(**kwargs):
     """
@@ -657,9 +657,9 @@ def offshore_wind_era5(**kwargs):
     [1] European Centre for Medium-Range Weather Forecasts. (2019). ERA5 dataset. https://www.ecmwf.int/en/forecasts/datasets/reanalysis-datasets/era5.
 
     """
-    # this is the github commit url with the latest workflow status
-    commit_url = "tüdelü"
-    raise rk_util.RESKitDeprecationError(commit_url)
+    # this is the commit hash with the latest workflow status
+    commit_hash = "379645675cb1b2559ffa8d73c84be0dd0daef55e"
+    raise rk_util.RESKitDeprecationError(commit_hash)
 
 def onshore_wind_era5_pure_2023(**kwargs):
     """
@@ -671,6 +671,6 @@ def onshore_wind_era5_pure_2023(**kwargs):
     ------
     [1] European Centre for Medium-Range Weather Forecasts. (2019). ERA5 dataset. https://www.ecmwf.int/en/forecasts/datasets/reanalysis-datasets/era5
     """
-    # this is the github commit url with the latest workflow status
-    commit_url = "tüdelü"
-    raise rk_util.RESKitDeprecationError(commit_url)
+    # this is the commit hash with the latest workflow status
+    commit_hash = "379645675cb1b2559ffa8d73c84be0dd0daef55e"
+    raise rk_util.RESKitDeprecationError(commit_hash)

@@ -216,9 +216,9 @@ class OnshoreParameters(Parameters):
 
         # calculate turbine design limtis if not given
         if self.min_specific_power is None:
-            self.min_specific_power = 0.586 * self.base_specific_power # Winkler (2024) #TODO confirm factors
+            self.min_specific_power = 0.586 * self.base_specific_power # Winkler (2025) #TODO confirm factors
         if self.max_hub_height is None:
-            self.max_hub_height = 1.355 * self.base_hub_height # Winkler (2024) #TODO confirm factors
+            self.max_hub_height = 1.355 * self.base_hub_height # Winkler (2025) #TODO confirm factors
 
 
 class OffshoreParameters(Parameters):

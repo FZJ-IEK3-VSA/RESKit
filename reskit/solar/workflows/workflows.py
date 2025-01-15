@@ -21,7 +21,6 @@ def openfield_pv_merra_ryberg2019(
     output_netcdf_path=None,
     output_variables=None,
     tech_year=2050,
-    max_batch_size=7500,
 ):
     """
 
@@ -133,7 +132,6 @@ def openfield_pv_merra_ryberg2019(
     wf.simulate_with_interpolated_single_diode_approximation(
         module=module,
         tech_year=tech_year,
-        max_batch_size=max_batch_size,
     )
 
     if inverter is not None:
@@ -165,7 +163,6 @@ def openfield_pv_era5(
     output_variables=None,
     gsa_nodata_fallback="source",
     tech_year=2050,
-    max_batch_size=7500,
 ):
     """
     Simulation of an openfield  PV openfield system based on ERA5 Data.
@@ -360,7 +357,6 @@ def openfield_pv_era5(
     wf.simulate_with_interpolated_single_diode_approximation(
         module=module,
         tech_year=tech_year,
-        max_batch_size=max_batch_size,
     )
 
     if inverter is not None:
@@ -389,7 +385,6 @@ def openfield_pv_sarah_unvalidated(
     output_netcdf_path=None,
     output_variables=None,
     tech_year=2050,
-    max_batch_size=7500,
 ):
     """
 
@@ -508,7 +503,6 @@ def openfield_pv_sarah_unvalidated(
     wf.simulate_with_interpolated_single_diode_approximation(
         module=module,
         tech_year=tech_year,
-        max_batch_size=max_batch_size,
     )
 
     if inverter is not None:
@@ -533,7 +527,6 @@ def openfield_pv_iconlam(
     output_netcdf_path=None,
     output_variables=None,
     tech_year=2050,
-    max_batch_size=7500,
 ):
     """
     Simulation of an openfield  PV openfield system based on ICON-LAM Data.
@@ -638,7 +631,6 @@ def openfield_pv_iconlam(
     wf.simulate_with_interpolated_single_diode_approximation(
         module=module,
         tech_year=tech_year,
-        max_batch_size=max_batch_size,
     )
 
     if inverter is not None:
@@ -673,8 +665,8 @@ def openfield_pv_era5pure(**kwargs):
     Data without further disaggregation.
     """
     # this is the github commit url with the latest workflow status
-    commit_url = "tüdelü #TODO"
-    raise rk_util.RESKitDeprecationError(commit_url)
+    commit_hash = "379645675cb1b2559ffa8d73c84be0dd0daef55e"
+    raise rk_util.RESKitDeprecationError(commit_hash)
 
 def openfield_pv_era5_unvalidated(**kwargs):
     """
@@ -682,5 +674,5 @@ def openfield_pv_era5_unvalidated(**kwargs):
     with unvalidated default loss factor of 0.107 based on literature.
     """
     # this is the github commit url with the latest workflow status
-    commit_url = "tüdelü"
-    raise rk_util.RESKitDeprecationError(commit_url)
+    commit_hash = "379645675cb1b2559ffa8d73c84be0dd0daef55e"
+    raise rk_util.RESKitDeprecationError(commit_hash)
