@@ -1,12 +1,160 @@
-from ... import weather as rk_weather
-from ... import util as rk_util
-from .wind_workflow_manager import WindWorkflowManager
+# import primary packages
 import numpy as np
-import pandas as pd
-from pandas import Interval
 import os
+import pandas as pd
 import yaml
+# import modules
+import reskit.weather as rk_weather
+import reskit.util as rk_util
+from reskit.wind import DATAFOLDER
 from reskit.wind.core.windspeed_correction import build_ws_correction_function
+from reskit.wind.workflows.wind_workflow_manager import WindWorkflowManager
+
+
+def wind_era5_PenaSanchezDunkelWinkler2025(
+    placements,
+    era5_path,
+    gwa_100m_path,
+    esa_cci_path,
+    output_netcdf_path=None,
+    output_variables=None,
+    max_batch_size=15000,
+    cf_correction=True,
+    **simulate_kwargs
+):
+    """
+    Simulates wind turbine locations onshore and offshore using ECMWF's 
+    ERA5 database [1], with an optional correction loop to ensure that
+    generated capacity factors for historic wind fleets meet reported 
+    generation/capacity based on Renewables Market Report [2] by the 
+    International Energy Agency (IEA).
+
+    Please cite the following publication when using the workflow [3]: 
+    Peña-Sánchez, Dunkel, Winkler et al. (2025): Towards high resolution, 
+    validated and open global wind power assessments. 
+    https://doi.org/10.48550/arXiv.2501.07937
+    
+    Parameters
+    ----------
+    placements : pandas Dataframe
+        A Dataframe object with the parameters needed by the simulation.
+    era5_path : str
+        Path to the ERA5 data.
+    gwa_100m_path : str
+        Path to the Global Wind Atlas at 100m [4] raster file.
+    esa_cci_path : str
+        Path to the ESA CCI raster file [5].
+    output_netcdf_path : str, optional
+        Path to a directory to put the output files, by default None
+    output_variables : str, optional
+        Restrict the output variables to these variables, by default None
+    max_batch_size: int
+        The maximum number of locations to be simulated simultaneously, 
+        else multiple batches will be simulated iteratively. Helps 
+        limiting RAM requirements but may affect runtime. Should be 
+        adapted to individual computation system (roughly 7GB RAM per 
+        10k locations), by default 25 000.
+    cf_correction : bool, optional
+        If False, the capacity factors will be calculated based on a 
+        calibrated physical model only, else an additional correction 
+        step will be added to ensure that historic capacity factors based
+        on [2] are met if historic wind fleets are simulated. By default 
+        True.
+    simulate_kwargs : optional
+        Will be passed on to simulate().
+
+    Returns
+    -------
+    xarray.Dataset
+        A xarray dataset including all the output variables you defined as your output variables.
+
+    Sources
+    ------
+    [1] European Centre for Medium-Range Weather Forecasts. (2019). ERA5 dataset. https://www.ecmwf.int/en/forecasts/datasets/reanalysis-datasets/era5
+    [2] International Energy Agency. (2023). Renewables Market Report. https://www.iea.org/reports/renewables-2023 
+    [3] Peña-Sánchez, Dunkel, Winkler et al. (2025): Towards high resolution, validated and open global wind power assessments. https://doi.org/10.48550/arXiv.2501.07937
+    [4] DTU Wind Energy. (2019). Global Wind Atlas. https://globalwindatlas.info/
+    [5] ESA. Land Cover CCI Product User Guide Version 2. Tech. Rep. (2017). Available at: maps.elie.ucl.ac.be/CCI/viewer/download/ESACCI-LC-Ph2-PUGv2_2.0.pdf
+    """
+    # default data used as per [3]
+    ws_correction_function=(
+        "ws_bins",
+        os.path.join(DATAFOLDER, f"ws_correction_factors_PSDW2025.yaml")
+    )
+    cf_correction_factor=os.path.join(DATAFOLDER, f"cf_correction_factors_PSDW2025.tif")
+    wake_curve="dena_mean"
+    availability_factor=0.98
+    nodata_fallback=np.nan
+    era5_lra_path = rk_weather.Era5Source.LONG_RUN_AVERAGE_WINDSPEED_2008TO2017
+
+    # initialize wf manager instance
+    wf = WindWorkflowManager(placements)
+
+    # read data
+    wf.read(
+        variables=[
+            "elevated_wind_speed",
+            "surface_pressure",
+            "surface_air_temperature",
+            "boundary_layer_height",
+        ],
+        source_type="ERA5",
+        source=era5_path,
+        set_time_index=True,
+        verbose=False,
+    )
+
+    # adjust hourly wind speeds based on ERA-5 LRA and GWA
+    wf.adjust_variable_to_long_run_average(
+        variable="elevated_wind_speed",
+        source_long_run_average=era5_lra_path,
+        real_long_run_average=gwa_100m_path,
+        nodata_fallback=nodata_fallback,
+        spatial_interpolation="average",
+    )
+
+    # estimate roughness and use for velocity correction based on hub height
+    wf.estimate_roughness_from_land_cover(path=esa_cci_path, source_type="cci")
+    wf.logarithmic_projection_of_wind_speeds_to_hub_height(
+        consider_boundary_layer_height=True
+    )
+
+    # generate the actual ws corr func and correct wind speeds
+    ws_correction_func = build_ws_correction_function(
+        type=ws_correction_func[0],
+        data_dict=ws_correction_func[1],
+    )
+    wf.sim_data["elevated_wind_speed"] = ws_correction_func(
+        wf.sim_data["elevated_wind_speed"]
+    )
+    
+    # apply air density correction
+    wf.apply_air_density_correction_to_wind_speeds()
+    # do wake reduction 
+    wf.apply_wake_correction_of_wind_speeds(wake_curve=wake_curve)
+    # gaussian convolution of the power curve to account for statistical events in wind speed
+    wf.convolute_power_curves(
+        scaling=0.01,  # standard deviation of gaussian equals scaling*v + base
+        base=0.00,  # values are derived from validation with real wind turbine data
+    )
+
+    # do simulation
+    if not cf_correction:
+        # set cf correction factor to 1.0, i.e. do not correct
+        cf_correction_factor = 1.0
+    wf.simulate(
+        cf_correction_factor=cf_correction_factor, 
+        max_batch_size=max_batch_size,
+        **simulate_kwargs
+    )
+
+    # apply availability factor
+    wf.apply_availability_factor(availability_factor=availability_factor)
+
+    return wf.to_xarray(
+        output_netcdf_path=output_netcdf_path, 
+        output_variables=output_variables
+    )
 
 
 def onshore_wind_merra_ryberg2019_europe(
@@ -303,10 +451,14 @@ def wind_config(
         The spatial interpolation how the real lra ws shall be extracted,
         e.g. 'near', 'average', 'linear_spline', 'cubic_spline'
     real_lra_ws_nodata_fallback : str, optional
-        If no real lra available, use: (1) 'source' for weather data raw
-        lra for simulation, (2) 'nan' for nan output
-        get flags for missing values:
-        - f'missing_values_{os.path.basename(real_lra_ws_path)}
+        If no GWA available, use for simulation: 
+        (1) float value for a multiple of the 'weather_lra_ws_path' value 
+            (ERA5 raw), i.e. 1.0 means weather_lra_ws_path value
+        (2) np.nan for nan output
+        (3) a callable function to be applied to the weather_lra_ws_path 
+            (ERA-5) value in the format: 
+            nodata_fallback(locs, weather_lra_ws_path_value)
+        (4) a filepath to a raster file containing the fallback values
     landcover_path : str
         The path to the categorical landcover raster file.
         Set to None if no hub height scaling at all shall be applied.
@@ -334,9 +486,12 @@ def wind_config(
         'wake_curve' str can also be provided per each location in a
         'wake_curve' column of the placements dataframe, 'wake_curve'
         argument must then be None.
-    availability_factor : float
+    availability_factor : float, otional
         This factor accounts for all downtimes and applies an average reduction to the output curve,
         assuming a statistical deviation of the downtime occurences and a large enough turbine fleet.
+        Suggested availability is 0.98 including technical availability of turbine and connector
+        as well as outages for ecological reasons (e.g. bat protection). This does not include wake effects
+        (see above) or curtailment/outage for economical reasons or transmission grid congestion.
     consider_boundary_layer_height : bool
         If True, boundary layer height will be considered.
     power_curve_scaling : float
