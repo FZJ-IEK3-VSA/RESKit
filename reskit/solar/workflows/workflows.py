@@ -673,8 +673,8 @@ def openfield_pv_era5pure(**kwargs):
     Data without further disaggregation.
     """
     # this is the github commit url with the latest workflow status
-    commit_url = "tüdelü #TODO"
-    raise rk_util.RESKitDeprecationError(commit_url)
+    commit_hash = "379645675cb1b2559ffa8d73c84be0dd0daef55e"
+    raise rk_util.RESKitDeprecationError(commit_hash)
 
 def openfield_pv_era5_unvalidated(**kwargs):
     """
@@ -682,5 +682,5 @@ def openfield_pv_era5_unvalidated(**kwargs):
     with unvalidated default loss factor of 0.107 based on literature.
     """
     # this is the github commit url with the latest workflow status
-    commit_url = "tüdelü"
-    raise rk_util.RESKitDeprecationError(commit_url)
+    commit_hash = "379645675cb1b2559ffa8d73c84be0dd0daef55e"
+    raise rk_util.RESKitDeprecationError(commit_hash)
