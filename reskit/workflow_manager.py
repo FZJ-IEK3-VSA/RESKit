@@ -1,11 +1,15 @@
 # import base packages
-from collections import OrderedDict #TODO is this needed when
+from collections import OrderedDict  # TODO is this needed when
 import datetime
 from os.path import basename, join, isfile, isdir
 import numpy as np
 import pandas as pd
 from types import FunctionType
-from typing import Union, List, OrderedDict #TODO remove OrderedDict here (duplicated with collections above?)
+from typing import (
+    Union,
+    List,
+    OrderedDict,
+)  # TODO remove OrderedDict here (duplicated with collections above?)
 import warnings
 
 # import third party packages
@@ -953,7 +957,7 @@ def execute_workflow_iteratively(
         # execute workflow with subset and add to list of results
         print(
             datetime.datetime.now(),
-            f"Now processing tile {i+1}/{len(placements['source'].unique())} with {len(placements_tile)} locations: {tilepath}"
+            f"Now processing tile {i+1}/{len(placements['source'].unique())} with {len(placements_tile)} locations: {tilepath}",
         )
         xrds = workflow(**workflow_args)
         xrds = xrds.set_index(location="RESKit_sim_order")

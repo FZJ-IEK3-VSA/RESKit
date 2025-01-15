@@ -1,15 +1,17 @@
 import inspect
 
+
 class ResError(Exception):
     pass  # this just creates an error that we can use
 
 
 class RESKitDeprecationError(Exception):
     """Custom exception for deprecation errors."""
+
     def __init__(self, commit_hash):
         """
         Raises an error stating that the method is deprecated and suggests
-        a commit to check out when function is needed for backward 
+        a commit to check out when function is needed for backward
         compatibility.
 
         commit_hash : str

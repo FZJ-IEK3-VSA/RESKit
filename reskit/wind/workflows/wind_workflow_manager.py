@@ -433,7 +433,9 @@ class WindWorkflowManager(WorkflowManager):
         )
 
         # get and set correction factor
-        self.set_correction_factors(correction_factors=cf_correction_factor, verbose=verbose)
+        self.set_correction_factors(
+            correction_factors=cf_correction_factor, verbose=verbose
+        )
 
         # iterate over batches
         for _batch in range(int(_batches)):

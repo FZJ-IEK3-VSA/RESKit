@@ -50,8 +50,7 @@ def build_ws_correction_function(type, data_dict):
             "ws_bins" in data_dict.keys()
         ), "data_dict must contain key 'ws_bins' with a dict of ws bins and factors."
         if not all(
-            isinstance(ws_bin, Interval)
-            for ws_bin in data_dict["ws_bins"].keys()
+            isinstance(ws_bin, Interval) for ws_bin in data_dict["ws_bins"].keys()
         ):
             ws_bins_dict = {}
             for range_str, factor in data_dict["ws_bins"].copy().items():
@@ -63,8 +62,7 @@ def build_ws_correction_function(type, data_dict):
 
         # check if all keys are of instance Interval
         assert all(
-            isinstance(ws_bin, Interval)
-            for ws_bin in data_dict["ws_bins"].keys()
+            isinstance(ws_bin, Interval) for ws_bin in data_dict["ws_bins"].keys()
         )
         ws_bins_correction = data_dict["ws_bins"]
 

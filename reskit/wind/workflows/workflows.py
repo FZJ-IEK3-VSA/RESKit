@@ -3,6 +3,7 @@ import numpy as np
 import os
 import pandas as pd
 import yaml
+
 # import modules
 import reskit.weather as rk_weather
 import reskit.util as rk_util
@@ -20,20 +21,20 @@ def wind_era5_PenaSanchezDunkelWinkler2025(
     output_variables=None,
     max_batch_size=15000,
     cf_correction=True,
-    **simulate_kwargs
+    **simulate_kwargs,
 ):
     """
-    Simulates wind turbine locations onshore and offshore using ECMWF's 
+    Simulates wind turbine locations onshore and offshore using ECMWF's
     ERA5 database [1], with an optional correction loop to ensure that
-    generated capacity factors for historic wind fleets meet reported 
-    generation/capacity based on Renewables Market Report [2] by the 
+    generated capacity factors for historic wind fleets meet reported
+    generation/capacity based on Renewables Market Report [2] by the
     International Energy Agency (IEA).
 
-    Please cite the following publication when using the workflow [3]: 
-    Peña-Sánchez, Dunkel, Winkler et al. (2025): Towards high resolution, 
-    validated and open global wind power assessments. 
+    Please cite the following publication when using the workflow [3]:
+    Peña-Sánchez, Dunkel, Winkler et al. (2025): Towards high resolution,
+    validated and open global wind power assessments.
     https://doi.org/10.48550/arXiv.2501.07937
-    
+
     Parameters
     ----------
     placements : pandas Dataframe
@@ -49,16 +50,16 @@ def wind_era5_PenaSanchezDunkelWinkler2025(
     output_variables : str, optional
         Restrict the output variables to these variables, by default None
     max_batch_size: int
-        The maximum number of locations to be simulated simultaneously, 
-        else multiple batches will be simulated iteratively. Helps 
-        limiting RAM requirements but may affect runtime. Should be 
-        adapted to individual computation system (roughly 7GB RAM per 
+        The maximum number of locations to be simulated simultaneously,
+        else multiple batches will be simulated iteratively. Helps
+        limiting RAM requirements but may affect runtime. Should be
+        adapted to individual computation system (roughly 7GB RAM per
         10k locations), by default 25 000.
     cf_correction : bool, optional
-        If False, the capacity factors will be calculated based on a 
-        calibrated physical model only, else an additional correction 
+        If False, the capacity factors will be calculated based on a
+        calibrated physical model only, else an additional correction
         step will be added to ensure that historic capacity factors based
-        on [2] are met if historic wind fleets are simulated. By default 
+        on [2] are met if historic wind fleets are simulated. By default
         True.
     simulate_kwargs : optional
         Will be passed on to simulate().
@@ -71,20 +72,22 @@ def wind_era5_PenaSanchezDunkelWinkler2025(
     Sources
     ------
     [1] European Centre for Medium-Range Weather Forecasts. (2019). ERA5 dataset. https://www.ecmwf.int/en/forecasts/datasets/reanalysis-datasets/era5
-    [2] International Energy Agency. (2023). Renewables Market Report. https://www.iea.org/reports/renewables-2023 
+    [2] International Energy Agency. (2023). Renewables Market Report. https://www.iea.org/reports/renewables-2023
     [3] Peña-Sánchez, Dunkel, Winkler et al. (2025): Towards high resolution, validated and open global wind power assessments. https://doi.org/10.48550/arXiv.2501.07937
     [4] DTU Wind Energy. (2019). Global Wind Atlas. https://globalwindatlas.info/
     [5] ESA. Land Cover CCI Product User Guide Version 2. Tech. Rep. (2017). Available at: maps.elie.ucl.ac.be/CCI/viewer/download/ESACCI-LC-Ph2-PUGv2_2.0.pdf
     """
     # default data used as per [3]
-    ws_correction_function=(
+    ws_correction_function = (
         "ws_bins",
-        os.path.join(DATAFOLDER, f"ws_correction_factors_PSDW2025.yaml")
+        os.path.join(DATAFOLDER, f"ws_correction_factors_PSDW2025.yaml"),
     )
-    cf_correction_factor=os.path.join(DATAFOLDER, f"cf_correction_factors_PSDW2025.tif")
-    wake_curve="dena_mean"
-    availability_factor=0.98
-    nodata_fallback=np.nan
+    cf_correction_factor = os.path.join(
+        DATAFOLDER, f"cf_correction_factors_PSDW2025.tif"
+    )
+    wake_curve = "dena_mean"
+    availability_factor = 0.98
+    nodata_fallback = np.nan
     era5_lra_path = rk_weather.Era5Source.LONG_RUN_AVERAGE_WINDSPEED_2008TO2017
 
     # initialize wf manager instance
@@ -127,10 +130,10 @@ def wind_era5_PenaSanchezDunkelWinkler2025(
     wf.sim_data["elevated_wind_speed"] = ws_correction_func(
         wf.sim_data["elevated_wind_speed"]
     )
-    
+
     # apply air density correction
     wf.apply_air_density_correction_to_wind_speeds()
-    # do wake reduction 
+    # do wake reduction
     wf.apply_wake_correction_of_wind_speeds(wake_curve=wake_curve)
     # gaussian convolution of the power curve to account for statistical events in wind speed
     wf.convolute_power_curves(
@@ -143,17 +146,16 @@ def wind_era5_PenaSanchezDunkelWinkler2025(
         # set cf correction factor to 1.0, i.e. do not correct
         cf_correction_factor = 1.0
     wf.simulate(
-        cf_correction_factor=cf_correction_factor, 
+        cf_correction_factor=cf_correction_factor,
         max_batch_size=max_batch_size,
-        **simulate_kwargs
+        **simulate_kwargs,
     )
 
     # apply availability factor
     wf.apply_availability_factor(availability_factor=availability_factor)
 
     return wf.to_xarray(
-        output_netcdf_path=output_netcdf_path, 
-        output_variables=output_variables
+        output_netcdf_path=output_netcdf_path, output_variables=output_variables
     )
 
 
@@ -451,12 +453,12 @@ def wind_config(
         The spatial interpolation how the real lra ws shall be extracted,
         e.g. 'near', 'average', 'linear_spline', 'cubic_spline'
     real_lra_ws_nodata_fallback : str, optional
-        If no GWA available, use for simulation: 
-        (1) float value for a multiple of the 'weather_lra_ws_path' value 
+        If no GWA available, use for simulation:
+        (1) float value for a multiple of the 'weather_lra_ws_path' value
             (ERA5 raw), i.e. 1.0 means weather_lra_ws_path value
         (2) np.nan for nan output
-        (3) a callable function to be applied to the weather_lra_ws_path 
-            (ERA-5) value in the format: 
+        (3) a callable function to be applied to the weather_lra_ws_path
+            (ERA-5) value in the format:
             nodata_fallback(locs, weather_lra_ws_path_value)
         (4) a filepath to a raster file containing the fallback values
     landcover_path : str
@@ -616,13 +618,13 @@ def wind_config(
     )
 
 
-
 ########################
 # DEPRECATED WORKFLOWS #
 ########################
 
 # The following workflows are deprecated and can only be used by checking
 # out the respective commit status of RESkit
+
 
 def wind_era5_2023(**kwargs):
     """
@@ -636,6 +638,7 @@ def wind_era5_2023(**kwargs):
     commit_hash = "379645675cb1b2559ffa8d73c84be0dd0daef55e"
     raise rk_util.RESKitDeprecationError(commit_hash)
 
+
 def onshore_wind_era5(**kwargs):
     """
     Simulates onshore wind generation using ECMWF's ERA5 database [1].
@@ -647,6 +650,7 @@ def onshore_wind_era5(**kwargs):
     # this is the commit hash with the latest workflow status
     commit_hash = "379645675cb1b2559ffa8d73c84be0dd0daef55e"
     raise rk_util.RESKitDeprecationError(commit_hash)
+
 
 def offshore_wind_era5(**kwargs):
     """
@@ -660,6 +664,7 @@ def offshore_wind_era5(**kwargs):
     # this is the commit hash with the latest workflow status
     commit_hash = "379645675cb1b2559ffa8d73c84be0dd0daef55e"
     raise rk_util.RESKitDeprecationError(commit_hash)
+
 
 def onshore_wind_era5_pure_2023(**kwargs):
     """

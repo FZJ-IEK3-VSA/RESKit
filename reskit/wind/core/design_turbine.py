@@ -77,26 +77,35 @@ def onshore_turbine_from_avg_wind_speed(
     [1] David S. Ryberg, Dilara C. Caglayan, Sabrina Schmitt, Jochen Linssen, Detlef Stolten, Martin Robinius - The Future of European Onshore Wind Energy Potential:
     Detailed Distributionand Simulation of Advanced Turbine Designs, Energy, 2019, available at https://www.sciencedirect.com/science/article/abs/pii/S0360544219311818
     """
-    OnshoreParams = OnshoreParameters(fp=baseline_turbine_fp, year = tech_year)
+    OnshoreParams = OnshoreParameters(fp=baseline_turbine_fp, year=tech_year)
 
     # define a dict to hold the parameter values
-    baseline_params=dict()
+    baseline_params = dict()
 
     # iterate over arguments and retrieve defaults from OnshoreParams if not given explicitly
     for arg, val in locals().items():
-        if arg in ["wind_speed", "baseline_turbine_fp", "OnshoreParams", "baseline_params"]:
+        if arg in [
+            "wind_speed",
+            "baseline_turbine_fp",
+            "OnshoreParams",
+            "baseline_params",
+        ]:
             continue
         print(arg, val)
         if val is None:
-            val= getattr(OnshoreParams, arg)
+            val = getattr(OnshoreParams, arg)
         baseline_params[arg] = val
 
     wind_speed = np.array(wind_speed)
     multi = wind_speed.size > 1
 
     # Design Specific Power
-    scaling = compute_specific_power(baseline_params["base_capacity"], baseline_params["base_rotor_diam"]) / (
-        np.exp(0.53769024 * np.log(baseline_params["reference_wind_speed"]) + 4.74917728)
+    scaling = compute_specific_power(
+        baseline_params["base_capacity"], baseline_params["base_rotor_diam"]
+    ) / (
+        np.exp(
+            0.53769024 * np.log(baseline_params["reference_wind_speed"]) + 4.74917728
+        )
     )
     specific_power = scaling * np.exp(0.53769024 * np.log(wind_speed) + 4.74917728)
     if multi:
@@ -116,7 +125,9 @@ def onshore_turbine_from_avg_wind_speed(
 
     # Design Hub Height
     scaling = baseline_params["base_hub_height"] / (
-        np.exp(-0.84976623 * np.log(baseline_params["reference_wind_speed"]) + 6.1879937)
+        np.exp(
+            -0.84976623 * np.log(baseline_params["reference_wind_speed"]) + 6.1879937
+        )
     )
     hub_height = scaling * np.exp(-0.84976623 * np.log(wind_speed) + 6.1879937)
     if multi:
@@ -125,7 +136,9 @@ def onshore_turbine_from_avg_wind_speed(
             if baseline_params["constant_rotor_diam"]:
                 hub_height[lowerlt] = rotor_diam / 2 + baseline_params["min_tip_height"]
             else:
-                hub_height[lowerlt] = rotor_diam[lowerlt] / 2 + baseline_params["min_tip_height"]
+                hub_height[lowerlt] = (
+                    rotor_diam[lowerlt] / 2 + baseline_params["min_tip_height"]
+                )
 
         upperlt = hub_height > baseline_params["max_hub_height"]
         if upperlt.any():

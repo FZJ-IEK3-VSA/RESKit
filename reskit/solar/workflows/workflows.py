@@ -659,14 +659,16 @@ def openfield_pv_iconlam(
 # The following workflows are deprecated and can only be used by checking
 # out the respective commit status of RESkit
 
+
 def openfield_pv_era5pure(**kwargs):
     """
-    Simulation of an openfield  PV openfield system based on ERA5 original 
+    Simulation of an openfield  PV openfield system based on ERA5 original
     Data without further disaggregation.
     """
     # this is the github commit url with the latest workflow status
     commit_hash = "379645675cb1b2559ffa8d73c84be0dd0daef55e"
     raise rk_util.RESKitDeprecationError(commit_hash)
+
 
 def openfield_pv_era5_unvalidated(**kwargs):
     """

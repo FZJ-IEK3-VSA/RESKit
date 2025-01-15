@@ -3,6 +3,7 @@ import numpy as np
 import os
 import pandas as pd
 
+
 class Parameters:
     """
     This class holds the base techno-economic parameter assumptions on which
@@ -53,13 +54,15 @@ class Parameters:
         # check the input file
         if not os.path.isfile(fp):
             raise FileNotFoundError(f"Parameter filepath does not exist: {fp}")
-        
+
         def _interpolate_vals(data, year):
             """Interpolates values between neighboring years, or returns exact value when available."""
             if isinstance(data, dict):
-                data=pd.Series(dict)
+                data = pd.Series(dict)
             else:
-                assert isinstance(data, pd.Series), f"data must be of dict or pd.Series type. Here: {type(data)}: {data}"
+                assert isinstance(
+                    data, pd.Series
+                ), f"data must be of dict or pd.Series type. Here: {type(data)}: {data}"
             # avoid extrapolation
             assert (
                 year >= data.index.min() and year <= data.index.max()
@@ -73,11 +76,11 @@ class Parameters:
                 _val = data[_lower_year]
             else:
                 # interpolate between the nearest years and return result
-                _val = data[_lower_year] + (
-                    data[_higher_year] - data[_lower_year]
-                ) * (year - _lower_year) / (_higher_year - _lower_year)
+                _val = data[_lower_year] + (data[_higher_year] - data[_lower_year]) * (
+                    year - _lower_year
+                ) / (_higher_year - _lower_year)
             return _val
-        
+
         def _round_val(_val):
             if _param in self.rounding.keys():
                 if self.rounding[_param] == 0:
@@ -85,7 +88,7 @@ class Parameters:
                 else:
                     _val = round(_val, self.rounding[_param])
             return _val
-        
+
         # handle json files
         if os.path.splitext(os.path.basename(fp))[-1] == ".json":
             # load data from json
@@ -100,38 +103,50 @@ class Parameters:
                     _val = _interpolate_vals(data=_val, year=year)
 
                 # round the parameters where needed
-                _val =_round_val(_val)
+                _val = _round_val(_val)
                 # set the parameter value as class rttribute
                 setattr(subclass, _param, _val)
                 if verbose:
-                    print(f"Baseline plant parameter '{_param}' set to: {_val}", flush=True)
-        
+                    print(
+                        f"Baseline plant parameter '{_param}' set to: {_val}",
+                        flush=True,
+                    )
+
         # handle csv baseline files
         elif os.path.splitext(os.path.basename(fp))[-1] == ".csv":
-            
+
             # load data from csv
             params_df = pd.read_csv(fp)
 
             # reset anc check index years
-            if all([c in params_df.columns for c in ["Unnamed: 0", "Index"]]) \
-                or not any([c in params_df.columns for c in ["Unnamed: 0", "Index"]]):
-                raise AttributeError(f"When loading baseline plant data from csv, a column 'Index' or 'Unnamed: 0' is expected (but not both) that contain the index years.")
+            if all(
+                [c in params_df.columns for c in ["Unnamed: 0", "Index"]]
+            ) or not any([c in params_df.columns for c in ["Unnamed: 0", "Index"]]):
+                raise AttributeError(
+                    f"When loading baseline plant data from csv, a column 'Index' or 'Unnamed: 0' is expected (but not both) that contain the index years."
+                )
             try:
-                params_df.set_index('Index', drop=True, inplace=True)
+                params_df.set_index("Index", drop=True, inplace=True)
             except:
-                params_df.set_index('Unnamed: 0', drop=True, inplace=True)
+                params_df.set_index("Unnamed: 0", drop=True, inplace=True)
             if not all([isinstance(i, int) for i in params_df.index]):
-                raise TypeError(f"Index/Unnamed: 0 column in csv data must contain only integer year values.")
+                raise TypeError(
+                    f"Index/Unnamed: 0 column in csv data must contain only integer year values."
+                )
 
             # check the csv columns, must all be baseline plant attrs
             for _param in params_df.columns:
                 try:
                     getattr(subclass, _param)
                 except:
-                    AttributeError(f"Baseline plant csv column '{_param}' is not an attribute of {subclass}.")
+                    AttributeError(
+                        f"Baseline plant csv column '{_param}' is not an attribute of {subclass}."
+                    )
             # make sure the year is avalailable in csv data
             if not year in params_df.index:
-                raise AttributeError(f"Year '{year}' is not available in the input data. Select from: {', '.join([str(i) for i in params_df.index])}")
+                raise AttributeError(
+                    f"Year '{year}' is not available in the input data. Select from: {', '.join([str(i) for i in params_df.index])}"
+                )
 
             # now get and set the respective values
             for _param in params_df.columns:
@@ -142,11 +157,17 @@ class Parameters:
                 # set as attr
                 setattr(subclass, _param, _val)
                 if verbose:
-                    print(f"Baseline plant parameter '{_param}' set to: {_val}", flush=True)
+                    print(
+                        f"Baseline plant parameter '{_param}' set to: {_val}",
+                        flush=True,
+                    )
 
         # other extensions cannot be processed
         else:
-            raise TypeError(f"Baseline plant data file is expected to be a .json or .csv file.")
+            raise TypeError(
+                f"Baseline plant data file is expected to be a .json or .csv file."
+            )
+
 
 class OnshoreParameters(Parameters):
     """
@@ -184,6 +205,7 @@ class OnshoreParameters(Parameters):
     bos_share : float, optional
         The baseline turbine's BOS percentage contribution in the total cost, by default 0.229
     """
+
     # static baseline turbine attributes
     constant_rotor_diam = True
     base_capacity = 4200  # [kW]
@@ -216,9 +238,13 @@ class OnshoreParameters(Parameters):
 
         # calculate turbine design limtis if not given
         if self.min_specific_power is None:
-            self.min_specific_power = 0.586 * self.base_specific_power # Winkler (2025) #TODO confirm factors
+            self.min_specific_power = (
+                0.586 * self.base_specific_power
+            )  # Winkler (2025) #TODO confirm factors
         if self.max_hub_height is None:
-            self.max_hub_height = 1.355 * self.base_hub_height # Winkler (2025) #TODO confirm factors
+            self.max_hub_height = (
+                1.355 * self.base_hub_height
+            )  # Winkler (2025) #TODO confirm factors
 
 
 class OffshoreParameters(Parameters):
