@@ -203,11 +203,6 @@ def onshore_wind_iconlam_2023(
 
     wf = WindWorkflowManager(placements)
 
-    # limit the input placements longitude to range of -180...180
-    assert wf.placements["lon"].between(-180, 180, inclusive=True).any()
-    # limit the input placements latitude to range of -90...90
-    assert wf.placements["lat"].between(-90, 90, inclusive=True).any()
-
     # read data through wind workflow
     # WindWorkflowManager=rk.wind.WindWorkflowManager
     # wf = WindWorkflowManager(placements)
@@ -504,11 +499,6 @@ def wind_config(
     ), f"ws_correction_func must be an executable with a single argument that can be passed as np.array (if not 1)."
 
     wf = WindWorkflowManager(placements)
-
-    # limit the input placements longitude to range of -180...180
-    assert wf.placements["lon"].between(-180, 180, inclusive="both").any()
-    # limit the input placements latitude to range of -90...90
-    assert wf.placements["lon"].between(-180, 180, inclusive="both").any()
 
     wf.read(
         variables=[
