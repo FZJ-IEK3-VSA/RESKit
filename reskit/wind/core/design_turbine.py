@@ -19,7 +19,7 @@ def onshore_turbine_from_avg_wind_speed(
     min_tip_height=None,
     min_specific_power=None,
     max_hub_height=None,
-    tech_year=2035,
+    tech_year=2050,
     baseline_turbine_fp=None,
 ):
     """
