@@ -18,9 +18,9 @@ def wind_era5_PenaSanchezDunkelWinkler2025(
     gwa_100m_path,
     esa_cci_path,
     output_netcdf_path=None,
+    cf_correction=True,
     output_variables=None,
     max_batch_size=15000,
-    cf_correction=True,
     **simulate_kwargs,
 ):
     """
@@ -47,6 +47,12 @@ def wind_era5_PenaSanchezDunkelWinkler2025(
         Path to the ESA CCI raster file [5].
     output_netcdf_path : str, optional
         Path to a directory to put the output files, by default None
+    cf_correction : bool, optional
+        If False, the capacity factors will be calculated based on a
+        calibrated physical model only, else an additional correction
+        step will be added to ensure that historic capacity factors based
+        on [2] are met if historic wind fleets are simulated. By default
+        True.
     output_variables : str, optional
         Restrict the output variables to these variables, by default None
     max_batch_size: int
@@ -55,12 +61,6 @@ def wind_era5_PenaSanchezDunkelWinkler2025(
         limiting RAM requirements but may affect runtime. Should be
         adapted to individual computation system (roughly 7GB RAM per
         10k locations), by default 25 000.
-    cf_correction : bool, optional
-        If False, the capacity factors will be calculated based on a
-        calibrated physical model only, else an additional correction
-        step will be added to ensure that historic capacity factors based
-        on [2] are met if historic wind fleets are simulated. By default
-        True.
     simulate_kwargs : optional
         Will be passed on to simulate().
 
@@ -78,7 +78,7 @@ def wind_era5_PenaSanchezDunkelWinkler2025(
     [5] ESA. Land Cover CCI Product User Guide Version 2. Tech. Rep. (2017). Available at: maps.elie.ucl.ac.be/CCI/viewer/download/ESACCI-LC-Ph2-PUGv2_2.0.pdf
     """
     # default data used as per [3]
-    ws_correction_function = (
+    ws_correction_func = (
         "ws_bins",
         os.path.join(DATAFOLDER, f"ws_correction_factors_PSDW2025.yaml"),
     )
