@@ -11,7 +11,6 @@ from .core.power_profile import alpha_from_levels, apply_power_profile_projectio
 from .core.power_curve import PowerCurve, compute_specific_power
 from .core.turbine_library import TurbineLibrary
 from .core.design_turbine import onshore_turbine_from_avg_wind_speed
-from .core.data import DATAFOLDER
 
 from .economic.onshore_cost_model import onshore_turbine_capex
 from .economic.offshore_cost_model import offshore_turbine_capex

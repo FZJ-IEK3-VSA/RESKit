@@ -11,7 +11,7 @@ import geokit as gk
 import os
 import pandas as pd
 import reskit.weather as rk_weather
-from reskit.wind import DATAFOLDER
+from reskit.wind.core.data import DATAFOLDER
 
 
 @pytest.fixture

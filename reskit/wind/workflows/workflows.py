@@ -7,7 +7,7 @@ import yaml
 # import modules
 import reskit.weather as rk_weather
 import reskit.util as rk_util
-from reskit.wind import DATAFOLDER
+from reskit.wind.core.data import DATAFOLDER
 from reskit.wind.core.windspeed_correction import build_ws_correction_function
 from reskit.wind.workflows.wind_workflow_manager import WindWorkflowManager
 
