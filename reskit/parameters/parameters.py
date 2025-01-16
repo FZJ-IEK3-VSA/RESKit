@@ -3,8 +3,10 @@ import json
 import numpy as np
 import os
 import pandas as pd
+
 # other modules
 from reskit.wind.core.data import DATAFOLDER
+
 
 class Parameters:
     """
@@ -37,8 +39,8 @@ class Parameters:
         ----------
         fp : str
             The filepath of a csv file that contains the parameter values
-            in a tabular format with the parameter names/units as column 
-            names and the years as row indices. 
+            in a tabular format with the parameter names/units as column
+            names and the years as row indices.
 
         year : integer, optional
             The year for which the parameter shall be returned. Can be
@@ -53,8 +55,10 @@ class Parameters:
             None
         """
         # check the input file
-        if not isinstance(fp, str) and os.path.splitext(fp)[-1]=='.csv':
-            raise TypeError(f"Parameter filepath must be a str-formatted '.csv' file: {fp}")
+        if not isinstance(fp, str) and os.path.splitext(fp)[-1] == ".csv":
+            raise TypeError(
+                f"Parameter filepath must be a str-formatted '.csv' file: {fp}"
+            )
         if not os.path.isfile(fp):
             raise FileNotFoundError(f"Parameter filepath does not exist: {fp}")
 
@@ -65,9 +69,9 @@ class Parameters:
                 else:
                     _val = round(_val, self.rounding[_param])
             return _val
-        
+
         def _get_value(data, year):
-            """Interpolates values between neighboring years, or returns 
+            """Interpolates values between neighboring years, or returns
             exact value when available."""
             assert isinstance(
                 data, pd.Series
@@ -99,21 +103,29 @@ class Parameters:
 
             # make sure year is in columns and set as index
             if not "year" in params_df.columns:
-                raise AttributeError(f"'year' is a mandatory column in parameter dataframe: {fp}")
-            if not all([isinstance(x, int) and x>=0 for x in params_df.year]):
-                raise ValueError(f"All 'year' entries in parameter dataframe must be integers > 0. Currently: {','.join([str(x) for x in params_df.year])}")
+                raise AttributeError(
+                    f"'year' is a mandatory column in parameter dataframe: {fp}"
+                )
+            if not all([isinstance(x, int) and x >= 0 for x in params_df.year]):
+                raise ValueError(
+                    f"All 'year' entries in parameter dataframe must be integers > 0. Currently: {','.join([str(x) for x in params_df.year])}"
+                )
             params_df.set_index("year", inplace=True)
 
             # check the csv columns, must all be baseline plant attrs
             def _return_colum_type(_param):
                 try:
                     # check if we have a plant parameter
-                    assert (_param in getattr(subclass, "mand_args")) or (_param in getattr(subclass, "opt_args"))
+                    assert (_param in getattr(subclass, "mand_args")) or (
+                        _param in getattr(subclass, "opt_args")
+                    )
                     return "parameter"
                 except:
                     try:
                         # check if we have a plant parameter unit
-                        assert (_param.strip('_unit') in getattr(subclass, "mand_args")) or (_param.strip('_unit') in getattr(subclass, "opt_args"))
+                        assert (
+                            _param.strip("_unit") in getattr(subclass, "mand_args")
+                        ) or (_param.strip("_unit") in getattr(subclass, "opt_args"))
                         return "unit"
                     except:
                         return "other"
@@ -131,11 +143,13 @@ class Parameters:
             # make sure all mandatory parameters are provided
             for _param in getattr(subclass, "mand_args"):
                 if not _param in params_df.columns:
-                    raise AttributeError(f"Mandatory parameter '{_param}' must be an attribute of the parameter dataframe loaded from csv: {fp}")
+                    raise AttributeError(
+                        f"Mandatory parameter '{_param}' must be an attribute of the parameter dataframe loaded from csv: {fp}"
+                    )
 
             # now get and set the respective values
             for _param in params_df.columns:
-                if not _return_colum_type(_param)=="parameter":
+                if not _return_colum_type(_param) == "parameter":
                     # skip remarks and units
                     continue
                 # get and interpolate where needed
@@ -155,13 +169,10 @@ class Parameters:
                 if not _param in params_df.columns:
                     # this has not been provided, set default
                     setattr(subclass, _param, _value)
-            
 
         # other extensions cannot be processed
         else:
-            raise TypeError(
-                f"Baseline plant data file is expected to be a .csv file."
-            )
+            raise TypeError(f"Baseline plant data file is expected to be a .csv file.")
 
 
 class OnshoreParameters(Parameters):
@@ -200,24 +211,25 @@ class OnshoreParameters(Parameters):
     bos_share : float, optional
         The baseline turbine's BOS percentage contribution in the total cost, by default 0.229
     """
+
     # the mandatory arguments that are always required in the file for scaling
-    mand_args=[
-        "base_capacity", 
-        "base_hub_height", 
-        "base_rotor_diam", 
-        "reference_wind_speed", 
+    mand_args = [
+        "base_capacity",
+        "base_hub_height",
+        "base_rotor_diam",
+        "reference_wind_speed",
         "base_capex_per_capacity",
         "tcc_share",
         "bos_share",
         "gdp_escalator",
         "blade_material_escalator",
-        "blades"
+        "blades",
     ]
     # optional additional arguments with fallback values which mean the parameter has no effect
-    opt_args={
-        "min_tip_height" : 0,
-        "min_specific_power" : 0,
-        "max_hub_height" : np.inf,
+    opt_args = {
+        "min_tip_height": 0,
+        "min_specific_power": 0,
+        "max_hub_height": np.inf,
     }
 
     def __init__(self, fp=None, year=2050, constant_rotor_diam=True):
@@ -225,16 +237,19 @@ class OnshoreParameters(Parameters):
         # we need meaningful definition if rotor or capacity shall be scaled
         if not isinstance(constant_rotor_diam, bool):
             raise TypeError(f"constant_rotor_diam must be a boolean.")
-        self.constant_rotor_diam=constant_rotor_diam
+        self.constant_rotor_diam = constant_rotor_diam
 
         # determine the parameter data file
         if fp is None:
             # use the default file
             fp = os.path.join(DATAFOLDER, "baseline_turbine_onshore_RybergEtAl2019.csv")
-        
+
         # extract baseline params from file
         self.load_and_set_custom_params(fp=fp, year=year, subclass=self)
-        print(f"Baseline plant parameters have been loaded for year {year} from: {fp}", flush=True)
+        print(
+            f"Baseline plant parameters have been loaded for year {year} from: {fp}",
+            flush=True,
+        )
 
 
 class OffshoreParameters(Parameters):
@@ -266,11 +281,12 @@ class OffshoreParameters(Parameters):
         Spacing distance between rows of turbines. The value must be a multiplyer of rotor diameter. CSM valid for the range [4-10], by default 9
 
     """
+
     # the mandatory arguments that are always required in the file for scaling size
-    mand_args=[
-        "base_capacity", 
-        "base_hub_height", 
-        "base_rotor_diam", 
+    mand_args = [
+        "base_capacity",
+        "base_hub_height",
+        "base_rotor_diam",
         "reference_wind_speed",
         "distance_to_bus",
         "foundation",
@@ -278,13 +294,13 @@ class OffshoreParameters(Parameters):
         "anchor",
         "turbine_count",
         "turbine_spacing",
-        "turbine_row_spacing"
+        "turbine_row_spacing",
     ]
     # optional additional arguments with fallback values which mean the parameter has no effect
-    opt_args={
-        "min_tip_height" : 0,
-        "min_specific_power" : 0,
-        "max_hub_height" : np.inf,
+    opt_args = {
+        "min_tip_height": 0,
+        "min_specific_power": 0,
+        "max_hub_height": np.inf,
     }
 
     def __init__(self, fp=None, year=2050, constant_rotor_diam=True):
@@ -292,11 +308,13 @@ class OffshoreParameters(Parameters):
         # we need meaningful definition if rotor or capacity shall be scaled
         if not isinstance(constant_rotor_diam, bool):
             raise TypeError(f"constant_rotor_diam must be a boolean.")
-        self.constant_rotor_diam=constant_rotor_diam
-    
+        self.constant_rotor_diam = constant_rotor_diam
+
         if fp is None:
             # use the default file
-            fp = os.path.join(DATAFOLDER, "baseline_turbine_offshore_CaglayanEtAl2019.csv")
+            fp = os.path.join(
+                DATAFOLDER, "baseline_turbine_offshore_CaglayanEtAl2019.csv"
+            )
 
         # extract json params from file
         self.load_and_set_custom_params(fp=fp, year=year, subclass=self)
