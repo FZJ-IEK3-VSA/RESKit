@@ -13,6 +13,7 @@ import pandas as pd
 import reskit.weather as rk_weather
 from reskit.wind import DATAFOLDER
 
+
 @pytest.fixture
 def pt_wind_placements() -> pd.DataFrame:
     df = gk.vector.extractFeatures(TEST_DATA["turbinePlacements.shp"])
@@ -117,7 +118,10 @@ def test_wind_config(pt_wind_placements: pd.DataFrame):
         real_lra_ws_nodata_fallback=np.nan,
         landcover_path=TEST_DATA["ESA_CCI_2018_clip.tif"],
         landcover_source_type="cci",
-        ws_correction_func=("ws_bins", os.path.join(DATAFOLDER, f"ws_correction_factors_PSDW2025.yaml")),
+        ws_correction_func=(
+            "ws_bins",
+            os.path.join(DATAFOLDER, f"ws_correction_factors_PSDW2025.yaml"),
+        ),
         cf_correction_factor=os.path.join(
             DATAFOLDER, f"cf_correction_factors_PSDW2025.tif"
         ),
