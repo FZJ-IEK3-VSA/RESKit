@@ -396,12 +396,6 @@ def onshore_wind_iconlam_2023(
     )
 
 
-def mean_capacity_factor_from_sectoral_weibull(
-    placements, a_rasters, k_rasters, f_rasters, output=None
-):
-    pass
-
-
 def wind_config(
     placements,
     weather_path,
