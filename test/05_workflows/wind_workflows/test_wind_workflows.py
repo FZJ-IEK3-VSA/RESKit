@@ -1,7 +1,7 @@
 from reskit.wind.workflows.workflows import (
     onshore_wind_merra_ryberg2019_europe,
     offshore_wind_merra_caglayan2019,
-    wind_era5_PenaSanchezDunkelWinkler2025,
+    wind_era5_PenaSanchezDunkelWinklerEtAl2025,
     wind_config,
 )
 from reskit import TEST_DATA
@@ -77,8 +77,8 @@ def test_offshore_wind_merra_caglayan2019(pt_wind_placements):
     assert np.isclose(gen.capacity_factor.std(), 0.29063037)
 
 
-def test_wind_era5_PenaSanchezDunkelWinkler2025(pt_wind_placements: pd.DataFrame):
-    gen = wind_era5_PenaSanchezDunkelWinkler2025(
+def test_wind_era5_PenaSanchezDunkelWinklerEtAl2025(pt_wind_placements: pd.DataFrame):
+    gen = wind_era5_PenaSanchezDunkelWinklerEtAl2025(
         placements=pt_wind_placements,
         era5_path=TEST_DATA["era5-like"],
         gwa_100m_path=TEST_DATA["gwa100-like.tif"],
