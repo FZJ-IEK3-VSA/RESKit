@@ -89,33 +89,25 @@ def offshore_turbine_capex(
     [9] RPG CABLES, & KEC International limited. (n.d.). EXTRA HIGH VOLTAGE cables. RPG CABLES. www.rpgcables.com/images/product/EHV-catalogue.pdf
 
     """
-
     # TODO: Generalize this function further(like with the onshore cost model)
 
-    # retrieve default values if base values are not given explicitly
-    if distance_to_bus is None:
-        distance_to_bus = OffshoreParameters.distance_to_bus
-    if foundation is None:
-        foundation = OffshoreParameters.foundation
-    if mooring_count is None:
-        mooring_count = OffshoreParameters.mooring_count
-    if anchor is None:
-        anchor = OffshoreParameters.anchor
-    if turbine_count is None:
-        turbine_count = OffshoreParameters.turbine_count
-    if turbine_spacing is None:
-        turbine_spacing = OffshoreParameters.turbine_spacing
-    if turbine_row_spacing is None:
-        turbine_row_spacing = OffshoreParameters.turbine_row_spacing
+    # initialize OffshoreParameters class and feed with custom param values
+    OffshoreParams = OffshoreParameters(
+        distance_to_bus=distance_to_bus,
+        foundation=foundation,
+        mooring_count=mooring_count,
+        anchor=anchor,
+        turbine_count=turbine_count,
+        turbine_spacing=turbine_spacing,
+        turbine_row_spacing=turbine_row_spacing,
+    )
 
     # PREPROCESS INPUTS
-    cp = np.array(capacity / 1000)
+    cp = np.array(capacity / 1000) # in MW
     # rr = np.array(rotor_diam / 2)
     rd = np.array(rotor_diam)
     hh = np.array(hub_height)
-    depth = np.abs(np.array(depth))
-    distance_to_shore = np.array(distance_to_shore)
-    distance_to_bus = np.array(distance_to_bus)
+    depth = np.abs(np.array(depth)) # positive values
 
     # COMPUTE COSTS
     tcc = onshore_tcc(cp=cp * 1000, hh=hh, rd=rd)
@@ -126,14 +118,14 @@ def offshore_turbine_capex(
         rd=rd,
         hh=hh,
         depth=depth,
-        distance_to_shore=distance_to_shore,
-        distance_to_bus=distance_to_bus,
-        foundation=foundation,
-        mooring_count=mooring_count,
-        anchor=anchor,
-        turbine_count=turbine_count,
-        turbine_spacing=turbine_spacing,
-        turbine_row_spacing=turbine_row_spacing,
+        distance_to_shore=np.array(distance_to_shore),
+        distance_to_bus=np.array(OffshoreParams.distance_to_bus),
+        foundation=OffshoreParams.foundation,
+        mooring_count=OffshoreParams.mooring_count,
+        anchor=OffshoreParams.anchor,
+        turbine_count=OffshoreParams.turbine_count,
+        turbine_spacing=OffshoreParams.turbine_spacing,
+        turbine_row_spacing=OffshoreParams.turbine_row_spacing,
     )
 
     bos *= 0.3669156255898912
@@ -239,7 +231,7 @@ def offshore_bos(
         fixedType = False
     else:
         raise ValueError(
-            "Please choose one of the four foundation types: monopile, jacket, spar, or semisubmersible"
+            f"Please choose one of the four foundation types: monopile, jacket, spar, or semisubmersible. Here: {foundation}"
         )
 
     # CONSTANTS AND ASSUMPTIONS (all from [1] except where noted)

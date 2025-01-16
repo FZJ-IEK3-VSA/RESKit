@@ -30,7 +30,7 @@ class Parameters:
         """
         pass
 
-    def load_and_set_custom_params(self, fp, year, subclass, verbose=False):
+    def load_and_set_custom_params(self, fp, year, subclass, verbose=False, **kwargs):
         """
         This function loads a parameter table in csv format and writes the
         parameter values into class attributes.
@@ -137,7 +137,7 @@ class Parameters:
                     continue
                 elif not _return_colum_type(_param) in ["param", "unit"]:
                     AttributeError(
-                        f"Baseline plant parameter csv column '{_param}' is not an attribute of {subclass}."
+                        f"Baseline plant parameter csv column '{_param}' is not an attribute of '{subclass.__class__.__name__}'."
                     )
 
             # make sure all mandatory parameters are provided
@@ -158,7 +158,7 @@ class Parameters:
                 _val = _round_val(_val)
                 # set as attr
                 setattr(subclass, _param, _val)
-                if verbose:
+                if verbose and not _param in kwargs.keys():
                     print(
                         f"Baseline plant parameter '{_param}' set to: {_val}",
                         flush=True,
@@ -173,6 +173,33 @@ class Parameters:
         # other extensions cannot be processed
         else:
             raise TypeError(f"Baseline plant data file is expected to be a .csv file.")
+
+
+    def update_custom_parameters(self, subclass, **kwargs):
+        """
+        Iterates over custom parameter names and values, checks if they 
+        are actually class attributes and overwrites them
+
+        subclass : Parameters() sub class instance
+            The sub class in which the custom parameters shall be updated
+
+        **kwargs : optional
+            parameter_name = value of custom plant baseline parameters, 
+            must be attributes of the respective Parameters() class.
+        """
+        # now iterate over kwargs and overwrite default data where needed
+        for _param, _value in kwargs.items():
+            if hasattr(subclass, _param):
+                # we have an actual attribute
+                if _value is not None:
+                    # we have an actual custom value, overwrite
+                    setattr(subclass, _param, _value)
+                    print(
+                        f"Baseline plant parameter '{_param}' overwritten by custom value: {_value}",
+                        flush=True,
+                    )
+            else:
+                raise AttributeError(f"kwarg '{_param}' is not an attribute of '{subclass.__class__.__name__}'")
 
 
 class OnshoreParameters(Parameters):
@@ -232,7 +259,7 @@ class OnshoreParameters(Parameters):
         "max_hub_height": np.inf,
     }
 
-    def __init__(self, fp=None, year=2050, constant_rotor_diam=True):
+    def __init__(self, fp=None, year=2050, constant_rotor_diam=True, **kwargs):
         """Initializes an instance of the OnshoreParameters class."""
         # we need meaningful definition if rotor or capacity shall be scaled
         if not isinstance(constant_rotor_diam, bool):
@@ -245,11 +272,17 @@ class OnshoreParameters(Parameters):
             fp = os.path.join(DATAFOLDER, "baseline_turbine_onshore_RybergEtAl2019.csv")
 
         # extract baseline params from file
-        self.load_and_set_custom_params(fp=fp, year=year, subclass=self)
+        self.load_and_set_custom_params(fp=fp, year=year, subclass=self, **kwargs)
         print(
             f"Baseline plant parameters have been loaded for year {year} from: {fp}",
             flush=True,
         )
+
+        # generate dependent attributes
+        self.base_capex = self.base_capex_per_capacity * self.base_capacity
+
+        # update custom parameters
+        self.update_custom_parameters(subclass=self, **kwargs)
 
 
 class OffshoreParameters(Parameters):
@@ -303,7 +336,7 @@ class OffshoreParameters(Parameters):
         "max_hub_height": np.inf,
     }
 
-    def __init__(self, fp=None, year=2050, constant_rotor_diam=True):
+    def __init__(self, fp=None, year=2050, constant_rotor_diam=True, **kwargs):
         """Initializes an instance of the OffshoreParameters class."""
         # we need meaningful definition if rotor or capacity shall be scaled
         if not isinstance(constant_rotor_diam, bool):
@@ -317,5 +350,8 @@ class OffshoreParameters(Parameters):
             )
 
         # extract json params from file
-        self.load_and_set_custom_params(fp=fp, year=year, subclass=self)
+        self.load_and_set_custom_params(fp=fp, year=year, subclass=self, **kwargs)
         print(f"Baseline plant parameters have been loaded from: {fp}", flush=True)
+
+        # update custom parameters
+        self.update_custom_parameters(subclass=self, **kwargs)
