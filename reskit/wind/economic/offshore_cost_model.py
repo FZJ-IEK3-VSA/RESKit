@@ -93,13 +93,7 @@ def offshore_turbine_capex(
 
     # initialize OffshoreParameters class and feed with custom param values
     OffshoreParams = OffshoreParameters(
-        distance_to_bus=distance_to_bus,
-        foundation=foundation,
-        mooring_count=mooring_count,
-        anchor=anchor,
-        turbine_count=turbine_count,
-        turbine_spacing=turbine_spacing,
-        turbine_row_spacing=turbine_row_spacing,
+        **{k:v for k,v in locals().items() if not k in ["capacity","hub_height","rotor_diam", "depth", "distance_to_shore"]}
     )
 
     # PREPROCESS INPUTS
@@ -130,7 +124,7 @@ def offshore_turbine_capex(
 
     bos *= 0.3669156255898912
 
-    if foundation == "monopile" or foundation == "jacket":
+    if OffshoreParams.foundation in ["monopile", "jacket"]:
         fin = (tcc + bos) * 20.9 / (32.9 + 46.2)  # Scaled according to tcc [7]
     else:
         fin = (tcc + bos) * 15.6 / (60.8 + 23.6)  # Scaled according to tcc [7]
