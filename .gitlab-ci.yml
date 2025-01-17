@@ -10,7 +10,7 @@ stages:
     - micromamba create -y -n reskit_env --file=requirements-dev.yml
     - eval "$(micromamba shell hook --shell bash)"
     # Install reskit in editable mode
-    - micromamba run -n reskit_env python pip install -e . --no-deps
+    - micromamba run -n reskit_env pip install -e . --no-deps
 
 test-code:
   extends: .test_template
