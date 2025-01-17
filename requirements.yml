@@ -1,7 +1,6 @@
 name: reskit
 channels:
   - conda-forge
-  - pvlib
 dependencies:
   - python
   - pip
@@ -17,5 +16,5 @@ dependencies:
   - gdal=3.4.*
   - netCDF4>=1.5.3
   - xarray
-  - pvlib::pvlib=0.9.0
+  - pvlib-python=0.9.0
   - windpowerlib

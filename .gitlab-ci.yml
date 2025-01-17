@@ -7,9 +7,9 @@ stages:
   stage: test
   before_script:
     # create environment
-    - micromamba create -y -n reskit --file=requirements-dev.yml
+    - micromamba create -y -n reskit_env --file=requirements-dev.yml
     - eval "$(micromamba shell hook --shell bash)"
-    - micromamba activate reskit
+    - micromamba activate reskit_env
     # Install reskit in editable mode
     - python -m pip install -e . --no-deps
 
@@ -17,7 +17,29 @@ test-code:
   extends: .test_template
   script:
     # Test code
-    - python -m pytest --cov=reskit test/
+    - micromamba run -n reskit_env pytest --cov=reskit test/
+    # Test examples
+    - micromamba run -n reskit_env jupyter nbconvert --execute examples/1.01-Weather-Reading_Weather_Data.ipynb
+    - micromamba run -n reskit_env jupyter nbconvert --execute examples/1.03-Weather-Vertically_project_wind_speed.ipynb
+    - micromamba run -n reskit_env jupyter nbconvert --execute examples/2.01-Economic-Compute_levelized_cost_of_electricity.ipynb
+    - micromamba run -n reskit_env jupyter nbconvert --execute examples/3.01a-Wind-Load_Power_Curve.ipynb
+    - micromamba run -n reskit_env jupyter nbconvert --execute examples/3.01b-Wind-Synthetic_Power_Curve.ipynb
+    - micromamba run -n reskit_env jupyter nbconvert --execute examples/3.02-Wind-Convolute_a_Power_Curve.ipynb
+    - micromamba run -n reskit_env jupyter nbconvert --execute examples/3.03-Wind-Design_Onshore_Turbine.ipynb
+    - micromamba run -n reskit_env jupyter nbconvert --execute examples/3.04-Wind-Estimate_Turbine_Capital_Cost.ipynb
+    - micromamba run -n reskit_env jupyter nbconvert --execute examples/3.05a-Wind-Basic_Turbine_Simulation.ipynb
+    - micromamba run -n reskit_env jupyter nbconvert --execute examples/3.05b-Wind-Turbine_Simulation_Workflow.ipynb
+    - micromamba run -n reskit_env jupyter nbconvert --execute examples/3.05c-Wind-Automated_Turbine_Simulation_Workflow.ipynb
+    - micromamba run -n reskit_env jupyter nbconvert --execute examples/4.01-Solar-Load_Module.ipynb
+    - micromamba run -n reskit_env jupyter nbconvert --execute examples/4.03-Solar-Automated_Simulation_Workflow.ipynb
+    - micromamba run -n reskit_env jupyter nbconvert --execute examples/5.01-Solar-CSP.ipynb
+    - micromamba run -n reskit_env jupyter nbconvert --execute examples/ETHOS.RESKit.Wind_process_power_curves.ipynb
+    - micromamba run -n reskit_env jupyter nbconvert --execute examples/ETHOS.RESKit.Wind.ipynb
+    - micromamba run -n reskit_env jupyter nbconvert --execute How_to_download_ERA5_data_public.ipynb
+    - micromamba run -n reskit_env jupyter nbconvert --execute examples/Solar_Workflows.ipynb.ipynb
+    - micromamba run -n reskit_env jupyter nbconvert --execute examples/Wind_Workflows.ipynb
+    - micromamba run -n reskit_env jupyter nbconvert --execute examples/WindSpeed_from_vectors_public.ipynb
+    
 
 test-formatting:
   stage: test
