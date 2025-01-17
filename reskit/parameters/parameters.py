@@ -174,17 +174,16 @@ class Parameters:
         else:
             raise TypeError(f"Baseline plant data file is expected to be a .csv file.")
 
-
     def update_custom_parameters(self, subclass, **kwargs):
         """
-        Iterates over custom parameter names and values, checks if they 
+        Iterates over custom parameter names and values, checks if they
         are actually class attributes and overwrites them
 
         subclass : Parameters() sub class instance
             The sub class in which the custom parameters shall be updated
 
         **kwargs : optional
-            parameter_name = value of custom plant baseline parameters, 
+            parameter_name = value of custom plant baseline parameters,
             must be attributes of the respective Parameters() class.
         """
         # now iterate over kwargs and overwrite default data where needed
@@ -199,7 +198,9 @@ class Parameters:
                         flush=True,
                     )
             else:
-                raise AttributeError(f"kwarg '{_param}' is not an attribute of '{subclass.__class__.__name__}'")
+                raise AttributeError(
+                    f"kwarg '{_param}' is not an attribute of '{subclass.__class__.__name__}'"
+                )
 
 
 class OnshoreParameters(Parameters):

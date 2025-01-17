@@ -70,7 +70,11 @@ def onshore_turbine_capex(
     """
     # initialize OnshoreParameters class and feed with custom param values
     OnshoreParams = OnshoreParameters(
-        **{k:v for k,v in locals().items() if not k in ["capacity","hub_height","rotor_diam"]}
+        **{
+            k: v
+            for k, v in locals().items()
+            if not k in ["capacity", "hub_height", "rotor_diam"]
+        }
     )
 
     # PREPROCESS INPUTS
@@ -85,14 +89,22 @@ def onshore_turbine_capex(
     tcc_scaling = (
         OnshoreParams.base_capex
         * OnshoreParams.tcc_share
-        / onshore_tcc(cp=OnshoreParams.base_capacity, hh=OnshoreParams.base_hub_height, rd=OnshoreParams.base_rotor_diam)
+        / onshore_tcc(
+            cp=OnshoreParams.base_capacity,
+            hh=OnshoreParams.base_hub_height,
+            rd=OnshoreParams.base_rotor_diam,
+        )
     )
     tcc = onshore_tcc(cp=cp, hh=hh, rd=rd) * tcc_scaling
 
     bos_scaling = (
         OnshoreParams.base_capex
         * OnshoreParams.bos_share
-        / onshore_bos(cp=OnshoreParams.base_capacity, hh=OnshoreParams.base_hub_height, rd=OnshoreParams.base_rotor_diam)
+        / onshore_bos(
+            cp=OnshoreParams.base_capacity,
+            hh=OnshoreParams.base_hub_height,
+            rd=OnshoreParams.base_rotor_diam,
+        )
     )
     bos = onshore_bos(cp=cp, hh=hh, rd=rd) * bos_scaling
 

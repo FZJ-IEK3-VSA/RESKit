@@ -93,15 +93,20 @@ def offshore_turbine_capex(
 
     # initialize OffshoreParameters class and feed with custom param values
     OffshoreParams = OffshoreParameters(
-        **{k:v for k,v in locals().items() if not k in ["capacity","hub_height","rotor_diam", "depth", "distance_to_shore"]}
+        **{
+            k: v
+            for k, v in locals().items()
+            if not k
+            in ["capacity", "hub_height", "rotor_diam", "depth", "distance_to_shore"]
+        }
     )
 
     # PREPROCESS INPUTS
-    cp = np.array(capacity / 1000) # in MW
+    cp = np.array(capacity / 1000)  # in MW
     # rr = np.array(rotor_diam / 2)
     rd = np.array(rotor_diam)
     hh = np.array(hub_height)
-    depth = np.abs(np.array(depth)) # positive values
+    depth = np.abs(np.array(depth))  # positive values
 
     # COMPUTE COSTS
     tcc = onshore_tcc(cp=cp * 1000, hh=hh, rd=rd)
