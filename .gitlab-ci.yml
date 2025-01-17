@@ -48,5 +48,5 @@ test-formatting:
   # Dry-run black auto-formatter. If the code needs reformatting this test
   # will fail.
   - black --version
-  - black --check reskit
+  - black --check src
   - black --check test
