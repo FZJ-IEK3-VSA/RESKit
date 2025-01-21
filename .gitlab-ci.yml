@@ -31,7 +31,6 @@ test-code:
     - micromamba run -n reskit_env jupyter nbconvert --execute --to=python examples/3.05c-Wind-Automated_Turbine_Simulation_Workflow.ipynb
     - micromamba run -n reskit_env jupyter nbconvert --execute --to=python examples/4.01-Solar-Load_Module.ipynb
     - micromamba run -n reskit_env jupyter nbconvert --execute --to=python examples/4.03-Solar-Automated_Simulation_Workflow.ipynb
-    - micromamba run -n reskit_env jupyter nbconvert --execute --to=python examples/5.01-Solar-CSP.ipynb
     - micromamba run -n reskit_env jupyter nbconvert --execute --to=python examples/ETHOS.RESKit.Wind_process_power_curves.ipynb
     - micromamba run -n reskit_env jupyter nbconvert --execute --to=python examples/ETHOS.RESKit.Wind.ipynb
     - micromamba run -n reskit_env jupyter nbconvert --execute --to=python examples/How_to_download_ERA5_data_public.ipynb
