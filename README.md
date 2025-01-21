@@ -55,9 +55,13 @@ pip install -e .
 See the [Examples page](Examples/)
 
 If you intend to use **ETHOS.RESKit.Wind** please follow the following instructions:
-1. Download ERA5 and further datasets: LINK
-2. (optional) If you have purchased PowerCurves from thewindpower.net, please use the following script to process them: [ETHOS.RESKit.Wind_process_power_curves.ipynb](Examples/ETHOS.RESKit.Wind_process_power_curves.ipynb)
-3. You can find an example on how to use ETHOS.RESKit.Wind here: [ETHOS.RESKit.Wind.ipynb](Examples/ETHOS.RESKit.Wind.ipynb)
+1. Download ERA5 and further datasets: 
+  1.1. Download ERA5: [How_to_download_ERA5_data_public.ipynb](Examples/How_to_download_ERA5_data_public.ipynb)
+  1.2. Process Wind Speeds:  [WindSpeed_from_vectors_public.ipynb](Examples/WindSpeed_from_vectors_public.ipynb)
+  1.3. Download ESA Land Cover CCI as tif file: maps.elie.ucl.ac.be/CCI/viewer/download/ESACCI-LC-Ph2-PUGv2_2.0.pdf 
+  1.4. Download GWAv3: https://globalwindatlas.info/api/gis/global/wind-speed/100 (https://globalwindatlas.info/en/download/gis-files)
+1. (optional) If you have purchased PowerCurves from thewindpower.net, please use the following script to process them: [ETHOS.RESKit.Wind_process_power_curves.ipynb](Examples/ETHOS.RESKit.Wind_process_power_curves.ipynb)
+2. You can find an example on how to use ETHOS.RESKit.Wind here: [ETHOS.RESKit.Wind.ipynb](Examples/ETHOS.RESKit.Wind.ipynb)
 
 
 ## Citation
