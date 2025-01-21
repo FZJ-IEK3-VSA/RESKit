@@ -6,7 +6,7 @@ import pandas as pd
 
 # other modules
 from reskit.wind.core.data import DATAFOLDER
-
+from reskit import DEFAULT_PATHS
 
 class Parameters:
     """
@@ -270,7 +270,10 @@ class OnshoreParameters(Parameters):
         # determine the parameter data file
         if fp is None:
             # use the default file
-            fp = os.path.join(DATAFOLDER, "baseline_turbine_onshore_RybergEtAl2019.csv")
+            if DEFAULT_PATHS["baseline_onshore_turbine_definition_path"] is None:
+                fp = os.path.join(DATAFOLDER, "baseline_turbine_onshore_RybergEtAl2019.csv")
+            else:
+                fp = DEFAULT_PATHS["baseline_onshore_turbine_definition_path"]
 
         # extract baseline params from file
         self.load_and_set_custom_params(fp=fp, year=year, subclass=self, **kwargs)
@@ -346,9 +349,12 @@ class OffshoreParameters(Parameters):
 
         if fp is None:
             # use the default file
-            fp = os.path.join(
-                DATAFOLDER, "baseline_turbine_offshore_CaglayanEtAl2019.csv"
-            )
+            if DEFAULT_PATHS["baseline_offshore_turbine_definition_path"] is None:
+                fp = os.path.join(
+                    DATAFOLDER, "baseline_turbine_offshore_CaglayanEtAl2019.csv"
+                )   
+            else:
+                fp = DEFAULT_PATHS["baseline_offshore_turbine_definition_path"]
 
         # extract json params from file
         self.load_and_set_custom_params(fp=fp, year=year, subclass=self, **kwargs)
