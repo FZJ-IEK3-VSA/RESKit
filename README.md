@@ -100,9 +100,8 @@ When using other anything else:
 
 ## License
 
-MIT License
-
-Copyright (c) 2021-2025 FZJ-ICE-2
+The source code in this repository is licensed under: MIT License Copyright (c) 2019-2025 FZJ-ICE-2
+The data files [cf_correction_factors_PSDW2025.tif](reskit/wind/core/data/cf_correction_factors_PSDW2025.tif) and [ws_correction_factors_PSDW2025.yaml](reskit/wind/core/data/ws_correction_factors_PSDW2025.yaml) are licensed under TCC-BY-4.0
 
 You should have received a copy of the MIT License along with this program.  
 If not, see <https://opensource.org/licenses/MIT>
