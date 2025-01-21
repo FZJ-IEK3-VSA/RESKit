@@ -82,7 +82,7 @@ def TurbineLibrary():
 
     if _Turbine_Library is None:
         if DEFAULT_PATHS["turbine_library_path"] is None:
-            turbineFiles = glob(join(dirname(__file__), "data", "turbines", "*.csv"))   
+            turbineFiles = glob(join(dirname(__file__), "data", "turbines", "*.csv"))
 
         tmp = []
         already_added_models = []

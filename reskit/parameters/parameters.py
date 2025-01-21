@@ -8,6 +8,7 @@ import pandas as pd
 from reskit.wind.core.data import DATAFOLDER
 from reskit.default_paths import DEFAULT_PATHS
 
+
 class Parameters:
     """
     This class holds the base techno-economic parameter assumptions on which
@@ -271,7 +272,9 @@ class OnshoreParameters(Parameters):
         if fp is None:
             # use the default file
             if DEFAULT_PATHS["baseline_onshore_turbine_definition_path"] is None:
-                fp = os.path.join(DATAFOLDER, "baseline_turbine_onshore_RybergEtAl2019.csv")
+                fp = os.path.join(
+                    DATAFOLDER, "baseline_turbine_onshore_RybergEtAl2019.csv"
+                )
             else:
                 fp = DEFAULT_PATHS["baseline_onshore_turbine_definition_path"]
 
@@ -352,7 +355,7 @@ class OffshoreParameters(Parameters):
             if DEFAULT_PATHS["baseline_offshore_turbine_definition_path"] is None:
                 fp = os.path.join(
                     DATAFOLDER, "baseline_turbine_offshore_CaglayanEtAl2019.csv"
-                )   
+                )
             else:
                 fp = DEFAULT_PATHS["baseline_offshore_turbine_definition_path"]
 
