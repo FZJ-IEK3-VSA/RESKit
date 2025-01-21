@@ -6,7 +6,7 @@ import re
 from os.path import join, dirname
 
 from .power_curve import PowerCurve
-from reskit import DEFAULT_PATHS
+from .. import DEFAULT_PATHS
 
 ##################################################
 # Make a turbine model library
