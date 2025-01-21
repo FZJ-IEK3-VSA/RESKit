@@ -6,7 +6,7 @@ import pandas as pd
 
 # other modules
 from reskit.wind.core.data import DATAFOLDER
-from .. import DEFAULT_PATHS
+from reskit.default_paths import DEFAULT_PATHS
 
 class Parameters:
     """
