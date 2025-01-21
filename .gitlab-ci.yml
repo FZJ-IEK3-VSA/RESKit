@@ -32,7 +32,7 @@ test-code:
     - micromamba run -n reskit_env jupyter nbconvert --execute --to=python examples/4.01-Solar-Load_Module.ipynb
     - micromamba run -n reskit_env jupyter nbconvert --execute --to=python examples/4.03-Solar-Automated_Simulation_Workflow.ipynb
     - micromamba run -n reskit_env jupyter nbconvert --execute --to=python examples/ETHOS.RESKit.Wind.ipynb
-    - micromamba run -n reskit_env jupyter nbconvert --execute --to=python examples/Solar_Workflows.ipynb.ipynb
+    - micromamba run -n reskit_env jupyter nbconvert --execute --to=python examples/Solar_Workflows.ipynb
     - micromamba run -n reskit_env jupyter nbconvert --execute --to=python examples/Wind_Workflows.ipynb
     
 
