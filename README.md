@@ -59,14 +59,25 @@ If you intend to use **ETHOS.RESKit.Wind** please follow the following instructi
 2. (optional) If you have purchased PowerCurves from thewindpower.net, please use the following script to process them: [ETHOS.RESKit.Wind_process_power_curves.ipynb](Examples/ETHOS.RESKit.Wind_process_power_curves.ipynb)
 3. You can find an example on how to use ETHOS.RESKit.Wind here: [ETHOS.RESKit.Wind.ipynb](Examples/ETHOS.RESKit.Wind.ipynb)
 
-## Docker
-
-We are looking into making RESKit accessible in a docker container. Check back later for more info!
 
 ## Citation
 
 If you decide to use RESkit anywhere in a published work related to wind energy, please kindly cite us using the following
 
+When using ETHOS.RESKit.Wind workflow please use: 
+```bibtex
+@article{PenaSanchezDunkelWinklerEtAl2025,
+      title={Towards high resolution, validated and open global wind power assessments}, 
+      author={Edgar Ubaldo Peña-Sánchez and Philipp Dunkel and Christoph Winkler and Heidi Heinrichs and Florian Prinz and Jann Weinand and Rachel Maier and Sebastian Dickler and Shuying Chen and Katharina Gruber and Theresa Klütz and Jochen Linßen and Detlef Stolten},
+      year={2025},
+      eprint={2501.07937},
+      archivePrefix={arXiv},
+      primaryClass={physics.soc-ph},
+      url={https://arxiv.org/abs/2501.07937}, 
+}
+```
+
+When using other anything else:
 ```bibtex
 @article{RybergWind2019,
   author = {Ryberg, David Severin and Caglayan, Dilara Gulcin and Schmitt, Sabrina and Lin{\ss}en, Jochen and Stolten, Detlef and Robinius, Martin},
@@ -87,7 +98,7 @@ If you decide to use RESkit anywhere in a published work related to wind energy,
 
 MIT License
 
-Copyright (c) 2022 David Severin Ryberg (FZJ IEK-3), David Franzmann (FZJ IEK-3), Christoph Winkler (FZJ IEK-3), Heidi Heinrichs (FZJ IEK-3), Martin Robinius (FZJ IEK-3), Detlef Stolten (FZJ IEK-3)
+Copyright (c) 2021-2025 FZJ-ICE-2
 
 You should have received a copy of the MIT License along with this program.  
 If not, see <https://opensource.org/licenses/MIT>
@@ -98,7 +109,6 @@ We are the <a href="https://www.fz-juelich.de/de/ice/ice-2">Institute of Energy 
 
 ## Contributions and Support
 Every contributions are welcome:
-- If you have a question, you can start a [Discussion](https://github.com/FZJ-IEK3-VSA/RESKit/discussions). You will get a response as soon as possible.
 - If you want to report a bug, please open an [Issue](https://github.com/FZJ-IEK3-VSA/RESKit/issues/new). We will then take care of the issue as soon as possible.
 - If you want to contribute with additional features or code improvements, open a [Pull request](https://github.com/FZJ-IEK3-VSA/RESKit/pulls).
 
