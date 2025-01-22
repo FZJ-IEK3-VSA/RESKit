@@ -18,10 +18,7 @@ maintainers = [
   {name = "Chrstoph Winkler", email = "c.winkler@fz-juelich.de"},
   {name = "Phillip Dunkel", email = "p.dunkel@fz-juelich.de"}
 ]
-license-files = [
-    "LICENSES/MIT.txt",
-    "LICENSES/CC-BY-4.0.txt"
-]
+license = { file = "LICENSES/MIT.txt" }
 
 
 [tool.setuptools.packages.find]
