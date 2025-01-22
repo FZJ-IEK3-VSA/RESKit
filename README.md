@@ -56,20 +56,20 @@ See the [Examples page](Examples/)
 
 If you intend to use **ETHOS.RESKit.Wind** please follow the following instructions:
 1. Download ERA5 and further datasets: 
-  1.1. Download ERA5: [How_to_download_ERA5_data_public.ipynb](examples/How_to_download_ERA5_data_public.ipynb)
-  1.2. Process Wind Speeds:  [WindSpeed_from_vectors_public.ipynb](examples/WindSpeed_from_vectors_public.ipynb)
-  1.3. Download ESA Land Cover CCI v2.1.1 (2018): https://cds.climate.copernicus.eu/datasets/satellite-land-cover?tab=download
-  1.4. Download GWAv3: https://globalwindatlas.info/api/gis/global/wind-speed/100 (https://globalwindatlas.info/en/download/gis-files)
-1. (optional) If you have purchased PowerCurves from thewindpower.net, please use the following script to process them: [ETHOS.RESKit.Wind_process_power_curves.ipynb](examples/ETHOS.RESKit.Wind_process_power_curves.ipynb)
-2. You can find an example on how to use ETHOS.RESKit.Wind here: [ETHOS.RESKit.Wind.ipynb](examples/ETHOS.RESKit.Wind.ipynb)
+  1.1. Download ERA5: [How_to_download_ERA5_data_public.ipynb](examples/How_to_download_ERA5_data_public.ipynb) <br>
+  1.2. Process ERA5 Wind Speeds:  [WindSpeed_from_vectors_public.ipynb](examples/WindSpeed_from_vectors_public.ipynb) <br>
+  1.3. Download ESA Land Cover CCI v2.1.1 (2018): https://cds.climate.copernicus.eu/datasets/satellite-land-cover?tab=download <br>
+  1.4. Download GWAv3: https://globalwindatlas.info/api/gis/global/wind-speed/100 (https://globalwindatlas.info/en/download/gis-files) <br>
+2. (optional) If you have purchased PowerCurves from thewindpower.net, please use the following script to process them: [ETHOS.RESKit.Wind_process_power_curves.ipynb](examples/ETHOS.RESKit.Wind_process_power_curves.ipynb)
+3. You can find an example on how to use ETHOS.RESKit.Wind here: [ETHOS.RESKit.Wind.ipynb](examples/ETHOS.RESKit.Wind.ipynb)
 
-Custom paths to a custom turbine library and baseline turbine definitions can be set in [default_paths.yaml](reskit/default_paths.yaml)
+Paths to a custom turbine library and baseline turbine definitions can be set in [default_paths.yaml](reskit/default_paths.yaml)
 
 ## Citation
 
-If you decide to use RESkit anywhere in a published work related to wind energy, please kindly cite us using the following
+If you decide to use RESkit anywhere in a published work related to wind energy, please kindly cite us using the following publications.
 
-When using ETHOS.RESKit.Wind workflow please use: 
+When using the ETHOS.RESKit.Wind workflow please cite: 
 ```bibtex
 @article{PenaSanchezDunkelWinklerEtAl2025,
       title={Towards high resolution, validated and open global wind power assessments}, 
@@ -82,7 +82,7 @@ When using ETHOS.RESKit.Wind workflow please use:
 }
 ```
 
-When using other anything else:
+When using anything else:
 ```bibtex
 @article{RybergWind2019,
   author = {Ryberg, David Severin and Caglayan, Dilara Gulcin and Schmitt, Sabrina and Lin{\ss}en, Jochen and Stolten, Detlef and Robinius, Martin},
@@ -102,7 +102,7 @@ When using other anything else:
 ## License
 
 The source code in this repository is licensed under: MIT License Copyright (c) 2019-2025 FZJ-ICE-2
-The data files [cf_correction_factors_PSDW2025.tif](reskit/wind/core/data/cf_correction_factors_PSDW2025.tif) and [ws_correction_factors_PSDW2025.yaml](reskit/wind/core/data/ws_correction_factors_PSDW2025.yaml) are licensed under TCC-BY-4.0
+The data files [cf_correction_factors_PSDW2025.tif](reskit/wind/core/data/cf_correction_factors_PSDW2025.tif) and [ws_correction_factors_PSDW2025.yaml](reskit/wind/core/data/ws_correction_factors_PSDW2025.yaml) are licensed under CC-BY-4.0
 
 You should have received a copy of the MIT License along with this program.  
 If not, see <https://opensource.org/licenses/MIT>
