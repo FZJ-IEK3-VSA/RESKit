@@ -6,6 +6,7 @@ import re
 from os.path import join, dirname
 
 from .power_curve import PowerCurve
+from reskit.default_paths import DEFAULT_PATHS
 
 ##################################################
 # Make a turbine model library
@@ -80,7 +81,8 @@ def TurbineLibrary():
     global _Turbine_Library
 
     if _Turbine_Library is None:
-        turbineFiles = glob(join(dirname(__file__), "data", "turbines", "*.csv"))
+        if DEFAULT_PATHS["turbine_library_path"] is None:
+            turbineFiles = glob(join(dirname(__file__), "data", "turbines", "*.csv"))
 
         tmp = []
         already_added_models = []

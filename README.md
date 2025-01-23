@@ -1,34 +1,23 @@
-<a href="https://www.fz-juelich.de/iek/iek-3/EN/Home/home_node.html"><img src="http://www.fz-juelich.de/SharedDocs/Bilder/IBG/IBG-3/DE/Plant-soil-atmosphere%20exchange%20processes/INPLAMINT%20(BONARES)/Bild3.jpg?__blob=poster" alt="Forschungszentrum Juelich Logo" width="230px"></a>
-
 # RESKit - **R**enewable **E**nergy **S**imulation tool**kit** for Python
 
-RESKit aids with the broad-scale simulation of renewable energy systems, primarily for the purpose of input generation to Energy System Design Models. Simulation tools currently exist for onshore and offshore wind turbines, as well as for solar photovoltaic (PV) systems, in addtion to general weather-data manipulation tools. Simulations are performed in the context of singular units, however high computational performance is nevertheless maintained. As a result, this tool allows for the simulation of millions of individual turbines and PV systems in a matter of minutes (on the right hardware).
+<p float="left">
+<a href="https://www.fz-juelich.de/en/ice/ice-2"><img src="https://github.com/FZJ-IEK3-VSA/README_assets/blob/main/JSA-Header.svg?raw=True" alt="Jülich Systems Analysis Logo" width="300px"></a>
+</p>
+
+RESKit aids with the broad-scale simulation of renewable energy systems, primarily for the purpose of input generation to Energy System Design Models. Simulation tools currently exist for onshore and offshore wind turbines, as well as for solar photovoltaic (PV) systems and concentrated spöar power (CSP), in addtion to general weather-data manipulation tools. Simulations are performed in the context of singular units, however high computational performance is nevertheless maintained. As a result, this tool allows for the simulation of millions of individual turbines and PV/CSP systems in a matter of minutes depending on the hardware.
 
 ## Features
 
-- High performance unit-level wind turbine and PV module simulations
-  - Can generate synthetic wind turbine power curves
-  - Access to all PV modules in the most recent databases from Sandia and the California Energy Commission (CEC)
-- Configurable to make use climate model datasets
+- High performance unit-level wind turbine, PV module and CSP simulations
+- Can generate synthetic wind turbine power curves
+- Access to all PV modules in the most recent databases from Sandia and the California Energy Commission (CEC)
+- Configurable to make use of different climate model datasets
+- Allows correction to real national capacity factor averages
 - Flexible & modular function designs
 
 ## Installation
 
-The primary dependancies of RESKit are:
-
-1. netCDF4
-2. xarray
-3. PVLib
-4. gdal
-5. <a href="https://github.com/FZJ-IEK3-VSA/geokit">GeoKit</a> >= 1.2.4
-
-If you can install these modules on you own, then the RESKit module should be easily installable with:
-
-```
-pip install git+https://github.com/FZJ-IEK3-VSA/reskit.git#egg=reskit
-```
-
-If, on the otherhand, you prefer an automated installation using Anaconda, then you should be able to follow these steps:
+Please follow these steps for an editable installation:
 
 1. First clone a local copy of the repository to your computer, and move into the created directory
 
@@ -46,33 +35,53 @@ git checkout dev
 2. RESkit should be installable to a new environment with:
 
 ```
-conda env create --file requirements.yml
+conda env create --file requirements-dev.yml
 ```
 
 2. (Alternative) Or into an existing environment with:
 
 ```
-conda env update --file requirements.yml -n <ENVIRONMENT-NAME>
+conda env update --file requirements-dev.yml -n <ENVIRONMENT-NAME>
 ```
 
-2. (Alternative) If you want to install RESKit in editable mode, and also with jupyter notebook and with testing functionalities use:
-
+3. Install an editable version of reskit (when in the reskit folder) via
 ```
-conda env create --file requirements-dev.yml
+pip install -e .
 ```
 
 ## Examples
 
 See the [Examples page](Examples/)
 
-## Docker
+If you intend to use **ETHOS.RESKit.Wind** please follow the following instructions:
+1. Download ERA5 and further datasets: 
+  1.1. Download ERA5: [How_to_download_ERA5_data_public.ipynb](examples/How_to_download_ERA5_data_public.ipynb) <br>
+  1.2. Process ERA5 Wind Speeds:  [WindSpeed_from_vectors_public.ipynb](examples/WindSpeed_from_vectors_public.ipynb) <br>
+  1.3. Download ESA Land Cover CCI v2.1.1 (2018): https://cds.climate.copernicus.eu/datasets/satellite-land-cover?tab=download <br>
+  1.4. Download GWAv3: https://globalwindatlas.info/api/gis/global/wind-speed/100 (https://globalwindatlas.info/en/download/gis-files) <br>
+2. (optional) If you have purchased PowerCurves from thewindpower.net, please use the following script to process them: [ETHOS.RESKit.Wind_process_power_curves.ipynb](examples/ETHOS.RESKit.Wind_process_power_curves.ipynb)
+3. You can find an example on how to use ETHOS.RESKit.Wind here: [ETHOS.RESKit.Wind.ipynb](examples/ETHOS.RESKit.Wind.ipynb)
 
-We are looking into making RESKit accessible in a docker container. Check back later for more info!
+Paths to a custom turbine library and baseline turbine definitions can be set in [default_paths.yaml](reskit/default_paths.yaml)
 
 ## Citation
 
-If you decide to use RESkit anywhere in a published work related to wind energy, please kindly cite us using the following
+If you decide to use RESkit anywhere in a published work related to wind energy, please kindly cite us using the following publications.
 
+When using the ETHOS.RESKit.Wind workflow please cite: 
+```bibtex
+@article{PenaSanchezDunkelWinklerEtAl2025,
+      title={Towards high resolution, validated and open global wind power assessments}, 
+      author={Edgar Ubaldo Peña-Sánchez and Philipp Dunkel and Christoph Winkler and Heidi Heinrichs and Florian Prinz and Jann Weinand and Rachel Maier and Sebastian Dickler and Shuying Chen and Katharina Gruber and Theresa Klütz and Jochen Linßen and Detlef Stolten},
+      year={2025},
+      eprint={2501.07937},
+      archivePrefix={arXiv},
+      primaryClass={physics.soc-ph},
+      url={https://arxiv.org/abs/2501.07937}, 
+}
+```
+
+When using anything else:
 ```bibtex
 @article{RybergWind2019,
   author = {Ryberg, David Severin and Caglayan, Dilara Gulcin and Schmitt, Sabrina and Lin{\ss}en, Jochen and Stolten, Detlef and Robinius, Martin},
@@ -91,21 +100,27 @@ If you decide to use RESkit anywhere in a published work related to wind energy,
 
 ## License
 
-MIT License
-
-Copyright (c) 2022 David Severin Ryberg (FZJ IEK-3), David Franzmann (FZJ IEK-3), Christoph Winkler (FZJ IEK-3), Heidi Heinrichs (FZJ IEK-3), Martin Robinius (FZJ IEK-3), Detlef Stolten (FZJ IEK-3)
+The source code in this repository is licensed under: MIT License Copyright (c) 2019-2025 FZJ-ICE-2
+The data files [cf_correction_factors_PSDW2025.tif](reskit/wind/core/data/cf_correction_factors_PSDW2025.tif) and [ws_correction_factors_PSDW2025.yaml](reskit/wind/core/data/ws_correction_factors_PSDW2025.yaml) are licensed under CC-BY-4.0
 
 You should have received a copy of the MIT License along with this program.  
 If not, see <https://opensource.org/licenses/MIT>
 
-## About Us
+## About Us 
 
-<a href="https://www.fz-juelich.de/iek/iek-3/EN/Home/home_node.html"><img src="http://fz-juelich.de/SharedDocs/Bilder/IEK/IEK-3/Abteilungen2015/VSA_DepartmentPicture_2017.jpg?__blob=normal" alt="Abteilung VSA"></a>
+We are the <a href="https://www.fz-juelich.de/de/ice/ice-2">Institute of Energy and Climate Research - Jülich Systems Analysis (ICE-2)</a> belonging to the <a href="https://www.fz-juelich.de/en">Forschungszentrum Jülich</a>. Our interdisciplinary department's research is focusing on energy-related process and systems analyses. Data searches and system simulations are used to determine energy and mass balances, as well as to evaluate performance, emissions and costs of energy systems. The results are used for performing comparative assessment studies between the various systems. Our current priorities include the development of energy strategies, in accordance with the German Federal Government’s greenhouse gas reduction targets, by designing new infrastructures for sustainable and secure energy supply chains and by conducting cost analysis studies for integrating new technologies into future energy market frameworks.
 
-We are the [Process and Systems Analysis](http://www.fz-juelich.de/iek/iek-3/EN/Forschung/_Process-and-System-Analysis/_node.html) department at the [Institute of Energy and Climate Research: Techno-economic Systems Analysis (IEK-3)](http://www.fz-juelich.de/iek/iek-3/EN/Home/home_node.html) belonging to the Forschungszentrum Jülich. Our interdisciplinary department's research is focusing on energy-related process and systems analyses. Data searches and system simulations are used to determine energy and mass balances, as well as to evaluate performance, emissions and costs of energy systems. The results are used for performing comparative assessment studies between the various systems. Our current priorities include the development of energy strategies, in accordance with the German Federal Government’s greenhouse gas reduction targets, by designing new infrastructures for sustainable and secure energy supply chains and by conducting cost analysis studies for integrating new technologies into future energy market frameworks.
+## Contributions and Support
+Every contributions are welcome:
+- If you want to report a bug, please open an [Issue](https://github.com/FZJ-IEK3-VSA/RESKit/issues/new). We will then take care of the issue as soon as possible.
+- If you want to contribute with additional features or code improvements, open a [Pull request](https://github.com/FZJ-IEK3-VSA/RESKit/pulls).
 
-## Acknowledgment
+## Code of Conduct
+Please respect our [code of conduct](CODE_OF_CONDUCT.md).
 
-This work was supported by the Helmholtz Association under the Joint Initiative ["Energy System 2050 – A Contribution of the Research Field Energy"](https://www.helmholtz.de/en/research/energy/energy_system_2050/).
+## Acknowledgement
+This work was initially supported by the Helmholtz Association under the Joint Initiative ["Energy System 2050   A Contribution of the Research Field Energy"](https://www.helmholtz.de/en/research/energy/energy_system_2050/). 
 
-<a href="https://www.helmholtz.de/en/"><img src="https://www.helmholtz.de/fileadmin/user_upload/05_aktuelles/Marke_Design/logos/HG_LOGO_S_ENG_RGB.jpg" alt="Helmholtz Logo" width="200px" style="float:right"></a>
+<p float="left">
+<a href="https://www.helmholtz.de/en/"><img src="https://www.helmholtz.de/fileadmin/user_upload/05_aktuelles/Marke_Design/logos/HG_LOGO_S_ENG_RGB.jpg" alt="Helmholtz Logo" width="200px"></a>
+</p>

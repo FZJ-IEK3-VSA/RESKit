@@ -81,6 +81,9 @@ class Era5Source(NCSource):
     LONG_RUN_AVERAGE_WINDSPEED = join(
         dirname(__file__), "data", "ERA5_wind_speed_100m_mean.tiff"
     )
+    LONG_RUN_AVERAGE_WINDSPEED_2008TO2017 = join(
+        dirname(__file__), "data", "ERA5_wind_speed_100m_mean_2008to2017.tiff"
+    )
     LONG_RUN_AVERAGE_WINDDIR = join(
         dirname(__file__), "data", "ERA5_wind_direction_100m_mean.tiff"
     )

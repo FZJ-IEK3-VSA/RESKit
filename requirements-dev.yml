@@ -1,7 +1,6 @@
 name: reskit
 channels:
   - conda-forge
-  - pvlib
 dependencies:
   - python
   - pytest
@@ -19,11 +18,12 @@ dependencies:
   - openpyxl
   - numpy
   - numba
-  - scipy
+  - scipy<1.12
   - scikit-learn
   - geokit>=1.4.0
   - gdal=3.4.*
   - netCDF4>=1.5.3
   - xarray
-  - pvlib=0.9.0
+  - pvlib-python=0.9.0
   - windpowerlib
+  - nbconvert

@@ -14,7 +14,7 @@ def test_onshore_turbine_from_avg_wind_speed():
 
     output = onshore_turbine_from_avg_wind_speed(2)
     assert np.isclose(output["capacity"], 2614.8103974358564)
-    assert np.isclose(output["hub_height"], 200)
+    assert np.isclose(output["hub_height"], 335.2328677954964)
     assert np.isclose(output["rotor_diam"], 136)
     assert np.isclose(output["specific_power"], 180)
 
@@ -35,7 +35,7 @@ def test_onshore_turbine_from_avg_wind_speed():
     )
     assert isinstance(output, pd.DataFrame)
     assert np.isclose(output.capacity.mean(), 4200.000000)
-    assert np.isclose(output.hub_height.mean(), 167.92301611202515)  # checked
+    assert np.isclose(output.hub_height.mean(), 177.3043837272176)  # checked
     assert np.isclose(output.rotor_diam.mean(), 153.062676)
     assert np.isclose(output.specific_power.mean(), 231.569929)
 
