@@ -275,7 +275,7 @@ def test_WindWorkflowManager_mixed_values___init___():
     ]
     placements["capacity"] = [2000, 3000, 4000, 3600, 6000]
     placements["rotor_diam"] = [136, 136, 136, 116, 136]
-    placements["powerCurve"] = [None, None, None, "V117-3600_Vestas", None]
+    placements["powerCurve"] = [None, None, None, "V117-3300", None]
 
     man = WindWorkflowManager(
         placements, synthetic_power_curve_cut_out=25, synthetic_power_curve_rounding=1
@@ -290,8 +290,8 @@ def test_WindWorkflowManager_mixed_values___init___():
     assert "SPC:275,25" in man.powerCurveLibrary and isinstance(
         man.powerCurveLibrary["SPC:275,25"], PowerCurve
     )
-    assert "V117-3600_Vestas" in man.powerCurveLibrary and isinstance(
-        man.powerCurveLibrary["V117-3600_Vestas"], PowerCurve
+    assert "V117-3300" in man.powerCurveLibrary and isinstance(
+        man.powerCurveLibrary["V117-3300"], PowerCurve
     )
     assert "SPC:413,25" in man.powerCurveLibrary and isinstance(
         man.powerCurveLibrary["SPC:413,25"], PowerCurve
@@ -304,7 +304,7 @@ def test_WindWorkflowManager_mixed_values___init___():
     assert (man.placements["rotor_diam"] == placements["rotor_diam"]).all()
     assert (
         man.placements["powerCurve"]
-        == ["SPC:138,25", "SPC:207,25", "SPC:275,25", "V117-3600_Vestas", "SPC:413,25"]
+        == ["SPC:138,25", "SPC:207,25", "SPC:275,25", "V117-3300", "SPC:413,25"]
     ).all()
 
     return man
