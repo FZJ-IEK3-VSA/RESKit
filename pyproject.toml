@@ -18,7 +18,7 @@ maintainers = [
   {name = "Chrstoph Winkler", email = "c.winkler@fz-juelich.de"},
   {name = "Phillip Dunkel", email = "p.dunkel@fz-juelich.de"}
 ]
-license = { file = "LICENSES/MIT.txt" }
+license = { file = "MIT.txt" }
 
 
 [tool.setuptools.packages.find]
