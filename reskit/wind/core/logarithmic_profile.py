@@ -5,7 +5,14 @@ from collections import OrderedDict
 from ...util import ResError
 
 
-def apply_logarithmic_profile_projection(measured_wind_speed, measured_height, target_height, roughness, displacement=0, stability=0):
+def apply_logarithmic_profile_projection(
+    measured_wind_speed,
+    measured_height,
+    target_height,
+    roughness,
+    displacement=0,
+    stability=0,
+):
     """
     Estimates wind speeds at a target height based on measured wind speeds values at a known measurement height.
     Estimation is subject to surface roughness, displacement height, and a stability factor.
@@ -13,7 +20,7 @@ def apply_logarithmic_profile_projection(measured_wind_speed, measured_height, t
     Parameters
     ----------
     measured_wind_speed : numeric or array-like
-        The input wind speeds in m/s that are going to be adjusted 
+        The input wind speeds in m/s that are going to be adjusted
         If an array is given with a single dimension, it is assumed to represent timeseries values for a single location
         If multidimensional array is given, the assumed dimensional context is (time, locations).
 
@@ -56,7 +63,11 @@ def apply_logarithmic_profile_projection(measured_wind_speed, measured_height, t
         apply_power_profile_projection( <wind speeds, <measured height>, <target height>, <alpha> )
     """
 
-    return measured_wind_speed * (np.log((target_height - displacement) / roughness) + stability) / (np.log((measured_height - displacement) / roughness) + stability)
+    return (
+        measured_wind_speed
+        * (np.log((target_height - displacement) / roughness) + stability)
+        / (np.log((measured_height - displacement) / roughness) + stability)
+    )
 
 
 def roughness_from_levels(low_wind_speed, low_height, high_wind_speed, high_height):
@@ -89,7 +100,10 @@ def roughness_from_levels(low_wind_speed, low_height, high_wind_speed, high_heig
         roughness_from_land_cover_source(source, loc, land_cover_type)
     """
 
-    return np.exp((high_wind_speed * np.log(low_height) - low_wind_speed * np.log(high_height)) / (high_wind_speed - low_wind_speed))
+    return np.exp(
+        (high_wind_speed * np.log(low_height) - low_wind_speed * np.log(high_height))
+        / (high_wind_speed - low_wind_speed)
+    )
 
 
 ############################################################################
@@ -111,7 +125,8 @@ clcCodeToRoughess[142] = 0.5  # Sport and leisure facilities
 clcCodeToRoughess[123] = 0.5  # Port areas
 clcCodeToRoughess[242] = 0.3  # Agro-forestry areas
 clcCodeToRoughess[243] = 0.3  # Complex cultivation patterns
-clcCodeToRoughess[244] = 0.3  # Land principally occupied by agriculture, with significant areas of natural vegetation
+# Land principally occupied by agriculture, with significant areas of natural vegetation
+clcCodeToRoughess[244] = 0.3
 clcCodeToRoughess[241] = 0.1  # Annual crops associated with permanent crops
 clcCodeToRoughess[221] = 0.1  # Fruit trees and berry plantations
 clcCodeToRoughess[222] = 0.1  # Vineyard
@@ -197,7 +212,7 @@ def roughness_from_clc(clc_path, loc, window_range=0):
     ----------
     clc_path : str
         The path to the Corine Land Cover (CLC) raster file on the disk.
-        This function currently only works for CLC versions before 2018. 
+        This function currently only works for CLC versions before 2018.
 
     loc : Anything acceptable to geokit.LocationSet
         The locations for which roughness should be estimated.
@@ -231,57 +246,59 @@ def roughness_from_clc(clc_path, loc, window_range=0):
     Roughness values [1]
     --------------------
 
-        Continuous urban fabric : 1.2 
-        Broad-leaved forest : 0.75 
-        Coniferous-leaved forest : 0.75 
-        Mixed-leaved forest : 0.75 
-        Green urban areas : 0.6 
-        Transitional woodland/shrub : 0.6 
-        Burnt areas : 0.6 
-        Discontinuous urban fabric : 0.5 
-        Construction sites : 0.5 
-        Industrial or commercial units : 0.5 
-        Sport and leisure facilities : 0.5 
-        Port areas : 0.5 
-        Agro-forestry areas : 0.3 
-        Complex cultivation patterns : 0.3 
-        Land principally occupied by agriculture, with significant areas of natural vegetation : 0.3 
-        Annual crops associated with permanent crops : 0.1 
-        Fruit trees and berry plantations : 0.1 
-        Vineyard : 0.1 
-        Olive groves : 0.1 
-        Road and rail networks and associated land : 0.075 
-        Non-irrigated arable land : 0.05 
-        Permanently irrigated land : 0.05 
-        Rice fields : 0.05 
-        Inland marshes : 0.05 
-        Salt marshes : 0.05 
-        Sclerophylous vegetation : 0.03 
-        Moors and heathland : 0.03 
-        Natural grassland : 0.03 
-        Pastures : 0.03 
-        Dump sites : 0.005 
-        Mineral extraction sites : 0.005 
-        Airports : 0.005 
-        Bare rock : 0.005 
-        Sparsely vegetated areas : 0.005 
-        Glaciers and perpetual snow : 0.001 
-        Peatbogs : 0.0005 
-        Salines : 0.0005 
-        Intertidal flats : 0.0005 
-        Beaches, dunes, and sand plains : 0.0003 
-        Water courses # SUSPICIOUS : 0.001 
-        Water bodies # SUSPISCIOUS : 0.0005 
-        Costal lagoons # SUSPISCIOUS : 0.0005 
-        Estuaries # SUSPISCIOUS : 0.0008 
-        Sea and ocean # SUSPISCIOUS : 0.0002 
+        Continuous urban fabric : 1.2
+        Broad-leaved forest : 0.75
+        Coniferous-leaved forest : 0.75
+        Mixed-leaved forest : 0.75
+        Green urban areas : 0.6
+        Transitional woodland/shrub : 0.6
+        Burnt areas : 0.6
+        Discontinuous urban fabric : 0.5
+        Construction sites : 0.5
+        Industrial or commercial units : 0.5
+        Sport and leisure facilities : 0.5
+        Port areas : 0.5
+        Agro-forestry areas : 0.3
+        Complex cultivation patterns : 0.3
+        Land principally occupied by agriculture, with significant areas of natural vegetation : 0.3
+        Annual crops associated with permanent crops : 0.1
+        Fruit trees and berry plantations : 0.1
+        Vineyard : 0.1
+        Olive groves : 0.1
+        Road and rail networks and associated land : 0.075
+        Non-irrigated arable land : 0.05
+        Permanently irrigated land : 0.05
+        Rice fields : 0.05
+        Inland marshes : 0.05
+        Salt marshes : 0.05
+        Sclerophylous vegetation : 0.03
+        Moors and heathland : 0.03
+        Natural grassland : 0.03
+        Pastures : 0.03
+        Dump sites : 0.005
+        Mineral extraction sites : 0.005
+        Airports : 0.005
+        Bare rock : 0.005
+        Sparsely vegetated areas : 0.005
+        Glaciers and perpetual snow : 0.001
+        Peatbogs : 0.0005
+        Salines : 0.0005
+        Intertidal flats : 0.0005
+        Beaches, dunes, and sand plains : 0.0003
+        Water courses # SUSPICIOUS : 0.001
+        Water bodies # SUSPISCIOUS : 0.0005
+        Costal lagoons # SUSPISCIOUS : 0.0005
+        Estuaries # SUSPISCIOUS : 0.0008
+        Sea and ocean # SUSPISCIOUS : 0.0002
 
     """
     # Ensure location is okay
     loc = gk.LocationSet(loc)
 
     # Get pixels values from clc
-    clcGridValues = gk.raster.interpolateValues(clc_path, loc, winRange=window_range, noDataOkay=True)
+    clcGridValues = gk.raster.interpolateValues(
+        clc_path, loc, winRange=window_range, noDataOkay=True
+    )
 
     # make output array
     if window_range > 0:
@@ -319,7 +336,8 @@ def roughness_from_clc(clc_path, loc, window_range=0):
 # Defined primarily from [2] DTU Wind Energy. (2019). Global Wind Atlas
 globCoverCodeToRoughess = OrderedDict()
 # GlobCover Number
-globCoverCodeToRoughess[210] = 0.0002  # Water Bodies # changed by Me from 0.0 to 0.0002
+# Water Bodies # changed by Me from 0.0 to 0.0002
+globCoverCodeToRoughess[210] = 0.0002
 globCoverCodeToRoughess[220] = 0.0004  # Permanant Snow and ice
 globCoverCodeToRoughess[200] = 0.005  # Bare areas
 globCoverCodeToRoughess[140] = 0.03  # Grasslands, savannas or lichens/mosses
@@ -372,41 +390,62 @@ cciCodeToRoughess[220] = 0.001  # Permanent snow and ice
 cciCodeToRoughess[200] = 0.005  # Bare areas
 cciCodeToRoughess[201] = 0.005  # Consolidated bare areas
 cciCodeToRoughess[202] = 0.005  # Unconsolidated bare areas
-cciCodeToRoughess[150] = 0.005  # Sparse vegetation (tree, shrub, herbaceous cover) (<15%)
+# Sparse vegetation (tree, shrub, herbaceous cover) (<15%)
+cciCodeToRoughess[150] = 0.005
 cciCodeToRoughess[151] = 0.005  # Sparse tree (<15%)
 cciCodeToRoughess[152] = 0.005  # Sparse shrub (<15%)
 cciCodeToRoughess[153] = 0.005  # Sparse herbaceous cover (<15%)
 cciCodeToRoughess[10] = 0.03  # Cropland, rainfed
 cciCodeToRoughess[11] = 0.03  # Herbaceous cover
 cciCodeToRoughess[120] = 0.03  # Shrubland
-cciCodeToRoughess[121] = 0.03  # Shrubland evergreen #barely exists, only near water bodies, ocean
-cciCodeToRoughess[122] = 0.03  # Shrubland deciduous #barely exists, only near water bodies, ocean
+# Shrubland evergreen #barely exists, only near water bodies, ocean
+cciCodeToRoughess[121] = 0.03
+# Shrubland deciduous #barely exists, only near water bodies, ocean
+cciCodeToRoughess[122] = 0.03
 cciCodeToRoughess[12] = 0.3  # Tree or shrub cover
-cciCodeToRoughess[110] = 0.03  # Mosaic herbaceous cover (>50%) / tree and shrub (<50%)
-cciCodeToRoughess[40] = 0.03  # Mosaic natural vegetation (tree, shrub, herbaceous cover) (>50%) / cropland (<50%)
-cciCodeToRoughess[180] = 0.03  # Shrub or herbaceous cover, flooded, fresh/saline/brakish water
+# Mosaic herbaceous cover (>50%) / tree and shrub (<50%)
+cciCodeToRoughess[110] = 0.03
+# Mosaic natural vegetation (tree, shrub, herbaceous cover) (>50%) / cropland (<50%)
+cciCodeToRoughess[40] = 0.03
+# Shrub or herbaceous cover, flooded, fresh/saline/brakish water
+cciCodeToRoughess[180] = 0.03
 cciCodeToRoughess[130] = 0.03  # Grassland
 cciCodeToRoughess[140] = 0.03  # Lichens and mosses
-cciCodeToRoughess[170] = 0.1  # Tree cover, flooded, saline water (areas around river deltas and ocean)
+# Tree cover, flooded, saline water (areas around river deltas and ocean)
+cciCodeToRoughess[170] = 0.1
 cciCodeToRoughess[20] = 0.1  # Cropland, irrigated or post-flooding
-cciCodeToRoughess[30] = 0.1  # Mosaic cropland (>50%) / natural vegetation (tree, shrub, herbaceous cover) (<50%)
-cciCodeToRoughess[160] = 0.5  # Tree cover, flooded, fresh or brakish water, barely exists
-cciCodeToRoughess[100] = 0.75  # Mosaic tree and shrub (>50%) / herbaceous cover (<50%)
-cciCodeToRoughess[50] = 0.75  # Tree cover, broadleaved, evergreen, closed to open (>15%)
-cciCodeToRoughess[60] = 0.75  # Tree cover, broadleaved, deciduous, closed to open (>15%)
-cciCodeToRoughess[61] = 0.75  # Tree cover, broadleaved, deciduous, closed (>40%)
-cciCodeToRoughess[62] = 0.75  # Tree cover, broadleaved, deciduous, open (15-40%)
-cciCodeToRoughess[70] = 0.75  # Tree cover, needleleaved, evergreen, closed to open (>15%)
-cciCodeToRoughess[71] = 0.75  # Tree cover, needleleaved, evergreen, closed (>40%)
-cciCodeToRoughess[72] = 0.75  # Tree cover, needleleaved, evergreen, open (15-40%)
-cciCodeToRoughess[80] = 0.75  # Tree cover, needleleaved, deciduous, closed to open (>15%)
-cciCodeToRoughess[81] = 0.75  # Tree cover, needleleaved, deciduous, closed (>40%)
-cciCodeToRoughess[82] = 0.75  # Tree cover, needleleaved, deciduous, open (15-40%)
-cciCodeToRoughess[90] = 0.75  # Tree cover, mixed leaf type (broadleaved and needleleaved)
+# Mosaic cropland (>50%) / natural vegetation (tree, shrub, herbaceous cover) (<50%)
+cciCodeToRoughess[30] = 0.1
+# Tree cover, flooded, fresh or brakish water, barely exists
+cciCodeToRoughess[160] = 0.5
+# Mosaic tree and shrub (>50%) / herbaceous cover (<50%)
+cciCodeToRoughess[100] = 0.75
+# Tree cover, broadleaved, evergreen, closed to open (>15%)
+cciCodeToRoughess[50] = 0.75
+# Tree cover, broadleaved, deciduous, closed to open (>15%)
+cciCodeToRoughess[60] = 0.75
+# Tree cover, broadleaved, deciduous, closed (>40%)
+cciCodeToRoughess[61] = 0.75
+# Tree cover, broadleaved, deciduous, open (15-40%)
+cciCodeToRoughess[62] = 0.75
+# Tree cover, needleleaved, evergreen, closed to open (>15%)
+cciCodeToRoughess[70] = 0.75
+# Tree cover, needleleaved, evergreen, closed (>40%)
+cciCodeToRoughess[71] = 0.75
+# Tree cover, needleleaved, evergreen, open (15-40%)
+cciCodeToRoughess[72] = 0.75
+# Tree cover, needleleaved, deciduous, closed to open (>15%)
+cciCodeToRoughess[80] = 0.75
+# Tree cover, needleleaved, deciduous, closed (>40%)
+cciCodeToRoughess[81] = 0.75
+# Tree cover, needleleaved, deciduous, open (15-40%)
+cciCodeToRoughess[82] = 0.75
+# Tree cover, mixed leaf type (broadleaved and needleleaved)
+cciCodeToRoughess[90] = 0.75
 cciCodeToRoughess[190] = 1.2  # Urban areas
 
 
-def roughness_from_land_cover_classification(classification, land_cover_type='clc'):
+def roughness_from_land_cover_classification(classification, land_cover_type="clc"):
     """
     Estimates roughness value from land cover classifications
 
@@ -417,7 +456,7 @@ def roughness_from_land_cover_classification(classification, land_cover_type='cl
 
     land_cover_type : str, optional
         Accepted arguments are 'clc', 'clc-code', 'globCover', 'modis', or 'cci', by default 'clc'
-        'clc': Corine Land Cover (CLC) 
+        'clc': Corine Land Cover (CLC)
         'clc-code': Corine Land Cover (CLC) codes values
         'globCover': Global Wind Atlas roughness lengths values
         'modis': Modis number for "no data" points of Global Wind Atlas (mostly in areas North of 60°)
@@ -437,22 +476,36 @@ def roughness_from_land_cover_classification(classification, land_cover_type='cl
         roughness_from_land_cover_source(source, loc, land_cover_type)
 
     """
-    if land_cover_type == 'clc':
+    if land_cover_type == "clc":
         # fix no data values
         classification[classification < 0] = 44
         classification[classification > 44] = 44
         classification[np.isnan(classification)] = 44
 
         # set source
-        def source(x): return clcCodeToRoughess[clcGridToCode_v2006[x]]
-    elif land_cover_type == 'clc-code':
-        def source(x): return clcCodeToRoughess[x]
-    elif land_cover_type == 'globCover':
-        def source(x): return globCoverCodeToRoughess[x]
-    elif land_cover_type == 'modis':
-        def source(x): return modisCodeToRoughess[x]
-    elif land_cover_type == 'cci':
-        def source(x): return cciCodeToRoughess[x]
+        def source(x):
+            return clcCodeToRoughess[clcGridToCode_v2006[x]]
+
+    elif land_cover_type == "clc-code":
+
+        def source(x):
+            return clcCodeToRoughess[x]
+
+    elif land_cover_type == "globCover":
+
+        def source(x):
+            return globCoverCodeToRoughess[x]
+
+    elif land_cover_type == "modis":
+
+        def source(x):
+            return modisCodeToRoughess[x]
+
+    elif land_cover_type == "cci":
+
+        def source(x):
+            return cciCodeToRoughess[x]
+
     else:
         raise ResError("invalid input")
 
@@ -460,7 +513,7 @@ def roughness_from_land_cover_classification(classification, land_cover_type='cl
     return converter(classification)
 
 
-def roughness_from_land_cover_source(source, loc, land_cover_type='clc'):
+def roughness_from_land_cover_source(source, loc, land_cover_type="clc"):
     """
     Estimate roughness value from a given land cover raster source
 
@@ -475,7 +528,7 @@ def roughness_from_land_cover_source(source, loc, land_cover_type='clc'):
 
     land_cover_type : str, optional
         Accepted arguments are 'clc', 'clc-code', 'globCover', 'modis', or 'cci', by default 'clc'
-        'clc': Corine Land Cover (CLC) 
+        'clc': Corine Land Cover (CLC)
         'clc-code': Corine Land Cover (CLC) codes
         'globCover': Global Wind Atlas
         'modis': Modis number for "no data" points of Global Wind Atlas (mostly in areas North of 60°)
@@ -497,6 +550,6 @@ def roughness_from_land_cover_source(source, loc, land_cover_type='clc'):
     loc = gk.LocationSet(loc)
     classifications = gk.raster.interpolateValues(source, loc, noDataOkay=False)
 
-    return roughness_from_land_cover_classification(classifications, land_cover_type=land_cover_type)
-
-
+    return roughness_from_land_cover_classification(
+        classifications, land_cover_type=land_cover_type
+    )

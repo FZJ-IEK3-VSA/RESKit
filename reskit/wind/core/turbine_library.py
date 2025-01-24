@@ -6,10 +6,11 @@ import re
 from os.path import join, dirname
 
 from .power_curve import PowerCurve
+from reskit.default_paths import DEFAULT_PATHS
 
 ##################################################
 # Make a turbine model library
-TurbineInfo = namedtuple('TurbineInfo', 'profile meta')
+TurbineInfo = namedtuple("TurbineInfo", "profile meta")
 
 rangeRE = re.compile("([0-9.]{1,})-([0-9.]{1,})")
 
@@ -20,7 +21,7 @@ def parse_turbine(path):
 
     Parses over a turbine's data file to get hub height, capacity, rotor diameter and powercurve.
 
-    Used for loading into the TurbineLibrary table 
+    Used for loading into the TurbineLibrary table
     """
 
     meta = OrderedDict()
@@ -31,14 +32,14 @@ def parse_turbine(path):
 
             if line == "" or line[0] == "#":
                 continue  # skip blank lines and comment lines
-            if 'power curve' in line.lower():
+            if "power curve" in line.lower():
                 break
 
-            sLine = line.split(',')
+            sLine = line.split(",")
             if sLine[0].lower() == "hubheight" or sLine[0].lower() == "hub_height":
                 heights = []
                 for h in sLine[1:]:
-                    h = h.replace("\"", "")
+                    h = h.replace('"', "")
                     h = h.strip()
                     h = h.replace(" ", "")
 
@@ -65,8 +66,7 @@ def parse_turbine(path):
 
         # Extract power profile
         tmp = pd.read_csv(fin)
-        tmp = np.array([(ws, output)
-                        for i, ws, output in tmp.iloc[:, :2].itertuples()])
+        tmp = np.array([(ws, output) for i, ws, output in tmp.iloc[:, :2].itertuples()])
         power = PowerCurve(tmp[:, 0], tmp[:, 1] / meta["Capacity"])
     return TurbineInfo(power, meta)
 
@@ -81,17 +81,26 @@ def TurbineLibrary():
     global _Turbine_Library
 
     if _Turbine_Library is None:
-        turbineFiles = glob(join(dirname(__file__), "data", "turbines", "*.csv"))
+        if DEFAULT_PATHS["turbine_library_path"] is None:
+            turbineFiles = glob(join(dirname(__file__), "data", "turbines", "*.csv"))
 
         tmp = []
+        already_added_models = []
         for f in turbineFiles:
             try:
-                tmp.append(parse_turbine(f))
+                _parsed = parse_turbine(f)
+                model_id = parse_turbine(f)[1]["Model"]
+                if model_id in already_added_models:
+                    print(model_id, "already in Turbine Library")
+                    continue
+                else:
+                    tmp.append(_parsed)
+                    already_added_models.append(model_id)
             except:
                 print("failed to parse:", f)
 
         _Turbine_Library = pd.DataFrame([i.meta for i in tmp])
-        _Turbine_Library.set_index('Model', inplace=True)
-        _Turbine_Library['PowerCurve'] = [x.profile for x in tmp]
+        _Turbine_Library.set_index("Model", inplace=True)
+        _Turbine_Library["PowerCurve"] = [x.profile for x in tmp]
 
     return _Turbine_Library
