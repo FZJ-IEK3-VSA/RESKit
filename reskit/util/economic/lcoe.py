@@ -2,7 +2,9 @@ import numpy as np
 from .. import ResError
 
 
-def levelized_cost_of_electricity_simplified(capex, mean_production, opex_per_capex=0.02, lifetime=20, discount_rate=0.08):
+def levelized_cost_of_electricity_simplified(
+    capex, mean_production, opex_per_capex=0.02, lifetime=20, discount_rate=0.08
+):
     """Compute the LCOE of a producer using the simple method
 
     Uses the equation:
@@ -11,7 +13,7 @@ def levelized_cost_of_electricity_simplified(capex, mean_production, opex_per_ca
 
     where:
       * $C$ -> CAPEX [euros]
-      * $O_c$ -> Fixed OPEX as a factor of CAPEX 
+      * $O_c$ -> Fixed OPEX as a factor of CAPEX
       * $P_{mean}$ -> The average production in each year [kWh]
       * $r$ -> The discount rate
       * $N$ -> The economic lifetime [years]
@@ -45,7 +47,7 @@ def levelized_cost_of_electricity_simplified(capex, mean_production, opex_per_ca
 
 
 def levelized_cost_of_electricity(expenditures, productions, discount_rate=0.08):
-    """Compute the LCOE of a producer using explicitly given production and 
+    """Compute the LCOE of a producer using explicitly given production and
     expeditures for each year in the economic lifetime
 
     Uses the equation:

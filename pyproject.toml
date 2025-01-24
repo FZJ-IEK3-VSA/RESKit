@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=64.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "reskit"
+version = "0.4.0"
+description = "RESKit aids with the broad-scale simulation of renewable energy systems, primarily for the purpose of input generation to Energy System Design Models."
+readme = "README.md"
+authors = [
+    { name = "David Severin Ryberg" },
+    { name = "Dilara Gulcin Caglayan" },
+    { name = "Sabrina Schmitt" }, 
+    { name = "Roman Kraemer" } 
+    ]
+maintainers = [
+  {name = "Chrstoph Winkler", email = "c.winkler@fz-juelich.de"},
+  {name = "Phillip Dunkel", email = "p.dunkel@fz-juelich.de"}
+]
+license = { file = "MIT.txt" }
+
+
+[tool.setuptools.packages.find]
+where = ["."]
+
+
+[tool.pytest.ini_options]
+testpaths = ["test"] # Sets the path where to look for tests
+pythonpath =["test"] # Sets the path which should be prepended to pythonpath relative to the root folder
+console_output_style = "count"
+

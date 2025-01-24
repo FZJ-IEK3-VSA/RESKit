@@ -1,0 +1,3 @@
+year,base_capacity,base_capacity_unit,base_rotor_diam,base_rotor_diam_unit,base_hub_height,base_hub_height_unit,reference_wind_speed,reference_wind_speed_unit,base_capex_per_capacity,base_capex_per_capacity_unit,tcc_share,tcc_share_unit,bos_share,bos_share_unit,gdp_escalator,gdp_escalator_unit,blade_material_escalator,blade_material_escalator_unit,blades,blades_unit,remarks
+2000,1000,kW,90,m,70,m,6.7,m/s,2000,EUR/kW,0.673,-,0.229,-,1,-,1,-,3,-,dummy data for testing
+2050,4200,kW,136,m,120,m,6.7,m/s,1000,EUR/kW,0.673,-,0.229,-,1,-,1,-,3,-,dummy data for testing

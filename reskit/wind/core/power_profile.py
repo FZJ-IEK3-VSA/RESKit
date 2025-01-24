@@ -1,7 +1,9 @@
 import numpy as np
 
 
-def apply_power_profile_projection(measured_wind_speed, measured_height, target_height, alpha=1 / 7):
+def apply_power_profile_projection(
+    measured_wind_speed, measured_height, target_height, alpha=1 / 7
+):
     """
     Estimates wind speed values at target height based on another measured wind speed at a known height subject to a power-law scaling factor.
 
@@ -39,7 +41,7 @@ def apply_power_profile_projection(measured_wind_speed, measured_height, target_
         --------
         apply_logarithmic_profile_projection(wind speeds, measured height, target height, roughness)
 
-  """
+    """
     return measured_wind_speed * np.power(target_height / measured_height, alpha)
 
 

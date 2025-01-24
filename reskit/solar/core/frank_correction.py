@@ -27,7 +27,8 @@ def frank_correction_factors(ghi, dni_extra, times, solar_elevation):
     cloudyFactors[months == 11] = 0.8283158353933402
     cloudyFactors[months == 12] = 0.7651417769376183
     cloudyFactors = np.broadcast_to(
-        cloudyFactors.reshape((cloudyFactors.size, 1)), ghi.shape)
+        cloudyFactors.reshape((cloudyFactors.size, 1)), ghi.shape
+    )
 
     cloudyFactors = cloudyFactors * (1 - sigmoid)
 
