@@ -1,11 +1,15 @@
 [build-system]
-requires = ["setuptools>=64.0.0", "wheel"]
+requires = [
+  "setuptools>=64.0.0", 
+  "wheel",
+  "setuptools-scm>=8.0",
+]
 build-backend = "setuptools.build_meta"
 
 
 [project]
 name = "reskit"
-version = "0.4.0"
+version = "0.4.2"
 description = "RESKit aids with the broad-scale simulation of renewable energy systems, primarily for the purpose of input generation to Energy System Design Models."
 readme = "README.md"
 authors = [
@@ -15,7 +19,7 @@ authors = [
     { name = "Roman Kraemer" } 
     ]
 maintainers = [
-  {name = "Chrstoph Winkler", email = "c.winkler@fz-juelich.de"},
+  {name = "Christoph Winkler", email = "c.winkler@fz-juelich.de"},
   {name = "Phillip Dunkel", email = "p.dunkel@fz-juelich.de"}
 ]
 license = { file = "MIT.txt" }
