@@ -14,24 +14,24 @@ from ..data import path_heat_flow_sustainable_W_per_m2
 
 
 def EGSworkflow(
-        placements:pd.DataFrame,
-        sourceTemperature=path_temperatures,
-        sourceSustainableHeatflow=path_heat_flow_sustainable_W_per_m2,
-        savepath=None,
-        configuration='doublette',
-        manual_values={}
-    ):
+    placements: pd.DataFrame,
+    sourceTemperature=path_temperatures,
+    sourceSustainableHeatflow=path_heat_flow_sustainable_W_per_m2,
+    savepath=None,
+    configuration="doublette",
+    manual_values={},
+):
     """
     Executes the Enhanced Geothermal System (EGS) workflow for given placements.
 
     Parameters:
         placements (pd.DataFrame): Locations where the EGS workflow will be applied. Needs to have lat lon and geokit geoms.
-        sourceTemperature (str or Path, optional): Path to the geothermal temperature data. 
+        sourceTemperature (str or Path, optional): Path to the geothermal temperature data.
             Defaults to `path_temperatures`.
         sourceSustainableHeatflow (str or Path, optional): Path to the sustainable heat flow data.
             Defaults to `path_heat_flow_sustainable_W_per_m2`.
         savepath (str or Path, optional): Directory where results will be saved. Defaults to None which outputs the data.
-        configuration (str, optional): Type of geothermal system configuration. 
+        configuration (str, optional): Type of geothermal system configuration.
             Defaults to 'doublette'.
         manual_values (dict, optional): Dictionary of manually specified values for overriding defaults.
 
@@ -41,7 +41,7 @@ def EGSworkflow(
     Citation:
          Franzmann, David and Heinrichs, Heidi and Stolten, Detlef, Global Electricity Potentials
          from Geothermal Power Under Technical, Economic, Sustainable Evaluation. Available at SSRN:
-         https://ssrn.com/abstract=5029989 or http://dx.doi.org/10.2139/ssrn.5029989 
+         https://ssrn.com/abstract=5029989 or http://dx.doi.org/10.2139/ssrn.5029989
     """
 
     citation = """
@@ -56,9 +56,8 @@ def EGSworkflow(
 
     print(citation)
 
-
     wfm = EGS_workflowmanager(placements=placements)
-    
+
     ### data loading
     tic_data_loading = time.time()
     now = datetime.now()
@@ -66,35 +65,30 @@ def EGSworkflow(
 
     wfm.loadDataAllDepths(
         vars=[
-            'temperature',
+            "temperature",
         ],
-        source=sourceTemperature
+        source=sourceTemperature,
     )
+    wfm.loadData(vars=["surface_temperature"], source=sourceTemperature)
     wfm.loadData(
         vars=[
-            'surface_temperature'
-        ],
-        source=sourceTemperature
-    )
-    wfm.loadData(
-        vars=[
-            'heat_flow_sustainable_W_per_m2',
+            "heat_flow_sustainable_W_per_m2",
         ],
         source=sourceSustainableHeatflow,
-        newVarNamesDict = {'heat_flow_sustainable_W_per_m2': 'qdot_sust_W_per_m2'},
+        newVarNamesDict={"heat_flow_sustainable_W_per_m2": "qdot_sust_W_per_m2"},
     )
-        
+
     wfm.loadPlantData(
         configuration=configuration,
         manual_values=manual_values,
     )
-    
+
     ### Calulations
     tic_calc = time.time()
     now = datetime.now()
-    print("Starting calc =", now, flush=True)   
+    print("Starting calc =", now, flush=True)
 
-    #own data
+    # own data
     wfm.VolumeMethod()
     wfm.GringartenMethodFixeVdot()
     wfm.SustainableHeat()
@@ -105,7 +99,7 @@ def EGSworkflow(
     print("Starting cost calc =", now, flush=True)
 
     techMethods = wfm._getTechMethods()
-    #loop all considered technological approaches
+    # loop all considered technological approaches
     for techMethod in techMethods:
         wfm.calculatePumpLosses(techMethod=techMethod)
         wfm.calculateCosts(techMethod=techMethod)
@@ -113,19 +107,21 @@ def EGSworkflow(
         wfm.getRegenerationTime(techMethod=techMethod)
         wfm.getOptDepth(techMethod=techMethod)
         wfm.getValuesAtOptDepth(techMethod=techMethod)
-        
 
-    output = wfm.saveOutput(savepath=savepath, deepsave=True) #TODO: change to False
-    
+    output = wfm.saveOutput(savepath=savepath, deepsave=True)  # TODO: change to False
+
     tic_done = time.time()
-    print('\nTime eval.:')
-    print(f'Data loading finished in {str(int(tic_calc-tic_data_loading))}s.')
-    print(f'Calculation finished in {str(int(tic_cost-tic_calc))}s.')
-    print(f'Cost calculation finished in {str(int(tic_done-tic_cost))}s.')
-    print(f'RESkit EGS done within {str(int(tic_done-tic_data_loading))}s for {len(placements)} points..')
-    
+    print("\nTime eval.:")
+    print(f"Data loading finished in {str(int(tic_calc-tic_data_loading))}s.")
+    print(f"Calculation finished in {str(int(tic_cost-tic_calc))}s.")
+    print(f"Cost calculation finished in {str(int(tic_done-tic_cost))}s.")
+    print(
+        f"RESkit EGS done within {str(int(tic_done-tic_data_loading))}s for {len(placements)} points.."
+    )
+
     if savepath is None:
         return output
-    
-if __name__ == '__main__':
-    print('\nThis is not an executable file. Pls run EGSworkflow(args)\n')
+
+
+if __name__ == "__main__":
+    print("\nThis is not an executable file. Pls run EGSworkflow(args)\n")
