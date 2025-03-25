@@ -37,8 +37,24 @@ def EGSworkflow(
 
     Returns:
         None or xarray object: Workflow results, optionally saved to `savepath`.
+
+    Citation:
+         Franzmann, David and Heinrichs, Heidi and Stolten, Detlef, Global Electricity Potentials
+         from Geothermal Power Under Technical, Economic, Sustainable Evaluation. Available at SSRN:
+         https://ssrn.com/abstract=5029989 or http://dx.doi.org/10.2139/ssrn.5029989 
     """
 
+    citation = """
+    This workflow can be cited as:
+    Franzmann, David and Heinrichs, Heidi
+    and Stolten, Detlef, Global Electricity Potentials from Geothermal Power
+    Under Technical, Economic, Sustainable Evaluation.
+    Available at SSRN:
+    https://ssrn.com/abstract=5029989
+    or http://dx.doi.org/10.2139/ssrn.5029989
+    """
+
+    print(citation)
 
 
     wfm = EGS_workflowmanager(placements=placements)
