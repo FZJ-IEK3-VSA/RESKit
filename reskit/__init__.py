@@ -13,6 +13,7 @@ from .workflow_manager import (
 from . import wind
 from . import solar
 from . import csp
+from . import geothermal
 
 from ._test import TEST_DATA
 from .parameters.parameters import OnshoreParameters, OffshoreParameters
