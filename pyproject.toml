@@ -27,6 +27,7 @@ license = { file = "MIT.txt" }
 
 [tool.setuptools.packages.find]
 where = ["."]
+exclude = ["test", "examples"]
 
 [tool.setuptools.package-data]
 "*" = ["*.*"]
