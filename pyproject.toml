@@ -26,8 +26,10 @@ license = { file = "MIT.txt" }
 
 
 [tool.setuptools.packages.find]
-where = ["."]
+where = ["reskit"]
 
+[tool.setuptools.package-data]
+"*" = ["*.*"]
 
 [tool.pytest.ini_options]
 testpaths = ["test"] # Sets the path where to look for tests
