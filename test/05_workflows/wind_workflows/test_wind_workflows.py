@@ -2,6 +2,7 @@ from reskit.wind.workflows.workflows import (
     onshore_wind_merra_ryberg2019_europe,
     offshore_wind_merra_caglayan2019,
     wind_era5_PenaSanchezDunkelWinklerEtAl2025,
+    onshore_wind_iconlam_2023,
     wind_config,
 )
 from reskit import TEST_DATA
@@ -21,6 +22,13 @@ def pt_wind_placements() -> pd.DataFrame:
     df["capacity"] = 3000
     df["rotor_diam"] = 170
     df.loc[::2, "rotor_diam"] = 150
+    return df
+
+
+@pytest.fixture
+def pt_wind_placements_Zimbabwe() -> pd.DataFrame:
+    df = pd.read_csv(TEST_DATA["turbine_placements_cityBulawayoInZimbabwa.csv"])
+
     return df
 
 
@@ -104,6 +112,34 @@ def test_wind_era5_PenaSanchezDunkelWinklerEtAl2025(pt_wind_placements: pd.DataF
     assert np.isclose(gen.capacity_factor.min(), 0.0)
     assert np.isclose(gen.capacity_factor.max(), 0.98)
     assert np.isclose(gen.capacity_factor.std(), 0.28939232)
+
+
+def test_onshore_wind_iconlam_2023(pt_wind_placements_Zimbabwe: pd.DataFrame):
+    gen = onshore_wind_iconlam_2023(
+        placements=pt_wind_placements_Zimbabwe,
+        icon_lam_path=TEST_DATA["iconlam-like"],
+        esa_cci_path=TEST_DATA["ESA_CCI_2018_clip_cityBulawayoInZimbabwa.tif"],
+        output_netcdf_path=None,
+        output_variables=None,
+    )
+
+    assert gen.roughness.shape == (44,)
+    assert np.isclose(gen.roughness.mean(), 0.07909091)
+    assert np.isclose(gen.roughness.min(), 0.03)
+    assert np.isclose(gen.roughness.max(), 0.75)
+    assert np.isclose(gen.roughness.std(), 0.18148151)
+
+    assert gen.elevated_wind_speed.shape == (144, 44)
+    assert np.isclose(gen.elevated_wind_speed.mean(), 5.18359644)
+    assert np.isclose(gen.elevated_wind_speed.min(), 0.17078107)
+    assert np.isclose(gen.elevated_wind_speed.max(), 11.59889682)
+    assert np.isclose(gen.elevated_wind_speed.std(), 2.82934687)
+
+    assert gen.capacity_factor.shape == (144, 44)
+    assert np.isclose(gen.capacity_factor.mean(), 0.27713258)
+    assert np.isclose(gen.capacity_factor.min(), 0.0)
+    assert np.isclose(gen.capacity_factor.max(), 1.0)
+    assert np.isclose(gen.capacity_factor.std(), 0.34440202)
 
 
 def test_wind_config(pt_wind_placements: pd.DataFrame):

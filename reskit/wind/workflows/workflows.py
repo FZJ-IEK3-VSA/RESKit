@@ -321,6 +321,7 @@ def onshore_wind_iconlam_2023(
 ):
     """
     Simulates onshore wind generation using high-resolution dynamically downscaled dataset ICON-LAM over southern Africa.
+    This workflow was used in the publicaiton [1].
 
     Parameters
     ----------
@@ -332,7 +333,7 @@ def onshore_wind_iconlam_2023(
         a zoom level value is expected and the correct tiles will be assigned for every
         loation individually.
     esa_cci_path : str
-        Path to the ESA CCI raster file [1].
+        Path to the ESA CCI raster file [2].
     output_netcdf_path : str, optional
         Path to a directory to put the output files, by default None
     output_variables : str, optional
@@ -349,7 +350,8 @@ def onshore_wind_iconlam_2023(
 
     Sources
     ------
-    [1] ESA. Land Cover CCI Product User Guide Version 2. Tech. Rep. (2017). Available at: maps.elie.ucl.ac.be/CCI/viewer/download/ESACCI-LC-Ph2-PUGv2_2.0.pdf
+    [1] Chen, S., Goergen, K., Hendricks Franssen, H. J., Winkler, C., Poll, S., Houssoukri Zounogo Wahabou, Y., ... & Heinrichs, H. (2024). Higher onshore wind energy potentials revealed by kilometer‐scale atmospheric modeling. Geophysical Research Letters, 51(19), e2024GL110122. https://doi.org/10.1029/2024GL110122
+    [2] ESA. Land Cover CCI Product User Guide Version 2. Tech. Rep. (2017). Available at: maps.elie.ucl.ac.be/CCI/viewer/download/ESACCI-LC-Ph2-PUGv2_2.0.pdf
     """
 
     wf = WindWorkflowManager(placements)
