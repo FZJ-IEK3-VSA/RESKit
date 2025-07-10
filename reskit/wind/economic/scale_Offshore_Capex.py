@@ -1,5 +1,5 @@
 # %%
- # M.Stargardt - 10.07.2025
+# M.Stargardt - 10.07.2025
 import os
 import pickle
 import glob
@@ -9,7 +9,7 @@ from pyproj import Transformer
 import numpy as np
 
 from reskit.default_paths import DEFAULT_PATHS
-from reskit.parameters.parameters import  OffshoreParameters
+from reskit.parameters.parameters import OffshoreParameters
 
 
 # %%
@@ -23,10 +23,10 @@ def waterDepthFromLocation(
     """
     Returns the water depth (in meters) at a given geographic location (latitude and longitude).
 
-
     Args:
         lat (float): Latitude in decimal degrees.
         lon (float): Longitude in decimal degrees.
+        waterDepthFolderPath (str, optional): Path to the folder containing water depth .tif files.
 
     Returns:
         float: Water depth at the specified location in meters (positive value).
@@ -47,11 +47,15 @@ def loadDistanceBand(
     path=DEFAULT_PATHS.get("distancetoCoast"),
 ):
     """
-    Load the raster band and set up the coordinate transformer.
+    Loads the raster band and sets up the coordinate transformer.
+
+    Args:
+        path (str, optional): File path to the distance-to-coast raster.
+
     Returns:
-        band (ndarray): Raster band values.
-        transformer (Transformer): Coordinate transformer.
-        transform (Affine): Raster transform object for converting coordinates.
+        ndarray: Raster band values.
+        Transformer: Coordinate transformer.
+        Affine: Raster transform object for converting coordinates.
     """
     src = rasterio.open(path)
     band = src.read(1)
@@ -61,7 +65,17 @@ def loadDistanceBand(
 
 def distanceToCoastline(lat, lon, band, transformer, transformfunc):
     """
-    Compute the distance to coastline from given lat/lon in km.
+    Computes the distance to the coastline from a given latitude and longitude.
+
+    Args:
+        lat (float): Latitude in decimal degrees.
+        lon (float): Longitude in decimal degrees.
+        band (ndarray): Raster band values.
+        transformer (Transformer): Coordinate transformer.
+        transformfunc (Affine): Raster transform object.
+
+    Returns:
+        float or None: Distance in kilometers, or None if point is out of bounds or an error occurs.
     """
     x, y = transformer.transform(lon, lat)
     try:
@@ -77,7 +91,6 @@ def distanceToCoastline(lat, lon, band, transformer, transformfunc):
 
 # %%
 def calculateOffshoreCapex(
-    
     capacity,
     hubheight,
     waterdepth,
@@ -99,76 +112,34 @@ def calculateOffshoreCapex(
     defaultOffshoreParamsFp=None,
 ):
     """
-    Scale a generic offshore CAPEX value based on water depth and distance to shore.
+    Scales a generic offshore CAPEX value based on water depth and distance to shore.
 
     The function splits the total input CAPEX into major cost components (turbine, foundation,
-    cable, overhead) and scales each individually based on project-specific parameters such as
-    turbine size, water depth, and coastline distance.
-    Parameters:
-    -----------
-    capacity : float
-        Turbine rated capacity in MW.
+    cable, overhead) and scales each individually based on project-specific parameters.
 
-    hubheight : float
-        Hub height in meters.
-
-    waterdepth : float
-        Site-specific water depth in meters.
-
-    coastDistance : float
-        Distance from site to nearest coast in kilometers.
-
-    rotordiam : float
-        Rotor diameter in meters.
-    
-        techyear: int
-        specifies the year of the technologie that is applied. (default = 2030)
-
-    shareTurb : float, optional
-        Share of turbine cost in total CAPEX (default = 0.449).
-
-    shareFound : float, optional
-        Share of foundation cost in total CAPEX (default = 0.204).
-
-    shareCable : float, optional
-        Share of cable/connection cost in total CAPEX (default = 0.181).
-
-    shareOverhead : float, optional
-        Share of overhead/miscellaneous costs in total CAPEX (default = 0.166).
-
-    maxMonopolDepth : float, optional
-        Maximum depth (in meters) for monopile foundations (default = 25).
-
-    maxJacketDepth : float, optional
-        Maximum depth (in meters) for jacket foundations (default = 55).
-
-    litValueAvgDepth : float, optional
-        Literature-based average depth used in reference CAPEX (default = 17).
-
-    litValueAvgDistCoast : float, optional
-        Literature-based average distance to coast for reference CAPEX (default = 27).
-
-    InputCapex : float, optional
-        Reference total CAPEX per kW (€/kW). If not provided, it defaults to the value
-        from the OffshoreParameters CSV for the given year.
-
-    baseCap : float, optional
-        Reference turbine capacity in MW. If not provided, it's loaded from OffshoreParameters.
-
-    baseHubHeight : float, optional
-        Reference hub height in meters. If not provided, it's loaded from OffshoreParameters.
-
-    baseRotorDiam : float, optional
-        Reference rotor diameter in meters. If not provided, it's loaded from OffshoreParameters.
-
-    defaultOffshoreParamsFp : str, optional
-        Optional filepath to a CSV containing default offshore turbine parameters.
-        If not provided, a built-in RESKit default is used.
+    Args:
+        capacity (float): Turbine rated capacity in MW.
+        hubheight (float): Hub height in meters.
+        waterdepth (float): Site-specific water depth in meters.
+        coastDistance (float): Distance from site to nearest coast in kilometers.
+        rotordiam (float): Rotor diameter in meters.
+        tech_year (int, optional): Year of the applied technology (default = 2030).
+        shareTurb (float, optional): Share of turbine cost in total CAPEX (default = 0.449).
+        shareFound (float, optional): Share of foundation cost in total CAPEX (default = 0.204).
+        shareCable (float, optional): Share of cable/connection cost in total CAPEX (default = 0.181).
+        shareOverhead (float, optional): Share of overhead/miscellaneous costs (default = 0.166).
+        maxMonopolDepth (float, optional): Maximum depth for monopile foundations (default = 25 m).
+        maxJacketDepth (float, optional): Maximum depth for jacket foundations (default = 55 m).
+        litValueAvgDepth (float, optional): Reference water depth in CAPEX literature (default = 17 m).
+        litValueAvgDistCoast (float, optional): Reference distance to coast (default = 27 km).
+        InputCapex (float, optional): Reference CAPEX per kW in €/kW. Loaded from CSV if not provided.
+        baseCap (float, optional): Reference turbine capacity in MW. Loaded from CSV if not provided.
+        baseHubHeight (float, optional): Reference hub height in meters. Loaded from CSV if not provided.
+        baseRotorDiam (float, optional): Reference rotor diameter in meters. Loaded from CSV if not provided.
+        defaultOffshoreParamsFp (str, optional): Filepath to offshore turbine parameters CSV.
 
     Returns:
-    --------
-    float
-        Adjusted offshore wind plant CAPEX in €/kW for the given configuration.
+        float: Adjusted offshore wind plant CAPEX in €/kW for the given configuration.
     """
 
     assert np.isclose(
@@ -187,24 +158,21 @@ def calculateOffshoreCapex(
     # Loading tech-specific parameters
     params = OffshoreParameters(fp=defaultOffshoreParamsFp, year=tech_year)
 
-    #falling back to standard values if no refernce values are given for the calculation
+    # falling back to standard values if no refernce values are given for the calculation
 
     if baseCap is None:
         baseCap = params.base_capacity
-        print('baseCap is taken from overall techno-economic file')
+        print("baseCap is taken from overall techno-economic file")
     if baseHubHeight is None:
         baseHubHeight = params.base_hub_height
-        print('baseHubHeight is taken from overall techno-economic file')
+        print("baseHubHeight is taken from overall techno-economic file")
     if baseRotorDiam is None:
         baseRotorDiam = params.base_rotor_diam
-        print('baseRotorDiam is taken from overall techno-economic file')
-    
+        print("baseRotorDiam is taken from overall techno-economic file")
+
     if InputCapex is None:
         InputCapex = params.base_capex_per_capacity
-        print('InputCapes is taken from overall techno-economic file')
-    
-
-
+        print("InputCapes is taken from overall techno-economic file")
 
     TurbineCostBase = InputCapex * shareTurb
     FoundCostbase = InputCapex * shareFound
@@ -212,7 +180,6 @@ def calculateOffshoreCapex(
     OverheadCostBase = InputCapex * shareOverhead
 
     # scaling each cost share regarding thecurrent wint turbine settings and the reference settings
-
 
     # Scaling new turbines cost according to their dimesniosn and acccording to severins calculations
     TurbineCostNew = onshore_tcc(
@@ -234,13 +201,10 @@ def calculateOffshoreCapex(
 
     costRatioTurbine = TurbineCostNew / TurbineCostRefernce
     NewTurbineCost = TurbineCostBase * costRatioTurbine
-    
 
     # Found Cost Base
     # Adapting the New foundation costs
-    DeptBaseCost = getRatedCostfromWaterdepth(
-        litValueAvgDepth
-    )  # base depth of CAPEX
+    DeptBaseCost = getRatedCostfromWaterdepth(litValueAvgDepth)  # base depth of CAPEX
     DeptPlantCost = getRatedCostfromWaterdepth(
         waterdepth
     )  # depth of calcualted power plant
@@ -266,6 +230,19 @@ def calculateOffshoreCapex(
 
 # %%
 def getRasterValueFromTifs(tiffsPath, latitude, longitude):
+
+    """
+    Retrieves the raster value from a list of .tif files at a given geographic point.
+
+    Args:
+        tiffsPath (list of str): Paths to the .tif files.
+        latitude (float): Latitude in decimal degrees.
+        longitude (float): Longitude in decimal degrees.
+
+    Returns:
+        float or None: The value from the raster at the location, or None if not found.
+    """
+        
     for tifPath in tiffsPath:
         with rasterio.open(tifPath) as src:
             bounds = src.bounds  # left, bottom, right, top
@@ -289,12 +266,11 @@ def getRasterValueFromTifs(tiffsPath, latitude, longitude):
 # %%
 def getRatedCostfromWaterdepth(depth, allowNegative=True):
     """
-    Estimate the rated cost of offshore wind turbine foundations based on water depth.
+    Estimates the rated cost of offshore wind turbine foundations based on water depth.
 
     Args:
         depth (float): Water depth at the installation site (in meters).
-        allowNegative (bool): Whether negative depth values (e.g., for land) are allowed.
-                              If False, raises ValueError when depth < 0.
+        allowNegative (bool): Whether negative depth values are allowed. Raises ValueError if False and depth < 0.
 
     Returns:
         float: Rated cost in €/kW for the specified water depth.
@@ -302,6 +278,7 @@ def getRatedCostfromWaterdepth(depth, allowNegative=True):
     Reference:
         Rogeau et al. (2023), "Review and modeling of offshore wind CAPEX",
         Renewable and Sustainable Energy Reviews, DOI: 10.1016/j.rser.2023.113699
+    newable and Sustainable Energy Reviews, DOI: 10.1016/j.rser.2023.113699
     """
     if (not allowNegative) and depth < 0:
         raise ValueError("Depth must not be negative when not allowNegative")
@@ -324,28 +301,26 @@ def getRatedCostfromWaterdepth(depth, allowNegative=True):
 
 
 # %%
-def getCableCost(distance, capacity,variableCostFactor=1.35, fixedCost=0):
-    """A function to get the cost for connecting a off shore windpower plant to the coastline.
+def getCableCost(distance, capacity, variableCostFactor=1.35, fixedCost=0):
+    """
+    Calculates the cost for connecting an offshore wind power plant to the coastline.
 
-    Parameters
-    ----------
-    distance :                      float
-                                    distance to caostline in km
-    capacity :                      float
-                                    powerplant's capacity in MW
-    variableCostFactor (optional):  float
-                                    by default=1.35 in Euro_2022/W/km
-                                    Cost factor used to scale distance to shore and waterdepth into site-specific cable cost
+    Args:
+        distance (float): Distance to coastline in kilometers.
+        capacity (float): Power plant's capacity in MW.
+        variableCostFactor (float, optional): Cost multiplier in €/kW/km (default = 1.35).
+        fixedCost (float, optional): Fixed connection cost (default = 0).
 
-    ____________
+    Returns:
+        float: Total cable connection cost in monetary units.
 
     Reference:
-    [1] Rogeau et al. (2023), "Review and modeling of offshore wind CAPEX",
-    Renewable and Sustainable Energy Reviews, DOI: 10.1016/j.rser.2023.113699
+        Rogeau et al. (2023), "Review and modeling of offshore wind CAPEX",
+        Renewable and Sustainable Energy Reviews, DOI: 10.1016/j.rser.2023.113699
     """
-    #assert....
+    # assert....
 
-    variableCost = variableCostFactor* distance * capacity 
+    variableCost = variableCostFactor * distance * capacity
     cableCost = fixedCost + variableCost
 
     return cableCost
@@ -355,42 +330,33 @@ def onshore_tcc(
     cp, hh, rd, gdp_escalator=None, blade_material_escalator=None, blades=None
 ):
     """
-    A function to determine the turbine capital cost (TCC) of a 3 blade standar onshore wind turbine based capacity, hub height and rotor diameter values according to the cost model by Fingersh et al. [1].
+    Calculates the turbine capital cost (TCC) of a 3-blade onshore wind turbine based on
+    capacity, hub height, and rotor diameter according to the cost model by Fingersh et al.
 
-    Parameters
-    ----------
-    cp : numeric or array-like
-        Turbine's capacity in kW
-    hh : numeric or array-like
-        Turbine's hub height in m
-    rd : numeric or array-like
-        Turbine's rotor diamter in m
-    gdp_escalator : int, optional
-        Labor cost escalator, by default 1
-    blade_material_escalator : int, optional
-        Blade material cost escalator, by default 1
-    blades : int, optional
-        Number of blades, by default 3
+    Args:
+        cp (float): Turbine capacity in kW.
+        hh (float): Hub height in meters.
+        rd (float): Rotor diameter in meters.
+        gdp_escalator (float, optional): Labor cost escalator. Defaults to 1.
+        blade_material_escalator (float, optional): Blade material cost escalator. Defaults to 1.
+        blades (int, optional): Number of blades. Defaults to 3.
 
-    Returns
-    -------
-    numeric or array-like
-        Turbine's turbine capital cost (TCC) in monetary units.
+    Returns:
+        float: Turbine capital cost (TCC) in monetary units.
 
-    References
-    ---------
-    [1] Fingersh, L., Hand, M., & Laxson, A. (2006). Wind Turbine Design Cost and Scaling Model. NREL. https://www.nrel.gov/docs/fy07osti/40566.pdf
-
+    Reference:
+        Fingersh, L., Hand, M., & Laxson, A. (2006). Wind Turbine Design Cost and Scaling Model.
+        NREL. https://www.nrel.gov/docs/fy07osti/40566.pdf
     """
+    
     # initialize OnshoreParameters class and feed with custom param values
-    if gdp_escalator is None or blade_material_escalator is None or  blades is None:
+    if gdp_escalator is None or blade_material_escalator is None or blades is None:
         O
         offshoreParams = OffshoreParameters()
-        
-        gdp_escalator=offshoreParams.gdp_escalator
-        blade_material_escalator=offshoreParams.blade_material_escalator
-        blades=offshoreParams.blades
 
+        gdp_escalator = offshoreParams.gdp_escalator
+        blade_material_escalator = offshoreParams.blade_material_escalator
+        blades = offshoreParams.blades
 
     rr = rd / 2
     sa = np.pi * rr * rr
