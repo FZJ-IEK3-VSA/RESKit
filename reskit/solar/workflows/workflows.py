@@ -137,7 +137,11 @@ def openfield_pv_merra_ryberg2019(
     if inverter is not None:
         wf.apply_inverter_losses(inverter=inverter, **inverter_kwargs)
 
-    variables=[_var for _var in ['capacity_factor', 'total_system_generation'] if _var in wf.sim_data.keys()]
+    variables = [
+        _var
+        for _var in ["capacity_factor", "total_system_generation"]
+        if _var in wf.sim_data.keys()
+    ]
     wf.apply_loss_factor(0.20, variables=variables)
 
     return wf.to_xarray(
@@ -260,8 +264,8 @@ def openfield_pv_era5(
     """
 
     wf = SolarWorkflowManager(placements)
-    wf.configure_cec_module(module)
-    
+    wf.configure_cec_module(module, tech_year)
+
     # ensure the tracking parameter is correct
     assert tracking in [
         "fixed",
@@ -363,8 +367,12 @@ def openfield_pv_era5(
     if inverter is not None:
         wf.apply_inverter_losses(inverter=inverter, **inverter_kwargs)
 
-    loss_factor = 0.115 #validation by d.franzmann, 2022/01/13
-    variables=[_var for _var in ['capacity_factor', 'total_system_generation'] if _var in wf.sim_data.keys()]
+    loss_factor = 0.115  # validation by d.franzmann, 2022/01/13
+    variables = [
+        _var
+        for _var in ["capacity_factor", "total_system_generation"]
+        if _var in wf.sim_data.keys()
+    ]
     wf.apply_loss_factor(loss_factor, variables=variables)
 
     return wf.to_xarray(
@@ -508,7 +516,11 @@ def openfield_pv_sarah_unvalidated(
     if inverter is not None:
         wf.apply_inverter_losses(inverter=inverter, **inverter_kwargs)
 
-    variables=[_var for _var in ['capacity_factor', 'total_system_generation'] if _var in wf.sim_data.keys()]
+    variables = [
+        _var
+        for _var in ["capacity_factor", "total_system_generation"]
+        if _var in wf.sim_data.keys()
+    ]
     wf.apply_loss_factor(0.20, variables=variables)
 
     return wf.to_xarray(
