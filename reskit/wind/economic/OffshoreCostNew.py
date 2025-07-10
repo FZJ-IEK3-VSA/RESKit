@@ -135,12 +135,11 @@ def calculateOffshoreCapex(InputCapex,capacity,hubheight,waterdepth,coastDistanc
 
     # Cable cost and connection cost  
     # applicaton of cost for DC connection from power plant to coast as scaling factor 
-    
-    #
     ratioCable=getCableCost(coastDistance,capacity)/getCableCost(averageCoastDistance,baseCap)
 
     NewCableCost=CableCostBase*ratioCable
     #Summing new cost components to new OffshoreCapex
+    # OverheadCost are assumed to be constant 
 
     TotalOffshoreCapEx= NewTurbineCost+NewFoundationCost+NewCableCost+OverheadCostBase
 
