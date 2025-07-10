@@ -7,7 +7,7 @@ import rasterio
 from rasterio.transform import rowcol
 from pyproj import Transformer
 import numpy as np
-from onshore_cost_model import onshore_tcc
+
 from reskit.default_paths import DEFAULT_PATHS
 from reskit.parameters.parameters import  OffshoreParameters
 
@@ -349,3 +349,139 @@ def getCableCost(distance, capacity,variableCostFactor=1.35, fixedCost=0):
     cableCost = fixedCost + variableCost
 
     return cableCost
+
+
+def onshore_tcc(
+    cp, hh, rd, gdp_escalator=None, blade_material_escalator=None, blades=None
+):
+    """
+    A function to determine the turbine capital cost (TCC) of a 3 blade standar onshore wind turbine based capacity, hub height and rotor diameter values according to the cost model by Fingersh et al. [1].
+
+    Parameters
+    ----------
+    cp : numeric or array-like
+        Turbine's capacity in kW
+    hh : numeric or array-like
+        Turbine's hub height in m
+    rd : numeric or array-like
+        Turbine's rotor diamter in m
+    gdp_escalator : int, optional
+        Labor cost escalator, by default 1
+    blade_material_escalator : int, optional
+        Blade material cost escalator, by default 1
+    blades : int, optional
+        Number of blades, by default 3
+
+    Returns
+    -------
+    numeric or array-like
+        Turbine's turbine capital cost (TCC) in monetary units.
+
+    References
+    ---------
+    [1] Fingersh, L., Hand, M., & Laxson, A. (2006). Wind Turbine Design Cost and Scaling Model. NREL. https://www.nrel.gov/docs/fy07osti/40566.pdf
+
+    """
+    # initialize OnshoreParameters class and feed with custom param values
+    if gdp_escalator is None or blade_material_escalator is None or  blades is None:
+        O
+        offshoreParams = OffshoreParameters()
+        
+        gdp_escalator=offshoreParams.gdp_escalator
+        blade_material_escalator=offshoreParams.blade_material_escalator
+        blades=offshoreParams.blades
+
+
+    rr = rd / 2
+    sa = np.pi * rr * rr
+
+    # Blade Cost
+    singleBladeMass = 0.4948 * np.power(rr, 2.53)
+    singleBladeCost = (
+        (0.4019 * np.power(rr, 3) - 21051) * blade_material_escalator
+        + 2.7445 * np.power(rr, 2.5025) * gdp_escalator
+    ) * (1 - 0.28)
+
+    # Hub
+    hubMass = 0.945 * singleBladeMass + 5680.3
+    hubCost = hubMass * 4.25
+
+    # Pitch and bearings
+    # pitchBearingMass = 0.1295 * (singleBladeMass * blades) + 491.31
+    # pitchSystemMass = pitchBearingMass*1.328+555
+    pitchSystemCost = 2.28 * (0.2106 * np.power(rd, 2.6578))
+
+    # Spinner and nosecone
+    noseConeMass = 18.5 * rd - 520.5
+    noseConeCost = noseConeMass * 5.57
+
+    # Low Speed Shaft
+    # lowSpeedShaftMass = 0.0142 * np.power(rd, 2.888)
+    lowSpeedShaftCost = 0.01 * np.power(rd, 2.887)
+
+    # Main bearings
+    bearingMass = (rd * 8 / 600 - 0.033) * 0.0092 * np.power(rd, 2.5)
+    bearingCost = 2 * bearingMass * 17.6
+
+    # Gearbox
+    # Gearbox not included for direct drive turbines
+
+    # Break, coupling, and others
+    breakCouplingCost = 1.9894 * cp - 0.1141
+    # breakCouplingMass = breakCouplingCost/10
+
+    # Generator (Assuming direct drive)
+    # generatorMass = 6661.25 * np.power(lowSpeedShaftTorque, 0.606) # wtf is the torque?
+    generatorCost = cp * 219.33
+
+    # Electronics
+    electronicsCost = cp * 79
+
+    # Yaw drive and bearing
+    # yawSystemMass = 1.6*(0.0009*np.power(rd, 3.314))
+    yawSystemCost = 2 * (0.0339 * np.power(rd, 2.964))
+
+    # Mainframe (Assume direct drive)
+    mainframeMass = 1.228 * np.power(rd, 1.953)
+    mainframeCost = 627.28 * np.power(rd, 0.85)
+
+    # Platform and railings
+    platformAndRailingMass = 0.125 * mainframeMass
+    platformAndRailingCost = platformAndRailingMass * 8.7
+
+    # Electrical Connections
+    electricalConnectionCost = cp * 40
+
+    # Hydraulic and Cooling systems
+    # hydraulicAndCoolingSystemMass = 0.08 * cp
+    hydraulicAndCoolingSystemCost = cp * 12
+
+    # Nacelle Cover
+    nacelleCost = 11.537 * cp + 3849.7
+    # nacelleMass = nacelleCost/10
+
+    # Tower
+    towerMass = 0.2694 * sa * hh + 1779
+    towerCost = towerMass * 1.5
+
+    # Add up the turbine capital cost
+    turbineCapitalCost = (
+        singleBladeCost * blades
+        + hubCost
+        + pitchSystemCost
+        + noseConeCost
+        + lowSpeedShaftCost
+        + bearingCost
+        + breakCouplingCost
+        + generatorCost
+        + electronicsCost
+        + yawSystemCost
+        + mainframeCost
+        + platformAndRailingCost
+        + electricalConnectionCost
+        + hydraulicAndCoolingSystemCost
+        + nacelleCost
+        + towerCost
+    )
+
+    return turbineCapitalCost
