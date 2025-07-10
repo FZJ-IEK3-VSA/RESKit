@@ -1,7 +1,8 @@
-__version__ = "0.2.0"
+__version__ = "0.4.2"
 
 from . import util
 from . import weather
+
 from .workflow_manager import (
     WorkflowManager,
     WorkflowQueue,

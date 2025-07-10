@@ -1,22 +1,25 @@
-import geokit as gk
-
-import pandas as pd
+# import base packages
+from collections import OrderedDict  # TODO is this needed when
+import datetime
+from os.path import basename, join, isfile, isdir
 import numpy as np
-import os
-from os import mkdir, environ
-from os.path import join, isfile, isdir
-from collections import OrderedDict, namedtuple
+import pandas as pd
 from types import FunctionType
-import xarray
-from typing import Union, List, OrderedDict
-from . import weather as rk_weather
-from glob import glob
-from osgeo import ogr
+from typing import (
+    Union,
+    List,
+    OrderedDict,
+)  # TODO remove OrderedDict here (duplicated with collections above?)
 import warnings
-from . import util as rk_util
-import xarray as xr
 
-# from . import weather as rk_weather
+# import third party packages
+import geokit as gk
+import xarray
+from glob import glob
+
+# import other modules
+from reskit import util as rk_util
+from reskit import weather as rk_weather
 
 
 class WorkflowManager:
@@ -73,6 +76,11 @@ class WorkflowManager:
 
         if self.locs is None:
             self.locs = gk.LocationSet(self.placements[["lon", "lat"]].values)
+
+        # limit the input placements longitude to range of -180...180
+        assert self.placements["lon"].between(-180, 180, inclusive="both").any()
+        # limit the input placements latitude to range of -90...90
+        assert self.placements["lon"].between(-180, 180, inclusive="both").any()
 
         # get bounds of the extent
         _bounds = list(self.locs.getBounds())
@@ -195,6 +203,8 @@ class WorkflowManager:
                 source_constructor = rk_weather.SarahSource
             elif source_type == "MERRA":
                 source_constructor = rk_weather.MerraSource
+            elif source_type == "ICON-LAM":
+                source_constructor = rk_weather.IconlamSource
             else:
                 raise RuntimeError("Unknown source_type")
 
@@ -256,6 +266,7 @@ class WorkflowManager:
         spatial_interpolation: str = "linear-spline",
         nodata_fallback: str = "nan",
         nodata_fallback_scaling: float = 1,
+        allow_nans: bool = True,
     ):
         """Adjusts the average mean of the specified variable to a known long-run-average
 
@@ -310,6 +321,9 @@ class WorkflowManager:
             - This is primarily useful when `nodata_fallback` is a path to a raster file
             - By default 1
 
+        allow_nans : boolean, optional
+            If True, NaN values may remain after scaling, else an error will raised. By default True.
+
         Returns
         -------
         WorkflowManager
@@ -336,6 +350,17 @@ class WorkflowManager:
                 # these values will be replaced with the nearest interpolation method
                 if np.isnan(_lra).any():
                     _lra_near = gk.raster.interpolateValues(fp, self.locs, mode="near")
+                    _lra[np.isnan(_lra)] = _lra_near[np.isnan(_lra)]
+                # still nans, i.e. the cell itself is nan, but maybe its neighbors are not
+                # try the (nan)median of the surrounding cells
+                if np.isnan(_lra).any():
+
+                    def _nanmedian(vals, xOff, yOff):
+                        return np.nanmedian(vals)
+
+                    _lra_near = gk.raster.interpolateValues(
+                        fp, self.locs, mode="func", func=_nanmedian
+                    )
                     _lra[np.isnan(_lra)] = _lra_near[np.isnan(_lra)]
             return _lra
 
@@ -370,7 +395,9 @@ class WorkflowManager:
                 DeprecationWarning,
             )
             nodata_fallback = np.nan
-        if any(np.isnan(real_lra)):
+        if any(
+            np.isnan(real_lra)
+        ):  # TODO currently all real_lra are replaced by fallback, is this intentional?
             # we are lacking long-run average values
             if nodata_fallback is None or (
                 isinstance(nodata_fallback, float) and np.isnan(nodata_fallback)
@@ -404,13 +431,18 @@ class WorkflowManager:
         # nan result will stay nan results, as these placements cannot be calculated any more
         factors = real_lra * real_lra_scaling / source_lra
         if any(np.isnan(real_lra)):
-            warnings.warn(
-                f"NaN values remaining in real lra after application of nodata_fallback."
-            )
+            if allow_nans:
+                warnings.warn(
+                    f"NaN values remaining in real lra after application of nodata_fallback."
+                )
+            else:
+                raise ValueError(
+                    f"Missing values for variable '{variable}' and NaNs not allowed."
+                )
 
         # write info with missing values to sim_data:
         self.placements[
-            f"missing_values_{os.path.basename(real_long_run_average)}_nodata_fallback{nodata_fallback}"
+            f"missing_values_{basename(real_long_run_average)}_nodata_fallback{nodata_fallback}"
         ] = np.isnan(factors)
 
         self.sim_data[variable] = factors * self.sim_data[variable]
@@ -916,7 +948,6 @@ def execute_workflow_iteratively(
     workflow_args.update({"output_netcdf_path": None})
 
     # iterate over weather tiles
-    xrds_list = []
     for i, tilepath in enumerate(placements["source"].unique()):
         # reduce placements to subset within the current tile and update function arguments with subset of placements and current weather path
         placements_tile = placements[placements["source"] == tilepath]
@@ -925,13 +956,16 @@ def execute_workflow_iteratively(
         )
         # execute workflow with subset and add to list of results
         print(
-            f"Now processing tile {i+1}/{len(placements['source'].unique())} with {len(placements_tile)} locations: {tilepath}"
+            datetime.datetime.now(),
+            f"Now processing tile {i+1}/{len(placements['source'].unique())} with {len(placements_tile)} locations: {tilepath}",
         )
         xrds = workflow(**workflow_args)
         xrds = xrds.set_index(location="RESKit_sim_order")
-        xrds_list.append(xrds)
+        if i == 0:
+            reskit_xr = xrds
+        else:
+            reskit_xr = xarray.concat([reskit_xr, xrds], dim="location")
 
-    reskit_xr = xr.concat(xrds_list, dim="location")
     # create a dummy wfm instance for saving
     wfm = WorkflowManager(placements=placements.drop(columns="RESKit_sim_order"))
     wfm.to_netcdf(

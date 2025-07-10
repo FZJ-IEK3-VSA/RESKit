@@ -1,6 +1,12 @@
+# primary packages
 import json
 import numpy as np
 import os
+import pandas as pd
+
+# other modules
+from reskit.wind.core.data import DATAFOLDER
+from reskit.default_paths import DEFAULT_PATHS
 
 
 class Parameters:
@@ -25,23 +31,22 @@ class Parameters:
         """
         pass
 
-    def load_and_set_custom_params(self, fp, year, subclass):
+    def load_and_set_custom_params(self, fp, year, subclass, verbose=False, **kwargs):
         """
-        This function loads a dictionary of parameters in json format and writes the
+        This function loads a parameter table in csv format and writes the
         parameter values into class attributes.
 
         Parameters
         ----------
         fp : str
-            The filepath of a json file that contains the parameter names
-            and values as key/value pairs. Values can be dicts with
-            integer years as sub keys and the actual parameters as values
-            per year.
+            The filepath of a csv file that contains the parameter values
+            in a tabular format with the parameter names/units as column
+            names and the years as row indices.
 
         year : integer, optional
             The year for which the parameter shall be returned. Can be
             interpreted as a technical year or a cost year depending
-            on the parameter, by default 2050.
+            on the parameter.
 
         subclass : sub class instance
             The sub class to which the attribute shall be added.
@@ -50,44 +55,153 @@ class Parameters:
         --------
             None
         """
-        # check and load json data
-        assert (
-            os.path.isfile(fp) and fp.split(".")[-1] == "json"
-        ), f"fp must be an existing .json file"
-        with open(fp, "r") as fp:
-            json_params = json.load(fp)
+        # check the input file
+        if not isinstance(fp, str) and os.path.splitext(fp)[-1] == ".csv":
+            raise TypeError(
+                f"Parameter filepath must be a str-formatted '.csv' file: {fp}"
+            )
+        if not os.path.isfile(fp):
+            raise FileNotFoundError(f"Parameter filepath does not exist: {fp}")
 
-        for _param, _val in json_params.items():
-            # convert sub year keys to int where needed
-            if isinstance(_val, dict) and all([k.isnumeric() for k in _val.keys()]):
-                # assume we have a param with yar-dependent values, convert to ints and write back to json params
-                _val = {int(k): v for k, v in _val.items()}
-                # overwrite static class attributes with json values for the given year
-                _years = np.array([k for k in _val.keys()])
-                # avoid extrapolation
-                assert (
-                    year >= _years.min() and year <= _years.max()
-                ), f"'year' must be between the min. ({_years.min()}) and max. ({_years.max()}) given data years to avoid interpolation (check: )"
-                # get the nearest year below and above the passed 'year' (if not 'year' available)
-                _lower_year = _years[_years >= year].min()
-                _higher_year = _years[_years <= year].max()
-                # get the actual value for that year
-                if _higher_year == _lower_year:
-                    # simply choose any year since both the same, here lower
-                    _val = _val[_lower_year]
-                else:
-                    # interpolate between the nearest years and return result
-                    _val = _val[_lower_year] + (
-                        _val[_higher_year] - _val[_lower_year]
-                    ) * (year - _lower_year) / (_higher_year - _lower_year)
-            # round the parameters where needed
+        def _round_val(_val):
             if _param in self.rounding.keys():
                 if self.rounding[_param] == 0:
                     _val = int(round(_val, 0))
                 else:
                     _val = round(_val, self.rounding[_param])
-            # set the parameter value as class rttribute
-            setattr(subclass, _param, _val)
+            return _val
+
+        def _get_value(data, year):
+            """Interpolates values between neighboring years, or returns
+            exact value when available."""
+            assert isinstance(
+                data, pd.Series
+            ), f"data must be of pd.Series type. Here: {type(data)}: {data}"
+            # avoid extrapolation
+            assert (
+                year >= data.index.min() and year <= data.index.max()
+            ), f"'year' {year} must be between the min. and max. ({data.index.min()}-{data.index.max()}) given data years to avoid extrapolation."
+            # get the nearest year below and above the passed 'year' (if not 'year' available)
+            _lower_year = data.index[data.index >= year].min()
+            _higher_year = data.index[data.index <= year].max()
+            # get the actual value for that year
+            if _higher_year == _lower_year:
+                # simply choose any year since both the same, here lower
+                _val = data[_lower_year]
+            else:
+                # interpolate between the nearest years and return result
+                _val = data[_lower_year] + (data[_higher_year] - data[_lower_year]) * (
+                    year - _lower_year
+                ) / (_higher_year - _lower_year)
+
+            return _val
+
+        # handle csv files
+        if os.path.splitext(os.path.basename(fp))[-1] == ".csv":
+
+            # load data from csv
+            params_df = pd.read_csv(fp)
+
+            # make sure year is in columns and set as index
+            if not "year" in params_df.columns:
+                raise AttributeError(
+                    f"'year' is a mandatory column in parameter dataframe: {fp}"
+                )
+            if not all([isinstance(x, int) and x >= 0 for x in params_df.year]):
+                raise ValueError(
+                    f"All 'year' entries in parameter dataframe must be integers > 0. Currently: {','.join([str(x) for x in params_df.year])}"
+                )
+            params_df.set_index("year", inplace=True)
+
+            # check the csv columns, must all be baseline plant attrs
+            def _return_colum_type(_param):
+                try:
+                    # check if we have a plant parameter
+                    assert (_param in getattr(subclass, "mand_args")) or (
+                        _param in getattr(subclass, "opt_args")
+                    )
+                    return "parameter"
+                except:
+                    try:
+                        # check if we have a plant parameter unit
+                        assert (
+                            _param.strip("_unit") in getattr(subclass, "mand_args")
+                        ) or (_param.strip("_unit") in getattr(subclass, "opt_args"))
+                        return "unit"
+                    except:
+                        return "other"
+
+            # check and fail if not a param or unit
+            for _param in params_df.columns:
+                if _param == "remarks":
+                    # skip remarks column
+                    continue
+                elif not _return_colum_type(_param) in ["param", "unit"]:
+                    AttributeError(
+                        f"Baseline plant parameter csv column '{_param}' is not an attribute of '{subclass.__class__.__name__}'."
+                    )
+
+            # make sure all mandatory parameters are provided
+            for _param in getattr(subclass, "mand_args"):
+                if not _param in params_df.columns:
+                    raise AttributeError(
+                        f"Mandatory parameter '{_param}' must be an attribute of the parameter dataframe loaded from csv: {fp}"
+                    )
+
+            # now get and set the respective values
+            for _param in params_df.columns:
+                if not _return_colum_type(_param) == "parameter":
+                    # skip remarks and units
+                    continue
+                # get and interpolate where needed
+                _val = _get_value(data=params_df[_param], year=year)
+                # round if needed
+                _val = _round_val(_val)
+                # set as attr
+                setattr(subclass, _param, _val)
+                if verbose and not _param in kwargs.keys():
+                    print(
+                        f"Baseline plant parameter '{_param}' set to: {_val}",
+                        flush=True,
+                    )
+
+            # now add optional parameter values that have not been provided in csv
+            for _param, _value in getattr(subclass, "opt_args").items():
+                if not _param in params_df.columns:
+                    # this has not been provided, set default
+                    setattr(subclass, _param, _value)
+
+        # other extensions cannot be processed
+        else:
+            raise TypeError(f"Baseline plant data file is expected to be a .csv file.")
+
+    def update_custom_parameters(self, subclass, **kwargs):
+        """
+        Iterates over custom parameter names and values, checks if they
+        are actually class attributes and overwrites them
+
+        subclass : Parameters() sub class instance
+            The sub class in which the custom parameters shall be updated
+
+        **kwargs : optional
+            parameter_name = value of custom plant baseline parameters,
+            must be attributes of the respective Parameters() class.
+        """
+        # now iterate over kwargs and overwrite default data where needed
+        for _param, _value in kwargs.items():
+            if hasattr(subclass, _param):
+                # we have an actual attribute
+                if _value is not None:
+                    # we have an actual custom value, overwrite
+                    setattr(subclass, _param, _value)
+                    print(
+                        f"Baseline plant parameter '{_param}' overwritten by custom value: {_value}",
+                        flush=True,
+                    )
+            else:
+                raise AttributeError(
+                    f"kwarg '{_param}' is not an attribute of '{subclass.__class__.__name__}'"
+                )
 
 
 class OnshoreParameters(Parameters):
@@ -127,32 +241,55 @@ class OnshoreParameters(Parameters):
         The baseline turbine's BOS percentage contribution in the total cost, by default 0.229
     """
 
-    # static baseline turbine attributes
-    constant_rotor_diam = True
-    base_capacity = 4200  # [kW]
-    base_hub_height = 120  # [m]
-    base_rotor_diam = 136  # [m]
-    reference_wind_speed = 6.7  # [m/s]
-    min_tip_height = 20
-    min_specific_power = 180
-    # max. projection value from expert survey in Wiser et al. (2021)
-    max_hub_height = 200
-    # static economic attributes
-    base_capex_per_capacity = 1100  # [EUR/kW]
-    base_capex = base_capex_per_capacity * base_capacity  # [EUR]
-    tcc_share = 0.673  # [-]
-    bos_share = 0.229  # [-]
-    # static turbine design attributes
-    gdp_escalator = 1
-    blade_material_escalator = 1
-    blades = 3
+    # the mandatory arguments that are always required in the file for scaling
+    mand_args = [
+        "base_capacity",
+        "base_hub_height",
+        "base_rotor_diam",
+        "reference_wind_speed",
+        "base_capex_per_capacity",
+        "tcc_share",
+        "bos_share",
+        "gdp_escalator",
+        "blade_material_escalator",
+        "blades",
+    ]
+    # optional additional arguments with fallback values which mean the parameter has no effect
+    opt_args = {
+        "min_tip_height": 0,
+        "min_specific_power": 0,
+        "max_hub_height": np.inf,
+    }
 
-    def __init__(self, fp=None, year=2050):
-        if not fp is None:
-            # extract json params from file
-            self.load_and_set_custom_params(fp=fp, year=year, subclass=self)
-        else:
-            pass
+    def __init__(self, fp=None, year=2050, constant_rotor_diam=True, **kwargs):
+        """Initializes an instance of the OnshoreParameters class."""
+        # we need meaningful definition if rotor or capacity shall be scaled
+        if not isinstance(constant_rotor_diam, bool):
+            raise TypeError(f"constant_rotor_diam must be a boolean.")
+        self.constant_rotor_diam = constant_rotor_diam
+
+        # determine the parameter data file
+        if fp is None:
+            # use the default file
+            if DEFAULT_PATHS["baseline_onshore_turbine_definition_path"] is None:
+                fp = os.path.join(
+                    DATAFOLDER, "baseline_turbine_onshore_RybergEtAl2019.csv"
+                )
+            else:
+                fp = DEFAULT_PATHS["baseline_onshore_turbine_definition_path"]
+
+        # extract baseline params from file
+        self.load_and_set_custom_params(fp=fp, year=year, subclass=self, **kwargs)
+        print(
+            f"Baseline plant parameters have been loaded for year {year} from: {fp}",
+            flush=True,
+        )
+
+        # generate dependent attributes
+        self.base_capex = self.base_capex_per_capacity * self.base_capacity
+
+        # update custom parameters
+        self.update_custom_parameters(subclass=self, **kwargs)
 
 
 class OffshoreParameters(Parameters):
@@ -185,17 +322,46 @@ class OffshoreParameters(Parameters):
 
     """
 
-    distance_to_bus = 3
-    foundation = "monopile"
-    mooring_count = 3
-    anchor = "DEA"
-    turbine_count = 80
-    turbine_spacing = 5
-    turbine_row_spacing = 9
+    # the mandatory arguments that are always required in the file for scaling size
+    mand_args = [
+        "base_capacity",
+        "base_hub_height",
+        "base_rotor_diam",
+        "reference_wind_speed",
+        "distance_to_bus",
+        "foundation",
+        "mooring_count",
+        "anchor",
+        "turbine_count",
+        "turbine_spacing",
+        "turbine_row_spacing",
+    ]
+    # optional additional arguments with fallback values which mean the parameter has no effect
+    opt_args = {
+        "min_tip_height": 0,
+        "min_specific_power": 0,
+        "max_hub_height": np.inf,
+    }
 
-    def __init__(self, fp=None, year=2050):
-        if not fp is None:
-            # extract json params from file
-            self.load_and_set_custom_params(fp=fp, year=year, subclass=self)
-        else:
-            pass
+    def __init__(self, fp=None, year=2050, constant_rotor_diam=True, **kwargs):
+        """Initializes an instance of the OffshoreParameters class."""
+        # we need meaningful definition if rotor or capacity shall be scaled
+        if not isinstance(constant_rotor_diam, bool):
+            raise TypeError(f"constant_rotor_diam must be a boolean.")
+        self.constant_rotor_diam = constant_rotor_diam
+
+        if fp is None:
+            # use the default file
+            if DEFAULT_PATHS["baseline_offshore_turbine_definition_path"] is None:
+                fp = os.path.join(
+                    DATAFOLDER, "baseline_turbine_offshore_CaglayanEtAl2019.csv"
+                )
+            else:
+                fp = DEFAULT_PATHS["baseline_offshore_turbine_definition_path"]
+
+        # extract json params from file
+        self.load_and_set_custom_params(fp=fp, year=year, subclass=self, **kwargs)
+        print(f"Baseline plant parameters have been loaded from: {fp}", flush=True)
+
+        # update custom parameters
+        self.update_custom_parameters(subclass=self, **kwargs)

@@ -77,6 +77,19 @@ def test_WindWorkflowManager___init__():
     return man
 
 
+def test_WindWorkflowManager_with_ws___init__():
+    man = test_WindWorkflowManager___init__()
+    # generate random wind data for only 24 hrs and add to manager
+    np.random.seed(seed=12345)
+    wind_speeds = np.random.randint(0, 16, size=(24, len(man.placements)))
+    man.sim_data["elevated_wind_speed"] = wind_speeds
+    # add wind speed height
+    man.elevated_wind_speed_height = np.random.randint(
+        60, 140, size=(1, len(man.placements))
+    )
+    return man
+
+
 @pytest.fixture
 def pt_WindWorkflowManager_initialized() -> WindWorkflowManager:
     return test_WindWorkflowManager___init__()
@@ -158,6 +171,40 @@ def test_WindWorkflowManager_convolute_power_curves(pt_WindWorkflowManager_initi
     )
 
 
+def test_WindWorkflowManager_apply_wake_correction_of_wind_speeds():
+
+    # first without any "wake_curve"
+    man = test_WindWorkflowManager_with_ws___init__()
+    assert not "wake_curve" in man.placements.columns
+    man.apply_wake_correction_of_wind_speeds(wake_curve=None)
+
+    assert np.isclose(
+        man.sim_data["elevated_wind_speed"].mean(axis=0),
+        np.array([7.29166667, 8.04166667, 8.66666667, 6.33333333, 7.04166667]),
+    ).all()
+
+    # now with scalar "wake_curve" function arg
+    man = test_WindWorkflowManager_with_ws___init__()
+    assert not "wake_curve" in man.placements.columns
+    man.apply_wake_correction_of_wind_speeds(wake_curve="dena_mean")
+
+    assert np.isclose(
+        man.sim_data["elevated_wind_speed"].mean(axis=0),
+        np.array([6.375, 7.08333333, 7.70833333, 5.375, 6.125]),
+    ).all()
+
+    # and last with location-specific column value
+    man = test_WindWorkflowManager_with_ws___init__()
+    man.placements["wake_curve"] = None
+    man.placements.loc[2, "wake_curve"] = "dena_mean"
+    man.apply_wake_correction_of_wind_speeds(wake_curve=None)
+
+    assert np.isclose(
+        man.sim_data["elevated_wind_speed"].mean(axis=0),
+        np.array([7.29166667, 8.04166667, 7.70833333, 6.33333333, 7.04166667]),
+    ).all()
+
+
 def test_WindWorkflowManager_simulate(pt_WindWorkflowManager_loaded):
     man = pt_WindWorkflowManager_loaded
 
@@ -228,7 +275,7 @@ def test_WindWorkflowManager_mixed_values___init___():
     ]
     placements["capacity"] = [2000, 3000, 4000, 3600, 6000]
     placements["rotor_diam"] = [136, 136, 136, 116, 136]
-    placements["powerCurve"] = [None, None, None, "V117-3600_Vestas", None]
+    placements["powerCurve"] = [None, None, None, "V117-3300", None]
 
     man = WindWorkflowManager(
         placements, synthetic_power_curve_cut_out=25, synthetic_power_curve_rounding=1
@@ -243,8 +290,8 @@ def test_WindWorkflowManager_mixed_values___init___():
     assert "SPC:275,25" in man.powerCurveLibrary and isinstance(
         man.powerCurveLibrary["SPC:275,25"], PowerCurve
     )
-    assert "V117-3600_Vestas" in man.powerCurveLibrary and isinstance(
-        man.powerCurveLibrary["V117-3600_Vestas"], PowerCurve
+    assert "V117-3300" in man.powerCurveLibrary and isinstance(
+        man.powerCurveLibrary["V117-3300"], PowerCurve
     )
     assert "SPC:413,25" in man.powerCurveLibrary and isinstance(
         man.powerCurveLibrary["SPC:413,25"], PowerCurve
@@ -257,7 +304,7 @@ def test_WindWorkflowManager_mixed_values___init___():
     assert (man.placements["rotor_diam"] == placements["rotor_diam"]).all()
     assert (
         man.placements["powerCurve"]
-        == ["SPC:138,25", "SPC:207,25", "SPC:275,25", "V117-3600_Vestas", "SPC:413,25"]
+        == ["SPC:138,25", "SPC:207,25", "SPC:275,25", "V117-3300", "SPC:413,25"]
     ).all()
 
     return man
