@@ -9,6 +9,7 @@ from pyproj import Transformer
 import numpy as np
 from onshore_cost_model import onshore_tcc
 from reskit.default_paths import DEFAULT_PATHS
+from reskit.parameters.parameters import  OffshoreParameters
 
 
 # %%
@@ -39,6 +40,7 @@ def waterDepthFromLocation(
 
 
 # %% function to calculate the distance to the coastline
+# if you want to execute the distance to coastline more often, please separete the loading of the taserband to increase execution time
 
 
 def loadDistanceBand(
@@ -75,18 +77,26 @@ def distanceToCoastline(lat, lon, band, transformer, transformfunc):
 
 # %%
 def calculateOffshoreCapex(
-    InputCapex,
+    
     capacity,
     hubheight,
     waterdepth,
     coastDistance,
     rotordiam,
+    tech_year=2050,
     shareTurb=0.449,
     shareFound=0.204,
     shareCable=0.181,
     shareOverhead=0.166,
     maxMonopolDepth=25,
     maxJacketDepth=55,
+    litValueAvgDepth=17,
+    litValueAvgDistCoast=27,
+    InputCapex=None,
+    baseCap=None,
+    baseHubHeight=None,
+    baseRotorDiam=None,
+    defaultOffshoreParamsFp=None,
 ):
     """
     Scale a generic offshore CAPEX value based on water depth and distance to shore.
@@ -94,55 +104,115 @@ def calculateOffshoreCapex(
     The function splits the total input CAPEX into major cost components (turbine, foundation,
     cable, overhead) and scales each individually based on project-specific parameters such as
     turbine size, water depth, and coastline distance.
+    Parameters:
+    -----------
+    capacity : float
+        Turbine rated capacity in MW.
 
-    Args:
-        InputCapex (float): Total CAPEX per kW for a reference offshore wind plant (€/kW).
-        capacity (float): Turbine capacity in MW.
-        hubheight (float): Hub height in meters.
-        waterdepth (float): Site-specific water depth in meters.
-        coastDistance (float): Distance from site to nearest coast in kilometers.
-        rotordiam (float): Rotor diameter in meters.
-        shareTurb (float): Share of turbine cost in total CAPEX (default = 0.449).
-        shareFound (float): Share of foundation cost in total CAPEX (default = 0.204).
-        shareCable (float): Share of cable/connection cost in total CAPEX (default = 0.181).
-        shareOverhead (float): Share of overhead/miscellaneous costs in total CAPEX (default = 0.166).
-        maxMonopolDepth (float): Max depth suitable for monopile foundations (default = 25 m).
-        maxJacketDepth (float): Max depth suitable for jacket foundations (default = 55 m).
+    hubheight : float
+        Hub height in meters.
+
+    waterdepth : float
+        Site-specific water depth in meters.
+
+    coastDistance : float
+        Distance from site to nearest coast in kilometers.
+
+    rotordiam : float
+        Rotor diameter in meters.
+    
+        techyear: int
+        specifies the year of the technologie that is applied. (default = 2030)
+
+    shareTurb : float, optional
+        Share of turbine cost in total CAPEX (default = 0.449).
+
+    shareFound : float, optional
+        Share of foundation cost in total CAPEX (default = 0.204).
+
+    shareCable : float, optional
+        Share of cable/connection cost in total CAPEX (default = 0.181).
+
+    shareOverhead : float, optional
+        Share of overhead/miscellaneous costs in total CAPEX (default = 0.166).
+
+    maxMonopolDepth : float, optional
+        Maximum depth (in meters) for monopile foundations (default = 25).
+
+    maxJacketDepth : float, optional
+        Maximum depth (in meters) for jacket foundations (default = 55).
+
+    litValueAvgDepth : float, optional
+        Literature-based average depth used in reference CAPEX (default = 17).
+
+    litValueAvgDistCoast : float, optional
+        Literature-based average distance to coast for reference CAPEX (default = 27).
+
+    InputCapex : float, optional
+        Reference total CAPEX per kW (€/kW). If not provided, it defaults to the value
+        from the OffshoreParameters CSV for the given year.
+
+    baseCap : float, optional
+        Reference turbine capacity in MW. If not provided, it's loaded from OffshoreParameters.
+
+    baseHubHeight : float, optional
+        Reference hub height in meters. If not provided, it's loaded from OffshoreParameters.
+
+    baseRotorDiam : float, optional
+        Reference rotor diameter in meters. If not provided, it's loaded from OffshoreParameters.
+
+    defaultOffshoreParamsFp : str, optional
+        Optional filepath to a CSV containing default offshore turbine parameters.
+        If not provided, a built-in RESKit default is used.
 
     Returns:
-        float: Adjusted total offshore CAPEX (€/kW) scaled for given project parameters.
+    --------
+    float
+        Adjusted offshore wind plant CAPEX in €/kW for the given configuration.
     """
 
     assert np.isclose(
         shareTurb + shareFound + shareCable + shareOverhead, 1.0, rtol=1e-9
     ), "Sum of all cost shares must equal 1"
     assert (
-        0 < maxMonopolDepth < 60
-    ), "Maximum Depth for Monopile Foundation must be between 0 and 50 m"
+        0 < maxMonopolDepth < 55
+    ), "Maximum Depth for Monopile Foundation must be between 0 and 55 m"
     assert (
-        60 <= maxJacketDepth < 100
-    ), "Maximum Depth for Jacket Foundation must be between 0 and 50 m"
+        55 <= maxJacketDepth < 100
+    ), "Maximum Depth for Jacket Foundation must be between 0 and 55 m"
     assert (
         maxMonopolDepth < maxJacketDepth
     ), " Maximum Depth for Jacket Foundation must be larger than maximum  depth for Monopile Foundation"
 
-    averageDepthLiterature = 17  # m
-    averageCoastDistance = 27  # km
+    # Loading tech-specific parameters
+    params = OffshoreParameters(fp=defaultOffshoreParamsFp, year=tech_year)
+
+    #falling back to standard values if no refernce values are given for the calculation
+
+    if baseCap is None:
+        baseCap = params.base_capacity
+        print('baseCap is taken from overall techno-economic file')
+    if baseHubHeight is None:
+        baseHubHeight = params.base_hub_height
+        print('baseHubHeight is taken from overall techno-economic file')
+    if baseRotorDiam is None:
+        baseRotorDiam = params.base_rotor_diam
+        print('baseRotorDiam is taken from overall techno-economic file')
+    
+    if InputCapex is None:
+        InputCapex = params.base_capex_per_capacity
+        print('InputCapes is taken from overall techno-economic file')
+    
+
+
 
     TurbineCostBase = InputCapex * shareTurb
     FoundCostbase = InputCapex * shareFound
     CableCostBase = InputCapex * shareCable
     OverheadCostBase = InputCapex * shareOverhead
 
-    # adapting each cost share
-    # Turbine cost are adapted to Severin's onshore cost approach
+    # scaling each cost share regarding thecurrent wint turbine settings and the reference settings
 
-    # ToDo
-
-    # 9.7 MW capacity as standard (see literautre) hubheight=137m rotor diam=216m
-    baseCap = 9.7
-    baseHubHeight = 137  # literature
-    baserotorDiameter = 216  # literature
 
     # Scaling new turbines cost according to their dimesniosn and acccording to severins calculations
     TurbineCostNew = onshore_tcc(
@@ -156,7 +226,7 @@ def calculateOffshoreCapex(
     TurbineCostRefernce = onshore_tcc(
         baseCap,
         baseHubHeight,
-        baserotorDiameter,
+        baseRotorDiam,
         gdp_escalator=1,
         blade_material_escalator=1,
         blades=3,
@@ -164,11 +234,12 @@ def calculateOffshoreCapex(
 
     costRatioTurbine = TurbineCostNew / TurbineCostRefernce
     NewTurbineCost = TurbineCostBase * costRatioTurbine
+    
 
     # Found Cost Base
     # Adapting the New foundation costs
     DeptBaseCost = getRatedCostfromWaterdepth(
-        averageDepthLiterature
+        litValueAvgDepth
     )  # base depth of CAPEX
     DeptPlantCost = getRatedCostfromWaterdepth(
         waterdepth
@@ -179,7 +250,7 @@ def calculateOffshoreCapex(
     # Cable cost and connection cost
     # applicaton of cost for DC connection from power plant to coast as scaling factor
     ratioCable = getCableCost(coastDistance, capacity) / getCableCost(
-        averageCoastDistance, baseCap
+        litValueAvgDistCoast, baseCap
     )
 
     NewCableCost = CableCostBase * ratioCable
@@ -253,26 +324,28 @@ def getRatedCostfromWaterdepth(depth, allowNegative=True):
 
 
 # %%
-def getCableCost(distance, capacity):
+def getCableCost(distance, capacity,variableCostFactor=1.35, fixedCost=0):
     """A function to get the cost for connecting a off shore windpower plant to the coastline.
 
     Parameters
     ----------
-    distance :  float
-                distance to caostline in km
-    capacity :  float
-                powerplant's capacity in MW
+    distance :                      float
+                                    distance to caostline in km
+    capacity :                      float
+                                    powerplant's capacity in MW
+    variableCostFactor (optional):  float
+                                    by default=1.35 in Euro_2022/W/km
+                                    Cost factor used to scale distance to shore and waterdepth into site-specific cable cost
 
     ____________
 
     Reference:
-    Rogeau et al. (2023), "Review and modeling of offshore wind CAPEX",
+    [1] Rogeau et al. (2023), "Review and modeling of offshore wind CAPEX",
     Renewable and Sustainable Energy Reviews, DOI: 10.1016/j.rser.2023.113699
     """
+    #assert....
 
-    FixeCost = 0
-
-    variableCost = 1.35 * distance * capacity 
-    cableCost = FixeCost + variableCost
+    variableCost = variableCostFactor* distance * capacity 
+    cableCost = fixedCost + variableCost
 
     return cableCost
