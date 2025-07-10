@@ -271,7 +271,7 @@ def getCableCost(distance, capacity):
 
     FixeCost = 0
 
-    variableCost = 1.35 * distance * (capacity * 1e6)
+    variableCost = 1.35 * distance * capacity 
     cableCost = FixeCost + variableCost
 
     return cableCost
