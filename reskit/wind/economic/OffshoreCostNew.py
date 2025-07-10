@@ -1,51 +1,96 @@
 # %%
-import pandas as pd
-import numpy as np
+
 import os
 import pickle
 import glob
 import rasterio
 from rasterio.transform import rowcol
 from pyproj import Transformer
+import numpy as np 
+from onshore_cost_model import onshore_tcc
+
 
 # %%
-WaterdepthFolderPath="/benchtop/shared_data/General_Bathymetric_Chart_of_the_Oceans_GEBCO/GEBCO_2020/GEBCO_tiles/"
-tif_files = glob.glob(os.path.join(WaterdepthFolderPath, "*.tif"))
 
-#load the relevant distance file beforehand to safe time (Huge fileH 1.3 GB)
-DistancetoShorePath="/benchtop/projects/2021-m-stargardt-phd/02_GHR_2025/01_offshoreTiffs/GMT_intermediate_coast_distance_01d.tif"
+def waterDepthFromLocation(lat, lon, waterDepthFolderPath="/benchtop/shared_data/General_Bathymetric_Chart_of_the_Oceans_GEBCO/GEBCO_2020/GEBCO_tiles/"):
+    """
+    Returns the water depth (in meters) at a given geographic location (latitude and longitude).
 
-with rasterio.open(DistancetoShorePath) as src:
 
-    transformer = Transformer.from_crs("EPSG:4326", src.crs, always_xy=True)
+    Args:
+        lat (float): Latitude in decimal degrees.
+        lon (float): Longitude in decimal degrees.
 
-    # Read the raster band once
+    Returns:
+        float: Water depth at the specified location in meters (positive value).
+               Returns None if no valid depth is found.
+    """
+
+    depthFiles = glob.glob(os.path.join(waterDepthFolderPath, "*.tif"))
+    resultDepth = getRasterValueFromTifs(depthFiles, lat, lon)
+
+    return abs(resultDepth) if resultDepth is not None else None
+
+# %% function to calculate the distance to the coastline 
+
+def loadDistanceBand(path="/benchtop/projects/2021-m-stargardt-phd/02_GHR_2025/01_offshoreTiffs/GMT_intermediate_coast_distance_01d.tif"):
+    """
+    Load the raster band and set up the coordinate transformer.
+    Returns:
+        band (ndarray): Raster band values.
+        transformer (Transformer): Coordinate transformer.
+        transform (Affine): Raster transform object for converting coordinates.
+    """
+    src = rasterio.open(path)
     band = src.read(1)
+    transformer = Transformer.from_crs("EPSG:4326", src.crs, always_xy=True)
+    return band, transformer, src.transform
+
+
+def distanceToCoastline(lat, lon, transformer, band, transform):
+    """
+    Compute the distance to coastline from given lat/lon in km.
+    """
+    x, y = transformer.transform(lon, lat)
+    try:
+        row, col = rowcol(transform, x, y)
+        if 0 <= row < band.shape[0] and 0 <= col < band.shape[1]:
+            return band[row, col]
+        else:
+            print(f"Out of bounds for Lat: {lat}, Lon: {lon}")
+    except Exception as e:
+        print(f"Error at Lat: {lat}, Lon: {lon}: {e}")
+    return None
+
+
 
 # %%
-# TODO. we need to get lat and lon location data vor turibine and thereby receive depth values 
-lon=row['lon']
-lat=row['lat']
-result_depth = get_raster_value_from_tifs(tif_files, lat, lon)
-print(result_depth)
+def calculateOffshoreCapex(InputCapex,capacity,hubheight,waterdepth,coastDistance,rotordiam,shareTurb=0.449,shareFound=0.204,shareCable=0.181, shareOverhead=0.166,maxMonopolDepth=25,maxJacketDepth=55):
 
-# get relevant information about distance to coastine
-x, y = transformer.transform(lon, lat)
+    """
+    Scale a generic offshore CAPEX value based on water depth and distance to shore.
 
-try:
-    row, col = rowcol(src.transform, x, y)
+    The function splits the total input CAPEX into major cost components (turbine, foundation,
+    cable, overhead) and scales each individually based on project-specific parameters such as 
+    turbine size, water depth, and coastline distance.
 
-    0 <= row < band.shape[0] and 0 <= col < band.shape[1]:
-    value = band[row, col]
+    Args:
+        InputCapex (float): Total CAPEX per kW for a reference offshore wind plant (€/kW).
+        capacity (float): Turbine capacity in MW.
+        hubheight (float): Hub height in meters.
+        waterdepth (float): Site-specific water depth in meters.
+        coastDistance (float): Distance from site to nearest coast in kilometers.
+        rotordiam (float): Rotor diameter in meters.
+        shareTurb (float): Share of turbine cost in total CAPEX (default = 0.449).
+        shareFound (float): Share of foundation cost in total CAPEX (default = 0.204).
+        shareCable (float): Share of cable/connection cost in total CAPEX (default = 0.181).
+        shareOverhead (float): Share of overhead/miscellaneous costs in total CAPEX (default = 0.166).
+        maxMonopolDepth (float): Max depth suitable for monopile foundations (default = 25 m).
+        maxJacketDepth (float): Max depth suitable for jacket foundations (default = 55 m).
 
-
-except Exception as e:
-    print(f"Error at Lat: {lat}, Lon: {lon}: {e}")
-
-# %%
-def calculateOffshoreCapex(InputCapex,capacity,hubheight,waterdepth,coastDistance,rotordiam,shareTurb=0.3,shareFound=0.3,shareCable=0.3, shareOverhead=0.1,maxMonopolDepth=25,maxJacketDepth=55):
-
-    "thus function scales the geenric Offshore Capex regarding watrdepth and distance to the nearest coastline"
+    Returns:
+        float: Adjusted total offshore CAPEX (€/kW) scaled for given project parameters.
+    """
 
 
     assert np.isclose(shareTurb + shareFound + shareCable + shareOverhead,1.0,rtol=1e-9) , "Sum of all cost shares must equal 1"
@@ -55,6 +100,7 @@ def calculateOffshoreCapex(InputCapex,capacity,hubheight,waterdepth,coastDistanc
 
     averageDepthLiterature=17 # m 
     averageCoastDistance=27 # km 
+
 
     TurbineCostBase=InputCapex*shareTurb
     FoundCostbase=InputCapex*shareFound
@@ -91,12 +137,10 @@ def calculateOffshoreCapex(InputCapex,capacity,hubheight,waterdepth,coastDistanc
     # applicaton of cost for DC connection from power plant to coast as scaling factor 
     
     #
-    ratioCable=getCableCost(coastDistance)/getCableCost(averageCoastDistance)
+    ratioCable=getCableCost(coastDistance,capacity)/getCableCost(averageCoastDistance,baseCap)
 
     NewCableCost=CableCostBase*ratioCable
-
-
-    #New Capex
+    #Summing new cost components to new OffshoreCapex
 
     TotalOffshoreCapEx= NewTurbineCost+NewFoundationCost+NewCableCost+OverheadCostBase
 
@@ -104,9 +148,9 @@ def calculateOffshoreCapex(InputCapex,capacity,hubheight,waterdepth,coastDistanc
 
 
 # %%
-def get_raster_value_from_tifs(tif_paths, latitude, longitude):
-    for tif_path in tif_paths:
-        with rasterio.open(tif_path) as src:
+def getRasterValueFromTifs(tiffsPath, latitude, longitude):
+    for tifPath in tiffsPath:
+        with rasterio.open(tifPath) as src:
             bounds = src.bounds  # left, bottom, right, top
             
             # Check if the point is inside this raster
@@ -118,20 +162,34 @@ def get_raster_value_from_tifs(tif_paths, latitude, longitude):
                         return val[0]
                         
                 except Exception as e:
-                    print(f"Error reading from {tif_path}: {e}")
+                    print(f"Error reading from {tifPath}: {e}")
                     continue
     return None  # Not found in any tile
 
 # %%
-def getRatedCostfromWaterdepth(Depth,allowNegative=True):
-    # based on Rogeau et al (2023), Doi: 10.1016/j.rser.2023.113699
-    if (not allowNegative) and Depth<0:
+def getRatedCostfromWaterdepth(depth,allowNegative=True):
+    """
+    Estimate the rated cost of offshore wind turbine foundations based on water depth.
+
+    Args:
+        depth (float): Water depth at the installation site (in meters).
+        allowNegative (bool): Whether negative depth values (e.g., for land) are allowed.
+                              If False, raises ValueError when depth < 0.
+
+    Returns:
+        float: Rated cost in €/kW for the specified water depth.
+
+    Reference:
+        Rogeau et al. (2023), "Review and modeling of offshore wind CAPEX",
+        Renewable and Sustainable Energy Reviews, DOI: 10.1016/j.rser.2023.113699
+    """
+    if (not allowNegative) and depth<0:
         raise ValueError('Depth must not be negative when not allowNegative')
-    if  Depth <25:
+    if  depth <25:
         c1=181
         c2=552
         c3=370    
-    elif Depth >=25 and Depth <=55:
+    elif depth >=25 and depth <=55:
         c1=103
         c2=-2043
         c3=478
@@ -141,14 +199,14 @@ def getRatedCostfromWaterdepth(Depth,allowNegative=True):
         c3=1223
 
     
-    RatedCost=c1*(Depth**2)+c2*Depth+c3*1000
+    ratedCost=c1*(depth**2)+c2*depth+c3*1000
 
-    return RatedCost
+    return ratedCost
 
 # %%
 def getCableCost(distance, capacity):
 
-    """A function to get the cost for connecting a off shore windpower plant to the coastline according to Rogeau et al (2023), Doi: 10.1016/j.rser.2023.113699
+    """A function to get the cost for connecting a off shore windpower plant to the coastline.
 
     Parameters
     ----------
@@ -157,6 +215,11 @@ def getCableCost(distance, capacity):
     capacity :  float
                 powerplant's capacity in MW
 
+    ____________
+
+    Reference:
+    Rogeau et al. (2023), "Review and modeling of offshore wind CAPEX",
+    Renewable and Sustainable Energy Reviews, DOI: 10.1016/j.rser.2023.113699            
     """
 
     FixeCost=0
@@ -165,135 +228,5 @@ def getCableCost(distance, capacity):
     cableCost=FixeCost+variableCost
 
     return cableCost
-
-
-# %%
-def onshore_tcc(
-    cp, hh, rd, gdp_escalator=1, blade_material_escalator=1, blades=3
-):
-    """
-    A function to determine the turbine capital cost (TCC) of a 3 blade standar onshore wind turbine based capacity, hub height and rotor diameter values according to the cost model by Fingersh et al. [1].
-
-    Parameters
-    ----------
-    cp : numeric or array-like
-        Turbine's capacity in kW
-    hh : numeric or array-like
-        Turbine's hub height in m
-    rd : numeric or array-like
-        Turbine's rotor diamter in m
-    gdp_escalator : int, optional
-        Labor cost escalator, by default 1
-    blade_material_escalator : int, optional
-        Blade material cost escalator, by default 1
-    blades : int, optional
-        Number of blades, by default 3
-
-    Returns
-    -------
-    numeric or array-like
-        Turbine's turbine capital cost (TCC) in monetary units.
-
-    References
-    ---------
-    [1] Fingersh, L., Hand, M., & Laxson, A. (2006). Wind Turbine Design Cost and Scaling Model. NREL. https://www.nrel.gov/docs/fy07osti/40566.pdf
-
-    """
-    # initialize OnshoreParameters class and feed with custom param values
-
-
-    rr = rd / 2
-    sa = np.pi * rr * rr
-
-    # Blade Cost
-    singleBladeMass = 0.4948 * np.power(rr, 2.53)
-    singleBladeCost = (
-        (0.4019 * np.power(rr, 3) - 21051) * blade_material_escalator
-        + 2.7445 * np.power(rr, 2.5025) * gdp_escalator
-    ) * (1 - 0.28)
-
-    # Hub
-    hubMass = 0.945 * singleBladeMass + 5680.3
-    hubCost = hubMass * 4.25
-
-    # Pitch and bearings
-    # pitchBearingMass = 0.1295 * (singleBladeMass * blades) + 491.31
-    # pitchSystemMass = pitchBearingMass*1.328+555
-    pitchSystemCost = 2.28 * (0.2106 * np.power(rd, 2.6578))
-
-    # Spinner and nosecone
-    noseConeMass = 18.5 * rd - 520.5
-    noseConeCost = noseConeMass * 5.57
-
-    # Low Speed Shaft
-    # lowSpeedShaftMass = 0.0142 * np.power(rd, 2.888)
-    lowSpeedShaftCost = 0.01 * np.power(rd, 2.887)
-
-    # Main bearings
-    bearingMass = (rd * 8 / 600 - 0.033) * 0.0092 * np.power(rd, 2.5)
-    bearingCost = 2 * bearingMass * 17.6
-
-    # Gearbox
-    # Gearbox not included for direct drive turbines
-
-    # Break, coupling, and others
-    breakCouplingCost = 1.9894 * cp - 0.1141
-    # breakCouplingMass = breakCouplingCost/10
-
-    # Generator (Assuming direct drive)
-    # generatorMass = 6661.25 * np.power(lowSpeedShaftTorque, 0.606) # wtf is the torque?
-    generatorCost = cp * 219.33
-
-    # Electronics
-    electronicsCost = cp * 79
-
-    # Yaw drive and bearing
-    # yawSystemMass = 1.6*(0.0009*np.power(rd, 3.314))
-    yawSystemCost = 2 * (0.0339 * np.power(rd, 2.964))
-
-    # Mainframe (Assume direct drive)
-    mainframeMass = 1.228 * np.power(rd, 1.953)
-    mainframeCost = 627.28 * np.power(rd, 0.85)
-
-    # Platform and railings
-    platformAndRailingMass = 0.125 * mainframeMass
-    platformAndRailingCost = platformAndRailingMass * 8.7
-
-    # Electrical Connections
-    electricalConnectionCost = cp * 40
-
-    # Hydraulic and Cooling systems
-    # hydraulicAndCoolingSystemMass = 0.08 * cp
-    hydraulicAndCoolingSystemCost = cp * 12
-
-    # Nacelle Cover
-    nacelleCost = 11.537 * cp + 3849.7
-    # nacelleMass = nacelleCost/10
-
-    # Tower
-    towerMass = 0.2694 * sa * hh + 1779
-    towerCost = towerMass * 1.5
-
-    # Add up the turbine capital cost
-    turbineCapitalCost = (
-        singleBladeCost * blades
-        + hubCost
-        + pitchSystemCost
-        + noseConeCost
-        + lowSpeedShaftCost
-        + bearingCost
-        + breakCouplingCost
-        + generatorCost
-        + electronicsCost
-        + yawSystemCost
-        + mainframeCost
-        + platformAndRailingCost
-        + electricalConnectionCost
-        + hydraulicAndCoolingSystemCost
-        + nacelleCost
-        + towerCost
-    )
-
-    return turbineCapitalCost
 
 
