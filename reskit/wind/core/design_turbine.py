@@ -9,8 +9,20 @@ from .power_curve import compute_specific_power
 from reskit.parameters.parameters import OnshoreParameters
 
 
-def onshore_turbine_from_avg_wind_speed(wind_speed, constant_rotor_diam=None, base_capacity=None, base_hub_height=None, base_rotor_diam=None, reference_wind_speed=None, min_tip_height=None, min_specific_power=None):
-    """ 
+def onshore_turbine_from_avg_wind_speed(
+    wind_speed,
+    constant_rotor_diam=None,
+    base_capacity=None,
+    base_hub_height=None,
+    base_rotor_diam=None,
+    reference_wind_speed=None,
+    min_tip_height=None,
+    min_specific_power=None,
+    max_hub_height=None,
+    tech_year=2050,
+    baseline_turbine_fp=None,
+):
+    """
     Suggest onshore turbine design characteristics (capacity, hub height, rotor diameter, specific power) for a 2050 European context based on an average wind speed value.
     The default values and the function's normalization correspond to the baseline turbine design considered by Ryberg et al. [1] for a wind speed equal to 6.7 m/s. See notes.
 
@@ -40,6 +52,17 @@ def onshore_turbine_from_avg_wind_speed(wind_speed, constant_rotor_diam=None, ba
     min_specific_power : numeric, optional
         Minimum specific power allowed in kw/m2, by default 180.
 
+    max_hub_height : numeric, optional
+        Maximum allowed hub height, any higher optimal hub height will be reduced to this
+        value, by default 200.
+
+    tech_year : int, optional
+        The year definining the baseline turbine design that shall be used.
+
+    baseline_turbine_fp : str, optional
+        A json or csv file that contains baseline turbine parameters. Will
+        replace the default data.
+
     Returns
     -------
     dict or pandas DataFrame
@@ -51,54 +74,88 @@ def onshore_turbine_from_avg_wind_speed(wind_speed, constant_rotor_diam=None, ba
 
     References
     -------
-    [1] David S. Ryberg, Dilara C. Caglayan, Sabrina Schmitt, Jochen Linssen, Detlef Stolten, Martin Robinius - The Future of European Onshore Wind Energy Potential: 
+    [1] David S. Ryberg, Dilara C. Caglayan, Sabrina Schmitt, Jochen Linssen, Detlef Stolten, Martin Robinius - The Future of European Onshore Wind Energy Potential:
     Detailed Distributionand Simulation of Advanced Turbine Designs, Energy, 2019, available at https://www.sciencedirect.com/science/article/abs/pii/S0360544219311818
     """
-    # retrieve default values if base values are not given explicitly
-    if constant_rotor_diam is None: constant_rotor_diam=OnshoreParameters.constant_rotor_diam
-    if base_capacity is None: base_capacity=OnshoreParameters.base_capacity
-    if base_hub_height is None: base_hub_height=OnshoreParameters.base_hub_height
-    if base_rotor_diam is None: base_rotor_diam=OnshoreParameters.base_rotor_diam
-    if reference_wind_speed is None: reference_wind_speed=OnshoreParameters.reference_wind_speed
-    if min_tip_height is None: min_tip_height=OnshoreParameters.min_tip_height
-    if min_specific_power is None: min_specific_power=OnshoreParameters.min_specific_power
-    
+    OnshoreParams = OnshoreParameters(fp=baseline_turbine_fp, year=tech_year)
+
+    # define a dict to hold the parameter values
+    baseline_params = dict()
+
+    # iterate over arguments and retrieve defaults from OnshoreParams if not given explicitly
+    for arg, val in locals().items():
+        if arg in [
+            "wind_speed",
+            "baseline_turbine_fp",
+            "OnshoreParams",
+            "baseline_params",
+        ]:
+            continue
+        print(arg, val)
+        if val is None:
+            val = getattr(OnshoreParams, arg)
+        baseline_params[arg] = val
+
     wind_speed = np.array(wind_speed)
     multi = wind_speed.size > 1
-    
+
     # Design Specific Power
-    scaling = compute_specific_power(base_capacity, base_rotor_diam) / (np.exp(0.53769024 * np.log(reference_wind_speed) + 4.74917728))
+    scaling = compute_specific_power(
+        baseline_params["base_capacity"], baseline_params["base_rotor_diam"]
+    ) / (
+        np.exp(
+            0.53769024 * np.log(baseline_params["reference_wind_speed"]) + 4.74917728
+        )
+    )
     specific_power = scaling * np.exp(0.53769024 * np.log(wind_speed) + 4.74917728)
     if multi:
-        lt180 = specific_power < min_specific_power
+        lt180 = specific_power < baseline_params["min_specific_power"]
         if lt180.any():
-            specific_power[lt180] = min_specific_power
+            specific_power[lt180] = baseline_params["min_specific_power"]
     else:
-        if specific_power < min_specific_power:
-            specific_power = min_specific_power
+        if specific_power < baseline_params["min_specific_power"]:
+            specific_power = baseline_params["min_specific_power"]
 
-    if constant_rotor_diam:
-        rotor_diam = base_rotor_diam
+    if baseline_params["constant_rotor_diam"]:
+        rotor_diam = baseline_params["base_rotor_diam"]
         capacity = specific_power * np.pi * np.power((rotor_diam / 2), 2) / 1000
     else:
-        capacity = base_capacity
+        capacity = baseline_params["base_capacity"]
         rotor_diam = 2 * np.sqrt(capacity * 1000 / specific_power / np.pi)
 
     # Design Hub Height
-    scaling = base_hub_height / (np.exp(-0.84976623 * np.log(reference_wind_speed) + 6.1879937))
+    scaling = baseline_params["base_hub_height"] / (
+        np.exp(
+            -0.84976623 * np.log(baseline_params["reference_wind_speed"]) + 6.1879937
+        )
+    )
     hub_height = scaling * np.exp(-0.84976623 * np.log(wind_speed) + 6.1879937)
     if multi:
-        lt20 = hub_height < (rotor_diam / 2 + min_tip_height)
-        if lt20.any():
-            if constant_rotor_diam:
-                hub_height[lt20] = rotor_diam / 2 + min_tip_height
+        lowerlt = hub_height < (rotor_diam / 2 + baseline_params["min_tip_height"])
+        if lowerlt.any():
+            if baseline_params["constant_rotor_diam"]:
+                hub_height[lowerlt] = rotor_diam / 2 + baseline_params["min_tip_height"]
             else:
-                hub_height[lt20] = rotor_diam[lt20] / 2 + min_tip_height
-    else:
-        if hub_height < (rotor_diam / 2 + min_tip_height):
-            hub_height = rotor_diam / 2 + min_tip_height
+                hub_height[lowerlt] = (
+                    rotor_diam[lowerlt] / 2 + baseline_params["min_tip_height"]
+                )
 
-    output = dict(capacity=capacity, hub_height=hub_height, rotor_diam=rotor_diam, specific_power=specific_power)
+        upperlt = hub_height > baseline_params["max_hub_height"]
+        if upperlt.any():
+            hub_height[upperlt] = baseline_params["max_hub_height"]
+
+    else:
+        if hub_height < (rotor_diam / 2 + baseline_params["min_tip_height"]):
+            hub_height = rotor_diam / 2 + baseline_params["min_tip_height"]
+        elif hub_height > baseline_params["max_hub_height"]:
+            hub_height = baseline_params["max_hub_height"]
+
+    output = dict(
+        capacity=capacity,
+        hub_height=hub_height,
+        rotor_diam=rotor_diam,
+        specific_power=specific_power,
+    )
     if multi:
         return pd.DataFrame(output)
     else:
