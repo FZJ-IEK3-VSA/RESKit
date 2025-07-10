@@ -1,5 +1,5 @@
 # %%
-
+ # M.Stargardt - 10.07.2025
 import os
 import pickle
 import glob
@@ -8,6 +8,7 @@ from rasterio.transform import rowcol
 from pyproj import Transformer
 import numpy as np
 from onshore_cost_model import onshore_tcc
+from reskit.default_paths import DEFAULT_PATHS
 
 
 # %%
@@ -16,7 +17,7 @@ from onshore_cost_model import onshore_tcc
 def waterDepthFromLocation(
     lat,
     lon,
-    waterDepthFolderPath="/benchtop/shared_data/General_Bathymetric_Chart_of_the_Oceans_GEBCO/GEBCO_2020/GEBCO_tiles/",
+    waterDepthFolderPath=DEFAULT_PATHS.get("waterdepthFile"),
 ):
     """
     Returns the water depth (in meters) at a given geographic location (latitude and longitude).
@@ -41,7 +42,7 @@ def waterDepthFromLocation(
 
 
 def loadDistanceBand(
-    path="/benchtop/projects/2021-m-stargardt-phd/02_GHR_2025/01_offshoreTiffs/GMT_intermediate_coast_distance_01d.tif",
+    path=DEFAULT_PATHS.get("distancetoCoast"),
 ):
     """
     Load the raster band and set up the coordinate transformer.
