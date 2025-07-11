@@ -1,0 +1,83 @@
+on:
+  push:
+    branches: ["**"]
+  # Allows to trigger the workflow manually
+  pull_request:
+    branches: ["dev","master"]
+  schedule:
+    # * is a special character in YAML so you have to quote this string
+    # Some Examples for cron syntax https://crontab.guru/Examples.html
+    # Schedules job at any point after 12 pm
+    - cron: "0 0 * * *"
+    # Weekly after sunday
+    # - cron: 0 0 * * 0
+
+jobs:
+  TestGeokitDevLocal:
+    name: Test local development Version on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          [
+            "ubuntu-latest",
+            "ubuntu-22.04",
+            "macos-latest",
+            "macos-13",
+            "windows-latest",
+            "windows-2022",
+          ]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          repository: FZJ-IEK3-VSA/RESKit
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          miniforge-version: latest
+          channels: conda-forge
+          activate-environment: reskit_env
+          conda-remove-defaults: true
+      - name: Run tests
+        shell: pwsh
+        run: |
+          ls
+          echo "LS Done"
+          mamba env create --name reskit_env --yes --file requirements-dev.yml
+          conda run --name reskit_env pip install . --no-deps
+          echo "Installation done"
+          conda list --name reskit_env
+          echo "libaries printed"
+          echo "start pytest"
+          conda run --name reskit_env pytest -vv
+          echo "Pytest done"
+      - name: Run Examples
+        shell: pwsh
+        run: |
+          ls
+          - conda run -n reskit_env jupyter nbconvert --execute --to=python examples/1.01-Weather-Reading_Weather_Data.ipynb
+          - conda run -n reskit_env jupyter nbconvert --execute --to=python examples/1.03-Weather-Vertically_project_wind_speed.ipynb
+          - conda run -n reskit_env jupyter nbconvert --execute --to=python examples/2.01-Economic-Compute_levelized_cost_of_electricity.ipynb
+          - conda run -n reskit_env jupyter nbconvert --execute --to=python examples/3.01a-Wind-Load_Power_Curve.ipynb
+          - conda run -n reskit_env jupyter nbconvert --execute --to=python examples/3.01b-Wind-Synthetic_Power_Curve.ipynb
+          - conda run -n reskit_env jupyter nbconvert --execute --to=python examples/3.02-Wind-Convolute_a_Power_Curve.ipynb
+          - conda run -n reskit_env jupyter nbconvert --execute --to=python examples/3.03-Wind-Design_Onshore_Turbine.ipynb
+          - conda run -n reskit_env jupyter nbconvert --execute --to=python examples/3.04-Wind-Estimate_Turbine_Capital_Cost.ipynb
+          - conda run -n reskit_env jupyter nbconvert --execute --to=python examples/3.05a-Wind-Basic_Turbine_Simulation.ipynb
+          - conda run -n reskit_env jupyter nbconvert --execute --to=python examples/3.05b-Wind-Turbine_Simulation_Workflow.ipynb
+          - conda run -n reskit_env jupyter nbconvert --execute --to=python examples/3.05c-Wind-Automated_Turbine_Simulation_Workflow.ipynb
+          - conda run -n reskit_env jupyter nbconvert --execute --to=python examples/4.01-Solar-Load_Module.ipynb
+          - conda run -n reskit_env jupyter nbconvert --execute --to=python examples/4.03-Solar-Automated_Simulation_Workflow.ipynb
+          - conda run -n reskit_env jupyter nbconvert --execute --to=python examples/ETHOS.RESKit.Wind.ipynb
+          - conda run -n reskit_env jupyter nbconvert --execute --to=python examples/Solar_Workflows.ipynb
+          - conda run -n reskit_env jupyter nbconvert --execute --to=python examples/Wind_Workflows.ipynb
+  linter_name:
+    name: runner / black formatter
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: rickstaa/action-black@v1
+        with:
+          black_args: ". --check"
