@@ -7,6 +7,8 @@ import rasterio
 from rasterio.transform import rowcol
 from pyproj import Transformer
 import numpy as np
+import geokit as gk
+
 
 from reskit.default_paths import DEFAULT_PATHS
 from reskit.parameters.parameters import OffshoreParameters
@@ -59,7 +61,7 @@ def loadDistanceBand(path=DEFAULT_PATHS.get("distancetoCoast")):
     return band, transformer, src.transform
 
 
-def distanceToCoastline(latitude, longitude, band, transformer, transformFunc):
+def distanceToCoastlineOld(latitude, longitude, band, transformer, transformFunc):
     """
     Computes the distance to the coastline from a given geographic point.
 
@@ -83,6 +85,30 @@ def distanceToCoastline(latitude, longitude, band, transformer, transformFunc):
     except Exception as e:
         print(f"Error at Lat: {latitude}, Lon: {longitude}: {e}")
     return None
+
+def distanceToCoastline(latitude, longitude,path=DEFAULT_PATHS.get("distancetoCoast")):
+    """
+    Computes the distance to the coastline from a given geographic point.
+
+    Args:
+        latitude (float): Latitude in decimal degrees.
+        longitude (float): Longitude in decimal degrees.
+        path (str, optional): File path to the distance-to-coast raster.
+
+
+    Returns:
+        float or None: Distance in kilometers, or None if point is out of bounds or an error occurs.
+    """
+
+    try:
+        value=gk.raster.interpolateValues(path,(longitude,latitude))
+        
+        return value
+
+    except Exception as e:
+        print(f"Error at Lat: {latitude}, Lon: {longitude}: {e}")
+    return None
+
 
 
 # %%
@@ -231,18 +257,15 @@ def getRasterValueFromTifs(tiffPaths, latitude, longitude):
         float or None: The value from the raster at the location, or None if not found.
     """
     for tifPath in tiffPaths:
-        with rasterio.open(tifPath) as src:
-            bounds = src.bounds
-            if (
-                bounds.left <= longitude <= bounds.right
-                and bounds.bottom <= latitude <= bounds.top
-            ):
-                try:
-                    for val in src.sample([(longitude, latitude)]):
-                        return val[0]
-                except Exception as e:
-                    print(f"Error reading from {tifPath}: {e}")
-                    continue
+        try:
+            value = gk.raster.interpolateValues(tifPath, (longitude, latitude))
+            if value is not None and not np.isnan(value):
+                return value
+            else:
+                print(f"Got NaN from {tifPath}, continuing...")
+        except Exception as e:
+            print(f"Error reading from {tifPath}: {e}")
+            continue
     return None
 
 

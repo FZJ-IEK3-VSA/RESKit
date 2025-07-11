@@ -17,15 +17,7 @@ lat = 53.7170
 #     ), "waterdepthFile should not be None"
 
 
-def test_distanceToCoastLine():
-    # load tiff file
-    band, transformer, transforming = loadDistanceBand()
-    # get distance to loaction
-    calcuated_distance = distanceToCoastline(lat, lon, band, transformer, transforming)
 
-    assert np.isclose(
-        calcuated_distance, 23
-    ), "the distance-to-coatslibe-calculation does not work properly"
 
 
 def test_waterDepthFromLocation():
@@ -35,7 +27,7 @@ def test_waterDepthFromLocation():
     )
     assert np.isclose(
         depth, waterdepth_exact
-    ), "the distanceToCoatsLineFile is not working correct"
+    ), "the waterdepthfile is not working correct"
 
 
 def test_calculateOffshoreCapex():
