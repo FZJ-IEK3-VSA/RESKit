@@ -1,5 +1,6 @@
-from reskit.wind.economic.offshore_cost_model import offshore_turbine_capex
+from reskit.wind.economic.offshore_cost_model import *
 import numpy as np
+
 
 
 def test_offshore_turbine_capex():
@@ -8,3 +9,4 @@ def test_offshore_turbine_capex():
     )
 
     assert np.isclose(capex / 4200, 1949.3177174432028)
+

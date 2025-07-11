@@ -12,6 +12,7 @@ from reskit.default_paths import DEFAULT_PATHS
 from reskit.parameters.parameters import OffshoreParameters
 
 
+
 # %%
 
 
@@ -87,6 +88,7 @@ def distanceToCoastline(latitude, longitude, band, transformer, transformFunc):
 
 # %%
 def calculateOffshoreCapex(
+    inputCapex,
     capacity,
     hubHeight,
     waterDepth,
@@ -101,7 +103,6 @@ def calculateOffshoreCapex(
     maxJacketDepth=55,
     litValueAvgDepth=17,
     litValueAvgDistCoast=27,
-    inputCapex=None,
     baseCap=None,
     baseHubHeight=None,
     baseRotorDiam=None,
@@ -114,7 +115,8 @@ def calculateOffshoreCapex(
     cable, overhead) and scales each individually based on project-specific parameters.
 
     Args:
-        capacity (float): Turbine rated capacity in MW.
+        inputCapex (float): Reference CAPEX per kW (€/kW) that should be scaled.
+        capacity (float): Turbine rated capacity in kW.
         hubHeight (float): Hub height in meters.
         waterDepth (float): Site-specific water depth in meters.
         coastDistance (float): Distance from site to nearest coast in kilometers.
@@ -128,7 +130,6 @@ def calculateOffshoreCapex(
         maxJacketDepth (float, optional): Maximum depth for jacket foundations. Default is 55.
         litValueAvgDepth (float, optional): Reference depth in CAPEX literature. Default is 17.
         litValueAvgDistCoast (float, optional): Reference coast distance. Default is 27.
-        inputCapex (float, optional): Reference CAPEX per kW (€/kW). Loaded from CSV if not provided.
         baseCap (float, optional): Reference turbine capacity. Loaded from CSV if not provided.
         baseHubHeight (float, optional): Reference hub height. Loaded from CSV if not provided.
         baseRotorDiam (float, optional): Reference rotor diameter. Loaded from CSV if not provided.
@@ -194,8 +195,8 @@ def calculateOffshoreCapex(
     newTurbineCost = turbineCostBase * costRatioTurbine
 
     # Scale foundation cost
-    depthBaseCost = getRatedCostFromWaterDepth(litValueAvgDepth)
-    depthPlantCost = getRatedCostFromWaterDepth(waterDepth)
+    depthBaseCost = getRatedCostFromWaterDepth(litValueAvgDepth,maxMonopileDepth,maxJacketDepth)
+    depthPlantCost = getRatedCostFromWaterDepth(waterDepth, maxMonopileDepth,maxJacketDepth)
     costRatioFoundation = depthPlantCost / depthBaseCost
     newFoundationCost = foundCostBase * costRatioFoundation
 
@@ -243,7 +244,7 @@ def getRasterValueFromTifs(tiffPaths, latitude, longitude):
 
 
 # %%
-def getRatedCostFromWaterDepth(depth, allowNegative=True):
+def getRatedCostFromWaterDepth(depth,maxMonopileDepth=25,maxJacketDepth=55):
     """
     Estimates the rated cost of offshore wind turbine foundations based on water depth.
 
@@ -257,12 +258,12 @@ def getRatedCostFromWaterDepth(depth, allowNegative=True):
     Reference:
         Rogeau et al. (2023), Renewable and Sustainable Energy Reviews.
     """
-    if not allowNegative and depth < 0:
-        raise ValueError("Depth must not be negative when not allowNegative")
+    depth=abs(depth)
 
-    if depth < 25:
+
+    if depth <maxMonopileDepth:
         c1, c2, c3 = 181, 552, 370
-    elif depth <= 55:
+    elif depth <= maxJacketDepth:
         c1, c2, c3 = 103, -2043, 478
     else:
         c1, c2, c3 = 0, 697, 1223
@@ -277,8 +278,8 @@ def getCableCost(distance, capacity, variableCostFactor=1.35, fixedCost=0):
 
     Args:
         distance (float): Distance to coastline in kilometers.
-        capacity (float): Power plant's capacity in MW.
-        variableCostFactor (float, optional): Cost multiplier in €/kW/km (default = 1.35).
+        capacity (float): Power plant's capacity in kW.
+        variableCostFactor (float, optional): Cost multiplier in €/MW/km (default = 1.35).
         fixedCost (float, optional): Fixed connection cost (default = 0).
 
     Returns:
@@ -292,6 +293,8 @@ def getCableCost(distance, capacity, variableCostFactor=1.35, fixedCost=0):
     assert capacity > 0, " turbine capacity must be larger than 0"
     assert variableCostFactor > 0, "cost factor must be larger tan 0"
     assert fixedCost >= 0, "fixed Cost must be postive or 0"
+
+    capacity=capacity/1000 #required adaption of numbers
 
     variableCost = variableCostFactor * distance * capacity
     cableCost = fixedCost + variableCost
