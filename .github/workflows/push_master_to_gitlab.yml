@@ -3,8 +3,6 @@ name: Push master to Jugit
 on:
   push:
     branches: [ master ]
-  pull_request:
-    branches: ["dev","master"]
 
 jobs:
   build:
