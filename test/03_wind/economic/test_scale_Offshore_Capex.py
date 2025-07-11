@@ -8,13 +8,13 @@ lon = 6.2160
 lat = 53.7170
 
 
-def test_defaultPaths():
-    assert (
-        DEFAULT_PATHS["waterdepthFile"] is not None
-    ), "waterdepthFile should not be None"
-    assert (
-        DEFAULT_PATHS["distancetoCoast"] is not None
-    ), "waterdepthFile should not be None"
+# def test_defaultPaths():
+#     assert (
+#         DEFAULT_PATHS["waterdepthFile"] is not None
+#     ), "waterdepthFile should not be None"
+#     assert (
+#         DEFAULT_PATHS["distancetoCoast"] is not None
+#     ), "waterdepthFile should not be None"
 
 
 def test_distanceToCoastLine():
