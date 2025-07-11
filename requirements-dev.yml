@@ -27,3 +27,4 @@ dependencies:
   - pvlib-python=0.9.0
   - windpowerlib
   - nbconvert
+  - black-jupyter
