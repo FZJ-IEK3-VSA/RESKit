@@ -12,7 +12,6 @@ from reskit.default_paths import DEFAULT_PATHS
 from reskit.parameters.parameters import OffshoreParameters
 
 
-
 # %%
 
 
@@ -195,8 +194,12 @@ def calculateOffshoreCapex(
     newTurbineCost = turbineCostBase * costRatioTurbine
 
     # Scale foundation cost
-    depthBaseCost = getRatedCostFromWaterDepth(litValueAvgDepth,maxMonopileDepth,maxJacketDepth)
-    depthPlantCost = getRatedCostFromWaterDepth(waterDepth, maxMonopileDepth,maxJacketDepth)
+    depthBaseCost = getRatedCostFromWaterDepth(
+        litValueAvgDepth, maxMonopileDepth, maxJacketDepth
+    )
+    depthPlantCost = getRatedCostFromWaterDepth(
+        waterDepth, maxMonopileDepth, maxJacketDepth
+    )
     costRatioFoundation = depthPlantCost / depthBaseCost
     newFoundationCost = foundCostBase * costRatioFoundation
 
@@ -244,7 +247,7 @@ def getRasterValueFromTifs(tiffPaths, latitude, longitude):
 
 
 # %%
-def getRatedCostFromWaterDepth(depth,maxMonopileDepth=25,maxJacketDepth=55):
+def getRatedCostFromWaterDepth(depth, maxMonopileDepth=25, maxJacketDepth=55):
     """
     Estimates the rated cost of offshore wind turbine foundations based on water depth.
 
@@ -258,10 +261,9 @@ def getRatedCostFromWaterDepth(depth,maxMonopileDepth=25,maxJacketDepth=55):
     Reference:
         Rogeau et al. (2023), Renewable and Sustainable Energy Reviews.
     """
-    depth=abs(depth)
+    depth = abs(depth)
 
-
-    if depth <maxMonopileDepth:
+    if depth < maxMonopileDepth:
         c1, c2, c3 = 181, 552, 370
     elif depth <= maxJacketDepth:
         c1, c2, c3 = 103, -2043, 478
@@ -294,7 +296,7 @@ def getCableCost(distance, capacity, variableCostFactor=1.35, fixedCost=0):
     assert variableCostFactor > 0, "cost factor must be larger tan 0"
     assert fixedCost >= 0, "fixed Cost must be postive or 0"
 
-    capacity=capacity/1000 #required adaption of numbers
+    capacity = capacity / 1000  # required adaption of numbers
 
     variableCost = variableCostFactor * distance * capacity
     cableCost = fixedCost + variableCost

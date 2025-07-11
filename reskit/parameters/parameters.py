@@ -334,7 +334,7 @@ class OffshoreParameters(Parameters):
         "anchor",
         "turbine_count",
         "turbine_spacing",
-        "turbine_row_spacing"
+        "turbine_row_spacing",
     ]
     # optional additional arguments with fallback values which mean the parameter has no effect
     opt_args = {
