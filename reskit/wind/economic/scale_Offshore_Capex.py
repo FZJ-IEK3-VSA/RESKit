@@ -3,9 +3,6 @@
 import os
 import pickle
 import glob
-import rasterio
-from rasterio.transform import rowcol
-from pyproj import Transformer
 import numpy as np
 import geokit as gk
 
@@ -43,50 +40,7 @@ def waterDepthFromLocation(
 # if you want to execute the distance to coastline more often, please separete the loading of the taserband to increase execution time
 
 
-def loadDistanceBand(path=DEFAULT_PATHS.get("distancetoCoast")):
-    """
-    Loads the raster band and sets up the coordinate transformer.
-
-    Args:
-        path (str, optional): File path to the distance-to-coast raster.
-
-    Returns:
-        ndarray: Raster band values.
-        Transformer: Coordinate transformer.
-        Affine: Raster transform object for coordinate conversion.
-    """
-    src = rasterio.open(path)
-    band = src.read(1)
-    transformer = Transformer.from_crs("EPSG:4326", src.crs, always_xy=True)
-    return band, transformer, src.transform
-
-
-def distanceToCoastlineOld(latitude, longitude, band, transformer, transformFunc):
-    """
-    Computes the distance to the coastline from a given geographic point.
-
-    Args:
-        latitude (float): Latitude in decimal degrees.
-        longitude (float): Longitude in decimal degrees.
-        band (ndarray): Raster band values.
-        transformer (Transformer): Coordinate transformer.
-        transformFunc (Affine): Raster transform object.
-
-    Returns:
-        float or None: Distance in kilometers, or None if point is out of bounds or an error occurs.
-    """
-    x, y = transformer.transform(longitude, latitude)
-    try:
-        row, col = rowcol(transformFunc, x, y)
-        if 0 <= row < band.shape[0] and 0 <= col < band.shape[1]:
-            return band[row, col]
-        else:
-            print(f"Out of bounds for Lat: {latitude}, Lon: {longitude}")
-    except Exception as e:
-        print(f"Error at Lat: {latitude}, Lon: {longitude}: {e}")
-    return None
-
-def distanceToCoastline(latitude, longitude,path=DEFAULT_PATHS.get("distancetoCoast")):
+def distanceToCoastline(latitude, longitude, path=DEFAULT_PATHS.get("distancetoCoast")):
     """
     Computes the distance to the coastline from a given geographic point.
 
@@ -101,14 +55,13 @@ def distanceToCoastline(latitude, longitude,path=DEFAULT_PATHS.get("distancetoCo
     """
 
     try:
-        value=gk.raster.interpolateValues(path,(longitude,latitude))
-        
+        value = gk.raster.interpolateValues(path, (longitude, latitude))
+
         return value
 
     except Exception as e:
         print(f"Error at Lat: {latitude}, Lon: {longitude}: {e}")
     return None
-
 
 
 # %%
