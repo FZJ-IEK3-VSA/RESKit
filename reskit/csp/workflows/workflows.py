@@ -254,7 +254,7 @@ def CSP_PTR_ERA5_specific_dataset(
     wf.get_timesteps()
 
     # apply elevation
-    wf.apply_eapply_azimuthlevation(elev_path)
+    wf.apply_elevation(elev_path)
     wf.apply_azimuth()
     # 5) calculate the solar position based on pvlib
 
