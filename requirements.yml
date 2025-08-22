@@ -10,7 +10,7 @@ dependencies:
   - openpyxl
   - numpy
   - numba
-  - scipy <=1.81
+  - scipy <=1.8.1
   - scikit-learn
   - geokit >=1.4.0
   - gdal =3.4.*
