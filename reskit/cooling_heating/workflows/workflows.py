@@ -68,7 +68,7 @@ def air_cooling_wenzel2025(placements, era5_path, temperatureCoolant, designTemp
 
 
     return wf.to_xarray(
-                output_netcdf_path=output_netcdf_path, output_variables=output_variables
+                output_netcdf_path=output_netcdf_path, output_variables=output_variables, custom_attributes=wf.units
             )
 
 def air_source_heat_pump(placements, era5_path, targetTemperature=100, secondLawEfficiency=0.5, output_netcdf_path = None, output_variables=None):
@@ -104,5 +104,5 @@ def air_source_heat_pump(placements, era5_path, targetTemperature=100, secondLaw
     wf.sim_data["electricity_input"] = -wf.sim_data["conversion_factor_electricity"] * np.array(wf.placements["capacity"])
     
     return wf.to_xarray(
-                output_netcdf_path=output_netcdf_path, output_variables=output_variables
+                output_netcdf_path=output_netcdf_path, output_variables=output_variables, custom_attributes=wf.units
             )
