@@ -47,21 +47,8 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
                     [1.451, 1.394, 1.341, 1.292, 1.246, 1.204, 1.164, 1.127, 1.093, 1.06, 1.029, 1]] ).T #density in kg/m3
         self.airData = pd.DataFrame(index=[-30,-20,-10,0,10,20,30,40,50,60,70,80], data=airData, columns=["cp", "density"]) #index referes to ambient air temperature
 
-        units = {
-            "capacity": "kW_th",
-            "capacity_factor": "-",
-            "conversion_factor_electricity" : "kWh_el/kWh_th",
-            "conversion_factor_fan_electricity" : "kWh_el/kWh_th",
-            "conversion_factor_pump_electricity" : "kWh_el/kWh_th",
-            "electricity_input": "kWh_el",
-            "electricity_input_fan": "kWh_el",
-            "electricity_input:pump": "kWh_el",
-        }
-        self.units = OrderedDict(units)
-        
 
-
-    def calculate_fan_power(self, temperatureCoolant, heatTransferDelta=5, efficiencyFan=0.7, pressureDropAir=261, designTemperature=None):
+    def calculate_fan_power_air_cooling(self, temperatureCoolant, heatTransferDelta=5, efficiencyFan=0.7, pressureDropAir=261, designTemperature=None):
         """
         Function to calculate the fan power demand of an air cooling model.
 
@@ -98,7 +85,7 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
             self.sim_data["conversion_factor_fan_electricity"] = -WFan
 
 
-    def calculate_pump_power(self, temperatureCoolant, heatTransferDelta=5, efficiencyPump=0.7, pressureDropWater=200000, designTemperature=None):
+    def calculate_pump_power_air_cooling(self, temperatureCoolant, heatTransferDelta=5, efficiencyPump=0.7, pressureDropWater=200000, designTemperature=None):
         """
         Function to calculate the pump power demand of an air cooling model.
 
@@ -132,7 +119,7 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
             WPump[(temperatureCoolant - heatTransferDelta - airTemp) <= 0] = np.inf  # Assign high value if cooling is not possible
             self.sim_data["conversion_factor_pump_electricity"] = -WPump
 
-    def calculate_capacity_factor(self, designTemperature, temperatureCoolant, heatTransferDelta=5, efficiencyFan=0.7, efficiencyPump=0.7, pressureDropAir=261, pressureDropWater=200000):
+    def calculate_capacity_factor_air_cooling(self, designTemperature, temperatureCoolant, heatTransferDelta=5, efficiencyFan=0.7, efficiencyPump=0.7, pressureDropAir=261, pressureDropWater=200000):
         """
         Function to calculate the capacity factor of an air cooling model.
         Air cooling systems mainly consists of water pumps, fans and th A-frame to transfer the heat from water to the air [1].
@@ -157,9 +144,9 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
         """  
         
         #At design point: 
-        PFanDesign = -self.calculate_fan_power(temperatureCoolant, heatTransferDelta=heatTransferDelta, efficiencyFan=efficiencyFan, pressureDropAir=pressureDropAir, designTemperature=designTemperature)
+        PFanDesign = -self.calculate_fan_power_air_cooling(temperatureCoolant, heatTransferDelta=heatTransferDelta, efficiencyFan=efficiencyFan, pressureDropAir=pressureDropAir, designTemperature=designTemperature)
         CAPEXFanDesign = 2.8*12300 * (PFanDesign/50)**0.76 #[1]
-        PPumpDesign = -self.calculate_pump_power(temperatureCoolant, heatTransferDelta=heatTransferDelta, efficiencyPump=efficiencyPump, pressureDropWater=pressureDropWater, designTemperature=designTemperature)
+        PPumpDesign = -self.calculate_pump_power_air_cooling(temperatureCoolant, heatTransferDelta=heatTransferDelta, efficiencyPump=efficiencyPump, pressureDropWater=pressureDropWater, designTemperature=designTemperature)
         CAPEXPumpDesign = 2.8*3540*(PPumpDesign)**0.71 #[1]
 
         #At real ambient conditions:
@@ -177,3 +164,38 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
         CAPEX = CAPEXFan + CAPEXPump + CAPEXAC
 
         self.sim_data["capacity_factor"] = CAPEXDesign/CAPEX
+
+        #set the units of an air cooling system:
+        units = {
+            "capacity": "kW_th",
+            "capacity_factor": "-",
+            "conversion_factor_electricity" : "kWh_el/kWh_th",
+            "conversion_factor_fan_electricity" : "kWh_el/kWh_th",
+            "conversion_factor_pump_electricity" : "kWh_el/kWh_th",
+            "electricity_input": "kWh_el",
+            "electricity_input_fan": "kWh_el",
+            "electricity_input:pump": "kWh_el",
+            "cooling_output": "kWh_th"
+        }
+        self.units = OrderedDict(units)
+
+
+    def simulate_air_source_heat_pump(self, targetTemperature=100, secondLawEfficiency=0.5):
+        """
+        Function to calculate the coefficient of performance and conversion factors of an air source heat pump.
+        
+
+        Parameter:
+        targetTemperature (float): Target temperature at which the heat should be supplied [°C]
+        secondLawEfficiency (float): second law efficiency
+        """
+        self.sim_data["COP"] = (targetTemperature +273.15)/(targetTemperature-self.sim_data["surface_air_temperature"]) * secondLawEfficiency
+        self.sim_data["conversion_factor_electricity"] = -1 / self.sim_data["COP"] #kWhel/kWhth
+
+        #set the units of an air source heat pump:
+        units = {
+            "capacity": "kW_th",
+            "conversion_factor_electricity" : "kWh_el/kWh_th",
+            "electricity_input": "kWh_el"
+        }
+        self.units = OrderedDict(units)
