@@ -3,6 +3,7 @@
 from .dac_workflow_manager import DACWorkflowManager
 from typing import List
 import pandas as pd
+from ...util.relative_humidity import calculate_relative_humidity
 
 
 def lt_dac_era5_wenzel2025(
@@ -44,7 +45,8 @@ def lt_dac_era5_wenzel2025(
         set_time_index=True,
         verbose=False,
     )
-    wf.calculate_relative_humidity()
+
+    wf.sim_data["relative_humidity"] = calculate_relative_humidity(dewpoint_temperature = wf.sim_data["surface_dew_temperature"], air_temperature=wf.sim_data["surface_air_temperature"])
     wf.load_lt_dac_model_data(model=model)
     wf.simulate_lt_dac_model(fillMethod=fillMethod)
 
@@ -86,7 +88,7 @@ def ht_dac_era5_wenzel2025(
         set_time_index=True,
         verbose=False,
     )
-    wf.calculate_relative_humidity()
+    wf.sim_data["relative_humidity"] = calculate_relative_humidity(dewpoint_temperature = wf.sim_data["surface_dew_temperature"], air_temperature=wf.sim_data["surface_air_temperature"])
     wf.simulate_ht_dac_model(model=model)
 
     return wf.to_xarray(
