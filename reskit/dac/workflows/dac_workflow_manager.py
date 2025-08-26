@@ -33,7 +33,7 @@ class DACWorkflowManager(WorkflowManager):
 
         Returns
         -------
-        DACWorkflorManager
+        DACWorkflowManager
 
         """
 
@@ -91,12 +91,8 @@ class DACWorkflowManager(WorkflowManager):
     def load_lt_dac_model_data(self, model):
         """
         Function to load the DAC model data of a given model. The model data maps temperature and relative humidity to energy demand, relative productivity and water desorption.
-
-        Parameter:
-        model (str): type of DAC model to use. Valid inputs are: "LT_sendi", "LT_jajjawi".
-
         Description:
-        The DAC model data needs columns "T" and "RH" where the temperature (°C) and relative humidity are included.
+        The DAC model data needs columns "T" and "RH" where the temperature (°C) and relative humidity are included. Its a csv file.
         Additionally, the data needs columns:
             -"totalElectricity" where the needed electricity input in MWh/tCO2 is stated at the specified ambient conditions
             -"totalThermal" where the needed heat input in MWh/tCO2 is stated at the specified ambient conditions
@@ -105,6 +101,11 @@ class DACWorkflowManager(WorkflowManager):
         The currently available models:
             -LT_jajjawi: Data from the developed low temperature (solid sorbent) DAC model by Jajjawi et al. [1]. Here, the heat is needed at 90 °C.
             -LT_sendi: Data from the developed low temperature (solid sorbent) DAC model by Sendi et al. [2]. Here, the heat is needed at 110 °C (for steam generation). The original Sendi data has been adapted as described in Wenzel 2025 [3].
+
+        Parameter:
+        -----------------
+        model: str
+            type of DAC model to use. Valid inputs are: "LT_sendi", "LT_jajjawi" or a path to a csv with DAC model data in the same format as in ./data/
 
         References:
         --------------
@@ -115,7 +116,10 @@ class DACWorkflowManager(WorkflowManager):
         """
 
         model_path_dict = {"LT_sendi": "LT_sendi.csv", "LT_jajjawi": "LT_jajjawi.csv"}
-        path = os.path.join(DATAFOLDER, model_path_dict[model])
+        if model in model_path_dict.keys():
+            path = os.path.join(DATAFOLDER, model_path_dict[model])
+        else:
+            path = model
         self.dac_data = pd.read_csv(path, index_col=0)
 
     def simulate_lt_dac_model(self, fillMethod="nearest"):
@@ -123,10 +127,11 @@ class DACWorkflowManager(WorkflowManager):
         Function to simulate the LT DAC model.
 
         Parameter:
-        fillMethod (str): method to use when the weather conditions are not inside the hull of the DAC model weather data.
-        -nearest: use the nearest available datapoint
-        -offTmin: cut off for temperature ranges, nearest for relative humidity
-        default: "nearest"
+        fillMethod: str
+            method to use when the weather conditions are not inside the hull of the DAC model weather data.
+            -nearest: use the nearest available datapoint
+            -offTmin: cut off for temperature below ranges, nearest for relative humidity
+            default: "nearest"
 
         """
 
@@ -167,7 +172,7 @@ class DACWorkflowManager(WorkflowManager):
             method="linear",
         )
 
-        if fillMethod == "nearest":
+        if (fillMethod == "offTmin") or (fillMethod == "nearest"):
             # fill points outside the convex hull with "nearest" :
             elecFill = griddata(
                 (self.dac_data["T"], self.dac_data["RH"]),
@@ -207,42 +212,6 @@ class DACWorkflowManager(WorkflowManager):
             )
         elif fillMethod == "offTmin":
             # fill RH values outside range by nearest and force no operation below/above T bounds by setting relProd=0
-            elecFill = griddata(
-                (self.dac_data["T"], self.dac_data["RH"]),
-                self.dac_data["totalElectricity"],
-                (
-                    self.sim_data["surface_air_temperature"],
-                    self.sim_data["relative_humidity"],
-                ),
-                method="nearest",
-            )
-            thermalFill = griddata(
-                (self.dac_data["T"], self.dac_data["RH"]),
-                self.dac_data["totalThermal"],
-                (
-                    self.sim_data["surface_air_temperature"],
-                    self.sim_data["relative_humidity"],
-                ),
-                method="nearest",
-            )
-            waterFill = griddata(
-                (self.dac_data["T"], self.dac_data["RH"]),
-                self.dac_data["waterDesorption"],
-                (
-                    self.sim_data["surface_air_temperature"],
-                    self.sim_data["relative_humidity"],
-                ),
-                method="nearest",
-            )
-            relProdFill = griddata(
-                (self.dac_data["T"], self.dac_data["RH"]),
-                self.dac_data["relProd"],
-                (
-                    self.sim_data["surface_air_temperature"],
-                    self.sim_data["relative_humidity"],
-                ),
-                method="nearest",
-            )
             Tmin = self.dac_data["T"].min()
             relProdFill[self.sim_data["surface_air_temperature"] < Tmin] = 0
         else:
@@ -257,36 +226,36 @@ class DACWorkflowManager(WorkflowManager):
         self.sim_data["capacity_factor"] = (
             relProd  # the relative productivity for DAC plants equals to the capacity factor for other renewable energy plants, i.e. wind turbines
         )
-        self.sim_data["conversion_factor_electricity"] = elec
-        self.sim_data["conversion_factor_heat"] = thermal
-        self.sim_data["conversion_factor_water"] = water
+        self.sim_data["conversion_factor_electricity"] = elec  # MWh_el/t_CO2
+        self.sim_data["conversion_factor_heat"] = thermal  # MWh_th/t_CO2
+        self.sim_data["conversion_factor_water"] = water  # t_H2O/t_CO2
 
         # Now, besides the conversion factors which are relative to the produced CO2 mass, also simulate the specified plant with the specified capacity:
         self.sim_data["CO2_output"] = self.sim_data["capacity_factor"] * np.array(
             self.placements["capacity"]
-        )
+        )  # t_CO2/h
         self.sim_data["H2O_output"] = (
             self.sim_data["CO2_output"] * self.sim_data["conversion_factor_water"]
-        )
+        )  # t_H2O/h
         self.sim_data["electricity_input"] = (
             self.sim_data["CO2_output"]
             * -self.sim_data["conversion_factor_electricity"]
-        )
+        )  # MWh_el/h
         self.sim_data["heat_input"] = (
             self.sim_data["CO2_output"] * -self.sim_data["conversion_factor_heat"]
-        )
+        )  # MWh_th/h
 
-    def simulate_ht_dac_model(self, model):
+    def simulate_ht_dac_model(self, model="HT_okosun"):
         """
         Function to simulate the HT (high temeperature, liquid solvent)-DAC model data of a given model. The model data maps temperature and relative humidity to energy demand, relative productivity and water desorption.
-
-        Parameter:
-        model (str): type of DAC model to use. Valid inputs are: "HT_okosun"
-
         Description:
         The currently available models:
             -HT_okosun: This model is derived based on a natural gas fired HT-DAC model described in [1]. The data has been adapted to an electrified system as described in [2]. The description is detailed in [3]. The electrified DAC model only has an electricity input.
 
+        Parameter:
+         --------------
+        model: str
+            type of DAC model to use. Valid inputs are: "HT_okosun"
 
         References:
         --------------
@@ -296,34 +265,41 @@ class DACWorkflowManager(WorkflowManager):
         """
 
         # Calculate capture rate, relative productivity and energy (w/o compression)
-        capture_rate = (
-            48.8371759783294
-            + 0.141875496 * self.sim_data["relative_humidity"]
-            + 0.961897256 * self.sim_data["surface_air_temperature"]
-            - 0.000550616476 * self.sim_data["relative_humidity"] ** 2
-            + 0.00266221049
-            * self.sim_data["surface_air_temperature"]
-            * self.sim_data["relative_humidity"]
-            - 0.00588467947 * self.sim_data["surface_air_temperature"] ** 2
-        )
+        if model == "HT_okosun":
+            capture_rate = (
+                48.8371759783294
+                + 0.141875496 * self.sim_data["relative_humidity"]
+                + 0.961897256 * self.sim_data["surface_air_temperature"]
+                - 0.000550616476 * self.sim_data["relative_humidity"] ** 2
+                + 0.00266221049
+                * self.sim_data["surface_air_temperature"]
+                * self.sim_data["relative_humidity"]
+                - 0.00588467947 * self.sim_data["surface_air_temperature"] ** 2
+            )  # equation fitted by k.okosun as described in [3]. Describes the share [%] of co2 captured from the incoming air dependent on the ambient conditions. See also [1,2].
 
-        ElecDemand = 7.2082 * capture_rate ** (-0.317)
-        relative_productivity = capture_rate / 40 * 527702.4 / 1000000
+            ElecDemand = 7.2082 * capture_rate ** (
+                -0.317
+            )  # equation fitted by k.okosun as described in [3]. Relates the capture rate to the energy demand.
+            relative_productivity = (
+                capture_rate / 40 * 527702.4 / 1000000
+            )  # equation fitted by k.okosun as described in [3]. Relates the capture rate to the relative productivity.
+        else:
+            raise NotImplementedError(f"HT-DAC Model of type {model} not implemented.")
 
         self.sim_data["capacity_factor"] = (
             relative_productivity  # the relative productivity for DAC plants equals to the capacity factor for other renewable energy plants, i.e. wind turbines
         )
-        self.sim_data["conversion_factor_electricity"] = -ElecDemand
-        self.sim_data["conversion_factor_heat"] = np.nan
-        self.sim_data["conversion_factor_water"] = np.nan
+        self.sim_data["conversion_factor_electricity"] = -ElecDemand  # MWh_el/t_CO2
+        self.sim_data["conversion_factor_heat"] = np.nan  # MWh_th/t_CO2
+        self.sim_data["conversion_factor_water"] = np.nan  # tH2O/tCO2
 
         # Now, besides the conversion factors which are relative to the produced CO2 mass, also simulate the specified plant with the specified capacity:
         self.sim_data["CO2_output"] = self.sim_data["capacity_factor"] * np.array(
             self.placements["capacity"]
-        )
-        self.sim_data["H2O_output"] = np.nan
+        )  # t_CO2/h
+        self.sim_data["H2O_output"] = np.nan  # t_H2O/h
         self.sim_data["electricity_input"] = (
             self.sim_data["CO2_output"]
             * -self.sim_data["conversion_factor_electricity"]
-        )
-        self.sim_data["heat_input"] = np.nan
+        )  # MWh_el/h
+        self.sim_data["heat_input"] = np.nan  # MWh_th/h
