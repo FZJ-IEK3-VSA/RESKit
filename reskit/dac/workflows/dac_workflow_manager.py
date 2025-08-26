@@ -56,7 +56,7 @@ class DACWorkflowManager(WorkflowManager):
         }
         self.units = OrderedDict(units)
 
-    def load_lt_dac_model_data(self, model):
+    def load_lt_dac_model_data(self, model : str):
         """
         Function to load the DAC model data of a given model. The model data maps temperature and relative humidity to energy demand, relative productivity and water desorption.
         Description:
@@ -82,6 +82,9 @@ class DACWorkflowManager(WorkflowManager):
         [3] 10.1016/j.adapen.2025.100229
 
         """
+        assert model in {"LT_jajjawi", "LT_sendi"} or (
+            isinstance(model, str) and model.endswith(".csv") and os.path.isfile(model)
+        ), f"Invalid model: {model}. Not one of the base models (LT_jajjawi or LT_sendi) and no valid path to an existing csv with custom data."
 
         model_path_dict = {"LT_sendi": "LT_sendi.csv", "LT_jajjawi": "LT_jajjawi.csv"}
         if model in model_path_dict.keys():
@@ -90,18 +93,38 @@ class DACWorkflowManager(WorkflowManager):
             path = model
         self.dac_data = pd.read_csv(path, index_col=0)
 
-    def simulate_lt_dac_model(self, fillMethod="nearest"):
+        required_cols = [
+            "totalElectricity",
+            "totalThermal",
+            "relProd",
+            "waterDesorption",
+        ]
+        assert all(
+            col in self.dac_data.columns for col in required_cols
+        ), f"Missing columns: {set(required_cols) - set(self.dac_data.columns)}"
+
+    def simulate_lt_dac_model(self, fillMethod: str="nearest"):
         """
-        Function to simulate the LT DAC model.
+        Simulate the LT DAC (Direct Air Capture) model for the specified plant locations.
+
+        This function interpolates DAC model data to the simulation grid and calculates
+        electricity, heat, and water requirements as well as CO2 output for the plants. 
+        It also handles points outside the convex hull of the DAC data using a specified 
+        fill method.
 
         Parameters
         ----------
-        fillMethod: str
-            method to use when the weather conditions are not inside the hull of the DAC model weather data.
-            -nearest: use the nearest available datapoint
-            -offTmin: cut off for temperature below ranges, nearest for relative humidity
-            default: "nearest"
+        fillMethod : str, optional
+            Method to fill values for weather conditions outside the convex hull of 
+            the DAC model data. Options are:
+            - "nearest" : use the nearest available datapoint (default)
+            - "offTmin" : cut off for temperatures below the DAC data range, use nearest 
+            for relative humidity
 
+        Raises
+        ------
+        NotImplementedError
+            If a filling method other than "nearest" or "offTmin" is requested.
         """
 
         elec = griddata(
@@ -214,17 +237,30 @@ class DACWorkflowManager(WorkflowManager):
             self.sim_data["CO2_output"] * -self.sim_data["conversion_factor_heat"]
         )  # MWh_th/h
 
-    def simulate_ht_dac_model(self, model="HT_okosun"):
+    def simulate_ht_dac_model(self, model: str="HT_okosun"):
         """
-        Function to simulate the HT (high temeperature, liquid solvent)-DAC model data of a given model. The model data maps temperature and relative humidity to energy demand, relative productivity and water desorption.
-        Description:
-        The currently available models:
-            -HT_okosun: This model is derived based on a natural gas fired HT-DAC model described in [1]. The data has been adapted to an electrified system as described in [2]. The description is detailed in [3]. The electrified DAC model only has an electricity input.
+        Simulate the high-temperature (HT), liquid-solvent DAC model for a given model type.
+
+        This function maps ambient temperature and relative humidity to energy demand, 
+        relative productivity, and water desorption for the specified DAC model. 
+        Currently, only the electrified HT DAC model "HT_okosun" is available.
 
         Parameters
         ----------
-        model: str
-            type of DAC model to use. Valid inputs are: "HT_okosun"
+        model : str, optional
+            Type of DAC model to use. Currently, only "HT_okosun" is implemented.
+            Default is "HT_okosun".
+
+        Raises
+        ------
+        NotImplementedError
+            If a DAC model type other than "HT_okosun" is requested.
+
+        Notes
+        -----
+        The "HT_okosun" model is based on a natural gas-fired HT-DAC system [1], 
+        adapted to an electrified version as described in [2,3]. The electrified 
+        DAC model only consumes electricity.
 
         References
         ----------

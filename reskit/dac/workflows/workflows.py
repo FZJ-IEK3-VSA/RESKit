@@ -15,25 +15,42 @@ def lt_dac_era5_wenzel2025(
     fillMethod: str = "nearest",
 ):
     """
-    Simulation of LT-DAC plants based on ERA5 weather data.
+    Simulate LT-DAC plants using ERA5 weather data.
+
+    This function runs a full simulation workflow for low-temperature direct air capture (LT-DAC) 
+    plants. It reads ERA5 weather data, calculates relative humidity, loads the specified LT-DAC 
+    model data, performs the simulation, and optionally saves results to a NetCDF file.
 
     Parameters
     ----------
-    output_netcdf_path: str
-        Path to a file that you want to save your output NETCDF file at.
-        Default is None
+    placements : pd.DataFrame
+        DataFrame specifying the plant locations and capacities.
+    era5_path : str
+        Path to the ERA5 weather data source.
+    output_netcdf_path : str, optional
+        Path to save the output NetCDF file. If None, no file is saved. Default is None.
+    output_variables : list of str, optional
+        List of variables from the simulation to include in the output NetCDF file.
+        If None, all available variables are included. Default is None.
+    model : str, optional
+        DAC model data to utilize. Default is "LT_jajjawi".
+    fillMethod : str, optional
+        Method for filling weather conditions outside the DAC model data hull:
+        - "nearest" : use the nearest available datapoint (default)
+        - "offTmin" : cut off for temperatures outside the model range, nearest for relative humidity
 
-    output_variables: str
-        Output variables of the simulation that you want to save into your NETCDF Outputfile.
+    Returns
+    -------
+    xarray.Dataset
+        Simulation results, optionally limited to `output_variables` and including all plant locations.
 
-    model: str
-        DAC Model data to utilize
-
-    fillMethod (str):
-        method to use when the weather conditions are not inside the hull of the DAC model weather data.
-        -nearest: use the nearest available datapoint
-        -offTmin: cut off for temperature ranges, nearest for relative humidity
-        default: "nearest"
+    Notes
+    -----
+    The simulation includes calculation of:
+    - relative humidity
+    - DAC capacity factor
+    - electricity, heat, and water conversion factors
+    - CO2, water, electricity, and heat outputs per plant
     """
 
     wf = DACWorkflowManager(placements)
@@ -68,17 +85,45 @@ def ht_dac_era5_wenzel2025(
     model: str = "HT_okosun",
 ):
     """
-    Simulation of HT-DAC plants based on ERA5 weather data.
+    Simulate HT-DAC plants using ERA5 weather data.
+
+    This function runs a full simulation workflow for high-temperature direct air capture (HT-DAC) 
+    plants. It reads ERA5 weather data, calculates relative humidity, runs the specified HT-DAC 
+    model simulation, and optionally saves results to a NetCDF file.
 
     Parameters
     ----------
-    output_netcdf_path: str
-        Path to a file that you want to save your output NETCDF file at.
-        Default is None
+    placements : pd.DataFrame
+        DataFrame specifying the plant locations and capacities.
+    era5_path : str
+        Path to the ERA5 weather data source.
+    output_netcdf_path : str, optional
+        Path to save the output NetCDF file. If None, no file is saved. Default is None.
+    output_variables : list of str, optional
+        List of variables from the simulation to include in the output NetCDF file.
+        If None, all available variables are included. Default is None.
+    model : str, optional
+        DAC model to use. Currently, only "HT_okosun" is implemented. Default is "HT_okosun".
 
-    output_variables: str
-        Output variables of the simulation that you want to save into your NETCDF Outputfile.
+    Returns
+    -------
+    xarray.Dataset
+        Simulation results, optionally limited to `output_variables` and including all plant locations.
 
+    Raises
+    ------
+    AssertionError
+        If `model` is not "HT_okosun".
+
+    Notes
+    -----
+    The simulation includes calculation of:
+    - relative humidity
+    - DAC capacity factor
+    - electricity conversion factor
+    - CO2 output per plant
+
+    The simulation relies on the `DACWorkflowManager` and the specified HT-DAC model.
     """
     assert model in ["HT_okosun"], f"Invalid model: {model}. You can chose 'HT_okosun'"
 
