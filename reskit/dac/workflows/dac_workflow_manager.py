@@ -27,12 +27,12 @@ class DACWorkflowManager(WorkflowManager):
         Parameters
         ----------
         placements : pandas Dataframe
-                     The locations that the simulation should be run for.
-                     Columns must include "lon", "lat" (CRS: 4326) and "capacity"
-                     -The capacity is the nominal capacity of the DAC plant in tCO2/h
+            The locations that the simulation should be run for.
+            Columns must include "lon", "lat" (CRS: 4326) and "capacity"
+            -The capacity is the nominal capacity of the DAC plant in tCO2/h
 
         Returns
-        -------
+        ----------
         DACWorkflowManager
 
         """
@@ -70,13 +70,13 @@ class DACWorkflowManager(WorkflowManager):
             -LT_jajjawi: Data from the developed low temperature (solid sorbent) DAC model by Jajjawi et al. [1]. Here, the heat is needed at 90 °C.
             -LT_sendi: Data from the developed low temperature (solid sorbent) DAC model by Sendi et al. [2]. Here, the heat is needed at 110 °C (for steam generation). The original Sendi data has been adapted as described in Wenzel 2025 [3].
 
-        Parameter:
-        -----------------
+        Parameters
+        ----------
         model: str
             type of DAC model to use. Valid inputs are: "LT_sendi", "LT_jajjawi" or a path to a csv with DAC model data in the same format as in ./data/
 
-        References:
-        --------------
+        References
+        ----------
         [1] http://dx.doi.org/10.2139/ssrn.5230783
         [2] 10.1016/j.oneear.2022.09.003
         [3] 10.1016/j.adapen.2025.100229
@@ -94,7 +94,8 @@ class DACWorkflowManager(WorkflowManager):
         """
         Function to simulate the LT DAC model.
 
-        Parameter:
+        Parameters
+        ----------
         fillMethod: str
             method to use when the weather conditions are not inside the hull of the DAC model weather data.
             -nearest: use the nearest available datapoint
@@ -220,13 +221,13 @@ class DACWorkflowManager(WorkflowManager):
         The currently available models:
             -HT_okosun: This model is derived based on a natural gas fired HT-DAC model described in [1]. The data has been adapted to an electrified system as described in [2]. The description is detailed in [3]. The electrified DAC model only has an electricity input.
 
-        Parameter:
-         --------------
+        Parameters
+        ----------
         model: str
             type of DAC model to use. Valid inputs are: "HT_okosun"
 
-        References:
-        --------------
+        References
+        ----------
         [1] 10.1016/j.apenergy.2022.119895
         [2] 10.3389/fclim.2020.618644
         [3] 10.1016/j.adapen.2025.100229
