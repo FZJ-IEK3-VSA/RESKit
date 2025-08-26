@@ -17,8 +17,8 @@ def lt_dac_era5_wenzel2025(
     """
     Simulate LT-DAC plants using ERA5 weather data.
 
-    This function runs a full simulation workflow for low-temperature direct air capture (LT-DAC) 
-    plants. It reads ERA5 weather data, calculates relative humidity, loads the specified LT-DAC 
+    This function runs a full simulation workflow for low-temperature direct air capture (LT-DAC)
+    plants. It reads ERA5 weather data, calculates relative humidity, loads the specified LT-DAC
     model data, performs the simulation, and optionally saves results to a NetCDF file.
 
     Parameters
@@ -87,8 +87,8 @@ def ht_dac_era5_wenzel2025(
     """
     Simulate HT-DAC plants using ERA5 weather data.
 
-    This function runs a full simulation workflow for high-temperature direct air capture (HT-DAC) 
-    plants. It reads ERA5 weather data, calculates relative humidity, runs the specified HT-DAC 
+    This function runs a full simulation workflow for high-temperature direct air capture (HT-DAC)
+    plants. It reads ERA5 weather data, calculates relative humidity, runs the specified HT-DAC
     model simulation, and optionally saves results to a NetCDF file.
 
     Parameters

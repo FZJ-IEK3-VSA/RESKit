@@ -56,7 +56,7 @@ class DACWorkflowManager(WorkflowManager):
         }
         self.units = OrderedDict(units)
 
-    def load_lt_dac_model_data(self, model : str):
+    def load_lt_dac_model_data(self, model: str):
         """
         Function to load the DAC model data of a given model. The model data maps temperature and relative humidity to energy demand, relative productivity and water desorption.
         Description:
@@ -103,22 +103,22 @@ class DACWorkflowManager(WorkflowManager):
             col in self.dac_data.columns for col in required_cols
         ), f"Missing columns: {set(required_cols) - set(self.dac_data.columns)}"
 
-    def simulate_lt_dac_model(self, fillMethod: str="nearest"):
+    def simulate_lt_dac_model(self, fillMethod: str = "nearest"):
         """
         Simulate the LT DAC (Direct Air Capture) model for the specified plant locations.
 
         This function interpolates DAC model data to the simulation grid and calculates
-        electricity, heat, and water requirements as well as CO2 output for the plants. 
-        It also handles points outside the convex hull of the DAC data using a specified 
+        electricity, heat, and water requirements as well as CO2 output for the plants.
+        It also handles points outside the convex hull of the DAC data using a specified
         fill method.
 
         Parameters
         ----------
         fillMethod : str, optional
-            Method to fill values for weather conditions outside the convex hull of 
+            Method to fill values for weather conditions outside the convex hull of
             the DAC model data. Options are:
             - "nearest" : use the nearest available datapoint (default)
-            - "offTmin" : cut off for temperatures below the DAC data range, use nearest 
+            - "offTmin" : cut off for temperatures below the DAC data range, use nearest
             for relative humidity
 
         Raises
@@ -237,12 +237,12 @@ class DACWorkflowManager(WorkflowManager):
             self.sim_data["CO2_output"] * -self.sim_data["conversion_factor_heat"]
         )  # MWh_th/h
 
-    def simulate_ht_dac_model(self, model: str="HT_okosun"):
+    def simulate_ht_dac_model(self, model: str = "HT_okosun"):
         """
         Simulate the high-temperature (HT), liquid-solvent DAC model for a given model type.
 
-        This function maps ambient temperature and relative humidity to energy demand, 
-        relative productivity, and water desorption for the specified DAC model. 
+        This function maps ambient temperature and relative humidity to energy demand,
+        relative productivity, and water desorption for the specified DAC model.
         Currently, only the electrified HT DAC model "HT_okosun" is available.
 
         Parameters
@@ -258,8 +258,8 @@ class DACWorkflowManager(WorkflowManager):
 
         Notes
         -----
-        The "HT_okosun" model is based on a natural gas-fired HT-DAC system [1], 
-        adapted to an electrified version as described in [2,3]. The electrified 
+        The "HT_okosun" model is based on a natural gas-fired HT-DAC system [1],
+        adapted to an electrified version as described in [2,3]. The electrified
         DAC model only consumes electricity.
 
         References
