@@ -34,10 +34,6 @@ def lt_dac_era5_wenzel2025(
         -offTmin: cut off for temperature ranges, nearest for relative humidity
         default: "nearest"
     """
-    assert model in [
-        "LT_jajjawi",
-        "LT_sendi",
-    ], f"Invalid model: {model}. You can chose between 'LT_jajjawi' or 'LT_sendi'"
 
     wf = DACWorkflowManager(placements)
 
