@@ -86,30 +86,48 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
 
     def calculate_fan_power_air_cooling(
         self,
-        temperatureCoolant,
-        heatTransferDelta=5,
-        efficiencyFan=0.7,
-        pressureDropAir=261,
-        designTemperature=None,
+        temperatureCoolant: float | int,
+        heatTransferDelta: float | int = 5,
+        efficiencyFan: float | int = 0.7,
+        pressureDropAir: float | int = 261,
+        designTemperature: float | int = None,
     ):
         """
-        Function to calculate the fan power demand of an air cooling model.
+        Calculate the fan power demand for an air-cooling system.
 
-        Parameter:
-        -----------
-        temperatureCoolant: float
-            temperature of the cooling load (lower temperature, if sensible heat transfer) in °C
-        heatTransferDelta: float
-            temperature delta required for heat transfer from air to coolant [K]. defaults to 5.
-        efficiencyFan: float
-            efficiency of the total fan system [0,1]. defaults to 0.7 based on [1]
-        pressureDropAir: float
-            pressure drop of the air through the channels of the frame [Pa]. defaults to 261 Pa based on [2]
-        designTemperature: float
-            if given, the following is only evaluated for the design temperature as air temperature. [°C]
+        This method computes the electrical power required by the fan to transfer heat
+        from the air to a coolant, based on the air properties and the cooling load
+        temperature. It can evaluate either for a given design air temperature or for
+        the time series of ambient air temperatures stored in `self.sim_data`.
 
-        Sources:
-        -------------
+        Parameters
+        ----------
+        temperatureCoolant : float | int
+            Temperature of the cooling load (lower temperature if sensible heat transfer) in °C.
+        heatTransferDelta : float | int, optional
+            Temperature difference required for heat transfer from air to coolant [K]. Default is 5.
+        efficiencyFan : float | int, optional
+            Efficiency of the fan system [0, 1]. Default is 0.7.
+        pressureDropAir : float | int, optional
+            Pressure drop of air through the channels of the cooling frame [Pa]. Default is 261.
+        designTemperature : float | int, optional
+            If specified, the calculation is only evaluated at this air temperature [°C].
+            Default is None.
+
+        Returns
+        -------
+        float or np.ndarray
+            Fan power demand in kWh per kWh of cooling. Returns a single value if
+            `designTemperature` is provided, or a time series array otherwise.
+
+        Notes
+        -----
+        - Uses linear interpolation of air specific heat (`cp`) and density (`rho`) from `self.airData`.
+        - Assigns `np.inf` to any time step where the temperature difference is insufficient for cooling.
+        - Stores the time series result in `self.sim_data["conversion_factor_fan_electricity"]` if `designTemperature` is None.
+
+        References
+        ----------
         [1] 10.1016/j.ijhydene.2024.11.381
         [2] http://hdl.handle.net/1853/55674
         """
@@ -149,34 +167,51 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
 
     def calculate_pump_power_air_cooling(
         self,
-        temperatureCoolant,
-        heatTransferDelta=5,
-        efficiencyPump=0.7,
-        pressureDropWater=200000,
-        designTemperature=None,
+        temperatureCoolant: float | int,
+        heatTransferDelta: float | int = 5,
+        efficiencyPump: float | int = 0.7,
+        pressureDropWater: float | int = 200000,
+        designTemperature: float | int = None,
     ):
         """
-        Function to calculate the pump power demand of an air cooling model.
+        Calculate the pump power demand for an air-cooling system.
 
-        Parameter:
-        -------------
-        temperatureCoolant: float
-            temperature of the cooling load (lower temperature, if sensible heat transfer) in °C
-        heatTransferDelta: float
-            temperature delta required for heat transfer from air to coolant [K]. defaults to 5.
-        efficiencyPump: float
-            efficiency of the total pump system [0,1]. defaults to 0.7 based on [1]
-        pressureDropWater: float
-            pressure drop of the water which is circulated from the site of the heat load to the A-frame [Pa]. defaults to 200000 Pa based on [2]
-        designTemperature: float
-            if given, the following is only evaluated for the design temperature as air temperature. [°C]
+        This method computes the electrical power required by the pump to circulate
+        coolant for an air-cooling system, based on the cooling load temperature,
+        pressure drop, and pump efficiency. It can evaluate either for a given design
+        air temperature or for the time series of ambient air temperatures stored in
+        `self.sim_data`.
 
-        Sources:
-        -------------
+        Parameters
+        ----------
+        temperatureCoolant : float | int
+            Temperature of the cooling load (lower temperature if sensible heat transfer) in °C.
+        heatTransferDelta : float | int, optional
+            Temperature difference required for heat transfer from air to coolant [K]. Default is 5.
+        efficiencyPump : float | int, optional
+            Efficiency of the pump system [0, 1]. Default is 0.7.
+        pressureDropWater : float | int, optional
+            Pressure drop of the water circuit between the heat load and the cooling frame [Pa]. Default is 200000.
+        designTemperature : float | int, optional
+            If specified, the calculation is only evaluated at this air temperature [°C].
+            Default is None.
+
+        Returns
+        -------
+        float or np.ndarray
+            Pump power demand in kWh per kWh of cooling. Returns a single value if
+            `designTemperature` is provided, or a time series array otherwise.
+
+        Notes
+        -----
+        - Assumes constant water density of 1000 kg/m³ and specific heat capacity of 4.186 kJ/(kg·K) = 0.00116 kWh/(kg·K).
+        - Assigns `np.inf` to any time step where the temperature difference is insufficient for cooling.
+        - Stores the time series result in `self.sim_data["conversion_factor_pump_electricity"]` if `designTemperature` is None.
+
+        References
+        ----------
         [1] 10.1016/j.ijhydene.2024.11.381
         [2] 10.1016/j.enconman.2020.113610
-
-        Assumptions: Constant density of water (1000 kg/m3) and constant heat capacity of 4.186 kJ/(kgK) = 0.00116 kWh/(kgK)
         """
         if designTemperature:
             airTemp = designTemperature
@@ -203,42 +238,57 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
 
     def calculate_capacity_factor_air_cooling(
         self,
-        designTemperature,
-        temperatureCoolant,
-        heatTransferDelta=5,
-        efficiencyFan=0.7,
-        efficiencyPump=0.7,
-        pressureDropAir=261,
-        pressureDropWater=200000,
+        designTemperature: float | int,
+        temperatureCoolant: float | int,
+        heatTransferDelta: float | int = 5,
+        efficiencyFan: float | int = 0.7,
+        efficiencyPump: float | int = 0.7,
+        pressureDropAir: float | int = 261,
+        pressureDropWater: float | int = 200000,
     ):
         """
-        Function to calculate the capacity factor of an air cooling model.
-        Air cooling systems mainly consists of water pumps, fans and th A-frame to transfer the heat from water to the air [1].
-        The A-frame is assumed to always transfer heat with the heatTrasferDelta (counter-flow heat exchanger). The cost can be calculated based on equations given in [1].
-        Pump and Fan cost dependent on the installed nominal power. However, at varying ambient air temperature, the cost to transfer the same amount of heat would rise, because the needed fan/pump power increases and therefore the needed fan/pump installed capacity increases.
-        To account for that, the cost at the design point (design temperature) are calculated and subsequently the cost at all varying air temperatures to transfer the same amount of heat is calculated.
-        The capacity factor is then defined as the ratio of cost_at_design_temp/cost_at_air_temp.
+        Calculate the capacity factor of an air-cooling system.
 
+        The air-cooling system consists of fans, water pumps, and an A-frame heat exchanger
+        that transfers heat from water to air. The A-frame is assumed to always transfer
+        heat with the specified `heatTransferDelta`. Fan and pump costs depend on the
+        installed nominal power, which varies with ambient air temperature. The capacity
+        factor is defined as the ratio of cost at the design temperature to the cost at
+        actual ambient temperatures.
 
-        Parameter:
-        ---------------
-        designTemperature: float
-            Design ambient temperature of the cooling system
-        temperatureCoolant: float
-            temperature of the cooling load (lower temperature, if sensible heat transfer) in °C
-        heatTransferDelta: float
-            temperature delta required for heat transfer from air to coolant [K]. defaults to 5.
-        efficiencyFan: float
-            efficiency of the total fan system [0,1]. defaults to 0.7
-        pressureDropAir: float
-            pressure drop of the air through the channels of the frame [Pa]. defaults to 261 Pa
-        efficiencyPump: float
-            efficiency of the total pump system [0,1]. defaults to 0.7
-        pressureDropWater: float
-            pressure drop of the water which is circulated from the site of the heat load to the A-frame [Pa]. defaults to 200000 Pa
+        Parameters
+        ----------
+        designTemperature : float | int
+            Design ambient temperature of the cooling system [°C].
+        temperatureCoolant : float | int
+            Temperature of the cooling load (lower temperature if sensible heat transfer) [°C].
+        heatTransferDelta : float | int, optional
+            Temperature difference required for heat transfer from air to coolant [K]. Default is 5.
+        efficiencyFan : float | int, optional
+            Efficiency of the fan system [0, 1]. Default is 0.7.
+        efficiencyPump : float | int, optional
+            Efficiency of the pump system [0, 1]. Default is 0.7.
+        pressureDropAir : float | int, optional
+            Pressure drop of air through the channels of the cooling frame [Pa]. Default is 261.
+        pressureDropWater : float | int, optional
+            Pressure drop of the water circuit from the heat load to the A-frame [Pa]. Default is 200000.
 
-        Sources:
-        ---------------
+        Returns
+        -------
+        None
+            The method stores the calculated capacity factor in `self.sim_data["capacity_factor"]`
+            and updates the `self.units` dictionary with air-cooling system units.
+
+        Notes
+        -----
+        - Fan and pump CAPEX are calculated based on nominal power at the design temperature and
+        scaled according to ambient conditions [1].
+        - A-frame cost is assumed constant and independent of ambient temperature [2].
+        - The capacity factor reflects the relative increase in cost at varying ambient conditions
+        compared to the design point.
+
+        References
+        ----------
         [1] 10.1016/j.energy.2015.05.081
         [2] 10.1016/j.enconman.2020.113610
         """
@@ -292,15 +342,35 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
         self.units = OrderedDict(units)
 
     def simulate_air_source_heat_pump(
-        self, targetTemperature=100, secondLawEfficiency=0.5
+        self,
+        targetTemperature: float | int = 100,
+        secondLawEfficiency: float | int = 0.5,
     ):
         """
-        Function to calculate the coefficient of performance and conversion factors of an air source heat pump.
+        Simulate an air-source heat pump and calculate its coefficient of performance (COP) and conversion factors.
 
+        The method computes the COP based on the ambient air temperature and the target supply
+        temperature of the heat pump. It also calculates the electricity conversion factor per
+        unit of thermal energy delivered.
 
-        Parameter:
-        targetTemperature (float): Target temperature at which the heat should be supplied [°C]
-        secondLawEfficiency (float): second law efficiency
+        Parameters
+        ----------
+        targetTemperature : float | int, optional
+            Target temperature at which the heat should be supplied [°C]. Default is 100.
+        secondLawEfficiency : float | int, optional
+            Second law efficiency of the heat pump [0,1]. Default is 0.5.
+
+        Returns
+        -------
+        None
+            The calculated COP and conversion factors are stored in `self.sim_data`.
+            The `self.units` dictionary is also updated to reflect the units of the heat pump.
+
+        Notes
+        -----
+        - The electricity conversion factor is calculated as -1/COP [kWh_el/kWh_th].
+        - Units set include thermal capacity (`kW_th`), electricity conversion factor (`kWh_el/kWh_th`),
+        and electricity input (`kWh_el`).
         """
         self.sim_data["COP"] = (
             (targetTemperature + 273.15)

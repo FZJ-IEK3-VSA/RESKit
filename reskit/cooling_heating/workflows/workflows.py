@@ -22,29 +22,54 @@ def air_cooling_wenzel2025(
     output_variables: List[str] = None,
 ):
     """
-    Simulation of an Air Cooling Systems based on ERA5 weather data.
+    Simulate an air-cooling system based on ERA5 weather data.
 
-    Parameters:
-    -----------------------
-    temperatureCoolant: float
-        Temperature of the heat load to be cooled. [°C]
-    designTemperature: float
-        Temperature for the nominal design point of the air cooling system [°C]
-    heatTransferDelta: float
-        temperature delta required for heat transfer from air to coolant [K].
-    efficiencyFan: float
-        efficiency of the total fan system [0,1].
-    pressureDropAir: float
-        pressure drop of the air through the channels of the frame [Pa].
-    efficiencyPump: float
-        efficiency of the total pump system [0,1].
-    pressureDropWater: float
-        pressure drop of the water which is circulated from the site of the heat load to the A-frame [Pa].
-    output_netcdf_path: str
-        Path to a file that you want to save your output NETCDF file at.
-        Default is None
-    output_variables: str
-        Output variables of the simulation that you want to save into your NETCDF Outputfile.
+    This function calculates the fan and pump power requirements, capacity factor,
+    and total electricity demand for air-cooling systems at varying ambient temperatures.
+    Results can be saved to a NetCDF file.
+
+    Parameters
+    ----------
+    placements : pd.DataFrame
+        DataFrame specifying the plant locations and their capacities.
+    era5_path : str
+        Path to the ERA5 weather data source.
+    temperatureCoolant : float
+        Temperature of the heat load to be cooled [°C].
+    designTemperature : float
+        Temperature for the nominal design point of the air cooling system [°C].
+    heatTransferDelta : float, optional
+        Temperature difference required for heat transfer from air to coolant [K]. Default is 5.
+    efficiencyFan : float, optional
+        Efficiency of the fan system [0, 1]. Default is 0.7.
+    pressureDropAir : float, optional
+        Pressure drop of air through the cooling frame channels [Pa]. Default is 261.
+    efficiencyPump : float, optional
+        Efficiency of the pump system [0, 1]. Default is 0.7.
+    pressureDropWater : float, optional
+        Pressure drop of water through the circuit [Pa]. Default is 200000.
+    output_netcdf_path : str, optional
+        Path to save the output NetCDF file. Default is None.
+    output_variables : list of str, optional
+        List of simulation variables to save to the NetCDF file. If None, all variables are saved.
+
+    Returns
+    -------
+    xarray.Dataset
+        Simulation results, including capacity factor, fan/pump/electricity inputs, and cooling output.
+        Can be limited to `output_variables` if specified.
+
+    Notes
+    -----
+    - Calculates fan and pump power using `calculate_fan_power_air_cooling` and `calculate_pump_power_air_cooling`.
+    - Computes the system capacity factor relative to the design temperature using `calculate_capacity_factor_air_cooling`.
+    - Total electricity input includes contributions from both fan and pump.
+    - Stores all relevant units in `wf.units` for reference.
+
+    Raises
+    ------
+    AssertionError
+        If input parameters are not of expected type or if efficiency values are not within (0, 1].
     """
     assert isinstance(temperatureCoolant, (int, float))
     assert isinstance(designTemperature, (int, float))
@@ -134,19 +159,44 @@ def air_source_heat_pump(
     output_variables: List[str] = None,
 ):
     """
-    Simulation of an air source heat pump based on ERA5 weather data.
+    Simulate an air-source heat pump based on ERA5 weather data.
 
-    Parameters:
-    -------------
-    targetTemperature: float
-        Temperature at which the heat pump should supply the heat. [°C]
-    secondLawEfficiency: float
-        Second Law efficiency of the heat pump.
-    output_netcdf_path: str
-        Path to a file that you want to save your output NETCDF file at.
-        Default is None
-    output_variables: str
-        Output variables of the simulation that you want to save into your NETCDF Outputfile.
+    This function calculates the coefficient of performance (COP) and electricity
+    demand of an air-source heat pump at varying ambient temperatures. Results
+    can be saved to a NetCDF file.
+
+    Parameters
+    ----------
+    placements : pd.DataFrame
+        DataFrame specifying plant locations and capacities.
+    era5_path : str
+        Path to the ERA5 weather data source.
+    targetTemperature : float, optional
+        Temperature at which the heat pump should supply the heat [°C]. Default is 100.
+    secondLawEfficiency : float, optional
+        Second law efficiency of the heat pump [0,1]. Default is 0.5.
+    output_netcdf_path : str, optional
+        Path to save the output NetCDF file. Default is None.
+    output_variables : list of str, optional
+        List of simulation variables to save to the NetCDF file. If None, all variables are saved.
+
+    Returns
+    -------
+    xarray.Dataset
+        Simulation results including COP, electricity conversion factor, and electricity input.
+        Can be limited to `output_variables` if specified.
+
+    Raises
+    ------
+    AssertionError
+        If `targetTemperature` or `secondLawEfficiency` are not numeric or if
+        `secondLawEfficiency` is not within (0, 1].
+
+    Notes
+    -----
+    - The electricity conversion factor is calculated as -1/COP [kWh_el/kWh_th].
+    - Electricity input is computed for each plant based on its capacity and the COP.
+    - Units are stored in `wf.units` for reference.
     """
     assert isinstance(targetTemperature, (int, float))
     assert isinstance(secondLawEfficiency, (int, float))
