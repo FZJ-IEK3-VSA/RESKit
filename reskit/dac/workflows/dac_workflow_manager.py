@@ -56,7 +56,6 @@ class DACWorkflowManager(WorkflowManager):
         }
         self.units = OrderedDict(units)
 
-
     def load_lt_dac_model_data(self, model):
         """
         Function to load the DAC model data of a given model. The model data maps temperature and relative humidity to energy demand, relative productivity and water desorption.

@@ -46,7 +46,10 @@ def lt_dac_era5_wenzel2025(
         verbose=False,
     )
 
-    wf.sim_data["relative_humidity"] = calculate_relative_humidity(dewpoint_temperature = wf.sim_data["surface_dew_temperature"], air_temperature=wf.sim_data["surface_air_temperature"])
+    wf.sim_data["relative_humidity"] = calculate_relative_humidity(
+        dewpoint_temperature=wf.sim_data["surface_dew_temperature"],
+        air_temperature=wf.sim_data["surface_air_temperature"],
+    )
     wf.load_lt_dac_model_data(model=model)
     wf.simulate_lt_dac_model(fillMethod=fillMethod)
 
@@ -88,7 +91,10 @@ def ht_dac_era5_wenzel2025(
         set_time_index=True,
         verbose=False,
     )
-    wf.sim_data["relative_humidity"] = calculate_relative_humidity(dewpoint_temperature = wf.sim_data["surface_dew_temperature"], air_temperature=wf.sim_data["surface_air_temperature"])
+    wf.sim_data["relative_humidity"] = calculate_relative_humidity(
+        dewpoint_temperature=wf.sim_data["surface_dew_temperature"],
+        air_temperature=wf.sim_data["surface_air_temperature"],
+    )
     wf.simulate_ht_dac_model(model=model)
 
     return wf.to_xarray(
