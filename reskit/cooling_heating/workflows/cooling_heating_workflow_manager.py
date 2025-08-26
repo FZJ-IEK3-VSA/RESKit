@@ -96,13 +96,20 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
         Function to calculate the fan power demand of an air cooling model.
 
         Parameter:
-        temperatureCoolant (float): temperature of the cooling load (lower temperature, if sensible heat transfer) in °C
-        heatTransferDelta (float): temperature delta required for heat transfer from air to coolant [K]. defaults to 5.
-        efficiencyFan (float): efficiency of the total fan system [0,1]. defaults to 0.7 based on [1]
-        pressureDropAir (float): pressure drop of the air through the channels of the frame [Pa]. defaults to 261 Pa based on [2]
-        designTemperature (float): if given, the following is only evaluated for the design temperature as air temperature. [°C]
+        -----------
+        temperatureCoolant: float
+            temperature of the cooling load (lower temperature, if sensible heat transfer) in °C
+        heatTransferDelta: float
+            temperature delta required for heat transfer from air to coolant [K]. defaults to 5.
+        efficiencyFan: float
+            efficiency of the total fan system [0,1]. defaults to 0.7 based on [1]
+        pressureDropAir: float
+            pressure drop of the air through the channels of the frame [Pa]. defaults to 261 Pa based on [2]
+        designTemperature: float
+            if given, the following is only evaluated for the design temperature as air temperature. [°C]
 
         Sources:
+        -------------
         [1] 10.1016/j.ijhydene.2024.11.381
         [2] http://hdl.handle.net/1853/55674
         """
@@ -152,13 +159,20 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
         Function to calculate the pump power demand of an air cooling model.
 
         Parameter:
-        temperatureCoolant (float): temperature of the cooling load (lower temperature, if sensible heat transfer) in °C
-        heatTransferDelta (float): temperature delta required for heat transfer from air to coolant [K]. defaults to 5.
-        efficiencyPump (float): efficiency of the total pump system [0,1]. defaults to 0.7 based on [1]
-        pressureDropWater (float): pressure drop of the water which is circulated from the site of the heat load to the A-frame [Pa]. defaults to 200000 Pa based on [2]
-        designTemperature (float): if given, the following is only evaluated for the design temperature as air temperature. [°C]
+        -------------
+        temperatureCoolant: float
+            temperature of the cooling load (lower temperature, if sensible heat transfer) in °C
+        heatTransferDelta: float
+            temperature delta required for heat transfer from air to coolant [K]. defaults to 5.
+        efficiencyPump: float
+            efficiency of the total pump system [0,1]. defaults to 0.7 based on [1]
+        pressureDropWater: float
+            pressure drop of the water which is circulated from the site of the heat load to the A-frame [Pa]. defaults to 200000 Pa based on [2]
+        designTemperature: float
+            if given, the following is only evaluated for the design temperature as air temperature. [°C]
 
         Sources:
+        -------------
         [1] 10.1016/j.ijhydene.2024.11.381
         [2] 10.1016/j.enconman.2020.113610
 
@@ -207,15 +221,24 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
 
 
         Parameter:
-        designTemperature (float): Design ambient temperature of the cooling system
-        temperatureCoolant (float): temperature of the cooling load (lower temperature, if sensible heat transfer) in °C
-        heatTransferDelta (float): temperature delta required for heat transfer from air to coolant [K]. defaults to 5.
-        efficiencyFan (float): efficiency of the total fan system [0,1]. defaults to 0.7
-        pressureDropAir (float): pressure drop of the air through the channels of the frame [Pa]. defaults to 261 Pa
-        efficiencyPump (float): efficiency of the total pump system [0,1]. defaults to 0.7
-        pressureDropWater (float): pressure drop of the water which is circulated from the site of the heat load to the A-frame [Pa]. defaults to 200000 Pa
+        ---------------
+        designTemperature: float
+            Design ambient temperature of the cooling system
+        temperatureCoolant: float
+            temperature of the cooling load (lower temperature, if sensible heat transfer) in °C
+        heatTransferDelta: float
+            temperature delta required for heat transfer from air to coolant [K]. defaults to 5.
+        efficiencyFan: float
+            efficiency of the total fan system [0,1]. defaults to 0.7
+        pressureDropAir: float
+            pressure drop of the air through the channels of the frame [Pa]. defaults to 261 Pa
+        efficiencyPump: float
+            efficiency of the total pump system [0,1]. defaults to 0.7
+        pressureDropWater: float
+            pressure drop of the water which is circulated from the site of the heat load to the A-frame [Pa]. defaults to 200000 Pa
 
         Sources:
+        ---------------
         [1] 10.1016/j.energy.2015.05.081
         [2] 10.1016/j.enconman.2020.113610
         """
