@@ -82,11 +82,12 @@ class DACWorkflowManager(WorkflowManager):
         [3] 10.1016/j.adapen.2025.100229
 
         """
-        assert model in {"LT_jajjawi", "LT_sendi"} or (
+        model_path_dict = {"LT_sendi": "LT_sendi.csv", "LT_jajjawi": "LT_jajjawi.csv"}
+
+        assert model in model_path_dict.keys() or (
             isinstance(model, str) and model.endswith(".csv") and os.path.isfile(model)
         ), f"Invalid model: {model}. Not one of the base models (LT_jajjawi or LT_sendi) and no valid path to an existing csv with custom data."
 
-        model_path_dict = {"LT_sendi": "LT_sendi.csv", "LT_jajjawi": "LT_jajjawi.csv"}
         if model in model_path_dict.keys():
             path = os.path.join(DATAFOLDER, model_path_dict[model])
         else:
@@ -126,6 +127,10 @@ class DACWorkflowManager(WorkflowManager):
         NotImplementedError
             If a filling method other than "nearest" or "offTmin" is requested.
         """
+        assert fillMethod in [
+            "offTmin",
+            "nearest",
+        ], f"Filling Method: {fillMethod} not implemented."
 
         elec = griddata(
             (self.dac_data["T"], self.dac_data["RH"]),
@@ -202,12 +207,10 @@ class DACWorkflowManager(WorkflowManager):
                 ),
                 method="nearest",
             )
-        elif fillMethod == "offTmin":
+        if fillMethod == "offTmin":
             # fill RH values outside range by nearest and force no operation below/above T bounds by setting relProd=0
             Tmin = self.dac_data["T"].min()
             relProdFill[self.sim_data["surface_air_temperature"] < Tmin] = 0
-        else:
-            raise NotImplementedError(f"Filling Method: {fillMethod} not implemented.")
 
         # combine:
         elec = np.where(np.isnan(elec), elecFill, elec)
@@ -239,7 +242,7 @@ class DACWorkflowManager(WorkflowManager):
 
     def simulate_ht_dac_model(self, model: str = "HT_okosun"):
         """
-        Simulate the high-temperature (HT), liquid-solvent DAC model for a given model type.
+        Simulate the high-temperature (HT), liquid-solvent DAC (Direct Air Capture) model for a given model type.
 
         This function maps ambient temperature and relative humidity to energy demand,
         relative productivity, and water desorption for the specified DAC model.
