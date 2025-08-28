@@ -107,7 +107,7 @@ def air_cooling_wenzel2025(
         pressureDropWater=pressureDropWater,
         designTemperature=None,
     )
-    wf.calculate_capacity_factor_air_cooling(
+    wf.calculate_relative_cost_factor_air_cooling(
         designTemperature,
         temperatureCoolant,
         heatTransferDelta=heatTransferDelta,
@@ -115,6 +115,11 @@ def air_cooling_wenzel2025(
         efficiencyPump=efficiencyPump,
         pressureDropAir=pressureDropAir,
         pressureDropWater=pressureDropWater,
+    )
+
+    wf.calculate_capacity_factor_air_cooling(
+        temperatureCoolant=temperatureCoolant,
+        heatTransferDelta=heatTransferDelta,
     )
 
     # calculate total conversion factor electricity:
@@ -221,6 +226,10 @@ def air_source_heat_pump(
     ] * np.array(
         wf.placements["capacity"]
     )  # kWh_el/h
+
+    wf.sim_data["heat_output"] = np.ones(
+        wf.sim_data["electricity_input"].shape
+    ) * np.array(wf.placements["capacity"])
 
     return wf.to_xarray(
         output_netcdf_path=output_netcdf_path,

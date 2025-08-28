@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import xarray as xr
 
 from collections import OrderedDict
 from scipy.interpolate import interp1d
@@ -236,7 +237,7 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
             )  # Assign high value if cooling is not possible
             self.sim_data["conversion_factor_pump_electricity"] = -WPump
 
-    def calculate_capacity_factor_air_cooling(
+    def calculate_relative_cost_factor_air_cooling(
         self,
         designTemperature: float | int,
         temperatureCoolant: float | int,
@@ -247,14 +248,14 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
         pressureDropWater: float | int = 200000,
     ):
         """
-        Calculate the capacity factor of an air-cooling system.
+        Calculate the relative (air temperature dependent) cost factor of an air-cooling system.
 
         The air-cooling system consists of fans, water pumps, and an A-frame heat exchanger
         that transfers heat from water to air. The A-frame is assumed to always transfer
         heat with the specified `heatTransferDelta`. Fan and pump costs depend on the
-        installed nominal power, which varies with ambient air temperature. The capacity
+        installed nominal power, which varies with ambient air temperature. The relative cost
         factor is defined as the ratio of cost at the design temperature to the cost at
-        actual ambient temperatures.
+        actual ambient temperatures. To cool the same amount of heat at an air temperature higher than the design air temperature, the CAPEX would rise, since pump and fan capacity would increase.
 
         Parameters
         ----------
@@ -276,7 +277,7 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
         Returns
         -------
         None
-            The method stores the calculated capacity factor in `self.sim_data["capacity_factor"]`
+            The method stores the calculated relative cost factor in `self.sim_data["relative_cost_factor"]`
             and updates the `self.units` dictionary with air-cooling system units.
 
         Notes
@@ -284,7 +285,7 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
         - Fan and pump CAPEX are calculated based on nominal power at the design temperature and
         scaled according to ambient conditions [1].
         - A-frame cost is assumed constant and independent of ambient temperature [2].
-        - The capacity factor reflects the relative increase in cost at varying ambient conditions
+        - The relative cost factor reflects the relative increase in cost at varying ambient conditions
         compared to the design point.
 
         References
@@ -325,21 +326,53 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
         CAPEXDesign = CAPEXFanDesign + CAPEXPumpDesign + CAPEXAC
         CAPEX = CAPEXFan + CAPEXPump + CAPEXAC
 
-        self.sim_data["capacity_factor"] = CAPEXDesign / CAPEX
+        self.sim_data["relative_cost_factor"] = CAPEXDesign / CAPEX
 
         # set the units of an air cooling system:
         units = {
             "capacity": "kW_th",
+            "relative_cost_factor": "-",
             "capacity_factor": "-",
             "conversion_factor_electricity": "kWh_el/kWh_th",
             "conversion_factor_fan_electricity": "kWh_el/kWh_th",
             "conversion_factor_pump_electricity": "kWh_el/kWh_th",
             "electricity_input": "kWh_el",
             "electricity_input_fan": "kWh_el",
-            "electricity_input:pump": "kWh_el",
+            "electricity_input_pump": "kWh_el",
             "cooling_output": "kWh_th",
         }
         self.units = OrderedDict(units)
+
+    def calculate_capacity_factor_air_cooling(
+        self,
+        temperatureCoolant: float | int,
+        heatTransferDelta: float | int = 5,
+    ):
+        """
+        Calculate the capacity factor of an air-cooling system.
+
+        The air-cooling system can only provide the cooling load if the ambient air
+        temperature is lower than the coolant temperature minus the required heat
+        transfer delta. Otherwise, the system shuts off.
+
+        Parameters
+        ----------
+        temperatureCoolant : float | int
+            Temperature of the cooling load (lower temperature if sensible heat transfer) [°C].
+        heatTransferDelta : float | int, optional
+            Temperature difference required for heat transfer from air to coolant [K]. Default is 5.
+
+        Returns
+        -------
+        None
+            The method stores the calculated capacity factor in `self.sim_data["capacity_factor"]'.
+        """
+        self.sim_data["capacity_factor"] = xr.where(
+            self.sim_data["surface_air_temperature"]
+            < (temperatureCoolant - heatTransferDelta),
+            1.0,
+            0.0,
+        )
 
     def simulate_air_source_heat_pump(
         self,
@@ -386,5 +419,7 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
             "capacity": "kW_th",
             "conversion_factor_electricity": "kWh_el/kWh_th",
             "electricity_input": "kWh_el",
+            "heat_output": "kWh_th",
+            "COP": "-",
         }
         self.units = OrderedDict(units)
