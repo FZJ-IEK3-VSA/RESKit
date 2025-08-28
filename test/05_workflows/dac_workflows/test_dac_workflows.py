@@ -1,4 +1,7 @@
-from reskit.dac.workflows.workflows import lt_dac_era5_wenzel2025
+from reskit.dac.workflows.workflows import (
+    lt_dac_era5_wenzel2025,
+    ht_dac_era5_wenzel2025,
+)
 from reskit import TEST_DATA
 import pytest
 import numpy as np
@@ -17,7 +20,7 @@ def dac_placements() -> pd.DataFrame:
     return placements
 
 
-def test_dac_era5_wenzel2025(dac_placements: pd.DataFrame):
+def test_lt_dac_era5_wenzel2025(dac_placements: pd.DataFrame):
     gen = lt_dac_era5_wenzel2025(
         placements=dac_placements, era5_path=TEST_DATA["era5-like"], model="LT_jajjawi"
     )
@@ -43,5 +46,35 @@ def test_dac_era5_wenzel2025(dac_placements: pd.DataFrame):
         np.isclose(
             gen.capacity_factor.std(dim="time"),
             [0.02654445, 0.02320278, 0.01160597, 0.02647336],
+        )
+    )
+
+
+def test_ht_dac_era5_wenzel2025(dac_placements: pd.DataFrame):
+    gen = ht_dac_era5_wenzel2025(
+        placements=dac_placements, era5_path=TEST_DATA["era5-like"], model="HT_okosun"
+    )
+    assert np.all(
+        np.isclose(
+            gen.capacity_factor.mean(dim="time"),
+            [0.77772581, 0.78001443, 0.74575996, 0.78649318],
+        )
+    )
+    assert np.all(
+        np.isclose(
+            gen.capacity_factor.min(dim="time"),
+            [0.71635856, 0.71888185, 0.68504126, 0.72036108],
+        )
+    )
+    assert np.all(
+        np.isclose(
+            gen.capacity_factor.max(dim="time"),
+            [0.86194148, 0.87629404, 0.85932953, 0.87056588],
+        )
+    )
+    assert np.all(
+        np.isclose(
+            gen.capacity_factor.std(dim="time"),
+            [0.02720932, 0.02935947, 0.03245553, 0.02854373],
         )
     )
