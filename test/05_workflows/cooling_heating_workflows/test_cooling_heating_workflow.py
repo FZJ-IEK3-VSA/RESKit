@@ -30,22 +30,22 @@ def test_air_cooling_wenzel2025(placements: pd.DataFrame):
     )
     assert np.all(
         np.isclose(
-            gen.capacity_factor.mean(dim="time"), [1.13578348, 1.13615734, 1.14453698]
+            gen.conversion_factor_electricity.mean(dim="time"), [-0.01082566, -0.0107924 , -0.01012263]
         )
     )
     assert np.all(
         np.isclose(
-            gen.capacity_factor.min(dim="time"), [1.1032281, 1.10971561, 1.10532639]
+            gen.conversion_factor_electricity.min(dim="time"), [-0.01364287, -0.01305147, -0.01345005]
         )
     )
     assert np.all(
         np.isclose(
-            gen.capacity_factor.max(dim="time"), [1.15116857, 1.15071551, 1.16178569]
+            gen.conversion_factor_electricity.max(dim="time"), [-0.00958934, -0.00962442, -0.00878508]
         )
     )
     assert np.all(
         np.isclose(
-            gen.capacity_factor.std(dim="time"), [0.00909699, 0.00808064, 0.00976524]
+            gen.conversion_factor_electricity.std(dim="time"), [0.00075725, 0.00066738, 0.00079315]
         )
     )
 
