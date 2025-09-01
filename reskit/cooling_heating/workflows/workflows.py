@@ -118,8 +118,13 @@ def air_cooling_wenzel2025(
     )
 
     wf.calculate_capacity_factor_air_cooling(
+        designTemperature=designTemperature,
         temperatureCoolant=temperatureCoolant,
         heatTransferDelta=heatTransferDelta,
+        efficiencyFan=efficiencyFan,
+        efficiencyPump=efficiencyPump,
+        pressureDropAir=pressureDropAir,
+        pressureDropWater=pressureDropWater,
     )
 
     # calculate total conversion factor electricity:
