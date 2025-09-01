@@ -50,6 +50,10 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
         airData = np.array(
             [
                 [
+                    0.0002799,
+                    0.0002797,
+                    0.0002795,
+                    0.0002794,
                     0.0002793,
                     0.0002793,
                     0.0002792,
@@ -64,6 +68,10 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
                     0.0002804,
                 ],  # heat capacity cp in kWh/(kgK)
                 [
+                    1.739,
+                    1.657,
+                    1.582,
+                    1.514,
                     1.451,
                     1.394,
                     1.341,
@@ -80,7 +88,24 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
             ]
         ).T  # density in kg/m3
         self.airData = pd.DataFrame(
-            index=[-30, -20, -10, 0, 10, 20, 30, 40, 50, 60, 70, 80],
+            index=[
+                -70,
+                -60,
+                -50,
+                -40,
+                -30,
+                -20,
+                -10,
+                0,
+                10,
+                20,
+                30,
+                40,
+                50,
+                60,
+                70,
+                80,
+            ],
             data=airData,
             columns=["cp", "density"],
         )  # index referes to ambient air temperature
