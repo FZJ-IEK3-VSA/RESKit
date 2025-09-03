@@ -50,6 +50,10 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
         airData = np.array(
             [
                 [
+                    0.0002799,
+                    0.0002797,
+                    0.0002795,
+                    0.0002794,
                     0.0002793,
                     0.0002793,
                     0.0002792,
@@ -64,6 +68,10 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
                     0.0002804,
                 ],  # heat capacity cp in kWh/(kgK)
                 [
+                    1.739,
+                    1.657,
+                    1.582,
+                    1.514,
                     1.451,
                     1.394,
                     1.341,
@@ -80,7 +88,24 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
             ]
         ).T  # density in kg/m3
         self.airData = pd.DataFrame(
-            index=[-30, -20, -10, 0, 10, 20, 30, 40, 50, 60, 70, 80],
+            index=[
+                -70,
+                -60,
+                -50,
+                -40,
+                -30,
+                -20,
+                -10,
+                0,
+                10,
+                20,
+                30,
+                40,
+                50,
+                60,
+                70,
+                80,
+            ],
             data=airData,
             columns=["cp", "density"],
         )  # index referes to ambient air temperature
@@ -345,33 +370,79 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
 
     def calculate_capacity_factor_air_cooling(
         self,
+        designTemperature: float | int,
         temperatureCoolant: float | int,
         heatTransferDelta: float | int = 5,
+        efficiencyFan: float | int = 0.7,
+        efficiencyPump: float | int = 0.7,
+        pressureDropAir: float | int = 261,
+        pressureDropWater: float | int = 200000,
     ):
         """
         Calculate the capacity factor of an air-cooling system.
 
         The air-cooling system can only provide the cooling load if the ambient air
-        temperature is lower than the coolant temperature minus the required heat
-        transfer delta. Otherwise, the system shuts off.
+        temperature is lower than the design temperature. If the temperature is above the design temperature,
+        pumps and fans are designed too small to provide the necessary flows and the system can only provide less cooling.
+        The reduction in cooling can be calculated based on the ratio of the design power and the theoretically required
+        power for both, fans and pumps individually. The minimum of these ratios is the capacity factor.
+        If the temperature rises above the coolant temperature minus the heat transfer delta, the system needs to shut off.
 
         Parameters
         ----------
+        designTemperature : float | int
+            Design ambient temperature of the cooling system [°C].
         temperatureCoolant : float | int
             Temperature of the cooling load (lower temperature if sensible heat transfer) [°C].
         heatTransferDelta : float | int, optional
             Temperature difference required for heat transfer from air to coolant [K]. Default is 5.
+        efficiencyFan : float | int, optional
+            Efficiency of the fan system [0, 1]. Default is 0.7.
+        efficiencyPump : float | int, optional
+            Efficiency of the pump system [0, 1]. Default is 0.7.
+        pressureDropAir : float | int, optional
+            Pressure drop of air through the channels of the cooling frame [Pa]. Default is 261.
+        pressureDropWater : float | int, optional
+            Pressure drop of the water circuit from the heat load to the A-frame [Pa]. Default is 200000.
 
         Returns
         -------
         None
             The method stores the calculated capacity factor in `self.sim_data["capacity_factor"]'.
         """
+        # At design point:
+        PFanDesign = self.calculate_fan_power_air_cooling(
+            temperatureCoolant,
+            heatTransferDelta=heatTransferDelta,
+            efficiencyFan=efficiencyFan,
+            pressureDropAir=pressureDropAir,
+            designTemperature=designTemperature,
+        )
+        PPumpDesign = self.calculate_pump_power_air_cooling(
+            temperatureCoolant,
+            heatTransferDelta=heatTransferDelta,
+            efficiencyPump=efficiencyPump,
+            pressureDropWater=pressureDropWater,
+            designTemperature=designTemperature,
+        )
+
         self.sim_data["capacity_factor"] = xr.where(
-            self.sim_data["surface_air_temperature"]
-            < (temperatureCoolant - heatTransferDelta),
-            1.0,
-            0.0,
+            self.sim_data["surface_air_temperature"] <= designTemperature,
+            1,  # Case 1: below design temperature, the system can always provide enough cooling.
+            xr.where(
+                self.sim_data["surface_air_temperature"]
+                < (temperatureCoolant - heatTransferDelta),
+                # Case 2: between design and shut off temperature. The system can not provide sufficient cooling. Its limited by:
+                np.minimum(
+                    PPumpDesign
+                    / self.sim_data[
+                        "conversion_factor_pump_electricity"
+                    ],  # either the pump
+                    PFanDesign
+                    / self.sim_data["conversion_factor_fan_electricity"],  # or the fan
+                ),
+                0.0,  # Case 3: too hot. The system needs to shut off.
+            ),
         )
 
     def simulate_air_source_heat_pump(
