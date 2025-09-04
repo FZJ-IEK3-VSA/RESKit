@@ -193,17 +193,30 @@ class WindWorkflowManager(WorkflowManager):
         # 3) PBLH < EH & PBLH <= HH -> TH = EH (all heights are outside of planetary influence, use (constant) ws(EH))
         # 4) PBLH < EH & PBLH > HH -> TH = HH, EH -> PBLH (scaling relative to PBLH since ws(EH) == ws(PBLH)
 
-        # When the hub height is above the PBL, then only project to the PBL
-        target_height = np.minimum(
-            self.sim_data["boundary_layer_height"],
-            self.placements["hub_height"].values,
-        )
-
-        # When the PBL is below the elevated_wind_speed_height, then no projection
-        # should be performed. This can be effectively be accomplished by setting 
-        # the target height to that of the elevated_wind_speed_height
-        sel = target_height > self.elevated_wind_speed_height #TODO < plus consider lower hub heights than elevated height!
-        target_height[sel] = self.elevated_wind_speed_height
+        # Get the relevant variables
+        pbl_height = self.sim_data["boundary_layer_height"]
+        hub_height = self.placements["hub_height"].values
+        elevated_height = self.elevated_wind_speed_height
+        
+        # Initialize target height array
+        target_height = np.zeros_like(hub_height, dtype=float)
+        
+        # Case 1: EH <= PBLH & HH <= PBLH -> TH = HH (no influence of PBL)
+        case1 = (elevated_height <= pbl_height) & (hub_height <= pbl_height)
+        target_height[case1] = hub_height[case1]
+        
+        # Case 2: EH <= PBLH & HH > PBLH -> TH = PBLH (set PBLH as upper target height limit)
+        case2 = (elevated_height <= pbl_height) & (hub_height > pbl_height)
+        target_height[case2] = pbl_height[case2]
+        
+        # Case 3: PBLH < EH & PBLH <= HH -> TH = EH (all heights are outside of planetary influence, use (constant) ws(EH))
+        case3 = (pbl_height < elevated_height) & (pbl_height <= hub_height)
+        target_height[case3] = elevated_height
+        
+        # Case 4: PBLH < EH & PBLH > HH -> TH = HH, EH -> PBLH (scaling relative to PBLH since ws(EH) == ws(PBLH))
+        # Note: This case also requires adjusting the elevated_wind_speed_height, but that's handled in the calling function
+        case4 = (pbl_height < elevated_height) & (pbl_height > hub_height)
+        target_height[case4] = hub_height[case4]
 
         return target_height
     
