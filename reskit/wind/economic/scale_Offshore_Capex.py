@@ -375,7 +375,7 @@ def getPlatformCost(
     Sustainable Energy Reviews 187, p. 113699. DOI: 10.1016/j.rser.2023.113699.
     """
     assert (
-        isinstance(waterDepth, (int, float)) and waterDepth > 0
+        isinstance(waterDepth, (int, float)) and waterDepth >= 0
     ), f"waterDepth must be an int or float > 0 m"
     if convention == "RogeauEtAl2023":
         # platform cost factors per type, see table (5)
