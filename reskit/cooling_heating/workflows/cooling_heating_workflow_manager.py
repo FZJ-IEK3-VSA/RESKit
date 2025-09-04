@@ -41,9 +41,9 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
         """
 
         # Do basic workflow construction
-        assert all(
-            [a in placements.columns for a in ["lon", "lat", "capacity"]]
-        ), "Placements must contain the columns lon,lat and capacity"
+        assert all([a in placements.columns for a in ["lon", "lat", "capacity"]]), (
+            "Placements must contain the columns lon,lat and capacity"
+        )
         super().__init__(placements)
 
         # Set thermodynamic data [1] for air density, [2] for air heat capacity

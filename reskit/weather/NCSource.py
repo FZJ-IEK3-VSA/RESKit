@@ -256,9 +256,9 @@ class NCSource(object):
 
         # choose source for the time step extraction
         if not time_index_from == None:
-            assert (
-                time_index_from in self.variables.index
-            ), f'ERA_5-key {time_index_from} not known. Check variable "time_index_from" and folder {source}'
+            assert time_index_from in self.variables.index, (
+                f'ERA_5-key {time_index_from} not known. Check variable "time_index_from" and folder {source}'
+            )
             self.variables["path"][time_name] = self.variables["path"][time_index_from]
 
         # set basic variables

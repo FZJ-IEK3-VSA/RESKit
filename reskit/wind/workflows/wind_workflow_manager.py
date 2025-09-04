@@ -53,12 +53,12 @@ class WindWorkflowManager(WorkflowManager):
         super().__init__(placements)
 
         # Check for basics
-        assert (
-            "capacity" in self.placements.columns
-        ), "Placement dataframe needs 'capacity' column"
-        assert (
-            "hub_height" in self.placements.columns
-        ), "Placement dataframe needs 'hub_height' column"
+        assert "capacity" in self.placements.columns, (
+            "Placement dataframe needs 'capacity' column"
+        )
+        assert "hub_height" in self.placements.columns, (
+            "Placement dataframe needs 'hub_height' column"
+        )
 
         # Check for power curve. If not found, make it!
         self.powerCurveLibrary = dict()
@@ -72,9 +72,9 @@ class WindWorkflowManager(WorkflowManager):
                 self.placements.powerCurve.isna()
                 | (self.placements.powerCurve == "nan")
             ]
-            assert (
-                "rotor_diam" in placements_wo_PC.columns
-            ), "Placements needs 'rotor_diam' or 'powerCurve' specified"
+            assert "rotor_diam" in placements_wo_PC.columns, (
+                "Placements needs 'rotor_diam' or 'powerCurve' specified"
+            )
 
             if len(placements_wo_PC) == 0:
                 return
@@ -98,17 +98,17 @@ class WindWorkflowManager(WorkflowManager):
             self.placements.loc[placements_wo_PC.index, "powerCurve"] = powerCurve
 
         if not "powerCurve" in self.placements.columns:
-            assert (
-                "rotor_diam" in self.placements.columns
-            ), "Placement dataframe needs 'rotor_diam' or 'powerCurve' column"
+            assert "rotor_diam" in self.placements.columns, (
+                "Placement dataframe needs 'rotor_diam' or 'powerCurve' column"
+            )
             self.placements["powerCurve"] = None
         generate_missing_synthetic_power_curves(self)
 
         # Put power curves into the power curve library
         for pc in self.placements.powerCurve.values:
-            assert isinstance(
-                pc, str
-            ), "Power curve value needs to be a string, not " + type(pc)
+            assert isinstance(pc, str), (
+                "Power curve value needs to be a string, not " + type(pc)
+            )
 
             if pc in self.powerCurveLibrary:
                 continue
@@ -224,12 +224,12 @@ class WindWorkflowManager(WorkflowManager):
 
         """
 
-        assert (
-            "surface_air_temperature" in self.sim_data
-        ), "surface_air_temperature has not been read from a source"
-        assert (
-            "surface_pressure" in self.sim_data
-        ), "surface_pressure has not been read from a source"
+        assert "surface_air_temperature" in self.sim_data, (
+            "surface_air_temperature has not been read from a source"
+        )
+        assert "surface_pressure" in self.sim_data, (
+            "surface_pressure has not been read from a source"
+        )
         assert hasattr(self, "elevated_wind_speed_height")
 
         self.sim_data["elevated_wind_speed"] = (
@@ -449,7 +449,7 @@ class WindWorkflowManager(WorkflowManager):
             if verbose:
                 print(
                     datetime.datetime.now(),
-                    f"Based on max_batch_size={max_batch_size}, the total of {len(self.locs)} placements were split into {int(_batches)} sub batches. Proceeding with batch {_batch+1}/{int(_batches)} (id={_batch}) with {len_locs} placements.",
+                    f"Based on max_batch_size={max_batch_size}, the total of {len(self.locs)} placements were split into {int(_batches)} sub batches. Proceeding with batch {_batch + 1}/{int(_batches)} (id={_batch}) with {len_locs} placements.",
                 )
 
             # simulate first time to get the undistorted RESkit cfs
@@ -493,7 +493,7 @@ class WindWorkflowManager(WorkflowManager):
             # make sure the target cf is not not NaN, possibly due to missing GWA cell value
             if np.isnan(_target_cfs).any():
                 warnings.warn(
-                    f"WARNING: {len(self.locs[_batch*max_batch_size:(_batch+1)*max_batch_size][np.isnan(_target_cfs)])} NaNs detected in weather data LRA: {self.locs[_batch*max_batch_size:(_batch+1)*max_batch_size][np.isnan(_target_cfs)]}"
+                    f"WARNING: {len(self.locs[_batch * max_batch_size : (_batch + 1) * max_batch_size][np.isnan(_target_cfs)])} NaNs detected in weather data LRA: {self.locs[_batch * max_batch_size : (_batch + 1) * max_batch_size][np.isnan(_target_cfs)]}"
                 )
 
             # set the initial deviation based on initial, undistorted generation vs target generation
@@ -513,13 +513,13 @@ class WindWorkflowManager(WorkflowManager):
                 # safety fallback - exit in case of infinite loops
                 if _itercount > max_iterations:
                     raise TimeoutError(
-                        f"{str(datetime.datetime. now())} The simulation did not reach the required tolerance of {tolerance} within the given max. {max_iterations} iterations. Remaining max. absolute deviation is {round(max(abs(_deviations_last - 1)),4)}. Number of placements with deviation > {tolerance}: {sum(abs(_deviations_last - 1)>tolerance)}/{len(_deviations_last)}. Increase tolerance or max_iterations value."
+                        f"{str(datetime.datetime.now())} The simulation did not reach the required tolerance of {tolerance} within the given max. {max_iterations} iterations. Remaining max. absolute deviation is {round(max(abs(_deviations_last - 1)), 4)}. Number of placements with deviation > {tolerance}: {sum(abs(_deviations_last - 1) > tolerance)}/{len(_deviations_last)}. Increase tolerance or max_iterations value."
                     )
                 # print deviation status for the current iteration
                 if verbose:
                     print(
                         datetime.datetime.now(),
-                        f"Maximum rel. deviation after {'initial simulation' if _itercount==0 else str(_itercount)+' additional iteration(s)'} is {round(max(abs(_deviations_last - 1)),4)}, Number/share of placements with deviation > tolerance ({tolerance}): {sum(abs(_deviations_last - 1)>tolerance)}/{len(_deviations_last)}. More iterations required.",
+                        f"Maximum rel. deviation after {'initial simulation' if _itercount == 0 else str(_itercount) + ' additional iteration(s)'} is {round(max(abs(_deviations_last - 1)), 4)}, Number/share of placements with deviation > tolerance ({tolerance}): {sum(abs(_deviations_last - 1) > tolerance)}/{len(_deviations_last)}. More iterations required.",
                     )
 
                 # update the estimated correction factor for the wind speed for this iteration
@@ -554,7 +554,7 @@ class WindWorkflowManager(WorkflowManager):
                 ) & (abs(_deviations_current - 1) > tolerance)
                 if _non_convs.sum() > 0:
                     print(
-                        f"{_non_convs.sum()}/{len(_deviations_current)} placements ({round(_non_convs.sum()/len(_deviations_current)*100, 2)}%) did not converge (sufficiently). Average cf will be enforced.",
+                        f"{_non_convs.sum()}/{len(_deviations_current)} placements ({round(_non_convs.sum() / len(_deviations_current) * 100, 2)}%) did not converge (sufficiently). Average cf will be enforced.",
                         flush=True,
                     )
 
@@ -622,7 +622,9 @@ class WindWorkflowManager(WorkflowManager):
                             np.isnan(_target_cfs[i])
                             or abs(gen_current[:, i].mean() / _target_cfs[i] - 1)
                             < tolerance
-                        ), f"Tolerance was not met after enforced adaptation of average cf."
+                        ), (
+                            f"Tolerance was not met after enforced adaptation of average cf."
+                        )
 
                 # calculate new current cf per location after convergence fix
                 avg_gen_current = np.nanmean(gen_current, axis=0)
@@ -644,7 +646,7 @@ class WindWorkflowManager(WorkflowManager):
             if verbose:
                 print(
                     datetime.datetime.now(),
-                    f"Required tolerance of {tolerance} reached after {_itercount} additional iteration(s). Maximum remaining rel. deviation: {round(max(abs(_deviations_last - 1)),4)}.",
+                    f"Required tolerance of {tolerance} reached after {_itercount} additional iteration(s). Maximum remaining rel. deviation: {round(max(abs(_deviations_last - 1)), 4)}.",
                     flush=True,
                 )
 
@@ -652,7 +654,7 @@ class WindWorkflowManager(WorkflowManager):
             if (gen_last > 1).any():
                 print(
                     datetime.datetime.now(),
-                    f"Required target cf could not be reached for some locations, cf will be reduced by factor min/max. {np.nanmin(1/_max_cfs)}/{np.nanmax(1/_max_cfs)} in order to not exceed cf=1.0.",
+                    f"Required target cf could not be reached for some locations, cf will be reduced by factor min/max. {np.nanmin(1 / _max_cfs)}/{np.nanmax(1 / _max_cfs)} in order to not exceed cf=1.0.",
                     flush=True,
                 )
                 _red = 1 / _max_cfs
@@ -682,9 +684,9 @@ class WindWorkflowManager(WorkflowManager):
         ------
             A reference to the invoking WindWorkflowManager
         """
-        assert (
-            availability_factor > 0 and availability_factor <= 1
-        ), f"availability_factor must be between 0 and 1.0."
+        assert availability_factor > 0 and availability_factor <= 1, (
+            f"availability_factor must be between 0 and 1.0."
+        )
 
         self.sim_data["capacity_factor"] = (
             self.sim_data["capacity_factor"] * availability_factor
@@ -706,9 +708,9 @@ class WindWorkflowManager(WorkflowManager):
         ------
             A reference to the invoking WindWorkflowManager
         """
-        assert (
-            availability_factor > 0 and availability_factor <= 1
-        ), f"availability_factor must be between 0 and 1.0."
+        assert availability_factor > 0 and availability_factor <= 1, (
+            f"availability_factor must be between 0 and 1.0."
+        )
 
         self.sim_data["capacity_factor"] = (
             self.sim_data["capacity_factor"] * availability_factor
@@ -785,9 +787,9 @@ class WindWorkflowManager(WorkflowManager):
             correction_factors = gk.raster.interpolateValues(
                 correction_factors, self.locs, mode="near"
             )
-            assert not np.isnan(
-                correction_factors
-            ).any(), f"correction_factors extracted from raster must not be nan"
+            assert not np.isnan(correction_factors).any(), (
+                f"correction_factors extracted from raster must not be nan"
+            )
         elif not isinstance(correction_factors, (float, int)):
             raise TypeError(
                 f"correction_factors must either be a str formatted raster filepath or a float value"

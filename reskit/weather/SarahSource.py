@@ -93,7 +93,7 @@ class SarahSource(NCSource):
             _max_lon_diff=self.MAX_LON_DIFFERENCE,
             _max_lat_diff=self.MAX_LAT_DIFFERENCE,
             tz=None,
-            **kwargs
+            **kwargs,
         )
 
     loc_to_index = NCSource._loc_to_index_rect(lat_step=0.05, lon_step=0.05)

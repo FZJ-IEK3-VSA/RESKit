@@ -5,9 +5,7 @@ dependencies:
   - python
   - pytest
   - pytest-cov
-  - pylint
   - papermill
-  - autopep8
   - jupyter
   - notebook
   - jupyterlab
@@ -27,4 +25,4 @@ dependencies:
   - pvlib-python =0.9.0
   - windpowerlib
   - nbconvert
-  - black-jupyter
+  - ruff
