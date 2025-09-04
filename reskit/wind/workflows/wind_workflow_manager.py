@@ -188,12 +188,10 @@ class WindWorkflowManager(WorkflowManager):
         assert "hub_height" in self.placements.columns
 
         # correct the target height acc. to one of these cases
-        # 1) EH < HH < PBLH -> TH = HH
-        # 2) EH < PBLH < HH -> TH = PBLH
-        # 3) PBL < EH < HH -> TH = EH
-        # 4) PBL < HH < EH -> TH = EH
-        # 5) HH < EH < PBL -> TH = HH
-        # 6) HH < PBL < EH -> TH = HH, EH -> PBLH
+        # 1) EH <= PBLH & HH <= PBLH -> TH = HH (no influence of PBL)
+        # 2) EH <= PBLH & HH > PBLH -> TH = PBLH (set PBLH as upper target height limit)
+        # 3) PBLH < EH & PBLH <= HH -> TH = EH (all heights are outside of planetary influence, use (constant) ws(EH))
+        # 4) PBLH < EH & PBLH > HH -> TH = HH, EH -> PBLH (scaling relative to PBLH since ws(EH) == ws(PBLH)
 
         # When the hub height is above the PBL, then only project to the PBL
         target_height = np.minimum(
