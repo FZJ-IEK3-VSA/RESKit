@@ -187,6 +187,14 @@ class WindWorkflowManager(WorkflowManager):
         assert hasattr(self, "elevated_wind_speed_height")
         assert "hub_height" in self.placements.columns
 
+        # correct the target height acc. to one of these cases
+        # 1) EH < HH < PBLH -> TH = HH
+        # 2) EH < PBLH < HH -> TH = PBLH
+        # 3) PBL < EH < HH -> TH = EH
+        # 4) PBL < HH < EH -> TH = EH
+        # 5) HH < EH < PBL -> TH = HH
+        # 6) HH < PBL < EH -> TH = HH, EH -> PBLH
+
         # When the hub height is above the PBL, then only project to the PBL
         target_height = np.minimum(
             self.sim_data["boundary_layer_height"],
