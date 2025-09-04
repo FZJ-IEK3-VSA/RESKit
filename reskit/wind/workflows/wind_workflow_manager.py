@@ -261,6 +261,117 @@ class WindWorkflowManager(WorkflowManager):
 
         return self
 
+
+    def wind_shear_projection_of_wind_speeds_to_hub_height(
+        self, 
+        alternative_wind_speed_rasters,
+        consider_boundary_layer_height=False,
+    ):
+        """
+        Projects the wind speed values to the hub height.
+
+        consider_boundary_layer_height : bool, optional
+            If True, the wind speed will be scaled only to max. the 
+            boundary layer height. By default False.
+        
+        Return
+        ------
+            A reference to the invoking WindWorkflowManager
+        """
+
+        assert isinstance(alternative_wind_speed_rasters, dict) and all([isinstance(k, (int, float)) and k>0] for k in alternative_wind_speed_rasters.keys()), f"alternative_wind_speed_rasters is expected to be a dict with positive int or float as keys"
+        assert hasattr(self, "elevated_wind_speed_height")
+
+        # CONSIDER BOUNDARY LAYER HEIGHT - OR NOT
+
+        if consider_boundary_layer_height:
+            # only scale up to the maximum of boundary height or hub height
+            target_height = self.consider_boundary_height()
+        else:
+            # else simply scale to hub height, but repeat columns for every timestep
+            target_height = self.placements["hub_height"].values
+            target_height = np.repeat(target_height[np.newaxis,:], self.sim_data["elevated_wind_speed"].shape[0], axis=0)
+
+        # GET AVERAGE WINDSPEEDS AT NEAREST GIVEN REFERENCE HEIGHTS
+
+        # first get all available reference heights, including the default elevated ws height
+        ref_heights = sorted(set(list(alternative_wind_speed_rasters.keys())+[self.elevated_wind_speed_height]))
+        # bin the target heights to reference spacing binds
+        idx = np.searchsorted(ref_heights, target_height, side="left") 
+        # get first the indices of the respective lower and higher reference heights and then the values
+        lower_idx = np.clip(idx - 1, 0, len(ref_heights)-1)
+        ref_height_lower = np.array(ref_heights)[lower_idx]
+        upper_idx = np.clip(idx, 0, len(ref_heights)-1)
+        ref_height_upper = np.array(ref_heights)[upper_idx]
+
+        def _get_ws(arr):
+            """Extracts windspeeds for given reference height arrays."""
+            noData = -9999
+            ws = np.full(shape=arr.shape, fill_value=noData)  # initialize as noData=-9999
+            
+            # first set the previously extracted elevated_wind_speed at default reference height
+            sel = arr == self.elevated_wind_speed_height
+            ws = np.where(sel, self.real_lra, ws) # set default real_lra at all positions with default height
+            
+            # then get the values for all other reference heights in array
+            for _height in np.unique(arr):
+                if _height == self.elevated_wind_speed_height:
+                    continue  # already handled default height
+                
+                # get and check filepath from alternative LRA ws height rasters
+                fp = alternative_wind_speed_rasters[_height]
+                if not (isinstance(fp, str) and isfile(fp)):
+                    raise FileNotFoundError(
+                        f"value of alternative_wind_speed_rasters[{_height}] must be a str-formatted path to an existing file: {fp}"
+                    )
+                
+                # extract ws only for points (rows) with this height
+                _sel_points = (arr == _height).any(axis=0)
+                _ws = self.get_scalar_values_from_raster(
+                    fp=fp,
+                    spatial_interpolation="linear-spline",
+                    points=list(zip(
+                        self.placements[_sel_points]["lon"],
+                        self.placements[_sel_points]["lat"]
+                    ))
+                ) 
+                # write into output array
+                sel = arr == _height
+
+                # iteratively replace values of interest in affected columns
+                col_idx = np.where(_sel_points)[0] # affected column indices
+                for i, c in enumerate(col_idx):
+                    ws[sel[:, c], c] = _ws[i]
+
+            assert not (ws==noData).any() # make sure that values for all locs were extracted
+            
+            return ws
+
+        # get the wind speeds at the respective lower and higher reference height
+        ref_ws_lower = _get_ws(arr=ref_height_lower)
+        ref_ws_upper = _get_ws(arr=ref_height_upper)
+
+        # calculate the interpolated ws at target height
+        delta = ref_height_upper - ref_height_lower 
+        fraction = np.divide(
+            target_height - ref_height_lower,
+            delta,
+            out=np.zeros_like(delta, dtype=float),
+            where=delta != 0 # avoid division by zero
+        )
+        target_ws = ref_ws_lower + fraction * (ref_ws_upper - ref_ws_lower)
+
+        # calculate scaling factor relative to default LRA height
+        scale = target_ws/self.real_lra
+
+        # scale hourly ws to the new target hub height and overwrite attr
+        self.sim_data["elevated_wind_speed"] = scale * self.sim_data["elevated_wind_speed"]
+
+        self.elevated_wind_speed_height = self.placements["hub_height"].values
+
+        return self
+
+
     def apply_air_density_correction_to_wind_speeds(self):
         """
         Applies air density corrections to the wind speeds at the hub height.
