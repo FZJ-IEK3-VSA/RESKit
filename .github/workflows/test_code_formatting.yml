@@ -1,6 +1,6 @@
 name: Check code formatting and Linter hints
 
-on: [ push, pull_request ]
+on: [ push ]
 
 jobs:
   ruff:
