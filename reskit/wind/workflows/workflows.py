@@ -538,9 +538,9 @@ def wind_config(
             type=ws_correction_func[0],
             data_dict=ws_correction_func[1],
         )
-    assert callable(
-        ws_correction_func
-    ), f"ws_correction_func must be an executable with a single argument that can be passed as np.array (if not 1)."
+    assert callable(ws_correction_func), (
+        f"ws_correction_func must be an executable with a single argument that can be passed as np.array (if not 1)."
+    )
 
     wf = WindWorkflowManager(placements)
 

@@ -11,7 +11,6 @@ from ..data.gringarten import gringarten
 
 
 class EGS_workflowmanager:
-
     SECONDS_PER_YEAR = 365 * 24 * 3600
     USD2EUR = 0.88  # EUR
     rho_water = 1000  # kg/m^3
@@ -32,7 +31,6 @@ class EGS_workflowmanager:
         self.sim_data = {}
 
     def loadPlantData(self, configuration: str, manual_values={}):
-
         configuration = configuration.lower()
         if not configuration in ["doublette", "triplette"]:
             raise ValueError(
@@ -140,9 +138,9 @@ class EGS_workflowmanager:
                 value = vals[name]
                 if hasattr(self, name):
                     # if value is already set
-                    assert np.allclose(
-                        self.__getattribute__(name), value
-                    ), f"dimensions do not align, pls check dim: {name} in file: {source}"
+                    assert np.allclose(self.__getattribute__(name), value), (
+                        f"dimensions do not align, pls check dim: {name} in file: {source}"
+                    )
                 else:
                     # set value if not existant
                     setattr(self, name, value)
@@ -192,9 +190,9 @@ class EGS_workflowmanager:
                 value = vals[name]
                 if hasattr(self, name):
                     # if value is already set
-                    assert np.allclose(
-                        self.__getattribute__(name), value
-                    ), f"dimensions do not align, pls check dim: {name} in file: {source}"
+                    assert np.allclose(self.__getattribute__(name), value), (
+                        f"dimensions do not align, pls check dim: {name} in file: {source}"
+                    )
                 else:
                     # set value if not existant
                     setattr(self, name, value)
@@ -222,7 +220,6 @@ class EGS_workflowmanager:
             data_var[:, :] = np.nan
 
             for depth in depths:
-
                 # create gdal dataset
                 ds_depth = ds.loc[{"depth": depth}]
                 data_var_depth = self._EGS_NC4_to_raster(nc4_obj=ds_depth, varname=var)
@@ -333,7 +330,6 @@ class EGS_workflowmanager:
         self.placements["share_1"] = share
 
     def __calculatePlacementHeat(self):
-
         variables = list(self.sim_data.keys())
         if "temperature" in variables:
             variables.remove("temperature")
@@ -457,8 +453,8 @@ class EGS_workflowmanager:
         x_E = (
             x_ED * k_R * y * z / (self.rho_water * self.cp_water * q)
         )  # m?, fracture spacing, see Augustine2016 eq(3)
-        n = x / (
-            2 * x_E
+        n = (
+            x / (2 * x_E)
         )  # 1, number of fractures, can be decimal as theoretical calcualtion nevertheless
         Q = q * n  # l/s, total inj. water volume flow
 
@@ -811,7 +807,6 @@ class EGS_workflowmanager:
                 self.placements[varname] = var
 
     def getRegenerationTime(self, techMethod):
-
         sim_data_techmethod = getattr(self, techMethod)
         tech_method_short = self._getTechMethodShort(techMethod)
 

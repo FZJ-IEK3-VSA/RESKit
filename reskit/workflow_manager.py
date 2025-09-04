@@ -67,12 +67,12 @@ class WorkflowManager:
             self.placements["lat"] = self.locs.lats
             del self.placements["geom"]
         else:
-            assert (
-                "lon" in self.placements.columns
-            ), "if geom are not point geometries, dataframe must contain lon columns"
-            assert (
-                "lat" in self.placements.columns
-            ), "if geom are not point geometries, dataframe must contain lat columns"
+            assert "lon" in self.placements.columns, (
+                "if geom are not point geometries, dataframe must contain lon columns"
+            )
+            assert "lat" in self.placements.columns, (
+                "if geom are not point geometries, dataframe must contain lat columns"
+            )
 
         if self.locs is None:
             self.locs = gk.LocationSet(self.placements[["lon", "lat"]].values)
@@ -337,9 +337,9 @@ class WorkflowManager:
             raise TypeError(f"'nodata_fallback' must be a float or a Callable.")
 
         def _get_lra_values_from_raster(fp, spatial_interpolation):
-            assert isfile(
-                fp
-            ), f"File '{fp}' in adjust_variable_to_long_run_average() does not exist."
+            assert isfile(fp), (
+                f"File '{fp}' in adjust_variable_to_long_run_average() does not exist."
+            )
             # execute with warnings filter since values outside of source data would trigger geokit UserWarning every time
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
@@ -540,7 +540,7 @@ class WorkflowManager:
         _variables = [_var for _var in variables if _var in self.sim_data.keys()]
         if len(_variables) < len(variables):
             warnings.warn(
-                f"Loss factor could not be applied to the following requested variables because variables are not in sim_data: {', '.join(sorted(set(variables)-set(_variables)))}"
+                f"Loss factor could not be applied to the following requested variables because variables are not in sim_data: {', '.join(sorted(set(variables) - set(_variables)))}"
             )
 
         for var in _variables:
@@ -958,12 +958,12 @@ def execute_workflow_iteratively(
     """
     # check key inputs
     assert callable(workflow), f"workflow must be a callable RESkit workflow function."
-    assert (
-        "placements" in workflow_args.keys()
-    ), f"'placements' is a mandatory argument/key in workflow_args"
-    assert (
-        weather_path_varname in workflow_args.keys()
-    ), f"weather_path_varname ('{weather_path_varname}')  must be a key in workflow_args."
+    assert "placements" in workflow_args.keys(), (
+        f"'placements' is a mandatory argument/key in workflow_args"
+    )
+    assert weather_path_varname in workflow_args.keys(), (
+        f"weather_path_varname ('{weather_path_varname}')  must be a key in workflow_args."
+    )
 
     # extract data needed for placement preparation
     placements = workflow_args["placements"]
@@ -998,7 +998,7 @@ def execute_workflow_iteratively(
         # execute workflow with subset and add to list of results
         print(
             datetime.datetime.now(),
-            f"Now processing tile {i+1}/{len(placements['source'].unique())} with {len(placements_tile)} locations: {tilepath}",
+            f"Now processing tile {i + 1}/{len(placements['source'].unique())} with {len(placements_tile)} locations: {tilepath}",
         )
         xrds = workflow(**workflow_args)
         xrds = xrds.set_index(location="RESKit_sim_order")

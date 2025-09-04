@@ -38,9 +38,9 @@ class DACWorkflowManager(WorkflowManager):
         """
 
         # Do basic workflow construction
-        assert all(
-            [a in placements.columns for a in ["lon", "lat", "capacity"]]
-        ), "Placements must contain the columns lon,lat and capacity"
+        assert all([a in placements.columns for a in ["lon", "lat", "capacity"]]), (
+            "Placements must contain the columns lon,lat and capacity"
+        )
         super().__init__(placements)
 
         units = {
@@ -86,7 +86,9 @@ class DACWorkflowManager(WorkflowManager):
 
         assert model in model_path_dict.keys() or (
             isinstance(model, str) and model.endswith(".csv") and os.path.isfile(model)
-        ), f"Invalid model: {model}. Not one of the base models (LT_jajjawi or LT_sendi) and no valid path to an existing csv with custom data."
+        ), (
+            f"Invalid model: {model}. Not one of the base models (LT_jajjawi or LT_sendi) and no valid path to an existing csv with custom data."
+        )
 
         if model in model_path_dict.keys():
             path = os.path.join(DATAFOLDER, model_path_dict[model])
@@ -100,9 +102,9 @@ class DACWorkflowManager(WorkflowManager):
             "relProd",
             "waterDesorption",
         ]
-        assert all(
-            col in self.dac_data.columns for col in required_cols
-        ), f"Missing columns: {set(required_cols) - set(self.dac_data.columns)}"
+        assert all(col in self.dac_data.columns for col in required_cols), (
+            f"Missing columns: {set(required_cols) - set(self.dac_data.columns)}"
+        )
 
     def simulate_lt_dac_model(self, fillMethod: str = "nearest"):
         """
@@ -285,8 +287,8 @@ class DACWorkflowManager(WorkflowManager):
                 - 0.00588467947 * self.sim_data["surface_air_temperature"] ** 2
             )  # equation fitted by k.okosun as described in [3]. Describes the share [%] of co2 captured from the incoming air dependent on the ambient conditions. See also [1,2].
 
-            ElecDemand = 7.2082 * capture_rate ** (
-                -0.317
+            ElecDemand = (
+                7.2082 * capture_rate ** (-0.317)
             )  # equation fitted by k.okosun as described in [3]. Relates the capture rate to the energy demand.
             relative_productivity = (
                 capture_rate / 40 * 527702.4 / 1000000

@@ -156,7 +156,7 @@ class IconlamSource(NCSource):
             tz=None,
             flip_lat=True,
             time_offset_minutes=0,  # 30 SChen
-            **kwargs
+            **kwargs,
         )
 
     loc_to_index = NCSource._loc_to_index_rect(0.033, 0.033)  # (0.25, 0.25) SChen
