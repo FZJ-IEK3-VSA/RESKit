@@ -170,11 +170,47 @@ class WindWorkflowManager(WorkflowManager):
         )
         return self
 
+    
+    def consider_boundary_height(self):
+        """
+        Corrects the given target heights for locations by planetary boundary 
+        layer (PBL) effects, by limiting the target height either to the PBL 
+        height when elevated (starting) height < PBL < target height or avoiding
+        scaling altogether when PBL <= elevated (startig) height (by setting 
+        target height to elevated starting height).
+
+        Return
+        ------
+        numpy array
+            The adapted target heights.
+        """
+        assert hasattr(self, "elevated_wind_speed_height")
+        assert "hub_height" in self.placements.columns
+
+        # When the hub height is above the PBL, then only project to the PBL
+        target_height = np.minimum(
+            self.sim_data["boundary_layer_height"],
+            self.placements["hub_height"].values,
+        )
+
+        # When the PBL is below the elevated_wind_speed_height, then no projection
+        # should be performed. This can be effectively be accomplished by setting 
+        # the target height to that of the elevated_wind_speed_height
+        sel = target_height > self.elevated_wind_speed_height #TODO < plus consider lower hub heights than elevated height!
+        target_height[sel] = self.elevated_wind_speed_height
+
+        return target_height
+    
+
     def logarithmic_projection_of_wind_speeds_to_hub_height(
         self, consider_boundary_layer_height=False
     ):
         """
         Projects the wind speed values to the hub height.
+
+        consider_boundary_layer_height : bool, optional
+            If True, the wind speed will be scaled only to max. the 
+            boundary layer height. By default False.
 
         Return
         ------
@@ -185,19 +221,10 @@ class WindWorkflowManager(WorkflowManager):
         assert hasattr(self, "elevated_wind_speed_height")
 
         if consider_boundary_layer_height:
-            # When the hub height is above the PBL, then only project to the PBL
-            target_height = np.minimum(
-                self.sim_data["boundary_layer_height"],
-                self.placements["hub_height"].values,
-            )
-
-            # When the PBL is below the elevated_wind_speed_height, then no projection
-            # should be performed. This can be effectlvely accomplished by setting the
-            # target height to that of the elevated_wind_speed_height
-            sel = target_height > self.elevated_wind_speed_height
-            target_height[sel] = self.elevated_wind_speed_height
-
+            # only scale up to the maximum of boundary height or hub height
+            target_height = self.consider_boundary_height()
         else:
+            # else simply scale to hub height
             target_height = self.placements["hub_height"].values
 
         tmp = rk_wind_core.logarithmic_profile.apply_logarithmic_profile_projection(
