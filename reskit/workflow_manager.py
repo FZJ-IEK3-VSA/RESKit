@@ -438,6 +438,9 @@ class WorkflowManager:
             # set fallback values where real_lra is nan
             real_lra[np.isnan(real_lra)] = fallback_lra[np.isnan(real_lra)]
 
+        # save LRA as attribute
+        self.real_lra = real_lra
+
         # calulate scaling factor:
         # nan result will stay nan results, as these placements cannot be calculated any more
         factors = real_lra * real_lra_scaling / source_lra
