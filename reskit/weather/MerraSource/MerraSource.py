@@ -143,7 +143,7 @@ class MerraSource(NCSource):
             _max_lon_diff=self.MAX_LON_DIFFERENCE,
             _max_lat_diff=self.MAX_LAT_DIFFERENCE,
             tz="GMT",
-            **kwargs
+            **kwargs,
         )
 
     loc_to_index = NCSource._loc_to_index_rect(lat_step=0.5, lon_step=0.625)

@@ -172,7 +172,6 @@ def test_WindWorkflowManager_convolute_power_curves(pt_WindWorkflowManager_initi
 
 
 def test_WindWorkflowManager_apply_wake_correction_of_wind_speeds():
-
     # first without any "wake_curve"
     man = test_WindWorkflowManager_with_ws___init__()
     assert not "wake_curve" in man.placements.columns

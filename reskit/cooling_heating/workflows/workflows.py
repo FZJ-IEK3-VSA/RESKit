@@ -228,9 +228,7 @@ def air_source_heat_pump(
 
     wf.sim_data["electricity_input"] = -wf.sim_data[
         "conversion_factor_electricity"
-    ] * np.array(
-        wf.placements["capacity"]
-    )  # kWh_el/h
+    ] * np.array(wf.placements["capacity"])  # kWh_el/h
 
     wf.sim_data["heat_output"] = np.ones(
         wf.sim_data["electricity_input"].shape

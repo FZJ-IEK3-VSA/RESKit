@@ -74,13 +74,13 @@ class Parameters:
         def _get_value(data, year):
             """Interpolates values between neighboring years, or returns
             exact value when available."""
-            assert isinstance(
-                data, pd.Series
-            ), f"data must be of pd.Series type. Here: {type(data)}: {data}"
+            assert isinstance(data, pd.Series), (
+                f"data must be of pd.Series type. Here: {type(data)}: {data}"
+            )
             # avoid extrapolation
-            assert (
-                year >= data.index.min() and year <= data.index.max()
-            ), f"'year' {year} must be between the min. and max. ({data.index.min()}-{data.index.max()}) given data years to avoid extrapolation."
+            assert year >= data.index.min() and year <= data.index.max(), (
+                f"'year' {year} must be between the min. and max. ({data.index.min()}-{data.index.max()}) given data years to avoid extrapolation."
+            )
             # get the nearest year below and above the passed 'year' (if not 'year' available)
             _lower_year = data.index[data.index >= year].min()
             _higher_year = data.index[data.index <= year].max()
@@ -98,7 +98,6 @@ class Parameters:
 
         # handle csv files
         if os.path.splitext(os.path.basename(fp))[-1] == ".csv":
-
             # load data from csv
             params_df = pd.read_csv(fp)
 
