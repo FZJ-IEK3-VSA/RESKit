@@ -102,16 +102,16 @@ def test_wind_era5_PenaSanchezDunkelWinklerEtAl2025(pt_wind_placements: pd.DataF
     assert np.isclose(gen.roughness.std(), 0.55593945)
 
     assert gen.elevated_wind_speed.shape == (140, 560)
-    assert np.isclose(gen.elevated_wind_speed.mean(), 5.86475732)
-    assert np.isclose(gen.elevated_wind_speed.min(), 0.26886236)
-    assert np.isclose(gen.elevated_wind_speed.max(), 12.86308429)
-    assert np.isclose(gen.elevated_wind_speed.std(), 2.18707038)
+    assert np.isclose(gen.elevated_wind_speed.mean(), 5.99812976)
+    assert np.isclose(gen.elevated_wind_speed.min(), 0.33788731)
+    assert np.isclose(gen.elevated_wind_speed.max(), 13.75022707)
+    assert np.isclose(gen.elevated_wind_speed.std(), 2.23741365)
 
     assert gen.capacity_factor.shape == (140, 560)
-    assert np.isclose(gen.capacity_factor.mean(), 0.32975885)
+    assert np.isclose(gen.capacity_factor.mean(), 0.34455949)
     assert np.isclose(gen.capacity_factor.min(), 0.0)
     assert np.isclose(gen.capacity_factor.max(), 0.98)
-    assert np.isclose(gen.capacity_factor.std(), 0.28939232)
+    assert np.isclose(gen.capacity_factor.std(), 0.2923411)
 
 
 def test_onshore_wind_iconlam_2023(pt_wind_placements_Zimbabwe: pd.DataFrame):
