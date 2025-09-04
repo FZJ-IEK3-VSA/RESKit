@@ -153,11 +153,13 @@ def test_WindWorkflowManager_wind_shear_projection_of_wind_speeds_to_hub_height(
 ):
     man = pt_WindWorkflowManager_loaded
 
-    man.real_lra = np.array([5.64914904, 5.42147512, 5.65448952, 5.75908499, 5.94873524]) # set hardcoded values for 100m, are usually extracted before
+    man.real_lra = np.array(
+        [5.64914904, 5.42147512, 5.65448952, 5.75908499, 5.94873524]
+    )  # set hardcoded values for 100m, are usually extracted before
 
-    alternative_wind_speed_rasters={
-        50 : TEST_DATA["gwa50-like.tif"],
-        200 : TEST_DATA["gwa200-like.tif"],
+    alternative_wind_speed_rasters = {
+        50: TEST_DATA["gwa50-like.tif"],
+        200: TEST_DATA["gwa200-like.tif"],
     }
 
     man.wind_shear_projection_of_wind_speeds_to_hub_height(
