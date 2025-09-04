@@ -199,24 +199,26 @@ class WindWorkflowManager(WorkflowManager):
         elevated_height = self.elevated_wind_speed_height
         
         # Initialize target height array
-        target_height = np.zeros_like(hub_height, dtype=float)
+        target_height = np.zeros_like(pbl_height, dtype=float)
         
         # Case 1: EH <= PBLH & HH <= PBLH -> TH = HH (no influence of PBL)
         case1 = (elevated_height <= pbl_height) & (hub_height <= pbl_height)
-        target_height[case1] = hub_height[case1]
+        target_height = np.where(case1, hub_height, target_height)
         
         # Case 2: EH <= PBLH & HH > PBLH -> TH = PBLH (set PBLH as upper target height limit)
         case2 = (elevated_height <= pbl_height) & (hub_height > pbl_height)
-        target_height[case2] = pbl_height[case2]
+        target_height = np.where(case2, pbl_height, target_height)
         
         # Case 3: PBLH < EH & PBLH <= HH -> TH = EH (all heights are outside of planetary influence, use (constant) ws(EH))
         case3 = (pbl_height < elevated_height) & (pbl_height <= hub_height)
-        target_height[case3] = elevated_height
+        target_height = np.where(case3, elevated_height, target_height)
         
         # Case 4: PBLH < EH & PBLH > HH -> TH = HH, EH -> PBLH (scaling relative to PBLH since ws(EH) == ws(PBLH))
         # Note: This case also requires adjusting the elevated_wind_speed_height, but that's handled in the calling function
         case4 = (pbl_height < elevated_height) & (pbl_height > hub_height)
-        target_height[case4] = hub_height[case4]
+        target_height = np.where(case4, hub_height, target_height)
+        
+        assert (np.array([case1,case2,case3,case4]).sum(axis=0) == 1).all()
 
         return target_height
     
