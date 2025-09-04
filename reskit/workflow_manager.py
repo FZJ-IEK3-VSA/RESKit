@@ -257,6 +257,45 @@ class WorkflowManager:
 
         # Stage 3: Weather data adjusting & other intermediate steps
 
+    def get_scalar_values_from_raster(self, fp, spatial_interpolation, points=None):
+        """
+        Auxiliary function to extract raster values with NaN fallback options.
+        """
+        assert isfile(fp), (
+            f"File '{fp}' in adjust_variable_to_long_run_average() does not exist."
+        )
+        # execute with warnings filter since values outside of source data would trigger geokit UserWarning every time
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+
+            if points is None:
+                points = [(loc.lon, loc.lat) for loc in self.locs._locations]
+            else:
+                assert isinstance(points, list) and all(
+                    [isinstance(x, tuple) and len(x) == 2 for x in points]
+                ), "points must be a list of (lon, lat) tuples."
+
+            _lra = gk.raster.interpolateValues(fp, points, mode=spatial_interpolation)
+            # if getting values fails, it could be because of interpolation method.
+            # these values will be replaced with the nearest interpolation method
+            if np.isnan(_lra).any():
+                _lra_near = gk.raster.interpolateValues(fp, self.locs, mode="near")
+                _lra[np.isnan(_lra)] = _lra_near[np.isnan(_lra)]
+            # still nans, i.e. the cell itself is nan, but maybe its neighbors are not
+            # try the (nan)median of the surrounding cells
+            if np.isnan(_lra).any():
+
+                def _nanmedian(vals, xOff, yOff):
+                    """Aux function to mimic the 3 expected inputs in interpolateValues()"""
+                    return np.nanmedian(vals)
+
+                points = [(loc.lon, loc.lat) for loc in self.locs._locations]
+                _lra_near = gk.raster.interpolateValues(
+                    fp, points, mode="func", func=_nanmedian
+                )
+                _lra[np.isnan(_lra)] = _lra_near[np.isnan(_lra)]
+        return _lra
+
     def adjust_variable_to_long_run_average(
         self,
         variable: str,
@@ -336,42 +375,10 @@ class WorkflowManager:
         ):
             raise TypeError(f"'nodata_fallback' must be a float or a Callable.")
 
-        def _get_lra_values_from_raster(fp, spatial_interpolation):
-            assert isfile(fp), (
-                f"File '{fp}' in adjust_variable_to_long_run_average() does not exist."
-            )
-            # execute with warnings filter since values outside of source data would trigger geokit UserWarning every time
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
-
-                points = [(loc.lon, loc.lat) for loc in self.locs._locations]
-
-                _lra = gk.raster.interpolateValues(
-                    fp, points, mode=spatial_interpolation
-                )
-                # if getting values fails, it could be because of interpolation method.
-                # these values will be replaced with the nearest interpolation method
-                if np.isnan(_lra).any():
-                    _lra_near = gk.raster.interpolateValues(fp, self.locs, mode="near")
-                    _lra[np.isnan(_lra)] = _lra_near[np.isnan(_lra)]
-                # still nans, i.e. the cell itself is nan, but maybe its neighbors are not
-                # try the (nan)median of the surrounding cells
-                if np.isnan(_lra).any():
-
-                    def _nanmedian(vals, xOff, yOff):
-                        return np.nanmedian(vals)
-
-                    points = [(loc.lon, loc.lat) for loc in self.locs._locations]
-                    _lra_near = gk.raster.interpolateValues(
-                        fp, points, mode="func", func=_nanmedian
-                    )
-                    _lra[np.isnan(_lra)] = _lra_near[np.isnan(_lra)]
-            return _lra
-
         # first get source values
         if isinstance(source_long_run_average, str):
             # assue raster fp
-            source_lra = _get_lra_values_from_raster(
+            source_lra = self.get_scalar_values_from_raster(
                 fp=source_long_run_average, spatial_interpolation="linear-spline"
             )
         else:
@@ -380,7 +387,7 @@ class WorkflowManager:
         # then get lng-run average values for scaling
         if isinstance(real_long_run_average, str):
             # assume a raster path
-            real_lra = _get_lra_values_from_raster(
+            real_lra = self.get_scalar_values_from_raster(
                 fp=real_long_run_average, spatial_interpolation=spatial_interpolation
             )
         else:
@@ -419,7 +426,7 @@ class WorkflowManager:
             elif isinstance(nodata_fallback, str):
                 # assume this is yet another raster path as fallback and extract missing values
                 fallback_lra = (
-                    _get_lra_values_from_raster(
+                    self.get_scalar_values_from_raster(
                         fp=nodata_fallback, spatial_interpolation=spatial_interpolation
                     )
                     * nodata_fallback_scaling
