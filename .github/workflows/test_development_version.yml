@@ -1,16 +1,7 @@
 on:
   push:
     branches: ["**"]
-  # Allows to trigger the workflow manually
-  # pull_request:
-  #   branches: ["dev","master"]
-  # schedule:
-  #   # * is a special character in YAML so you have to quote this string
-  #   # Some Examples for cron syntax https://crontab.guru/Examples.html
-  #   # Schedules job at any point after 12 pm
-  #   - cron: "0 0 * * *"
-  #   # Weekly after sunday
-  #   # - cron: 0 0 * * 0
+
 
 jobs:
   lint:
