@@ -126,14 +126,14 @@ class WindWorkflowManager(WorkflowManager):
                 )
 
     def project_windspeeds_to_hub_height(
-            self, 
-            height_scaling_method, 
-            height_scaling_data, 
-            consider_boundary_layer_height=True
-            ):
+        self,
+        height_scaling_method,
+        height_scaling_data,
+        consider_boundary_layer_height=True,
+    ):
         """
         Projects wind speeds to hub heights for a given projection/scaling method.
-        
+
         Parameters:
         ----------
         height_scaling_method : str
@@ -142,8 +142,8 @@ class WindWorkflowManager(WorkflowManager):
                 to-roughness mapping of ESA CCI raster.
             "log_clc" : Logarithmic scaling with roughness based on a land cover-
                 to-roughness mapping of CLC raster.
-            "lra_shear" : Linear interpolation between the scaling factors based 
-                on the nearest two provided heights of long-run average windspeed 
+            "lra_shear" : Linear interpolation between the scaling factors based
+                on the nearest two provided heights of long-run average windspeed
                 (e.g. Global Wind Atlas).
         height_scaling_data : str, dict
             The data required for the selected height_scaling_method (see below).
@@ -151,12 +151,12 @@ class WindWorkflowManager(WorkflowManager):
             "log_cci" : str
                 Path to the ESA CCI raster file.
             "lra_shear" : {int : str}
-                Dict with heights as keys and paths to the LRA-windspeeds at the 
-                respective heights as values. Must contain at least one higher 
+                Dict with heights as keys and paths to the LRA-windspeeds at the
+                respective heights as values. Must contain at least one higher
                 and one lower height than 100 [m].
         consider_boundary_layer_height : bool, optional
             Corrects the given hub heights for locations by planetary boundary
-            layer (PBL) effects if True, see consider_boundary_height() for 
+            layer (PBL) effects if True, see consider_boundary_height() for
             details. By default True.
 
         Return
@@ -166,13 +166,19 @@ class WindWorkflowManager(WorkflowManager):
         # check consider_boundary_layer_height arg
         if not isinstance(consider_boundary_layer_height, bool):
             raise TypeError("consider_boundary_layer_height must be boolean.")
-        
+
         if height_scaling_method == "log_cci":
             # check data
-            if not isinstance(height_scaling_data, str) and isfile(height_scaling_method):
-                raise TypeError("height_scaling_method must be str formatted path if height_scaling_method=='log_cci'")
+            if not isinstance(height_scaling_data, str) and isfile(
+                height_scaling_method
+            ):
+                raise TypeError(
+                    "height_scaling_method must be str formatted path if height_scaling_method=='log_cci'"
+                )
             # first get surface roughness per location, then project
-            self.estimate_roughness_from_land_cover(path=height_scaling_data, source_type="cci")
+            self.estimate_roughness_from_land_cover(
+                path=height_scaling_data, source_type="cci"
+            )
             self.logarithmic_projection_of_wind_speeds_to_hub_height(
                 consider_boundary_layer_height=consider_boundary_layer_height
             )
@@ -180,14 +186,16 @@ class WindWorkflowManager(WorkflowManager):
         elif height_scaling_method == "lra_shear":
             # data format is checked in function below, execute projection function
             self.wind_shear_projection_of_wind_speeds_to_hub_height(
-                alternative_wind_speed_rasters=height_scaling_data, 
-                consider_boundary_layer_height=consider_boundary_layer_height)
+                alternative_wind_speed_rasters=height_scaling_data,
+                consider_boundary_layer_height=consider_boundary_layer_height,
+            )
 
         else:
-            raise ValueError(f"Unknown height_scaling_method '{height_scaling_method}'.")
-        
+            raise ValueError(
+                f"Unknown height_scaling_method '{height_scaling_method}'."
+            )
+
         return self
-    
 
     def set_roughness(self, roughness):
         """
@@ -378,10 +386,14 @@ class WindWorkflowManager(WorkflowManager):
             )
         )
         # make sure that we have enough reference height sampling points
-        if (target_height<min(ref_heights)).any():
-            raise KeyError(f"data contains target heights below elevated wind speed height. alternative_wind_speed_rasters must contain key < {self.elevated_wind_speed_height}")
-        if (target_height>max(ref_heights)).any():
-            raise KeyError(f"data contains target heights above elevated wind speed height. alternative_wind_speed_rasters must contain key > {self.elevated_wind_speed_height}")
+        if (target_height < min(ref_heights)).any():
+            raise KeyError(
+                f"data contains target heights below elevated wind speed height. alternative_wind_speed_rasters must contain key < {self.elevated_wind_speed_height}"
+            )
+        if (target_height > max(ref_heights)).any():
+            raise KeyError(
+                f"data contains target heights above elevated wind speed height. alternative_wind_speed_rasters must contain key > {self.elevated_wind_speed_height}"
+            )
         # bin the target heights to reference spacing binds
         idx = np.searchsorted(ref_heights, target_height, side="left")
         # get first the indices of the respective lower and higher reference heights and then the values

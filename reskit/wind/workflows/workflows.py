@@ -50,16 +50,16 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
         "log_cci" : str
             Path to the ESA CCI raster file [5].
         "lra_shear" : {int : str}
-            Dict with heights as keys and paths to the LRA-windspeeds at the 
+            Dict with heights as keys and paths to the LRA-windspeeds at the
             respective heights as values. Must contain at least one higher and
             one lower height than 100 [m].
     height_scaling_method : str
-        The method to project the windspeeds from the default height (here 
+        The method to project the windspeeds from the default height (here
         100m in ERA-5/GWA3) to hub height (possibly affected by the planetary
         boundary layer height). By default "log_cci". Options are:
         "log_cci" : Logarithmic scaling with roughness based on a land cover-to-
             roughness mapping of ESA CCI raster [5].
-        "lra_shear" : Linear interpolation between the scaling factors based on 
+        "lra_shear" : Linear interpolation between the scaling factors based on
             the nearest two provided heights of long-run average windspeed (e.g. GWA).
     output_netcdf_path : str, optional
         Path to a directory to put the output files, by default None
@@ -96,14 +96,18 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
     # check inputs
     valid_scaling_methods = ["log_cci", "lra_shear"]
     if not height_scaling_method in valid_scaling_methods:
-        raise ValueError(f"height_scaling_method must be in: {', '.join(valid_scaling_methods)}")
+        raise ValueError(
+            f"height_scaling_method must be in: {', '.join(valid_scaling_methods)}"
+        )
 
     # check for esa_cci_path, was an argument in this workflow but has been removed in favor of multiple projection methods
     # raise descriptive Deprecation"Error" if passed for a transition period - #TODO remove this block in Q2/2026
     if "esa_cci_path" in simulate_kwargs:
         with warnings.catch_warnings():
             warnings.simplefilter("error", DeprecationWarning)
-            raise DeprecationWarning(f"esa_cci_path argument has been removed due to more available scaling options. Replaced by height_scaling_method=='log_cci' and height_scaling_data=esa_cci_path")
+            raise DeprecationWarning(
+                f"esa_cci_path argument has been removed due to more available scaling options. Replaced by height_scaling_method=='log_cci' and height_scaling_data=esa_cci_path"
+            )
 
     # default data used as per [3]
     ws_correction_func = (
@@ -146,10 +150,10 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
 
     # project the windspeeds to the respective hub heights
     wf.project_windspeeds_to_hub_height(
-        height_scaling_method=height_scaling_method, 
-        height_scaling_data=height_scaling_data, 
+        height_scaling_method=height_scaling_method,
+        height_scaling_data=height_scaling_data,
         consider_boundary_layer_height=True,
-        )
+    )
 
     # generate the actual ws corr func and correct wind speeds
     ws_correction_func = build_ws_correction_function(
