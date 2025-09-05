@@ -90,7 +90,8 @@ def test_wind_era5_PenaSanchezDunkelWinklerEtAl2025(pt_wind_placements: pd.DataF
         placements=pt_wind_placements,
         era5_path=TEST_DATA["era5-like"],
         gwa_100m_path=TEST_DATA["gwa100-like.tif"],
-        esa_cci_path=TEST_DATA["ESA_CCI_2018_clip.tif"],
+        height_scaling_method = "log_cci",
+        height_scaling_data = TEST_DATA["ESA_CCI_2018_clip.tif"],
         output_netcdf_path=None,
         cf_correction=True,
     )

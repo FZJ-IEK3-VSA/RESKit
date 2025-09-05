@@ -2,7 +2,7 @@
 import numpy as np
 import os
 import pandas as pd
-import yaml
+import warnings
 
 # import modules
 import reskit.weather as rk_weather
@@ -16,7 +16,8 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
     placements,
     era5_path,
     gwa_100m_path,
-    esa_cci_path,
+    height_scaling_data,
+    height_scaling_method="log_cci",
     output_netcdf_path=None,
     cf_correction=True,
     output_variables=None,
@@ -42,9 +43,24 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
     era5_path : str
         Path to the ERA5 data.
     gwa_100m_path : str
-        Path to the Global Wind Atlas at 100m [4] raster file.
-    esa_cci_path : str
-        Path to the ESA CCI raster file [5].
+        Path to the Global Wind Atlas v3 (GWA3) at 100m [4] raster file.
+    height_scaling_data : str, dict
+        The data required for the selected height_scaling_method (see below).
+        The expected data formats are, depending on height_scaling_method:
+        "log_cci" : str
+            Path to the ESA CCI raster file [5].
+        "lra_shear" : {int : str}
+            Dict with heights as keys and paths to the LRA-windspeeds at the 
+            respective heights as values. Must contain at least one higher and
+            one lower height than 100 [m].
+    height_scaling_method : str
+        The method to project the windspeeds from the default height (here 
+        100m in ERA-5/GWA3) to hub height (possibly affected by the planetary
+        boundary layer height). By default "log_cci". Options are:
+        "log_cci" : Logarithmic scaling with roughness based on a land cover-to-
+            roughness mapping of ESA CCI raster [5].
+        "lra_shear" : Linear interpolation between the scaling factors based on 
+            the nearest two provided heights of long-run average windspeed (e.g. GWA).
     output_netcdf_path : str, optional
         Path to a directory to put the output files, by default None
     cf_correction : bool, optional
@@ -74,9 +90,21 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
     [1] European Centre for Medium-Range Weather Forecasts. (2019). ERA5 dataset. https://www.ecmwf.int/en/forecasts/datasets/reanalysis-datasets/era5
     [2] International Energy Agency. (2023). Renewables Market Report. https://www.iea.org/reports/renewables-2023
     [3] Peña-Sánchez, Dunkel, Winkler et al. (2025): Towards high resolution, validated and open global wind power assessments. https://doi.org/10.48550/arXiv.2501.07937
-    [4] DTU Wind Energy. (2019). Global Wind Atlas. https://globalwindatlas.info/
+    [4] DTU Wind Energy. (2025). Global Wind Atlas v3. https://globalwindatlas.info/
     [5] ESA. Land Cover CCI Product User Guide Version 2. Tech. Rep. (2017). Available at: maps.elie.ucl.ac.be/CCI/viewer/download/ESACCI-LC-Ph2-PUGv2_2.0.pdf
     """
+    # check inputs
+    valid_scaling_methods = ["log_cci", "lra_shear"]
+    if not height_scaling_method in valid_scaling_methods:
+        raise ValueError(f"height_scaling_method must be in: {', '.join(valid_scaling_methods)}")
+
+    # check for esa_cci_path, was an argument in this workflow but has been removed in favor of multiple projection methods
+    # raise descriptive Deprecation"Error" if passed for a transition period - #TODO remove this block in Q2/2026
+    if "esa_cci_path" in simulate_kwargs:
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", DeprecationWarning)
+            raise DeprecationWarning(f"esa_cci_path argument has been removed due to more available scaling options. Replaced by height_scaling_method=='log_cci' and height_scaling_data=esa_cci_path")
+
     # default data used as per [3]
     ws_correction_func = (
         "ws_bins",
@@ -116,11 +144,12 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
         spatial_interpolation="average",
     )
 
-    # estimate roughness and use for velocity correction based on hub height
-    wf.estimate_roughness_from_land_cover(path=esa_cci_path, source_type="cci")
-    wf.logarithmic_projection_of_wind_speeds_to_hub_height(
-        consider_boundary_layer_height=True
-    )
+    # project the windspeeds to the respective hub heights
+    wf.project_windspeeds_to_hub_height(
+        height_scaling_method=height_scaling_method, 
+        height_scaling_data=height_scaling_data, 
+        consider_boundary_layer_height=True,
+        )
 
     # generate the actual ws corr func and correct wind speeds
     ws_correction_func = build_ws_correction_function(
