@@ -5,6 +5,10 @@ import reskit as rk
 import pytest
 from reskit import TEST_DATA
 
+alternative_wind_speed_rasters = {
+        50: TEST_DATA["gwa50-like.tif"],
+        200: TEST_DATA["gwa200-like.tif"],
+    }
 
 def test_WindWorkflowManager___init__():
     placements = pd.DataFrame()
@@ -157,13 +161,24 @@ def test_WindWorkflowManager_wind_shear_projection_of_wind_speeds_to_hub_height(
         [5.64914904, 5.42147512, 5.65448952, 5.75908499, 5.94873524]
     )  # set hardcoded values for 100m, are usually extracted before
 
-    alternative_wind_speed_rasters = {
-        50: TEST_DATA["gwa50-like.tif"],
-        200: TEST_DATA["gwa200-like.tif"],
-    }
-
     man.wind_shear_projection_of_wind_speeds_to_hub_height(
         alternative_wind_speed_rasters=alternative_wind_speed_rasters
+    )
+
+    assert np.isclose(man.sim_data["elevated_wind_speed"].mean(), 8.513871079082824)
+    assert np.isclose(man.sim_data["elevated_wind_speed"].std(), 3.0918568121980496)
+
+def test_WindWorkflowManager_project_windspeeds_to_hub_height(pt_WindWorkflowManager_loaded):
+    man = pt_WindWorkflowManager_loaded
+
+    man.real_lra = np.array(
+        [5.64914904, 5.42147512, 5.65448952, 5.75908499, 5.94873524]
+    )  # set hardcoded values for 100m, are usually extracted before
+    
+    man.project_windspeeds_to_hub_height(
+            height_scaling_method="lra_shear", 
+            height_scaling_data=alternative_wind_speed_rasters, 
+            consider_boundary_layer_height=False
     )
 
     assert np.isclose(man.sim_data["elevated_wind_speed"].mean(), 8.513871079082824)
