@@ -47,11 +47,11 @@ def get_tile_XY(zoom, lon=None, lat=None, geom=None):
         lon = geom.GetX()
         lat = geom.GetY()
     else:
-        assert isinstance(lon, (int, float)) and -360 <= lon <= 360, (
-            f"lon must be an integer or float between -360/+360"
+        assert isinstance(lon, (int, float)) and -180 <= lon <= 180, (
+            f"lon must be an integer or float between -180/+180"
         )
-        assert isinstance(lat, (int, float)) and -180 <= lon <= 180, (
-            f"lat must be an integer or float between -180/+180°"
+        assert isinstance(lat, (int, float)) and -90 <= lon <= 90, (
+            f"lat must be an integer or float between -90/+90°"
         )
 
     # get tile id
