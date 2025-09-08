@@ -15,6 +15,11 @@ import reskit.weather as rk_weather
 from reskit.wind.core.data import DATAFOLDER
 
 
+alternative_wind_speed_rasters = {
+    50: TEST_DATA["gwa50-like.tif"],
+    200: TEST_DATA["gwa200-like.tif"],
+}
+
 @pytest.fixture
 def pt_wind_placements() -> pd.DataFrame:
     df = gk.vector.extractFeatures(TEST_DATA["turbinePlacements.shp"])
@@ -90,29 +95,22 @@ def test_wind_era5_PenaSanchezDunkelWinklerEtAl2025(pt_wind_placements: pd.DataF
         placements=pt_wind_placements,
         era5_path=TEST_DATA["era5-like"],
         gwa_100m_path=TEST_DATA["gwa100-like.tif"],
-        height_scaling_method="log_cci",
-        height_scaling_data=TEST_DATA["ESA_CCI_2018_clip.tif"],
+        height_scaling_data=alternative_wind_speed_rasters,
         output_netcdf_path=None,
         cf_correction=True,
     )
 
-    assert gen.roughness.shape == (560,)
-    assert np.isclose(gen.roughness.mean(), 0.44921429)
-    assert np.isclose(gen.roughness.min(), 0.03)
-    assert np.isclose(gen.roughness.max(), 1.2)
-    assert np.isclose(gen.roughness.std(), 0.55593945)
-
     assert gen.elevated_wind_speed.shape == (140, 560)
-    assert np.isclose(gen.elevated_wind_speed.mean(), 5.99812976)
+    assert np.isclose(gen.elevated_wind_speed.mean(), 6.07661495)
     assert np.isclose(gen.elevated_wind_speed.min(), 0.33788731)
-    assert np.isclose(gen.elevated_wind_speed.max(), 13.75022707)
-    assert np.isclose(gen.elevated_wind_speed.std(), 2.23741365)
+    assert np.isclose(gen.elevated_wind_speed.max(), 14.16420132)
+    assert np.isclose(gen.elevated_wind_speed.std(), 2.28764179)
 
     assert gen.capacity_factor.shape == (140, 560)
-    assert np.isclose(gen.capacity_factor.mean(), 0.34455949)
+    assert np.isclose(gen.capacity_factor.mean(), 0.35385846)
     assert np.isclose(gen.capacity_factor.min(), 0.0)
     assert np.isclose(gen.capacity_factor.max(), 0.98)
-    assert np.isclose(gen.capacity_factor.std(), 0.2923411)
+    assert np.isclose(gen.capacity_factor.std(), 0.29527256)
 
 
 def test_onshore_wind_iconlam_2023(pt_wind_placements_Zimbabwe: pd.DataFrame):
