@@ -17,7 +17,6 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
     era5_path,
     gwa_100m_path,
     height_scaling_data,
-    height_scaling_method="log_cci",
     output_netcdf_path=None,
     cf_correction=True,
     output_variables=None,
@@ -78,25 +77,8 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
     [1] European Centre for Medium-Range Weather Forecasts. (2019). ERA5 dataset. https://www.ecmwf.int/en/forecasts/datasets/reanalysis-datasets/era5
     [2] International Energy Agency. (2023). Renewables Market Report. https://www.iea.org/reports/renewables-2023
     [3] Peña-Sánchez, Dunkel, Winkler et al. (2025): Towards high resolution, validated and open global wind power assessments. https://doi.org/10.48550/arXiv.2501.07937
-    [4] DTU Wind Energy. (2025). Global Wind Atlas v3. https://globalwindatlas.info/
-    [5] ESA. Land Cover CCI Product User Guide Version 2. Tech. Rep. (2017). Available at: maps.elie.ucl.ac.be/CCI/viewer/download/ESACCI-LC-Ph2-PUGv2_2.0.pdf
+    [4] DTU Wind Energy. (2024). Global Wind Atlas v3. https://globalwindatlas.info/
     """
-    # check inputs
-    valid_scaling_methods = ["log_cci", "lra_shear"]
-    if not height_scaling_method in valid_scaling_methods:
-        raise ValueError(
-            f"height_scaling_method must be in: {', '.join(valid_scaling_methods)}"
-        )
-
-    # check for esa_cci_path, was an argument in this workflow but has been removed in favor of multiple projection methods
-    # raise descriptive Deprecation"Error" if passed for a transition period - #TODO remove this block in Q2/2026
-    if "esa_cci_path" in simulate_kwargs:
-        with warnings.catch_warnings():
-            warnings.simplefilter("error", DeprecationWarning)
-            raise DeprecationWarning(
-                f"esa_cci_path argument has been removed due to more available scaling options. Replaced by height_scaling_method=='log_cci' and height_scaling_data=esa_cci_path"
-            )
-
     # default data used as per [3]
     ws_correction_func = (
         "ws_bins",
@@ -138,7 +120,7 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
 
     # project the windspeeds to the respective hub heights
     wf.project_windspeeds_to_hub_height(
-        height_scaling_method=height_scaling_method,
+        height_scaling_method=("lra", "linear"), # calibration uses the linear interpolation of different GWA 
         height_scaling_data=height_scaling_data,
         consider_boundary_layer_height=True,
     )
