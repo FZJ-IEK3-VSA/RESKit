@@ -50,7 +50,7 @@ def get_tile_XY(zoom, lon=None, lat=None, geom=None):
         assert isinstance(lon, (int, float)) and -180 <= lon <= 180, (
             f"lon must be an integer or float between -180/+180"
         )
-        assert isinstance(lat, (int, float)) and -90 <= lon <= 90, (
+        assert isinstance(lat, (int, float)) and -90 <= lat <= 90, (
             f"lat must be an integer or float between -90/+90°"
         )
 
