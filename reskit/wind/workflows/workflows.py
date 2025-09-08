@@ -44,23 +44,11 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
         Path to the ERA5 data.
     gwa_100m_path : str
         Path to the Global Wind Atlas v3 (GWA3) at 100m [4] raster file.
-    height_scaling_data : str, dict
-        The data required for the selected height_scaling_method (see below).
-        The expected data formats are, depending on height_scaling_method:
-        "log_cci" : str
-            Path to the ESA CCI raster file [5].
-        "lra_shear" : {int : str}
-            Dict with heights as keys and paths to the LRA-windspeeds at the
-            respective heights as values. Must contain at least one higher and
-            one lower height than 100 [m].
-    height_scaling_method : str
-        The method to project the windspeeds from the default height (here
-        100m in ERA-5/GWA3) to hub height (possibly affected by the planetary
-        boundary layer height). By default "log_cci". Options are:
-        "log_cci" : Logarithmic scaling with roughness based on a land cover-to-
-            roughness mapping of ESA CCI raster [5].
-        "lra_shear" : Linear interpolation between the scaling factors based on
-            the nearest two provided heights of long-run average windspeed (e.g. GWA).
+    height_scaling_data : dict
+        The data required for the height_scaling_method ("lra", "linear").
+        Dict with integer heights as keys and str paths to the Global Wind Atlas
+        windspeeds [4] at the respective heights as values. Must contain at 
+        least one higher and one lower height than 100 [m].
     output_netcdf_path : str, optional
         Path to a directory to put the output files, by default None
     cf_correction : bool, optional
@@ -440,8 +428,8 @@ def wind_config(
     real_lra_ws_scaling,
     real_lra_ws_spatial_interpolation,
     real_lra_ws_nodata_fallback,
-    landcover_path,
-    landcover_source_type,
+    height_scaling_method,
+    height_scaling_data,
     ws_correction_func,
     cf_correction_factor,
     wake_curve,
@@ -490,13 +478,31 @@ def wind_config(
             (ERA-5) value in the format:
             nodata_fallback(locs, weather_lra_ws_path_value)
         (4) a filepath to a raster file containing the fallback values
-    landcover_path : str
-        The path to the categorical landcover raster file.
-        Set to None if no hub height scaling at all shall be applied.
-    landcover_source_type : str
-        Determines the conversion of landcover categories into roughness
-        factors, e.g. 'cci', 'clc-code', 'clc', 'globCover', 'modis'.
-        Takes effect only if landcover_path is not None.
+    height_scaling_method : tuple
+        The method to project the windspeeds from the default height (here
+        100m in ERA-5/GWA3) to hub height (possibly affected by the planetary
+        boundary layer height). First tuple entry (str) describes the general 
+        approach (e.g. logarithmic scaling or based on long-run-average 
+        windspeeds). No height scaling will be applied when None. Options are:
+        ("lra", [vertical method]) : Calculation based on the long-run average
+            wind speeds (e.g. GWA) of the 2 nearest available height levels. 
+            [vertical method] (str) describes the form of interpolation. By 
+            default "linear".
+        ("log", [landcover]) : Logarithmic height scaling based on surface 
+            roughness defined via a mapping of the land cover category.
+            [landcover] (str) defines the landcover data used for roughness
+            mapping. All landcover types accepted as land_cover_type in 
+            logarithmic_profile.roughness_from_land_cover_classification() are 
+            allowed, by default "cci" (ESA CCI raster).
+    height_scaling_data : str, dict
+        The data required for the selected height_scaling_method (see above).
+        The expected data formats are, depending on height_scaling_method:
+        ("log", [landcover]) : str
+            Path to the respective "landcover" raster file.
+        ("lra", [vertical method]) : {int : str}
+            Dict with heights as keys and paths to the LRA-windspeeds at the
+            respective heights as values. Must contain at least one higher and
+            one lower height than the reference height of real_lra_ws_path.
     ws_correction_func :float, callable, tuple, list
         An executable function that takes a numpy array as single input
         argument and returns an adapted windspeed. If 1.0 is passed, no
@@ -599,14 +605,12 @@ def wind_config(
         real_lra_scaling=real_lra_ws_scaling,
     )
 
-    if landcover_path:
-        wf.estimate_roughness_from_land_cover(
-            path=landcover_path, source_type=landcover_source_type
-        )
-
-        wf.logarithmic_projection_of_wind_speeds_to_hub_height(
-            consider_boundary_layer_height=consider_boundary_layer_height
-        )
+    if height_scaling_method is not None:
+        wf.project_windspeeds_to_hub_height(
+            height_scaling_method=height_scaling_method,
+            height_scaling_data=height_scaling_data,
+            consider_boundary_layer_height=consider_boundary_layer_height,
+        )    
 
     # correct wind speeds
     wf.sim_data["elevated_wind_speed"] = ws_correction_func(

@@ -136,24 +136,31 @@ class WindWorkflowManager(WorkflowManager):
 
         Parameters:
         ----------
-        height_scaling_method : str
-            Accepts the following options:
-            "log_cci" : Logarithmic scaling with roughness based on a land cover-
-                to-roughness mapping of ESA CCI raster.
-            "log_clc" : Logarithmic scaling with roughness based on a land cover-
-                to-roughness mapping of CLC raster.
-            "lra_shear" : Linear interpolation between the scaling factors based
-                on the nearest two provided heights of long-run average windspeed
-                (e.g. Global Wind Atlas).
+        height_scaling_method : tuple
+            The method to project the windspeeds from the default height (here
+            100m in ERA-5/GWA3) to hub height (possibly affected by the planetary
+            boundary layer height). First tuple entry (str) describes the general 
+            approach (e.g. logarithmic scaling or based on long-run-average 
+            windspeeds). No height scaling will be applied when None. Options are:
+            ("lra", [vertical method]) : Calculation based on the long-run average
+                wind speeds (e.g. GWA) of the 2 nearest available height levels. 
+                [vertical method] (str) describes the form of interpolation, e.g. 
+                "linear".
+            ("log", [landcover]) : Logarithmic height scaling based on surface 
+                roughness defined via a mapping of the land cover category.
+                [landcover] (str) defines the landcover data used for roughness
+                mapping. All landcover types accepted as land_cover_type in 
+                logarithmic_profile.roughness_from_land_cover_classification() are 
+                allowed, by default "cci" (ESA CCI raster).
         height_scaling_data : str, dict
-            The data required for the selected height_scaling_method (see below).
+            The data required for the selected height_scaling_method (see above).
             The expected data formats are, depending on height_scaling_method:
-            "log_cci" : str
-                Path to the ESA CCI raster file.
-            "lra_shear" : {int : str}
+            ("log", [landcover]) : str
+                Path to the respective "landcover" raster file.
+            ("lra", [vertical method]) : {int : str}
                 Dict with heights as keys and paths to the LRA-windspeeds at the
-                respective heights as values. Must contain at least one higher
-                and one lower height than 100 [m].
+                respective heights as values. Must contain at least one higher and
+                one lower height than the reference height of real_lra_ws_path.
         consider_boundary_layer_height : bool, optional
             Corrects the given hub heights for locations by planetary boundary
             layer (PBL) effects if True, see consider_boundary_height() for
@@ -166,29 +173,40 @@ class WindWorkflowManager(WorkflowManager):
         # check consider_boundary_layer_height arg
         if not isinstance(consider_boundary_layer_height, bool):
             raise TypeError("consider_boundary_layer_height must be boolean.")
+        if not isinstance(height_scaling_method, tuple) and len(height_scaling_method)==2:
+            raise TypeError(f"height_scaling_method must be a tuple of length 2.")
 
-        if height_scaling_method == "log_cci":
-            # check data
+        if height_scaling_method[0] == "log":
+            # we have a logarithmic scaling approach, check landcover raster
             if not isinstance(height_scaling_data, str) and isfile(
                 height_scaling_method
             ):
                 raise TypeError(
-                    "height_scaling_method must be str formatted path if height_scaling_method=='log_cci'"
+                    "height_scaling_method must be str formatted path if height_scaling_method==('log', [landcover])"
                 )
             # first get surface roughness per location, then project
             self.estimate_roughness_from_land_cover(
-                path=height_scaling_data, source_type="cci"
+                path=height_scaling_data, source_type=height_scaling_method[1]
             )
             self.logarithmic_projection_of_wind_speeds_to_hub_height(
                 consider_boundary_layer_height=consider_boundary_layer_height
             )
 
-        elif height_scaling_method == "lra_shear":
-            # data format is checked in function below, execute projection function
-            self.wind_shear_projection_of_wind_speeds_to_hub_height(
-                alternative_wind_speed_rasters=height_scaling_data,
-                consider_boundary_layer_height=consider_boundary_layer_height,
-            )
+        elif height_scaling_method[0] == "lra":
+            # we have an interpolation method based on other available LRA wind speed heights
+            lra_funcs = {
+                "linear" : {
+                    "func" : self.wind_shear_projection_of_wind_speeds_to_hub_height,
+                    "args" : {
+                        "alternative_wind_speed_rasters":height_scaling_data, 
+                        "consider_boundary_layer_height":consider_boundary_layer_height
+                        },
+                },
+            }
+            if height_scaling_method[1] in lra_funcs:
+                lra_funcs[height_scaling_method[1]]["func"](**lra_funcs[height_scaling_method[1]]["args"])
+            else:
+                raise ValueError(f"2nd entry of height_scaling_method [vertical method] unknown. Select from: {', '.join(lra_funcs.keys())}")
 
         else:
             raise ValueError(
