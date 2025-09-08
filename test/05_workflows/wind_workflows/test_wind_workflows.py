@@ -151,8 +151,8 @@ def test_wind_config(pt_wind_placements: pd.DataFrame):
         real_lra_ws_scaling=1,
         real_lra_ws_spatial_interpolation="average",
         real_lra_ws_nodata_fallback=np.nan,
-        landcover_path=TEST_DATA["ESA_CCI_2018_clip.tif"],
-        landcover_source_type="cci",
+        height_scaling_data=TEST_DATA["ESA_CCI_2018_clip.tif"],
+        height_scaling_method=("log", "cci"),
         ws_correction_func=(
             "ws_bins",
             os.path.join(DATAFOLDER, f"ws_correction_factors_PSDW2025.yaml"),
