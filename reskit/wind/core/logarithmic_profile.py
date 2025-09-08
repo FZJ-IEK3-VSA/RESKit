@@ -507,7 +507,7 @@ def roughness_from_land_cover_classification(classification, land_cover_type="cl
             return cciCodeToRoughess[x]
 
     else:
-        raise ResError("invalid input")
+        raise ResError(f"invalid input for land_cover_type: {land_cover_type}")
 
     converter = np.vectorize(source)
     return converter(classification)
