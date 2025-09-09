@@ -20,6 +20,7 @@ alternative_wind_speed_rasters = {
     200: TEST_DATA["gwa200-like.tif"],
 }
 
+
 @pytest.fixture
 def pt_wind_placements() -> pd.DataFrame:
     df = gk.vector.extractFeatures(TEST_DATA["turbinePlacements.shp"])

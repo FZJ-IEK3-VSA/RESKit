@@ -192,8 +192,8 @@ def test_WindWorkflowManager_project_windspeeds_to_hub_height(
 
     # exemplary test for log scaling
 
-    man = copy.copy(pt_WindWorkflowManager_loaded) # reset workflow manager
-    
+    man = copy.copy(pt_WindWorkflowManager_loaded)  # reset workflow manager
+
     man.project_windspeeds_to_hub_height(
         height_scaling_method=("log", "cci"),
         height_scaling_data=TEST_DATA["ESA_CCI_2018_clip.tif"],
@@ -202,6 +202,7 @@ def test_WindWorkflowManager_project_windspeeds_to_hub_height(
 
     assert np.isclose(man.sim_data["elevated_wind_speed"].mean(), 8.867024095907745)
     assert np.isclose(man.sim_data["elevated_wind_speed"].std(), 3.2201061773430104)
+
 
 def test_WindWorkflowManager_apply_air_density_correction_to_wind_speeds(
     pt_WindWorkflowManager_loaded,

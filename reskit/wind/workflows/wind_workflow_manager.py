@@ -139,18 +139,18 @@ class WindWorkflowManager(WorkflowManager):
         height_scaling_method : tuple
             The method to project the windspeeds from the default height (here
             100m in ERA-5/GWA3) to hub height (possibly affected by the planetary
-            boundary layer height). First tuple entry (str) describes the general 
-            approach (e.g. logarithmic scaling or based on long-run-average 
+            boundary layer height). First tuple entry (str) describes the general
+            approach (e.g. logarithmic scaling or based on long-run-average
             windspeeds). No height scaling will be applied when None. Options are:
             ("lra", [vertical method]) : Calculation based on the long-run average
-                wind speeds (e.g. GWA) of the 2 nearest available height levels. 
-                [vertical method] (str) describes the form of interpolation, e.g. 
+                wind speeds (e.g. GWA) of the 2 nearest available height levels.
+                [vertical method] (str) describes the form of interpolation, e.g.
                 "linear".
-            ("log", [landcover]) : Logarithmic height scaling based on surface 
+            ("log", [landcover]) : Logarithmic height scaling based on surface
                 roughness defined via a mapping of the land cover category.
                 [landcover] (str) defines the landcover data used for roughness
-                mapping. All landcover types accepted as land_cover_type in 
-                logarithmic_profile.roughness_from_land_cover_classification() are 
+                mapping. All landcover types accepted as land_cover_type in
+                logarithmic_profile.roughness_from_land_cover_classification() are
                 allowed, by default "cci" (ESA CCI raster).
         height_scaling_data : str, dict
             The data required for the selected height_scaling_method (see above).
@@ -173,7 +173,10 @@ class WindWorkflowManager(WorkflowManager):
         # check consider_boundary_layer_height arg
         if not isinstance(consider_boundary_layer_height, bool):
             raise TypeError("consider_boundary_layer_height must be boolean.")
-        if not isinstance(height_scaling_method, tuple) and len(height_scaling_method)==2:
+        if (
+            not isinstance(height_scaling_method, tuple)
+            and len(height_scaling_method) == 2
+        ):
             raise TypeError(f"height_scaling_method must be a tuple of length 2.")
 
         if height_scaling_method[0] == "log":
@@ -195,18 +198,22 @@ class WindWorkflowManager(WorkflowManager):
         elif height_scaling_method[0] == "lra":
             # we have an interpolation method based on other available LRA wind speed heights
             lra_funcs = {
-                "linear" : {
-                    "func" : self.wind_shear_projection_of_wind_speeds_to_hub_height,
-                    "args" : {
-                        "alternative_wind_speed_rasters":height_scaling_data, 
-                        "consider_boundary_layer_height":consider_boundary_layer_height
-                        },
+                "linear": {
+                    "func": self.wind_shear_projection_of_wind_speeds_to_hub_height,
+                    "args": {
+                        "alternative_wind_speed_rasters": height_scaling_data,
+                        "consider_boundary_layer_height": consider_boundary_layer_height,
+                    },
                 },
             }
             if height_scaling_method[1] in lra_funcs:
-                lra_funcs[height_scaling_method[1]]["func"](**lra_funcs[height_scaling_method[1]]["args"])
+                lra_funcs[height_scaling_method[1]]["func"](
+                    **lra_funcs[height_scaling_method[1]]["args"]
+                )
             else:
-                raise ValueError(f"2nd entry of height_scaling_method [vertical method] unknown. Select from: {', '.join(lra_funcs.keys())}")
+                raise ValueError(
+                    f"2nd entry of height_scaling_method [vertical method] unknown. Select from: {', '.join(lra_funcs.keys())}"
+                )
 
         else:
             raise ValueError(
