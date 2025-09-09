@@ -420,6 +420,7 @@ def wind_config(
     wake_curve,
     availability_factor,
     consider_boundary_layer_height,
+    allow_height_extrapolation,
     power_curve_scaling,
     power_curve_base,
     convolute_power_curves_args={},
@@ -516,6 +517,10 @@ def wind_config(
         (see above) or curtailment/outage for economical reasons or transmission grid congestion.
     consider_boundary_layer_height : bool
         If True, boundary layer height will be considered.
+    allow_height_extrapolation : bool
+        Takes effect only if a height scaling method based on interpolation is
+        chosen, will then allow or forbid extrapolation beyond the min/max
+        provided height range.
     power_curve_scaling : float
         The scaling factor to smoothen the power curve, for details see:
         convolute_power_curves()
@@ -595,6 +600,7 @@ def wind_config(
             height_scaling_method=height_scaling_method,
             height_scaling_data=height_scaling_data,
             consider_boundary_layer_height=consider_boundary_layer_height,
+            allow_extrapolation=allow_height_extrapolation,
         )
 
     # correct wind speeds

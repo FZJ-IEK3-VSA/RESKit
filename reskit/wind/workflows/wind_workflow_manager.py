@@ -130,6 +130,7 @@ class WindWorkflowManager(WorkflowManager):
         height_scaling_method,
         height_scaling_data,
         consider_boundary_layer_height=True,
+        allow_extrapolation=True,
     ):
         """
         Projects wind speeds to hub heights for a given projection/scaling method.
@@ -165,6 +166,9 @@ class WindWorkflowManager(WorkflowManager):
             Corrects the given hub heights for locations by planetary boundary
             layer (PBL) effects if True, see consider_boundary_height() for
             details. By default True.
+        allow_extrapolation : bool, optional
+            Takes effect only in interpolating methods, will then allow to
+            extrapolate beyond the min/max height range, by default True.
 
         Return
         ------
@@ -203,6 +207,7 @@ class WindWorkflowManager(WorkflowManager):
                     "args": {
                         "alternative_wind_speed_rasters": height_scaling_data,
                         "consider_boundary_layer_height": consider_boundary_layer_height,
+                        "allow_extrapolation": allow_extrapolation,
                     },
                 },
             }
@@ -360,6 +365,7 @@ class WindWorkflowManager(WorkflowManager):
         self,
         alternative_wind_speed_rasters,
         consider_boundary_layer_height=False,
+        allow_extrapolation=True,
     ):
         """
         Projects the wind speed values to the hub height.
@@ -367,12 +373,18 @@ class WindWorkflowManager(WorkflowManager):
         consider_boundary_layer_height : bool, optional
             If True, the wind speed will be scaled only to max. the
             boundary layer height. By default False.
+        allow_extrapolation . BOOL; OPTIONAL
+            If False, target heights must be between minimum and maximum
+            height keys provided in alternative_wind_speed_rasters. By 
+            default True.
 
         Return
         ------
             A reference to the invoking WindWorkflowManager
         """
-
+        assert isinstance(allow_extrapolation, bool), (
+            f"allow_extrapolation must be boolean"
+        )
         assert isinstance(alternative_wind_speed_rasters, dict) and all(
             [isinstance(k, (int, float)) and k > 0]
             for k in alternative_wind_speed_rasters.keys()
@@ -411,14 +423,31 @@ class WindWorkflowManager(WorkflowManager):
             )
         )
         # make sure that we have enough reference height sampling points
-        if (target_height < min(ref_heights)).any():
-            raise KeyError(
-                f"data contains target heights below elevated wind speed height. alternative_wind_speed_rasters must contain key < {self.elevated_wind_speed_height}"
-            )
-        if (target_height > max(ref_heights)).any():
-            raise KeyError(
-                f"data contains target heights above elevated wind speed height. alternative_wind_speed_rasters must contain key > {self.elevated_wind_speed_height}"
-            )
+        if allow_extrapolation:
+            # we should have at least one height level "in every (height) direction where data points are"
+            if (target_height < self.elevated_wind_speed_height).any() and not min(
+                ref_heights
+            ) < self.elevated_wind_speed_height:
+                raise KeyError(
+                    f"data contains target heights but not reference heights below elevated wind speed height. alternative_wind_speed_rasters must contain key < {self.elevated_wind_speed_height}"
+                )
+            if (target_height > self.elevated_wind_speed_height).any() and not max(
+                ref_heights
+            ) > self.elevated_wind_speed_height:
+                raise KeyError(
+                    f"data contains target heights but not reference heights above elevated wind speed height. alternative_wind_speed_rasters must contain key > {self.elevated_wind_speed_height}"
+                )
+        else:
+            # no data point may be outside the min-max height range
+            if (target_height < min(ref_heights)).any():
+                raise KeyError(
+                    f"data contains target heights below elevated wind speed height and allow_extrapolation is False. alternative_wind_speed_rasters must contain key <= {target_height.min()}"
+                )
+            if (target_height > max(ref_heights)).any():
+                raise KeyError(
+                    f"data contains target heights above elevated wind speed height and allow_extrapolation is False. alternative_wind_speed_rasters must contain key >= {target_height.max()}"
+                )
+
         # bin the target heights to reference spacing binds
         idx = np.searchsorted(ref_heights, target_height, side="left")
         # get first the indices of the respective lower and higher reference heights and then the values
