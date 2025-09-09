@@ -375,7 +375,7 @@ class WindWorkflowManager(WorkflowManager):
             boundary layer height. By default False.
         allow_extrapolation . BOOL; OPTIONAL
             If False, target heights must be between minimum and maximum
-            height keys provided in alternative_wind_speed_rasters. By 
+            height keys provided in alternative_wind_speed_rasters. By
             default True.
 
         Return
