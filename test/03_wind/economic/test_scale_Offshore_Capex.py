@@ -3,40 +3,65 @@ import numpy as np
 import pytest
 from reskit.default_paths import DEFAULT_PATHS
 from reskit.parameters.parameters import OffshoreParameters
+import reskit._test.data as pkg_data
+from pathlib import Path 
+from importlib.resources import files, as_file
 
-# GPS Coordiantes for location in North Sea
-lon = 6.2160
-lat = 53.7170
+
+
+
 
 
 def test_waterDepthFromLocation():
-    waterdepth_exact = 22
+    # GPS Coordiantes for location in Aachen to test Reading from tif file 
+    lon = 5.983
+    lat = 51.205
+def get_pkg_file(name: str) -> Path:
+    root = files(pkg_data)
+    # erst übliche Stellen probieren
+    for rel in (name, f"data/{name}"):
+        cand = root.joinpath(*rel.split("/"))
+        if cand.is_file():
+            with as_file(cand) as p:
+                return Path(p)
+    # Fallback: rekursiv suchen
+    for child in root.iterdir():
+        if child.is_dir():
+            for sub in child.iterdir():
+                if sub.name == name and sub.is_file():
+                    with as_file(sub) as p:
+                        return Path(p)
+    raise FileNotFoundError(name)
+
+    tif_file = get_pkg_file("DEM-like.tif")
+    value_exact= 19
     depth = waterDepthFromLocation(
-        lat, lon, waterDepthFolderPath=DEFAULT_PATHS.get("waterdepthFile")
+        lat, lon, waterDepthFolderPath=tif_file
     )
+    
     assert np.isclose(
-        depth, waterdepth_exact
+        depth, value_exact
     ), "the waterdepthfile is not working correct"
 
 
 def test_calculateOffshoreCapex():
-    comparedCAPEX = 2943.80819956
+    comparedCAPEX = 2945.176
     calculatedCAPEX = calculateOffshoreCapex(
-        inputCapex=3000,
+        baseCapex=3000,
         capacity=14000,
         hubHeight=150,
         waterDepth=25,
         coastDistance=25,
         rotorDiam=230,
-        techYear=2050,
+        techYear=None,
         shareTurb=0.449,
         shareFound=0.204,
         shareCable=0.181,
         shareOverhead=0.166,
         maxMonopileDepth=25,
         maxJacketDepth=55,
-        litValueAvgDepth=17,
-        litValueAvgDistCoast=27,
+        baseDepth=17,
+        baseDistCoast=27,
         baseCap=13000,
         baseHubHeight=150,
         baseRotorDiam=250,
