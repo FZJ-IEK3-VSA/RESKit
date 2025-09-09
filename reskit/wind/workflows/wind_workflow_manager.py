@@ -455,6 +455,15 @@ class WindWorkflowManager(WorkflowManager):
         ref_height_lower = np.array(ref_heights)[lower_idx]
         upper_idx = np.clip(idx, 0, len(ref_heights) - 1)
         ref_height_upper = np.array(ref_heights)[upper_idx]
+        # cover edge cases when both ref heights are the same
+        both_lowest_idx = (ref_height_lower == ref_height_upper) & (
+            ref_height_lower == min(ref_heights)
+        )
+        ref_height_upper[both_lowest_idx] = ref_heights[1]  # set to second lowest value
+        both_highest_idx = (ref_height_lower == ref_height_upper) & (
+            ref_height_upper == max(ref_heights)
+        )
+        ref_height_lower[both_highest_idx] = ref_heights[-2]  # set to 2nd highest value
 
         def _get_ws(arr):
             """Extracts windspeeds for given reference height arrays."""
