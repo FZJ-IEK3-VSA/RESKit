@@ -125,6 +125,108 @@ class WindWorkflowManager(WorkflowManager):
                     rk_wind_core.turbine_library.TurbineLibrary().loc[pc].PowerCurve
                 )
 
+    def project_windspeeds_to_hub_height(
+        self,
+        height_scaling_method,
+        height_scaling_data,
+        consider_boundary_layer_height=True,
+        allow_extrapolation=True,
+    ):
+        """
+        Projects wind speeds to hub heights for a given projection/scaling method.
+
+        Parameters:
+        ----------
+        height_scaling_method : tuple
+            The method to project the windspeeds from the default height (here
+            100m in ERA-5/GWA3) to hub height (possibly affected by the planetary
+            boundary layer height). First tuple entry (str) describes the general
+            approach (e.g. logarithmic scaling or based on long-run-average
+            windspeeds). No height scaling will be applied when None. Options are:
+            ("lra", [vertical method]) : Calculation based on the long-run average
+                wind speeds (e.g. GWA) of the 2 nearest available height levels.
+                [vertical method] (str) describes the form of interpolation, e.g.
+                "linear".
+            ("log", [landcover]) : Logarithmic height scaling based on surface
+                roughness defined via a mapping of the land cover category.
+                [landcover] (str) defines the landcover data used for roughness
+                mapping. All landcover types accepted as land_cover_type in
+                logarithmic_profile.roughness_from_land_cover_classification() are
+                allowed, by default "cci" (ESA CCI raster).
+        height_scaling_data : str, dict
+            The data required for the selected height_scaling_method (see above).
+            The expected data formats are, depending on height_scaling_method:
+            ("log", [landcover]) : str
+                Path to the respective "landcover" raster file.
+            ("lra", [vertical method]) : {int : str}
+                Dict with heights as keys and paths to the LRA-windspeeds at the
+                respective heights as values. Must contain at least one higher and
+                one lower height than the reference height of real_lra_ws_path.
+        consider_boundary_layer_height : bool, optional
+            Corrects the given hub heights for locations by planetary boundary
+            layer (PBL) effects if True, see consider_boundary_height() for
+            details. By default True.
+        allow_extrapolation : bool, optional
+            Takes effect only in interpolating methods, will then allow to
+            extrapolate beyond the min/max height range, by default True.
+
+        Return
+        ------
+            A reference to the invoking WindWorkflowManager
+        """
+        # check consider_boundary_layer_height arg
+        if not isinstance(consider_boundary_layer_height, bool):
+            raise TypeError("consider_boundary_layer_height must be boolean.")
+        if (
+            not isinstance(height_scaling_method, tuple)
+            and len(height_scaling_method) == 2
+        ):
+            raise TypeError(f"height_scaling_method must be a tuple of length 2.")
+
+        if height_scaling_method[0] == "log":
+            # we have a logarithmic scaling approach, check landcover raster
+            if not isinstance(height_scaling_data, str) and isfile(
+                height_scaling_method
+            ):
+                raise TypeError(
+                    "height_scaling_method must be str formatted path if height_scaling_method==('log', [landcover])"
+                )
+            # first get surface roughness per location, then project
+            self.estimate_roughness_from_land_cover(
+                path=height_scaling_data, source_type=height_scaling_method[1]
+            )
+            self.logarithmic_projection_of_wind_speeds_to_hub_height(
+                consider_boundary_layer_height=consider_boundary_layer_height
+            )
+
+        elif height_scaling_method[0] == "lra":
+            # we have an interpolation method based on other available LRA wind speed heights
+            lra_funcs = {
+                "linear": {
+                    "func": self.wind_shear_projection_of_wind_speeds_to_hub_height,
+                    "args": {
+                        "alternative_wind_speed_rasters": height_scaling_data,
+                        "consider_boundary_layer_height": consider_boundary_layer_height,
+                        "allow_extrapolation": allow_extrapolation,
+                    },
+                },
+            }
+            if height_scaling_method[1] in lra_funcs:
+                lra_funcs[height_scaling_method[1]]["func"](
+                    **lra_funcs[height_scaling_method[1]]["args"]
+                )
+            else:
+                raise ValueError(
+                    f"2nd entry of height_scaling_method [vertical method] unknown. Select from: {', '.join(lra_funcs.keys())}"
+                )
+
+        else:
+            raise ValueError(
+                f"Unknown height_scaling_method '{height_scaling_method}'."
+            )
+
+        return self
+
     def set_roughness(self, roughness):
         """
         Sets the 'roughness' column in the placements DataFrame.
@@ -170,11 +272,66 @@ class WindWorkflowManager(WorkflowManager):
         )
         return self
 
+    def consider_boundary_height(self):
+        """
+        Corrects the given target heights for locations by planetary boundary
+        layer (PBL) effects, by limiting the target height either to the PBL
+        height when elevated (starting) height < PBL < target height or avoiding
+        scaling altogether when PBL <= elevated (startig) height (by setting
+        target height to elevated starting height).
+
+        Return
+        ------
+        numpy array
+            The adapted target heights.
+        """
+        assert hasattr(self, "elevated_wind_speed_height")
+        assert "hub_height" in self.placements.columns
+
+        # correct the target height acc. to one of these cases
+        # 1) EH <= PBLH & HH <= PBLH -> TH = HH (no influence of PBL)
+        # 2) EH <= PBLH & HH > PBLH -> TH = PBLH (set PBLH as upper target height limit)
+        # 3) PBLH < EH & PBLH <= HH -> TH = EH (all heights are outside of planetary influence, use (constant) ws(EH))
+        # 4) PBLH < EH & PBLH > HH -> TH = HH, EH -> PBLH (scaling relative to PBLH since ws(EH) == ws(PBLH)
+
+        # Get the relevant variables
+        pbl_height = self.sim_data["boundary_layer_height"]
+        hub_height = self.placements["hub_height"].values
+        elevated_height = self.elevated_wind_speed_height
+
+        # Initialize target height array
+        target_height = np.zeros_like(pbl_height, dtype=float)
+
+        # Case 1: EH <= PBLH & HH <= PBLH -> TH = HH (no influence of PBL)
+        case1 = (elevated_height <= pbl_height) & (hub_height <= pbl_height)
+        target_height = np.where(case1, hub_height, target_height)
+
+        # Case 2: EH <= PBLH & HH > PBLH -> TH = PBLH (set PBLH as upper target height limit)
+        case2 = (elevated_height <= pbl_height) & (hub_height > pbl_height)
+        target_height = np.where(case2, pbl_height, target_height)
+
+        # Case 3: PBLH < EH & PBLH <= HH -> TH = EH (all heights are outside of planetary influence, use (constant) ws(EH))
+        case3 = (pbl_height < elevated_height) & (pbl_height <= hub_height)
+        target_height = np.where(case3, elevated_height, target_height)
+
+        # Case 4: PBLH < EH & PBLH > HH -> TH = HH, EH -> PBLH (scaling relative to PBLH since ws(EH) == ws(PBLH))
+        # Note: This case also requires adjusting the elevated_wind_speed_height, but that's handled in the calling function
+        case4 = (pbl_height < elevated_height) & (pbl_height > hub_height)
+        target_height = np.where(case4, hub_height, target_height)
+
+        assert (np.array([case1, case2, case3, case4]).sum(axis=0) == 1).all()
+
+        return target_height
+
     def logarithmic_projection_of_wind_speeds_to_hub_height(
         self, consider_boundary_layer_height=False
     ):
         """
         Projects the wind speed values to the hub height.
+
+        consider_boundary_layer_height : bool, optional
+            If True, the wind speed will be scaled only to max. the
+            boundary layer height. By default False.
 
         Return
         ------
@@ -185,19 +342,10 @@ class WindWorkflowManager(WorkflowManager):
         assert hasattr(self, "elevated_wind_speed_height")
 
         if consider_boundary_layer_height:
-            # When the hub height is above the PBL, then only project to the PBL
-            target_height = np.minimum(
-                self.sim_data["boundary_layer_height"],
-                self.placements["hub_height"].values,
-            )
-
-            # When the PBL is below the elevated_wind_speed_height, then no projection
-            # should be performed. This can be effectlvely accomplished by setting the
-            # target height to that of the elevated_wind_speed_height
-            sel = target_height > self.elevated_wind_speed_height
-            target_height[sel] = self.elevated_wind_speed_height
-
+            # only scale up to the maximum of boundary height or hub height
+            target_height = self.consider_boundary_height()
         else:
+            # else simply scale to hub height
             target_height = self.placements["hub_height"].values
 
         tmp = rk_wind_core.logarithmic_profile.apply_logarithmic_profile_projection(
@@ -208,6 +356,187 @@ class WindWorkflowManager(WorkflowManager):
         )
 
         self.sim_data["elevated_wind_speed"] = tmp
+
+        self.elevated_wind_speed_height = self.placements["hub_height"].values
+
+        return self
+
+    def wind_shear_projection_of_wind_speeds_to_hub_height(
+        self,
+        alternative_wind_speed_rasters,
+        consider_boundary_layer_height=False,
+        allow_extrapolation=True,
+    ):
+        """
+        Projects the wind speed values to the hub height.
+
+        consider_boundary_layer_height : bool, optional
+            If True, the wind speed will be scaled only to max. the
+            boundary layer height. By default False.
+        allow_extrapolation . BOOL; OPTIONAL
+            If False, target heights must be between minimum and maximum
+            height keys provided in alternative_wind_speed_rasters. By
+            default True.
+
+        Return
+        ------
+            A reference to the invoking WindWorkflowManager
+        """
+        assert isinstance(allow_extrapolation, bool), (
+            f"allow_extrapolation must be boolean"
+        )
+        assert isinstance(alternative_wind_speed_rasters, dict) and all(
+            [isinstance(k, (int, float)) and k > 0]
+            for k in alternative_wind_speed_rasters.keys()
+        ), (
+            f"alternative_wind_speed_rasters is expected to be a dict with positive int or float as keys"
+        )
+        assert all(
+            [isinstance(v, str) and isfile(v)]
+            for v in alternative_wind_speed_rasters.values()
+        ), (
+            f"alternative_wind_speed_rasters values must be paths to existing windspeed rasters."
+        )
+        assert hasattr(self, "elevated_wind_speed_height")
+
+        # CONSIDER BOUNDARY LAYER HEIGHT - OR NOT
+
+        if consider_boundary_layer_height:
+            # only scale up to the maximum of boundary height or hub height
+            target_height = self.consider_boundary_height()
+        else:
+            # else simply scale to hub height, but repeat columns for every timestep
+            target_height = self.placements["hub_height"].values
+            target_height = np.repeat(
+                target_height[np.newaxis, :],
+                self.sim_data["elevated_wind_speed"].shape[0],
+                axis=0,
+            )
+
+        # GET AVERAGE WINDSPEEDS AT NEAREST GIVEN REFERENCE HEIGHTS
+
+        # first get all available reference heights, including the default elevated ws height
+        ref_heights = sorted(
+            set(
+                list(alternative_wind_speed_rasters.keys())
+                + [self.elevated_wind_speed_height]
+            )
+        )
+        # make sure that we have enough reference height sampling points
+        if allow_extrapolation:
+            # we should have at least one height level "in every (height) direction where data points are"
+            if (target_height < self.elevated_wind_speed_height).any() and not min(
+                ref_heights
+            ) < self.elevated_wind_speed_height:
+                raise KeyError(
+                    f"data contains target heights but not reference heights below elevated wind speed height. alternative_wind_speed_rasters must contain key < {self.elevated_wind_speed_height}"
+                )
+            if (target_height > self.elevated_wind_speed_height).any() and not max(
+                ref_heights
+            ) > self.elevated_wind_speed_height:
+                raise KeyError(
+                    f"data contains target heights but not reference heights above elevated wind speed height. alternative_wind_speed_rasters must contain key > {self.elevated_wind_speed_height}"
+                )
+        else:
+            # no data point may be outside the min-max height range
+            if (target_height < min(ref_heights)).any():
+                raise KeyError(
+                    f"data contains target heights below elevated wind speed height and allow_extrapolation is False. alternative_wind_speed_rasters must contain key <= {target_height.min()}"
+                )
+            if (target_height > max(ref_heights)).any():
+                raise KeyError(
+                    f"data contains target heights above elevated wind speed height and allow_extrapolation is False. alternative_wind_speed_rasters must contain key >= {target_height.max()}"
+                )
+
+        # bin the target heights to reference spacing binds
+        idx = np.searchsorted(ref_heights, target_height, side="left")
+        # get first the indices of the respective lower and higher reference heights and then the values
+        lower_idx = np.clip(idx - 1, 0, len(ref_heights) - 1)
+        ref_height_lower = np.array(ref_heights)[lower_idx]
+        upper_idx = np.clip(idx, 0, len(ref_heights) - 1)
+        ref_height_upper = np.array(ref_heights)[upper_idx]
+        # cover edge cases when both ref heights are the same
+        both_lowest_idx = (ref_height_lower == ref_height_upper) & (
+            ref_height_lower == min(ref_heights)
+        )
+        ref_height_upper[both_lowest_idx] = ref_heights[1]  # set to second lowest value
+        both_highest_idx = (ref_height_lower == ref_height_upper) & (
+            ref_height_upper == max(ref_heights)
+        )
+        ref_height_lower[both_highest_idx] = ref_heights[-2]  # set to 2nd highest value
+
+        def _get_ws(arr):
+            """Extracts windspeeds for given reference height arrays."""
+            noData = -9999
+            ws = np.full(
+                shape=arr.shape, fill_value=noData
+            )  # initialize as noData=-9999
+
+            # first set the previously extracted elevated_wind_speed at default reference height
+            sel = arr == self.elevated_wind_speed_height
+            ws = np.where(
+                sel, self.real_lra, ws
+            )  # set default real_lra at all positions with default height
+
+            # then get the values for all other reference heights in array
+            for _height in np.unique(arr):
+                if _height == self.elevated_wind_speed_height:
+                    continue  # already handled default height
+
+                # get and check filepath from alternative LRA ws height rasters
+                fp = alternative_wind_speed_rasters[_height]
+                if not (isinstance(fp, str) and isfile(fp)):
+                    raise FileNotFoundError(
+                        f"value of alternative_wind_speed_rasters[{_height}] must be a str-formatted path to an existing file: {fp}"
+                    )
+
+                # extract ws only for points (rows) with this height
+                _sel_points = (arr == _height).any(axis=0)
+                _ws = self.get_scalar_values_from_raster(
+                    fp=fp,
+                    spatial_interpolation="linear-spline",
+                    points=list(
+                        zip(
+                            self.placements[_sel_points]["lon"],
+                            self.placements[_sel_points]["lat"],
+                        )
+                    ),
+                )
+                # write into output array
+                sel = arr == _height
+
+                # iteratively replace values of interest in affected columns
+                col_idx = np.where(_sel_points)[0]  # affected column indices
+                for i, c in enumerate(col_idx):
+                    ws[sel[:, c], c] = _ws[i]
+
+            assert not (
+                ws == noData
+            ).any()  # make sure that values for all locs were extracted
+
+            return ws
+
+        # get the wind speeds at the respective lower and higher reference height
+        ref_ws_lower = _get_ws(arr=ref_height_lower)
+        ref_ws_upper = _get_ws(arr=ref_height_upper)
+
+        # calculate the interpolated ws at target height
+        delta = ref_height_upper - ref_height_lower
+        fraction = np.divide(
+            target_height - ref_height_lower,
+            delta,
+            out=np.zeros_like(delta, dtype=float),
+            where=delta != 0,  # avoid division by zero
+        )
+        target_ws = ref_ws_lower + fraction * (ref_ws_upper - ref_ws_lower)
+
+        # calculate scaling factor relative to default LRA height
+        scale = target_ws / self.real_lra
+
+        # scale hourly ws to the new target hub height and overwrite attr
+        self.sim_data["elevated_wind_speed"] = (
+            scale * self.sim_data["elevated_wind_speed"]
+        )
 
         self.elevated_wind_speed_height = self.placements["hub_height"].values
 
