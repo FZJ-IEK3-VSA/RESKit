@@ -164,6 +164,7 @@ def test_wind_config(pt_wind_placements: pd.DataFrame):
         wake_curve="dena_mean",
         availability_factor=0.98,
         consider_boundary_layer_height=True,
+        allow_height_extrapolation=True,
         power_curve_scaling=0.01,
         power_curve_base=0.0,
         convolute_power_curves_args={},
