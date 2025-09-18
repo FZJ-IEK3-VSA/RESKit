@@ -393,8 +393,8 @@ class PTRWorkflowManager(SolarWorkflowManager):
             ).all()
         else:
             assert (
-                self.sim_data["HeattoHTF_W"].mean(axis=0)
-                / self.placements.capacity_sf_W_th
+                self.sim_data["HeattoHTF_W"].mean(axis=0)[0]
+                / self.placements.capacity_sf_W_th.values
             ) < 1
 
     def calculateSolarPosition(self):
