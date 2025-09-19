@@ -4,9 +4,13 @@ import numpy as np
 from reskit import TEST_DATA
 import pytest
 
+<<<<<<< HEAD
 # %%
 @pytest.fixture
+=======
+>>>>>>> 131-documentation_tests_csp
 
+@pytest.fixture
 
 def pt_pv_placements() -> pd.DataFrame:
     placements = pd.DataFrame()
@@ -29,12 +33,16 @@ def pt_pv_placements() -> pd.DataFrame:
 
 # %%
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> 131-documentation_tests_csp
 # @pytest.mark.skip(
 #     reason="Not working on calamari. Tested locally at 01.11.2022/d.franzmann@fz-juelich.de"
 # )
 def test_CSP_PTR_ERA5(pt_pv_placements):
     # local
+<<<<<<< HEAD
     # era5_path = "/fast/central/shared_data/2023_gears/weather/ERA5/processed/4/7/6/2015"
     # global_solar_atlas_dni_path = "/fast/central/shared_data/2023_gears/geography/irradiance/global_solar_atlas_v2.5/World_DNI_GISdata_LTAy_AvgDailyTotals_GlobalSolarAtlas-v2_GEOTIFF/DNI.tif"
     # global_solar_atlas_tamb_path = "/fast/central/shared_data/2023_gears/geography/irradiance/global_solar_atlas_v2.5/World_TEMP_GISdata_LTAy_GlobalSolarAtlas_GEOTIFF/TEMP.tif"
@@ -43,13 +51,23 @@ def test_CSP_PTR_ERA5(pt_pv_placements):
     era5_path = "/fast/central/shared_data/weather_data/processed_weather_data/ERA5_global_processed_V2022.02/4/7/6/2015"
     global_solar_atlas_dni_path = "/fast/central/shared_data/2023_gears/geography/irradiance/global_solar_atlas_v2.5/World_DNI_GISdata_LTAy_AvgDailyTotals_GlobalSolarAtlas-v2_GEOTIFF/DNI.tif"
     global_solar_atlas_tamb_path = "/fast/central/shared_data/2023_gears/geography/irradiance/global_solar_atlas_v2.5/World_TEMP_GISdata_LTAy_GlobalSolarAtlas_GEOTIFF/TEMP.tif"
+=======
+    # era5_path = r"R:\data\gears\weather\ERA5\processed\4\7\6\2015"
+    # global_solar_atlas_dni_path = r"R:\data\gears\geography\irradiance\global_solar_atlas_v2.5\World_DNI_GISdata_LTAy_AvgDailyTotals_GlobalSolarAtlas-v2_GEOTIFF\DNI.tif"
+    # global_solar_atlas_tamb_path = r"R:\data\gears\geography\irradiance\global_solar_atlas_v2.5\World_TEMP_GISdata_LTAy_GlobalSolarAtlas_GEOTIFF\TEMP.tif"
+
+    # cluster
+    # era5_path = r"/storage/internal/data/gears/weather/ERA5/processed/4/7/6/2015/"
+    # global_solar_atlas_dni_path = r"/storage/internal/data/gears/geography/irradiance/global_solar_atlas_v2.5/World_DNI_GISdata_LTAy_AvgDailyTotals_GlobalSolarAtlas-v2_GEOTIFF/DNI.tif"
+    # global_solar_atlas_tamb_path = r"/storage/internal/data/gears/geography/irradiance/global_solar_atlas_v2.5/World_TEMP_GISdata_LTAy_GlobalSolarAtlas_GEOTIFF/TEMP.tif"
+>>>>>>> 131-documentation_tests_csp
 
 
     out = rk.csp.CSP_PTR_ERA5(
         placements=pt_pv_placements,
-        era5_path=era5_path,
-        global_solar_atlas_dni_path=global_solar_atlas_dni_path,
-        global_solar_atlas_tamb_path=global_solar_atlas_tamb_path,
+        era5_path=rk.TEST_DATA["csp-era5.nc"],
+        global_solar_atlas_dni_path=rk.TEST_DATA["csp-gsa-dni-like.tif"],
+        global_solar_atlas_tamb_path=rk.TEST_DATA["csp-gsa-temp-like.tif"],
         verbose=True,
         cost_year=2030,
         JITaccelerate=False,
@@ -149,3 +167,5 @@ def test_CSP_PTR_ERA5(pt_pv_placements):
 if __name__ == "__main__":
     placements = pt_pv_placements()
     test_CSP_PTR_ERA5(placements)
+
+# %%

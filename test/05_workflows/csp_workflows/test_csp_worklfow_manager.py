@@ -60,10 +60,10 @@ def funct():
     wf.direct_normal_irradiance_from_trigonometry()
 
     # do long run averaging for DNI
-    if global_solar_atlas_dni_path == "default_cluster":
-        global_solar_atlas_dni_path = r"/storage/internal/data/gears/geography/irradiance/global_solar_atlas_v2.5/World_DNI_GISdata_LTAy_AvgDailyTotals_GlobalSolarAtlas-v2_GEOTIFF/DNI.tif"
-    if global_solar_atlas_dni_path == "default_local":
-        global_solar_atlas_dni_path = r"R:\data\gears\geography\irradiance\global_solar_atlas_v2.5\World_DNI_GISdata_LTAy_AvgDailyTotals_GlobalSolarAtlas-v2_GEOTIFF\DNI.tif"
+    # if global_solar_atlas_dni_path == "default_cluster":
+    #     global_solar_atlas_dni_path = r"/storage/internal/data/gears/geography/irradiance/global_solar_atlas_v2.5/World_DNI_GISdata_LTAy_AvgDailyTotals_GlobalSolarAtlas-v2_GEOTIFF/DNI.tif"
+    # if global_solar_atlas_dni_path == "default_local":
+    #     global_solar_atlas_dni_path = r"R:\data\gears\geography\irradiance\global_solar_atlas_v2.5\World_DNI_GISdata_LTAy_AvgDailyTotals_GlobalSolarAtlas-v2_GEOTIFF\DNI.tif"
 
     # TODO: implement if working
     # if global_solar_atlas_dni_path != None:
