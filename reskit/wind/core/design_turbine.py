@@ -10,11 +10,14 @@ from reskit.parameters.parameters import OnshoreParameters, OffshoreParameters
 import warnings
 
 
-def onshore_turbine_from_avg_wind_speed(**kwargs):
+def onshore_turbine_from_avg_wind_speed(wind_speed, **kwargs):
     """
     Convenience function for backward compatibility, will be removed soon.
     All kwargs are passed to turbine_design_from_avg_wind_speed() with
     technology='onshore'.
+
+    wind_speed : numeric or array_like
+        Local average wind speed close to or at the hub height.
     """
     # deprecation warning
     warnings.warn(
@@ -23,9 +26,10 @@ def onshore_turbine_from_avg_wind_speed(**kwargs):
         stacklevel=2,
     )
     # check or set technology arg as onshore
-    assert (
-        not "technology" in kwargs or kwargs["technology"] == "onshore"
-    ), f"'technology' argument not required here, but must be 'onshore' if provided."
+    assert not "technology" in kwargs or kwargs["technology"] == "onshore", (
+        f"'technology' argument not required here, but must be 'onshore' if provided."
+    )
+    kwargs["wind_speed"] = wind_speed
     kwargs["technology"] = "onshore"
     # return results of turbine_design_from_avg_wind_speed
     return turbine_design_from_avg_wind_speed(**kwargs)
@@ -154,7 +158,7 @@ def turbine_design_from_avg_wind_speed(
 
     # define a dict to hold the parameter values
     baseline_params = dict()
-    Params = None # initialize with None, overwrite with singleton later if needed
+    Params = None  # initialize with None, overwrite with singleton later if needed
 
     # iterate over arguments and retrieve defaults from Params if not given explicitly
     for arg, val in locals().items():
