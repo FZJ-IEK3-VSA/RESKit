@@ -393,18 +393,9 @@ class PTRWorkflowManager(SolarWorkflowManager):
             ).all()
         else:
             assert (
-<<<<<<< HEAD
                 self.sim_data["HeattoHTF_W"].mean(axis=0)[0]
                 / self.placements.capacity_sf_W_th.values
             ) < 1
-=======
-                (
-                    self.sim_data["HeattoHTF_W"].mean(axis=0)
-                    / self.placements.capacity_sf_W_th
-                ) 
-                < 1
-            ).item()
->>>>>>> 131-documentation_tests_csp
 
     def calculateSolarPosition(self):
         """calculates the solar position in terms of hour angle and declination from time series and location series of the current object
