@@ -27,25 +27,11 @@ def pt_pv_placements() -> pd.DataFrame:
 # Make a placements dataframe
 
 # %%
-
-# @pytest.mark.skip(
-#     reason="Not working on calamari. Tested locally at 01.11.2022/d.franzmann@fz-juelich.de"
-# )
 def test_CSP_PTR_ERA5(pt_pv_placements):
-    # local
-    # era5_path = r"R:\data\gears\weather\ERA5\processed\4\7\6\2015"
-    # global_solar_atlas_dni_path = r"R:\data\gears\geography\irradiance\global_solar_atlas_v2.5\World_DNI_GISdata_LTAy_AvgDailyTotals_GlobalSolarAtlas-v2_GEOTIFF\DNI.tif"
-    # global_solar_atlas_tamb_path = r"R:\data\gears\geography\irradiance\global_solar_atlas_v2.5\World_TEMP_GISdata_LTAy_GlobalSolarAtlas_GEOTIFF\TEMP.tif"
-
-    # cluster
-    # era5_path = r"/storage/internal/data/gears/weather/ERA5/processed/4/7/6/2015/"
-    # global_solar_atlas_dni_path = r"/storage/internal/data/gears/geography/irradiance/global_solar_atlas_v2.5/World_DNI_GISdata_LTAy_AvgDailyTotals_GlobalSolarAtlas-v2_GEOTIFF/DNI.tif"
-    # global_solar_atlas_tamb_path = r"/storage/internal/data/gears/geography/irradiance/global_solar_atlas_v2.5/World_TEMP_GISdata_LTAy_GlobalSolarAtlas_GEOTIFF/TEMP.tif"
-
 
     out = rk.csp.CSP_PTR_ERA5(
         placements=pt_pv_placements,
-        era5_path=rk.TEST_DATA["csp-era5.nc"],
+        era5_path=rk.TEST_DATA["csp-era5-like"],
         global_solar_atlas_dni_path=rk.TEST_DATA["csp-gsa-dni-like.tif"],
         global_solar_atlas_tamb_path=rk.TEST_DATA["csp-gsa-temp-like.tif"],
         verbose=True,
