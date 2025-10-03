@@ -29,14 +29,14 @@ def CSP_PTR_ERA5(
     fullvariation=False,
     _validation=False,
 ):
-    """This function is the overall workflow for the csp simulation and calls all subfunctions.
+    """
+    This function is the overall workflow for the csp simulation and calls all subfunctions.
     It is a wrapper around the function "CSP_PTR_ERA5_specific_dataset" below, to include the case of multiple datasets.
     Multiple datasets are refering to multiple heat transfer fluids and therefore also different power plants. In that case, for each placement the optimal HTF is selected.
 
     Args: 
-    global_solar_atlas_tamb_path (str): path to temperature data from global solar atlas. Used for selecting at which placement which HTF is optimal.
-    rest: see CSP_PTR_ERA5_specific_dataset
-
+        global_solar_atlas_tamb_path (str): path to temperature data from global solar atlas. Used for selecting at which placement which HTF is optimal.
+        rest: see CSP_PTR_ERA5_specific_dataset
     """
     # handle inputs for datasets
     single_dataset = False
@@ -153,61 +153,67 @@ def CSP_PTR_ERA5_specific_dataset(
     fullvariation=False,
     _validation=False,
 ):
-    """Calculates the heat output from the solar field based on parabolic trough technology. The workflow is not yet finally validated (but is still plausible).
-        Date: 27.07.2021
-        Author: David Franzmann IEK -3
+    """
+    Calculates the heat output from the solar field based on parabolic trough technology (PTC).
+    This workflow simulates the performance of a CSP plant for given placements and technology datasets.
+    Not yet fully validated, but results are plausible.
+
+    Date: 27.07.2021
+    Author: David Franzmann, IEK-3
 
     Args:
-        placements (dataframe):
-                     The locations that the simulation should be run for.
-                     Columns must include: longitude, latitude of the exact placement. As well as area which can be one of the following: "area_m2", "area", "aperture_area_m2", "land_area_m2"
-        era5_path (str or rk.weather.NCSource): The source to read weather variables from. Needs multiple columns in case of NCSource correpsonding: "direct_horizontal_irradiance", "surface_wind_speed", "surface_air_temperature"
-        global_solar_atlas_dni_path (str, float, np.array): 
-            -str: path to DNI data from global solar atlas. If a string is given, it is expected to be a path to a raster file which can be
-              used to look up the average values from using the coordinates in `.placements`
-            - If a numpy ndarray (or derivative) is given, the shape must be one of (time, placements)
-              or at least (placements)
-        datasetname (str, optional): Describes the CSP technology dataset. Defaults to "Validation 10". Could also be "Helisol" for example. See csp/data/CSP_database.xlsx
-        elev_path (str, list):
-              If a string is given it must be a path to a rasterfile including the elevations.
-              If a list is given it has to include the elevations at each location.
-        output_netcdf_path (str, optional)
-            If given, the XArray dataset will be written to disc at the specified path
-            - By default None
-        output_variables (List[str]) optional
-            If given, specifies the variables which should be included in the resulting
-            dataset. Otherwise all suitable variables found in `.placements`, `.workflow_parameters`,
-            `.sim_data`, and `.time_index` will be included
-            - Only variables of numeric or string type are suitable due to NetCDF4 limitations
-            - By default None
-        
-        output_netcdf_path (_type_, optional): _description_. Defaults to None.
-        output_variables (_type_, optional): _description_. Defaults to None.
-        return_self (bool, optional): _description_. Defaults to True.
-        JITaccelerate (bool, optional): _description_. Defaults to False.
-        verbose (bool, optional): _description_. Defaults to False.
-        debug_vars (bool, optional): _description_. Defaults to False.
-        onlynightuse (bool, optional): _description_. Defaults to True.
-        fullvariation (bool, optional): _description_. Defaults to False.
-        _validation (bool, optional): _description_. Defaults to False.
+        placements (pd.DataFrame):
+            DataFrame containing locations for simulation.
+            Required columns: longitude, latitude, and one area column ("area_m2", "area", "aperture_area_m2", or "land_area_m2").
+        era5_path (str or rk_weather.NCSource):
+            Path to ERA5 weather data or an NCSource object.
+            Must provide columns: "direct_horizontal_irradiance", "surface_wind_speed", "surface_air_temperature".
+        global_solar_atlas_dni_path (str, float, np.ndarray):
+            - str: Path to raster file with DNI data from Global Solar Atlas.
+            - float: Constant DNI value for all placements.
+            - np.ndarray: Array of DNI values, shape must match (placements,) or (time, placements).
+        datasetname (str, optional):
+            Name of the CSP technology dataset (e.g., "Heliosol", "SolarSalt").
+            Defaults to "Validation 10". See csp/data/CSP_database.xlsx for options.
+        elev_path (str or list, optional):
+            - str: Path to raster file with elevation data.
+            - list: Elevation values for each placement.
+        output_netcdf_path (str, optional):
+            If provided, writes the resulting XArray dataset to this path.
+            Defaults to None.
+        output_variables (List[str], optional):
+            List of variable names to include in the output dataset.
+            If None, includes all suitable variables from placements, workflow parameters, simulation data, and time index.
+            Only numeric or string variables are supported due to NetCDF4 limitations.
+        return_self (bool, optional):
+            If True, returns the workflow manager object.
+            If False, returns the output as an XArray dataset.
+            Defaults to True.
+        JITaccelerate (bool, optional):
+            If True, enables JIT acceleration for some calculations.
+            Defaults to False.
+        verbose (bool, optional):
+            If True, prints progress information.
+            Defaults to False.
+        debug_vars (bool, optional):
+            If True, retains intermediate variables for debugging.
+            Defaults to False.
+        onlynightuse (bool, optional):
+            If True, optimizes plant size for night use only.
+            Defaults to True.
+        fullvariation (bool, optional):
+            If True, applies full variation in calculations.
+            Defaults to False.
+        _validation (bool, optional):
+            If True, runs in validation mode (some input data may be replaced).
+            Defaults to False.
 
     Returns:
-        _type_: _description_
+        wf (PTRWorkflowManager) if return_self is True:
+            The workflow manager object containing all simulation results and data.
+        xr.Dataset if return_self is False:
+            XArray dataset with simulation results, optionally written to disk if output_netcdf_path is provided.
     """
-
-    """
-
-    Args:
-        placements ([type]): [description]
-        era5_path ([type]): [description]
-        output_netcdf_path ([type], optional): [description]. Defaults to None.
-        output_variables ([type], optional): [description]. Defaults to None.
-        return_self (bool, optional): [description]. Defaults to True.
-
-    Returns:
-        [type]: [description]
-    """
-
   
 
     # 1) Load input data
