@@ -1,11 +1,8 @@
 import numpy as np
-
 import os
 import pickle
 import glob
-
 import geokit as gk
-import warnings
 
 
 from reskit.default_paths import DEFAULT_PATHS
@@ -13,7 +10,7 @@ from reskit.parameters.parameters import OffshoreParameters
 from reskit.util.local_values import*
 from .onshore_cost_model import onshore_tcc
 from reskit.parameters.parameters import OffshoreParameters
-from reskit.wind.economic.scale_Offshore_Capex import *
+
 
 
 
@@ -818,7 +815,6 @@ def calculateOffshoreCapex(
     hubHeight,
     waterDepth,
     coastDistance,
-    techYear=2050,
     shareTurb=0.449,
     shareFound=0.204,
     shareCable=0.181,
@@ -832,6 +828,7 @@ def calculateOffshoreCapex(
     baseHubHeight=None,
     baseRotorDiam=None,
     defaultOffshoreParamsFp=None,
+    techYear=2050,
 ):
     """
     Scales a generic offshore CAPEX value based on water depth and distance to shore by taking capacity, hubheight and rotor diameter of a base case. If no base case is given, a default base case is applied.
@@ -850,8 +847,6 @@ def calculateOffshoreCapex(
         Site-specific water depth in meters.
     coastDistance : float
         Distance from site to nearest coast in kilometers.
-    techYear : int, optional
-        Year of the applied technology, by default 2050.
     shareTurb : float, optional
         Share of turbine cost in total CAPEX in the baseline turbine reference case. Default is 0.449.
     shareFound : float, optional
@@ -878,6 +873,8 @@ def calculateOffshoreCapex(
         Reference rotor diameter. Loaded from CSV if not provided.
     defaultOffshoreParamsFp : str, optional
         Filepath to offshore turbine parameters CSV.
+    techYear : int, optional
+        Year of the applied technology, by default 2050.
 
     Returns
     -------
@@ -927,7 +924,7 @@ def calculateOffshoreCapex(
     overheadCostBase = baseCapex * shareOverhead
 
     # Scale turbine cost
-    turbineCostNew = onshoreTcc(
+    turbinePlantCost = onshoreTcc(
         capacity,
         hubHeight,
         rotorDiam,
@@ -935,7 +932,7 @@ def calculateOffshoreCapex(
         bladeMaterialEscalator=1,
         blades=3,
     )
-    turbineCostReference = onshoreTcc(
+    turbineBaseCost = onshoreTcc(
         baseCap,
         baseHubHeight,
         baseRotorDiam,
@@ -943,8 +940,8 @@ def calculateOffshoreCapex(
         bladeMaterialEscalator=1,
         blades=3,
     )
-    costRatioTurbine = turbineCostNew / turbineCostReference
-    newTurbineCost = turbineCostBase * costRatioTurbine
+    scalingFactorTurbine = turbinePlantCost / turbineBaseCost
+    ScaledTurbineCost = turbineCostBase * scalingFactorTurbine
 
     # Scale foundation cost
     depthBaseCost = getRatedCostFromWaterDepth(
@@ -953,8 +950,8 @@ def calculateOffshoreCapex(
     depthPlantCost = getRatedCostFromWaterDepth(
         waterDepth, maxMonopileDepth, maxJacketDepth
     )
-    costRatioFoundation = depthPlantCost / depthBaseCost
-    newFoundationCost = foundCostBase * costRatioFoundation
+    scalingFactorFoundation = depthPlantCost / depthBaseCost
+    scaledFoundationCost = foundCostBase * scalingFactorFoundation
 
     # Scale cable cost
     convertercost_onshore = (
@@ -972,16 +969,21 @@ def calculateOffshoreCapex(
         / baseWFSize
     )
     convertercost_total = convertercost_onshore + convertercost_offshore
-    cableRatio = getCableCost(
+    scalingFactorCable = getCableCost(
         distance=coastDistance, capacity=capacity, fixedCost=convertercost_total
     ) / getCableCost(
         distance=baseDistCoast, capacity=baseCap, fixedCost=convertercost_total
     )
-    newCableCost = cableCostBase * cableRatio
+    scaledCableCost = cableCostBase * scalingFactorCable
 
     # Combine all costs
+    offshoreCapexNoOverhead = ScaledTurbineCost + scaledFoundationCost + scaledCableCost
+
+    scaledOverheadCost = offshoreCapexNoOverhead * ( shareOverhead / (1 - shareOverhead) )
+
+
     totalOffshoreCapex = (
-        newTurbineCost + newFoundationCost + newCableCost + overheadCostBase
+        ScaledTurbineCost + scaledFoundationCost + scaledCableCost + scaledOverheadCost
     )
 
     return totalOffshoreCapex
