@@ -86,7 +86,7 @@ def openfield_pv_merra_ryberg2019(
     assert tracking in [
         "fixed",
         "single_axis",
-    ], f"tracking must be either 'fixed' or 'single_axis'"
+    ], "tracking must be either 'fixed' or 'single_axis'"
 
     # estimates tilt, azimuth and elev
     wf.estimate_missing_params(elev)
@@ -274,8 +274,8 @@ def openfield_pv_era5(
 
     # estimates tilt, azimuth and elev
     wf.estimate_missing_params(
-        elev=elev,
-        fixed_module_tilt_convention="Ryberg2020",
+        elev=elev, 
+        fixed_module_tilt_convention="Ryberg2020", 
         fixed_azimuth_tilt_convention="NorthSouth",
     )
 
@@ -318,7 +318,7 @@ def openfield_pv_era5(
         if GHI_nodata_fallback != 1.0 or DNI_nodata_fallback == 1.0:
             # also, changes have been made to GHI and DNI fallbacks
             raise ValueError(
-                f"When GHI_nodata_fallback and DNI_nodata_fallback have been adapted, gsa_nodata_fallback must not be adapted (recommended to ignore, deprecated)"
+                "When GHI_nodata_fallback and DNI_nodata_fallback have been adapted, gsa_nodata_fallback must not be adapted (recommended to ignore, deprecated)"
             )
         else:
             # GHI and DNI fallbacks have not been changed, but 'source' has - adapt DNI and GHI fallbacks accordingly
@@ -327,7 +327,7 @@ def openfield_pv_era5(
                 DNI_nodata_fallback = np.nan
             else:
                 raise ValueError(
-                    f"'gsa_nodata_fallback' (deprecated) must be 'nan' or 'source'. Better use 'GHI_nodata_fallback' and 'GHI_nodata_fallback' instead, however."
+                    "'gsa_nodata_fallback' (deprecated) must be 'nan' or 'source'. Better use 'GHI_nodata_fallback' and 'GHI_nodata_fallback' instead, however."
                 )
 
     wf.adjust_variable_to_long_run_average(
@@ -464,13 +464,13 @@ def openfield_pv_sarah_unvalidated(
     assert tracking in [
         "fixed",
         "single_axis",
-    ], f"tracking must be either 'fixed' or 'single_axis'"
+    ], "tracking must be either 'fixed' or 'single_axis'"
 
-    if not "tilt" in wf.placements.columns:
+    if "tilt" not in wf.placements.columns:
         wf.estimate_tilt_from_latitude(convention="Ryberg2020")
-    if not "azimuth" in wf.placements.columns:
+    if "azimuth" not in wf.placements.columns:
         wf.estimate_azimuth_from_latitude()
-    if not "elev" in wf.placements.columns:
+    if "elev" not in wf.placements.columns:
         wf.apply_elevation(elev)
 
     wf.read(
@@ -603,7 +603,7 @@ def openfield_pv_iconlam(
     assert tracking in [
         "fixed",
         "single_axis",
-    ], f"tracking must be either 'fixed' or 'single_axis'"
+    ], "tracking must be either 'fixed' or 'single_axis'"
 
     # estimates tilt, azimuth and elev
     wf.estimate_missing_params(elev)

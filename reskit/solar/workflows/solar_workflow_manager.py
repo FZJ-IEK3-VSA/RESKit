@@ -13,8 +13,8 @@ from collections.abc import Iterable, Callable
 
 # from reskit import solarpower
 
-from .. import core as rk_solar_core
-from ...workflow_manager import WorkflowManager
+from reskit.solar import core as rk_solar_core
+from reskit.workflow_manager import WorkflowManager
 
 # Lazily import PVLib
 import importlib
@@ -123,6 +123,9 @@ class SolarWorkflowManager(WorkflowManager):
             self.estimate_module_azimuth_from_latitude(
                 convention=fixed_azimuth_tilt_convention
             )
+            
+        return self
+
 
     def estimate_tilt_from_latitude(self, convention):
         """
@@ -154,6 +157,7 @@ class SolarWorkflowManager(WorkflowManager):
         )
 
         return self
+
 
     def _assign_attribute(
         self,
@@ -252,6 +256,7 @@ class SolarWorkflowManager(WorkflowManager):
 
         return self
 
+
     def assign_elevation(self, elev: str | int | Iterable, fallback_elev: int = 0):
         """
         Ensures or adds an elevation ('elev') column to the placements data frame.
@@ -314,6 +319,7 @@ class SolarWorkflowManager(WorkflowManager):
 
         return self
         return self
+
 
     def estimate_module_azimuth_from_latitude(self, convention: str):
         """
@@ -386,6 +392,11 @@ class SolarWorkflowManager(WorkflowManager):
 
         return self
 
+
+    ########################
+    # GEOMETRIC OPERATIONS #
+    ########################
+
     def determine_solar_position(
         self, lon_rounding=1, lat_rounding=1, elev_rounding=-2
     ):
@@ -410,7 +421,8 @@ class SolarWorkflowManager(WorkflowManager):
 
         Returns
         -------
-        Returns a reference to the invoking SolarWorkflowManager object
+        obj
+            reference to the invoking SolarWorkflowManager object
 
         Notes
         -----
@@ -476,7 +488,7 @@ class SolarWorkflowManager(WorkflowManager):
                         np.isnan(x).any() if hasattr(x, "__iter__") else np.isnan(x)
                         for x in _req
                     ]
-                ), f"Arguments for pvlib.solarposition.spa_python() may not be NaN."
+                ), "Arguments for pvlib.solarposition.spa_python() may not be NaN."
                 _solpos_ = pvlib.solarposition.spa_python(
                     self.time_index,
                     latitude=row.lat,
@@ -960,8 +972,6 @@ class SolarWorkflowManager(WorkflowManager):
         self, transposition_model="perez", **kwargs
     ):
         """
-        estimate_plane_of_array_irradiances(self, transposition_model="perez", albedo=0.25, **kwargs)
-
         Estimates the plane of array irradiance using the pvlib.irradiance.get_total_irradiance() function [1].
 
 
@@ -1104,7 +1114,8 @@ class SolarWorkflowManager(WorkflowManager):
         )
 
         return self
-
+    
+    
     def apply_angle_of_incidence_losses_to_poa(self):
         """
         apply_angle_of_incidence_losses_to_poa(self)
@@ -1172,9 +1183,9 @@ class SolarWorkflowManager(WorkflowManager):
 
     def configure_cec_module(
         self,
-        module="WINAICO WSx-240P6",
-        tracking="fixed",
-        tech_year=2050,
+        module:str="WINAICO WSx-240P6",
+        tracking:str="fixed",
+        tech_year:int=2050,
     ):
         """
         configure_cec_module(self, module="WINAICO WSx-240P6")
@@ -1184,6 +1195,14 @@ class SolarWorkflowManager(WorkflowManager):
         Parameters
         ----------
         module: str or dict
+            The module name used for the simulation, must be one of:
+            * A module found in the pvlib.pvsystem.retrieve_sam("CECMod") database
+            * "WINAICO WSx-240P6" -> Good for open-field applications
+            * "LG Electronics LG370Q1C-A5" -> Good for rooftop applications
+            * A dict containing a set of module parameters, including:
+              T_NOCT, A_c, N_s, I_sc_ref, V_oc_ref, I_mp_ref, V_mp_ref, alpha_sc,
+              beta_oc, a_ref, I_L_ref, I_o_ref, R_s, R_sh_ref, Adjust, gamma_r, PTC, 
+              Bifacial
         tracking : str, optional
             The tracking mechanism, can be 'fixed' or 'single-axis', by default 'fixed'.
         tech_year : int, optional
@@ -1195,7 +1214,8 @@ class SolarWorkflowManager(WorkflowManager):
 
         Returns
         -------
-        Returns a reference to the invoking SolarWorkflowManager object
+        obj
+            Returns a reference to the invoking SolarWorkflowManager object
 
         References
         ----------
@@ -1218,7 +1238,7 @@ class SolarWorkflowManager(WorkflowManager):
         ):
             if not isinstance(tech_year, int):
                 raise TypeError(
-                    f"tech_year must be an integer when projected module is selected"
+                    "tech_year must be an integer when projected module is selected"
                 )
             # avoid extrapolations
             if not start_year <= tech_year <= 2050:
@@ -1331,20 +1351,20 @@ class SolarWorkflowManager(WorkflowManager):
             elif isinstance(module, str):
                 if tech_year is not None:
                     warnings.warn(
-                        f"NOTE: The tech_year argument is ignored when a specific module is given. Set tech_year to None to silence this warning."
+                        "NOTE: The tech_year argument is ignored when a specific module is given. Set tech_year to None to silence this warning."
                     )
                 # Extract module parameters
                 db = pvlib.pvsystem.retrieve_sam("CECMod")
                 try:
                     module = getattr(db, module)
-                except:
+                except Exception:
                     raise RuntimeError(
                         "The module '{}' is not in the CEC database".format(module)
                     )
         else:
             if tech_year is not None:
                 print(
-                    f"NOTE: The tech_year argument is ignored when specific module parameters are given."
+                    "NOTE: The tech_year argument is ignored when specific module parameters are given."
                 )
             module = pd.Series(module)
             assert "T_NOCT" in module.index
@@ -1367,7 +1387,7 @@ class SolarWorkflowManager(WorkflowManager):
 
             try:
                 module_desc = json.dumps(module)
-            except:
+            except Exception:
                 module_desc = "user-configured"
             self.register_workflow_parameter("module_desc", module_desc)
 
@@ -1600,7 +1620,7 @@ class SolarWorkflowManager(WorkflowManager):
         assert "modules_per_string" in self.placements.columns
         assert "strings_per_inverter" in self.placements.columns
         assert (
-            not "capacity" in self.placements.columns
+            "capacity" not in self.placements.columns
         ), "Cannot simultaneously provide 'capacity' and inverter-string parameters"
 
         if method == "sandia":

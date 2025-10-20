@@ -104,7 +104,7 @@ def location_to_module_tilt(locs, convention: str = "Ryberg2020", **kwargs):
     else:
         try:
             tilt = eval(convention, {}, {"latitude": locs.lats})
-        except:
+        except Exception:
             raise ResError("Failed to apply tilt convention")
 
     return tilt
