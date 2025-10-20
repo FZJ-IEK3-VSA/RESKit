@@ -108,3 +108,131 @@ def location_to_module_tilt(locs, convention: str = "Ryberg2020", **kwargs):
             raise ResError("Failed to apply tilt convention")
 
     return tilt
+
+
+def location_to_tracker_axis_azimuth(locs, convention:str="North", **kwargs):
+    """
+    Simple azimuth estimator for the tracker axis in single-axis tracking 
+    systems based off latitude coordinates.
+
+    Parameters
+    ----------
+    locs : geokit.LocationSet or iterable of (lon,lat) pairs
+        The locations at which to estimate module azimuth angle
+
+    convention : str, optional
+        The calculation method used to suggest module surface azimuth angles.
+        * "North" will assign a north-facing azimuth to all locations (typical 
+          North-South running axes orientation for single-axis tracking systems)
+        * A path to a raster file from which the location specific
+          azimuth (in clockwise degree starting North) is extracted
+
+    kwargs: 
+        Will be forwarded to geokit.raster.interpolateValues(), only applies 
+        when `convention` is a path to a raster file.
+
+    Returns
+    -------
+    np.ndarray
+        Suggested axis azimuth at each of the provided `locs`. Has the same 
+        length as the number of `locs`.
+    """
+    locs = gk.LocationSet(locs)
+    if convention == "North":
+        # assign 0° (north-facing) to all locs 
+        axazimuths = np.full((len(locs), ), 0)
+    elif isinstance(convention, str) and isfile(convention):
+        # try to extract data from raster
+        try:
+            axazimuths = gk.raster.interpolateValues(convention, locs, **kwargs)
+        except Exception:
+            raise OSError(f"File cannot be read by gk.raster.interpolateValues(): {convention}.")
+    else:  
+        raise ValueError(f"Unknown axis azimuth convention '{convention}'.")
+    
+    return axazimuths
+
+
+def location_to_tracker_axis_tilt(locs, convention:str="flat", **kwargs):
+    """
+    Simple tilt estimator for the tracker axis in single-axis tracking systems 
+    based off latitude coordinates.
+
+    Parameters
+    ----------
+    locs : geokit.LocationSet or iterable of (lon,lat) pairs
+        The locations at which to estimate module azimuth angle
+
+    convention : str, optional
+        The calculation method used to suggest module surface azimuth angles.
+        * "North" will assign a north-facing azimuth to all locations (typical 
+          North-South running axes orientation for single-axis tracking systems)
+        * A path to a raster file from which the location specific
+          azimuth (in clockwise degree starting North) is extracted
+
+    kwargs: 
+        Will be forwarded to geokit.raster.interpolateValues(), only applies 
+        when `convention` is a path to a raster file.
+
+    Returns
+    -------
+    np.ndarray
+        Suggested axis azimuth at each of the provided `locs`. Has the same 
+        length as the number of `locs`.
+    """
+    locs = gk.LocationSet(locs)
+    if convention == "North":
+        # assign 0° (north-facing) to all locs 
+        axazimuths = np.full((len(locs), ), 0)
+    elif isinstance(convention, str) and isfile(convention):
+        # try to extract data from raster
+        try:
+            axazimuths = gk.raster.interpolateValues(convention, locs, **kwargs)
+        except Exception:
+            raise OSError(f"File cannot be read by gk.raster.interpolateValues(): {convention}.")
+    else:  
+        raise ValueError(f"Unknown axis azimuth convention '{convention}'.")
+    
+    return axazimuths
+
+
+def location_to_cross_axis_tilt(locs, convention:str="flat", **kwargs):
+    """
+    Simple estimator for the cross axis slope in single-axis tracking 
+    systems based off latitude coordinates.
+
+    Parameters
+    ----------
+    locs : geokit.LocationSet or iterable of (lon,lat) pairs
+        The locations at which to estimate module tilt angle
+
+    convention : str, optional
+        The calculation method used to suggest cross axis tilt angles.
+        * "flat" will assign a 0° cross axis tilt to all locations 
+        * A path to a raster file from which the location specific
+          cross-axis tilt is extracted
+
+    kwargs: 
+        Will be forwarded to geokit.raster.interpolateValues(), only applies 
+        when `convention` is a path to a raster file.
+
+    Returns
+    -------
+    np.ndarray
+        Estimated cross axis tilt at each of the provided `locs`. Has the same 
+        length as the number of `locs`.
+    """
+    locs = gk.LocationSet(locs)
+    if convention == "flat":
+        # assign 0° to all locs 
+        caxtilts = np.full((len(locs), ), 0)
+    elif isinstance(convention, str) and isfile(convention):
+        # try to extract data from raster
+        try:
+            caxtilts = gk.raster.interpolateValues(convention, locs, **kwargs)
+        except Exception:
+            raise OSError(f"File cannot be read by gk.raster.interpolateValues(): {convention}.")
+    else:  
+        raise ValueError(f"Unknown cross axis tilt convention '{convention}'.")
+    
+    return caxtilts

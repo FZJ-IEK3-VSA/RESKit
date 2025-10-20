@@ -127,6 +127,16 @@ class SolarWorkflowManager(WorkflowManager):
             self.estimate_module_azimuth_from_latitude(
                 convention=fixed_azimuth_tilt_convention
             )
+        elif self.tracking in ["single-axis"]:
+            self.estimate_tracker_axis_tilt_from_latitude(
+                convention=singleaxis_tilt_convention
+            )
+            self.estimate_tracker_axis_azimuth_from_latitude(
+                convention=singleaxis_azimuth_convention
+            )
+            self.estimate_cross_axis_tilt_from_latitude(
+                convention=crossaxis_tilt_convention
+            )
             
         return self
 
@@ -453,6 +463,43 @@ class SolarWorkflowManager(WorkflowManager):
 
         return self
 
+
+    def estimate_tracker_axis_azimuth_from_latitude(self, convention:str):
+        """
+        Estimates the (primary) tracker axis azimuths of the placements of the 
+        instance and writes them into the placements dataframe as 'axazimuth' 
+        column. Will use existing values in 'axazimuth' column of 
+        self.placements dataframe.
+
+        Parameters
+        ----------
+        convention : str
+            The calculation method used to suggest axis azimuths For details 
+            see rk.solar.core.system_design.location_to_tracker_axis_azimuth():
+            * "North"
+            * Path to raster file.
+
+        Returns
+        -------
+        obj
+            reference to the invoking SolarWorkflowManager object
+        """
+        if not self.tracking == "single-axis":
+            warnings.warn("estimate_tracker_axis_azimuth_from_latitude() is called but tracking is not 'singe-axis'")
+        
+        self._assign_attribute(
+            attr="axazimuth", 
+            attr_default=None, # no "standard azimuth"
+            attr_col="axazimuth", 
+            func=rk_solar_core.system_design.location_to_tracker_axis_azimuth, 
+            funcargs={
+                "locs" : self.locs,
+                "convention" : convention
+            })
+
+        return self
+
+
     def estimate_module_tilt_from_latitude(self, convention: str):
         """
         Estimates the module surface tilt of the solar panels based on the
@@ -490,6 +537,83 @@ class SolarWorkflowManager(WorkflowManager):
 
         return self
 
+
+    def estimate_tracker_axis_tilt_from_latitude(self, convention: str):
+        """
+        Estimates the (primary) tracker axis tilt for a single-axis tracking 
+        system based on the latitude of the placements of the instance and 
+        writes them into the placements dataframe as 'axtilt' column. Will use 
+        existing values in 'axtilt' column of self.placements dataframe.
+
+        Parameters
+        ----------
+        convention : str
+            The calculation method used to suggest axis tilts. For details see 
+            rk.solar.core.system_design.location_to_tracker_axis_tilt():
+            * "flat" assigns 0° tilt to all locations.
+            * A path to a rasterfile with angles facing in axis azimuth direction 
+              to extract axis tilts per location.
+
+        Returns
+        -------
+        obj
+            reference to the invoking SolarWorkflowManager object
+        """
+        if not self.tracking == "single-axis":
+            warnings.warn(
+                "estimate_tracker_axis_tilt_from_latitude() is called but tracking is not 'single-axis'"
+            )
+        
+        self._assign_attribute(
+            attr="axtilt", 
+            attr_default=None, # no "standard axis tilt"
+            attr_col="axtilt", 
+            func=rk_solar_core.system_design.location_to_tracker_axis_tilt,
+            funcargs={
+                "locs" : self.locs,
+                "convention" : convention
+            })
+
+        return self
+
+
+    def estimate_cross_axis_tilt_from_latitude(self, convention: str):
+        """
+        Estimates the cross axis azimuths at the placements of the 
+        instance and writes them into the placements dataframe as 'caxazimuth' 
+        column. Will use existing values in 'caxazimuth' column of 
+        self.placements dataframe.
+
+        Parameters
+        ----------
+        convention : str
+            The calculation method used to suggest cross axis tilts. For details 
+            see rk.solar.core.system_design.location_to_cross_axis_tilt():
+            * "flat" assigns 0° tilt to all locations.
+            * A path to a rasterfile with angles facing in axis azimuth direction 
+              to extract axis tilts per location.
+
+        Returns
+        -------
+        obj
+            reference to the invoking SolarWorkflowManager object
+        """
+        if not self.tracking == "single-axis":
+            warnings.warn(
+                "estimate_cross_axis_tilt_from_latitude() is called but tracking is not 'singe-axis'"
+            )
+        
+        self._assign_attribute(
+            attr="caxtilt", 
+            attr_default=None, # no "standard azimuth"
+            attr_col="caxtilt", 
+            func=rk_solar_core.system_design.location_to_cross_axis_tilt, 
+            funcargs={
+                "locs" : self.locs,
+                "convention" : convention
+            })
+
+        return self
 
     ########################
     # GEOMETRIC OPERATIONS #

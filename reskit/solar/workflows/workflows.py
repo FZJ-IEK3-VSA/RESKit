@@ -176,7 +176,9 @@ def openfield_pv_era5(
     ----------
     placements: Pandas Dataframe
             Locations that you want to do the simulations for.
-            Columns need to be lat (latitudes), lon (longitudes), tilt and capacity.
+            Columns need to be lat (latitudes), lon (longitudes), capacity.
+            Tilt and azimuths can be provided as columns or will be extracted 
+            based on conventions, see 'tracking' description for details.
 
     era5_path: str
             Path to the ERA5 Data on your computer.
@@ -193,13 +195,26 @@ def openfield_pv_era5(
             Default is Winaico Wsx-240P6
 
     elev: float
-            Elevation that you want to model your PV system at.
+            Elevation that you want to model your PV system at. Will be taken 
+            from 'elev' column if available.
 
     tracking: str
             Determines wether your PV system is fixed or not.
             Default is fixed.
             Option 1 is 'fixed' meaning that the module does not have any tracking capabilities.
             Option 2 is 'single_axis' meaning that the module has single_axis tracking capabilities.
+            
+            NOTE: The tilt and azimuth definitions change with different tracking systems.
+            For fixed tilt systems the following column names apply: 
+            * module_tilt_col="modtilt"
+            * module_azimuth_col="modazimuth"
+            The column names for the tracker axis tilts and azimuth are instead:
+            * axis_azimuth_col="axazimuth"
+            * axis_tilt_col="axtilt"
+            * crossaxis_tilt_col="caxtilt"
+            Note that the use of 'tilt' and 'azimuth' columns is discouraged, 
+            they will be interpreted as and renamed to the respective module or 
+            axis column names depending depending on tracking.
 
     inverter: str
             Determines wether you want to model your PV system with an inverter or not.
