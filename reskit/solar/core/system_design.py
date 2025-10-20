@@ -1,11 +1,58 @@
 import numpy as np
 import geokit as gk
 from os.path import isfile
+from collections.abc import Iterable
 
-from ...util import ResError
+from reskit.util import ResError
 
 
-def location_to_tilt(locs, convention="Ryberg2020", **kwargs):
+def location_to_module_azimuth(
+    locs: gk.LocationSet | Iterable, convention: str = "NorthSouth", **kwargs
+):
+    """
+    Simple module surface azimuth estimator based off latitude coordinates.
+
+    Parameters
+    ----------
+    locs : geokit.LocationSet or iterable of (lon,lat) pairs
+        The locations at which to estimate module azimuth angle
+
+    convention : str, optional
+        The calculation method used to suggest module surface azimuth angles.
+        * "NorthSouth" will assign south-facing modules to the
+          Northern hemisphere and vice versa.
+        * A path to a raster file from which the location specific
+          azimuth (in clockwise degree starting North) is extracted
+
+    kwargs:
+        Will be forwarded to geokit.raster.interpolateValues(), only applies
+        when `convention` is a path to a raster file.
+
+    Returns
+    -------
+    np.ndarray
+        Suggested module azimuth at each of the provided `locs`. Has the same
+        length as the number of `locs`.
+    """
+    locs = gk.LocationSet(locs)
+    if convention == "NorthSouth":
+        # assign 0° (north-facing) to Southern hemisphere and 180° to Northern hemisphere
+        modazimuths = np.array([180 if loc.lat >= 0 else 0 for loc in locs])
+    elif isinstance(convention, str) and isfile(convention):
+        # try to extract data from raster
+        try:
+            modazimuths = gk.raster.interpolateValues(convention, locs, **kwargs)
+        except Exception:
+            raise OSError(
+                f"File cannot be read by gk.raster.interpolateValues(): {convention}."
+            )
+    else:
+        raise ValueError(f"Unknown module azimuth convention '{convention}'.")
+
+    return modazimuths
+
+
+def location_to_module_tilt(locs, convention: str = "Ryberg2020", **kwargs):
     """
     def location_to_tilt(locs, convention="Ryberg2020", **kwargs)
 

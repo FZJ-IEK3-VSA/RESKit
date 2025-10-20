@@ -81,7 +81,7 @@ def openfield_pv_merra_ryberg2019(
     """
 
     wf = SolarWorkflowManager(placements)
-    wf.configure_cec_module(module, tech_year)
+    wf.configure_cec_module(module, tech_year, tracking=tracking)
     # ensure the tracking parameter is correct
     assert tracking in [
         "fixed",
@@ -264,7 +264,7 @@ def openfield_pv_era5(
     """
 
     wf = SolarWorkflowManager(placements)
-    wf.configure_cec_module(module, tech_year)
+    wf.configure_cec_module(module, tech_year, tracking=tracking)
 
     # ensure the tracking parameter is correct
     assert tracking in [
@@ -273,7 +273,11 @@ def openfield_pv_era5(
     ], f"tracking must be either 'fixed' or 'single_axis'"
 
     # estimates tilt, azimuth and elev
-    wf.estimate_missing_params(elev)
+    wf.estimate_missing_params(
+        elev=elev,
+        fixed_module_tilt_convention="Ryberg2020",
+        fixed_azimuth_tilt_convention="NorthSouth",
+    )
 
     wf.read(
         variables=[
@@ -455,7 +459,7 @@ def openfield_pv_sarah_unvalidated(
     """
 
     wf = SolarWorkflowManager(placements)
-    wf.configure_cec_module(module, tech_year)
+    wf.configure_cec_module(module, tech_year, tracking=tracking)
     # ensure the tracking parameter is correct
     assert tracking in [
         "fixed",
@@ -593,7 +597,7 @@ def openfield_pv_iconlam(
     """
 
     wf = SolarWorkflowManager(placements)
-    wf.configure_cec_module(module, tech_year)
+    wf.configure_cec_module(module, tech_year, tracking=tracking)
 
     # ensure the tracking parameter is correct
     assert tracking in [
