@@ -1408,6 +1408,7 @@ class SolarWorkflowManager(WorkflowManager):
         module:str="WINAICO WSx-240P6",
         tracking:str="fixed",
         tech_year:int=2050,
+        bifaciality_factor:float|None=None
     ):
         """
         configure_cec_module(self, module="WINAICO WSx-240P6")
@@ -1433,7 +1434,13 @@ class SolarWorkflowManager(WorkflowManager):
             year. Must then be between year of market comparison in analysis (2019) and 2050.
             Will be ignored when non-projected existing module names or specific parameters
             are given, can then be None. By default 2050.
-
+        bifaciality_factor : float, optional
+            Float between 0-1 describing the backside yield reduction compared 
+            to frontside at equal radiation. Will take effect only if the module
+            has a Bifacial attribute either as True, 1, "1", "Y", "YES", or 
+            "Yes". By default None, i.e. bifacial energy production will NOT be 
+            considered.
+        
         Returns
         -------
         obj
@@ -1446,6 +1453,8 @@ class SolarWorkflowManager(WorkflowManager):
 
         """
         # check inputs
+        if bifaciality_factor is not None and not 0<bifaciality_factor<=1:
+            raise ValueError(f"bifaciality_factor must be a float >0 and <=1, here: {bifaciality_factor}")
         if tracking not in [
             "fixed",
             "single_axis",
@@ -1498,6 +1507,7 @@ class SolarWorkflowManager(WorkflowManager):
                 # define projected module parameters
                 module_2050 = pd.Series(
                     dict(
+                        Bifacial=0,
                         BIPV="N",
                         Date="6/2/2014",
                         T_NOCT=43,
@@ -1536,6 +1546,7 @@ class SolarWorkflowManager(WorkflowManager):
                 # define projected module parameters
                 module_2050 = pd.Series(
                     dict(
+                        Bifacial=0,
                         BIPV="N",
                         Date="12/14/2016",
                         T_NOCT=45.7,
@@ -1606,6 +1617,7 @@ class SolarWorkflowManager(WorkflowManager):
             assert "Adjust" in module.index
             assert "gamma_r" in module.index
             assert "PTC" in module.index
+            assert "Bifacial" in module.index
 
             try:
                 module_desc = json.dumps(module)
@@ -1622,8 +1634,13 @@ class SolarWorkflowManager(WorkflowManager):
         #     module['dEgdT'] = -0.0002677
 
         self.module = module
+        self.bifacial = module["Bifacial"] in [1, "1", "YES", "Yes", "Y", True]
+        if bifaciality_factor is not None and not self.bifacial:
+            print(f"NOTE: bifaciality_factor is not None but module '{module._name}' is not bifacial, bifaciality_factor will be ignored.")
+        self.bifaciality_factor = bifaciality_factor
 
         return self
+
 
     def simulate_with_interpolated_single_diode_approximation(
         self,
