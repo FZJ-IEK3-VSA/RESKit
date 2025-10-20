@@ -281,12 +281,17 @@ def openfield_pv_era5(
     wf = SolarWorkflowManager(placements)
     wf.configure_cec_module(module, tech_year, tracking=tracking)
 
-    # ensure the tracking parameter is correct
-    assert tracking in [
-        "fixed",
-        "single_axis",
-    ], f"tracking must be either 'fixed' or 'single_axis'"
-
+    # tilt and azimuth were ambiguous depending on tracking, rename to consistent attribute names throughout the wfm
+    if "tilt" in wf.placements:
+        _newtlt = {"fixed" : "modtilt", "single-axis" : "axtilt"}
+        assert _newtlt[tracking] not in wf.placements, f"'tilt' and '{_newtlt[tracking]}' columns cannot exist both when tracking = '{tracking}'."
+        warnings.warn(f"'tilt' column will be interpreted as and renamed to '{_newtlt[tracking]}'.")
+        wf.placements.rename(columns={"tilt" : _newtlt[tracking]})
+    if "azimuth" in wf.placements:
+        _newaz = {"fixed" : "modazimuth", "single-axis" : "axazimuth"}
+        assert _newaz[tracking] not in wf.placements, f"'azimuth' and '{_newaz[tracking]}' columns cannot exist both when tracking = '{tracking}'."
+        warnings.warn(f"'azimuth' column will be interpreted as and renamed to '{_newaz[tracking]}'.")
+        wf.placements.rename(columns={"azimuth" : _newaz[tracking]})
     # estimates tilt, azimuth and elev
     wf.estimate_missing_params(
         elev=elev, 
