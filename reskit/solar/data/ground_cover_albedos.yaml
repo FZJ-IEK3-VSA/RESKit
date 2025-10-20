@@ -1,0 +1,64 @@
+# values based on [1]
+groundtype_albedo_mapper :
+  forest : 0.13
+  agriculture : 0.17
+  bare : 0.4 # assume mainly sand
+  barren : 0.22
+  snow/ice : 0.7
+  grass : 0.2
+  shrub : 0.22
+  water : 0.1
+  wetland : 0.13
+  urban : 0.17
+  nodata : null
+
+# map all datasets to unique landcover class type sets to avoid duplicates
+dataset_classtype_mapper : 
+  esa_cci_v2.1.1 : cci_v2.1.1_type
+
+# mapping LC classes to groundtypes as per [1], for every unique classtype (which can be consistent throughout different datasets)
+LCclass_groundtype_mapper:
+  cci_v2.1.1_type:
+    # mapping corrected by change of landcover when plant is installed, actual mapping in #(parenthesis) if applicable
+    0 : nodata # no data
+    10 : agriculture # Cropland, rainfed 
+    11 : agriculture # -> Cropland, rainfed, herbaceous cover  
+    12 : agriculture # -> Cropland, rainfed, tree, or shrub cover  
+    20 : agriculture # Cropland, irrigated or post-flooding
+    30 : agriculture # Mosaic cropland (>50%) / natural vegetation (tree, shrub, herbaceous cover) (<50%) 
+    40 : grass # (forest) Mosaic natural vegetation (tree, shrub, herbaceous cover) (>50%) / cropland (<50%)  
+    50 : grass # (forest) Tree cover, broadleaved, evergreen, closed to open (>15%)
+    60 : grass # (forest) Tree cover, broadleaved, deciduous, closed to open (>15%) 
+    61 : grass # (forest) -> Tree cover, broadleaved, deciduous, closed (>40%) 
+    62 : grass # (forest) -> Tree cover, broadleaved, deciduous, open (1540%) 
+    70 : grass # (forest) Tree cover, needleleaved, evergreen, closed to open (>15%)
+    71 : grass # (forest) -> Tree cover, needleleaved, evergreen, closed (>40%)
+    72 : grass # (forest) -> Tree cover, needleleaved, evergreen, open (15-40%) 
+    80 : grass # (forest) Tree cover, needleleaved, deciduous, closed to open (>15%) 
+    81 : grass # (forest) -> Tree cover, needleleaved, deciduous, closed (>40%) 
+    82 : grass # (forest) -> Tree cover, needleleaved, deciduous, open (15-40%)
+    90 : grass # (forest) Tree cover, mixed leaf type (broadleaved and needleleaved)
+    100 : grass # (forest) Mosaic tree and shrub (>50%) / herbaceous cover (<50%)
+    110 : shrub # Mosaic herbaceous cover (>50%) / tree and shrub (<50%) 
+    120 : shrub # Shrubland
+    121 : shrub # -> Evergreen shrubland
+    122 : shrub # -> Deciduous shrubland 
+    130 : grass # Grassland
+    140 : shrub # Lichens and mosses 
+    150 : shrub # Sparse vegetation (tree, shrub, herbaceous cover) (<15%) 
+    151 : shrub # -> Sparse tree (<15%) 
+    152 : shrub # -> Sparse shrub (<15%) 
+    153 : barren # -> Sparse herbaceous cover (<15%) # basically nothing
+    160:  grass # (wetland) Tree cover, flooded, fresh or brackish water 
+    170 : grass # (wetland) Tree cover, flooded, saline water 
+    180 : grass # (wetland) Shrub or herbaceous cover, flooded, fresh/saline/brackish water 
+    190 : urban # Urban areas 
+    200 : bare # Bare areas
+    201 : bare # -> Consolidated bare areas
+    202 : bare # -> Unconsolidated bare areas
+    210 : water # Water bodies 
+    220 : snow # Permanent snow and ice 
+
+# References:
+# -----------
+# [1] Winkler (2025), unpublished 

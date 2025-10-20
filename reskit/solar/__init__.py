@@ -1,3 +1,9 @@
+from pathlib import Path
+
+# create a DATA variable for solar which contains all data files in the solar module in a dict, based on filename as key
+_data_folder = Path(__file__).parent / 'data'
+DATA = {file.name: file for file in _data_folder.iterdir() if file.is_file()}
+
 from .core.frank_correction import frank_correction_factors
 from .core.system_design import location_to_tilt
 

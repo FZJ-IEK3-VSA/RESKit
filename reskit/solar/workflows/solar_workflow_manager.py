@@ -1,10 +1,9 @@
 import geokit as gk
 import pandas as pd
 import numpy as np
+import yaml
 
 from os.path import isfile
-from collections import OrderedDict
-from types import FunctionType
 import warnings
 from scipy.interpolate import RectBivariateSpline
 import json
@@ -15,6 +14,8 @@ from collections.abc import Iterable, Callable
 
 from reskit.solar import core as rk_solar_core
 from reskit.workflow_manager import WorkflowManager
+
+from reskit.solar import DATA
 
 # Lazily import PVLib
 import importlib
@@ -114,6 +115,9 @@ class SolarWorkflowManager(WorkflowManager):
         self.assign_elevation(
             elev=elev, fallback_elev=840
         )  # mean landmass elevation as fallback
+        self.assign_ground_albedo(
+            ground_albedo=ground_albedo
+        )
 
         # set required tilts and azimuths depending on tracking type
         if self.tracking in ["fixed"]:
@@ -318,6 +322,100 @@ class SolarWorkflowManager(WorkflowManager):
         assert all([isinstance(x, numbers.Number) for x in self.placements["elev"]])
 
         return self
+
+
+    def assign_ground_albedo(self, ground_albedo:float|Iterable):
+        """
+        Assigns a ground albedo value to every placement in self.placements in a
+        new column, unless column exists already, if so existing values will be 
+        checked and used.
+
+        Parameters
+        -------
+        ground_albedo : float, tuplr, list
+            * float : value will be set to all placements
+            * tuple/list : Must then contain landcover dataset information and 
+              be formatted like (dataset_name:str, dataset_filepath:str).
+
+        Returns
+        -------
+        obj
+            reference to the invoking SolarWorkflowManager object
+        """
+        if not all([isinstance(x, float) for x in np.atleast_1d(ground_albedo)]) or (hasattr(ground_albedo, "__iter__") and len(ground_albedo==2) and all([isinstance(x, str) for x in ground_albedo])):
+            raise TypeError(f"Unknown ground_albedo argument of type '{type(ground_albedo)}': {ground_albedo}. Must be float, iterable of floats or tuple/list of 2 strings.")
+    
+        # define an aux function to extract ground albedos from landcover name and path
+        def _get_ground_albedo_from_landcover(landcover_name:str, landcover_path:str):
+            """
+            Get the mean snow-free broadband white sky albedos for the respective
+            landcover per placement based on category type in the landcover dataset.
+            
+            Parameters
+            ----------
+            landcover_name : str
+                Name of dataset, must be a key in dataset_mapper dict in the 
+                ground_cover_albedos.yaml file in solar/data.
+            landcover_path : str
+                The filepath to the dataset described by landcover_name.
+
+            -------
+            list
+                list with local ground albedo values of length of placements 
+                attribute of invoking SolarWorkflowManager object
+            """
+            # load the albedo data from yaml file
+            with open(DATA.get('ground_cover_albedos.yaml'), "r") as stream:
+                ground_cover_albedos = yaml.safe_load(stream)
+            
+            # make sure landcover input is legit
+            if landcover_name not in ground_cover_albedos["dataset_classtype_mapper"]:
+                raise KeyError(f"Unknown landcover_name '{landcover_name}'. Select from: {', '.join(ground_cover_albedos['dataset_classtype_mapper'].keys())}")
+            if not isfile(landcover_path):
+                raise FileNotFoundError(f"landcover_path file does not exist: {landcover_path}")
+            try:
+                gk.raster.loadRaster(landcover_path)
+            except Exception as e:
+                raise TypeError(f"landcover_path must point to a raster type file: {e}")
+            
+            # get the landcover type categories for all placements
+            if "geom" not in self.placements:
+                self.placements["geom"] = self.placements.apply(lambda x : gk.geom.point(x.lon, x.lat, srs=4326), axis=1)
+            assert all([g.GetGeometryName()=="POINT" for g in self.placements.geom]) # make sure
+            LCclasses = gk.raster.interpolateValues(
+                source = landcover_path,
+                points = self.placements.geom.to_list(), 
+                pointSRS="latlon", 
+                mode="near"
+                )
+            # map the LC class number to albedo via ground types 
+            classtype = ground_cover_albedos["dataset_classtype_mapper"][landcover_name]
+            LCclass_groundtype_mapper = ground_cover_albedos["LCclass_groundtype_mapper"][classtype]
+            groundtype_albedo_mapper = ground_cover_albedos["groundtype_albedo_mapper"]
+            ground_albedos = [groundtype_albedo_mapper[LCclass_groundtype_mapper[c]] for c in LCclasses]
+            assert not any([np.isnan(a) for a in ground_albedos]), "NaN values found in extracted ground_albedos."
+            return ground_albedos
+
+        # prepare the assign attribute function arguments
+        _default = ground_albedo if all([isinstance(x, float) for x in np.atleast_1d(ground_albedo)]) else None # integers are default elevs
+        _func = None if all([isinstance(x, float) for x in np.atleast_1d(ground_albedo)]) else _get_ground_albedo_from_landcover
+        _funcargs = None if all([isinstance(x, float) for x in np.atleast_1d(ground_albedo)]) else {
+                "landcover_name" : ground_albedo[0],
+                "landcover_path" : ground_albedo[1]
+            }
+        
+        # apply generic function with ground albedo args
+        self._assign_attribute(
+            attr="grdalbedo", 
+            attr_default=_default, 
+            attr_col="grdalbedo", 
+            func=_func, 
+            funcargs=_funcargs)
+        
+        # final sanity check
+        if not self.placements.grdalbedo.apply(lambda x : 0<x<1).all():
+            raise ValueError("ground albedo must be >0 and <1 for all locations.")
+        
         return self
 
 
