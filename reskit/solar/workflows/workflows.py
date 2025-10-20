@@ -424,7 +424,6 @@ def pv_era5_WinklerUnpublished(
     GHI_nodata_fallback_scaling=1.0,
     output_netcdf_path=None,
     output_variables=None,
-    gsa_nodata_fallback="source",
     tech_year=2050,
 ):
     """
