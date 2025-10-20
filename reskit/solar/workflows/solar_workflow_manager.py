@@ -880,7 +880,8 @@ class SolarWorkflowManager(WorkflowManager):
             self.sim_data["apparent_solar_zenith"][s], model=model
         )
 
-    def apply_DIRINT_model(self, use_pressure=False, use_dew_temperature=False):
+
+    def apply_DIRINT_model(self, use_pressure:bool=True, use_dew_temperature:bool=True):
         """
 
         apply_DIRINT_model(self, use_pressure=False, use_dew_temperature=False)
@@ -891,10 +892,10 @@ class SolarWorkflowManager(WorkflowManager):
         Parameters
         ----------
         use_pressure: boolian, optional
-                      Default: False
+            Default: True
 
         use_dew_temperature: boolian, optional
-                             Default: False
+            Default: True
 
         Returns
         -------
@@ -931,9 +932,6 @@ class SolarWorkflowManager(WorkflowManager):
         #     I0=self.sim_data["extra_terrestrial_irradiance"],
         #     temp_dew=self.sim_data["surface_dew_temperature"],
         #     use_delta_kt_prime=True,)
-
-        use_pressure = True
-        use_dew_temperature = True
 
         g = self.sim_data["global_horizontal_irradiance"].flatten()
         z = self.sim_data["apparent_solar_zenith"].flatten()
