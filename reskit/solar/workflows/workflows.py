@@ -261,7 +261,7 @@ def openfield_pv_era5(
             -'source': use source data (ERA5 raw simulation)
             -'nan': return np.nan for missing values
             get flags for missing values:
-            - f'missing_values_{os.path.basename(path_to_LRA_source)}
+            - f'missing_values_{os.path.basename(path_to_LRA_source)}_nodata_fallback{nodata_fallback}'
 
     tech_year : int, optional
                 If given in combination with the projected module str names "WINAICO WSx-240P6" or
