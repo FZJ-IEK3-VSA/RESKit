@@ -105,7 +105,7 @@ class SolarWorkflowManager(WorkflowManager):
             assert len(_possiblecols) > 0  # make sure substr makes sense
             if len(_othercols) > 0:
                 warnings.warn(
-                    f"The following placement column names contain '{substr}' but are none of the recognized arguments related to {substr}: {', '.join(_othercols)}. Missing columns will be added. Regognized column names for {substr} are: {', '.join(_possiblecols)}"
+                    f"The following placement column names contain '{substr}' but are none of the recognized arguments related to {substr} and will be ignored: '"+"', '".join(_othercols)+f"'. Missing columns will be added. Regognized column names for '{substr}' are: '"+"', '".join(_possiblecols)+"'"
                 )
 
         for param in ["tilt", "azimuth", "albedo", "elev"]:
