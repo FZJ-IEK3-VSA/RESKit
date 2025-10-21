@@ -206,7 +206,8 @@ class SolarWorkflowManager(WorkflowManager):
             self.placements[attr] = np.nan
 
         # now either apply the given function or default to assign missing values (be it all NaN or just gaps)
-        placements_without_param = self.placements[self.placements[attr].isna()]
+        sel = self.placements[attr].isna()
+        placements_without_param = self.placements[sel]
         if not placements_without_param.empty:
             # set up a second wfm only with missing value locations and fill with function or default
             _wf = SolarWorkflowManager(placements_without_param)
@@ -220,7 +221,12 @@ class SolarWorkflowManager(WorkflowManager):
             else:
                 # use default
                 try:
-                    self.placements[attr] = attr_default
+                    if ~isinstance(attr_default, str) and hasattr(attr_default, "__iter__"):
+                        assert len(attr_default) == len(self.placements)
+                        _attr_default = np.array(attr_default, dtype=float)[sel]
+                    else:
+                        _attr_default = attr_default
+                    _wf.placements[attr] = _attr_default
                 except Exception as e:
                     raise TypeError(
                         f"{attr} default must be scalar or an iterable of length of placements dataframe ({len(self.placements)}) if not None: {e}"
