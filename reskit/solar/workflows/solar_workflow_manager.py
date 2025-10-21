@@ -955,9 +955,9 @@ class SolarWorkflowManager(WorkflowManager):
 
         ghi = self.sim_data["global_horizontal_irradiance"]
         dni = self.sim_data["direct_normal_irradiance"]
-        elev = np.radians(90 - self.sim_data["apparent_solar_zenith"])
+        sol_zenith = np.radians(90 - self.sim_data["apparent_solar_zenith"])
 
-        self.sim_data["diffuse_horizontal_irradiance"] = ghi - dni * np.sin(elev)
+        self.sim_data["diffuse_horizontal_irradiance"] = ghi - dni * np.sin(sol_zenith)
         self.sim_data["diffuse_horizontal_irradiance"][
             self.sim_data["diffuse_horizontal_irradiance"] < 0
         ] = 0
