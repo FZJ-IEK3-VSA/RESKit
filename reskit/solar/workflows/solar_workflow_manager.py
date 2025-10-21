@@ -1729,7 +1729,6 @@ class SolarWorkflowManager(WorkflowManager):
 
         Notes
         -----
-        Required columns in the placements dataframe to use this functions are 'lon', 'lat', 'elev', 'tilt' and 'azimuth'.
         Required data in the sim_data dictionary are 'poa_global' and 'cell_temperature'.
 
         References
