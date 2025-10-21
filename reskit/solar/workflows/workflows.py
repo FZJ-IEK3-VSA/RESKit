@@ -81,7 +81,7 @@ def openfield_pv_merra_ryberg2019(
     """
 
     wf = SolarWorkflowManager(placements)
-    wf.configure_cec_module(module, tech_year, tracking=tracking)
+    wf.configure_cec_module(module=module, tech_year=tech_year, tracking=tracking)
     # ensure the tracking parameter is correct
     assert tracking in [
         "fixed",
@@ -276,7 +276,7 @@ def openfield_pv_era5(
     """
 
     wf = SolarWorkflowManager(placements)
-    wf.configure_cec_module(module, tech_year, tracking=tracking)
+    wf.configure_cec_module(module=module, tech_year=tech_year, tracking=tracking)
 
     # tilt and azimuth were ambiguous depending on tracking, rename to consistent attribute names throughout the wfm
     if "tilt" in wf.placements:
@@ -534,7 +534,11 @@ def pv_era5_WinklerUnpublished(
     """
     # initialize workflow manager and module/system
     wf = SolarWorkflowManager(placements)
-    wf.configure_cec_module(module, tech_year, bifaciality_factor=bifaciality_factor, tracking=tracking)
+    wf.configure_cec_module(
+        module=module, 
+        tech_year=tech_year, 
+        bifaciality_factor=bifaciality_factor, 
+        )
 
     # estimate tilt, azimuth, albedo and elev
     wf.estimate_missing_params(
@@ -695,7 +699,7 @@ def openfield_pv_sarah_unvalidated(
     """
 
     wf = SolarWorkflowManager(placements)
-    wf.configure_cec_module(module, tech_year, tracking=tracking)
+    wf.configure_cec_module(module=module, tech_year=tech_year, tracking=tracking)
     # ensure the tracking parameter is correct
     assert tracking in [
         "fixed",
@@ -830,7 +834,7 @@ def openfield_pv_iconlam(
     """
 
     wf = SolarWorkflowManager(placements)
-    wf.configure_cec_module(module, tech_year, tracking=tracking)
+    wf.configure_cec_module(module=module, tech_year=tech_year, tracking=tracking)
 
     # ensure the tracking parameter is correct
     assert tracking in [
