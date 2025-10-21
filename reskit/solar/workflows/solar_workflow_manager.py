@@ -79,11 +79,11 @@ class SolarWorkflowManager(WorkflowManager):
         self,
         elev,
         ground_albedo,
-        fixed_module_tilt_convention="Ryberg2020",
-        fixed_azimuth_tilt_convention="NorthSouth",
-        singleaxis_tilt_convention="flat",
-        singleaxis_azimuth_convention="North",
-        crossaxis_tilt_convention="flat",
+        fixed_module_tilt_convention=None,
+        fixed_module_azimuth_convention=None,
+        singleaxis_tilt_convention=None,
+        singleaxis_azimuth_convention=None,
+        crossaxis_tilt_convention=None,
     ):
         # check placements columns for possible other/wrong column names
         def _check_existing_cols(substr):
@@ -121,13 +121,18 @@ class SolarWorkflowManager(WorkflowManager):
 
         # set required tilts and azimuths depending on tracking type
         if self.tracking in ["fixed"]:
+            assert fixed_module_tilt_convention is not None, "fixed_module_tilt_convention must not be None when tracking='fixed'"
+            assert fixed_module_azimuth_convention is not None, "fixed_azimuth_tilt_convention must not be None when tracking='fixed'"
             self.estimate_module_tilt_from_latitude(
                 convention=fixed_module_tilt_convention
             )
             self.estimate_module_azimuth_from_latitude(
-                convention=fixed_azimuth_tilt_convention
+                convention=fixed_module_azimuth_convention
             )
         elif self.tracking in ["single-axis"]:
+            assert singleaxis_tilt_convention is not None, "singleaxis_tilt_convention must not be None when tracking='single-axis'"
+            assert singleaxis_azimuth_convention is not None, "fixed_azimuth_tilt_convention must not be None when tracking='single-axis'"
+            assert crossaxis_tilt_convention is not None, "crossaxis_tilt_convention must not be None when tracking='single-axis'"
             self.estimate_tracker_axis_tilt_from_latitude(
                 convention=singleaxis_tilt_convention
             )
