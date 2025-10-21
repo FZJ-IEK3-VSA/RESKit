@@ -207,40 +207,22 @@ class SolarWorkflowManager(WorkflowManager):
                 )
             self.placements.rename(columns={attr_col: attr}, inplace=True)
             assert not self.placements[attr].isna().any(), f"{attr} data provided as self.placements column '{attr_col}' must not contain NaN values."
-        else:
-            # else set all values to NaN first
-            self.placements[attr] = np.nan
 
-        # now either apply the given function or default to assign missing values (be it all NaN or just gaps)
-        sel = self.placements[attr].isna()
-        placements_without_param = self.placements[sel]
-        if not placements_without_param.empty:
-            # set up a second wfm only with missing value locations and fill with function or default
-            _wf = SolarWorkflowManager(placements_without_param)
-            if func is not None:
-                # use function
-                if attr_default is not None:
-                    raise TypeError(
-                        f"'{attr}' default must be None if data function shall be used to assign '{attr}'."
-                    )
-                _wf.placements[attr] = func(**funcargs)
-            else:
-                # use default
-                try:
-                    if ~isinstance(attr_default, str) and hasattr(attr_default, "__iter__"):
-                        assert len(attr_default) == len(self.placements)
-                        _attr_default = np.array(attr_default, dtype=float)[sel]
-                    else:
-                        _attr_default = attr_default
-                    _wf.placements[attr] = _attr_default
-                except Exception as e:
-                    raise TypeError(
-                        f"{attr} default must be scalar or an iterable of length of placements dataframe ({len(self.placements)}) if not None: {e}"
-                    )
-            # replace the NaN values in actual placements instance
-            self.placements.loc[_wf.placements.index, attr] = _wf.placements[
-                attr
-            ].values
+        # else either apply the given function or default to assign missing values
+        elif func is not None:
+            # use function
+            if attr_default is not None:
+                raise TypeError(
+                    f"'{attr}' default must be None if data function shall be used to assign '{attr}'."
+                )
+            self.placements[attr] = func(**funcargs)
+        else:
+            # use default
+            if ~isinstance(attr_default, str) and hasattr(attr_default, "__iter__") and len(attr_default) != len(self.placements):
+                raise TypeError(
+                    f"{attr} default must be scalar or an iterable of length of placements dataframe ({len(self.placements)}) if not None: {e}"
+                )
+            self.placements[attr] = attr_default
 
         if not allow_nan:
             # make sure none remains
