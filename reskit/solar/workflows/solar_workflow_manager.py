@@ -1208,6 +1208,127 @@ class SolarWorkflowManager(WorkflowManager):
         return self
 
 
+    def estimate_absorbed_plane_of_array_irradiances(self, **kwargs):
+        """
+        Estimates the incoming and absorbed plane of array irradiance using the 
+        pvlib.bifacial.pvfactors.pvfactors_timeseries function [1] both for the 
+        front and backside of the module.
+
+        Parameters
+        ----------
+        **kwargs
+
+        Returns
+        -------
+        obj
+            a reference to the invoking SolarWorkflowManager object.
+
+        Notes
+        -----
+        Required data sim_data attributes are 'diffuse_horizontal_irradiance'
+        'apparent_solar_zenith', 'solar_azimuth' and 'direct_normal_irradiance'.
+
+        Will save backside irradiances as well only when self.bifacial
+        flag is True in the invoking class instance.
+
+        Unless otherwise specified in kwargs, the following argument values will 
+        be extracted from module data: 'gcr', 'pvrow_height', 'pv_row_width.
+
+        References
+        ----------
+        [1] https://pvlib-python.readthedocs.io/en/stable/generated/pvlib.irradiance.get_total_irradiance.html
+        [1] Winkler (2025), unpublished
+        """
+        # check required sim_data attributes first
+        assert "apparent_solar_zenith" in self.sim_data
+        assert "solar_azimuth" in self.sim_data
+        assert "direct_normal_irradiance" in self.sim_data
+        assert "diffuse_horizontal_irradiance" in self.sim_data
+
+        # iteration is required through the locations since pvfactors_timeseries is not vectorized.
+        
+        # initialize result containers for the iteration over locs
+        poa_frontside = np.empty(self._sim_shape_)
+        poa_backside = np.empty(self._sim_shape_)
+        poa_frontside_absorbed = np.empty(self._sim_shape_)
+        poa_backside_absorbed = np.empty(self._sim_shape_)
+
+        # iterate over all locs
+        for iloc in range(self._sim_shape_[1]):
+
+            # helper function to extract and preprocess shape for variables either from sim data or placements or defaults
+            def _extract_var(var, sim_var=None):
+                """First tries to get location- and time-variable sim_data, then location-variable placements column, else default."""
+                if self.sim_data.get(sim_var) is not None:
+                    # get only the timeseries for the representative location
+                    return self.sim_data.get(sim_var)[:, iloc]
+                elif var is not None and var in self.placements:
+                    # value is not time-variable but in placements df, duplicate for T timesteps
+                    return  np.full(self._sim_shape_[0], self.placements.iloc[iloc][var]) #TODO self.placements[var].values[iloc])
+                else:
+                    # fall back to defaults
+                    defaults = {"gcr" : 0.45, "axis_azimuth" : 0, "pvrow_height" : 1.12, "n_pvrows" : 1, "index_observed_pvrow" : 0} #TODO change n_pvrows and pvrow_width and index_observed_pvrow
+                    if var not in defaults:
+                        raise KeyError(f"Variable '{var}' is neither a sim_data system variable, nor a column in placements dataframe nor has a default value.")
+                    return defaults[var]
+            
+            # define the base input args for this location
+            pvfts_args = {
+                "solar_azimuth" : self.sim_data["solar_azimuth"][:, iloc], 
+                "solar_zenith" : self.sim_data["apparent_solar_zenith"][:, iloc], 
+                "surface_azimuth" : _extract_var("modazimuth", "system_modazimuth"), 
+                "surface_tilt" : _extract_var("modtilt", "system_modtilt"), 
+                "axis_azimuth" : _extract_var("axazimuth", "system_axazimuth"),
+                "timestamps" : np.arange(self._sim_shape_[0]),
+                "dhi" : self.sim_data["diffuse_horizontal_irradiance"][:, iloc], 
+                "dni" : self.sim_data["direct_normal_irradiance"][:, iloc], 
+                "gcr" : _extract_var("gcr"),
+                "pvrow_height" : _extract_var("pvrow_height"),
+                "albedo" : _extract_var("grdalbedo", "system_grdalbedo"),
+                "n_pvrows" : _extract_var("n_pvrows"),
+                "index_observed_pvrow" : _extract_var("index_observed_pvrow"),
+            }
+
+            # handle kwargs for this location
+            kwargs_iloc = {}
+            for k, v in kwargs.items():
+                if isinstance(v, np.ndarray) and not v.shape==(self._sim_shape_[0],):
+                    # we have a multi-dimensional numpy array, make sure it is of shape (t,n)
+                    if not v.shape==self._sim_shape_:
+                        raise ValueError(f"kwarg '{k}' was passed as {v.shape} numpy.ndarray, must either be 1d or of shape (Ntimesteps, Nlocations), here: {self._sim_shape_}.")
+                    # set only the respective locational slice
+                    kwargs_iloc[k] = v[:, iloc]
+                elif not hasattr(v, "__iter__"):
+                    # scalar value, set the same for all locations
+                    kwargs_iloc[k] = v
+                else:
+                    raise TypeError("kwargs for pvlib.bifacial.pvfactors.pvfactors_timeseries() must be scalar or numpy.ndarray type.")
+            pvfts_args.update(kwargs_iloc) # add/overwrite with location-specific kwargs if applicable
+            # special case: PV row width if not given should match gcr, assume lateral module placement -> module row is 2m wide
+            if "pvrow_width" not in pvfts_args:
+                # calculate it based on the GCR and axis height
+                _panel_width = 2 # m
+                assert 0 < pvfts_args["gcr"] <= 1, "gcr must be a float value between 0 and 1 for all placements" # make sure
+                pvfts_args["pvrow_width"] = _panel_width/pvfts_args["gcr"]
+            
+            # simulate and append locational output to total results
+            _poa_frontside, _poa_backside, _poa_frontside_absorbed, _poa_backside_absorbed = pvlib.bifacial.pvfactors.pvfactors_timeseries(**pvfts_args)
+
+            poa_frontside[:, iloc] = _poa_frontside.values
+            poa_backside[:, iloc] = _poa_backside.values
+            poa_frontside_absorbed[:, iloc] = _poa_frontside_absorbed.values
+            poa_backside_absorbed[:, iloc] = _poa_backside_absorbed.values
+
+        assert not (poa_frontside >= 1600).any() # sanity check
+
+        # finally set the results as sim_data attributes
+        self.sim_data['poa_global_raw'] = poa_frontside
+        self.sim_data['poa_global'] = poa_frontside_absorbed
+        if self.bifacial:
+            # set POA values for backside only when bifacial flag is True
+            self.sim_data['poa_backside_global_raw'] = poa_backside
+            self.sim_data['poa_backside_global'] = poa_backside_absorbed
+
         return self
 
 
