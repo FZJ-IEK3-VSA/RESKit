@@ -1251,14 +1251,17 @@ class SolarWorkflowManager(WorkflowManager):
         for iloc in range(self._sim_shape_[1]):
 
             # helper function to extract and preprocess shape for variables either from sim data or placements or defaults
-            def _extract_var(var, sim_var=None):
+            def _extract_var(var, sim_var=None, fallback=None):
                 """First tries to get location- and time-variable sim_data, then location-variable placements column, else default."""
                 if self.sim_data.get(sim_var) is not None:
                     # get only the timeseries for the representative location
                     return self.sim_data.get(sim_var)[:, iloc]
                 elif var is not None and var in self.placements:
                     # value is not time-variable but in placements df, duplicate for T timesteps
-                    return  np.full(self._sim_shape_[0], self.placements.iloc[iloc][var]) #TODO self.placements[var].values[iloc])
+                    return np.full(self._sim_shape_[0], self.placements.iloc[iloc][var])
+                elif fallback is not None:
+                    # set to variable fallback value
+                    return np.full(self._sim_shape_[0], fallback)
                 else:
                     # fall back to defaults
                     defaults = {"gcr" : 0.45, "axis_azimuth" : 0, "pvrow_height" : 1.12, "n_pvrows" : 1, "index_observed_pvrow" : 0} #TODO change n_pvrows and pvrow_width and index_observed_pvrow
@@ -1267,12 +1270,15 @@ class SolarWorkflowManager(WorkflowManager):
                     return defaults[var]
             
             # define the base input args for this location
+            # define a fallback for the axis azimuth in case of tracked systems where the value does not exist
+            # the tracker axis is not used here but value is expected, orientation is always rectangular to module azimuth
+            _axazimuth_fallback = _extract_var("modazimuth", "system_modazimuth") + 90 if self.tracking == "fixed" else None
             pvfts_args = {
                 "solar_azimuth" : self.sim_data["solar_azimuth"][:, iloc], 
                 "solar_zenith" : self.sim_data["apparent_solar_zenith"][:, iloc], 
                 "surface_azimuth" : _extract_var("modazimuth", "system_modazimuth"), 
                 "surface_tilt" : _extract_var("modtilt", "system_modtilt"), 
-                "axis_azimuth" : _extract_var("axazimuth", "system_axazimuth"),
+                "axis_azimuth" : _extract_var("axazimuth", "system_axazimuth", _axazimuth_fallback),
                 "timestamps" : np.arange(self._sim_shape_[0]),
                 "dhi" : self.sim_data["diffuse_horizontal_irradiance"][:, iloc], 
                 "dni" : self.sim_data["direct_normal_irradiance"][:, iloc], 
