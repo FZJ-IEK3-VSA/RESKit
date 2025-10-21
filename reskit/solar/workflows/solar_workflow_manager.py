@@ -189,8 +189,8 @@ class SolarWorkflowManager(WorkflowManager):
         # if the attr column exists already in placements, use it
         if attr_col in self.placements:
             if attr_default is not None:
-                raise TypeError(
-                    f"'{attr}' default must be None if data existing placements column '{attr_col}' shall be used."
+                warnings.warn(
+                    f"Function argument for {attr} is not None (here: {attr_default}) but will be ignored since '{attr_col}' column self.placements exists and will be used."
                 )
             if verbose and attr_col == attr:
                 print(
