@@ -518,7 +518,7 @@ class SolarWorkflowManager(WorkflowManager):
         convention : str
             The calculation method used to suggest axis tilts. For details see 
             rk.solar.core.system_design.location_to_tracker_axis_tilt():
-            * "flat" assigns 0° tilt to all locations.
+            * "flat" assigns 0° axis tilt to all locations.
             * A path to a rasterfile with angles facing in axis azimuth direction 
               to extract axis tilts per location.
 
@@ -557,7 +557,7 @@ class SolarWorkflowManager(WorkflowManager):
         convention : str
             The calculation method used to suggest cross axis tilts. For details 
             see rk.solar.core.system_design.location_to_cross_axis_tilt():
-            * "flat" assigns 0° tilt to all locations.
+            * "flat" assigns 0° cross-axis tilt to all locations.
             * A path to a rasterfile with angles facing in axis azimuth direction 
               to extract axis tilts per location.
 
@@ -591,23 +591,18 @@ class SolarWorkflowManager(WorkflowManager):
         self, lon_rounding=1, lat_rounding=1, elev_rounding=-2
     ):
         """
-
-        determine_solar_position(self, lon_rounding=1, lat_rounding=1, elev_rounding=-2)
-
-        Calculates azimuth and apparent zenith for each location using the pvlib fuction pvlib.solarposition.spa_python() [1].
-        Adds azimuth and apparent zenit to the sim_data dictionary.
-
+        Calculates azimuth and apparent zenith for each location using the pvlib
+        fuction pvlib.solarposition.spa_python() [1]. Adds azimuth and apparent 
+        zenit to the sim_data dictionary.
 
         Parameters
         ----------
         lon_rounding: int, optional
-                      Decimal places that the longitude should be rounded to. Default is 1.
-
+            Decimal places that longitude should be rounded to. Default is 1.
         lat_rounding: int, optional
-                      Decimal places that the latitude should be rounded to. Default is 1.
-
+            Decimal places that latitude should be rounded to. Default is 1.
         elev_rounding: int, optional
-                      Decimal places that the elevation should be rounded to. Default is -2.
+            Decimal places that elevation should be rounded to. Default is -2.
 
         Returns
         -------
@@ -616,8 +611,9 @@ class SolarWorkflowManager(WorkflowManager):
 
         Notes
         -----
-        Required columns in the placements dataframe to use this functions are 'lon', 'lat' and 'elev'.
-        Required data in the sim_data dictionary are 'surface_pressure' and 'surface_air_temperature'.
+        Required columns in the placements dataframe to use this functions are 
+        'lon', 'lat' and 'elev'. Required data in the sim_data dictionary are 
+        'surface_pressure' and 'surface_air_temperature'.
 
         References
         ----------
@@ -633,14 +629,18 @@ class SolarWorkflowManager(WorkflowManager):
         [4] USNO delta T:
             http://www.usno.navy.mil/USNO/earth-orientation/eo-products/long-term
 
-
         """
-
-        assert "lon" in self.placements.columns
-        assert "lat" in self.placements.columns
-        assert "elev" in self.placements.columns
-        assert "surface_pressure" in self.sim_data
-        assert "surface_air_temperature" in self.sim_data
+        # check placements dataframe and sim_data attributes
+        assert "lon" in self.placements.columns, \
+            "'lon' is a mandatory column in placements dataframe"
+        assert "lat" in self.placements.columns, \
+            "'lat' is a mandatory column in placements dataframe"
+        assert "elev" in self.placements.columns, \
+            "'elev' is a mandatory column in placements dataframe"
+        assert "surface_pressure" in self.sim_data,\
+            "'surface_pressure' must be read in first via wfm.read()"
+        assert "surface_air_temperature" in self.sim_data,\
+            "'surface_air_temperature' must be read in first via wfm.read()"
 
         rounded_locs = pd.DataFrame()
         rounded_locs["lon"] = np.round(self.placements["lon"].values, lon_rounding)
@@ -699,13 +699,12 @@ class SolarWorkflowManager(WorkflowManager):
 
         return self
 
+
     def filter_positive_solar_elevation(self):
         """
-
-        filter_positive_solar_elevation(self)
-
-        Filters positive solar elevations so that future operations are only executed for time steps when the sun is above (or at least near-to) the horizon
-
+        Filters positive solar elevations so that future operations are only 
+        executed for time steps when the sun is above (or at least near-to) 
+        the horizon
 
         Parameters
         ----------
@@ -713,20 +712,19 @@ class SolarWorkflowManager(WorkflowManager):
 
         Returns
         -------
-        Returns a reference to the invoking SolarWorkflowManager object
+        obj
+            reference to the invoking SolarWorkflowManager object
 
         Notes
         -----
         Required data in the sim_data dictionary are 'apparent_solar_zenith'.
-
-
-
         """
 
         if self._time_sel_ is not None:
             warnings.warn("Filtering already applied, skipping...")
             return self
-        assert "apparent_solar_zenith" in self.sim_data
+        assert "apparent_solar_zenith" in self.sim_data,\
+            "'apparent_solar_zenith' is a mandatory self.sim_data argument. Calculate e.g. via self.determine_solar_position()"
 
         self._time_sel_ = (self.sim_data["apparent_solar_zenith"] < 95).any(axis=1)
 
@@ -738,22 +736,21 @@ class SolarWorkflowManager(WorkflowManager):
 
         return self
 
+
     def determine_extra_terrestrial_irradiance(self, **kwargs):
         """
-
-        determine_extra_terrestrial_irradiance(self, **kwargs)
-
-        Determines extra terrestrial irradiance using the pvlib.irradiance.get_extra_radiation() function [1].
+        Determines extra terrestrial irradiance using the 
+        pvlib.irradiance.get_extra_radiation() function [1].
 
         Parameters
         ----------
-        None
+        **kwargs
+            Passed on to pvlib.irradiance.get_extra_radiation().
 
         Returns
         -------
-
-        Returns a reference to the invoking SolarWorkflowManager object.
-
+        obj
+            reference to the invoking SolarWorkflowManager object.
 
         References
         ----------
@@ -782,38 +779,28 @@ class SolarWorkflowManager(WorkflowManager):
 
         return self
 
-    def determine_air_mass(self, model="kastenyoung1989"):
+
+    def determine_air_mass(self, model:str="kastenyoung1989"):
         """
-
-        determine_air_mass(self, model='kastenyoung1989')
-
-        Determines air mass using the pvlib function pvlib.atmosphere.get_relative_airmass() [1].
-
+        Determines air mass using the pvlib function 
+        pvlib.atmosphere.get_relative_airmass() [1].
 
         Parameters
         ----------
         model: str, optional
-               default 'kastenyoung1989' [1]
-
-               'simple' - secant(apparent zenith angle) - Note that this gives -inf at zenith=90 [2]
-               'kasten1966' - See reference [2] - requires apparent sun zenith [2]
-               'youngirvine1967' - See reference [3] - requires true sun zenith [2]
-               'kastenyoung1989' - See reference [4] - requires apparent sun zenith [2]
-               'gueymard1993' - See reference [5] - requires apparent sun zenith [2]
-               'young1994' - See reference [6] - requries true sun zenith [2]
-               'pickering2002' - See reference [7] - requires apparent sun zenith [2]
-
-
-
-        Returns
-        -------
-        Nothing is returned.
+            The model used to compute airmass.
+            * 'simple' - secant(apparent zenith angle) - Note that this gives -inf at zenith=90 [2]
+            * 'kasten1966' - See reference [2] - requires apparent sun zenith [2]
+            * 'youngirvine1967' - See reference [3] - requires true sun zenith [2]
+            * 'kastenyoung1989' - See reference [4] - requires apparent sun zenith [2]
+            * 'gueymard1993' - See reference [5] - requires apparent sun zenith [2]
+            * 'young1994' - See reference [6] - requries true sun zenith [2]
+            * 'pickering2002' - See reference [7] - requires apparent sun zenith [2]
+            By default 'kastenyoung1989' [1]
 
         Notes
         -----
         Required data in the sim_data dictionary are 'apparent_solar_zenith'.
-
-
 
         References
         ----------
@@ -833,10 +820,10 @@ class SolarWorkflowManager(WorkflowManager):
 
         [8]	Matthew J. Reno, Clifford W. Hansen and Joshua S. Stein, “Global Horizontal Irradiance Clear Sky Models: Implementation and Analysis” Sandia Report, (2012).
 
-
         """
 
-        assert "apparent_solar_zenith" in self.sim_data
+        assert "apparent_solar_zenith" in self.sim_data,\
+            "'apparent_solar_zenith' is a mandatory self.sim_data argument. Calculate e.g. via self.determine_solar_position()"
 
         # 29 becasue that what the function seems to max out at as zenith approaches 90
         self.sim_data["air_mass"] = np.full_like(
@@ -851,11 +838,8 @@ class SolarWorkflowManager(WorkflowManager):
 
     def apply_DIRINT_model(self, use_pressure:bool=True, use_dew_temperature:bool=True):
         """
-
-        apply_DIRINT_model(self, use_pressure=False, use_dew_temperature=False)
-
-        Determines direct normal irradiance (DNI) using the pvlib.irradiance.dirint() function [1].
-
+        Determines direct normal irradiance (DNI) using the 
+        pvlib.irradiance.dirint() function [1].
 
         Parameters
         ----------
@@ -867,7 +851,8 @@ class SolarWorkflowManager(WorkflowManager):
 
         Returns
         -------
-        Returns a reference to the invoking SolarWorkflowManager object.
+        obj
+            a reference to the invoking SolarWorkflowManager object.
 
         Notes
         -----
@@ -881,7 +866,6 @@ class SolarWorkflowManager(WorkflowManager):
         [2]	Perez, R., P. Ineichen, E. Maxwell, R. Seals and A. Zelenka, (1992). “Dynamic Global-to-Direct Irradiance Conversion Models”. ASHRAE Transactions-Research Series, pp. 354-369
 
         [3]	Maxwell, E. L., “A Quasi-Physical Model for Converting Hourly Global Horizontal to Direct Normal Insolation”, Technical Report No. SERI/TR-215-3087, Golden, CO: Solar Energy Research Institute, 1987.
-
 
         """
 
@@ -925,14 +909,11 @@ class SolarWorkflowManager(WorkflowManager):
 
         return self
 
+
     def diffuse_horizontal_irradiance_from_trigonometry(self):
         """
-
-        diffuse_horizontal_irradiance_from_trigonometry(self)
-
-        Calculates the diffuse horizontal irradiance from global horizontal irradiance, direct normal irradiance and apparent zenith.
-
-        [TODO: Add a simple equation such as the one given in 'direct_normal_irradiance_from_trigonometry']
+        Calculates the diffuse horizontal irradiance from global horizontal 
+        irradiance, direct normal irradiance and apparent zenith.
 
         Parameters
         ----------
@@ -940,15 +921,15 @@ class SolarWorkflowManager(WorkflowManager):
 
         Returns
         -------
-        Returns a reference to the invoking SolarWorkflowManager object.
+        obj
+            reference to the invoking SolarWorkflowManager object.
 
         Notes
         -----
         Required data in the sim_data dictionary are 'global_horizontal_irradiance', 'direct_normal_irradiance' and
         'apparent_solar_zenith'.
-
         """
-
+        # check required sim_data attributes
         assert "global_horizontal_irradiance" in self.sim_data
         assert "direct_normal_irradiance" in self.sim_data
         assert "apparent_solar_zenith" in self.sim_data
@@ -964,6 +945,7 @@ class SolarWorkflowManager(WorkflowManager):
 
         return self
 
+
     def direct_normal_irradiance_from_trigonometry(self):
         """
 
@@ -976,7 +958,8 @@ class SolarWorkflowManager(WorkflowManager):
 
         Returns
         -------
-        Returns a reference to the invoking SolarWorkflowManager object.
+        obj
+            A reference to the invoking SolarWorkflowManager object.
 
         Notes
         -----
@@ -1019,41 +1002,37 @@ class SolarWorkflowManager(WorkflowManager):
 
         return self
 
+
     def permit_single_axis_tracking(self, max_angle=90, backtrack=True, gcr=2.0 / 7.0):
         """
-
-        permit_single_axis_tracking(self, max_angle=90, backtrack=True, gcr=2.0 / 7.0)
-
-        Permits single axis tracking in the simulation using the pvlib.tracking.singleaxis() function [1].
-
+        Permits single axis tracking in the simulation using the 
+        pvlib.tracking.singleaxis() function [1].
 
         Parameters
         ----------
         max_angle: float, optional
-                   default 90
-                   A value denoting the maximum rotation angle, in decimal degrees, of the one-axis tracker from its horizontal position
-                   (horizontal if axis_tilt = 0). A max_angle of 90 degrees allows the tracker to rotate to a vertical position to point the
-                   panel towards a horizon. max_angle of 180 degrees allows for full rotation [1].
+            A value denoting the maximum rotation angle, in decimal degrees, of the one-axis tracker from its horizontal position
+            (horizontal if axis_tilt = 0). A max_angle of 90 degrees allows the tracker to rotate to a vertical position to point the
+            panel towards a horizon. max_angle of 180 degrees allows for full rotation [1]. By default 90.
 
         backtrack: bool, optional
-                   default True
-                   Controls whether the tracker has the capability to “backtrack” to avoid row-to-row shading.
-                   False denotes no backtrack capability. True denotes backtrack capability [1].
+            Controls whether the tracker has the capability to “backtrack” to avoid row-to-row shading.
+            False denotes no backtrack capability. True denotes backtrack capability [1]. By default True.
 
-        gcr:       float, optional
-                   default 2.0/7.0
-                   A value denoting the ground coverage ratio of a tracker system which utilizes backtracking; i.e. the ratio between the
-                   PV array surface area to total ground area. A tracker system with modules 2 meters wide, centered on the tracking axis,
-                   with 6 meters between the tracking axes has a gcr of 2/6=0.333. If gcr is not provided, a gcr of 2/7 is default. gcr must be <=1 [1].
-
+        gcr: float, optional
+            A value denoting the ground coverage ratio of a tracker system which utilizes backtracking; i.e. the ratio between the
+            PV array surface area to total ground area. A tracker system with modules 2 meters wide, centered on the tracking axis,
+            with 6 meters between the tracking axes has a gcr of 2/6=0.333. If gcr is not provided, a gcr of 2/7 is default. gcr 
+            must be <=1 [1]. By default 2.0/7.0
 
         Returns
         -------
-        Returns a reference to the invoking SolarWorkflowManager object.
+        obj
+            a reference to the invoking SolarWorkflowManager object.
 
         Notes
         -----
-        Required columns in the placements dataframe to use this functions are 'lon', 'lat', 'elev', 'tilt' and 'azimuth'.
+        Required columns in the placements dataframe to use this functions are 'lon', 'lat', 'elev', 'axtilt' and 'axazimuth'.
         Required data in the sim_data dictionary are 'apparent_solar_zenith' and 'solar_azimuth'.
 
         References
@@ -1363,7 +1342,8 @@ class SolarWorkflowManager(WorkflowManager):
             self.sim_data["poa_direct"] + self.sim_data["poa_diffuse"]
         )
 
-        assert (self.sim_data["poa_global"] < 1600).all(), "POA is too large"
+        # make sure poa is realistic, should be less than poa_global_raw which should have been checked before
+        assert (self.sim_data["poa_global"] < 1600).all() 
 
         return self
 
