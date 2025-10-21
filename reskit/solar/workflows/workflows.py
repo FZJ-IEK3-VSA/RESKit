@@ -294,7 +294,7 @@ def openfield_pv_era5(
         elev=elev, 
         ground_albedo=0.25,
         fixed_module_tilt_convention="Ryberg2020", 
-        fixed_azimuth_tilt_convention="NorthSouth",
+        fixed_module_azimuth_convention="NorthSouth",
     )
 
     wf.read(
