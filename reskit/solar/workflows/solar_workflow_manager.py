@@ -1297,25 +1297,28 @@ class SolarWorkflowManager(WorkflowManager):
 
         """
 
-        assert "poa_direct" in self.sim_data
-        assert "poa_ground_diffuse" in self.sim_data
-        assert "poa_sky_diffuse" in self.sim_data
+        assert "poa_direct_raw" in self.sim_data
+        assert "poa_ground_diffuse_raw" in self.sim_data
+        assert "poa_sky_diffuse_raw" in self.sim_data
 
         modtilts = self.sim_data.get("system_modtilt", self.placements["modtilt"].values)
 
-        self.sim_data["poa_direct"] *= pvlib.pvsystem.iam.physical(
+        self.sim_data["poa_direct"] = self.sim_data["poa_direct_raw"]*pvlib.pvsystem.iam.physical(
             aoi=self.sim_data["angle_of_incidence"],
             n=1.526,  # PVLIB v0.7.2 default
             K=4.0,  # PVLIB v0.7.2 default
             L=0.002,  # PVLIB v0.7.2 default
         )
 
+        # Effective angle of incidence values from "Solar-Engineering-of-Thermal-Processes-4th-Edition"
+        self.sim_data["poa_ground_diffuse"] = self.sim_data["poa_ground_diffuse_raw"]*pvlib.pvsystem.iam.physical(
             aoi=(90 - 0.5788 * modtilts + 0.002693 * np.power(modtilts, 2)),
             n=1.526,  # PVLIB v0.7.2 default
             K=4.0,  # PVLIB v0.7.2 default
             L=0.002,  # PVLIB v0.7.2 default
         )
 
+        self.sim_data["poa_sky_diffuse"] = self.sim_data["poa_sky_diffuse_raw"]*pvlib.pvsystem.iam.physical(
             aoi=(59.7 - 0.1388 * modtilts + 0.001497 * np.power(modtilts, 2)),
             n=1.526,  # PVLIB v0.7.2 default
             K=4.0,  # PVLIB v0.7.2 default
