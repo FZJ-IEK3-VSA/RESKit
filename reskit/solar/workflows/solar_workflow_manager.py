@@ -1035,6 +1035,9 @@ class SolarWorkflowManager(WorkflowManager):
         """
 
         """See pvlib.tracking.singleaxis for parameter info"""
+        assert self.tracking == "single-axis", \
+            f"tracking flag must be 'single-axis' for permit_single_axis_tracking() but is instead: {self.tracking}"
+        
         assert "apparent_solar_zenith" in self.sim_data
         assert "solar_azimuth" in self.sim_data
         assert "axtilt" in self.placements.columns
