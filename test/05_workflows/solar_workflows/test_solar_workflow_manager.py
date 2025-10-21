@@ -442,19 +442,19 @@ def test_SolarWorkflowManager_permit_single_axis_tracking(
         gcr=0.2857142857142857,
     )
 
-    print_testresults(man.sim_data["system_tilt"])
-    print_testresults(man.sim_data["system_azimuth"])
+    print_testresults(man.sim_data["system_modtilt"])
+    print_testresults(man.sim_data["system_modazimuth"])
 
-    assert man.sim_data["system_tilt"].shape == (54, 5)
-    assert np.isclose(man.sim_data["system_tilt"].mean(), 46.36795184688052)
-    assert np.isclose(man.sim_data["system_tilt"].std(), 14.570819765672116)
-    assert np.isclose(man.sim_data["system_tilt"].min(), 20.0)
-    assert np.isclose(man.sim_data["system_tilt"].max(), 74.30021518311098)
+    assert man.sim_data["system_modtilt"].shape == (54, 5)
+    assert np.isclose(man.sim_data["system_modtilt"].mean(), 46.36795184688052)
+    assert np.isclose(man.sim_data["system_modtilt"].std(), 14.570819765672116)
+    assert np.isclose(man.sim_data["system_modtilt"].min(), 20.0)
+    assert np.isclose(man.sim_data["system_modtilt"].max(), 74.30021518311098)
 
-    assert np.isclose(man.sim_data["system_azimuth"].mean(), 185.84603169500053)
-    assert np.isclose(man.sim_data["system_azimuth"].std(), 52.78835501687092)
-    assert np.isclose(man.sim_data["system_azimuth"].min(), 99.71477147193693)
-    assert np.isclose(man.sim_data["system_azimuth"].max(), 264.12802748241154)
+    assert np.isclose(man.sim_data["system_modazimuth"].mean(), 185.84603169500053)
+    assert np.isclose(man.sim_data["system_modazimuth"].std(), 52.78835501687092)
+    assert np.isclose(man.sim_data["system_modazimuth"].min(), 99.71477147193693)
+    assert np.isclose(man.sim_data["system_modazimuth"].max(), 264.12802748241154)
 
 
 def test_SolarWorkflowManager_determine_angle_of_incidence(

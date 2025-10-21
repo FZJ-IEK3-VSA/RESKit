@@ -1107,8 +1107,8 @@ class SolarWorkflowManager(WorkflowManager):
         self.register_workflow_parameter("tracking_backtrack", backtrack)
         self.register_workflow_parameter("tracking_gcr", gcr)
 
-        system_tilt = np.empty(self._sim_shape_)
-        system_azimuth = np.empty(self._sim_shape_)
+        system_modtilt = np.empty(self._sim_shape_)
+        system_modazimuth = np.empty(self._sim_shape_)
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
@@ -1133,18 +1133,18 @@ class SolarWorkflowManager(WorkflowManager):
                     gcr=gcr,
                 )
 
-                system_tilt[:, i] = tmp["surface_tilt"].values
-                system_azimuth[:, i] = tmp["surface_azimuth"].values
+                system_modtilt[:, i] = tmp["surface_tilt"].values
+                system_modazimuth[:, i] = tmp["surface_azimuth"].values
 
                 # fix nan values. Why are they there???
-                s = np.isnan(system_tilt[:, i])
-                system_tilt[s, i] = placement.tilt
+                s = np.isnan(system_modtilt[:, i])
+                system_modtilt[s, i] = placement.tilt
 
-                s = np.isnan(system_azimuth[:, i])
-                system_azimuth[s, i] = placement.azimuth
+                s = np.isnan(system_modazimuth[:, i])
+                system_modazimuth[s, i] = placement.azimuth
 
-        self.sim_data["system_tilt"] = system_tilt
-        self.sim_data["system_azimuth"] = system_azimuth
+        self.sim_data["system_modtilt"] = system_modtilt
+        self.sim_data["system_modazimuth"] = system_modazimuth
 
         return self
 
@@ -1173,13 +1173,14 @@ class SolarWorkflowManager(WorkflowManager):
         assert "apparent_solar_zenith" in self.sim_data
         assert "solar_azimuth" in self.sim_data
 
-        azimuth = self.sim_data.get("system_azimuth", self.placements["azimuth"].values)
-        tilt = self.sim_data.get("system_tilt", self.placements["tilt"].values)
+        # get either the time-variable tracking tilt/azimuths or fixed values for fixed tilt
+        modazimuths = self.sim_data.get("system_modazimuth", self.placements["modazimuth"].values)
+        modtilts = self.sim_data.get("system_modtilt", self.placements["modtilt"].values)
 
         self.sim_data["angle_of_incidence"] = np.nan_to_num(
             pvlib.irradiance.aoi(
-                tilt,
-                azimuth,
+                modtilts,
+                modazimuths,
                 self.sim_data["apparent_solar_zenith"],
                 self.sim_data["solar_azimuth"],
             ),
@@ -1366,7 +1367,7 @@ class SolarWorkflowManager(WorkflowManager):
         assert "poa_ground_diffuse" in self.sim_data
         assert "poa_sky_diffuse" in self.sim_data
 
-        tilt = self.sim_data.get("system_tilt", self.placements["tilt"].values)
+        modtilts = self.sim_data.get("system_modtilt", self.placements["modtilt"].values)
 
         self.sim_data["poa_direct"] *= pvlib.pvsystem.iam.physical(
             aoi=self.sim_data["angle_of_incidence"],
@@ -1375,16 +1376,13 @@ class SolarWorkflowManager(WorkflowManager):
             L=0.002,  # PVLIB v0.7.2 default
         )
 
-        # Effective angle of incidence values from "Solar-Engineering-of-Thermal-Processes-4th-Edition"
-        self.sim_data["poa_ground_diffuse"] *= pvlib.pvsystem.iam.physical(
-            aoi=(90 - 0.5788 * tilt + 0.002693 * np.power(tilt, 2)),
+            aoi=(90 - 0.5788 * modtilts + 0.002693 * np.power(modtilts, 2)),
             n=1.526,  # PVLIB v0.7.2 default
             K=4.0,  # PVLIB v0.7.2 default
             L=0.002,  # PVLIB v0.7.2 default
         )
 
-        self.sim_data["poa_sky_diffuse"] *= pvlib.pvsystem.iam.physical(
-            aoi=(59.7 - 0.1388 * tilt + 0.001497 * np.power(tilt, 2)),
+            aoi=(59.7 - 0.1388 * modtilts + 0.001497 * np.power(modtilts, 2)),
             n=1.526,  # PVLIB v0.7.2 default
             K=4.0,  # PVLIB v0.7.2 default
             L=0.002,  # PVLIB v0.7.2 default
