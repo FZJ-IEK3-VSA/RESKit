@@ -1162,56 +1162,51 @@ class SolarWorkflowManager(WorkflowManager):
         assert "extra_terrestrial_irradiance" in self.sim_data
         assert "air_mass" in self.sim_data
 
-        azimuth = self.sim_data.get("system_azimuth", self.placements["azimuth"].values)
-        tilt = self.sim_data.get("system_tilt", self.placements["tilt"].values)
+        def _set_total_irradiance_per_side(front=True):
+            """Calculates and sets to self.sim_data the POA global and its components for front or backside"""
+            
+            # get system ground albedos and tilts and azimuths for the module surfaces
+            _grdalbedos = self.sim_data.get("system_grdalbedo", self.placements["grdalbedo"].values)
+            _modtilts = self.sim_data.get("system_modtilt", self.placements["modtilt"].values)
+            _modazimuths = self.sim_data.get("system_modazimuth", self.placements["modazimuth"].values)
 
-        poa = pvlib.irradiance.get_total_irradiance(
-            surface_tilt=tilt,
-            surface_azimuth=azimuth,
-            solar_zenith=self.sim_data["apparent_solar_zenith"],
-            solar_azimuth=self.sim_data["solar_azimuth"],
-            dni=self.sim_data["direct_normal_irradiance"],
-            ghi=self.sim_data["global_horizontal_irradiance"],
-            dhi=self.sim_data["diffuse_horizontal_irradiance"],
-            dni_extra=self.sim_data["extra_terrestrial_irradiance"],
-            airmass=self.sim_data["air_mass"],
-            albedo=albedo,
-            model=transposition_model,
-            **kwargs,
-        )
-
-        for key in poa.keys():
-            # This should set: 'poa_global', 'poa_direct', 'poa_diffuse', 'poa_sky_diffuse', and 'poa_ground_diffuse'
-
-            tmp = poa[key]
-            tmp[np.isnan(tmp)] = 0
-
-            self.sim_data[key] = tmp
-
-        self._fix_bad_plane_of_array_values()
+            _poa = pvlib.irradiance.get_total_irradiance(
+                surface_tilt=_modtilts if front else 180-_modtilts,
+                surface_azimuth=_modazimuths,
+                solar_zenith=self.sim_data["apparent_solar_zenith"],
+                solar_azimuth=self.sim_data["solar_azimuth"],
+                dni=self.sim_data["direct_normal_irradiance"],
+                ghi=self.sim_data["global_horizontal_irradiance"],
+                dhi=self.sim_data["diffuse_horizontal_irradiance"],
+                dni_extra=self.sim_data["extra_terrestrial_irradiance"],
+                airmass=self.sim_data["air_mass"],
+                albedo=_grdalbedos,
+                model=transposition_model,
+                **kwargs,
+            )
+            # set results as sim_data attributes
+            # at the same time sett unrealistically high POA values due to numerical sin effects at low sun angles to zero
+            sel_bad_poa = _poa["poa_global"] >= 1600
+            for key, tmp in _poa.items():
+                # This should set: 'poa_global', 'poa_direct', 'poa_diffuse', 'poa_sky_diffuse', and 'poa_ground_diffuse' or the respective poa_backside value
+                tmp[np.isnan(tmp)] = 0
+                _key = key+"_raw" if front else key.replace("poa_", "poa_backside_")+"_raw"
+                self.sim_data[_key] = np.where(
+                        sel_bad_poa, 0, tmp
+                    )
+            return
+        
+        # first do frontside, always
+        _set_total_irradiance_per_side(front=True)
+        # then do backside only if needed
+        if self.bifacial:
+            _set_total_irradiance_per_side(front=False)
 
         return self
 
-    def _fix_bad_plane_of_array_values(self):
-        bad_poa = self.sim_data["poa_global"] >= 1600
-        if (bad_poa).any():
-            # POA is super big, but this only happens when elevation angles are approximately
-            # zero (sin effect), so it should be okay to just set the POA to zero as well
-            self.sim_data["poa_global"] = np.where(
-                bad_poa, 0, self.sim_data["poa_global"]
-            )
-            self.sim_data["poa_direct"] = np.where(
-                bad_poa, 0, self.sim_data["poa_direct"]
-            )
-            self.sim_data["poa_diffuse"] = np.where(
-                bad_poa, 0, self.sim_data["poa_diffuse"]
-            )
-            self.sim_data["poa_sky_diffuse"] = np.where(
-                bad_poa, 0, self.sim_data["poa_sky_diffuse"]
-            )
-            self.sim_data["poa_ground_diffuse"] = np.where(
-                bad_poa, 0, self.sim_data["poa_ground_diffuse"]
-            )
+
+        return self
+
 
     def cell_temperature_from_sapm(self, mounting="glass_open_rack"):
         """
