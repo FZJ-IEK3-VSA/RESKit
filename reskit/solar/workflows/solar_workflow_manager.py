@@ -141,38 +141,6 @@ class SolarWorkflowManager(WorkflowManager):
         return self
 
 
-    def estimate_tilt_from_latitude(self, convention):
-        """
-
-        estimate_tilt_from_latitude(self, convention)
-
-        Estimates the tilt of the solar panels based on the latitude of the placements of the instance.
-
-        Parameters
-        ----------
-        convention : str, optional
-                     The calculation method used to suggest system tilts.
-                     Option 1 of convention is "Ryberg2020".
-                     Option 2 of convention is a string consumable by 'eval'. This string can use the variable latitude.
-                     For example "latitude*0.76".
-                     Option 3 of convention is a path to a rasterfile.
-                     To get more information check out reskit.solar.location_to_tilt for more information.
-
-
-
-        Returns
-        -------
-        Returns a reference to the invoking SolarWorkflowManager object
-
-        """
-
-        self.placements["tilt"] = rk_solar_core.system_design.location_to_tilt(
-            self.locs, convention=convention
-        )
-
-        return self
-
-
     def _assign_attribute(
         self,
         attr: str,
