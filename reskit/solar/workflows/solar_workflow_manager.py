@@ -1697,39 +1697,22 @@ class SolarWorkflowManager(WorkflowManager):
         return self
 
 
-    def simulate_with_interpolated_single_diode_approximation(
-        self,
-        module="WINAICO WSx-240P6",
-        tech_year=2050,
-    ):
+    def simulate_with_interpolated_single_diode_approximation(self):
         """
-        simulate_with_interpolated_single_diode_approximation(self, module="WINAICO WSx-240P6")
-
-        Does the simulation with an interpolated single diode approximation using the pvlib.pvsystem.calcparams_desoto() [1] function and the
+        Does the simulation with an interpolated single diode approximation 
+        using the pvlib.pvsystem.calcparams_desoto() [1] function and the
         pvlib.pvsystem.singlediode() [2] function.
-
-
-        Parameters
-        ----------
-        module: str
-            Must be one of:
-                * A module found in the pvlib.pvsystem.retrieve_sam("CECMod") database
-                * "WINAICO WSx-240P6" -> Good for open-field applications
-                * "LG Electronics LG370Q1C-A5" -> Good for rooftop applications
-        tech_year : int, optional
-            If given in combination with the projected module str names "WINAICO WSx-240P6" or
-            "LG Electronics LG370Q1C-A5", the effifiency will be scaled linearly to the given
-            year. Must then be between year of market comparison in analysis (2019) and 2050.
-            Will be ignored when non-projected existing module names or specific parameters
-            are given, can then be None. By default 2050.
 
         Returns
         -------
-        Returns a reference to the invoking SolarWorkflowManager object.
+        obj
+            A reference to the invoking SolarWorkflowManager object.
 
         Notes
         -----
-        Required data in the sim_data dictionary are 'poa_global' and 'cell_temperature'.
+        Required data in the sim_data dictionary are 'poa_global' and 
+        'cell_temperature'. 
+        Requires wfm class attribute 'module' to be configured.
 
         References
         ----------
@@ -1754,18 +1737,12 @@ class SolarWorkflowManager(WorkflowManager):
         [10]	“Computer simulation of the effects of electrical mismatches in photovoltaic cell interconnection circuits” JW Bishop, Solar Cell (1988) https://doi.org/10.1016/0379-6787(88)90059-2
 
         """
-
-        """
-        TODO: Make it work with multiple module definitions
-        """
         assert "poa_global" in self.sim_data
         assert "cell_temperature" in self.sim_data
 
-        self.configure_cec_module(module, tech_year)
+        assert self.module is not None, "Configure module te be simulated first via configure_cec_module()."
 
         sel = self.sim_data["poa_global"] > 0
-
-        poa = self.sim_data["poa_global"][sel]
         cell_temp = self.sim_data["cell_temperature"][sel]
 
         # Use RectBivariateSpline to speed up simulation, but at the cost of accuracy (should still be >99.996%)

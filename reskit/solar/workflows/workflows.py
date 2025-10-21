@@ -129,10 +129,7 @@ def openfield_pv_merra_ryberg2019(
 
     wf.cell_temperature_from_sapm()
 
-    wf.simulate_with_interpolated_single_diode_approximation(
-        module=module,
-        tech_year=tech_year,
-    )
+    wf.simulate_with_interpolated_single_diode_approximation()
 
     if inverter is not None:
         wf.apply_inverter_losses(inverter=inverter, **inverter_kwargs)
@@ -384,10 +381,7 @@ def openfield_pv_era5(
 
     wf.cell_temperature_from_sapm()
 
-    wf.simulate_with_interpolated_single_diode_approximation(
-        module=module,
-        tech_year=tech_year,
-    )
+    wf.simulate_with_interpolated_single_diode_approximation()
 
     if inverter is not None:
         wf.apply_inverter_losses(inverter=inverter, **inverter_kwargs)
@@ -608,10 +602,7 @@ def pv_era5_WinklerUnpublished(
 
     # simulate module response and energy yield
     wf.cell_temperature_from_sapm()
-    wf.simulate_with_interpolated_single_diode_approximation(
-        module=module,
-        tech_year=tech_year,
-    )
+    wf.simulate_with_interpolated_single_diode_approximation()
 
     # apply losses from inverter and general loss factor from calibration
     if inverter is not None:
@@ -757,10 +748,7 @@ def openfield_pv_sarah_unvalidated(
 
     wf.cell_temperature_from_sapm()
 
-    wf.simulate_with_interpolated_single_diode_approximation(
-        module=module,
-        tech_year=tech_year,
-    )
+    wf.simulate_with_interpolated_single_diode_approximation()
 
     if inverter is not None:
         wf.apply_inverter_losses(inverter=inverter, **inverter_kwargs)
@@ -890,10 +878,7 @@ def openfield_pv_iconlam(
 
     wf.cell_temperature_from_sapm()
 
-    wf.simulate_with_interpolated_single_diode_approximation(
-        module=module,
-        tech_year=tech_year,
-    )
+    wf.simulate_with_interpolated_single_diode_approximation()
 
     if inverter is not None:
         wf.apply_inverter_losses(inverter=inverter, **inverter_kwargs)

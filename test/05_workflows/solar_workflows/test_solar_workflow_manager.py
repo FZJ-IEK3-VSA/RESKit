@@ -628,9 +628,8 @@ def test_SolarWorkflowManager_simulate_with_interpolated_single_diode_approximat
     pt_SolarWorkflowManager_cell_temp: SolarWorkflowManager,
 ) -> SolarWorkflowManager:
     man = pt_SolarWorkflowManager_cell_temp
-    man.simulate_with_interpolated_single_diode_approximation(
-        module="WINAICO WSx-240P6",
-    )
+    man.configure_cec_module(module="WINAICO WSx-240P6")
+    man.simulate_with_interpolated_single_diode_approximation()
 
     print_testresults(man.sim_data["capacity_factor"])
 
@@ -655,9 +654,8 @@ def pt_SolarWorkflowManager_sim(
     pt_SolarWorkflowManager_cell_temp: SolarWorkflowManager,
 ) -> SolarWorkflowManager:
     man = pt_SolarWorkflowManager_cell_temp
-    man.simulate_with_interpolated_single_diode_approximation(
-        module="WINAICO WSx-240P6",
-    )
+    man.configure_cec_module(module="WINAICO WSx-240P6")
+    man.simulate_with_interpolated_single_diode_approximation()
 
     return man
 
