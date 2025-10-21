@@ -1302,7 +1302,7 @@ class SolarWorkflowManager(WorkflowManager):
                     # scalar value, set the same for all locations
                     kwargs_iloc[k] = v
                 else:
-                    raise TypeError("kwargs for pvlib.bifacial.pvfactors.pvfactors_timeseries() must be scalar or numpy.ndarray type.")
+                    raise TypeError(f"kwargs for pvlib.bifacial.pvfactors.pvfactors_timeseries() must be scalar or numpy.ndarray type: {k}:{v}")
             pvfts_args.update(kwargs_iloc) # add/overwrite with location-specific kwargs if applicable
             # special case: PV row width if not given should match gcr, assume lateral module placement -> module row is 2m wide
             if "pvrow_width" not in pvfts_args:
