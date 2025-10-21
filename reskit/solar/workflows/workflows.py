@@ -545,7 +545,7 @@ def pv_era5_WinklerUnpublished(
         elev=elev, 
         ground_albedo=ground_albedo,
         fixed_module_tilt_convention="Ryberg2020", #TODO
-        fixed_azimuth_tilt_convention="NorthSouth", #TODO
+        fixed_module_azimuth_convention="NorthSouth", #TODO
         singleaxis_tilt_convention="flat", #TODO
         singleaxis_azimuth_convention="North",
         crossaxis_tilt_convention="flat", #TODO
