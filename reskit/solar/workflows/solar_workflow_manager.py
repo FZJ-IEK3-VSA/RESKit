@@ -383,7 +383,7 @@ class SolarWorkflowManager(WorkflowManager):
         # prepare the assign attribute function arguments
         _default = ground_albedo if all([isinstance(x, float) for x in np.atleast_1d(ground_albedo)]) else None # integers are default elevs
         _func = None if all([isinstance(x, float) for x in np.atleast_1d(ground_albedo)]) else _get_ground_albedo_from_landcover
-        _funcargs = None if all([isinstance(x, float) for x in np.atleast_1d(ground_albedo)]) else {
+        _funcargs = {} if all([isinstance(x, float) for x in np.atleast_1d(ground_albedo)]) else {
                 "landcover_name" : ground_albedo[0],
                 "landcover_path" : ground_albedo[1]
             }
@@ -394,7 +394,7 @@ class SolarWorkflowManager(WorkflowManager):
             attr_default=_default, 
             attr_col="grdalbedo", 
             func=_func, 
-            funcargs=_funcargs)
+            **_funcargs)
         
         # final sanity check
         if not self.placements.grdalbedo.apply(lambda x : 0<x<1).all():
@@ -432,7 +432,7 @@ class SolarWorkflowManager(WorkflowManager):
             attr_default=None,  # no "standard azimuth"
             attr_col="modazimuth",
             func=rk_solar_core.system_design.location_to_module_azimuth,
-            funcargs={"locs": self.locs, "convention": convention},
+            **{"locs": self.locs, "convention": convention},
         )
 
         return self
@@ -466,7 +466,7 @@ class SolarWorkflowManager(WorkflowManager):
             attr_default=None, # no "standard azimuth"
             attr_col="axazimuth", 
             func=rk_solar_core.system_design.location_to_tracker_axis_azimuth, 
-            funcargs={
+            **{
                 "locs" : self.locs,
                 "convention" : convention
             })
@@ -506,7 +506,7 @@ class SolarWorkflowManager(WorkflowManager):
             attr_default=None,  # no "standard module tilt"
             attr_col="modtilt",
             func=rk_solar_core.system_design.location_to_module_tilt,
-            funcargs={"locs": self.locs, "convention": convention},
+            **{"locs": self.locs, "convention": convention},
         )
 
         return self
@@ -543,7 +543,7 @@ class SolarWorkflowManager(WorkflowManager):
             attr_default=None, # no "standard axis tilt"
             attr_col="axtilt", 
             func=rk_solar_core.system_design.location_to_tracker_axis_tilt,
-            funcargs={
+            **{
                 "locs" : self.locs,
                 "convention" : convention
             })
@@ -582,7 +582,7 @@ class SolarWorkflowManager(WorkflowManager):
             attr_default=None, # no "standard azimuth"
             attr_col="caxtilt", 
             func=rk_solar_core.system_design.location_to_cross_axis_tilt, 
-            funcargs={
+            **{
                 "locs" : self.locs,
                 "convention" : convention
             })
