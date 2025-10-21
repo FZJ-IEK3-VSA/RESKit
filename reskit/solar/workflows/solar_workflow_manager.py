@@ -1037,8 +1037,8 @@ class SolarWorkflowManager(WorkflowManager):
         """See pvlib.tracking.singleaxis for parameter info"""
         assert "apparent_solar_zenith" in self.sim_data
         assert "solar_azimuth" in self.sim_data
-        assert "tilt" in self.placements.columns
-        assert "azimuth" in self.placements.columns
+        assert "axtilt" in self.placements.columns
+        assert "axazimuth" in self.placements.columns
 
         self.register_workflow_parameter("tracking_mode", "single_axis")
         self.register_workflow_parameter("tracking_max_angle", max_angle)
@@ -1062,10 +1062,8 @@ class SolarWorkflowManager(WorkflowManager):
                     apparent_azimuth=pd.Series(
                         self.sim_data["solar_azimuth"][:, i], index=self._time_index_
                     ),
-                    # self.placements['tilt'].values,
-                    axis_tilt=placement.tilt,
-                    # self.placements['azimuth'].values,
-                    axis_azimuth=placement.azimuth,
+                    axis_tilt=placement.axtilt,
+                    axis_azimuth=placement.axazimuth,
                     max_angle=max_angle,
                     backtrack=backtrack,
                     gcr=gcr,
@@ -1076,10 +1074,10 @@ class SolarWorkflowManager(WorkflowManager):
 
                 # fix nan values. Why are they there???
                 s = np.isnan(system_modtilt[:, i])
-                system_modtilt[s, i] = placement.tilt
+                system_modtilt[s, i] = placement.axtilt
 
                 s = np.isnan(system_modazimuth[:, i])
-                system_modazimuth[s, i] = placement.azimuth
+                system_modazimuth[s, i] = placement.axazimuth
 
         self.sim_data["system_modtilt"] = system_modtilt
         self.sim_data["system_modazimuth"] = system_modazimuth
