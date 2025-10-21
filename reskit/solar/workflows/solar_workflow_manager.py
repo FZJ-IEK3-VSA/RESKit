@@ -876,15 +876,6 @@ class SolarWorkflowManager(WorkflowManager):
         assert "air_mass" in self.sim_data
         assert "extra_terrestrial_irradiance" in self.sim_data
 
-        # self.sim_data["direct_normal_irradiance"] = solarpower.myDirint(
-        #     ghi=self.sim_data['global_horizontal_irradiance'],
-        #     zenith=self.sim_data["apparent_solar_zenith"],
-        #     pressure=self.sim_data["surface_pressure"],
-        #     amRel=self.sim_data["air_mass"],
-        #     I0=self.sim_data["extra_terrestrial_irradiance"],
-        #     temp_dew=self.sim_data["surface_dew_temperature"],
-        #     use_delta_kt_prime=True,)
-
         g = self.sim_data["global_horizontal_irradiance"].flatten()
         z = self.sim_data["apparent_solar_zenith"].flatten()
         p = self.sim_data["surface_pressure"].flatten() if use_pressure else None
