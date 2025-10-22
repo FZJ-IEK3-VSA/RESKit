@@ -1745,6 +1745,14 @@ class SolarWorkflowManager(WorkflowManager):
         sel = self.sim_data["poa_global"] > 0
         cell_temp = self.sim_data["cell_temperature"][sel]
 
+        # different front- and backside irradiances would trigger (physically impossible) different electrical reactions of the same cell
+        # so reconcile front- and backside parameters: combine front and back POAs at the beginning and use a single interpolator 
+        # introduces a marginal rounding error but is much simpler/faster since params need to be calculated only once and are already aligned
+        poa = self.sim_data["poa_global"][sel]
+        if self.bifacial:
+            # add the backside irradiance, reduced by bifaciality factor (simplified)
+            poa += self.bifaciality_factor * self.sim_data["poa_backside_global"][sel]
+
         # Use RectBivariateSpline to speed up simulation, but at the cost of accuracy (should still be >99.996%)
         maxpoa = np.nanmax(poa)
 
