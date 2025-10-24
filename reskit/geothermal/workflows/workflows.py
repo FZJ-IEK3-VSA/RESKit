@@ -112,11 +112,11 @@ def EGSworkflow(
 
     tic_done = time.time()
     print("\nTime eval.:")
-    print(f"Data loading finished in {str(int(tic_calc-tic_data_loading))}s.")
-    print(f"Calculation finished in {str(int(tic_cost-tic_calc))}s.")
-    print(f"Cost calculation finished in {str(int(tic_done-tic_cost))}s.")
+    print(f"Data loading finished in {str(int(tic_calc - tic_data_loading))}s.")
+    print(f"Calculation finished in {str(int(tic_cost - tic_calc))}s.")
+    print(f"Cost calculation finished in {str(int(tic_done - tic_cost))}s.")
     print(
-        f"RESkit EGS done within {str(int(tic_done-tic_data_loading))}s for {len(placements)} points.."
+        f"RESkit EGS done within {str(int(tic_done - tic_data_loading))}s for {len(placements)} points.."
     )
 
     if savepath is None:

@@ -5,7 +5,6 @@ import os
 
 
 class gringarten:
-
     # water properties
     rho_water = 1000  # kg/m^3
     cp_water = 4186  # J/kgK
@@ -90,7 +89,6 @@ class gringarten:
         self.T_D = T_D
 
     def getWaterTemp(self, T_Rock, T_Inj):
-
         self.T_Rock = T_Rock
         self.T_Inj = T_Inj
 
@@ -104,7 +102,6 @@ class gringarten:
         self.T_out = T_water_outlet
 
     def getEGSProps(self, timestep=None):
-
         dt = self.time[1] - self.time[0]
         Qdot_water = (
             self.Vdot_total * self.rho_water * self.cp_water * (self.T_out - self.T_Inj)
@@ -142,7 +139,6 @@ class gringarten:
         R_total = Q_water / np.expand_dims(Q_Rock_total, 2)
 
         if timestep is None:
-
             output = {
                 "R_total": R_total,
                 "Qdot_water": Qdot_water,
@@ -200,7 +196,6 @@ class gringarten:
 
 # %%
 if __name__ == "__main__":
-
     SECONDS_PER_YEAR = 365 * 24 * 3600
     # unit tests
     grin = gringarten(50e-3, 1000, 1000, 1000, 2)

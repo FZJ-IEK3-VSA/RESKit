@@ -17,9 +17,9 @@ def build_ws_correction_function(type, data_dict):
         build the correction function
     """
     if isinstance(data_dict, str):
-        assert os.path.isfile(
-            data_dict
-        ), f"data_dict is a str but not an existing file: {data_dict}"
+        assert os.path.isfile(data_dict), (
+            f"data_dict is a str but not an existing file: {data_dict}"
+        )
         assert os.path.splitext(data_dict)[-1] in [
             ".yaml",
             ".yml",
@@ -31,12 +31,12 @@ def build_ws_correction_function(type, data_dict):
         if isinstance(data_dict, (list, tuple)):
             # assume that the polynomial factors a_i*x^^i are sorted (a_n, ..., a_2, a_1, a_0)
             data_dict = {i: v for i, v in enumerate(list(data_dict)[::-1])}
-        assert isinstance(
-            data_dict, dict
-        ), f"data_dict must be a dict if not given as a tuple of polynomial factors."
-        assert all(
-            [x % 1 == 0 for x in data_dict.keys()]
-        ), f"All data_dict keys must be integers i with values a_i, for all required polynomial factors a_i*x^^i."
+        assert isinstance(data_dict, dict), (
+            f"data_dict must be a dict if not given as a tuple of polynomial factors."
+        )
+        assert all([x % 1 == 0 for x in data_dict.keys()]), (
+            f"All data_dict keys must be integers i with values a_i, for all required polynomial factors a_i*x^^i."
+        )
 
         def correction_function(x):
             _func = 0
@@ -46,9 +46,9 @@ def build_ws_correction_function(type, data_dict):
 
         return correction_function
     elif type == "ws_bins":
-        assert (
-            "ws_bins" in data_dict.keys()
-        ), "data_dict must contain key 'ws_bins' with a dict of ws bins and factors."
+        assert "ws_bins" in data_dict.keys(), (
+            "data_dict must contain key 'ws_bins' with a dict of ws bins and factors."
+        )
         if not all(
             isinstance(ws_bin, Interval) for ws_bin in data_dict["ws_bins"].keys()
         ):

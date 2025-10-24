@@ -183,7 +183,7 @@ class Era5Source(NCSource):
             flip_lat=True,
             time_offset_minutes=-30,  # time convention -30
             time_index_from=time_index_from,
-            **kwargs
+            **kwargs,
         )
 
     loc_to_index = NCSource._loc_to_index_rect(0.25, 0.25)

@@ -510,9 +510,7 @@ def offshore_bos(
                 / 2
             )
             + strFac * depth
-        ) * (
-            excessCableFactor + 1
-        )
+        ) * (excessCableFactor + 1)
         arrayCable2Length /= 1000  # convert to km
 
         arrayCable1AndAncillaryCost = (
@@ -552,9 +550,7 @@ def offshore_bos(
                 + np.power(fixedCableLength + 2 * freeHangingCableLength, 2)
             )
             / 2
-        ) * (
-            excessCableFactor + 1
-        )
+        ) * (excessCableFactor + 1)
         arrayCable2Length /= 1000  # convert to km
 
         arrayCable1AndAncillaryCost = dynamicCableFactor * (
