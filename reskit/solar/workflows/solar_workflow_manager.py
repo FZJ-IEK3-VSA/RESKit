@@ -1913,7 +1913,7 @@ class SolarWorkflowManager(WorkflowManager):
 
         assert "module_dc_power_at_mpp" in self.sim_data
         assert "module_dc_voltage_at_mpp" in self.sim_data
-        assert hasattr(self, "module")
+        assert self.module is not None
         assert "modules_per_string" in self.placements.columns
         assert "strings_per_inverter" in self.placements.columns
         assert (
