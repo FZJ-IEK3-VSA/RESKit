@@ -56,8 +56,8 @@ def test_SolarWorkflowManager___init__() -> SolarWorkflowManager:
     assert (man.placements["lon"] == placements["lon"]).all()
     assert (man.placements["lat"] == placements["lat"]).all()
     assert (man.placements["capacity"] == placements["capacity"]).all()
-    assert (man.placements["tilt"] == placements["tilt"]).all()
-    assert (man.placements["azimuth"] == placements["azimuth"]).all()
+    assert (man.placements["modtilt"] == placements["modtilt"]).all()
+    assert (man.placements["modazimuth"] == placements["modazimuth"]).all()
 
     return man
 
@@ -76,14 +76,14 @@ def test_SolarWorkflowManager_estimate_tilt_from_latitude(
     man.estimate_tilt_from_latitude("Ryberg2020")
 
     assert np.isclose(
-        man.placements["tilt"],
+        man.placements["modtilt"], # modtilt exists now!
         [39.0679049, 39.1082060, 39.1484058, 39.1885045, 39.2285025],
     ).all()
 
     man.estimate_tilt_from_latitude("(latitude-5)**2")
 
     assert np.isclose(
-        man.placements["tilt"],
+        man.placements["modtilt"],
         [2067.975625, 2077.080625, 2086.205625, 2095.350625, 2104.515625],
     ).all()
 
@@ -93,15 +93,15 @@ def test_SolarWorkflowManager_estimate_azimuth_from_latitude(
 ):
     man = pt_SolarWorkflowManager_initialized
 
-    man.estimate_azimuth_from_latitude()
+    man.estimate_module_azimuth_from_latitude(convention="NorthSouth")
 
-    assert np.isclose(man.placements["azimuth"], [180, 180, 180, 180, 180]).all()
+    assert np.isclose(man.placements["modazimuth"], [180, 180, 180, 180, 180]).all()
 
     man.placements["lat"] *= -1
     man.locs = gk.LocationSet(man.placements[["lon", "lat"]].values)
-    man.estimate_azimuth_from_latitude()
+    man.estimate_module_azimuth_from_latitude(convention="NorthSouth")
 
-    assert np.isclose(man.placements["azimuth"], [0, 0, 0, 0, 0]).all()
+    assert np.isclose(man.placements["modazimuth"], [0, 0, 0, 0, 0]).all()
 
 
 def test_SolarWorkflowManager_apply_elevation(pt_SolarWorkflowManager_initialized):
@@ -110,7 +110,7 @@ def test_SolarWorkflowManager_apply_elevation(pt_SolarWorkflowManager_initialize
     fallback_elev = -1000
 
     # first test None case without elev attribute in placements
-    man.apply_elevation(elev=None, fallback_elev=fallback_elev)
+    man.assign_elevation(elev=None, fallback_elev=fallback_elev)
     # must yield fallback value for all locations
     assert np.isclose(
         man.placements["elev"],
@@ -120,18 +120,17 @@ def test_SolarWorkflowManager_apply_elevation(pt_SolarWorkflowManager_initialize
     # now test using the elevation from the placements dataframe
     base_elev = [90, 80, 70, 60, 50]
     man.placements["elev"] = base_elev
-    man.apply_elevation(elev=None, fallback_elev=fallback_elev)
+    man.assign_elevation(elev=123, fallback_elev=fallback_elev)
     # the elev data must not have been altered when None and 'elev' in attribute
     assert np.isclose(man.placements["elev"], base_elev).all()
 
-    # then test scalar value
-    man.apply_elevation(elev=120, fallback_elev=fallback_elev)
+    man.assign_elevation(elev=120, fallback_elev=fallback_elev)
     # must yield this value for all locs
     assert np.isclose(man.placements["elev"], [120, 120, 120, 120, 120]).all()
 
     # next test iterable as new elev
     new_elev = [100, 120, 140, 160, 2000]
-    man.apply_elevation(elev=new_elev, fallback_elev=fallback_elev)
+    man.assign_elevation(elev=new_elev, fallback_elev=fallback_elev)
     # must yield the same iterable
     assert np.isclose(man.placements["elev"], new_elev).all()
 
@@ -153,7 +152,7 @@ def test_SolarWorkflowManager_apply_elevation(pt_SolarWorkflowManager_initialize
     ]
     man2 = SolarWorkflowManager(placements2)
 
-    man2.apply_elevation(
+    man2.assign_elevation(
         elev=rk.TEST_DATA["clc-aachen_clipped.tif"], fallback_elev=fallback_elev
     )  # not an elevation file, but still a raster
     # must yield raster values, with fallback value for those placements outside the actual file coverage
@@ -184,14 +183,14 @@ def test_SolarWorkflowManager_apply_elevation(pt_SolarWorkflowManager_initialize
         50.775,
         50.875,
     ]
-    man2 = SolarWorkflowManager(placements3)
+    man3 = SolarWorkflowManager(placements3)
 
-    man2.apply_elevation(
+    man3.assign_elevation(
         elev=rk.TEST_DATA["clc-aachen_clipped.tif"], fallback_elev=fallback_elev
     )  # not an elevation file, but still a raster
     # must yield raster values, with fallback value for those placements outside the actual file coverage
     assert np.isclose(
-        man2.placements["elev"],
+        man3.placements["elev"],
         [
             fallback_elev,
             fallback_elev,
@@ -209,7 +208,7 @@ def pt_SolarWorkflowManager_loaded(
     pt_SolarWorkflowManager_initialized: SolarWorkflowManager,
 ) -> SolarWorkflowManager:
     man = pt_SolarWorkflowManager_initialized
-    man.apply_elevation([100, 120, 140, 160, 2000])
+    man.assign_elevation([100, 120, 140, 160, 2000])
 
     man.read(
         variables=[
@@ -485,36 +484,37 @@ def pt_SolarWorkflowManager_aoi(
 def test_SolarWorkflowManager_estimate_plane_of_array_irradiances(
     pt_SolarWorkflowManager_aoi: SolarWorkflowManager,
 ) -> SolarWorkflowManager:
-    man = pt_SolarWorkflowManager_aoi
+    man.placements["grdalbedo"] = 0.25 # required
     man.estimate_plane_of_array_irradiances(
         transposition_model="perez",
     )
 
-    print_testresults(man.sim_data["poa_global"])
-    print(man.sim_data["poa_direct"].mean())
-    print(man.sim_data["poa_diffuse"].mean())
-    print(man.sim_data["poa_sky_diffuse"].mean())
-    print(man.sim_data["poa_ground_diffuse"].mean())
+    print_testresults(man.sim_data["poa_global_raw"])
+    print(man.sim_data["poa_direct_raw"].mean())
+    print(man.sim_data["poa_diffuse_raw"].mean())
+    print(man.sim_data["poa_sky_diffuse_raw"].mean())
+    print(man.sim_data["poa_ground_diffuse_raw"].mean())
 
-    assert man.sim_data["poa_global"].shape == (54, 5)
+    assert man.sim_data["poa_global_raw"].shape == (54, 5)
 
-    assert np.isclose(man.sim_data["poa_global"].mean(), 174.11992196172187)
-    assert np.isclose(man.sim_data["poa_global"].std(), 173.4474037663958)
-    assert np.isclose(man.sim_data["poa_global"].min(), 0.13328509297399485)
-    assert np.isclose(man.sim_data["poa_global"].max(), 621.2447325355588)
+    assert np.isclose(man.sim_data["poa_global_raw"].mean(), 174.11992196172187)
+    assert np.isclose(man.sim_data["poa_global_raw"].std(), 173.4474037663958)
+    assert np.isclose(man.sim_data["poa_global_raw"].min(), 0.13328509297399485)
+    assert np.isclose(man.sim_data["poa_global_raw"].max(), 621.2447325355588)
 
-    assert np.isclose(man.sim_data["poa_direct"].mean(), 102.74712287621118)
-    assert np.isclose(man.sim_data["poa_diffuse"].mean(), 71.37279908551066)
-    assert np.isclose(man.sim_data["poa_sky_diffuse"].mean(), 69.85080250223847)
-    assert np.isclose(man.sim_data["poa_ground_diffuse"].mean(), 1.52199658327221)
+    assert np.isclose(man.sim_data["poa_direct_raw"].mean(), 102.74712287621118)
+    assert np.isclose(man.sim_data["poa_diffuse_raw"].mean(), 71.37279908551066)
+    assert np.isclose(man.sim_data["poa_sky_diffuse_raw"].mean(), 69.85080250223847)
+    assert np.isclose(man.sim_data["poa_ground_diffuse_raw"].mean(), 1.52199658327221)
 
 
 @pytest.fixture
 def pt_SolarWorkflowManager_poa(
     pt_SolarWorkflowManager_aoi: SolarWorkflowManager,
 ) -> SolarWorkflowManager:
-    man = pt_SolarWorkflowManager_aoi
-    man.estimate_plane_of_array_irradiances(transposition_model="perez", albedo=0.25)
+    man = pt_SolarWorkflowManager_aoi_fixed
+    man.placements["grdalbedo"] = 0.25 # required
+    man.estimate_plane_of_array_irradiances(transposition_model="perez")
 
     return man
 
@@ -523,7 +523,7 @@ def test_SolarWorkflowManager_cell_temperature_from_sapm(
     pt_SolarWorkflowManager_poa: SolarWorkflowManager,
 ) -> SolarWorkflowManager:
     man = pt_SolarWorkflowManager_poa
-
+    man.sim_data["poa_global"] = man.sim_data["poa_global_raw"] # required
     man.cell_temperature_from_sapm(mounting="glass_open_rack")
 
     print_testresults(man.sim_data["cell_temperature"])
@@ -619,6 +619,7 @@ def pt_SolarWorkflowManager_cell_temp(
     pt_SolarWorkflowManager_poa: SolarWorkflowManager,
 ) -> SolarWorkflowManager:
     man = pt_SolarWorkflowManager_poa
+    man.sim_data["poa_global"] = man.sim_data["poa_global_raw"]
     man.cell_temperature_from_sapm(mounting="glass_open_rack")
 
     return man
@@ -714,16 +715,14 @@ def test_SolarWorkflowManager_nan_values_tilt_azimuth_elev___init__() -> (
         3500,
         4000,
     ]
-    placements["tilt"] = [
+    placements["modtilt"] = [
         20,
         None,
         30,
         35,
         40,
     ]
-    placements["azimuth"] = [180, None, 180, 180, 180]
-    placements["elev"] = [100, None, None, 100, 180]
-
+    placements["modazimuth"] = [
     man = SolarWorkflowManager(placements)
     man.configure_cec_module(module="WINAICO WSx-240P6")
 
@@ -735,10 +734,10 @@ def test_SolarWorkflowManager_nan_values_tilt_azimuth_elev___init__() -> (
 
     # estimates tilt, azimuth and elev
     elev = 300  # fallback elevation
-    man.estimate_missing_params(elev)
+    man.estimate_missing_params(elev, ground_albedo=0.25, gcr = 2.0/7.0, fixed_module_tilt_convention="Ryberg2020",fixed_module_azimuth_convention="NorthSouth")
 
-    assert ~man.placements["tilt"].isna().any()
-    assert ~man.placements["azimuth"].isna().any()
+    assert ~man.placements["modtilt"].isna().any()
+    assert ~man.placements["modazimuth"].isna().any()
     assert ~man.placements["elev"].isna().any()
 
     return man
