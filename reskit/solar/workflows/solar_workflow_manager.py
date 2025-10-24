@@ -1692,19 +1692,35 @@ class SolarWorkflowManager(WorkflowManager):
                 module_desc = "user-configured"
             self.register_workflow_parameter("module_desc", module_desc)
 
-        # # Check if we need to add the Desoto parameters
-        # # defaults for EgRef and dEgdT taken from the note in the docstring for
-        # #  'pvlib.pvsystem.calcparams_desoto'
-        # if not "EgRef" in module:
-        #     module['EgRef'] = 1.121
-        # if not "dEgdT" in module:
-        #     module['dEgdT'] = -0.0002677
-
         self.module = module
-        self.bifacial = module["Bifacial"] in [1, "1", "YES", "Yes", "Y", True]
-        if bifaciality_factor is not None and not self.bifacial:
-            print(f"NOTE: bifaciality_factor is not None but module '{module._name}' is not bifacial, bifaciality_factor will be ignored.")
-        self.bifaciality_factor = bifaciality_factor
+
+        self.bifacial = hasattr(module, "Bifacial") and module["Bifacial"] in [1, "1", "YES", "Yes", "Y", True]
+
+        # set the right bifaciality factor, may come from module data or from workflow args
+        if self.bifacial:
+            # we need a bifaciality_factor
+            if bifaciality_factor is not None:
+                # when bifaciality factor is given in args and module is bifacial, it will be used
+                assert 0 < bifaciality_factor <= 1, "bifaciality_factor arg value is expected to be >0 and <=1."
+                if hasattr(module, "bifaciality_factor"):
+                    # we have a bifaciality_factor value in both workflow args and module data, prioritize arg
+                    warnings.warn(
+                        f"bifaciality_factor arg is not None and 'bifaciality_factor' key exists in module data. Module data will be overwritten by bifaciality_factor arg: {bifaciality_factor}."
+                    )
+                self.bifaciality_factor = bifaciality_factor
+            elif hasattr(module, "bifaciality_factor"):
+                # we only have a bifaciality_factor in the module data, use it
+                assert 0 < module["bifaciality_factor"] <= 1, "module bifaciality_factor from database is expected to be >0 and <=1." # make sure
+                self.bifaciality_factor = module["bifaciality_factor"]
+            else:
+                # neither module nor args have bifaciality_factor
+                raise TypeError("bifaciality_factor arg is needed when module is bifacial but does not have a 'bifaciality_factor' attribute. Can be set to 0 to null effect.")
+        else:
+            # bifaciality factor must be None
+            if bifaciality_factor is not None:
+                # not bifacial but bifaciality factor in args, inore and set to None
+                print(f"NOTE: bifaciality_factor is not None ({bifaciality_factor}) but module '{module._name}' is not bifacial, bifaciality_factor will be ignored.")
+            self.bifaciality_factor = None
 
         return self
 
