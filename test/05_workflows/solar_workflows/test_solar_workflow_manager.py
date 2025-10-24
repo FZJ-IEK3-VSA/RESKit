@@ -5,6 +5,36 @@ import reskit as rk
 import geokit as gk
 import pytest
 
+placements = pd.DataFrame()
+placements["lon"] = [
+    6.083,
+    6.183,
+    6.083,
+    6.183,
+    6.083,
+]
+placements["lat"] = [
+    50.475,
+    50.575,
+    50.675,
+    50.775,
+    50.875,
+]
+placements["capacity"] = [
+    2000,
+    2500,
+    3000,
+    3500,
+    4000,
+]
+placements["modtilt"] = [
+    20,
+    25,
+    30,
+    35,
+    40,
+]
+placements["modazimuth"] = [180, 180, 180, 180, 180]
 
 def print_testresults(variable):
     print("mean: ", variable[0:140, :].mean())
@@ -13,38 +43,6 @@ def print_testresults(variable):
     print("max: ", variable[0:140, :].max())
 
 
-def test_SolarWorkflowManager___init__() -> SolarWorkflowManager:
-    # (self, placements):
-    placements = pd.DataFrame()
-    placements["lon"] = [
-        6.083,
-        6.183,
-        6.083,
-        6.183,
-        6.083,
-    ]
-    placements["lat"] = [
-        50.475,
-        50.575,
-        50.675,
-        50.775,
-        50.875,
-    ]
-    placements["capacity"] = [
-        2000,
-        2500,
-        3000,
-        3500,
-        4000,
-    ]
-    placements["tilt"] = [
-        20,
-        25,
-        30,
-        35,
-        40,
-    ]
-    placements["azimuth"] = [180, 180, 180, 180, 180]
 
     man = SolarWorkflowManager(placements)
 
