@@ -154,6 +154,7 @@ class SolarWorkflowManager(WorkflowManager):
         attr_default: object,
         attr_col: str,
         func: Callable,
+        attr_fallback: object = None,
         verbose: bool = False,
         allow_nan: bool = False,
         **funcargs,
@@ -175,6 +176,9 @@ class SolarWorkflowManager(WorkflowManager):
         func : Callable
             Function that will be applied to extract location-specific values,
             must return an iterable of the same length as placements df.
+        attr_fallback : obj, optional
+            Will be set if the function does not extract values for all 
+            placements. Set to None to skip. By default None.
         verbose : bool, optional
             Prints additional information if True, by default False.
         allow_nan : bool, optional
@@ -218,11 +222,15 @@ class SolarWorkflowManager(WorkflowManager):
                     f"'{attr}' default must be None if data function shall be used to assign '{attr}'."
                 )
             self.placements[attr] = func(**funcargs)
+            # fill NaNs with fallback if applicable
+            if attr_fallback is not None and self.placements[attr].isna().any():
+                assert isinstance(attr_fallback, (str, numbers.Number)), f"fallback value for '{attr}' must be str or number. Here: {attr_fallback}"
+                self.placements.loc[self.placements[attr].isna(), attr] = attr_fallback
         else:
             # use default
             if ~isinstance(attr_default, str) and hasattr(attr_default, "__iter__") and len(attr_default) != len(self.placements):
                 raise TypeError(
-                    f"{attr} default must be scalar or an iterable of length of placements dataframe ({len(self.placements)}) if not None: {e}"
+                    f"{attr} default must be scalar or an iterable of length of placements dataframe ({len(self.placements)}) if not None."
                 )
             self.placements[attr] = attr_default
 
@@ -286,11 +294,11 @@ class SolarWorkflowManager(WorkflowManager):
                     )[np.isnan(_elevs)]
                 return _elevs
 
-        _default = elev if isinstance(elev, int) else None  # integers are default elevs
-        _func = None if isinstance(elev, int) else _elev_func
+        _default = elev if all([isinstance(x, numbers.Real) for x in np.atleast_1d(elev)]) else None # float or int
+        _func = _elev_func if _default is None else None
 
         self._assign_attribute(
-            attr="elev", attr_default=_default, attr_col="elev", func=_func, funcargs={}
+            attr="elev", attr_default=_default, attr_col="elev", func=_func, attr_fallback=fallback_elev, **{}
         )
 
         assert all([isinstance(x, numbers.Number) for x in self.placements["elev"]])
@@ -306,17 +314,17 @@ class SolarWorkflowManager(WorkflowManager):
 
         Parameters
         -------
-        ground_albedo : float, tuplr, list
+        ground_albedo : float, tuple, list
             * float : value will be set to all placements
             * tuple/list : Must then contain landcover dataset information and 
-              be formatted like (dataset_name:str, dataset_filepath:str).
+              be formatted like (dataset_name:str, dataset_filepath:str, fallback: float, optional).
 
         Returns
         -------
         obj
             reference to the invoking SolarWorkflowManager object
         """
-        if not all([isinstance(x, float) for x in np.atleast_1d(ground_albedo)]) or (hasattr(ground_albedo, "__iter__") and len(ground_albedo==2) and all([isinstance(x, str) for x in ground_albedo])):
+        if not all([isinstance(x, float) for x in np.atleast_1d(ground_albedo)]) or (hasattr(ground_albedo, "__iter__") and len(ground_albedo) in [2,3] and all([isinstance(x, str) for x in ground_albedo[:2]])):
             raise TypeError(f"Unknown ground_albedo argument of type '{type(ground_albedo)}': {ground_albedo}. Must be float, iterable of floats or tuple/list of 2 strings.")
     
         # define an aux function to extract ground albedos from landcover name and path
@@ -371,12 +379,13 @@ class SolarWorkflowManager(WorkflowManager):
             return ground_albedos
 
         # prepare the assign attribute function arguments
-        _default = ground_albedo if all([isinstance(x, float) for x in np.atleast_1d(ground_albedo)]) else None # integers are default elevs
-        _func = None if all([isinstance(x, float) for x in np.atleast_1d(ground_albedo)]) else _get_ground_albedo_from_landcover
-        _funcargs = {} if all([isinstance(x, float) for x in np.atleast_1d(ground_albedo)]) else {
+        _default = ground_albedo if all([isinstance(x, float) for x in np.atleast_1d(ground_albedo)]) else None
+        _func = _get_ground_albedo_from_landcover if _default is None else None
+        _funcargs = {} if _func is None else {
                 "landcover_name" : ground_albedo[0],
                 "landcover_path" : ground_albedo[1]
             }
+        _fallback = ground_albedo[2] if _func is not None and len(ground_albedo)==3 else None
         
         # apply generic function with ground albedo args
         self._assign_attribute(
@@ -384,6 +393,7 @@ class SolarWorkflowManager(WorkflowManager):
             attr_default=_default, 
             attr_col="grdalbedo", 
             func=_func, 
+            attr_fallback=_fallback,
             **_funcargs)
         
         # final sanity check
