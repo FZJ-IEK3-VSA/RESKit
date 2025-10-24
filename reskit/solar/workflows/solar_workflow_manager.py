@@ -124,7 +124,7 @@ class SolarWorkflowManager(WorkflowManager):
         # set required tilts and azimuths depending on tracking type
         if self.tracking in ["fixed"]:
             assert fixed_module_tilt_convention is not None, "fixed_module_tilt_convention must not be None when tracking='fixed'"
-            assert fixed_module_azimuth_convention is not None, "fixed_azimuth_tilt_convention must not be None when tracking='fixed'"
+            assert fixed_module_azimuth_convention is not None, "fixed_module_azimuth_convention must not be None when tracking='fixed'"
             self.estimate_module_tilt_from_latitude(
                 convention=fixed_module_tilt_convention
             )
@@ -133,7 +133,7 @@ class SolarWorkflowManager(WorkflowManager):
             )
         elif self.tracking in ["single-axis"]:
             assert singleaxis_tilt_convention is not None, "singleaxis_tilt_convention must not be None when tracking='single-axis'"
-            assert singleaxis_azimuth_convention is not None, "fixed_azimuth_tilt_convention must not be None when tracking='single-axis'"
+            assert singleaxis_azimuth_convention is not None, "singleaxis_azimuth_convention must not be None when tracking='single-axis'"
             assert crossaxis_tilt_convention is not None, "crossaxis_tilt_convention must not be None when tracking='single-axis'"
             self.estimate_tracker_axis_tilt_from_latitude(
                 convention=singleaxis_tilt_convention
