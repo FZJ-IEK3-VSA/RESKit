@@ -70,6 +70,8 @@ class SolarWorkflowManager(WorkflowManager):
         self._time_sel_ = None
         self._time_index_ = None
         self.module = None
+        self.bifacial = False # init as False, may be overwritten when module is configured
+        self.bifaciality_factor = None # same
 
     ####################################
     # PREPROCESS LOCATIONAL ATTRIBUTES #
