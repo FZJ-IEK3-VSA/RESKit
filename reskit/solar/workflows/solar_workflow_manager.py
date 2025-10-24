@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import yaml
 
-from os.path import isfile
+from os.path import isfile, join
 import warnings
 from scipy.interpolate import RectBivariateSpline
 import json
@@ -1642,7 +1642,7 @@ class SolarWorkflowManager(WorkflowManager):
                         "NOTE: The tech_year argument is ignored when a specific module is given. Set tech_year to None to silence this warning."
                     )
                 # Extract module parameters
-                db = pvlib.pvsystem.retrieve_sam("CECMod")
+                db = pvlib.pvsystem.retrieve_sam(join(DATA, "CEC Modules.csv"))
                 try:
                     module = getattr(db, module)
                 except Exception:
