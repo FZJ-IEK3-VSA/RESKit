@@ -89,7 +89,13 @@ def openfield_pv_merra_ryberg2019(
     ], "tracking must be either 'fixed' or 'single_axis'"
 
     # estimates tilt, azimuth and elev
-    wf.estimate_missing_params(elev)
+    wf.estimate_missing_params(
+        elev, 
+        ground_albedo=0.25, 
+        gcr=2.0 / 7.0,
+        fixed_module_tilt_convention="Ryberg2020",
+        fixed_module_azimuth_convention="NorthSouth",        
+        )
 
     wf.read(
         variables=[
@@ -293,6 +299,7 @@ def openfield_pv_era5(
     wf.estimate_missing_params(
         elev=elev, 
         ground_albedo=0.25,
+        gcr=2.0 / 7.0,
         fixed_module_tilt_convention="Ryberg2020", 
         fixed_module_azimuth_convention="NorthSouth",
     )
@@ -701,17 +708,16 @@ def openfield_pv_sarah_unvalidated(
     wf = SolarWorkflowManager(placements)
     wf.configure_cec_module(module=module, tech_year=tech_year, tracking=tracking)
     # ensure the tracking parameter is correct
-    assert tracking in [
-        "fixed",
-        "single_axis",
-    ], "tracking must be either 'fixed' or 'single_axis'"
+    assert tracking == "fixed", f"Only tracking = 'fixed' allowed in this workflow."
 
-    if "tilt" not in wf.placements.columns:
-        wf.estimate_tilt_from_latitude(convention="Ryberg2020")
-    if "azimuth" not in wf.placements.columns:
-        wf.estimate_azimuth_from_latitude()
+    if "modtilt" not in wf.placements.columns:
+        wf.estimate_module_tilt_from_latitude(convention="Ryberg2020")
+    if "modazimuth" not in wf.placements.columns:
+        wf.estimate_module_azimuth_from_latitude(convention="NorthSouth")
     if "elev" not in wf.placements.columns:
-        wf.apply_elevation(elev)
+        wf.assign_elevation(elev)
+    if "grdalbedo" not in wf.placements.columns:
+        wf.assign_ground_albedo(ground_albedo=0.25)
 
     wf.read(
         variables=["direct_normal_irradiance", "global_horizontal_irradiance"],
@@ -843,7 +849,13 @@ def openfield_pv_iconlam(
     ], "tracking must be either 'fixed' or 'single_axis'"
 
     # estimates tilt, azimuth and elev
-    wf.estimate_missing_params(elev)
+    wf.estimate_missing_params(
+        elev,
+        ground_albedo=0.25, 
+        gcr=2.0 / 7.0,
+        fixed_module_tilt_convention="Ryberg2020",
+        fixed_module_azimuth_convention="NorthSouth",    
+        )
 
     wf.read(
         variables=[
