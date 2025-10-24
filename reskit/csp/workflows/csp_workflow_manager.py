@@ -1675,7 +1675,9 @@ class PTRWorkflowManager(SolarWorkflowManager):
         storage_Size_Wh_4D = np.tensordot(
             np.tensordot(
                 np.tensordot(
-                    np.ones(aggregate_by_day.shape[0]), Q_sf_des, axes=0  # days
+                    np.ones(aggregate_by_day.shape[0]),
+                    Q_sf_des,
+                    axes=0,  # days
                 ),
                 1 / self.sm,  # np.ones(self.opt_data['dimensions'][2]),
                 axes=0,

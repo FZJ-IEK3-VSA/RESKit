@@ -55,7 +55,7 @@ class CosmoSource(NCSource):
             _maxLonDiff=s.MAX_LON_DIFFERENCE,
             _maxLatDiff=s.MAX_LAT_DIFFERENCE,
             tz=pytz.FixedOffset(60),
-            **kwargs
+            **kwargs,
         )
 
     def loc2Index(s, loc, outsideOkay=False, asInt=True):

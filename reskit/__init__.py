@@ -14,6 +14,8 @@ from . import wind
 from . import solar
 from . import csp
 from . import geothermal
+from . import dac
+from . import cooling_heating
 
 from ._test import TEST_DATA
 from .parameters.parameters import OnshoreParameters, OffshoreParameters

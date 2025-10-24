@@ -730,9 +730,9 @@ def test_SolarWorkflowManager_nan_values_tilt_azimuth_elev___init__() -> (
     man.configure_cec_module(module="WINAICO WSx-240P6")
 
     # limit the input placements longitude to range of -180...180
-    assert man.placements["lon"].between(-180, 180, inclusive=True).any()
+    assert man.placements["lon"].between(-180, 180, inclusive="both").any()
     # limit the input placements latitude to range of -90...90
-    assert man.placements["lat"].between(-90, 90, inclusive=True).any()
+    assert man.placements["lat"].between(-90, 90, inclusive="both").any()
     # ensure the tracking parameter is correct
 
     # estimates tilt, azimuth and elev

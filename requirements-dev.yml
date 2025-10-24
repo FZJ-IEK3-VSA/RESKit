@@ -5,26 +5,24 @@ dependencies:
   - python
   - pytest
   - pytest-cov
-  - pylint
   - papermill
-  - autopep8
   - jupyter
   - notebook
   - jupyterlab
   - pip
   - matplotlib
   - descartes
-  - pandas<2.0.0
+  - pandas <2.2.3
   - openpyxl
   - numpy
   - numba
-  - scipy<1.12
+  - scipy <=1.8.1
   - scikit-learn
-  - geokit>=1.4.0
-  - gdal=3.4.*
-  - netCDF4>=1.5.3
+  - geokit >=1.4.0
+  - gdal =3.4.*
+  - netCDF4 >=1.5.3
   - xarray
-  - pvlib-python=0.9.0
+  - pvlib-python =0.9.0
   - windpowerlib
   - nbconvert
-  - black-jupyter
+  - ruff

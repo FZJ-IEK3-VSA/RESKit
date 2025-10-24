@@ -360,7 +360,7 @@ def meanCF(ser1, ser2):
 
 def Nash_Sutcliffe(ser1, ser2):
     # 1 - (ser1-ser2)^2 / (ser2-avg_ser2)^2
-    return 1 - (((ser1 - ser2) ** 2)).sum() / (((ser2 - ser2.mean()) ** 2).sum())
+    return 1 - ((ser1 - ser2) ** 2).sum() / (((ser2 - ser2.mean()) ** 2).sum())
 
 
 def DCCA(ser1, ser2):
@@ -434,7 +434,7 @@ def plot_correlation(x, y, x_label, y_label, title, savepath=None):
     axs.text(
         x=0.05,  # position
         y=0.95,  # position
-        s=f"$R^2={round(R_squared,5)}$",  # text
+        s=f"$R^2={round(R_squared, 5)}$",  # text
         # coordinate system: trans ax: (0,0) lower left, (1,1) upper right
         transform=axs.transAxes,
         horizontalalignment="left",

@@ -172,7 +172,6 @@ def test_SarahSource_get(pt_SarahSource, pt_BoundedSarahSource):
     s2 = pt_BoundedSarahSource.get(var, pt)
     assert (s1 == s2).all()
     assert np.isclose(s1.values.mean(), 155.22916666666666)
-    #     print(s1.values.mean())
 
     pts = [
         (6.03, 50.81),
@@ -182,12 +181,8 @@ def test_SarahSource_get(pt_SarahSource, pt_BoundedSarahSource):
     s2 = pt_BoundedSarahSource.get(var, pts)
     assert (s1 == s2).values.all()
     assert np.isclose(s1.values.mean(), 124.28125)
-    #     print(s1.values.mean())
 
     pt = (6.03, 50.81)
     s1 = pt_SarahSource.get(var, pt, interpolation="bilinear")
     # assert (s1==s2).values.all()
     assert np.isclose(s1.values.mean(), 154.99248551347725)
-
-
-#     print(s1.values.mean())
