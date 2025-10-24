@@ -1293,7 +1293,6 @@ class SolarWorkflowManager(WorkflowManager):
             resistance_series=resSeries,
             resistance_shunt=resShunt,
             nNsVth=nNsVth,
-            ivcurve_pnts=None,  # PVLIB v0.7.2 Default
             method="lambertw",  # PVLIB v0.7.2 Default
         )
 
