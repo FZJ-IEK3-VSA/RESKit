@@ -52,7 +52,7 @@ def openfield_pv_merra_ryberg2019(
 
     tracking: str
                 Option 1 is 'fixed' meaning that the module does not have any tracking capabilities.
-                Option 2 is 'single_axis' meaning that the module has single_axis tracking capabilities.
+                Option 2 is 'singleaxis' meaning that the module has singleaxis tracking capabilities.
 
 
     inverter: str
@@ -83,10 +83,7 @@ def openfield_pv_merra_ryberg2019(
     wf = SolarWorkflowManager(placements)
     wf.configure_cec_module(module=module, tech_year=tech_year, tracking=tracking)
     # ensure the tracking parameter is correct
-    assert tracking in [
-        "fixed",
-        "single_axis",
-    ], "tracking must be either 'fixed' or 'single_axis'"
+    assert tracking == "fixed", "tracking must be 'fixed' for this workflow"
 
     # estimates tilt, azimuth and elev
     wf.estimate_missing_params(
@@ -125,7 +122,7 @@ def openfield_pv_merra_ryberg2019(
     wf.apply_DIRINT_model()
     wf.diffuse_horizontal_irradiance_from_trigonometry()
 
-    if tracking == "single_axis":
+    if tracking == "singleaxis":
         wf.permit_single_axis_tracking(**tracking_args)
 
     wf.determine_angle_of_incidence()
@@ -205,7 +202,7 @@ def openfield_pv_era5(
             Determines wether your PV system is fixed or not.
             Default is fixed.
             Option 1 is 'fixed' meaning that the module does not have any tracking capabilities.
-            Option 2 is 'single_axis' meaning that the module has single_axis tracking capabilities.
+            Option 2 is 'singleaxis' meaning that the module has single-axis tracking capabilities.
             
             NOTE: The tilt and azimuth definitions change with different tracking systems.
             For fixed tilt systems the following column names apply: 
@@ -286,12 +283,12 @@ def openfield_pv_era5(
 
     # tilt and azimuth were ambiguous depending on tracking, rename to consistent attribute names throughout the wfm
     if "tilt" in wf.placements:
-        _newtlt = {"fixed" : "modtilt", "single-axis" : "axtilt"}
+        _newtlt = {"fixed" : "modtilt", "singleaxis" : "axtilt"}
         assert _newtlt[tracking] not in wf.placements, f"'tilt' and '{_newtlt[tracking]}' columns cannot exist both when tracking = '{tracking}'."
         warnings.warn(f"'tilt' column will be interpreted as and renamed to '{_newtlt[tracking]}'.")
         wf.placements.rename(columns={"tilt" : _newtlt[tracking]})
     if "azimuth" in wf.placements:
-        _newaz = {"fixed" : "modazimuth", "single-axis" : "axazimuth"}
+        _newaz = {"fixed" : "modazimuth", "singleaxis" : "axazimuth"}
         assert _newaz[tracking] not in wf.placements, f"'azimuth' and '{_newaz[tracking]}' columns cannot exist both when tracking = '{tracking}'."
         warnings.warn(f"'azimuth' column will be interpreted as and renamed to '{_newaz[tracking]}'.")
         wf.placements.rename(columns={"azimuth" : _newaz[tracking]})
@@ -378,7 +375,7 @@ def openfield_pv_era5(
 
     wf.diffuse_horizontal_irradiance_from_trigonometry()
 
-    if tracking == "single_axis":
+    if tracking == "singleaxis":
         wf.permit_single_axis_tracking(**tracking_args)
 
     wf.determine_angle_of_incidence()
@@ -470,7 +467,7 @@ def pv_era5_WinklerUnpublished(
             Determines wether your PV system is fixed or not.
             Default is fixed.
             Option 1 is 'fixed' meaning that the module does not have any tracking capabilities.
-            Option 2 is 'single_axis' meaning that the module has single_axis tracking capabilities.
+            Option 2 is 'singleaxis' meaning that the module has single-axis tracking capabilities.
             
             NOTE: The tilt and azimuth definitions change with different tracking systems.
             For fixed tilt systems the following column names apply: 
@@ -605,7 +602,7 @@ def pv_era5_WinklerUnpublished(
     wf.diffuse_horizontal_irradiance_from_trigonometry() #TODO needed?
 
     # determine angle of incidence and resulting insolation
-    if wf.tracking == "single_axis":
+    if wf.tracking == "singleaxis":
         wf.permit_single_axis_tracking(**tracking_args)
     wf.determine_angle_of_incidence()
     wf.estimate_plane_of_array_irradiances(transposition_model="perez")
@@ -678,7 +675,7 @@ def openfield_pv_sarah_unvalidated(
                 Determines wether your PV system is fixed or not.
                 Default is fixed.
                 Option 1 is 'fixed' meaning that the module does not have any tracking capabilities.
-                Option 2 is 'single_axis' meaning that the module has single_axis tracking capabilities.
+                Option 2 is 'singleaxis' meaning that the module has single-axis tracking capabilities.
 
     inverter: str
                 Determines wether you want to model your PV system with an inverter or not.
@@ -748,7 +745,7 @@ def openfield_pv_sarah_unvalidated(
 
     wf.diffuse_horizontal_irradiance_from_trigonometry()
 
-    if tracking == "single_axis":
+    if tracking == "singleaxis":
         wf.permit_single_axis_tracking(**tracking_args)
 
     wf.determine_angle_of_incidence()
@@ -813,7 +810,7 @@ def openfield_pv_iconlam(
             Determines wether your PV system is fixed or not.
             Default is fixed.
             Option 1 is 'fixed' meaning that the module does not have any tracking capabilities.
-            Option 2 is 'single_axis' meaning that the module has single_axis tracking capabilities.
+            Option 2 is 'singleaxis' meaning that the module has single-axis tracking capabilities.
 
     inverter: str
             Determines wether you want to model your PV system with an inverter or not.
@@ -840,13 +837,15 @@ def openfield_pv_iconlam(
     """
 
     wf = SolarWorkflowManager(placements)
-    wf.configure_cec_module(module=module, tech_year=tech_year, tracking=tracking)
+    wf.configure_cec_module(module=module, tech_year=tech_year, tracking=tracking, database="CECMod")
 
     # ensure the tracking parameter is correct
+    if tracking in ["single-axis", "single_axis"]: 
+        tracking = "singleaxis"
     assert tracking in [
         "fixed",
-        "single_axis",
-    ], "tracking must be either 'fixed' or 'single_axis'"
+        "singleaxis",
+    ], "tracking must be either 'fixed' or 'singleaxis'"
 
     # estimates tilt, azimuth and elev
     wf.estimate_missing_params(
@@ -884,7 +883,7 @@ def openfield_pv_iconlam(
 
     wf.diffuse_horizontal_irradiance_from_trigonometry()
 
-    if tracking == "single_axis":
+    if tracking == "singleaxis":
         wf.permit_single_axis_tracking(**tracking_args)
 
     wf.determine_angle_of_incidence()

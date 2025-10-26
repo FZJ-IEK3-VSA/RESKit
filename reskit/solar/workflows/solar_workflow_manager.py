@@ -131,10 +131,10 @@ class SolarWorkflowManager(WorkflowManager):
             self.estimate_module_azimuth_from_latitude(
                 convention=fixed_module_azimuth_convention
             )
-        elif self.tracking in ["single-axis"]:
-            assert singleaxis_tilt_convention is not None, "singleaxis_tilt_convention must not be None when tracking='single-axis'"
-            assert singleaxis_azimuth_convention is not None, "singleaxis_azimuth_convention must not be None when tracking='single-axis'"
-            assert crossaxis_tilt_convention is not None, "crossaxis_tilt_convention must not be None when tracking='single-axis'"
+        elif self.tracking in ["singleaxis"]:
+            assert singleaxis_tilt_convention is not None, "singleaxis_tilt_convention must not be None when tracking='singleaxis'"
+            assert singleaxis_azimuth_convention is not None, "singleaxis_azimuth_convention must not be None when tracking='singleaxis'"
+            assert crossaxis_tilt_convention is not None, "crossaxis_tilt_convention must not be None when tracking='singleaxis'"
             self.estimate_tracker_axis_tilt_from_latitude(
                 convention=singleaxis_tilt_convention
             )
@@ -458,7 +458,7 @@ class SolarWorkflowManager(WorkflowManager):
         obj
             reference to the invoking SolarWorkflowManager object
         """
-        if not self.tracking == "single-axis":
+        if not self.tracking == "singleaxis":
             warnings.warn("estimate_tracker_axis_azimuth_from_latitude() is called but tracking is not 'singe-axis'")
         
         self._assign_attribute(
@@ -533,11 +533,11 @@ class SolarWorkflowManager(WorkflowManager):
         obj
             reference to the invoking SolarWorkflowManager object
         """
-        if not self.tracking == "single-axis":
+        if not self.tracking == "singleaxis":
             warnings.warn(
-                "estimate_tracker_axis_tilt_from_latitude() is called but tracking is not 'single-axis'"
+                "estimate_tracker_axis_tilt_from_latitude() is called but tracking is not 'singleaxis'"
             )
-        
+
         self._assign_attribute(
             attr="axtilt", 
             attr_default=None, # no "standard axis tilt"
@@ -572,9 +572,9 @@ class SolarWorkflowManager(WorkflowManager):
         obj
             reference to the invoking SolarWorkflowManager object
         """
-        if not self.tracking == "single-axis":
+        if not self.tracking == "singleaxis":
             warnings.warn(
-                "estimate_cross_axis_tilt_from_latitude() is called but tracking is not 'singe-axis'"
+                "estimate_cross_axis_tilt_from_latitude() is called but tracking is not 'singeaxis'"
             )
         
         self._assign_attribute(
@@ -1041,15 +1041,15 @@ class SolarWorkflowManager(WorkflowManager):
         """
 
         """See pvlib.tracking.singleaxis for parameter info"""
-        assert self.tracking == "single-axis", \
-            f"tracking flag must be 'single-axis' for permit_single_axis_tracking() but is instead: {self.tracking}"
+        assert self.tracking == "singleaxis", \
+            f"tracking flag must be 'singleaxis' for permit_single_axis_tracking() but is instead: {self.tracking}"
         
         assert "apparent_solar_zenith" in self.sim_data
         assert "solar_azimuth" in self.sim_data
         assert "axtilt" in self.placements.columns
         assert "axazimuth" in self.placements.columns
 
-        self.register_workflow_parameter("tracking_mode", "single_axis")
+        self.register_workflow_parameter("tracking_mode", "singleaxis")
         self.register_workflow_parameter("tracking_max_angle", max_angle)
         self.register_workflow_parameter("tracking_backtrack", backtrack)
         self.register_workflow_parameter("tracking_gcr", gcr)
@@ -1524,9 +1524,9 @@ class SolarWorkflowManager(WorkflowManager):
             raise ValueError(f"bifaciality_factor must be a float >0 and <=1, here: {bifaciality_factor}")
         if tracking not in [
             "fixed",
-            "single_axis",
+            "singleaxis",
         ]:
-            raise ValueError("tracking must be either 'fixed' or 'single_axis'")
+            raise ValueError("tracking must be either 'fixed' or 'singleaxis'")
 
         # set tracking type as class attribute
         self.tracking = tracking
