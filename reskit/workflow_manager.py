@@ -993,7 +993,8 @@ def execute_workflow_iteratively(
             placements=placements, weather_path=weather_path, zoom=zoom
         )
     if not "RESKit_sim_order" in placements.columns:
-        placements["RESKit_sim_order"] = range(len(placements))
+        with pd.option_context("mode.chained_assignment", None):
+            placements.loc[placements.index, "RESKit_sim_order"] = range(len(placements))
 
     # remove output saving for the iterative function execution of sub dfs
     workflow_args.update({"output_netcdf_path": None})

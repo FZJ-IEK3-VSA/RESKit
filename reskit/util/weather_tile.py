@@ -184,11 +184,12 @@ def get_dataframe_with_weather_tilepaths(placements, weather_path, zoom):
         )
 
         # add source column with the actual tile filepaths
-        placements["source"] = placements.apply(
-            lambda x: _get_tilepath(
-                weather_path=weather_path, zoom=zoom, lon=x.lon, lat=x.lat
-            ),
-            axis=1,
+        with pd.option_context("mode.chained_assignment", None):
+            placements["source"] = placements.apply(
+                lambda x: _get_tilepath(
+                    weather_path=weather_path, zoom=zoom, lon=x.lon, lat=x.lat
+                ),
+                axis=1,
         )
 
     # add an id column to ensure correct order preservation
