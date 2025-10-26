@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import yaml
 
-from os.path import isfile, join
+from os.path import isfile, splitext
 import warnings
 from scipy.interpolate import RectBivariateSpline
 import json
@@ -1475,7 +1475,8 @@ class SolarWorkflowManager(WorkflowManager):
         module:str="WINAICO WSx-240P6",
         tracking:str="fixed",
         tech_year:int=2050,
-        bifaciality_factor:float|None=None
+        bifaciality_factor:float|None=None,
+        database="CEC Modules.csv"
     ):
         """
         configure_cec_module(self, module="WINAICO WSx-240P6")
@@ -1507,6 +1508,10 @@ class SolarWorkflowManager(WorkflowManager):
             has a Bifacial attribute either as True, 1, "1", "Y", "YES", or 
             "Yes". By default None, i.e. bifacial energy production will NOT be 
             considered.
+        database : str, optional
+            The database that shall be loaded, either via a known database in 
+            pvlib.pvsystem.retrieve_sam() or as filename of a .csv database in 
+            reskit/solar/data. By default "CEC Modules.csv".
         
         Returns
         -------
@@ -1532,7 +1537,7 @@ class SolarWorkflowManager(WorkflowManager):
         self.tracking = tracking
 
         def _interpolate_module_params(
-            projected_module, original_module_name, tech_year, start_year
+            projected_module, original_module_name, tech_year, start_year, database
         ):
             if not isinstance(tech_year, int):
                 raise TypeError(
@@ -1545,7 +1550,17 @@ class SolarWorkflowManager(WorkflowManager):
                 )
 
             # get the original (unprojected) module parameters
-            db = pvlib.pvsystem.retrieve_sam("CECMod")
+            try:
+                # first try to load via pvlib and retrieve_sam()
+                db = pvlib.pvsystem.retrieve_sam(database)
+            except:
+                # else load database from the reskit solar data
+                if splitext(database)[-1]=="":
+                    # no extension, set it to csv
+                    database = database+".csv"
+                elif not splitext(database)[-1]==".csv":
+                    raise TypeError(f"database must be a csv file if not a known key in retrieve_sam(). Here: {database}")
+                db = pd.read_csv(DATA[database]._str, skiprows=[1,2]).set_index("Name", drop=True).T
             original_module = getattr(db, original_module_name)
             # scale module parameters to tech_year
             module = pd.Series(index=projected_module.index, dtype="float64")
@@ -1654,13 +1669,25 @@ class SolarWorkflowManager(WorkflowManager):
                         "NOTE: The tech_year argument is ignored when a specific module is given. Set tech_year to None to silence this warning."
                     )
                 # Extract module parameters
-                db = pvlib.pvsystem.retrieve_sam(join(DATA, "CEC Modules.csv"))
+                try:
+                    # first try to load via pvlib and retrieve_sam()
+                    db = pvlib.pvsystem.retrieve_sam(database)
+                except:
+                    # else load database from the reskit solar data
+                    if splitext(database)[-1]=="":
+                        # no extension, set it to csv
+                        database = database+".csv"
+                    elif not splitext(database)[-1]==".csv":
+                        raise TypeError(f"database must be a csv file if not a known key in retrieve_sam(). Here: {database}")
+                    db = pd.read_csv(DATA[database]._str, skiprows=[1,2]).set_index("Name", drop=True).T
                 try:
                     module = getattr(db, module)
                 except Exception:
                     raise RuntimeError(
-                        "The module '{}' is not in the CEC database".format(module)
+                        f"The module '{module}' is not in the CEC database."
                     )
+            else:
+                raise TypeError(f"module must be str-formatted module name. Here: {module}")
         else:
             if tech_year is not None:
                 print(
