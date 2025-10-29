@@ -279,7 +279,7 @@ def openfield_pv_era5(
     """
 
     wf = SolarWorkflowManager(placements)
-    wf.configure_cec_module(module=module, tech_year=tech_year, tracking=tracking, database="CECMod")
+    wf.configure_cec_module(module=module, tech_year=tech_year, tracking=tracking, database="CECMod", bifaciality_factor=0) 
 
     # tilt and azimuth were ambiguous depending on tracking, rename to consistent attribute names throughout the wfm
     if "tilt" in wf.placements:
