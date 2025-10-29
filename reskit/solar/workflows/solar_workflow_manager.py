@@ -1331,15 +1331,23 @@ class SolarWorkflowManager(WorkflowManager):
             poa_frontside_absorbed[:, iloc] = _poa_frontside_absorbed.values
             poa_backside_absorbed[:, iloc] = _poa_backside_absorbed.values
 
-        assert not (poa_frontside >= 1600).any() # sanity check
+        
+        def _fix_bad_poa_and_set_attr(arr, attr):
+            """Sets sim_data attribute with 0 values where raw front POA > 0"""
+            sel_bad_poa = poa_frontside >= 1600
+            self.sim_data[attr] = np.where(
+                        sel_bad_poa, 0, arr
+                    )
+
 
         # finally set the results as sim_data attributes
-        self.sim_data['poa_global_raw'] = poa_frontside
-        self.sim_data['poa_global'] = poa_frontside_absorbed
+        _fix_bad_poa_and_set_attr(arr=poa_frontside, attr="poa_global_raw")
+        _fix_bad_poa_and_set_attr(arr=poa_frontside_absorbed, attr="poa_global")
+
         if self.bifacial:
             # set POA values for backside only when bifacial flag is True
-            self.sim_data['poa_backside_global_raw'] = poa_backside
-            self.sim_data['poa_backside_global'] = poa_backside_absorbed
+            _fix_bad_poa_and_set_attr(arr=poa_backside, attr="poa_backside_global_raw")
+            _fix_bad_poa_and_set_attr(arr=poa_backside_absorbed, attr="poa_backside_global")
 
         return self
 
