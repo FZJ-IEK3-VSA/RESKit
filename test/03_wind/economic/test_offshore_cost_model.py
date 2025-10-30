@@ -4,18 +4,16 @@ import pytest
 from reskit.default_paths import DEFAULT_PATHS
 from reskit.parameters.parameters import OffshoreParameters
 import reskit._test.data as pkg_data
-from pathlib import Path 
+from pathlib import Path
 from importlib.resources import files, as_file
 
 
-
-
-
-
 def test_waterDepthFromLocation():
-    # GPS Coordiantes for location in Aachen to test Reading from tif file 
+    # GPS Coordiantes for location in Aachen to test Reading from tif file
     lon = 5.983
     lat = 51.205
+
+
 def get_pkg_file(name: str) -> Path:
     root = files(pkg_data)
     # erst übliche Stellen probieren
@@ -34,14 +32,10 @@ def get_pkg_file(name: str) -> Path:
     raise FileNotFoundError(name)
 
     tif_file = get_pkg_file("DEM-like.tif")
-    value_exact= 19
-    depth = waterDepthFromLocation(
-        lat, lon, waterDepthFolderPath=tif_file
-    )
-    
-    assert np.isclose(
-        depth, value_exact
-    ), "the waterdepthfile is not working correct"
+    value_exact = 19
+    depth = waterDepthFromLocation(lat, lon, waterDepthFolderPath=tif_file)
+
+    assert np.isclose(depth, value_exact), "the waterdepthfile is not working correct"
 
 
 def test_calculateOffshoreCapex():
@@ -72,27 +66,27 @@ def test_calculateOffshoreCapex():
 
 
 def test_getRatedCostFromWaterDepth():
-
     test_value = getRatedCostFromWaterDepth(17, 25, 55)
     assert np.isclose(test_value, 431693), "equation is changed"
-    assert getRatedCostFromWaterDepth(17) == getRatedCostFromWaterDepth(
-        -17
-    ), "negative avlues are handled incorrect"
+    assert getRatedCostFromWaterDepth(17) == getRatedCostFromWaterDepth(-17), (
+        "negative avlues are handled incorrect"
+    )
 
 
 def test_getCableCost():
     value1 = getCableCost(10, 14000, variableCostFactor=1.35, fixedCost=0)
-    
-    value2 = getCableCost(10, 10000, variableCostFactor=1.35, fixedCost=0)
-   
 
-    assert np.isclose(value1, 189000), "Error in getCableCostfuncion, possibly due to adapted function"
-    assert np.isclose(value2, 135000), "Error in getCableCostfuncion, possibly due to adapted function"
-    
+    value2 = getCableCost(10, 10000, variableCostFactor=1.35, fixedCost=0)
+
+    assert np.isclose(value1, 189000), (
+        "Error in getCableCostfuncion, possibly due to adapted function"
+    )
+    assert np.isclose(value2, 135000), (
+        "Error in getCableCostfuncion, possibly due to adapted function"
+    )
 
 
 def test_getPlatformCost():
-
     c1 = getPlatformCost(
         capacity=10000,
         applicationType="ac",  # AC substation offshore
