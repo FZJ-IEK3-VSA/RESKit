@@ -13,7 +13,7 @@ from .core.turbine_library import TurbineLibrary
 from .core.design_turbine import onshore_turbine_from_avg_wind_speed
 
 from .economic.onshore_cost_model import onshore_turbine_capex
-from .economic.offshore_cost_model import offshore_turbine_capex
+from .economic.offshore_cost_model import calculateOffshoreCapex
 
 
 from .workflows.wind_workflow_manager import WindWorkflowManager

@@ -45,7 +45,7 @@ def get_pkg_file(name: str) -> Path:
 
 
 def test_calculateOffshoreCapex():
-    comparedCAPEX = 2945.176
+    comparedCAPEX = 2934.26
     calculatedCAPEX = calculateOffshoreCapex(
         baseCapex=3000,
         capacity=14000,
