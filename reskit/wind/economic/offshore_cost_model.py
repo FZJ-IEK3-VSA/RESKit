@@ -199,7 +199,11 @@ def calculateOffshoreCapex(
 
 
 # %%
-def getRatedCostFromWaterDepth(depth, maxMonopileDepth=25, maxJacketDepth=55):
+def getRatedCostFromWaterDepth(
+    depth,
+    maxMonopileDepth=25,
+    maxJacketDepth=55,
+):
     """
     Estimates the rated cost of offshore wind turbine foundations based on water depth.
 
@@ -235,7 +239,12 @@ def getRatedCostFromWaterDepth(depth, maxMonopileDepth=25, maxJacketDepth=55):
 
 
 # %%
-def getCableCost(distance, capacity, variableCostFactor=1.350, fixedCost=0):
+def getCableCost(
+    distance,
+    capacity,
+    variableCostFactor=1.350,
+    fixedCost=0,
+):
     """
     Calculates the cost for connecting an offshore wind power plant to the coastline.
 
@@ -428,7 +437,14 @@ def getConverterStationCost(
     return ECPS + ECPF
 
 
-def onshoreTcc(cp, hh, rd, gdpEscalator=None, bladeMaterialEscalator=None, blades=None):
+def onshoreTcc(
+    cp,
+    hh, 
+    rd, 
+    gdpEscalator=None, 
+    bladeMaterialEscalator=None, 
+    blades=None,
+):
     """
     Calculates the turbine capital cost (TCC) of a 3-blade onshore wind turbine.
 
