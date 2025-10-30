@@ -4,7 +4,7 @@ import geokit as gk
 from reskit.default_paths import DEFAULT_PATHS
 import glob
 import os
-from typing import Optional,Literal
+from typing import Optional, Literal
 
 from . import ResError
 
@@ -57,7 +57,6 @@ def waterDepthFromLocation(
             raise ValueError(
                 "No waterDepthFilePath provided or found in default_path.yaml."
             )
- 
 
     if os.path.isdir(waterDepthFilePath):
         candidates = sorted(glob.glob(os.path.join(waterDepthFilePath, "*.tif")))
@@ -69,15 +68,13 @@ def waterDepthFromLocation(
             f"No .tif files found for path or pattern: {waterDepthFilePath}"
         )
 
-
     resultDepth = gk.raster.interpolateValues(
         source=candidates,
-        points=(longitude, latitude), 
+        points=(longitude, latitude),
     )
 
     if resultDepth is None:
-            return None
-
+        return None
 
     val = float(resultDepth)
 
@@ -120,7 +117,9 @@ def distanceToCoastline(latitude, longitude, distancetoCoastFilePath=None):
     """
     if distancetoCoastFilePath is None:
         if not "distancetoCoastFilePath" in DEFAULT_PATHS:
-            raise KeyError(f"Add 'distancetoCoastFilePath' key with filepath value to default_paths.yaml")
+            raise KeyError(
+                f"Add 'distancetoCoastFilePath' key with filepath value to default_paths.yaml"
+            )
         distancetoCoastFilePath = DEFAULT_PATHS.get("distancetoCoastPath")
         if distancetoCoastFilePath is None:
             raise ValueError(
@@ -128,11 +127,12 @@ def distanceToCoastline(latitude, longitude, distancetoCoastFilePath=None):
             )
 
     try:
-        value = gk.raster.interpolateValues(distancetoCoastFilePath, (longitude, latitude))
+        value = gk.raster.interpolateValues(
+            distancetoCoastFilePath, (longitude, latitude)
+        )
 
         return value
 
     except Exception as e:
         print(f"Error at Lat: {latitude}, Lon: {longitude}: {e}")
     return None
-
