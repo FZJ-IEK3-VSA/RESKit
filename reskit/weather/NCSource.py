@@ -256,9 +256,9 @@ class NCSource(object):
 
         # choose source for the time step extraction
         if not time_index_from == None:
-            assert (
-                time_index_from in self.variables.index
-            ), f'ERA_5-key {time_index_from} not known. Check variable "time_index_from" and folder {source}'
+            assert time_index_from in self.variables.index, (
+                f'ERA_5-key {time_index_from} not known. Check variable "time_index_from" and folder {source}'
+            )
             self.variables["path"][time_name] = self.variables["path"][time_index_from]
 
         # set basic variables
@@ -1020,11 +1020,16 @@ class NCSource(object):
                 "Interpolation scheme not one of: 'near', 'cubic', or 'bilinear'"
             )
 
+        # Create a list of strings from coordinates in the format "(lon, lat)" for all Location objects in a LocationSet.
+        locations_str = [f"({loc.lon}, {loc.lat})" for loc in locations._locations]
+
         # Make output as Series objects
         if force_as_data_frame or (len(output.shape) > 1 and output.shape[1] > 1):
-            return pd.DataFrame(output, index=self.time_index, columns=locations)
+            return pd.DataFrame(output, index=self.time_index, columns=locations_str)
         else:
             try:
-                return pd.Series(output[:, 0], index=self.time_index, name=locations[0])
+                return pd.Series(
+                    output[:, 0], index=self.time_index, name=locations_str[0]
+                )
             except:
-                return pd.Series(output, index=self.time_index, name=locations[0])
+                return pd.Series(output, index=self.time_index, name=locations_str[0])

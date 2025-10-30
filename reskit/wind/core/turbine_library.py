@@ -67,7 +67,7 @@ def parse_turbine(path):
         # Extract power profile
         tmp = pd.read_csv(fin)
         tmp = np.array([(ws, output) for i, ws, output in tmp.iloc[:, :2].itertuples()])
-        power = PowerCurve(tmp[:, 0], tmp[:, 1] / meta["Capacity"])
+        power = PowerCurve(tmp[:, 0], tmp[:, 1] / tmp[:, 1].max())
     return TurbineInfo(power, meta)
 
 

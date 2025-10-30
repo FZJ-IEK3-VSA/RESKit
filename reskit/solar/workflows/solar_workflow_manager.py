@@ -148,9 +148,9 @@ class SolarWorkflowManager(WorkflowManager):
         Returns a reference to the invoking SolarWorkflowManager object
 
         """
-        assert isinstance(
-            fallback_elev, int
-        ), f"'fallback_elev' must be an integer elevantion in [m]."
+        assert isinstance(fallback_elev, int), (
+            f"'fallback_elev' must be an integer elevantion in [m]."
+        )
         if elev is None and "elev" in self.placements.columns:
             # elevation is already an attribute in the placements dataframe, do nothing if no external elev given
             pass
@@ -1046,9 +1046,9 @@ class SolarWorkflowManager(WorkflowManager):
                         val_proj - original_module[param]
                     ) * (tech_year - start_year) / (2050 - start_year)
                 else:
-                    assert (
-                        val_proj == original_module[param]
-                    ), f"parameter '{param}' is not the same for original ({original_module[param]}) and projected ({val_proj}) modules"
+                    assert val_proj == original_module[param], (
+                        f"parameter '{param}' is not the same for original ({original_module[param]}) and projected ({val_proj}) modules"
+                    )
                     module[param] = val_proj
 
             return module
@@ -1293,12 +1293,15 @@ class SolarWorkflowManager(WorkflowManager):
             resistance_series=resSeries,
             resistance_shunt=resShunt,
             nNsVth=nNsVth,
-            ivcurve_pnts=None,  # PVLIB v0.7.2 Default
             method="lambertw",  # PVLIB v0.7.2 Default
         )
 
         interpolator = RectBivariateSpline(
-            _temp, _poa, gen["p_mp"].reshape(poaM.shape), kx=3, ky=3
+            _temp,
+            _poa,
+            np.array(gen["p_mp"]).reshape(poaM.shape),
+            kx=3,
+            ky=3,  # np.array() since type changed between pvlib versions
         )
         self.sim_data["module_dc_power_at_mpp"] = np.zeros_like(
             self.sim_data["poa_global"]
@@ -1308,7 +1311,11 @@ class SolarWorkflowManager(WorkflowManager):
         )
 
         interpolator = RectBivariateSpline(
-            _temp, _poa, gen["v_mp"].reshape(poaM.shape), kx=3, ky=3
+            _temp,
+            _poa,
+            np.array(gen["v_mp"]).reshape(poaM.shape),
+            kx=3,
+            ky=3,  # np.array() since type changed between pvlib versions
         )
         self.sim_data["module_dc_voltage_at_mpp"] = np.zeros_like(
             self.sim_data["poa_global"]
@@ -1403,9 +1410,9 @@ class SolarWorkflowManager(WorkflowManager):
         assert hasattr(self, "module")
         assert "modules_per_string" in self.placements.columns
         assert "strings_per_inverter" in self.placements.columns
-        assert (
-            not "capacity" in self.placements.columns
-        ), "Cannot simultaneously provide 'capacity' and inverter-string parameters"
+        assert not "capacity" in self.placements.columns, (
+            "Cannot simultaneously provide 'capacity' and inverter-string parameters"
+        )
 
         if method == "sandia":
             if isinstance(inverter, str):

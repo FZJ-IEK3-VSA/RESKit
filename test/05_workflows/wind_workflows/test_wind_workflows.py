@@ -2,6 +2,7 @@ from reskit.wind.workflows.workflows import (
     onshore_wind_merra_ryberg2019_europe,
     offshore_wind_merra_caglayan2019,
     wind_era5_PenaSanchezDunkelWinklerEtAl2025,
+    onshore_wind_iconlam_2023,
     wind_config,
 )
 from reskit import TEST_DATA
@@ -14,6 +15,12 @@ import reskit.weather as rk_weather
 from reskit.wind.core.data import DATAFOLDER
 
 
+alternative_wind_speed_rasters = {
+    50: TEST_DATA["gwa50-like.tif"],
+    200: TEST_DATA["gwa200-like.tif"],
+}
+
+
 @pytest.fixture
 def pt_wind_placements() -> pd.DataFrame:
     df = gk.vector.extractFeatures(TEST_DATA["turbinePlacements.shp"])
@@ -21,6 +28,13 @@ def pt_wind_placements() -> pd.DataFrame:
     df["capacity"] = 3000
     df["rotor_diam"] = 170
     df.loc[::2, "rotor_diam"] = 150
+    return df
+
+
+@pytest.fixture
+def pt_wind_placements_Zimbabwe() -> pd.DataFrame:
+    df = pd.read_csv(TEST_DATA["turbine_placements_cityBulawayoInZimbabwa.csv"])
+
     return df
 
 
@@ -82,28 +96,50 @@ def test_wind_era5_PenaSanchezDunkelWinklerEtAl2025(pt_wind_placements: pd.DataF
         placements=pt_wind_placements,
         era5_path=TEST_DATA["era5-like"],
         gwa_100m_path=TEST_DATA["gwa100-like.tif"],
-        esa_cci_path=TEST_DATA["ESA_CCI_2018_clip.tif"],
+        height_scaling_data=alternative_wind_speed_rasters,
         output_netcdf_path=None,
         cf_correction=True,
     )
 
-    assert gen.roughness.shape == (560,)
-    assert np.isclose(gen.roughness.mean(), 0.44921429)
-    assert np.isclose(gen.roughness.min(), 0.03)
-    assert np.isclose(gen.roughness.max(), 1.2)
-    assert np.isclose(gen.roughness.std(), 0.55593945)
-
     assert gen.elevated_wind_speed.shape == (140, 560)
-    assert np.isclose(gen.elevated_wind_speed.mean(), 5.86475732)
-    assert np.isclose(gen.elevated_wind_speed.min(), 0.26886236)
-    assert np.isclose(gen.elevated_wind_speed.max(), 12.86308429)
-    assert np.isclose(gen.elevated_wind_speed.std(), 2.18707038)
+    assert np.isclose(gen.elevated_wind_speed.mean(), 6.07661495)
+    assert np.isclose(gen.elevated_wind_speed.min(), 0.33788731)
+    assert np.isclose(gen.elevated_wind_speed.max(), 14.16420132)
+    assert np.isclose(gen.elevated_wind_speed.std(), 2.28764179)
 
     assert gen.capacity_factor.shape == (140, 560)
-    assert np.isclose(gen.capacity_factor.mean(), 0.32975885)
+    assert np.isclose(gen.capacity_factor.mean(), 0.35385846)
     assert np.isclose(gen.capacity_factor.min(), 0.0)
     assert np.isclose(gen.capacity_factor.max(), 0.98)
-    assert np.isclose(gen.capacity_factor.std(), 0.28939232)
+    assert np.isclose(gen.capacity_factor.std(), 0.29527256)
+
+
+def test_onshore_wind_iconlam_2023(pt_wind_placements_Zimbabwe: pd.DataFrame):
+    gen = onshore_wind_iconlam_2023(
+        placements=pt_wind_placements_Zimbabwe,
+        icon_lam_path=TEST_DATA["iconlam-like"],
+        esa_cci_path=TEST_DATA["ESA_CCI_2018_clip_cityBulawayoInZimbabwa.tif"],
+        output_netcdf_path=None,
+        output_variables=None,
+    )
+
+    assert gen.roughness.shape == (44,)
+    assert np.isclose(gen.roughness.mean(), 0.07909091)
+    assert np.isclose(gen.roughness.min(), 0.03)
+    assert np.isclose(gen.roughness.max(), 0.75)
+    assert np.isclose(gen.roughness.std(), 0.18148151)
+
+    assert gen.elevated_wind_speed.shape == (144, 44)
+    assert np.isclose(gen.elevated_wind_speed.mean(), 5.18359644)
+    assert np.isclose(gen.elevated_wind_speed.min(), 0.17078107)
+    assert np.isclose(gen.elevated_wind_speed.max(), 11.59889682)
+    assert np.isclose(gen.elevated_wind_speed.std(), 2.82934687)
+
+    assert gen.capacity_factor.shape == (144, 44)
+    assert np.isclose(gen.capacity_factor.mean(), 0.27713258)
+    assert np.isclose(gen.capacity_factor.min(), 0.0)
+    assert np.isclose(gen.capacity_factor.max(), 1.0)
+    assert np.isclose(gen.capacity_factor.std(), 0.34440202)
 
 
 def test_wind_config(pt_wind_placements: pd.DataFrame):
@@ -116,8 +152,8 @@ def test_wind_config(pt_wind_placements: pd.DataFrame):
         real_lra_ws_scaling=1,
         real_lra_ws_spatial_interpolation="average",
         real_lra_ws_nodata_fallback=np.nan,
-        landcover_path=TEST_DATA["ESA_CCI_2018_clip.tif"],
-        landcover_source_type="cci",
+        height_scaling_data=TEST_DATA["ESA_CCI_2018_clip.tif"],
+        height_scaling_method=("log", "cci"),
         ws_correction_func=(
             "ws_bins",
             os.path.join(DATAFOLDER, f"ws_correction_factors_PSDW2025.yaml"),
@@ -128,6 +164,7 @@ def test_wind_config(pt_wind_placements: pd.DataFrame):
         wake_curve="dena_mean",
         availability_factor=0.98,
         consider_boundary_layer_height=True,
+        allow_height_extrapolation=True,
         power_curve_scaling=0.01,
         power_curve_base=0.0,
         convolute_power_curves_args={},
@@ -145,13 +182,13 @@ def test_wind_config(pt_wind_placements: pd.DataFrame):
     assert np.isclose(gen.roughness.std(), 0.55593945)
 
     assert gen.elevated_wind_speed.shape == (140, 560)
-    assert np.isclose(gen.elevated_wind_speed.mean(), 5.86475732)
-    assert np.isclose(gen.elevated_wind_speed.min(), 0.26886236)
-    assert np.isclose(gen.elevated_wind_speed.max(), 12.86308429)
-    assert np.isclose(gen.elevated_wind_speed.std(), 2.18707038)
+    assert np.isclose(gen.elevated_wind_speed.mean(), 5.99812976)
+    assert np.isclose(gen.elevated_wind_speed.min(), 0.33788731)
+    assert np.isclose(gen.elevated_wind_speed.max(), 13.75022707)
+    assert np.isclose(gen.elevated_wind_speed.std(), 2.23741365)
 
     assert gen.capacity_factor.shape == (140, 560)
-    assert np.isclose(gen.capacity_factor.mean(), 0.32975885)
+    assert np.isclose(gen.capacity_factor.mean(), 0.34455949)
     assert np.isclose(gen.capacity_factor.min(), 0.0)
     assert np.isclose(gen.capacity_factor.max(), 0.98)
-    assert np.isclose(gen.capacity_factor.std(), 0.28939232)
+    assert np.isclose(gen.capacity_factor.std(), 0.2923411)

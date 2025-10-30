@@ -2,6 +2,7 @@ from reskit.solar.workflows.workflows import (
     openfield_pv_era5,
     openfield_pv_merra_ryberg2019,
     openfield_pv_sarah_unvalidated,
+    openfield_pv_iconlam,
 )
 from reskit import TEST_DATA
 import pytest
@@ -15,6 +16,126 @@ def pt_pv_placements() -> pd.DataFrame:
     df = gk.vector.extractFeatures(TEST_DATA["turbinePlacements.shp"])
     df["capacity"] = 2000
     return df
+
+
+@pytest.fixture
+def pt_pv_placements_Zimbabwe() -> pd.DataFrame:
+    df = pd.read_csv(TEST_DATA["module_placements_cityBulawayoInZimbabwa.csv"])
+
+    return df
+
+
+def test_openfield_pv_iconlam(pt_pv_placements_Zimbabwe):
+    gen = openfield_pv_iconlam(
+        placements=pt_pv_placements_Zimbabwe,
+        icon_lam_path=TEST_DATA["iconlam-like"],
+        module="WINAICO WSx-240P6",
+        elev=300,
+        tracking="fixed",
+        inverter=None,
+        inverter_kwargs={},
+        tracking_args={},
+        output_netcdf_path=None,
+        output_variables=None,
+        tech_year=2050,
+    )
+
+    assert gen["location"].shape == (483,)
+    assert gen["capacity"].shape == (483,)
+    assert gen["lon"].shape == (483,)
+    assert gen["lat"].shape == (483,)
+    assert gen["tilt"].shape == (483,)
+    assert gen["azimuth"].shape == (483,)
+    assert gen["elev"].shape == (483,)
+    assert gen["time"].shape == (144,)
+    assert gen["global_horizontal_irradiance"].shape == (144, 483)
+    assert gen["direct_horizontal_irradiance"].shape == (144, 483)
+    assert gen["surface_wind_speed"].shape == (144, 483)
+    assert gen["surface_pressure"].shape == (144, 483)
+    assert gen["surface_air_temperature"].shape == (144, 483)
+    assert gen["surface_dew_temperature"].shape == (144, 483)
+    assert gen["solar_azimuth"].shape == (144, 483)
+    assert gen["apparent_solar_zenith"].shape == (144, 483)
+    assert gen["direct_normal_irradiance"].shape == (144, 483)
+    assert gen["extra_terrestrial_irradiance"].shape == (144, 483)
+    assert gen["air_mass"].shape == (144, 483)
+    assert gen["diffuse_horizontal_irradiance"].shape == (144, 483)
+    assert gen["angle_of_incidence"].shape == (144, 483)
+    assert gen["poa_global"].shape == (144, 483)
+    assert gen["poa_direct"].shape == (144, 483)
+    assert gen["poa_diffuse"].shape == (144, 483)
+    assert gen["poa_sky_diffuse"].shape == (144, 483)
+    assert gen["poa_ground_diffuse"].shape == (144, 483)
+    assert gen["cell_temperature"].shape == (144, 483)
+    assert gen["module_dc_power_at_mpp"].shape == (144, 483)
+    assert gen["module_dc_voltage_at_mpp"].shape == (144, 483)
+    assert gen["capacity_factor"].shape == (144, 483)
+    assert gen["total_system_generation"].shape == (144, 483)
+
+    assert np.isclose(float(gen["location"].fillna(0).mean()), 241.0)
+    assert np.isclose(float(gen["capacity"].fillna(0).mean()), 14533.953933747413)
+    assert np.isclose(float(gen["lon"].fillna(0).mean()), 28.50841382368852)
+    assert np.isclose(float(gen["lat"].fillna(0).mean()), -20.117193185204783)
+    assert np.isclose(float(gen["tilt"].fillna(0).mean()), 20.518451664897075)
+    assert np.isclose(float(gen["azimuth"].fillna(0).mean()), 0.0)
+    assert np.isclose(float(gen["elev"].fillna(0).mean()), 300.0)
+    assert np.isclose(
+        float(gen["global_horizontal_irradiance"].fillna(0).mean()), 345.6062589173662
+    )
+    assert np.isclose(
+        float(gen["direct_horizontal_irradiance"].fillna(0).mean()), 279.838384668487
+    )
+    assert np.isclose(
+        float(gen["surface_wind_speed"].fillna(0).mean()), 1.5562901237076703
+    )
+    assert np.isclose(
+        float(gen["surface_pressure"].fillna(0).mean()), 50863.302503769664
+    )
+    assert np.isclose(
+        float(gen["surface_air_temperature"].fillna(0).mean()), 15.628519565010992
+    )
+    assert np.isclose(
+        float(gen["surface_dew_temperature"].fillna(0).mean()), 8.733685869278785
+    )
+    assert np.isclose(float(gen["solar_azimuth"].fillna(0).mean()), 91.13197502945316)
+    assert np.isclose(
+        float(gen["apparent_solar_zenith"].fillna(0).mean()), 27.516630295133602
+    )
+    assert np.isclose(
+        float(gen["direct_normal_irradiance"].fillna(0).mean()), 357.86282482022784
+    )
+    assert np.isclose(
+        float(gen["extra_terrestrial_irradiance"].fillna(0).mean()), 814.181544671707
+    )
+    assert np.isclose(float(gen["air_mass"].fillna(0).mean()), 2.32974800645228)
+    assert np.isclose(
+        float(gen["diffuse_horizontal_irradiance"].fillna(0).mean()), 66.2378169320506
+    )
+    assert np.isclose(
+        float(gen["angle_of_incidence"].fillna(0).mean()), 27.3999712014697
+    )
+    assert np.isclose(float(gen["poa_global"].fillna(0).mean()), 343.23936122056716)
+    assert np.isclose(float(gen["poa_direct"].fillna(0).mean()), 276.55530243973722)
+    assert np.isclose(float(gen["poa_diffuse"].fillna(0).mean()), 66.68405878082996)
+    assert np.isclose(float(gen["poa_sky_diffuse"].fillna(0).mean()), 64.8764543373828)
+    assert np.isclose(
+        float(gen["poa_ground_diffuse"].fillna(0).mean()), 1.8076044434471568
+    )
+    assert np.isclose(
+        float(gen["cell_temperature"].fillna(0).mean()), 25.73411503556805
+    )
+    assert np.isclose(
+        float(gen["module_dc_power_at_mpp"].fillna(0).mean()), 94.00160119470556
+    )
+    assert np.isclose(
+        float(gen["module_dc_voltage_at_mpp"].fillna(0).mean()), 18.77611256028308
+    )
+    assert np.isclose(
+        float(gen["capacity_factor"].fillna(0).mean()), 0.34919394100831996
+    )
+    assert np.isclose(
+        float(gen["total_system_generation"].fillna(0).mean()), 5082.177954576783
+    )
 
 
 def test_openfield_pv_era5(pt_pv_placements):
