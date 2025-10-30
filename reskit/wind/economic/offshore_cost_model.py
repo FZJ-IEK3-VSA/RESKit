@@ -7,13 +7,10 @@ import warnings
 
 
 from reskit.default_paths import DEFAULT_PATHS
-from reskit.parameters.parameters import OffshoreParameters 
-from reskit.util.local_values import*
+from reskit.parameters.parameters import OffshoreParameters
+from reskit.util.local_values import *
 from .onshore_cost_model import onshore_tcc
 from reskit.parameters.parameters import OffshoreParameters
-
-
-
 
 
 # %%
@@ -94,17 +91,17 @@ def calculateOffshoreCapex(
         shareTurb + shareFound + shareCable + shareOverhead, 1.0, rtol=1e-9
     ), "Sum of all cost shares must equal 1"
 
-    assert (
-        0 < maxMonopileDepth < 55
-    ), "Maximum depth for monopile foundation must be between 0 and 55 m"
+    assert 0 < maxMonopileDepth < 55, (
+        "Maximum depth for monopile foundation must be between 0 and 55 m"
+    )
 
-    assert (
-        55 <= maxJacketDepth < 100
-    ), "Maximum depth for jacket foundation must be between 55 and 100 m"
+    assert 55 <= maxJacketDepth < 100, (
+        "Maximum depth for jacket foundation must be between 55 and 100 m"
+    )
 
-    assert (
-        maxMonopileDepth < maxJacketDepth
-    ), "Jacket depth must be greater than monopile depth"
+    assert maxMonopileDepth < maxJacketDepth, (
+        "Jacket depth must be greater than monopile depth"
+    )
 
     if any(_arg is None for _arg in [baseCap, baseHubHeight, baseRotorDiam, baseCapex]):
         params = OffshoreParameters(fp=defaultOffshoreParamsFp, year=techYear)
@@ -172,7 +169,10 @@ def calculateOffshoreCapex(
     )
     convertercost_offshore = (
         getConverterStationCost(
-            capacity=baseWFSize, waterDepth=waterDepth, voltageType="dc", maxJacketDepth=55
+            capacity=baseWFSize,
+            waterDepth=waterDepth,
+            voltageType="dc",
+            maxJacketDepth=55,
         )
         * capacity
         / baseWFSize
@@ -188,8 +188,7 @@ def calculateOffshoreCapex(
     # Combine all costs
     offshoreCapexNoOverhead = ScaledTurbineCost + scaledFoundationCost + scaledCableCost
 
-    scaledOverheadCost = offshoreCapexNoOverhead * ( shareOverhead / (1 - shareOverhead) )
-
+    scaledOverheadCost = offshoreCapexNoOverhead * (shareOverhead / (1 - shareOverhead))
 
     totalOffshoreCapex = (
         ScaledTurbineCost + scaledFoundationCost + scaledCableCost + scaledOverheadCost
@@ -235,7 +234,6 @@ def getRatedCostFromWaterDepth(
         c1, c2, c3 = 0, 697, 1223
 
     return c1 * depth**2 + c2 * depth + c3 * 1000
-
 
 
 # %%
@@ -313,9 +311,9 @@ def getPlatformCost(
     offshore wind farms: A European perspective. In Renewable and
     Sustainable Energy Reviews 187, p. 113699. DOI: 10.1016/j.rser.2023.113699.
     """
-    assert (
-        isinstance(waterDepth, (int, float)) and waterDepth > 0
-    ), f"waterDepth must be an int or float > 0 m"
+    assert isinstance(waterDepth, (int, float)) and waterDepth > 0, (
+        f"waterDepth must be an int or float > 0 m"
+    )
     if convention == "RogeauEtAl2023":
         # platform cost factors per type, see table (5)
         RCPF_factors = {
@@ -439,10 +437,10 @@ def getConverterStationCost(
 
 def onshoreTcc(
     cp,
-    hh, 
-    rd, 
-    gdpEscalator=None, 
-    bladeMaterialEscalator=None, 
+    hh,
+    rd,
+    gdpEscalator=None,
+    bladeMaterialEscalator=None,
     blades=None,
 ):
     """
@@ -487,13 +485,13 @@ def onshoreTcc(
         + 2.7445 * np.power(rr, 2.5025) * gdpEscalator
     ) * (1 - 0.28)
 
-    #hub
+    # hub
     hubMass = 0.945 * singleBladeMass + 5680.3
     hubCost = hubMass * 4.25
 
     # Pitch and bearings
     pitchSystemCost = 2.28 * (0.2106 * np.power(rd, 2.6578))
-    
+
     # Spinner and nosecone
     noseConeMass = 18.5 * rd - 520.5
     noseConeCost = noseConeMass * 5.57
