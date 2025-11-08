@@ -88,6 +88,47 @@ class SolarWorkflowManager(WorkflowManager):
         singleaxis_azimuth_convention=None,
         crossaxis_tilt_convention=None,
     ):
+        """
+        This function checks mandatory parameters and estimates them based on a 
+        given convention or fallback values when the values are missing. For all
+        parameter values, first an existing placements column with the respective
+        name will be considered, then an attribute specific estimation function 
+        and last a fallback value will be applied.
+
+        Parameters
+        ----------
+        elev : int, Iterable, str
+            See 'elev' argument in self.assign_elevation().
+        ground_albedo : float, list, tuple #TODO allow Iterable with placements df length explicitly
+            See 'ground_albedo' argument in self.assign_ground_albedo(). 
+        gcr : _type_ #TODO
+            See 'gcr' argument in self.assign_gcr().
+        fixed_module_tilt_convention : str, optional
+            See 'convention' argument in 
+            reskit.solar.core.system_design.estimate_module_tilt_from_latitude(), 
+            by default None Required only if tracking == "fixed".
+        fixed_module_azimuth_convention : str, optional
+            See 'convention' argument in 
+            reskit.solar.core.system_design.estimate_module_azimuth_from_latitude(), 
+            by default None.  Required only if tracking == "fixed".
+        singleaxis_tilt_convention : str, optional
+            See 'convention' argument in 
+            reskit.solar.core.system_design.location_to_tracker_axis_tilt(), 
+            by default None. Required only if tracking == "singleaxis".
+        singleaxis_azimuth_convention : str, optional
+            See 'convention' argument in 
+            reskit.solar.core.system_design.location_to_tracker_axis_azimuth(), 
+            by default None. Required only if tracking == "singleaxis".
+        crossaxis_tilt_convention : str, optional
+            See 'convention' argument in 
+            reskit.solar.core.system_design.location_to_cross_axis_tilt(), 
+            by default None. Required only if tracking == "singleaxis".
+
+        Returns
+        -------
+        obj
+            reference to the invoking SolarWorkflowManager object
+        """
         # check placements columns for possible other/wrong column names
         def _check_existing_cols(substr):
             _allcols = [
