@@ -199,10 +199,11 @@ def openfield_pv_era5(
             from 'elev' column if available.
 
     tracking: str
-            Determines wether your PV system is fixed or not.
-            Default is fixed.
-            Option 1 is 'fixed' meaning that the module does not have any tracking capabilities.
-            Option 2 is 'singleaxis' meaning that the module has single-axis tracking capabilities.
+            Determines wether your PV system is fixed or not. Default is fixed.
+            NOTE: Has been limited to 'fixed' for this workflow due to 
+            inconsistencies when using 'singleaxis', argument is not removed 
+            only for reasons of backward compatibility. For single-axis tracking
+            calculations please use pv_era5_WinklerUnpublished() instead.
             
             NOTE: The tilt and azimuth definitions change with different tracking systems.
             For fixed tilt systems the following column names apply: 
@@ -282,16 +283,16 @@ def openfield_pv_era5(
     wf.configure_cec_module(module=module, tech_year=tech_year, tracking=tracking, database="CECMod", bifaciality_factor=0) 
 
     # tilt and azimuth were ambiguous depending on tracking, rename to consistent attribute names throughout the wfm
+    if not tracking == "fixed":
+        raise rk_util.RESKitDeprecationError("tracking has been limited to 'fixed' due to inconsistencies, use pv_era5_WinklerUnpublished() for single-axis tracking.")
     if "tilt" in wf.placements:
-        _newtlt = {"fixed" : "modtilt", "singleaxis" : "axtilt"}
-        assert _newtlt[tracking] not in wf.placements, f"'tilt' and '{_newtlt[tracking]}' columns cannot exist both when tracking = '{tracking}'."
-        warnings.warn(f"'tilt' column will be interpreted as and renamed to '{_newtlt[tracking]}'.")
-        wf.placements.rename(columns={"tilt" : _newtlt[tracking]})
+        assert 'modtilt' not in wf.placements, f"'tilt' and 'modtilt' columns cannot exist both when tracking == 'fixed'."
+        warnings.warn(f"'tilt' column will be interpreted as and renamed to 'modtilt'.")
+        wf.placements.rename(columns={"tilt" : "modtilt"})
     if "azimuth" in wf.placements:
-        _newaz = {"fixed" : "modazimuth", "singleaxis" : "axazimuth"}
-        assert _newaz[tracking] not in wf.placements, f"'azimuth' and '{_newaz[tracking]}' columns cannot exist both when tracking = '{tracking}'."
-        warnings.warn(f"'azimuth' column will be interpreted as and renamed to '{_newaz[tracking]}'.")
-        wf.placements.rename(columns={"azimuth" : _newaz[tracking]})
+        assert "modazimuth" not in wf.placements, f"'azimuth' and '{"modazimuth"}' columns cannot exist both when tracking == 'fixed'."
+        warnings.warn(f"'azimuth' column will be interpreted as and renamed to 'modazimuth'.")
+        wf.placements.rename(columns={"azimuth" : "modazimuth"})
     # estimates tilt, azimuth and elev
     wf.estimate_missing_params(
         elev=elev, 
