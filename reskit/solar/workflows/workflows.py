@@ -424,6 +424,7 @@ def pv_era5_WinklerUnpublished(
     output_netcdf_path=None,
     output_variables=None,
     tech_year=2050,
+    new_style=True,
 ):
     """
     Simulation of an openfield  PV openfield system based on ERA5 Data.
@@ -543,6 +544,8 @@ def pv_era5_WinklerUnpublished(
         module=module, 
         tech_year=tech_year, 
         bifaciality_factor=bifaciality_factor, 
+        tracking=tracking, 
+        tracking_args=tracking_args,
         database="CEC Modules.csv"
         )
 
@@ -598,18 +601,22 @@ def pv_era5_WinklerUnpublished(
         nodata_fallback=DNI_nodata_fallback,
         nodata_fallback_scaling=DNI_nodata_fallback_scaling,
     )
-
-    wf.determine_extra_terrestrial_irradiance(model="spencer", solar_constant=1370) #TODO needed?
-    wf.determine_air_mass(model="kastenyoung1989") # TODO needed?
-
-    wf.diffuse_horizontal_irradiance_from_trigonometry() #TODO needed?
+    if not new_style:
+        wf.determine_extra_terrestrial_irradiance(model="spencer", solar_constant=1370)
+        wf.determine_air_mass(model="kastenyoung1989")
+    # calculate diffuse horizontal irradiance from scaled GHI and DNI
+    wf.diffuse_horizontal_irradiance_from_trigonometry()
 
     # determine angle of incidence and resulting insolation
     if wf.tracking == "singleaxis":
         wf.permit_single_axis_tracking(**tracking_args)
-    wf.determine_angle_of_incidence()
-    wf.estimate_plane_of_array_irradiances(transposition_model="perez")
-    wf.apply_angle_of_incidence_losses_to_poa()
+
+    if new_style:
+        wf.estimate_absorbed_plane_of_array_irradiances()
+    else:
+        wf.determine_angle_of_incidence()
+        wf.estimate_plane_of_array_irradiances(transposition_model="perez")
+        wf.apply_angle_of_incidence_losses_to_poa()
 
     # simulate module response and energy yield
     wf.cell_temperature_from_sapm()
