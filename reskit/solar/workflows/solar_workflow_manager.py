@@ -1699,6 +1699,7 @@ class SolarWorkflowManager(WorkflowManager):
                     original_module_name="WINAICO_WSx_240P6",
                     tech_year=tech_year,
                     start_year=2019,
+                    database=database,
                 )
 
                 module.name = "WINAICO WSx-240P6"
@@ -1738,6 +1739,7 @@ class SolarWorkflowManager(WorkflowManager):
                     original_module_name="LG_Electronics_Inc__LG370Q1C_A5",
                     tech_year=tech_year,
                     start_year=2019,
+                    database=database,
                 )
 
                 module.name = "LG Electronics LG370Q1C-A5"
