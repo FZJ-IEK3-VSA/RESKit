@@ -81,6 +81,7 @@ class SolarWorkflowManager(WorkflowManager):
         self,
         elev,
         ground_albedo,
+        gcr,
         fixed_module_tilt_convention=None,
         fixed_module_azimuth_convention=None,
         singleaxis_tilt_convention=None,
@@ -113,13 +114,14 @@ class SolarWorkflowManager(WorkflowManager):
         for param in ["tilt", "azimuth", "albedo", "elev"]:
             _check_existing_cols(substr=param)
 
-        # set elevation and albedo - always required
+        # set elevation, albedo and gcr - always required
         self.assign_elevation(
             elev=elev, fallback_elev=840
         )  # mean landmass elevation as fallback
         self.assign_ground_albedo(
             ground_albedo=ground_albedo
         )
+        self.assign_gcr(gcr=gcr)
 
         # set required tilts and azimuths depending on tracking type
         if self.tracking in ["fixed"]:
@@ -402,6 +404,34 @@ class SolarWorkflowManager(WorkflowManager):
         
         return self
 
+
+    def assign_gcr(self, gcr: str | float | Iterable):
+        """
+        Ensures or adds a ground coverage ratio ('gcr') column to the placements 
+        data frame. gcr is a value denoting the ground coverage ratio of a 
+        tracker system which utilizes backtracking; i.e. the ratio between the
+        PV array surface area to total ground area. A tracker system with modules 2 meters wide, centered on the tracking axis,
+            with 6 meters between the tracking axes has a gcr of 2/6=0.333. #TODO
+
+        Parameters
+        ----------
+        gcr : str, int, float, Iterable
+            If a string is given it must be either a known gcr convention or a 
+            path to a rasterfile including the local ground coverages.
+            If an iterable is given it has to include the gcrs at each location 
+            and be of equal length to self.placements dataframe.
+            If a float is given, it will be applied to all locations equally.
+            All values will be preceded by an existing 'gcr' column in the 
+            placements dataframe, only then None is accepted.
+
+        Returns
+        -------
+        obj
+            reference to the invoking SolarWorkflowManager object
+        """
+        assert "gcr" in self.placements.columns, "'gcr' column must exist in placements dataframe. #TODO allow function arg"
+        return self
+    
 
     def estimate_module_azimuth_from_latitude(self, convention: str):
         """
@@ -1000,7 +1030,7 @@ class SolarWorkflowManager(WorkflowManager):
         return self
 
 
-    def permit_single_axis_tracking(self, max_angle=90, backtrack=True, gcr=2.0 / 7.0):
+    def permit_single_axis_tracking(self, max_angle=90, backtrack=True):
         """
         Permits single axis tracking in the simulation using the 
         pvlib.tracking.singleaxis() function [1].
@@ -1048,11 +1078,9 @@ class SolarWorkflowManager(WorkflowManager):
         assert "solar_azimuth" in self.sim_data
         assert "axtilt" in self.placements.columns
         assert "axazimuth" in self.placements.columns
-
-        self.register_workflow_parameter("tracking_mode", "singleaxis")
-        self.register_workflow_parameter("tracking_max_angle", max_angle)
-        self.register_workflow_parameter("tracking_backtrack", backtrack)
-        self.register_workflow_parameter("tracking_gcr", gcr)
+        assert "gcr" in self.placements.columns
+        assert "backtrack" in self.placements.columns
+        assert "btmaxangle" in self.placements.columns
 
         system_modtilt = np.empty(self._sim_shape_)
         system_modazimuth = np.empty(self._sim_shape_)
@@ -1075,7 +1103,7 @@ class SolarWorkflowManager(WorkflowManager):
                     axis_azimuth=placement.axazimuth,
                     max_angle=max_angle,
                     backtrack=backtrack,
-                    gcr=gcr,
+                    gcr=placement.gcr,
                 )
 
                 system_modtilt[:, i] = tmp["surface_tilt"].values
@@ -1320,7 +1348,7 @@ class SolarWorkflowManager(WorkflowManager):
             if "pvrow_width" not in pvfts_args:
                 # calculate it based on the GCR and axis height
                 _panel_width = 2 # m
-                assert 0 < pvfts_args["gcr"] <= 1, "gcr must be a float value between 0 and 1 for all placements" # make sure
+                assert (0 < np.atleast_1d(pvfts_args["gcr"])).all() & (np.atleast_1d(pvfts_args["gcr"]) <= 1).all(), "gcr must be a float value between 0 and 1 for all placements" # make sure
                 pvfts_args["pvrow_width"] = _panel_width/pvfts_args["gcr"]
             
             # simulate and append locational output to total results

@@ -549,6 +549,7 @@ def pv_era5_WinklerUnpublished(
     wf.estimate_missing_params(
         elev=elev, 
         ground_albedo=ground_albedo,
+        gcr="Winkler2026",
         fixed_module_tilt_convention="Ryberg2020", #TODO
         fixed_module_azimuth_convention="NorthSouth", #TODO
         singleaxis_tilt_convention="flat", #TODO
