@@ -1133,8 +1133,9 @@ class SolarWorkflowManager(WorkflowManager):
                 placement = self.placements.iloc[i]
 
                 tmp = pvlib.tracking.singleaxis(
-                    apparent_zenith=pd.Series(
-                        self.sim_data["apparent_solar_zenith"][:, i],
+                    # zenith is defined as angle from vertical and >90° is impossible, set maximum of 90° to avoid nans
+                    apparent_zenith = pd.Series(
+                        np.where(self.sim_data["apparent_solar_zenith"][:, i]<=90, self.sim_data["apparent_solar_zenith"][:, i], 90),
                         index=self._time_index_,
                     ),
                     apparent_azimuth=pd.Series(
@@ -1150,6 +1151,8 @@ class SolarWorkflowManager(WorkflowManager):
                 system_modtilt[:, i] = tmp["surface_tilt"].values
                 system_modazimuth[:, i] = tmp["surface_azimuth"].values
 
+                assert not np.isnan(system_modtilt[:, i]).any()
+                assert not np.isnan(system_modazimuth[:, i]).any()
                 # fix nan values. Why are they there???
                 s = np.isnan(system_modtilt[:, i])
                 system_modtilt[s, i] = placement.axtilt
