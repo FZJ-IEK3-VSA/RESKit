@@ -1395,7 +1395,7 @@ class SolarWorkflowManager(WorkflowManager):
                 pvfts_args["pvrow_width"] = _panel_width/pvfts_args["gcr"]
             
             # simulate and append locational output to total results
-            _poa_frontside, _poa_backside, _poa_frontside_absorbed, _poa_backside_absorbed = pvlib.bifacial.pvfactors.pvfactors_timeseries(**pvfts_args)
+            _poa_frontside, _poa_backside, _poa_frontside_absorbed, _poa_backside_absorbed = pvlib.bifacial.pvfactors_timeseries(**pvfts_args)
 
             poa_frontside[:, iloc] = _poa_frontside.values
             poa_backside[:, iloc] = _poa_backside.values
