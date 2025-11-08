@@ -1357,21 +1357,20 @@ class SolarWorkflowManager(WorkflowManager):
             # define a fallback for the axis azimuth in case of tracked systems where the value does not exist
             # the tracker axis is not used here but value is expected, orientation is always rectangular to module azimuth
             _axazimuth_fallback = _extract_var("modazimuth", "system_modazimuth") + 90 if self.tracking == "fixed" else None
-            pvfts_args = {
-                "solar_azimuth" : self.sim_data["solar_azimuth"][:, iloc], 
-                "solar_zenith" : self.sim_data["apparent_solar_zenith"][:, iloc], 
-                "surface_azimuth" : _extract_var("modazimuth", "system_modazimuth"), 
-                "surface_tilt" : _extract_var("modtilt", "system_modtilt"), 
-                "axis_azimuth" : _extract_var("axazimuth", "system_axazimuth", _axazimuth_fallback),
-                "timestamps" : np.arange(self._sim_shape_[0]),
-                "dhi" : self.sim_data["diffuse_horizontal_irradiance"][:, iloc], 
-                "dni" : self.sim_data["direct_normal_irradiance"][:, iloc], 
-                "gcr" : _extract_var("gcr"),
-                "pvrow_height" : _extract_var("pvrow_height"),
-                "albedo" : _extract_var("grdalbedo", "system_grdalbedo"),
-                "n_pvrows" : _extract_var("n_pvrows"),
-                "index_observed_pvrow" : _extract_var("index_observed_pvrow"),
-            }
+            pvfts_args = {}
+            pvfts_args["solar_azimuth"] = self.sim_data["solar_azimuth"][:, iloc]
+            pvfts_args["solar_zenith"] = self.sim_data["apparent_solar_zenith"][:, iloc]
+            pvfts_args["surface_azimuth"] = _extract_var("modazimuth", "system_modazimuth")
+            pvfts_args["surface_tilt"] = _extract_var("modtilt", "system_modtilt")
+            pvfts_args["axis_azimuth"] = _extract_var("axazimuth", "system_axazimuth", _axazimuth_fallback)
+            pvfts_args["timestamps"] = np.arange(self._sim_shape_[0])
+            pvfts_args["dhi"] = self.sim_data["diffuse_horizontal_irradiance"][:, iloc]
+            pvfts_args["dni"] = self.sim_data["direct_normal_irradiance"][:, iloc]
+            pvfts_args["gcr"] = _extract_var("gcr")
+            pvfts_args["pvrow_height"] = _extract_var("pvrow_height")
+            pvfts_args["albedo"] = _extract_var("grdalbedo", "system_grdalbedo")
+            pvfts_args["n_pvrows"] = _extract_var("n_pvrows")
+            pvfts_args["index_observed_pvrow"] = _extract_var("index_observed_pvrow")
 
             # handle kwargs for this location
             kwargs_iloc = {}
