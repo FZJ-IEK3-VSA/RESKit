@@ -1,6 +1,6 @@
 turbine_library_path: Null
 baseline_onshore_turbine_definition_path: Null
 baseline_offshore_turbine_definition_path: Null
-waterdepthFile: null
-distancetoCoast: null
+waterDepthFilePath: null
+distancetoCoastPath: null
 
