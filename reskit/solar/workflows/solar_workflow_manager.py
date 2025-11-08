@@ -1348,7 +1348,7 @@ class SolarWorkflowManager(WorkflowManager):
                     return np.full(self._sim_shape_[0], fallback)
                 else:
                     # fall back to defaults
-                    defaults = {"gcr" : 0.45, "axis_azimuth" : 0, "pvrow_height" : 1.12, "n_pvrows" : 1, "index_observed_pvrow" : 0} #TODO change n_pvrows and pvrow_width and index_observed_pvrow
+                    defaults = {"n_pvrows" : 3, "index_observed_pvrow" : 1}
                     if var not in defaults:
                         raise KeyError(f"Variable '{var}' is neither a sim_data system variable, nor a column in placements dataframe nor has a default value.")
                     return defaults[var]
