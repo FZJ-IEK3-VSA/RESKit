@@ -23,6 +23,9 @@ class Parameters:
         "base_rotor_diam": 0,
         "min_tip_height": 0,
         "min_specific_power": 0,
+        "reference_wind_speed": 2,
+        "reference_wind_speed_hubheight": 2,
+        "reference_wind_speed_specpow": 2,
     }
 
     def __init__(self):
@@ -258,6 +261,8 @@ class OnshoreParameters(Parameters):
         "min_tip_height": 0,
         "min_specific_power": 0,
         "max_hub_height": np.inf,
+        "reference_wind_speed_specpow":np.nan,
+        "reference_wind_speed_hubheight":np.nan,
     }
 
     def __init__(self, fp=None, year=2050, constant_rotor_diam=True, **kwargs):
@@ -340,6 +345,8 @@ class OffshoreParameters(Parameters):
         "min_tip_height": 0,
         "min_specific_power": 0,
         "max_hub_height": np.inf,
+        "reference_wind_speed_specpow":np.nan,
+        "reference_wind_speed_hubheight":np.nan,
     }
 
     def __init__(self, fp=None, year=2050, constant_rotor_diam=True, **kwargs):
