@@ -2,7 +2,6 @@ on:
   push:
     branches: ["**"]
 
-
 jobs:
   lint:
     runs-on: ubuntu-latest
@@ -51,19 +50,19 @@ jobs:
         shell: pwsh
         run: |
           ls
-          conda run -n reskit_env jupyter nbconvert --execute --to=python allow-errors=false ./examples/1.01-Weather-Reading_Weather_Data.ipynb
-          conda run -n reskit_env jupyter nbconvert --execute --to=python allow-errors=false ./examples/1.03-Weather-Vertically_project_wind_speed.ipynb
-          conda run -n reskit_env jupyter nbconvert --execute --to=python allow-errors=false ./examples/2.01-Economic-Compute_levelized_cost_of_electricity.ipynb
-          conda run -n reskit_env jupyter nbconvert --execute --to=python allow-errors=false ./examples/3.01a-Wind-Load_Power_Curve.ipynb
-          conda run -n reskit_env jupyter nbconvert --execute --to=python allow-errors=false ./examples/3.01b-Wind-Synthetic_Power_Curve.ipynb
-          conda run -n reskit_env jupyter nbconvert --execute --to=python allow-errors=false ./examples/3.02-Wind-Convolute_a_Power_Curve.ipynb
-          conda run -n reskit_env jupyter nbconvert --execute --to=python allow-errors=false ./examples/3.03-Wind-Design_Onshore_Turbine.ipynb
-          conda run -n reskit_env jupyter nbconvert --execute --to=python allow-errors=false ./examples/3.04-Wind-Estimate_Turbine_Capital_Cost.ipynb
-          conda run -n reskit_env jupyter nbconvert --execute --to=python allow-errors=false ./examples/3.05a-Wind-Basic_Turbine_Simulation.ipynb
-          conda run -n reskit_env jupyter nbconvert --execute --to=python allow-errors=false ./examples/3.05b-Wind-Turbine_Simulation_Workflow.ipynb
-          conda run -n reskit_env jupyter nbconvert --execute --to=python allow-errors=false ./examples/3.05c-Wind-Automated_Turbine_Simulation_Workflow.ipynb
-          conda run -n reskit_env jupyter nbconvert --execute --to=python allow-errors=false ./examples/4.01-Solar-Load_Module.ipynb
-          conda run -n reskit_env jupyter nbconvert --execute --to=python allow-errors=false ./examples/4.03-Solar-Automated_Simulation_Workflow.ipynb
-          conda run -n reskit_env jupyter nbconvert --execute --to=python allow-errors=false ./examples/ETHOS.RESKit.Wind.ipynb
+          conda run -n reskit_env jupyter nbconvert --execute --to=python allow-errors=false ./examples/_1_load_weater_data/1.01-Weather-Reading_Weather_Data.ipynb
+          conda run -n reskit_env jupyter nbconvert --execute --to=python allow-errors=false ./examples/_1_load_weater_data/1.03-Weather-Vertically_project_wind_speed.ipynb
+          conda run -n reskit_env jupyter nbconvert --execute --to=python allow-errors=false ./examples/_2_economic/2.01-Economic-Compute_levelized_cost_of_electricity.ipynb
+          conda run -n reskit_env jupyter nbconvert --execute --to=python allow-errors=false ./examples/_3_wind/3.01a-Wind-Load_Power_Curve.ipynb
+          conda run -n reskit_env jupyter nbconvert --execute --to=python allow-errors=false ./examples/_3_wind/3.01b-Wind-Synthetic_Power_Curve.ipynb
+          conda run -n reskit_env jupyter nbconvert --execute --to=python allow-errors=false ./examples/_3_wind/3.02-Wind-Convolute_a_Power_Curve.ipynb
+          conda run -n reskit_env jupyter nbconvert --execute --to=python allow-errors=false ./examples/_3_wind/3.03-Wind-Design_Onshore_Turbine.ipynb
+          conda run -n reskit_env jupyter nbconvert --execute --to=python allow-errors=false ./examples/_3_wind/3.04-Wind-Estimate_Turbine_Capital_Cost.ipynb
+          conda run -n reskit_env jupyter nbconvert --execute --to=python allow-errors=false ./examples/_3_wind/3.05a-Wind-Basic_Turbine_Simulation.ipynb
+          conda run -n reskit_env jupyter nbconvert --execute --to=python allow-errors=false ./examples/_3_wind/3.05b-Wind-Turbine_Simulation_Workflow.ipynb
+          conda run -n reskit_env jupyter nbconvert --execute --to=python allow-errors=false ./examples/_3_wind/3.05c-Wind-Automated_Turbine_Simulation_Workflow.ipynb
+          conda run -n reskit_env jupyter nbconvert --execute --to=python allow-errors=false ./examples/_4_solar/4.01-Solar-Load_Module.ipynb
+          conda run -n reskit_env jupyter nbconvert --execute --to=python allow-errors=false ./examples/_4_solar/4.03-Solar-Automated_Simulation_Workflow.ipynb
+          conda run -n reskit_env jupyter nbconvert --execute --to=python allow-errors=false ./examples/_3_wind/ETHOS.RESKit.Wind.ipynb
           conda run -n reskit_env jupyter nbconvert --execute --to=python allow-errors=false ./examples/Solar_Workflows.ipynb
-          conda run -n reskit_env jupyter nbconvert --execute --to=python allow-errors=false ./examples/Wind_Workflows.ipynb
+          conda run -n reskit_env jupyter nbconvert --execute --to=python allow-errors=false ./examples/_3_wind/Wind_Workflows.ipynb
