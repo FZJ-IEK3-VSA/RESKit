@@ -1,13 +1,13 @@
-import pandas as pd
-import numpy as np
 import os
-
 from collections import OrderedDict
+
+import numpy as np
+import pandas as pd
 from scipy.interpolate import griddata
 
+from reskit.dac.data import DATAFOLDER
 
 from ...workflow_manager import WorkflowManager
-from reskit.dac.data import DATAFOLDER
 
 """
 

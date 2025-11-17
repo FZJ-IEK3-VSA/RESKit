@@ -1,17 +1,18 @@
 import datetime
-import geokit as gk
-import pandas as pd
-import numpy as np
 import time
 import warnings
+from collections import OrderedDict, namedtuple
+from os import environ, mkdir
+from os.path import isdir, isfile, join
+from types import FunctionType
+
+import geokit as gk
+import numpy as np
+import pandas as pd
 import windpowerlib
 
-from os import mkdir, environ
-from os.path import join, isfile, isdir
-from collections import OrderedDict, namedtuple
-from types import FunctionType
-from .. import core as rk_wind_core
 from ...workflow_manager import WorkflowManager
+from .. import core as rk_wind_core
 
 
 class WindWorkflowManager(WorkflowManager):

@@ -1,12 +1,14 @@
 # import primary packages
-import numpy as np
 import os
-import pandas as pd
 import warnings
+
+import numpy as np
+import pandas as pd
+
+import reskit.util as rk_util
 
 # import modules
 import reskit.weather as rk_weather
-import reskit.util as rk_util
 from reskit.wind.core.data import DATAFOLDER
 from reskit.wind.core.windspeed_correction import build_ws_correction_function
 from reskit.wind.workflows.wind_workflow_manager import WindWorkflowManager

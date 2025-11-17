@@ -1,12 +1,14 @@
+import re
 from collections import OrderedDict, namedtuple
+from glob import glob
+from os.path import dirname, join
+
 import numpy as np
 import pandas as pd
-from glob import glob
-import re
-from os.path import join, dirname
+
+from reskit.default_paths import DEFAULT_PATHS
 
 from .power_curve import PowerCurve
-from reskit.default_paths import DEFAULT_PATHS
 
 ##################################################
 # Make a turbine model library

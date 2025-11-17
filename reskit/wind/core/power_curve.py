@@ -1,9 +1,9 @@
 from collections import namedtuple
+from os.path import dirname, join
+
 import numpy as np
-from os.path import join, dirname
 import pandas as pd
-from scipy.interpolate import splrep, splev
-from scipy.interpolate import PchipInterpolator
+from scipy.interpolate import PchipInterpolator, splev, splrep
 from scipy.stats import norm
 
 from ...util import ResError
@@ -85,8 +85,9 @@ class PowerCurve:
     def _repr_svg_(self):
         # return str(self)
 
-        import matplotlib.pyplot as plt
         from io import BytesIO
+
+        import matplotlib.pyplot as plt
 
         plt.figure(figsize=(7, 3))
         plt.plot(

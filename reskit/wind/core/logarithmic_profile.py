@@ -1,6 +1,7 @@
-import numpy as np
-import geokit as gk
 from collections import OrderedDict
+
+import geokit as gk
+import numpy as np
 
 from ...util import ResError
 
