@@ -15,7 +15,7 @@ parts:
     maxdepth: 3
     chapters:
       # - caption: Overview
-      #   file: docs/articles/_0_example_overview.md
+      - file: docs/articles/_0_example_overview.md
       # - caption: Download Weather Data
       - file: docs/articles/_1_download_weather_data.md
         sections:

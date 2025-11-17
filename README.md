@@ -55,12 +55,12 @@ See the [Examples page](examples/)
 
 If you intend to use **ETHOS.RESKit.Wind** please follow the following instructions:
 1. Download ERA5 and further datasets: 
-  1.1. Download ERA5: [How_to_download_ERA5_data_public.ipynb](examples/How_to_download_ERA5_data_public.ipynb) <br>
-  1.2. Process ERA5 Wind Speeds:  [WindSpeed_from_vectors_public.ipynb](examples/WindSpeed_from_vectors_public.ipynb) <br>
+  1.1. Download ERA5: [How_to_download_ERA5_data_public.ipynb](examples/_1_load_weater_data/How_to_download_ERA5_data_public.ipynb) <br>
+  1.2. Process ERA5 Wind Speeds:  [WindSpeed_from_vectors_public.ipynb](examples/_1_load_weater_data/WindSpeed_from_vectors_public.ipynb) <br>
   1.3. Download ESA Land Cover CCI v2.1.1 (2018): https://cds.climate.copernicus.eu/datasets/satellite-land-cover?tab=download <br>
   1.4. Download GWAv3: https://globalwindatlas.info/api/gis/global/wind-speed/100 (https://globalwindatlas.info/en/download/gis-files) <br>
-2. (optional) If you have purchased PowerCurves from thewindpower.net, please use the following script to process them: [ETHOS.RESKit.Wind_process_power_curves.ipynb](examples/ETHOS.RESKit.Wind_process_power_curves.ipynb)
-3. You can find an example on how to use ETHOS.RESKit.Wind here: [ETHOS.RESKit.Wind.ipynb](examples/ETHOS.RESKit.Wind.ipynb)
+2. (optional) If you have purchased PowerCurves from thewindpower.net, please use the following script to process them: [ETHOS.RESKit.Wind_process_power_curves.ipynb](examples/_1_load_weater_data/ETHOS.RESKit.Wind_process_power_curves.ipynb)
+3. You can find an example on how to use ETHOS.RESKit.Wind here: [ETHOS.RESKit.Wind.ipynb](examples/_3_wind/ETHOS.RESKit.Wind.ipynb)
 
 Paths to a custom turbine library and baseline turbine definitions can be set in [default_paths.yaml](reskit/default_paths.yaml)
 
