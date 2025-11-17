@@ -57,7 +57,12 @@ def visibility_from_topography(
 
     * You can plot the outputs nicely with:
        >>> fig = plt.figure()
-       >>> ax = fig.add_subplot(111, polar=True)
+       >>> ax = (
+       ...     fig.add_subplot(
+       ...         111,
+       ...         polar=True,
+       ...     )
+       ... )
        >>> h = ax.pcolormesh(a['visibility'].columns,
        >>>                   a['visibility'].index,
        >>>                   a['visibility'])
