@@ -1,0 +1,66 @@
+# Book settings
+# Learn more at https://jupyterbook.org/customize/config.html
+
+title: GeoKit
+author: Reskit Development Team
+logo: docs/visualizations/logos/fzj_logo.svg
+
+# Force re-execution of notebooks on each build.
+# See https://jupyterbook.org/content/execute.html
+# execute:
+#   execute_notebooks: cache
+
+execute:
+  execute_notebooks: "force"
+  timeout: 1000
+
+# Define the name of the latex output file for PDF builds
+latex:
+  latex_documents:
+    targetname: book.tex
+
+# Add a bibtex file so that we can create citations
+# bibtex_bibfiles:
+#   - references.bib
+
+# Information about where the book exists on the web
+repository:
+  url: https://github.com/FZJ-IEK3-VSA/RESKit # Online location of your book
+  # path_to_book: . # Optional path to your book, relative to the repository root
+
+# Add GitHub buttons to your book
+# See https://jupyterbook.org/customize/config.html#add-a-link-to-your-repository
+html:
+  use_issues_button: true
+  use_repository_button: true
+  use_edit_page_button: true
+
+only_build_toc_files: true
+sphinx:
+  extra_extensions:
+    # Automatically generates API documentation from docstrings
+    - autoapi.extension
+    # Is required by autoapi to extract docstrings from modules
+    - sphinx.ext.autodoc
+    # Enables further docstring styles such as google and numpy
+    - sphinx.ext.napoleon
+    - sphinx.ext.autosummary
+
+  config:
+    # Needs to point the source code the package that should be documented by autoapi
+    autoapi_dirs: ["./reskit"]
+    # autoapi_root defines where the output of the autoapi is printed
+    autoapi_root: "./_readthedocs"
+    autoapi_add_toctree_entry: false
+    autoapi_file_patterns: ["*.py"]
+    autoapi_keep_files: true
+    autoapi_generate_api_docs: true
+    suppress_warnings: ["etoc.toctree"]
+    # Use Google docstrings
+    napoleon_google_docstring: True
+    autoapi_python_class_content: "both"
+    napoleon_include_init_with_doc: True
+    autodoc_typehints: "description"
+    # exclude_patterns : ['_build', '_templates','autoapi','visualizations','knowledge_articles','documentation']
+
+  autoapi_options: ["show-module-summary"]

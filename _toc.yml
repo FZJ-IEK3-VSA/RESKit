@@ -1,0 +1,23 @@
+# Table of contents
+# Learn more at https://jupyterbook.org/customize/toc.html
+
+# The table of contents needs to be at the root level of the package because it is not possible to
+# define relative parent folders within this table of contents file.
+
+format: jb-book
+root: docs/contents.md
+
+options: # The options key will be applied to all chapters, but not sub-sections
+  numbered: True
+
+parts:
+  - caption: Examples
+    maxdepth: 3
+    chapters:
+      - file: README.md
+      - file: examples/1.01-Weather-Reading_Weather_Data.ipynb
+
+  - caption: API
+    chapters:
+      # The API documentation is written to the folder
+      - file: _readthedocs/reskit/index.rst
