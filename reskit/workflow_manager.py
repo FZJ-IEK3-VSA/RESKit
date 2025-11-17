@@ -1,25 +1,26 @@
 # import base packages
-from collections import OrderedDict  # TODO is this needed when
 import datetime
-from os.path import basename, join, isfile, isdir
-import numpy as np
-import pandas as pd
+import warnings
+from collections import OrderedDict  # TODO is this needed when
+from glob import glob
+from os.path import basename, isdir, isfile, join
 from types import FunctionType
 from typing import (
-    Union,
     List,
     OrderedDict,
+    Union,
 )  # TODO remove OrderedDict here (duplicated with collections above?)
-import warnings
 
 # import third party packages
 import geokit as gk
+import numpy as np
+import pandas as pd
 import xarray
-from glob import glob
+
+from reskit import weather as rk_weather
 
 # import other modules
-from reskit import util as rk_util
-from reskit import weather as rk_weather
+from reskit.util.weather_tile import get_dataframe_with_weather_tilepaths
 
 
 class WorkflowManager:
@@ -824,8 +825,9 @@ def distribute_workflow(
         An XArray Dataset which contains the combined results of the distributed simulations
 
     """
-    import xarray
     from multiprocessing import Pool
+
+    import xarray
 
     assert isinstance(placements, pd.DataFrame)
     assert ("lon" in placements.columns and "lat" in placements.columns) or ("geom" in placements.columns)
@@ -941,9 +943,7 @@ def execute_workflow_iteratively(
     # possibly generate dataframe from single locations and add actual weather filepath where needed
     if not weather_path_varname in placements.columns:
         weather_path = workflow_args[weather_path_varname]
-        placements = rk_util.get_dataframe_with_weather_tilepaths(
-            placements=placements, weather_path=weather_path, zoom=zoom
-        )
+        placements = get_dataframe_with_weather_tilepaths(placements=placements, weather_path=weather_path, zoom=zoom)
     if not "RESKit_sim_order" in placements.columns:
         placements["RESKit_sim_order"] = range(len(placements))
 

@@ -1,8 +1,9 @@
+from copy import copy
+
 import geokit as gk
 import osgeo
 import pandas as pd
 from smopy import deg2num
-from copy import copy
 
 
 def get_tile_XY(zoom, lon=None, lat=None, geom=None):
