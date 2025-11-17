@@ -5,7 +5,7 @@ max-doc-length = 120
 max-line-length = 120
 
 [lint]
-select = ["D", "F", "I"]
+select = ["D", "F"]
 ignore = [
     "F401", # imported but unused
     "F405", # Variable is undefined or from star import
