@@ -1,6 +1,7 @@
 import geokit as gk
 import pandas as pd
 import numpy as np
+import xarray as xr
 
 from os.path import isfile
 from collections import OrderedDict
@@ -1514,3 +1515,137 @@ class SolarWorkflowManager(WorkflowManager):
                 )
 
         return self
+
+################################################# SAI ##########################################################################
+    
+    def modify_era5_16x16(self):
+
+
+        # Startzeit für das Einlesen des Datasets
+        ds_delta = xr.open_dataset('/storage_cluster/projects/2024_l-kamp_ma/test_input/SAI_10Mt_I12_TEST2.nc4')
+
+        # Konvertierung der Zeitstempel (NUR FÜR DIE TESTDATEN) ##
+        time_stamps_flux = pd.to_datetime(ds_delta['time_stamps'].values)
+
+        # desired_time_stamps = self._time_index_
+
+        # ds_delta = ds_delta.sel(time=time_stamps_flux.isin(desired_time_stamps))
+
+        # Umbenennen der Variablen
+        self.sim_data['ghi_reskit'] = self.sim_data.pop('global_horizontal_irradiance')
+        self.sim_data['dni_reskit'] = self.sim_data.pop('direct_normal_irradiance')
+        self.sim_data['DIR_reskit'] = self.sim_data.pop('direct_horizontal_irradiance')
+
+        # Hinzufügen neuer Paare
+        self.sim_data.update({
+            'global_horizontal_irradiance': np.zeros((len(self._time_index_), len(self.placements))),
+            'direct_normal_irradiance': np.zeros((len(self._time_index_), len(self.placements))),
+            'direct_horizontal_irradiance': np.zeros((len(self._time_index_), len(self.placements))),
+            'ghi_delta': np.zeros((len(self._time_index_), len(self.placements))),
+            'dni_delta': np.zeros((len(self._time_index_), len(self.placements))),
+            'dhi_delta': np.zeros((len(self._time_index_), len(self.placements))),
+            'DIR_delta': np.zeros((len(self._time_index_), len(self.placements)))
+        })
+
+
+        # all Values: reduce to self._time_sel_
+
+        dni_real = self.sim_data['dni_reskit']
+        ghi_real = self.sim_data['ghi_reskit']
+        DIR_real = self.sim_data['DIR_reskit']
+
+        delta_ghi = ds_delta['delta_GHI'].values[self._time_sel_]
+        delta_dni = ds_delta['delta_DNI'].values[self._time_sel_]
+        delta_dhi = ds_delta['delta_DHI'].values[self._time_sel_]
+        delta_DIR = ds_delta['delta_DIR'].values[self._time_sel_]
+
+        # Für jede lat/lon Kombination den region-idx hinzufügen
+        self.placements['region_idx'] = self.placements.apply(lambda row: self.find_region(ds_delta, row['lat'], row['lon'])[1], axis=1) # CHECKTIME
+        all_place_idx = self.placements['region_idx'].values
+
+        # save ERA5-cell mit passendem region_idx ab 
+        
+
+        ### Vektorisierte Berechnung über alle Zeitschritte ###
+        for idx_time in range(len(self._time_index_)):
+
+            if idx_time == 600:
+                print('stop')
+
+            # Extrahiere die Werte aus ds_delta anhand der regions_idx
+            delta_ghi_time = delta_ghi[idx_time, all_place_idx]
+            delta_dni_time = delta_dni[idx_time, all_place_idx]
+            delta_dhi_time = delta_dhi[idx_time, all_place_idx]
+            delta_DIR_time = delta_DIR[idx_time, all_place_idx]
+
+            # "inner array" mit allen Placements für diesen Zeitschritt
+            dni_real_time = dni_real[idx_time]
+            ghi_real_time = ghi_real[idx_time]
+            DIR_real_time = DIR_real[idx_time]
+
+            # Vermeide Division durch 0: Falls ghi_real_time == 0, setze den Ratio auf 0
+            DIR_to_ghi_ratio = np.divide(DIR_real_time, ghi_real_time, out=np.zeros_like(DIR_real_time), where=ghi_real_time != 0)
+
+            # Berechnungen für alle Plätze gleichzeitig
+            # red_fac = np.where(DIR_to_ghi_ratio > 0.8, 0.1,
+            #         np.where(DIR_to_ghi_ratio < 0.3, 0.8,
+            #         0.8 + (DIR_to_ghi_ratio - 0.3) / (0.8 - 0.3) * (0.1 - 0.8)))
+
+            # NEW correction factor
+            corr_fac = 0.15 + ((DIR_to_ghi_ratio - 0.6) / (0.55 - 0.6)) * (0.13 - 0.15)
+            corr_fac = np.where(corr_fac < 0, 0.05, corr_fac)
+
+            # Berechne die modifizierten Werte
+            dhi_real_time = ghi_real_time - DIR_real_time
+
+            dni_modified = dni_real_time - delta_dni_time
+            DIR_modified = DIR_real_time - delta_DIR_time
+            # dhi_modified = dhi_real_time - (delta_dhi_time * (1 - red_fac))
+            dhi_modified = dhi_real_time - (delta_dhi_time * corr_fac)
+            ghi_modified = DIR_modified + dhi_modified
+
+
+            # Ergebnisse für diesen Zeitschritt speichern
+            self.sim_data['global_horizontal_irradiance'][idx_time] = ghi_modified
+            self.sim_data['direct_normal_irradiance'][idx_time] = dni_modified
+            self.sim_data['direct_horizontal_irradiance'][idx_time] = DIR_modified
+
+            self.sim_data['ghi_delta'][idx_time] = delta_ghi_time
+            self.sim_data['dni_delta'][idx_time] = delta_dni_time
+            self.sim_data['dhi_delta'][idx_time] = delta_dhi_time
+            self.sim_data['DIR_delta'][idx_time] = delta_DIR_time
+
+        return self
+    
+
+    def find_region(self, ds, latitude, longitude):
+        """
+        Überprüft, in welcher Region sich die gegebene Latitude und Longitude befinden.
+
+        Args:
+            ds (xarray.Dataset): Das Dataset, das die Regionen enthält.
+            latitude (float): Die Latitude, die überprüft werden soll.
+            longitude (float): Die Longitude, die überprüft werden soll.
+
+        Returns:
+            tuple: (region_name, index) der gefundenen Region oder (None, None), wenn keine Region gefunden wurde.
+        """
+        for i in range(len(ds['regions_16x16'])):
+            region_name = ds['regions_16x16'].values[i]
+            lat_range = ds['def_regions_lat'][i, :].values
+            lon_range = ds['def_regions_lon'][i, :].values
+
+            # Prüfen, ob die gegebene lat, lon in den Range fällt
+            lat_in_range = (lat_range[0] <= latitude <= lat_range[1]) if lat_range[0] < lat_range[1] else (lat_range[1] <= latitude <= lat_range[0])
+            lon_in_range = (lon_range[0] <= longitude <= lon_range[1]) if lon_range[0] < lon_range[1] else (lon_range[1] <= longitude <= lon_range[0])
+
+            if lat_in_range and lon_in_range:
+                return region_name, i  # Rückgabe der Region und des Index
+
+        print(f"Die Latitude {latitude} und Longitude {longitude} befinden sich in keiner definierten Region.")  # Ausgabe, wenn keine Region gefunden wurde
+
+        return None, None  # Rückgabe von None, wenn keine Region gefunden wurde
+    
+
+################################################# SAI ##########################################################################
+

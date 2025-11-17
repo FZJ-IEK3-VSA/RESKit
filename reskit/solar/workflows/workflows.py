@@ -1,6 +1,7 @@
 # import primary packages
 import numpy as np
 import warnings
+import xarray as xr
 
 # import othert modules
 from ... import weather as rk_weather
@@ -298,6 +299,12 @@ def openfield_pv_era5(
 
     wf.direct_normal_irradiance_from_trigonometry()
 
+    ################################################# SAI ##########################################################################
+
+    wf.modify_era5_16x16()
+    
+    ################################################# SAI ##########################################################################
+
     # wf.spatial_disaggregation(
     #     variable='global_horizontal_irradiance',
     #     source_high_resolution=global_solar_atlas_ghi_path,
@@ -375,9 +382,18 @@ def openfield_pv_era5(
     ]
     wf.apply_loss_factor(loss_factor, variables=variables)
 
-    return wf.to_xarray(
+    return_var = wf.to_xarray(
         output_netcdf_path=output_netcdf_path, output_variables=output_variables
     )
+
+    ################################################# SAI ##########################################################################
+
+    region_idx_da = xr.DataArray(wf.placements['region_idx'].values, dims='location')
+    return_var = return_var.assign(region_idx=region_idx_da)
+
+    ################################################# SAI ##########################################################################
+
+    return return_var
 
 
 def openfield_pv_sarah_unvalidated(
