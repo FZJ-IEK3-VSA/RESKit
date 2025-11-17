@@ -29,7 +29,7 @@ class NCSource(object):
     These constants include:
 
         MAX_LON_DIFFERENCE
-            The maximum logitude difference to accept between a grid cell and the coordinates you would
+            The maximum longitude difference to accept between a grid cell and the coordinates you would
                 like to extract data for
 
         MAX_LAT_DIFFERENCE
@@ -69,8 +69,8 @@ class NCSource(object):
             * Time range included in the long run averaging depends on the data source
 
 
-    See Also:
-    ---------
+    See Also
+    --------
     reskit.weather.MerraSource
     reskit.weather.SarahSource
     reskit.weather.Era5Source
@@ -105,14 +105,13 @@ class NCSource(object):
     ):
         """Initialize a generic netCDF4 file source
 
-
         Note:
         -----
         Generally not intended for normal use. Look into MerraSource, CordexSource, or CosmoSource
 
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
         path : str or list of strings
             The path to the main data file(s) to load
 
@@ -122,7 +121,7 @@ class NCSource(object):
 
         bounds : Anything acceptable to geokit.Extent.load(), optional
             The boundaries of the data which is needed
-              * Usage of this will help with memory mangement
+              * Usage of this will help with memory management
               * If None, the full dataset is loaded in memory
               * The actual extent of the loaded data depends on the source's
                 available data
@@ -165,8 +164,8 @@ class NCSource(object):
             If not none, adds the specific offset in minutes to the timesteps read from the weather file
 
 
-        See Also:
-        ---------
+        See Also
+        --------
         MerraSource
         SarahSource
         Era5Source
@@ -406,14 +405,14 @@ class NCSource(object):
     def var_info(self, var):
         """Prints more information about the given variable
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
         var : str
             The variable to get more information about
 
 
-        Returns:
-        --------
+        Returns
+        -------
         None
 
 
@@ -430,38 +429,38 @@ class NCSource(object):
     def to_pickle(self, path):
         """Save the source as a pickle file, so it can be quickly reopened later
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
         path : str
             The path to write the output file at
 
-        Returns:
-        --------
+        Returns
+        -------
         None
         """
         from pickle import dump
 
-        with open(path, "wb") as fo:
-            dump(self, fo)
+        with open(path, "wb") as unloaded_file:
+            dump(self, unloaded_file)
 
     @staticmethod
     def from_pickle(path):
         """Load an NCSource source from a pickle file
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
         path : str
             The path to read from
 
 
-        Returns:
-        --------
+        Returns
+        -------
         NCSource
         """
         from pickle import load
 
-        with open(path, "rb") as fo:
-            out = load(fo)
+        with open(path, "rb") as unloaded_file:
+            out = load(unloaded_file)
         return out
 
     def list_standard_variables(self):
@@ -473,18 +472,18 @@ class NCSource(object):
     def sload(self, *variables):
         """Load standard variables into the source's data library
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
         *variables : str
             The standard variables to read from the weather source
 
-        Returns:
-        --------
+        Returns
+        -------
         None
 
 
-        Raises:
-        --------
+        Raises
+        ------
         RuntimeError
             If the given standard variable name is not known to the weather source
 
@@ -513,8 +512,8 @@ class NCSource(object):
             direct_horzontal_irradiance  -> The direct irradiance at the surface on a horizontal plane
 
 
-        See Also:
-        ---------
+        See Also
+        --------
         NCSource.load( variable, name, height_index, processor )
             - For more configurable data loading into the weather source
 
@@ -528,8 +527,8 @@ class NCSource(object):
     def load(self, variable, name=None, height_idx=None, processor=None, overwrite=False):
         """Load a variable into the source's data table
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
         variable : str
             The variable within the currated datasources to load
               * The variable must either be of dimension (time, lat, lon) or
@@ -557,13 +556,13 @@ class NCSource(object):
                 is overwritten
 
 
-        Returns:
-        --------
+        Returns
+        -------
         None
 
 
-        See Also:
-        ---------
+        See Also
+        --------
         sload( variable )
             - For loading standard variables into the weather source using pre-configured calls
                 to 'load'
@@ -628,8 +627,8 @@ class NCSource(object):
             """Returns the closest X and Y indexes corresponding to a given location
             or set of locations
 
-            Parameters:
-            -----------
+            Parameters
+            ----------
             loc : Anything acceptable by geokit.LocationSet
                 The location(s) to search for
                 * A single tuple with (lon, lat) is acceptable, or a list of such tuples
@@ -643,8 +642,8 @@ class NCSource(object):
                 * If True, points outside this space will return as None
                 * If False, an error is raised
 
-            Returns:
-            --------
+            Returns
+            -------
             If a single location is given: tuple
                 * Format: (yIndex, xIndex)
                 * y index can be accessed with '.yi'
@@ -691,8 +690,8 @@ class NCSource(object):
         or set of locations
 
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
         loc : Anything acceptable by geokit.LocationSet
             The location(s) to search for
             * A single tuple with (lon, lat) is acceptable, or a list of such tuples
@@ -707,8 +706,8 @@ class NCSource(object):
             * If False, an error is raised
 
 
-        Returns:
-        --------
+        Returns
+        -------
         If a single location is given: tuple
             * Format: (yIndex, xIndex)
             * y index can be accessed with '.yi'
@@ -809,15 +808,15 @@ class NCSource(object):
         interpolation="near",
         force_as_data_frame=False,
         outside_okay=False,
-        _indicies=None,
+        _indices=None,
     ):
         """
         Retrieve a time series for a variable from the source's data library at the given location(s)
 
         Can also use various interpolation schemes (e.g. near, bilinear, or cubic)
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
             variable : str
                 The variable within the data library to extract
 
@@ -850,9 +849,8 @@ class NCSource(object):
                 * If True, points outside this space will return as None
                 * If False, an error is raised
 
-        Returns:
-        --------
-
+        Returns
+        -------
         If a single location is given: pandas.Series
           * Indexes match to the source's time dimension
 
@@ -864,28 +862,28 @@ class NCSource(object):
         # Ensure loc is a list
         locations = gk.LocationSet(locations)
 
-        # Get the indicies
-        if _indicies is None:
+        # Get the indices
+        if _indices is None:
             # compute the closest indices
             if not self.dependent_coordinates or interpolation == "near":
                 as_int = True
             else:
                 as_int = False
-            indicies = self.loc_to_index(locations, outside_okay, as_int=as_int)
+            indices = self.loc_to_index(locations, outside_okay, as_int=as_int)
         else:
-            # Assume indicies match locations
-            indicies = _indicies
+            # Assume indices match locations
+            indices = _indices
 
-        if isinstance(indicies, Index):
-            indicies = [
-                indicies,
+        if isinstance(indices, Index):
+            indices = [
+                indices,
             ]
 
         # Do interpolation
         if interpolation == "near":
             # arrange the output data
             tmp = []
-            for i in indicies:
+            for i in indices:
                 if not i is None:
                     tmp.append(self.data[variable][:, i.yi, i.xi])
                 else:
@@ -919,7 +917,7 @@ class NCSource(object):
                 else:
                     _locations.append((loc.lon, loc.lat))
             _locations = gk.LocationSet(_locations)
-            _indicies = self.loc_to_index(_locations, outside_okay, as_int=as_int)
+            _indices = self.loc_to_index(_locations, outside_okay, as_int=as_int)
             if _shifted > 0:
                 print(
                     f"NOTE: For {_shifted} locations exceeding the maximum latitude coverage, values were taken from the maximum available latitude.",
@@ -927,12 +925,12 @@ class NCSource(object):
                 )
 
             # Set up interpolation arrays
-            if not isinstance(_indicies, list):
-                _indicies = [_indicies]
-            yiMin = np.round(min([i.yi for i in _indicies]) - win).astype(int)
-            yiMax = np.round(max([i.yi for i in _indicies]) + win).astype(int)
-            xiMin = np.round(min([i.xi for i in _indicies]) - win).astype(int)
-            xiMax = np.round(max([i.xi for i in _indicies]) + win).astype(int)
+            if not isinstance(_indices, list):
+                _indices = [_indices]
+            yiMin = np.round(min([i.yi for i in _indices]) - win).astype(int)
+            yiMax = np.round(max([i.yi for i in _indices]) + win).astype(int)
+            xiMin = np.round(min([i.xi for i in _indices]) - win).astype(int)
+            xiMax = np.round(max([i.xi for i in _indices]) + win).astype(int)
 
             # ensure boundaries are okay
             if yiMin < 0 or xiMin < 0 or yiMax > self._latN or xiMax > self._lonN:
@@ -943,14 +941,14 @@ class NCSource(object):
             ##########
 
             if self.dependent_coordinates:  # do interpolations in 'index space'
-                if isinstance(indicies[0][0], int):
+                if isinstance(indices[0][0], int):
                     raise ResError("Index must be float type for interpolation")
 
                 gridYVals = np.arange(yiMin, yiMax + 1)
                 gridXVals = np.arange(xiMin, xiMax + 1)
 
-                yInterp = [i.yi for i in indicies]
-                xInterp = [i.xi for i in indicies]
+                yInterp = [i.yi for i in indices]
+                xInterp = [i.xi for i in indices]
 
             else:  # do interpolation in the expected 'coordinate space'
                 gridYVals = self.lats[yiMin : yiMax + 1]

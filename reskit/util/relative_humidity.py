@@ -5,15 +5,15 @@ def calculate_relative_humidity(dewpoint_temperature, air_temperature):
     """
     Function to calculate the relative humidity from dewpoint temperature and air temperature using the Sonntag formula.
 
-    Parameters:
-    --------------
+    Parameters
+    ----------
     dewpoint_temperature: float | int
         dewpoint temperature in °C
     air_temperature: float | int
         air temperature in °C
 
-    References:
-    -------------
+    References
+    ----------
     [1] https://www.npl.co.uk/resources/q-a/dew-point-and-relative-humidity
     """
 

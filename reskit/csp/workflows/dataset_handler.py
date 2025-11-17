@@ -57,7 +57,7 @@ class dataset_handler:
         return path
 
     def _get_opt_HTF_matrix(self):
-        """tries to find the opt matrix from the given datasets. if not possible, calculate a new one
+        """Tries to find the opt matrix from the given datasets. if not possible, calculate a new one
 
         Returns
         -------
@@ -77,7 +77,7 @@ class dataset_handler:
         return htf_opt_matrix
 
     def _calc_opt_HTF_matrix(self) -> pd.DataFrame:
-        """calculates the optimal htf for a variation of t_amb and dni and stores it inside reskit
+        """Calculates the optimal htf for a variation of t_amb and dni and stores it inside reskit
 
         Returns
         -------

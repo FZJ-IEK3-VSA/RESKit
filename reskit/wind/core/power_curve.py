@@ -128,7 +128,7 @@ class PowerCurve:
         -------
         [1] Ryberg, D. S., Caglayan, D. G., Schmitt, S., Linßen, J., Stolten, D., & Robinius, M. (2019). The future of European onshore wind energy potential: Detailed distribution and simulation of advanced turbine designs. Energy. https://doi.org/10.1016/j.energy.2019.06.052
 
-        See also
+        See Also
         --------
             PowerCurve.from_capacity_and_rotor_diam( <turbine capacity>, <turbine rotor diameter> )
         """
@@ -178,7 +178,7 @@ class PowerCurve:
         -------
         [1] Ryberg, D. S., Caglayan, D. G., Schmitt, S., Linßen, J., Stolten, D., & Robinius, M. (2019). The future of European onshore wind energy potential: Detailed distribution and simulation of advanced turbine designs. Energy. https://doi.org/10.1016/j.energy.2019.06.052
 
-        See also
+        See Also
         --------
             PowerCurve.from_specific_power( <turbine specific power> )
         """
@@ -199,7 +199,6 @@ class PowerCurve:
             CorrespongDing capacity fators for the given wind speeds
 
         """
-
         powerCurveInterp = PchipInterpolator(self.wind_speed, self.capacity_factor)
         output = powerCurveInterp(wind_speed)
 
@@ -225,8 +224,8 @@ class PowerCurve:
         numeric
             Average capacity factor
 
-        See also
-        -------
+        See Also
+        --------
             PowerCurve.expected_capacity_factor_from_distribution
 
         """
@@ -281,8 +280,8 @@ class PowerCurve:
         numeric
             Average capacity factor
 
-        See also
-        -------
+        See Also
+        --------
             PowerCurve.expected_capacity_factor_from_weibull
 
         """
@@ -354,7 +353,7 @@ class PowerCurve:
             The resulting convoluted power curve
 
         Notes
-        ------
+        -----
         The wind-speed-dependent standard deviation is computed with: std = wind_speed * scaling + base
 
         """

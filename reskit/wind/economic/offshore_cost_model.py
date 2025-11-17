@@ -19,7 +19,7 @@ def offshore_turbine_capex(
 ):
     """
     A cost and scaling model (CSM) to calculate the total cost of a 3-bladed, direct drive offshore wind turbine according to the cost model proposed by Fingersh et al. [1] and Maples et al. [2].
-    The CSM distinguises between seaflor-fixed foundation types; "monopile" and "jacket" and floating foundation types; "semisubmersible" and "spar".
+    The CSM distinguishes between seaflor-fixed foundation types; "monopile" and "jacket" and floating foundation types; "semisubmersible" and "spar".
     The total turbine cost includes the contributions of the turbine capital cost (TCC), amounting 32.9% for fixed or 23.9% for floating structures, the balance of system costs (BOS) contribution, amounting 46.2% and 60.8% respectively, as well as the finantial costs as the complementary percentage contribution (15.9% and 20.9%) in the same manner [3].
     A CSM normalization is done such that a chosen baseline offshore turbine taken by Caglayan et al. [4] (see notes for details) corresponds to an expected specific cost of 2300 €/kW in a 2050 European context as suggested by the 2016 cost of wind energy review by Stehly [3].
 
@@ -50,31 +50,31 @@ def offshore_turbine_capex(
         Refers to the number of mooring lines are there attaching a turbine only applicable for floating foundation types. By default 3 assuming a triangular attachment to the seafloor.
 
     anchor : str, optional
-        Turbine's anchor type only applicable for floating foundation types, by default as reccomended by [1].
+        Turbine's anchor type only applicable for floating foundation types, by default as recommended by [1].
         Arguments accepted are "dea" (drag embedment anchor) or "spa" (suction pile anchor).
 
     turbine_count : numeric, optional
         Number of turbines in the offshore windpark. CSM valid for the range [3-200], by default 80
 
     turbine_spacing : numeric, optional
-        Spacing distance in a row of turbines (turbines that share the electrical connection) to the bus. The value must be a multiplyer of rotor diameter. CSM valid for the range [4-9], by default 5
+        Spacing distance in a row of turbines (turbines that share the electrical connection) to the bus. The value must be a multiplier of rotor diameter. CSM valid for the range [4-9], by default 5
 
     turbine_row_spacing : numeric, optional
-        Spacing distance between rows of turbines. The value must be a multiplyer of rotor diameter. CSM valid for the range [4-10], by default 9
+        Spacing distance between rows of turbines. The value must be a multiplier of rotor diameter. CSM valid for the range [4-10], by default 9
 
     Returns
-    --------
+    -------
     numeric or array-like
         Offshore turbine total cost
 
 
-    See also
+    See Also
     --------
         onshore_turbine_capex(capacity, hub_height, rotor_diam, base_capex, base_capacity, base_hub_height, base_rotor_diam, tcc_share, bos_share)
 
     Notes
-    -------
-        The baseline offshore turbine correspongs to the optimal desing for Europe according to Caglayan et al. [4]: capacity = 9400 kW, hub height = 135 m, rotor diameter = 210 m, "monopile" foundation, reference water depth = 40 m, and reference distance to shore = 60 km.
+    -----
+        The baseline offshore turbine correspongs to the optimal design for Europe according to Caglayan et al. [4]: capacity = 9400 kW, hub height = 135 m, rotor diameter = 210 m, "monopile" foundation, reference water depth = 40 m, and reference distance to shore = 60 km.
 
     Sources
     -------
@@ -151,7 +151,7 @@ def offshore_bos(
     turbine_row_spacing,
 ):
     """
-    A function to determine the balance of the system cost (BOS) of an offshore turbine based on the capacity, hub height and rotor diamter values according to Fingersh et al. [1].
+    A function to determine the balance of the system cost (BOS) of an offshore turbine based on the capacity, hub height and rotor diameter values according to Fingersh et al. [1].
 
     Parameters
     ----------
@@ -180,17 +180,17 @@ def offshore_bos(
         Refers to the number of mooring lines are there attaching a turbine only applicable for floating foundation types. By default 3 assuming a triangular attachment to the seafloor.
 
     anchor : str, optional
-        Turbine's anchor type only applicable for floating foundation types, by default as reccomended by [1].
+        Turbine's anchor type only applicable for floating foundation types, by default as recommended by [1].
         Arguments accepted are "dea" (drag embedment anchor) or "spa" (suction pile anchor).
 
     turbine_count : numeric, optional
         Number of turbines in the offshore windpark. CSM valid for the range [3-200], by default 80
 
     turbine_spacing : numeric, optional
-        Spacing distance in a row of turbines (turbines that share the electrical connection) to the bus. The value must be a multiplyer of rotor diameter. CSM valid for the range [4-9], by default 5
+        Spacing distance in a row of turbines (turbines that share the electrical connection) to the bus. The value must be a multiplier of rotor diameter. CSM valid for the range [4-9], by default 5
 
     turbine_row_spacing : numeric, optional
-        Spacing distance between rows of turbines. The value must be a multiplyer of rotor diameter. CSM valid for the range [4-10], by default 9
+        Spacing distance between rows of turbines. The value must be a multiplier of rotor diameter. CSM valid for the range [4-10], by default 9
 
     Returns
     -------
@@ -198,7 +198,7 @@ def offshore_bos(
         Offshore turbine's balance of the system cost (BOS) in monetary units.
 
     Notes
-    ------
+    -----
     Assembly and installation costs could not be implemented due to the excessive number of unspecified constants considered by Smart et al. [8]. Therefore empirical equations were derived which fit the sensitivities to the baseline plants shown in [8]. These ended up being linear equations in turbine capacity and sea depth (only for floating turbines).
 
     Sources
@@ -215,7 +215,6 @@ def offshore_bos(
     [9] RPG CABLES, & KEC International limited. (n.d.). EXTRA HIGH VOLTAGE cables. RPG CABLES. www.rpgcables.com/images/product/EHV-catalogue.pdf
 
     """
-
     # rr = rd / 2
 
     # prevent problems with negative depth values
@@ -233,7 +232,7 @@ def offshore_bos(
         )
 
     # CONSTANTS AND ASSUMPTIONS (all from [1] except where noted)
-    # Stucture are foundation
+    # Structure are foundation
     # embedmentDepth = 30  # meters
     monopileCostRate = 2250  # dollars/tonne
     monopileTPCostRate = 3230  # dollars/tonne
@@ -271,7 +270,7 @@ def offshore_bos(
     singleTurbineInterfaceCost = 0  # Could not find a number...
     substationInterfaceCost = 0  # Could not find a number...
     dynamicCableFactor = 2
-    mainPowerTransformerCostRate = 12500  # dollers/MVA
+    mainPowerTransformerCostRate = 12500  # dollars/MVA
     highVoltageSwitchgearCost = 950000  # dollars
     mediumVoltageSwitchgearCost = 500000  # dollars
     shuntReactorCostRate = 35000  # dollars/MVA
@@ -285,7 +284,7 @@ def offshore_bos(
     substationSubstructurePileCostRate = 2250  # dollars/tonne
     interconnectVoltage = 345  # kV
 
-    # GENERAL (APEENDIX B in NREL BOS MODEL)
+    # GENERAL (APPENDIX B in NREL BOS MODEL)
     # hubDiam = cp / 4 + 2
     # bladeLength = (rd - hubDiam) / 2
 
@@ -638,7 +637,7 @@ def offshore_bos(
         # Normalized to 1 at 250m depth
         assemblyAndInstallationCost *= 0.00041757917648320338 * depth + 0.89560520587919934
 
-    # Capacity dependance
+    # Capacity dependence
     # Normalized to 1 at 6 MW
     assemblyAndInstallationCost *= 0.05947387 * cp + 0.64371944
 
@@ -657,7 +656,7 @@ def offshore_bos(
     # development = tot*0.02
 
     #########################################
-    # The below cooresponds to cost percentages in [7]
+    # The below corresponds to cost percentages in [7]
     if fixedType:
         tot = (
             assemblyAndInstallationCost * 19.0

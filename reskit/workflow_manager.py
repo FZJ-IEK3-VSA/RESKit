@@ -51,7 +51,7 @@ class WorkflowManager:
         self.placements = placements.copy()
         self.locs = None
 
-        # Check if input file contains a geometry collumn
+        # Check if input file contains a geometry column
         ispoint = False
         if "geom" in placements.columns:
             if self.placements["geom"].iloc[0].GetGeometryName() == "POINT":
@@ -106,7 +106,6 @@ class WorkflowManager:
     def set_time_index(self, times: pd.DatetimeIndex):
         """Sets the time index of the WorkflowManager
 
-
         Parameters
         ----------
             times : pd.DatetimeIndex
@@ -154,7 +153,7 @@ class WorkflowManager:
                 `.surface_wind_speed_height`, respectfully, are also added. These are constants
                 which specify what the 'native' wind speed height is, which depends on the source
             - A pre-loaded NCSource can also be given, thus allowing for any variable in the
-                source to be specifed in the `variables` list. But the user needs to take care
+                source to be specified in the `variables` list. But the user needs to take care
                 of initializing the NCSource and loading the data they want
 
         source_type : str
@@ -365,7 +364,7 @@ class WorkflowManager:
 
         # first get source values
         if isinstance(source_long_run_average, str):
-            # assue raster fp
+            # assume raster fp
             source_lra = self.get_scalar_values_from_raster(
                 fp=source_long_run_average, spatial_interpolation="linear-spline"
             )
@@ -423,7 +422,7 @@ class WorkflowManager:
         # save LRA as attribute
         self.real_lra = real_lra
 
-        # calulate scaling factor:
+        # calculate scaling factor:
         # nan result will stay nan results, as these placements cannot be calculated any more
         factors = real_lra * real_lra_scaling / source_lra
         if any(np.isnan(real_lra)):
@@ -474,7 +473,7 @@ class WorkflowManager:
         else:
             correction_values_high_res = source_high_resolution
 
-        # Get values from low resolution tiff file (meaned over eg. ERA5)
+        # Get values from low resolution tiff file (meant over eg. ERA5)
         if isinstance(source_low_resolution, str):
             points = [(loc.lon, loc.lat) for loc in self.locs._locations]
             correction_values_low_res = gk.raster.interpolateValues(  # TODO change here
@@ -513,7 +512,7 @@ class WorkflowManager:
               `.sim_data`
 
         variables : Union[str, List[str]], optional
-            The vairable or variables to apply the loss factor to
+            The variable or variables to apply the loss factor to
             - By default ["capacity_factor"]
 
 
@@ -561,7 +560,7 @@ class WorkflowManager:
 
         Note:
         - The `.placements` data is automatically added to the XArray dataset along the 'locations' dimension
-        - The `workflow_parameters` data is autmatically added as dimensionless variables
+        - The `workflow_parameters` data is automatically added as dimensionless variables
         - The `.sim_data` is automatically added along the dimensions (time, locations)
         - The `.time_index` is automatically added along the dimension 'time'
 
@@ -696,7 +695,7 @@ class WorkflowManager:
 
         Note:
         - The `.placements` data is automatically added to the XArray dataset along the 'locations' dimension
-        - The `workflow_parameters` data is autmatically added as dimensionless variables
+        - The `workflow_parameters` data is automatically added as dimensionless variables
         - The `.sim_data` is automatically added along the dimensions (time, locations)
         - The `.time_index` is automatically added along the dimension 'time'
 
@@ -989,8 +988,8 @@ class WorkflowQueue:
     -----------
     WorkflowFunction( workflow:FunctionType, **kwargs )
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     workflow : FunctionType
         The workflow function to be parallelized
         - All RESKit workflow functions should be suitable here
@@ -1034,7 +1033,7 @@ class WorkflowQueue:
         Returns
         -------
         OrderedDict[xarray.Dataset]
-            The results of each simulation set, accessable via their access keys
+            The results of each simulation set, accessible via their access keys
         """
         assert jobs >= 1
         jobs = int(jobs)

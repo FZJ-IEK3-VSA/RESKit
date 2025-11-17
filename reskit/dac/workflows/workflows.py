@@ -52,7 +52,6 @@ def lt_dac_era5_wenzel2025(
     - electricity, heat, and water conversion factors
     - CO2, water, electricity, and heat outputs per plant
     """
-
     wf = DACWorkflowManager(placements)
 
     wf.read(

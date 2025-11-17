@@ -20,6 +20,16 @@ ignore = [
     "E714", # [*] Test for object identity should be `is not`
     "E741", # Ambiguous variable name: `l`
     "E722", # Do not use bare `except`
+    "D401", # First line of docstring should be in imperative mood: "Runs the EGSworkflow and returns the output.
+    "D100", # Missing docstring in public module
+    "D101", # Missing docstring in public class
+    "D103", # Missing docstring in public function
+    "D104", # Missing docstring in public package
+    "D105", # Missing docstring in magic method
+    "D200", # One-line docstring should fit on one line
+    "D205", # blank line required between summary line and description
+    "D400", # First line should end with a period
+    "D404", # First word of the docstring should not be "This"
 ]
 unfixable = ["F401"]
 

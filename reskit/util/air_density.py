@@ -2,8 +2,7 @@ import numpy as np
 
 
 def compute_air_density(temperature=20, pressure=101325, relative_humidity=0, dew_temperature=None):
-    """Computes air density, following the apprach of "Revised formula for the density of moist air (CIPM-2007)" by A Picard, R S Davis, M Glaser and K Fujii"""
-
+    """Computes air density, following the approach of "Revised formula for the density of moist air (CIPM-2007)" by A Picard, R S Davis, M Glaser and K Fujii"""
     if relative_humidity is None and dew_temperature is None:
         relative_humidity = 0
 

@@ -65,8 +65,8 @@ class IconlamSource(NCSource):
             * The averaging is performed globally
 
 
-    See Also:
-    ---------
+    See Also
+    --------
     reskit.weather.MerraSource
     reskit.weather.SarahSource
     reskit.weather.Era5Source
@@ -108,8 +108,8 @@ class IconlamSource(NCSource):
             * time_offset_minutes = +30
 
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
         path : str or list of str
             The path to the main data file(s) to load
 
@@ -119,7 +119,7 @@ class IconlamSource(NCSource):
 
         bounds : Anything acceptable to geokit.Extent.load(), optional
             The boundaries of the data which is needed
-              * Usage of this will help with memory mangement
+              * Usage of this will help with memory management
               * If None, the full dataset is loaded in memory
               * The actual extent of the loaded data depends on the source's
                 available data
@@ -137,13 +137,12 @@ class IconlamSource(NCSource):
             * Generally, there should be no missing data at all. This option is only intended to
                 catch the rare scenarios where one or two timesteps are missing
 
-        See Also:
-        ---------
+        See Also
+        --------
         MerraSource
         SarahSource
         Era5Source
         """
-
         super().__init__(
             source=source,
             bounds=bounds,

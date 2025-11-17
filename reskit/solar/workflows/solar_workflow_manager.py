@@ -30,7 +30,6 @@ class LazyLoader:
         """
         LazyLoader is a utility class which postpones the "real" importing of the desired module until the time when it is actually needed
         """
-
         self.lib_name = lib_name
         self._mod = None
 
@@ -62,7 +61,6 @@ class SolarWorkflowManager(WorkflowManager):
         SolarWorkflorManager
 
         """
-
         # Do basic workflow construction
         super().__init__(placements)
         self._time_sel_ = None
@@ -93,7 +91,6 @@ class SolarWorkflowManager(WorkflowManager):
         Returns a reference to the invoking SolarWorkflowManager object
 
         """
-
         self.placements["tilt"] = rk_solar_core.system_design.location_to_tilt(self.locs, convention=convention)
         return self
 
@@ -115,7 +112,6 @@ class SolarWorkflowManager(WorkflowManager):
         Returns a reference to the invoking SolarWorkflowManager object
 
         """
-
         self.placements["azimuth"] = 180
 
         self.placements["azimuth"].values[self.locs.lats < 0] = 0
@@ -188,7 +184,7 @@ class SolarWorkflowManager(WorkflowManager):
 
         determine_solar_position(self, lon_rounding=1, lat_rounding=1, elev_rounding=-2)
 
-        Calculates azimuth and apparent zenith for each location using the pvlib fuction pvlib.solarposition.spa_python() [1].
+        Calculates azimuth and apparent zenith for each location using the pvlib function pvlib.solarposition.spa_python() [1].
         Adds azimuth and apparent zenit to the sim_data dictionary.
 
 
@@ -228,7 +224,6 @@ class SolarWorkflowManager(WorkflowManager):
 
 
         """
-
         assert "lon" in self.placements.columns
         assert "lat" in self.placements.columns
         assert "elev" in self.placements.columns
@@ -308,7 +303,6 @@ class SolarWorkflowManager(WorkflowManager):
 
 
         """
-
         if self._time_sel_ is not None:
             warnings.warn("Filtering already applied, skipping...")
             return self
@@ -337,7 +331,6 @@ class SolarWorkflowManager(WorkflowManager):
 
         Returns
         -------
-
         Returns a reference to the invoking SolarWorkflowManager object.
 
 
@@ -356,7 +349,6 @@ class SolarWorkflowManager(WorkflowManager):
         [6]	ASCE, 2005. The ASCE Standardized Reference Evapotranspiration Equation, Environmental and Water Resources Institute of the American Civil Engineers, Ed. R. G. Allen et al.
 
         """
-
         dni_extra = pvlib.irradiance.get_extra_radiation(self._time_index_, **kwargs).values
 
         shape = len(self._time_index_), self.locs.count
@@ -382,7 +374,7 @@ class SolarWorkflowManager(WorkflowManager):
                'youngirvine1967' - See reference [3] - requires true sun zenith [2]
                'kastenyoung1989' - See reference [4] - requires apparent sun zenith [2]
                'gueymard1993' - See reference [5] - requires apparent sun zenith [2]
-               'young1994' - See reference [6] - requries true sun zenith [2]
+               'young1994' - See reference [6] - requires true sun zenith [2]
                'pickering2002' - See reference [7] - requires apparent sun zenith [2]
 
 
@@ -417,10 +409,9 @@ class SolarWorkflowManager(WorkflowManager):
 
 
         """
-
         assert "apparent_solar_zenith" in self.sim_data
 
-        # 29 becasue that what the function seems to max out at as zenith approaches 90
+        # 29 because that what the function seems to max out at as zenith approaches 90
         self.sim_data["air_mass"] = np.full_like(self.sim_data["apparent_solar_zenith"], 29)
 
         s = self.sim_data["apparent_solar_zenith"] < 90
@@ -463,7 +454,6 @@ class SolarWorkflowManager(WorkflowManager):
 
 
         """
-
         assert "global_horizontal_irradiance" in self.sim_data
         assert "surface_pressure" in self.sim_data
         assert "surface_dew_temperature" in self.sim_data
@@ -520,7 +510,6 @@ class SolarWorkflowManager(WorkflowManager):
         'apparent_solar_zenith'.
 
         """
-
         assert "global_horizontal_irradiance" in self.sim_data
         assert "direct_normal_irradiance" in self.sim_data
         assert "apparent_solar_zenith" in self.sim_data
@@ -538,7 +527,6 @@ class SolarWorkflowManager(WorkflowManager):
         """
 
         direct_normal_irradiance_from_trigonometry(self):
-
 
         Parameters
         ----------
@@ -562,7 +550,6 @@ class SolarWorkflowManager(WorkflowManager):
             solar_zenith -> The solar zenith angle in radians
 
         """
-
         # TODO: This can also cover the case when we know GHI & DiffHI
         assert "direct_horizontal_irradiance" in self.sim_data
         assert "apparent_solar_zenith" in self.sim_data
@@ -572,7 +559,7 @@ class SolarWorkflowManager(WorkflowManager):
 
         self.sim_data["direct_normal_irradiance"] = dni_flat / np.maximum(np.cos(zen), 0.2)
 
-        # catch outliners from zero devision
+        # catch outliners from zero division
         index_out = (dni_flat < 25) & (np.cos(zen) < 0.05)
         self.sim_data["direct_normal_irradiance"][index_out] = 0
 
@@ -631,7 +618,6 @@ class SolarWorkflowManager(WorkflowManager):
         [2]	Lorenzo, E et al., 2011, “Tracking and back-tracking”, Prog. in Photovoltaics: Research and Applications, v. 19, pp. 747-753.
 
         """
-
         """See pvlib.tracking.singleaxis for parameter info"""
         assert "apparent_solar_zenith" in self.sim_data
         assert "solar_azimuth" in self.sim_data
@@ -702,7 +688,6 @@ class SolarWorkflowManager(WorkflowManager):
         Required data in the sim_data dictionary are 'apparent_solar_zenith' and 'solar_azimuth'.
 
         """
-
         """tracking can be: 'fixed' or 'singleaxis'"""
         assert "apparent_solar_zenith" in self.sim_data
         assert "solar_azimuth" in self.sim_data
@@ -752,7 +737,6 @@ class SolarWorkflowManager(WorkflowManager):
         [1] https://pvlib-python.readthedocs.io/en/stable/generated/pvlib.irradiance.get_total_irradiance.html
 
         """
-
         assert "apparent_solar_zenith" in self.sim_data
         assert "solar_azimuth" in self.sim_data
         assert "direct_normal_irradiance" in self.sim_data
@@ -865,7 +849,6 @@ class SolarWorkflowManager(WorkflowManager):
         """
         apply_angle_of_incidence_losses_to_poa(self)
 
-
         Applies the angle of incidence losses to the plane-of-array irradiance using the pvlib.pvsystem.iam.physical() function [1].
 
         Parameters
@@ -886,7 +869,6 @@ class SolarWorkflowManager(WorkflowManager):
 
 
         """
-
         assert "poa_direct" in self.sim_data
         assert "poa_ground_diffuse" in self.sim_data
         assert "poa_sky_diffuse" in self.sim_data
@@ -1178,7 +1160,6 @@ class SolarWorkflowManager(WorkflowManager):
         [10]	“Computer simulation of the effects of electrical mismatches in photovoltaic cell interconnection circuits” JW Bishop, Solar Cell (1988) https://doi.org/10.1016/0379-6787(88)90059-2
 
         """
-
         """
         TODO: Make it work with multiple module definitions
         """
@@ -1280,34 +1261,34 @@ class SolarWorkflowManager(WorkflowManager):
         """
          apply_inverter_losses(self, inverter, method="sandia", )
 
-         Applies inverter losses using the pvlib.pvsystem.snlinverter() fuction [1], the pvlib.pvsystem.retrieve_sam() fuction [2] and the
-         pvlib.pvsystem.adrinverter() fuction [3].
+         Applies inverter losses using the pvlib.pvsystem.snlinverter() function [1], the pvlib.pvsystem.retrieve_sam() function [2] and the
+         pvlib.pvsystem.adrinverter() function [3].
 
 
-         Parameters
-         ----------
+        Parameters
+        ----------
          inverter: str
                    Describes the inverter.
-                   [TODO: Add a more detailed desciption following the example of 'configure_cec_module']
+                   [TODO: Add a more detailed description following the example of 'configure_cec_module']
          method: str
                  Options:
                  "scandia"
                  "driesse"
                  Describes the used method to apply the inverter losses.
 
-         Returns
-         -------
+        Returns
+        -------
          Returns a reference to the invoking SolarWorkflowManager object.
 
-         Notes
-         -----
+        Notes
+        -----
          Required data in the sim_data dictionary are 'module_dc_power_at_mpp' and 'module_dc_voltage_at_mpp'.
          Required data in the placements dataframe are 'modules_per_string' and 'strings_per_inverter'.
          Cannot simultaneously provide 'capacity' and inverter-string parameters.
 
 
-         References
-         ----------
+        References
+        ----------
         [1] https://pvlib-python.readthedocs.io/en/stable/generated/pvlib.pvsystem.snlinverter.html
 
         [2] https://pvlib-python.readthedocs.io/en/stable/generated/pvlib.pvsystem.retrieve_sam.html
@@ -1321,7 +1302,6 @@ class SolarWorkflowManager(WorkflowManager):
         [6]	Beyond the Curves: Modeling the Electrical Efficiency of Photovoltaic Inverters, PVSC 2008, Anton Driesse et. al.
 
         """
-
         """method can be: 'sandia' or 'driesse'
 
         TODO: Make it work with multiplt inverter definitions

@@ -51,8 +51,8 @@ class Parameters:
         subclass : sub class instance
             The sub class to which the attribute shall be added.
 
-        Returns:
-        --------
+        Returns
+        -------
             None
         """
         # check the input file
@@ -71,7 +71,8 @@ class Parameters:
 
         def _get_value(data, year):
             """Interpolates values between neighboring years, or returns
-            exact value when available."""
+            exact value when available.
+            """
             assert isinstance(data, pd.Series), f"data must be of pd.Series type. Here: {type(data)}: {data}"
             # avoid extrapolation
             assert year >= data.index.min() and year <= data.index.max(), (
@@ -200,7 +201,7 @@ class OnshoreParameters(Parameters):
     onshore parameters.
 
     constant_rotor_diam : bool, optional
-        Whether the rotor diameter is mantained constant or not, by default True
+        Whether the rotor diameter is maintained constant or not, by default True
 
     base_capacity : numeric or array_like, optional
         Baseline turbine capacity in kW, by default 4200.
@@ -295,17 +296,17 @@ class OffshoreParameters(Parameters):
         Refers to the number of mooring lines are there attaching a turbine only applicable for floating foundation types. By default 3 assuming a triangular attachment to the seafloor.
 
     anchor : str, optional
-        Turbine's anchor type only applicable for floating foundation types, by default as reccomended by [1].
+        Turbine's anchor type only applicable for floating foundation types, by default as recommended by [1].
         Arguments accepted are "dea" (drag embedment anchor) or "spa" (suction pile anchor).
 
     turbine_count : numeric, optional
         Number of turbines in the offshore windpark. CSM valid for the range [3-200], by default 80
 
     turbine_spacing : numeric, optional
-        Spacing distance in a row of turbines (turbines that share the electrical connection) to the bus. The value must be a multiplyer of rotor diameter. CSM valid for the range [4-9], by default 5
+        Spacing distance in a row of turbines (turbines that share the electrical connection) to the bus. The value must be a multiplier of rotor diameter. CSM valid for the range [4-9], by default 5
 
     turbine_row_spacing : numeric, optional
-        Spacing distance between rows of turbines. The value must be a multiplyer of rotor diameter. CSM valid for the range [4-10], by default 9
+        Spacing distance between rows of turbines. The value must be a multiplier of rotor diameter. CSM valid for the range [4-10], by default 9
 
     """
 

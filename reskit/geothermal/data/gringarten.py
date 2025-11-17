@@ -146,7 +146,7 @@ class gringarten:
         return output
 
     def getResourceUseTime(self, T_abandon):
-        """returns the time in years, after which the reservoir is depleted (if enough time steps are given)
+        """Returns the time in years, after which the reservoir is depleted (if enough time steps are given)
 
         Parameters
         ----------
@@ -158,10 +158,9 @@ class gringarten:
         float
             time in years until the abandon temperature is reached
         """
-
         # for 1D: np.where((self.T_out > T_abandon)[9,0])[0].max()
         # for 1d: np.absolute(self.T_out - T_abandon)[9,0].argmin()
-        # select the point in time where the water outlet temperature is closest to min useable temerature (min of abs(T_out - T_abandon))
+        # select the point in time where the water outlet temperature is closest to min usable temperature (min of abs(T_out - T_abandon))
         timestep_abandon = np.absolute(self.T_out - T_abandon).argmin(axis=2)
         # get the time for the time steps in years
         time_abandon = self.time[timestep_abandon] / self.SECONDS_PER_YEAR

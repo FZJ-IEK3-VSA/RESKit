@@ -202,7 +202,6 @@ def onshore_wind_merra_ryberg2019_europe(
     [3] Copernicus (European Union’s Earth Observation Programme). (2012). Corine Land Cover 2012. Copernicus. https://land.copernicus.eu/pan-european/corine-land-cover/clc-2012
 
     """
-
     wf = WindWorkflowManager(placements)
 
     wf.read(
@@ -272,7 +271,6 @@ def offshore_wind_merra_caglayan2019(
     [1] National Aeronautics and Space Administration. (2019). Modern-Era Retrospective analysis for Research and Applications, Version 2. NASA Goddard Earth Sciences (GES) Data and Information Services Center (DISC). https://disc.gsfc.nasa.gov/datasets?keywords=%22MERRA-2%22&page=1&source=Models%2FAnalyses MERRA-2
 
     """
-
     wf = WindWorkflowManager(placements)
 
     wf.read(
@@ -345,7 +343,6 @@ def onshore_wind_iconlam_2023(
     [1] Chen, S., Goergen, K., Hendricks Franssen, H. J., Winkler, C., Poll, S., Houssoukri Zounogo Wahabou, Y., ... & Heinrichs, H. (2024). Higher onshore wind energy potentials revealed by kilometer‐scale atmospheric modeling. Geophysical Research Letters, 51(19), e2024GL110122. https://doi.org/10.1029/2024GL110122
     [2] ESA. Land Cover CCI Product User Guide Version 2. Tech. Rep. (2017). Available at: maps.elie.ucl.ac.be/CCI/viewer/download/ESACCI-LC-Ph2-PUGv2_2.0.pdf
     """
-
     wf = WindWorkflowManager(placements)
 
     # read data through wind workflow
@@ -476,7 +473,7 @@ def wind_config(
     ws_correction_func :float, callable, tuple, list
         An executable function that takes a numpy array as single input
         argument and returns an adapted windspeed. If 1.0 is passed, no
-        windspeed corrrection will be applied. Can also be passed as tuple
+        windspeed correction will be applied. Can also be passed as tuple
         or list of length 2 with data_type (e.g. 'linear' or 'ws_bins')
         and data dict (dict or path to yaml) with parameters.
     cf_correction_factor : float, str
@@ -493,9 +490,9 @@ def wind_config(
         'wake_curve' str can also be provided per each location in a
         'wake_curve' column of the placements dataframe, 'wake_curve'
         argument must then be None.
-    availability_factor : float, otional
+    availability_factor : float, optional
         This factor accounts for all downtimes and applies an average reduction to the output curve,
-        assuming a statistical deviation of the downtime occurences and a large enough turbine fleet.
+        assuming a statistical deviation of the downtime occurrences and a large enough turbine fleet.
         Suggested availability is 0.98 including technical availability of turbine and connector
         as well as outages for ecological reasons (e.g. bat protection). This does not include wake effects
         (see above) or curtailment/outage for economical reasons or transmission grid congestion.

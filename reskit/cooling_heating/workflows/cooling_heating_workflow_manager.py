@@ -39,7 +39,6 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
         [2] https://www.engineeringtoolbox.com/air-specific-heat-capacity-d_705.html
 
         """
-
         # Do basic workflow construction
         assert all([a in placements.columns for a in ["lon", "lat", "capacity"]]), (
             "Placements must contain the columns lon,lat and capacity"
@@ -108,7 +107,7 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
             ],
             data=airData,
             columns=["cp", "density"],
-        )  # index referes to ambient air temperature
+        )  # index refers to ambient air temperature
 
     def calculate_fan_power_air_cooling(
         self,
@@ -311,7 +310,6 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
         [1] 10.1016/j.energy.2015.05.081
         [2] 10.1016/j.enconman.2020.113610
         """
-
         # At design point:
         PFanDesign = -self.calculate_fan_power_air_cooling(
             temperatureCoolant,

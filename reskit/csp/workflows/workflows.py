@@ -46,7 +46,7 @@ def CSP_PTR_ERA5(
             single_dataset = True
             datasets = datasets[0]
     else:
-        raise TypeError(f"datasets got unkown datatype")
+        raise TypeError(f"datasets got unknown datatype")
 
     if not single_dataset:
         assert isinstance(global_solar_atlas_tamb_path, str)
@@ -81,7 +81,7 @@ def CSP_PTR_ERA5(
         del d
 
         # 2) run each simulation
-        ouputs = []
+        outputs = []
         for dataset in datasets:
             # select placements for current dataset
             placements_dataset = placements[placements["Dataset_opt"] == dataset]
@@ -119,12 +119,12 @@ def CSP_PTR_ERA5(
             output_dataset["location"] = placements_dataset.index
 
             # remember outputs for each dataset
-            ouputs.append(output_dataset)
+            outputs.append(output_dataset)
             del output_dataset
 
         # 3) merge data
         # TODO: merge together
-        output = xr.concat(ouputs, dim="location").sortby("location")
+        output = xr.concat(outputs, dim="location").sortby("location")
         return output
 
 
@@ -144,7 +144,7 @@ def CSP_PTR_ERA5_specific_dataset(
     fullvariation=False,
     _validation=False,
 ):
-    """Calculates the heat output from the solar field based on parabolic trough technology. The workflow is not yet finally validated (but is still plausible).
+    """Calculates the heat output from the solar field based on parabolic through technology. The workflow is not yet finally validated (but is still plausible).
         Date: 27.07.2021
         Author: David Franzmann IEK -3
 
@@ -155,10 +155,10 @@ def CSP_PTR_ERA5_specific_dataset(
         output_variables ([type], optional): [description]. Defaults to None.
         return_self (bool, optional): [description]. Defaults to True.
 
-    Returns:
+    Returns
+    -------
         [type]: [description]
     """
-
     # 1) Load input data
     wf = PTRWorkflowManager(placements)
 
@@ -235,12 +235,12 @@ def CSP_PTR_ERA5_specific_dataset(
     # manipulationof input values for variation calculation
     wf._applyVariation()  # only for developers, can be ignored otherwise
 
-    # 6) doing selfmade calulations until Heat to HTF
+    # 6) doing selfmade calculations until Heat to HTF
     wf.calculateIAM(a1=ptr_data["a1"], a2=ptr_data["a2"], a3=ptr_data["a3"])
     wf.calculateShadowLosses(method="wagner2011", SF_density=ptr_data["SF_density_direct"])
     wf.calculateWindspeedLosses(max_windspeed_threshold=ptr_data["maxWindspeed"])
     wf.calculateDegradationLosses(
-        efficencyDropPerYear=ptr_data["efficencyDropPerYear"],
+        efficiencyDropPerYear=ptr_data["efficencyDropPerYear"],
         lifetime=ptr_data["lifetime"],
     )
     wf.calculateHeattoHTF(

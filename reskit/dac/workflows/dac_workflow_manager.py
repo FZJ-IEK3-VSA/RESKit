@@ -32,11 +32,10 @@ class DACWorkflowManager(WorkflowManager):
             -The capacity is the nominal capacity of the DAC plant in tCO2/h
 
         Returns
-        ----------
+        -------
         DACWorkflowManager
 
         """
-
         # Do basic workflow construction
         assert all([a in placements.columns for a in ["lon", "lat", "capacity"]]), (
             "Placements must contain the columns lon,lat and capacity"
@@ -268,7 +267,6 @@ class DACWorkflowManager(WorkflowManager):
         [2] 10.3389/fclim.2020.618644
         [3] 10.1016/j.adapen.2025.100229
         """
-
         # Calculate capture rate, relative productivity and energy (w/o compression)
         if model == "HT_okosun":
             capture_rate = (

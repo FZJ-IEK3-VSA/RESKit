@@ -240,7 +240,7 @@ def plot_time_series(
     y2_legend = ["Greenius", "RESKit"]
     y2_axis = varnames2[1]  # 'Mean Temperatue\nHTF [°C]'
 
-    title = f"Time Series Comparision in \n {location}"
+    title = f"Time Series Comparison in \n {location}"
 
     savepath = os.path.join(validation_output_folder, f"ts_plot_{htf_greenius}_{y1_axis}_{y2_axis}.png")
     plot_time_series_twovars(
@@ -395,7 +395,7 @@ def plot_correlation(x, y, x_label, y_label, title, savepath=None):
     # set lims
     axs.set_xlim((line_min, line_max + 1))
     axs.set_ylim((line_min, line_max + 1))
-    # set titel and font sizes etc
+    # set title and font sizes etc
     axs.set_xlabel(x_label, fontsize=SMALL_SIZE)
     axs.set_ylabel(y_label, fontsize=SMALL_SIZE)
     axs.set_title(title, fontsize=SMALL_SIZE)
@@ -420,7 +420,7 @@ def plot_correlation(x, y, x_label, y_label, title, savepath=None):
         plt.savefig(
             savepath,
             dpi=600,
-            bbox="thight",
+            bbox="tight",
         )
         print("Figure saved to:", os.path.abspath(savepath))
 
@@ -473,9 +473,9 @@ def plot_time_series_twovars(x, y1, y1_legend, y1_axis, y2, y2_legend, y2_axis, 
     axs[0].set_xlim((min(x), max(x)))
     axs[0].set_ylabel(y1_axis, fontsize=SMALL_SIZE)
     axs[0].set_title(title, fontsize=SMALL_SIZE)
-    # set attributs lower plot
+    # set attributes lower plot
     # axs.set_ylim((line_min, line_max+1))
-    # set titel and font sizes etc
+    # set title and font sizes etc
     axs[1].set_xlabel("time since 01.01.2015, 00:00 [h]", fontsize=SMALL_SIZE)
     axs[1].set_ylabel(y2_axis, fontsize=SMALL_SIZE)
 
@@ -491,7 +491,7 @@ def plot_time_series_twovars(x, y1, y1_legend, y1_axis, y2, y2_legend, y2_axis, 
         plt.savefig(
             savepath,
             dpi=600,
-            bbox="thight",
+            bbox="tight",
         )
         print("Figure saved to:", os.path.abspath(savepath))
 

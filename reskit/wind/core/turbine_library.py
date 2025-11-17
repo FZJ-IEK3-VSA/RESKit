@@ -23,7 +23,6 @@ def parse_turbine(path):
 
     Used for loading into the TurbineLibrary table
     """
-
     meta = OrderedDict()
     with open(path) as fin:
         # Meta extraction mode

@@ -17,14 +17,13 @@ class EGS_workflowmanager:
     cp_water = 4182  # J/kg/K
 
     def __init__(self, placements) -> None:
-        """Workflow manager for EGS calcualtions
+        """Workflow manager for EGS calculations
 
         Parameters
         ----------
         placements : pd.DataFrame
             placements, contains at least "lat", "lon" columns in EPSG:4326
         """
-
         self.placements = placements
         assert "lat" in placements.columns
         assert "lon" in placements.columns
@@ -36,7 +35,7 @@ class EGS_workflowmanager:
             raise ValueError("Currently only 'doublette' and 'triplette' are supported types.")
 
         def eta_plant(temp_degC):
-            """calcualte efficiency based on the protocol from beardsmore
+            """Calculate efficiency based on the protocol from beardsmore
 
             Parameters
             ----------
@@ -110,7 +109,7 @@ class EGS_workflowmanager:
         self.data["n_production_wells_1"] = self.data["N_wells"] - 1
 
     def loadData(self, vars: list, source: str, newVarNamesDict: dict = None):
-        """loads the variables from source. Must be a NC file. Cannot be depth depending-
+        """Loads the variables from source. Must be a NC file. Cannot be depth depending-
 
         Parameters
         ----------
@@ -138,7 +137,7 @@ class EGS_workflowmanager:
                         f"dimensions do not align, pls check dim: {name} in file: {source}"
                     )
                 else:
-                    # set value if not existant
+                    # set value if not existent
                     setattr(self, name, value)
                     # self.__setattr__(name=value)
 
@@ -161,7 +160,7 @@ class EGS_workflowmanager:
             self.placements = self.placements.rename(newVarNamesDict, axis=1)
 
     def loadDataAllDepths(self, vars, source):
-        """loads all variables as an array depending on its depth
+        """Loads all variables as an array depending on its depth
 
         Parameters
         ----------
@@ -190,7 +189,7 @@ class EGS_workflowmanager:
                         f"dimensions do not align, pls check dim: {name} in file: {source}"
                     )
                 else:
-                    # set value if not existant
+                    # set value if not existent
                     setattr(self, name, value)
                     # self.__setattr__(name=value)
 
@@ -290,7 +289,7 @@ class EGS_workflowmanager:
         self.placements["ReservoirSize_m^3"] = self.data["reservoir_size_m3"]
 
     def __calulateRockVolumeShare(self):
-        """calcualtes the share of the placement reservoir to the discretized volume from the input data
+        """Calculates the share of the placement reservoir to the discretized volume from the input data
 
         Parameters
         ----------
@@ -332,7 +331,7 @@ class EGS_workflowmanager:
         self.sim_data["P_Plant_nom_UNITHERE"] = self.sim_data["Global_EGS_PowerTech"] * 1 / self.data["CF"]
 
     def VolumeMethod(self):
-        """calculate the enthalpy from the temperature"""
+        """Calculate the enthalpy from the temperature"""
         self.sim_data_VM = {}
         # define rock properties
         rho_rock = 2550  # kg/m^3
@@ -350,7 +349,7 @@ class EGS_workflowmanager:
         )
         self.sim_data_VM["Total_thermal_energy_PJ"] = Enth / 1e15
 
-        # useable enthalpy
+        # usable enthalpy
         R_TD = dT_drawdown / (self.sim_data["temperature"] - self.placements["surface_temperature"].values)
         Enth_useable = Enth * R_TD * self.data["recovery_factor"]  # J
         Enth_useable[self.sim_data["temperature"] < T_inj] = 0
@@ -365,7 +364,7 @@ class EGS_workflowmanager:
         P_out = Qdot_out * eta
         self.sim_data_VM["P_out_VM_MW"] = P_out / 1e6
 
-        # resource useage
+        # resource usage
         Tdot_K_per_a = dT_drawdown / self.data["lifetime_a"]  # K/a
         dT_useable = self.sim_data["temperature"] - self.data["minRockTemperature_degC"]  # K
         resource_use_time = dT_useable / Tdot_K_per_a  # a
@@ -403,13 +402,13 @@ class EGS_workflowmanager:
         rho_rock = 2550  # kg/m^3
         cp_rock = 1000  # J/kg/K
         k_R = 2.5  # W/mK #TODO: real location specific values here
-        warn("K_R is set to a default value. this needs to be adapted for the final Calulations")
+        warn("K_R is set to a default value. this needs to be adapted for the final calculations")
 
         q = (
             np.sqrt((t_D * k_R * rho_rock * cp_rock) / ((self.rho_water * self.cp_water) ** 2 * t)) * y * z
         )  # m^3/s?, inj. water volume flow per fracture, see Augustine2016 eq(2)
         x_E = x_ED * k_R * y * z / (self.rho_water * self.cp_water * q)  # m?, fracture spacing, see Augustine2016 eq(3)
-        n = x / (2 * x_E)  # 1, number of fractures, can be decimal as theoretical calcualtion nevertheless
+        n = x / (2 * x_E)  # 1, number of fractures, can be decimal as theoretical calculation nevertheless
         Q = q * n  # l/s, total inj. water volume flow
 
         #######################################s
@@ -425,7 +424,7 @@ class EGS_workflowmanager:
         pass
 
     def GringartenMethodFixeVdot(self):
-        """calculates the Gringarten solution for a given fracture configuration"""
+        """Calculates the Gringarten solution for a given fracture configuration"""
         assert self.data["lifetime_a"] % 1 == 0  # check if its a natural number
 
         Vdot_total = self.data["Vdot_total_m3_per_s"]  # m^3/s = 1E-3 l/s
@@ -546,8 +545,7 @@ class EGS_workflowmanager:
         )
 
     def calculateCosts(self, method="default", techMethod=None):
-        """calcualte the CAPEX cost for the plant"""
-
+        """Calculate the CAPEX cost for the plant"""
         # get the data from self
         sim_data_techmethod = getattr(self, techMethod)
         tech_method_short = self._getTechMethodShort(techMethod)
@@ -640,8 +638,7 @@ class EGS_workflowmanager:
         )
 
     def getOptDepth(self, techMethod):
-        """gets the optimal depth value based on the lowest LCOE"""
-
+        """Gets the optimal depth value based on the lowest LCOE"""
         sim_data_techmethod = getattr(self, techMethod)
         tech_method_short = self._getTechMethodShort(techMethod)
 
@@ -654,7 +651,7 @@ class EGS_workflowmanager:
         indexDepths = self.depths <= maxDepth
         LCOE_considerable = LCOE_considerable[indexDepths]
 
-        # filter errorneous values:
+        # filter erroneous values:
         LCOE_considerable[np.isnan(LCOE_considerable)] = np.inf
         LCOE_considerable[LCOE_considerable <= 0] = np.inf
 
@@ -681,7 +678,7 @@ class EGS_workflowmanager:
         tech_method_short = self._getTechMethodShort(techMethod)
 
         def getOptimalValue(self, mat, argminOptDepth):
-            """returns the values at the optimal depth"""
+            """Returns the values at the optimal depth"""
             placement = np.arange(0, len(argminOptDepth))  # np.arange(0, len(self.placements))
             return mat[argminOptDepth, placement]
 
@@ -734,7 +731,7 @@ class EGS_workflowmanager:
         sim_data_techmethod[f"regeneration_time_{tech_method_short}_a"] = regeneration_time
 
     def saveOutput(self, savepath=None, deepsave=False):
-        """saved to nc4 or shape file or csv to savepath
+        """Saved to nc4 or shape file or csv to savepath
 
         Parameters
         ----------
@@ -746,7 +743,7 @@ class EGS_workflowmanager:
         """
 
         def _convertToXr(placements):
-            """convert placements to NC4 xarray obj
+            """Convert placements to NC4 xarray obj
 
             Parameters
             ----------
@@ -839,7 +836,7 @@ class EGS_workflowmanager:
         return techMethod[-2:]
 
     def _EGS_NC4_to_raster(self, nc4_obj, varname):
-        """extracts one depth layer from an variable and returns it as an raster file
+        """Extracts one depth layer from an variable and returns it as an raster file
 
         Parameters
         ----------
@@ -903,8 +900,7 @@ class EGS_workflowmanager:
         n_wells=2,
         T_inj=80,
     ):
-        """calculate the enthalpy from the temperature"""
-
+        """Calculate the enthalpy from the temperature"""
         USD2EUR = 0.88
         ### Physical
         # define rock properties
@@ -912,7 +908,7 @@ class EGS_workflowmanager:
         cp_rock = 1000  # J/kg/K
 
         def eta_plant(temp_degC):
-            """calcualte efficiency based on the protocol from beardsmore
+            """Calculate efficiency based on the protocol from beardsmore
 
             Parameters
             ----------
@@ -929,7 +925,7 @@ class EGS_workflowmanager:
         # total enthalpy
         Enth = rho_rock * cp_rock * reservoir_size_m3 * (temperature - surface_temperature)
 
-        # useable enthalpy
+        # usable enthalpy
         R_TD = dT_drawdown / (temperature - surface_temperature)
         Enth_useable = Enth * R_TD * recovery_factor  # J
         if temperature < T_inj:

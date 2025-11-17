@@ -8,15 +8,15 @@ import pytz
 
 class CosmoSource(NCSource):
     """
-    Handles the sources Sev created from the COSMO-REA6 dataset (cannot handle the orginal sources because they're whack)
+    Handles the sources Sev created from the COSMO-REA6 dataset (cannot handle the original sources because they're whack)
     """
 
     GWA50_CONTEXT_MEAN_SOURCE = None
     GWA100_CONTEXT_MEAN_SOURCE = None
 
-    # a LARGE ooverestimate of how much space should be inbetween a given point and the nearest index
+    # a LARGE ooverestimate of how much space should be in between a given point and the nearest index
     MAX_LON_DIFFERENCE = 0.6
-    # a LARGE ooverestimate of how much space should be inbetween a given point and the nearest index
+    # a LARGE ooverestimate of how much space should be in between a given point and the nearest index
     MAX_LAT_DIFFERENCE = 0.6
 
     def __init__(s, source, bounds=None, indexPad=0, **kwargs):
@@ -31,7 +31,7 @@ class CosmoSource(NCSource):
 
         bounds : Anything acceptable to geokit.Extent.load(), optional
             The boundaries of the data which is needed
-              * Usage of this will help with memory mangement
+              * Usage of this will help with memory management
               * If None, the full dataset is loaded in memory
 
         padExtent : numeric, optional
@@ -211,11 +211,11 @@ class CosmoSource(NCSource):
                 del s.data["windspeed_140"]
 
     def loadTemperature(s, processor=lambda x: x - 273.15):
-        """load the typical pressure variable"""
+        """Load the typical pressure variable"""
         s.load("2t", name="air_temp", processor=processor)
 
     def loadPressure(s):
-        """load the typical pressure variable"""
+        """Load the typical pressure variable"""
         s.load("sp", name="pressure")
 
     def loadSet_PV(s, verbose=False, _clockstart=None, _header=""):
@@ -298,7 +298,6 @@ class CosmoSource(NCSource):
 
         Returns
         -------
-
         If a single location is given: pandas.Series
           * Indexes match to times
 

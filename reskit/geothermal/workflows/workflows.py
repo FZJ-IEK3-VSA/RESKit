@@ -24,7 +24,8 @@ def EGSworkflow(
     """
     Executes the Enhanced Geothermal System (EGS) workflow for given placements.
 
-    Parameters:
+    Parameters
+    ----------
         placements (pd.DataFrame): Locations where the EGS workflow will be applied. Needs to have lat lon and geokit geoms.
         sourceTemperature (str or Path, optional): Path to the geothermal temperature data.
             Defaults to `path_temperatures`.
@@ -35,7 +36,8 @@ def EGSworkflow(
             Defaults to 'doublette'.
         manual_values (dict, optional): Dictionary of manually specified values for overriding defaults.
 
-    Returns:
+    Returns
+    -------
         None or xarray object: Workflow results, optionally saved to `savepath`.
 
     Citation:
@@ -43,7 +45,6 @@ def EGSworkflow(
          from Geothermal Power Under Technical, Economic, Sustainable Evaluation. Available at SSRN:
          https://ssrn.com/abstract=5029989 or http://dx.doi.org/10.2139/ssrn.5029989
     """
-
     citation = """
     This workflow can be cited as:
     Franzmann, David and Heinrichs, Heidi
@@ -83,7 +84,7 @@ def EGSworkflow(
         manual_values=manual_values,
     )
 
-    ### Calulations
+    ### Calculations
     tic_calc = time.time()
     now = datetime.now()
     print("Starting calc =", now, flush=True)

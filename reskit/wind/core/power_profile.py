@@ -24,19 +24,19 @@ def apply_power_profile_projection(measured_wind_speed, measured_height, target_
         The scaling factor used to project each wind speed timeseries, by default 1/7
         Must either be a single value, or an array of values with the same length as the "locations" dimension of `measured_wind_speed`
 
-        Notes
-        -----
+    Notes
+    -----
         The default scaling factor, alpha, equal to 1/7 corresponds to neutral stability conditions.
         Alpha values can also be computed using the following function:
                 alpha_from_levels(low_wind_speed, low_height, high_wind_speed, high_height)
 
-        Returns
-        -------
+    Returns
+    -------
         array_like
         projected wind speeds with the same dimensions as `measured_wind_speed`
 
-        See Also
-        --------
+    See Also
+    --------
         apply_logarithmic_profile_projection(wind speeds, measured height, target height, roughness)
 
     """
@@ -67,10 +67,9 @@ def alpha_from_levels(low_wind_speed, low_height, high_wind_speed, high_height):
         The corresponding scaling factor
         The output dimensionality follows the broadcasting rules of Numpy
 
-        Notes
-        -----
+    Notes
+    -----
         The projection of wind speed values at a given height using the returned scaling factors can be computed using the following function:
                 apply_power_profile_projection(measured_wind_speed, measured_height, target_height, alpha)
     """
-
     return np.log(low_wind_speed / high_wind_speed) / np.log(low_height / high_height)

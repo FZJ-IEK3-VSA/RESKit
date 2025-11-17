@@ -121,7 +121,7 @@ class WindWorkflowManager(WorkflowManager):
         """
         Projects wind speeds to hub heights for a given projection/scaling method.
 
-        Parameters:
+        Parameters
         ----------
         height_scaling_method : tuple
             The method to project the windspeeds from the default height (here
@@ -231,7 +231,7 @@ class WindWorkflowManager(WorkflowManager):
         source_type : str
             string value to get the corresponding key-value pairs. Accepted types 'clc', 'clc-code', 'globCover', 'modis', or 'cci', by default 'clc'
 
-        See also
+        See Also
         --------
             roughness_from_land_cover_classification
 
@@ -308,7 +308,6 @@ class WindWorkflowManager(WorkflowManager):
         ------
             A reference to the invoking WindWorkflowManager
         """
-
         assert "roughness" in self.placements.columns
         assert hasattr(self, "elevated_wind_speed_height")
 
@@ -498,7 +497,6 @@ class WindWorkflowManager(WorkflowManager):
 
 
         """
-
         assert "surface_air_temperature" in self.sim_data, "surface_air_temperature has not been read from a source"
         assert "surface_pressure" in self.sim_data, "surface_pressure has not been read from a source"
         assert hasattr(self, "elevated_wind_speed_height")
@@ -633,7 +631,7 @@ class WindWorkflowManager(WorkflowManager):
             corrected value, by default 0.03, i.e. 3% absolute.
 
         max_iterations : int, optional
-            The max. No. of simulation iteratons allowed for iterative
+            The max. No. of simulation iterations allowed for iterative
             simulation of one batch until the tolerance is met, else a
             TimeOutError will be raised. By default 10 iterations.
 
@@ -650,7 +648,6 @@ class WindWorkflowManager(WorkflowManager):
             """
             Applies the invoking power curve to the given wind speeds.
             """
-
             _gen = np.zeros_like(
                 self.sim_data["elevated_wind_speed"][:, _batch * max_batch_size : (_batch + 1) * max_batch_size]
             )

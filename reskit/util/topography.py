@@ -47,9 +47,9 @@ def visibility_from_topography(
     Note:
     =====
     * This algorithm will likely fail if used too near to the poles
-    * It is also important to choose an apporpriate degree_step for the
+    * It is also important to choose an appropriate degree_step for the
       given elevation raster file. If the step size is too small,
-      artifacts will begin to appear in leading to reduced visability
+      artifacts will begin to appear in leading to reduced visibility
       - Todo: investigate this further?? (It has something to do with
         the interpolation
       - For now, choose a value which is slightly higher than the raster's
