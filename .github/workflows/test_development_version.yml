@@ -64,5 +64,5 @@ jobs:
           conda run -n reskit_env jupyter nbconvert --execute --to=python allow-errors=false ./examples/_4_solar/4.01-Solar-Load_Module.ipynb
           conda run -n reskit_env jupyter nbconvert --execute --to=python allow-errors=false ./examples/_4_solar/4.03-Solar-Automated_Simulation_Workflow.ipynb
           conda run -n reskit_env jupyter nbconvert --execute --to=python allow-errors=false ./examples/_3_wind/ETHOS.RESKit.Wind.ipynb
-          conda run -n reskit_env jupyter nbconvert --execute --to=python allow-errors=false ./examples/Solar_Workflows.ipynb
+          conda run -n reskit_env jupyter nbconvert --execute --to=python allow-errors=false ./examples/_4_solar/Solar_Workflows.ipynb
           conda run -n reskit_env jupyter nbconvert --execute --to=python allow-errors=false ./examples/_3_wind/Wind_Workflows.ipynb
