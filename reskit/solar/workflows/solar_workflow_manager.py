@@ -1,22 +1,21 @@
-import geokit as gk
-import pandas as pd
-import numpy as np
-
-from os.path import isfile
-from collections import OrderedDict
-from types import FunctionType
-import warnings
-from scipy.interpolate import RectBivariateSpline
-import json
-import numbers
-
-# from reskit import solarpower
-
-from .. import core as rk_solar_core
-from ...workflow_manager import WorkflowManager
-
 # Lazily import PVLib
 import importlib
+import json
+import numbers
+import warnings
+from collections import OrderedDict
+from os.path import isfile
+from types import FunctionType
+
+import geokit as gk
+import numpy as np
+import pandas as pd
+from scipy.interpolate import RectBivariateSpline
+
+from ...workflow_manager import WorkflowManager
+
+# from reskit import solarpower
+from .. import core as rk_solar_core
 
 """
 

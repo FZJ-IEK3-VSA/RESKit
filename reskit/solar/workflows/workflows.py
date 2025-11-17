@@ -1,11 +1,13 @@
 # import primary packages
-import numpy as np
 import warnings
+
+import numpy as np
+
+from ... import util as rk_util
 
 # import othert modules
 from ... import weather as rk_weather
 from .solar_workflow_manager import SolarWorkflowManager
-from ... import util as rk_util
 
 
 def openfield_pv_merra_ryberg2019(
