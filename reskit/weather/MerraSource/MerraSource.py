@@ -1,7 +1,9 @@
-from .. import NCSource
-import numpy as np
 from os.path import dirname, join
+
 import geokit as gk
+import numpy as np
+
+from .. import NCSource
 
 
 class MerraSource(NCSource):

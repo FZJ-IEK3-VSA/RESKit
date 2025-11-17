@@ -1,6 +1,8 @@
-from .. import NCSource
-import numpy as np
 from os.path import dirname, join
+
+import numpy as np
+
+from .. import NCSource
 
 
 class Era5Source(NCSource):

@@ -1,5 +1,6 @@
-from . import NCSource
 import numpy as np
+
+from . import NCSource
 
 
 class SarahSource(NCSource):

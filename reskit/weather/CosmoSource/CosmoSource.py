@@ -1,7 +1,8 @@
 """TODO: NEEDS UPDATING!!!"""
 
-from ..NCSource import *
 import pytz
+
+from ..NCSource import *
 
 # Define constants
 
