@@ -147,7 +147,7 @@ class CosmoSource(NCSource):
             return [None if ss else Index(yi=y, xi=x) for ss, y, x in zip(s, latI, lonI)]
 
     def loadRadiation(s):
-        """frankCorrection: "Bias correction of a novel European reanalysis data set for solar energy applications" """
+        """frankCorrection: 'Bias correction of a novel European reanalysis data set for solar energy applications'"""
         s.load("SWDIFDS_RAD", "dhi")
         s.load("SWDIRS_RAD", "dni_flat")
         s.data["ghi"] = s.data["dhi"] + s.data["dni_flat"]
