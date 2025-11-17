@@ -1,8 +1,9 @@
-import pandas as pd
 import numpy as np
-from reskit.csp.workflows.csp_workflow_manager import PTRWorkflowManager
-import reskit as rk
+import pandas as pd
 import pytest
+
+import reskit as rk
+from reskit.csp.workflows.csp_workflow_manager import PTRWorkflowManager
 
 # %% Test Init
 

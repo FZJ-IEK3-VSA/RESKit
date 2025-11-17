@@ -1,11 +1,13 @@
-from reskit import TEST_DATA
-from reskit.weather import SarahSource
-import pytest
-import numpy as np
-import pandas as pd
+from os.path import join
+
 import geokit as gk
 import netCDF4 as nc
-from os.path import join
+import numpy as np
+import pandas as pd
+import pytest
+
+from reskit import TEST_DATA
+from reskit.weather import SarahSource
 
 
 @pytest.fixture

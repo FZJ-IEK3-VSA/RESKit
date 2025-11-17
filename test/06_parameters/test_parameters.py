@@ -1,5 +1,5 @@
-from reskit.parameters.parameters import OnshoreParameters, OffshoreParameters
 from reskit import TEST_DATA
+from reskit.parameters.parameters import OffshoreParameters, OnshoreParameters
 
 
 def test_OnshoreParameters_default():

@@ -1,10 +1,12 @@
-import pandas as pd
-import numpy as np
-from reskit.wind import WindWorkflowManager, PowerCurve
-import reskit as rk
-import pytest
-from reskit import TEST_DATA
 import copy
+
+import numpy as np
+import pandas as pd
+import pytest
+
+import reskit as rk
+from reskit import TEST_DATA
+from reskit.wind import PowerCurve, WindWorkflowManager
 
 alternative_wind_speed_rasters = {
     50: TEST_DATA["gwa50-like.tif"],

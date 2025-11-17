@@ -1,10 +1,11 @@
-from reskit import TEST_DATA
-from reskit.weather import MerraSource
-import pytest
-import numpy as np
-import pandas as pd
 import geokit as gk
 import netCDF4 as nc
+import numpy as np
+import pandas as pd
+import pytest
+
+from reskit import TEST_DATA
+from reskit.weather import MerraSource
 
 
 @pytest.fixture

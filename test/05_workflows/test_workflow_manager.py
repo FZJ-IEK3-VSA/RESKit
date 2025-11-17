@@ -1,17 +1,18 @@
-import pandas as pd
+import geokit as gk
 import numpy as np
+import osgeo
+import pandas as pd
+import pytest
+import xarray
+
+import reskit as rk
 from reskit import (
-    WorkflowQueue,
+    TEST_DATA,
     WorkflowManager,
+    WorkflowQueue,
     distribute_workflow,
     execute_workflow_iteratively,
-    TEST_DATA,
 )
-import reskit as rk
-import geokit as gk
-import xarray
-import pytest
-import osgeo
 
 
 @pytest.fixture

@@ -1,6 +1,7 @@
-from reskit.util.topography import visibility_from_topography
-from reskit import TEST_DATA
 import numpy as np
+
+from reskit import TEST_DATA
+from reskit.util.topography import visibility_from_topography
 
 
 def test_visibility_from_topography():

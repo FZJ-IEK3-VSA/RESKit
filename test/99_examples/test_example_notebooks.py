@@ -1,7 +1,8 @@
-import pytest
-from papermill import execute_notebook
 from glob import glob
 from os import path
+
+import pytest
+from papermill import execute_notebook
 
 TEST_DIR = path.dirname(__file__)
 notebooks = glob(path.join(TEST_DIR, "..", "..", "..", "examples", "*.ipynb"))

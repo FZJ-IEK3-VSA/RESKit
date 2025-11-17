@@ -1,9 +1,10 @@
-import pandas as pd
-import numpy as np
-from reskit.solar import SolarWorkflowManager
-import reskit as rk
 import geokit as gk
+import numpy as np
+import pandas as pd
 import pytest
+
+import reskit as rk
+from reskit.solar import SolarWorkflowManager
 
 
 def print_testresults(variable):

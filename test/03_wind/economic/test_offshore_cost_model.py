@@ -1,5 +1,6 @@
-from reskit.wind.economic.offshore_cost_model import offshore_turbine_capex
 import numpy as np
+
+from reskit.wind.economic.offshore_cost_model import offshore_turbine_capex
 
 
 def test_offshore_turbine_capex():

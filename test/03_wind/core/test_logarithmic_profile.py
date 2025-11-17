@@ -1,14 +1,14 @@
+import geokit as gk
+import numpy as np
+
 from reskit import TEST_DATA
 from reskit.wind.core.logarithmic_profile import (
+    apply_logarithmic_profile_projection,
     roughness_from_clc,
     roughness_from_land_cover_classification,
     roughness_from_land_cover_source,
     roughness_from_levels,
-    apply_logarithmic_profile_projection,
 )
-
-import numpy as np
-import geokit as gk
 
 
 def test_apply_logarithmic_profile_projection():

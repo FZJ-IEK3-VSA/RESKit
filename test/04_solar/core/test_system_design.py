@@ -1,4 +1,5 @@
 import pytest
+
 from reskit.solar.core.system_design import location_to_tilt
 
 

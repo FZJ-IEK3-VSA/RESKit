@@ -1,9 +1,9 @@
-from reskit import TEST_DATA
-from reskit.wind.core.power_curve import PowerCurve, compute_specific_power
-
 import numpy as np
 import pandas as pd
 import pytest
+
+from reskit import TEST_DATA
+from reskit.wind.core.power_curve import PowerCurve, compute_specific_power
 
 
 def test_compute_specific_power():

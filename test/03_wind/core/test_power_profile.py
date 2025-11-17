@@ -1,8 +1,9 @@
+import numpy as np
+
 from reskit.wind.core.power_profile import (
     alpha_from_levels,
     apply_power_profile_projection,
 )
-import numpy as np
 
 
 def test_apply_power_profile_projection():

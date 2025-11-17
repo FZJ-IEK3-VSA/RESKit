@@ -1,14 +1,15 @@
+import geokit as gk
+import numpy as np
+import pandas as pd
+import pytest
+
+from reskit import TEST_DATA
 from reskit.solar.workflows.workflows import (
     openfield_pv_era5,
+    openfield_pv_iconlam,
     openfield_pv_merra_ryberg2019,
     openfield_pv_sarah_unvalidated,
-    openfield_pv_iconlam,
 )
-from reskit import TEST_DATA
-import pytest
-import numpy as np
-import geokit as gk
-import pandas as pd
 
 
 @pytest.fixture

@@ -1,8 +1,9 @@
-import pytest
-import reskit as rk
-import pandas as pd
 import geokit as gk
+import pandas as pd
+import pytest
 from numpy import allclose
+
+import reskit as rk
 
 # Default variables
 sourceTemperature = rk.geothermal.data.path_temperatures

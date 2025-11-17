@@ -1,8 +1,9 @@
-import reskit as rk
-import pandas as pd
 import numpy as np
-from reskit import TEST_DATA
+import pandas as pd
 import pytest
+
+import reskit as rk
+from reskit import TEST_DATA
 
 # %%
 # @pytest.fixture
