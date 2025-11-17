@@ -143,9 +143,7 @@ class CosmoSource(NCSource):
             else:
                 return Index(yi=latI[0], xi=lonI[0])
         else:
-            return [
-                None if ss else Index(yi=y, xi=x) for ss, y, x in zip(s, latI, lonI)
-            ]
+            return [None if ss else Index(yi=y, xi=x) for ss, y, x in zip(s, latI, lonI)]
 
     def loadRadiation(s):
         """frankCorrection: "Bias correction of a novel European reanalysis data set for solar energy applications" """
@@ -194,9 +192,7 @@ class CosmoSource(NCSource):
 
                 fac = (height - 50) / (100 - 50)
 
-                newWspd = s.data["windspeed_100"] * fac + s.data["windspeed_50"] * (
-                    1 - fac
-                )
+                newWspd = s.data["windspeed_100"] * fac + s.data["windspeed_50"] * (1 - fac)
                 s.data["windspeed"] = newWspd
 
                 del s.data["windspeed_50"]
@@ -208,9 +204,7 @@ class CosmoSource(NCSource):
 
                 fac = (height - 100) / (140 - 100)
 
-                newWspd = s.data["windspeed_140"] * fac + s.data["windspeed_100"] * (
-                    1 - fac
-                )
+                newWspd = s.data["windspeed_140"] * fac + s.data["windspeed_100"] * (1 - fac)
                 s.data["windspeed"] = newWspd
 
                 del s.data["windspeed_100"]
@@ -232,32 +226,28 @@ class CosmoSource(NCSource):
                 _clockstart = dt.now()
             print(
                 _header,
-                "Loading radiation at: +%.2fs"
-                % (dt.now() - _clockstart).total_seconds(),
+                "Loading radiation at: +%.2fs" % (dt.now() - _clockstart).total_seconds(),
             )
         s.loadRadiation()
 
         if verbose:
             print(
                 _header,
-                "Loading wind speed at: +%.2fs"
-                % (dt.now() - _clockstart).total_seconds(),
+                "Loading wind speed at: +%.2fs" % (dt.now() - _clockstart).total_seconds(),
             )
         s.loadWindSpeedAtHeight(10)
 
         if verbose:
             print(
                 _header,
-                "Loading pressure at: +%.2fs"
-                % (dt.now() - _clockstart).total_seconds(),
+                "Loading pressure at: +%.2fs" % (dt.now() - _clockstart).total_seconds(),
             )
         s.loadPressure()
 
         if verbose:
             print(
                 _header,
-                "Loading temperature at: +%.2fs"
-                % (dt.now() - _clockstart).total_seconds(),
+                "Loading temperature at: +%.2fs" % (dt.now() - _clockstart).total_seconds(),
             )
         s.loadTemperature()
 

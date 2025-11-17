@@ -73,13 +73,9 @@ class MerraSource(NCSource):
     ELEVATED_WIND_SPEED_HEIGHT = 50
     SURFACE_WIND_SPEED_HEIGHT = 2
 
-    LONG_RUN_AVERAGE_WINDSPEED = join(
-        dirname(__file__), "data", "merra_average_windspeed_50m-shifted.tif"
-    )
+    LONG_RUN_AVERAGE_WINDSPEED = join(dirname(__file__), "data", "merra_average_windspeed_50m-shifted.tif")
 
-    LONG_RUN_AVERAGE_GHI = join(
-        dirname(__file__), "data", "merra_average_SWGDN_1994-2015_globe.tif"
-    )
+    LONG_RUN_AVERAGE_GHI = join(dirname(__file__), "data", "merra_average_SWGDN_1994-2015_globe.tif")
 
     MAX_LON_DIFFERENCE = 0.625
     MAX_LAT_DIFFERENCE = 0.5
@@ -181,9 +177,7 @@ class MerraSource(NCSource):
 
         Where '<X>' is the height specified by `MerraSource.ELEVATED_WIND_SPEED_HEIGHT`
         """
-        self.data["elevated_wind_speed"] = self._load_wind_speed(
-            height=self.ELEVATED_WIND_SPEED_HEIGHT
-        )
+        self.data["elevated_wind_speed"] = self._load_wind_speed(height=self.ELEVATED_WIND_SPEED_HEIGHT)
 
     def sload_surface_wind_speed(self):
         """Standard loader function for the variable 'surface_wind_speed'
@@ -194,9 +188,7 @@ class MerraSource(NCSource):
 
         Where '<X>' is the height specified by `MerraSource.SURFACE_WIND_SPEED_HEIGHT`
         """
-        self.data["surface_wind_speed"] = self._load_wind_speed(
-            height=self.SURFACE_WIND_SPEED_HEIGHT
-        )
+        self.data["surface_wind_speed"] = self._load_wind_speed(height=self.SURFACE_WIND_SPEED_HEIGHT)
 
     def sload_wind_speed_at_2m(self):
         """Standard loader function for the variable 'wind_speed_at_2m'
@@ -238,9 +230,7 @@ class MerraSource(NCSource):
 
         Where '<X>' is the height specified by `MerraSource.ELEVATED_WIND_SPEED_HEIGHT`
         """
-        self.data["elevated_wind_direction"] = self._load_wind_speed(
-            height=self.ELEVATED_WIND_SPEED_HEIGHT
-        )
+        self.data["elevated_wind_direction"] = self._load_wind_speed(height=self.ELEVATED_WIND_SPEED_HEIGHT)
 
     def sload_surface_wind_direction(self):
         """Standard loader function for the variable 'surface_wind_direction'
@@ -251,9 +241,7 @@ class MerraSource(NCSource):
 
         Where '<X>' is the height specified by `MerraSource.SURFACE_WIND_SPEED_HEIGHT`
         """
-        self.data["surface_wind_direction"] = self._load_wind_speed(
-            height=self.SURFACE_WIND_SPEED_HEIGHT
-        )
+        self.data["surface_wind_direction"] = self._load_wind_speed(height=self.SURFACE_WIND_SPEED_HEIGHT)
 
     def sload_wind_direction_at_2m(self):
         """Standard loader function for the variable 'wind_direction_at_2m'
@@ -298,9 +286,7 @@ class MerraSource(NCSource):
 
         Temperature values are also converted from kelvin to degrees celsius
         """
-        return self.load(
-            "T2M", name="surface_air_temperature", processor=lambda x: x - 273.15
-        )
+        return self.load("T2M", name="surface_air_temperature", processor=lambda x: x - 273.15)
 
     def sload_surface_dew_temperature(self):
         """Standard loader function for the variable 'surface_dew_temperature'
@@ -310,9 +296,7 @@ class MerraSource(NCSource):
 
         Temperature values are also converted from kelvin to degrees celsius
         """
-        return self.load(
-            "T2MDEW", name="surface_dew_temperature", processor=lambda x: x - 273.15
-        )
+        return self.load("T2MDEW", name="surface_dew_temperature", processor=lambda x: x - 273.15)
 
     def sload_global_horizontal_irradiance(self):
         """Standard loader function for the variable 'global_horizontal_irradiance'

@@ -182,9 +182,7 @@ class IconlamSource(NCSource):
 
         TODO: Update function to also be able to handle raw ERA5 inputs for u & v
         """
-        return self.load(
-            "ws{}".format(self.ELEVATED_WIND_SPEED_HEIGHT), "elevated_wind_speed"
-        )
+        return self.load("ws{}".format(self.ELEVATED_WIND_SPEED_HEIGHT), "elevated_wind_speed")
 
     def sload_surface_wind_speed(self):
         """Standard loader function for the variable 'surface_wind_speed'
@@ -199,9 +197,7 @@ class IconlamSource(NCSource):
 
         TODO: Update function to also be able to handle raw ERA5 inputs for u & v
         """
-        return self.load(
-            "ws{}".format(self.SURFACE_WIND_SPEED_HEIGHT), "surface_wind_speed"
-        )
+        return self.load("ws{}".format(self.SURFACE_WIND_SPEED_HEIGHT), "surface_wind_speed")
 
     def sload_wind_speed_at_100m(self):
         """Standard loader function for the variable 'wind_speed_at_100m'
@@ -260,9 +256,7 @@ class IconlamSource(NCSource):
 
         Temperature values are also converted from kelvin to degrees celsius
         """
-        return self.load(
-            "t2m", name="surface_air_temperature", processor=lambda x: x - 273.15
-        )
+        return self.load("t2m", name="surface_air_temperature", processor=lambda x: x - 273.15)
 
     def sload_surface_dew_temperature(self):
         """Standard loader function for the variable 'surface_dew_temperature'
@@ -272,9 +266,7 @@ class IconlamSource(NCSource):
 
         Temperature values are also converted from kelvin to degrees celsius
         """
-        return self.load(
-            "d2m", name="surface_dew_temperature", processor=lambda x: x - 273.15
-        )
+        return self.load("d2m", name="surface_dew_temperature", processor=lambda x: x - 273.15)
 
     def sload_direct_horizontal_irradiance(self):
         """Standard loader function for the variable 'direct_horizontal_irradiance'

@@ -1,8 +1,11 @@
-[lint]
-# Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`) codes by default.
-# Unlike Flake8, Ruff doesn't enable pycodestyle warnings (`W`) or
-# McCabe complexity (`C901`) by default.
 
+line-length = 120
+[lint.pycodestyle]
+max-doc-length = 120
+max-line-length = 120
+
+[lint]
+select = ["D"]
 ignore = [
     "F401", # imported but unused
     "F405", # Variable is undefined or from star import
@@ -18,3 +21,7 @@ ignore = [
     "E741", # Ambiguous variable name: `l`
     "E722", # Do not use bare `except`
 ]
+unfixable = ["F401"]
+
+[lint.pydocstyle]
+convention = "numpy"

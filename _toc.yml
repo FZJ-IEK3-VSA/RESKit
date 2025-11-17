@@ -14,7 +14,38 @@ parts:
   - caption: Examples
     maxdepth: 3
     chapters:
-      - file: examples/1.01-Weather-Reading_Weather_Data.ipynb
+      # - caption: Overview
+      #   file: docs/articles/_0_example_overview.md
+      # - caption: Download Weather Data
+      - file: docs/articles/_1_download_weather_data.md
+        sections:
+          - file: examples/_1_load_weater_data/1.01-Weather-Reading_Weather_Data.ipynb
+          - file: examples/_1_load_weater_data/1.03-Weather-Vertically_project_wind_speed.ipynb
+      # - caption: Evaluate Economics
+      - file: docs/articles/_2_evaluate_economics.md
+        sections:
+          - file: examples/_2_economic/2.01-Economic-Compute_levelized_cost_of_electricity.ipynb
+      - file: docs/articles/_3_wind_power.md
+        sections:
+          - file: examples/_3_wind/3.01a-Wind-Load_Power_Curve.ipynb
+          - file: examples/_3_wind/3.01b-Wind-Synthetic_Power_Curve.ipynb
+          - file: examples/_3_wind/3.02-Wind-Convolute_a_Power_Curve.ipynb
+          - file: examples/_3_wind/3.03-Wind-Design_Onshore_Turbine.ipynb
+          - file: examples/_3_wind/3.04-Wind-Estimate_Turbine_Capital_Cost.ipynb
+          - file: examples/_3_wind/3.05a-Wind-Basic_Turbine_Simulation.ipynb
+          - file: examples/_3_wind/3.05b-Wind-Turbine_Simulation_Workflow.ipynb
+          - file: examples/_3_wind/3.05c-Wind-Automated_Turbine_Simulation_Workflow.ipynb
+      - file: docs/articles/_4_solar.md
+        sections:
+          - file: examples/_4_solar/4.01-Solar-Load_Module.ipynb
+          - file: examples/_4_solar/4.03-Solar-Automated_Simulation_Workflow.ipynb
+      - file: docs/articles/_5_geothermal.md
+        sections:
+          - file: examples/_5_geothermal/5.01-Run-Geothermal-Simulations.ipynb
+      - file: docs/articles/_6_direct_air_capture.md
+        sections:
+          - file: examples/_6_direct_air_capture/ETHOS.RESKit.DAC.ipynb
+          - file: examples/_6_direct_air_capture/ETHOS.RESKit.CoolingHeating.ipynb
 
   - caption: API
     chapters:

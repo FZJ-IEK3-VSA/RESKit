@@ -296,9 +296,7 @@ def roughness_from_clc(clc_path, loc, window_range=0):
     loc = gk.LocationSet(loc)
 
     # Get pixels values from clc
-    clcGridValues = gk.raster.interpolateValues(
-        clc_path, loc, winRange=window_range, noDataOkay=True
-    )
+    clcGridValues = gk.raster.interpolateValues(clc_path, loc, winRange=window_range, noDataOkay=True)
 
     # make output array
     if window_range > 0:
@@ -550,6 +548,4 @@ def roughness_from_land_cover_source(source, loc, land_cover_type="clc"):
     loc = gk.LocationSet(loc)
     classifications = gk.raster.interpolateValues(source, loc, noDataOkay=False)
 
-    return roughness_from_land_cover_classification(
-        classifications, land_cover_type=land_cover_type
-    )
+    return roughness_from_land_cover_classification(classifications, land_cover_type=land_cover_type)

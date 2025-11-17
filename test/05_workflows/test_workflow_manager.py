@@ -80,9 +80,7 @@ def test_WorkflowManager_set_time_index(
     pt_WorkflowManager_initialized: WorkflowManager,
 ) -> WorkflowManager:
     man = pt_WorkflowManager_initialized
-    man.set_time_index(
-        pd.date_range("2020-01-01 00:00:00", "2020-02-01 00:00:00", freq="h")
-    )
+    man.set_time_index(pd.date_range("2020-01-01 00:00:00", "2020-02-01 00:00:00", freq="h"))
     assert man.time_index[10] == pd.Timestamp("2020-01-01 10:00:00")
     assert man._time_sel_ is None
     assert man._sim_shape_ == (len(man.time_index), 5)
@@ -113,9 +111,7 @@ def test_WorkflowManager_read(
     assert np.isclose(man.sim_data["elevated_wind_speed"].max(), 15.57823145237587)
 
     assert np.isclose(man.sim_data["surface_pressure"].mean(), 99177.21094376309)
-    assert np.isclose(
-        man.sim_data["surface_air_temperature"].mean(), 0.9192180687015453
-    )
+    assert np.isclose(man.sim_data["surface_air_temperature"].mean(), 0.9192180687015453)
 
 
 @pytest.fixture
@@ -245,16 +241,12 @@ def test_WorkflowManager_adjust_variable_to_long_run_average_() -> WorkflowManag
         spatial_interpolation="near",
     )
     # make sure the 'source' nodata_fallback yields the same as 1.0
-    assert (
-        wf.sim_data["test_source_deprecated"] == wf.sim_data["test_source"]
-    ).all()  # checked
+    assert (wf.sim_data["test_source_deprecated"] == wf.sim_data["test_source"]).all()  # checked
 
     # test fallback to callable
     def my_test_function(locs, source_long_run_average_value):
         """Some random function to generate a lat/lon and source dependent value"""
-        assert [
-            isinstance(loc, osgeo.ogr.Geometry) for loc in locs
-        ]  # just make sure 'locs' is what we expect
+        assert [isinstance(loc, osgeo.ogr.Geometry) for loc in locs]  # just make sure 'locs' is what we expect
         return source_long_run_average_value * 2  # return 2 x source value
 
     wf.sim_data["test_callable"] = np.ones(shape=(1, placements.shape[0]))
@@ -361,15 +353,9 @@ def test_WorkflowManager_to_xarray(
     assert np.isclose(float(xds["hub_height"].fillna(0).mean()), 140.0)
     assert np.isclose(float(xds["capacity"].fillna(0).mean()), 4000.0)
     assert np.isclose(float(xds["rotor_diam"].fillna(0).mean()), 136.0)
-    assert np.isclose(
-        float(xds["elevated_wind_speed"].fillna(0).mean()), 7.770940192441002
-    )
-    assert np.isclose(
-        float(xds["surface_pressure"].fillna(0).mean()), 99177.21094376309
-    )
-    assert np.isclose(
-        float(xds["surface_air_temperature"].fillna(0).mean()), 0.9192180687015453
-    )
+    assert np.isclose(float(xds["elevated_wind_speed"].fillna(0).mean()), 7.770940192441002)
+    assert np.isclose(float(xds["surface_pressure"].fillna(0).mean()), 99177.21094376309)
+    assert np.isclose(float(xds["surface_air_temperature"].fillna(0).mean()), 0.9192180687015453)
 
     ##
     xds = man.to_xarray(
@@ -446,18 +432,10 @@ def test_distribute_workflow():
     assert np.isclose(float(xds["rotor_diam"].fillna(0).mean()), 140.0)
     assert np.isclose(float(xds["lon"].fillna(0).mean()), 6.16945196229404)
     assert np.isclose(float(xds["lat"].fillna(0).mean()), 50.80320853112445)
-    assert np.isclose(
-        float(xds["elevated_wind_speed"].fillna(0).mean()), 7.734400146016037
-    )
-    assert np.isclose(
-        float(xds["surface_pressure"].fillna(0).mean()), 100262.81729624895
-    )
-    assert np.isclose(
-        float(xds["surface_air_temperature"].fillna(0).mean()), 1.7100568364611306
-    )
-    assert np.isclose(
-        float(xds["capacity_factor"].fillna(0).mean()), 3.8672000730080187
-    )
+    assert np.isclose(float(xds["elevated_wind_speed"].fillna(0).mean()), 7.734400146016037)
+    assert np.isclose(float(xds["surface_pressure"].fillna(0).mean()), 100262.81729624895)
+    assert np.isclose(float(xds["surface_air_temperature"].fillna(0).mean()), 1.7100568364611306)
+    assert np.isclose(float(xds["capacity_factor"].fillna(0).mean()), 3.8672000730080187)
 
 
 def test_WorkflowQueue():
@@ -507,18 +485,10 @@ def test_WorkflowQueue():
     assert results["run_3"]["capacity_factor"].shape == (140, 140)
     assert results["run_4"]["capacity_factor"].shape == (140, 112)
 
-    assert np.isclose(
-        float(results["run_1"]["capacity_factor"].mean()), 3.8682375177743236
-    )
-    assert np.isclose(
-        float(results["run_2"]["capacity_factor"].mean()), 5.803744731787748
-    )
-    assert np.isclose(
-        float(results["run_3"]["capacity_factor"].mean()), 3.8700743523128716
-    )
-    assert np.isclose(
-        float(results["run_4"]["capacity_factor"].mean()), 5.8054026403965135
-    )
+    assert np.isclose(float(results["run_1"]["capacity_factor"].mean()), 3.8682375177743236)
+    assert np.isclose(float(results["run_2"]["capacity_factor"].mean()), 5.803744731787748)
+    assert np.isclose(float(results["run_3"]["capacity_factor"].mean()), 3.8700743523128716)
+    assert np.isclose(float(results["run_4"]["capacity_factor"].mean()), 5.8054026403965135)
 
     assert results["run_1"].var2 == "pants"
     assert results["run_2"].var2 == "cats"

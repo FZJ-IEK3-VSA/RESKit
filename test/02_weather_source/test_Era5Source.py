@@ -16,9 +16,7 @@ def pt_Era5Source():
 @pytest.fixture
 def pt_BoundedEra5Source():
     aachenExt = gk.Extent.fromVector(gk._test_data_["aachenShapefile.shp"])
-    return Era5Source(
-        TEST_DATA["era5-like"], bounds=aachenExt, index_pad=1, verbose=False
-    )
+    return Era5Source(TEST_DATA["era5-like"], bounds=aachenExt, index_pad=1, verbose=False)
 
 
 def test_Era5Source___init__():
@@ -43,13 +41,9 @@ def test_Era5Source___init__():
     assert (ms.time_index == rawTimes).all()
 
     # Initialize a Era5Source with Aachen boundaries
-    aachenExt = (
-        gk.Extent.fromVector(gk._test_data_["aachenShapefile.shp"]).pad(0.5).fit(0.01)
-    )
+    aachenExt = gk.Extent.fromVector(gk._test_data_["aachenShapefile.shp"]).pad(0.5).fit(0.01)
 
-    ms = Era5Source(
-        TEST_DATA["era5-like"], bounds=aachenExt, index_pad=1, verbose=False
-    )
+    ms = Era5Source(TEST_DATA["era5-like"], bounds=aachenExt, index_pad=1, verbose=False)
 
     # ensure lats, lons and times are okay
     assert np.isclose(ms.lats[0], 49.5)
@@ -271,9 +265,7 @@ def test_Era5Source_sload_surface_dew_temperature(pt_Era5Source, pt_BoundedEra5S
     assert np.isclose(pt_BoundedEra5Source.data[var][33, 1, 2], c)
 
 
-def test_Era5Source_sload_direct_horizontal_irradiance(
-    pt_Era5Source, pt_BoundedEra5Source
-):
+def test_Era5Source_sload_direct_horizontal_irradiance(pt_Era5Source, pt_BoundedEra5Source):
     var = "direct_horizontal_irradiance"
     pt_Era5Source.sload_direct_horizontal_irradiance()
     assert var in pt_Era5Source.data
@@ -292,9 +284,7 @@ def test_Era5Source_sload_direct_horizontal_irradiance(
     assert np.isclose(pt_BoundedEra5Source.data[var][33, 1, 2], c)
 
 
-def test_Era5Source_sload_global_horizontal_irradiance(
-    pt_Era5Source, pt_BoundedEra5Source
-):
+def test_Era5Source_sload_global_horizontal_irradiance(pt_Era5Source, pt_BoundedEra5Source):
     var = "global_horizontal_irradiance"
     pt_Era5Source.sload_global_horizontal_irradiance()
     assert var in pt_Era5Source.data

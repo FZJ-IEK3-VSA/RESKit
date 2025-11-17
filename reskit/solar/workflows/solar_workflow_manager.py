@@ -94,9 +94,7 @@ class SolarWorkflowManager(WorkflowManager):
 
         """
 
-        self.placements["tilt"] = rk_solar_core.system_design.location_to_tilt(
-            self.locs, convention=convention
-        )
+        self.placements["tilt"] = rk_solar_core.system_design.location_to_tilt(self.locs, convention=convention)
         return self
 
     def estimate_azimuth_from_latitude(self):
@@ -148,9 +146,7 @@ class SolarWorkflowManager(WorkflowManager):
         Returns a reference to the invoking SolarWorkflowManager object
 
         """
-        assert isinstance(fallback_elev, int), (
-            f"'fallback_elev' must be an integer elevantion in [m]."
-        )
+        assert isinstance(fallback_elev, int), f"'fallback_elev' must be an integer elevantion in [m]."
         if elev is None and "elev" in self.placements.columns:
             # elevation is already an attribute in the placements dataframe, do nothing if no external elev given
             pass
@@ -168,23 +164,17 @@ class SolarWorkflowManager(WorkflowManager):
                 if np.isnan(_elevs).any():
                     # if getting values fails, it could be because of interpolation method
                     # replace by 'near' interpolation
-                    _elevs_near = gk.raster.interpolateValues(
-                        clipped_elev, self.locs, mode="near"
-                    )
+                    _elevs_near = gk.raster.interpolateValues(clipped_elev, self.locs, mode="near")
                     _elevs[np.isnan(_elevs)] = _elevs_near[np.isnan(_elevs)]
             if np.isnan(_elevs).any():
                 # if we still have nans, replace nans by fallback value
-                _elevs[np.isnan(_elevs)] = (
-                    np.ones(shape=_elevs.shape) * fallback_elev
-                )[np.isnan(_elevs)]
+                _elevs[np.isnan(_elevs)] = (np.ones(shape=_elevs.shape) * fallback_elev)[np.isnan(_elevs)]
             self.placements["elev"] = _elevs
         else:
             # try to just set elev as new column, works with scalars and iterables, and check if we have numeric values
             try:
                 self.placements["elev"] = elev
-                assert all(
-                    [isinstance(x, numbers.Number) for x in self.placements["elev"]]
-                )
+                assert all([isinstance(x, numbers.Number) for x in self.placements["elev"]])
             except:
                 # else rise a type error
                 raise TypeError(
@@ -193,9 +183,7 @@ class SolarWorkflowManager(WorkflowManager):
 
         return self
 
-    def determine_solar_position(
-        self, lon_rounding=1, lat_rounding=1, elev_rounding=-2
-    ):
+    def determine_solar_position(self, lon_rounding=1, lat_rounding=1, elev_rounding=-2):
         """
 
         determine_solar_position(self, lon_rounding=1, lat_rounding=1, elev_rounding=-2)
@@ -255,13 +243,9 @@ class SolarWorkflowManager(WorkflowManager):
         solar_position_library = dict()
 
         # pd.DataFrame(np.nan, index=self.time_index, columns=self.locs)
-        self.sim_data["solar_azimuth"] = np.full_like(
-            self.sim_data["surface_pressure"], np.nan
-        )
+        self.sim_data["solar_azimuth"] = np.full_like(self.sim_data["surface_pressure"], np.nan)
         # pd.DataFrame(np.nan, index=self.time_index, columns=self.locs)
-        self.sim_data["apparent_solar_zenith"] = np.full_like(
-            self.sim_data["surface_pressure"], np.nan
-        )
+        self.sim_data["apparent_solar_zenith"] = np.full_like(self.sim_data["surface_pressure"], np.nan)
         # self.sim_data['apparent_solar_elevation'] = np.full_like(self.sim_data['surface_pressure'], np.nan)  # pd.DataFrame(np.nan, index=self.time_index, columns=self.locs)
 
         for loc, row in enumerate(rounded_locs.itertuples()):
@@ -278,12 +262,9 @@ class SolarWorkflowManager(WorkflowManager):
                     self.sim_data["surface_pressure"][:, loc],
                     self.sim_data["surface_air_temperature"][:, loc],
                 ]
-                assert not any(
-                    [
-                        np.isnan(x).any() if hasattr(x, "__iter__") else np.isnan(x)
-                        for x in _req
-                    ]
-                ), f"Arguments for pvlib.solarposition.spa_python() may not be NaN."
+                assert not any([np.isnan(x).any() if hasattr(x, "__iter__") else np.isnan(x) for x in _req]), (
+                    f"Arguments for pvlib.solarposition.spa_python() may not be NaN."
+                )
                 _solpos_ = pvlib.solarposition.spa_python(
                     self.time_index,
                     latitude=row.lat,
@@ -376,14 +357,10 @@ class SolarWorkflowManager(WorkflowManager):
 
         """
 
-        dni_extra = pvlib.irradiance.get_extra_radiation(
-            self._time_index_, **kwargs
-        ).values
+        dni_extra = pvlib.irradiance.get_extra_radiation(self._time_index_, **kwargs).values
 
         shape = len(self._time_index_), self.locs.count
-        self.sim_data["extra_terrestrial_irradiance"] = np.broadcast_to(
-            dni_extra.reshape((shape[0], 1)), shape
-        )
+        self.sim_data["extra_terrestrial_irradiance"] = np.broadcast_to(dni_extra.reshape((shape[0], 1)), shape)
 
         return self
 
@@ -444,9 +421,7 @@ class SolarWorkflowManager(WorkflowManager):
         assert "apparent_solar_zenith" in self.sim_data
 
         # 29 becasue that what the function seems to max out at as zenith approaches 90
-        self.sim_data["air_mass"] = np.full_like(
-            self.sim_data["apparent_solar_zenith"], 29
-        )
+        self.sim_data["air_mass"] = np.full_like(self.sim_data["apparent_solar_zenith"], 29)
 
         s = self.sim_data["apparent_solar_zenith"] < 90
         self.sim_data["air_mass"][s] = pvlib.atmosphere.get_relative_airmass(
@@ -511,21 +486,11 @@ class SolarWorkflowManager(WorkflowManager):
         g = self.sim_data["global_horizontal_irradiance"].flatten()
         z = self.sim_data["apparent_solar_zenith"].flatten()
         p = self.sim_data["surface_pressure"].flatten() if use_pressure else None
-        td = (
-            self.sim_data["surface_dew_temperature"].flatten()
-            if use_dew_temperature
-            else None
-        )
-        times = pd.DatetimeIndex(
-            np.column_stack(
-                [self._time_index_ for x in range(self._sim_shape_[1])]
-            ).flatten()
-        )
+        td = self.sim_data["surface_dew_temperature"].flatten() if use_dew_temperature else None
+        times = pd.DatetimeIndex(np.column_stack([self._time_index_ for x in range(self._sim_shape_[1])]).flatten())
 
         self.sim_data["direct_normal_irradiance"] = (
-            pvlib.irradiance.dirint(
-                ghi=g, solar_zenith=z, times=times, pressure=p, temp_dew=td
-            )
+            pvlib.irradiance.dirint(ghi=g, solar_zenith=z, times=times, pressure=p, temp_dew=td)
             .fillna(0)
             .values.reshape(self._sim_shape_)
         )
@@ -565,9 +530,7 @@ class SolarWorkflowManager(WorkflowManager):
         elev = np.radians(90 - self.sim_data["apparent_solar_zenith"])
 
         self.sim_data["diffuse_horizontal_irradiance"] = ghi - dni * np.sin(elev)
-        self.sim_data["diffuse_horizontal_irradiance"][
-            self.sim_data["diffuse_horizontal_irradiance"] < 0
-        ] = 0
+        self.sim_data["diffuse_horizontal_irradiance"][self.sim_data["diffuse_horizontal_irradiance"] < 0] = 0
 
         return self
 
@@ -607,9 +570,7 @@ class SolarWorkflowManager(WorkflowManager):
         dni_flat = self.sim_data["direct_horizontal_irradiance"]
         zen = np.radians(self.sim_data["apparent_solar_zenith"])
 
-        self.sim_data["direct_normal_irradiance"] = dni_flat / np.maximum(
-            np.cos(zen), 0.2
-        )
+        self.sim_data["direct_normal_irradiance"] = dni_flat / np.maximum(np.cos(zen), 0.2)
 
         # catch outliners from zero devision
         index_out = (dni_flat < 25) & (np.cos(zen) < 0.05)
@@ -696,9 +657,7 @@ class SolarWorkflowManager(WorkflowManager):
                         self.sim_data["apparent_solar_zenith"][:, i],
                         index=self._time_index_,
                     ),
-                    apparent_azimuth=pd.Series(
-                        self.sim_data["solar_azimuth"][:, i], index=self._time_index_
-                    ),
+                    apparent_azimuth=pd.Series(self.sim_data["solar_azimuth"][:, i], index=self._time_index_),
                     # self.placements['tilt'].values,
                     axis_tilt=placement.tilt,
                     # self.placements['azimuth'].values,
@@ -763,9 +722,7 @@ class SolarWorkflowManager(WorkflowManager):
 
         return self
 
-    def estimate_plane_of_array_irradiances(
-        self, transposition_model="perez", albedo=0.25, **kwargs
-    ):
+    def estimate_plane_of_array_irradiances(self, transposition_model="perez", albedo=0.25, **kwargs):
         """
         estimate_plane_of_array_irradiances(self, transposition_model="perez", albedo=0.25, **kwargs)
 
@@ -839,21 +796,11 @@ class SolarWorkflowManager(WorkflowManager):
         if (bad_poa).any():
             # POA is super big, but this only happens when elevation angles are approximately
             # zero (sin effect), so it should be okay to just set the POA to zero as well
-            self.sim_data["poa_global"] = np.where(
-                bad_poa, 0, self.sim_data["poa_global"]
-            )
-            self.sim_data["poa_direct"] = np.where(
-                bad_poa, 0, self.sim_data["poa_direct"]
-            )
-            self.sim_data["poa_diffuse"] = np.where(
-                bad_poa, 0, self.sim_data["poa_diffuse"]
-            )
-            self.sim_data["poa_sky_diffuse"] = np.where(
-                bad_poa, 0, self.sim_data["poa_sky_diffuse"]
-            )
-            self.sim_data["poa_ground_diffuse"] = np.where(
-                bad_poa, 0, self.sim_data["poa_ground_diffuse"]
-            )
+            self.sim_data["poa_global"] = np.where(bad_poa, 0, self.sim_data["poa_global"])
+            self.sim_data["poa_direct"] = np.where(bad_poa, 0, self.sim_data["poa_direct"])
+            self.sim_data["poa_diffuse"] = np.where(bad_poa, 0, self.sim_data["poa_diffuse"])
+            self.sim_data["poa_sky_diffuse"] = np.where(bad_poa, 0, self.sim_data["poa_sky_diffuse"])
+            self.sim_data["poa_ground_diffuse"] = np.where(bad_poa, 0, self.sim_data["poa_ground_diffuse"])
 
     def cell_temperature_from_sapm(self, mounting="glass_open_rack"):
         """
@@ -968,12 +915,8 @@ class SolarWorkflowManager(WorkflowManager):
             L=0.002,  # PVLIB v0.7.2 default
         )
 
-        self.sim_data["poa_diffuse"] = (
-            self.sim_data["poa_ground_diffuse"] + self.sim_data["poa_sky_diffuse"]
-        )
-        self.sim_data["poa_global"] = (
-            self.sim_data["poa_direct"] + self.sim_data["poa_diffuse"]
-        )
+        self.sim_data["poa_diffuse"] = self.sim_data["poa_ground_diffuse"] + self.sim_data["poa_sky_diffuse"]
+        self.sim_data["poa_global"] = self.sim_data["poa_direct"] + self.sim_data["poa_diffuse"]
 
         assert (self.sim_data["poa_global"] < 1600).all(), "POA is too large"
 
@@ -1017,18 +960,12 @@ class SolarWorkflowManager(WorkflowManager):
 
         """
 
-        def _interpolate_module_params(
-            projected_module, original_module_name, tech_year, start_year
-        ):
+        def _interpolate_module_params(projected_module, original_module_name, tech_year, start_year):
             if not isinstance(tech_year, int):
-                raise TypeError(
-                    f"tech_year must be an integer when projected module is selected"
-                )
+                raise TypeError(f"tech_year must be an integer when projected module is selected")
             # avoid extrapolations
             if not start_year <= tech_year <= 2050:
-                raise ValueError(
-                    f"tech_year must be between {start_year} and 2050 (max. projection) for this module"
-                )
+                raise ValueError(f"tech_year must be between {start_year} and 2050 (max. projection) for this module")
 
             # get the original (unprojected) module parameters
             db = pvlib.pvsystem.retrieve_sam("CECMod")
@@ -1042,9 +979,9 @@ class SolarWorkflowManager(WorkflowManager):
                     # ignore, set dummy nan
                     module[param] = np.nan
                 elif isinstance(val_proj, (int, float, np.integer)):
-                    module[param] = original_module[param] + (
-                        val_proj - original_module[param]
-                    ) * (tech_year - start_year) / (2050 - start_year)
+                    module[param] = original_module[param] + (val_proj - original_module[param]) * (
+                        tech_year - start_year
+                    ) / (2050 - start_year)
                 else:
                     assert val_proj == original_module[param], (
                         f"parameter '{param}' is not the same for original ({original_module[param]}) and projected ({val_proj}) modules"
@@ -1142,14 +1079,10 @@ class SolarWorkflowManager(WorkflowManager):
                 try:
                     module = getattr(db, module)
                 except:
-                    raise RuntimeError(
-                        "The module '{}' is not in the CEC database".format(module)
-                    )
+                    raise RuntimeError("The module '{}' is not in the CEC database".format(module))
         else:
             if tech_year is not None:
-                print(
-                    f"NOTE: The tech_year argument is ignored when specific module parameters are given."
-                )
+                print(f"NOTE: The tech_year argument is ignored when specific module parameters are given.")
             module = pd.Series(module)
             assert "T_NOCT" in module.index
             assert "A_c" in module.index
@@ -1303,12 +1236,8 @@ class SolarWorkflowManager(WorkflowManager):
             kx=3,
             ky=3,  # np.array() since type changed between pvlib versions
         )
-        self.sim_data["module_dc_power_at_mpp"] = np.zeros_like(
-            self.sim_data["poa_global"]
-        )
-        self.sim_data["module_dc_power_at_mpp"][sel] = interpolator(
-            cell_temp, poa, grid=False
-        )
+        self.sim_data["module_dc_power_at_mpp"] = np.zeros_like(self.sim_data["poa_global"])
+        self.sim_data["module_dc_power_at_mpp"][sel] = interpolator(cell_temp, poa, grid=False)
 
         interpolator = RectBivariateSpline(
             _temp,
@@ -1317,12 +1246,8 @@ class SolarWorkflowManager(WorkflowManager):
             kx=3,
             ky=3,  # np.array() since type changed between pvlib versions
         )
-        self.sim_data["module_dc_voltage_at_mpp"] = np.zeros_like(
-            self.sim_data["poa_global"]
-        )
-        self.sim_data["module_dc_voltage_at_mpp"][sel] = interpolator(
-            cell_temp, poa, grid=False
-        )
+        self.sim_data["module_dc_voltage_at_mpp"] = np.zeros_like(self.sim_data["poa_global"])
+        self.sim_data["module_dc_voltage_at_mpp"][sel] = interpolator(cell_temp, poa, grid=False)
 
         self.sim_data["capacity_factor"] = self.sim_data["module_dc_power_at_mpp"] / (
             self.module.I_mp_ref * self.module.V_mp_ref
@@ -1330,23 +1255,20 @@ class SolarWorkflowManager(WorkflowManager):
 
         # Estimate total system generation
         if "capacity" in self.placements.columns:
-            self.sim_data["total_system_generation"] = self.sim_data[
-                "capacity_factor"
-            ] * np.broadcast_to(self.placements.capacity, self._sim_shape_)
+            self.sim_data["total_system_generation"] = self.sim_data["capacity_factor"] * np.broadcast_to(
+                self.placements.capacity, self._sim_shape_
+            )
 
-        if (
-            "modules_per_string" in self.placements.columns
-            and "strings_per_inverter" in self.placements.columns
-        ):
+        if "modules_per_string" in self.placements.columns and "strings_per_inverter" in self.placements.columns:
             total_modules = (
                 self.placements.modules_per_string
                 * self.placements.strings_per_inverter
                 * getattr(self.placements, "number_of_inverters", 1)
             )
 
-            self.sim_data["total_system_generation"] = self.sim_data[
-                "module_dc_power_at_mpp"
-            ] * np.broadcast_to(total_modules, self._sim_shape_)
+            self.sim_data["total_system_generation"] = self.sim_data["module_dc_power_at_mpp"] * np.broadcast_to(
+                total_modules, self._sim_shape_
+            )
 
         return self
 
@@ -1424,8 +1346,7 @@ class SolarWorkflowManager(WorkflowManager):
                 * np.broadcast_to(self.placements.modules_per_string, self._sim_shape_),
                 p_dc=self.sim_data["module_dc_power_at_mpp"]
                 * np.broadcast_to(
-                    self.placements.modules_per_string
-                    * self.placements.strings_per_inverter,
+                    self.placements.modules_per_string * self.placements.strings_per_inverter,
                     self._sim_shape_,
                 ),
                 inverter=inverter,
@@ -1441,17 +1362,16 @@ class SolarWorkflowManager(WorkflowManager):
                 * np.broadcast_to(self.placements.modules_per_string, self._sim_shape_),
                 p_dc=self.sim_data["module_dc_power_at_mpp"]
                 * np.broadcast_to(
-                    self.placements.modules_per_string
-                    * self.placements.strings_per_inverter,
+                    self.placements.modules_per_string * self.placements.strings_per_inverter,
                     self._sim_shape_,
                 ),
                 inverter=inverter,
             )
 
         number_of_inverters = getattr(self.placements, "number_of_inverters", 1)
-        self.sim_data["total_system_generation"] = self.sim_data[
-            "inverter_ac_power_at_mpp"
-        ] * np.broadcast_to(number_of_inverters, self._sim_shape_)
+        self.sim_data["total_system_generation"] = self.sim_data["inverter_ac_power_at_mpp"] * np.broadcast_to(
+            number_of_inverters, self._sim_shape_
+        )
 
         total_capacity = (
             self.module.I_mp_ref
@@ -1461,9 +1381,9 @@ class SolarWorkflowManager(WorkflowManager):
             * number_of_inverters
         )
 
-        self.sim_data["capacity_factor"] = self.sim_data[
-            "total_system_generation"
-        ] / np.broadcast_to(total_capacity, self._sim_shape_)
+        self.sim_data["capacity_factor"] = self.sim_data["total_system_generation"] / np.broadcast_to(
+            total_capacity, self._sim_shape_
+        )
 
         return self
 
@@ -1479,9 +1399,7 @@ class SolarWorkflowManager(WorkflowManager):
                 )
                 _wf = SolarWorkflowManager(placements_without_param)
                 _wf.estimate_tilt_from_latitude(convention=convention)
-                self.placements.loc[_wf.placements.tilt.index, "tilt"] = (
-                    _wf.placements.tilt.values
-                )
+                self.placements.loc[_wf.placements.tilt.index, "tilt"] = _wf.placements.tilt.values
 
         if not "azimuth" in self.placements.columns:
             self.estimate_azimuth_from_latitude()
@@ -1494,9 +1412,7 @@ class SolarWorkflowManager(WorkflowManager):
                 )
                 _wf = SolarWorkflowManager(placements_without_param)
                 _wf.estimate_azimuth_from_latitude()
-                self.placements.loc[_wf.placements.azimuth.index, "azimuth"] = (
-                    _wf.placements.azimuth.values
-                )
+                self.placements.loc[_wf.placements.azimuth.index, "azimuth"] = _wf.placements.azimuth.values
 
         if not "elev" in self.placements.columns:
             self.apply_elevation(elev)
@@ -1509,8 +1425,6 @@ class SolarWorkflowManager(WorkflowManager):
                 )
                 _wf = SolarWorkflowManager(placements_without_param)
                 _wf.apply_elevation(elev)
-                self.placements.loc[_wf.placements.elev.index, "elev"] = (
-                    _wf.placements.elev.values
-                )
+                self.placements.loc[_wf.placements.elev.index, "elev"] = _wf.placements.elev.values
 
         return self

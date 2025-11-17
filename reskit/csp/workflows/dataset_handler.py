@@ -25,19 +25,11 @@ class dataset_handler:
         assert "lat" in placements.columns
         assert "lon" in placements.columns
 
-        placements["geom"] = placements[["lon", "lat"]].apply(
-            lambda x: gk.geom.point(x[0], x[1], srs=4326), axis=1
-        )
+        placements["geom"] = placements[["lon", "lat"]].apply(lambda x: gk.geom.point(x[0], x[1], srs=4326), axis=1)
 
-        placements["dni_gsa"] = (
-            gk.raster.interpolateValues(source=gsa_dni_path, points=placements.geom)
-            * 1000
-            / 24
-        )
+        placements["dni_gsa"] = gk.raster.interpolateValues(source=gsa_dni_path, points=placements.geom) * 1000 / 24
 
-        placements["tamb_gsa"] = gk.raster.interpolateValues(
-            source=gsa_tamb_path, points=placements.geom
-        )
+        placements["tamb_gsa"] = gk.raster.interpolateValues(source=gsa_tamb_path, points=placements.geom)
 
         mat_HTF_opt = self._get_opt_HTF_matrix()
 
@@ -61,9 +53,7 @@ class dataset_handler:
                     s += "_" + l
             return s
 
-        path = os.path.join(
-            csp_data_path, f"optimal_htf_selection{_list_to_str(datasets)}.csv"
-        )
+        path = os.path.join(csp_data_path, f"optimal_htf_selection{_list_to_str(datasets)}.csv")
         return path
 
     def _get_opt_HTF_matrix(self):
@@ -141,9 +131,7 @@ class dataset_handler:
         # make 2D matrix
         pivots = {}
         for key in outs:
-            pivots[key] = outs[key].pivot(
-                index="mean_T_amb_K", columns="mean_DNI_W_per_m2", values=variable_name
-            )
+            pivots[key] = outs[key].pivot(index="mean_T_amb_K", columns="mean_DNI_W_per_m2", values=variable_name)
             pivots[key][pivots[key] < 0] = 1e9
             pivots[key][np.isinf(pivots[key])] = 1e9
 

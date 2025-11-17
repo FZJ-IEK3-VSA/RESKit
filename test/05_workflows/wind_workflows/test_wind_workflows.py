@@ -158,9 +158,7 @@ def test_wind_config(pt_wind_placements: pd.DataFrame):
             "ws_bins",
             os.path.join(DATAFOLDER, f"ws_correction_factors_PSDW2025.yaml"),
         ),
-        cf_correction_factor=os.path.join(
-            DATAFOLDER, f"cf_correction_factors_PSDW2025.tif"
-        ),
+        cf_correction_factor=os.path.join(DATAFOLDER, f"cf_correction_factors_PSDW2025.tif"),
         wake_curve="dena_mean",
         availability_factor=0.98,
         consider_boundary_layer_height=True,

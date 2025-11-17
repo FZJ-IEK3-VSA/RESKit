@@ -34,9 +34,7 @@ def calculate_relative_humidity(dewpoint_temperature, air_temperature):
         return vapor_pressure
 
     relative_humidity = (
-        calculate_vapor_pressure(dewpoint_temperature)
-        / calculate_vapor_pressure(air_temperature)
-        * 100
+        calculate_vapor_pressure(dewpoint_temperature) / calculate_vapor_pressure(air_temperature) * 100
     )  # [1]
 
     return relative_humidity

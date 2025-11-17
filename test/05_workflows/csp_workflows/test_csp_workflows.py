@@ -30,9 +30,7 @@ def pt_pv_placements() -> pd.DataFrame:
 # %%
 
 
-@pytest.mark.skip(
-    reason="Not working on calamari. Tested locally at 01.11.2022/d.franzmann@fz-juelich.de"
-)
+@pytest.mark.skip(reason="Not working on calamari. Tested locally at 01.11.2022/d.franzmann@fz-juelich.de")
 def test_CSP_PTR_ERA5(pt_pv_placements):
     # local
     era5_path = r"R:\data\gears\weather\ERA5\processed\4\7\6\2015"
@@ -60,9 +58,7 @@ def test_CSP_PTR_ERA5(pt_pv_placements):
     print("Simulation done")
 
     # datasets
-    a = np.array(
-        ["Dataset_SolarSalt_2030", "Dataset_Therminol_2030", "Dataset_SolarSalt_2030"]
-    )
+    a = np.array(["Dataset_SolarSalt_2030", "Dataset_Therminol_2030", "Dataset_SolarSalt_2030"])
     assert (out["datasetname"].values == a).all()
 
     assert np.allclose(
@@ -72,16 +68,10 @@ def test_CSP_PTR_ERA5(pt_pv_placements):
 
     # direct_horizontal_irradiance:
     assert out["direct_horizontal_irradiance"].values.shape == (8760, 3)
-    assert np.isclose(
-        out["direct_horizontal_irradiance"].values.mean(), 189.95024229234605
-    )
-    assert np.isclose(
-        out["direct_horizontal_irradiance"].values.std(), 268.22838885782073
-    )
+    assert np.isclose(out["direct_horizontal_irradiance"].values.mean(), 189.95024229234605)
+    assert np.isclose(out["direct_horizontal_irradiance"].values.std(), 268.22838885782073)
     assert np.isclose(out["direct_horizontal_irradiance"].values.min(), 0.0)
-    assert np.isclose(
-        out["direct_horizontal_irradiance"].values.max(), 966.579790643025
-    )
+    assert np.isclose(out["direct_horizontal_irradiance"].values.max(), 966.579790643025)
 
     # direct_horizontal_irradiance:
     assert out["direct_normal_irradiance"].values.shape == (8760, 3)
@@ -120,25 +110,17 @@ def test_CSP_PTR_ERA5(pt_pv_placements):
 
     # Power_net_total_per_day_Wh
     assert out["Power_net_total_per_day_Wh"].values.shape == (365, 3)
-    assert np.isclose(
-        out["Power_net_total_per_day_Wh"].values.mean(), 1082442335.686746
-    )
+    assert np.isclose(out["Power_net_total_per_day_Wh"].values.mean(), 1082442335.686746)
     assert np.isclose(out["Power_net_total_per_day_Wh"].values.std(), 797437011.9432147)
     assert np.isclose(out["Power_net_total_per_day_Wh"].values.min(), 0.0)
     assert np.isclose(out["Power_net_total_per_day_Wh"].values.max(), 2560268088.640056)
 
     # P_backup_heating_daily_Wh_el
     assert out["P_backup_heating_daily_Wh_el"].values.shape == (365, 3)
-    assert np.isclose(
-        out["P_backup_heating_daily_Wh_el"].values.mean(), 6517471.755673256
-    )
-    assert np.isclose(
-        out["P_backup_heating_daily_Wh_el"].values.std(), 62620895.67712642
-    )
+    assert np.isclose(out["P_backup_heating_daily_Wh_el"].values.mean(), 6517471.755673256)
+    assert np.isclose(out["P_backup_heating_daily_Wh_el"].values.std(), 62620895.67712642)
     assert np.isclose(out["P_backup_heating_daily_Wh_el"].values.min(), 0.0)
-    assert np.isclose(
-        out["P_backup_heating_daily_Wh_el"].values.max(), 1054026635.4118232
-    )
+    assert np.isclose(out["P_backup_heating_daily_Wh_el"].values.max(), 1054026635.4118232)
 
     # lcoe_EURct_per_kWh_el
     a = np.array([14.875259498468504, 17.115158016447037, 14.875259498468509])

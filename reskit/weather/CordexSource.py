@@ -33,9 +33,7 @@ class CordexSource(NCSource):
     GWA100_CONTEXT_MEAN_SOURCE = None
 
     def __init__(s, path, bounds=None, domain="EUR11"):
-        print(
-            "WARNING: CordexSource has not been updated in awhile and is almost guarenteed to fail..."
-        )
+        print("WARNING: CordexSource has not been updated in awhile and is almost guarenteed to fail...")
 
         if not bounds is None:
             if isinstance(bounds, gk.Extent):
@@ -47,9 +45,7 @@ class CordexSource(NCSource):
                     lonMax = bounds.lonMax
                     latMax = bounds.latMax
                 else:
-                    print(
-                        "Consider using a Bounds object or a gk.Extent object. They are safer!"
-                    )
+                    print("Consider using a Bounds object or a gk.Extent object. They are safer!")
                     lonMin, latMin, lonMax, latMax = bounds
 
                 bounds = Bounds(

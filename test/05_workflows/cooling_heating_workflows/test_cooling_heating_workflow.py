@@ -56,15 +56,7 @@ def test_air_cooling_wenzel2025(placements: pd.DataFrame):
 
 def test_air_source_heat_pump(placements: pd.DataFrame):
     gen = air_source_heat_pump(placements=placements, era5_path=TEST_DATA["era5-like"])
-    assert np.all(
-        np.isclose(gen.COP.mean(dim="time"), [1.90161814, 1.90016073, 1.86173579])
-    )
-    assert np.all(
-        np.isclose(gen.COP.min(dim="time"), [1.83157454, 1.83375042, 1.778988])
-    )
-    assert np.all(
-        np.isclose(gen.COP.max(dim="time"), [2.03473257, 2.01022362, 2.02689851])
-    )
-    assert np.all(
-        np.isclose(gen.COP.std(dim="time"), [0.03941226, 0.03536727, 0.04394226])
-    )
+    assert np.all(np.isclose(gen.COP.mean(dim="time"), [1.90161814, 1.90016073, 1.86173579]))
+    assert np.all(np.isclose(gen.COP.min(dim="time"), [1.83157454, 1.83375042, 1.778988]))
+    assert np.all(np.isclose(gen.COP.max(dim="time"), [2.03473257, 2.01022362, 2.02689851]))
+    assert np.all(np.isclose(gen.COP.std(dim="time"), [0.03941226, 0.03536727, 0.04394226]))

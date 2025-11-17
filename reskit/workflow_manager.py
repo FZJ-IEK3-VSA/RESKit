@@ -209,9 +209,7 @@ class WorkflowManager:
                 raise RuntimeError("Unknown source_type")
 
             if source_type == "ERA5":
-                source = source_constructor(
-                    source, bounds=self.ext, time_index_from=time_index_from, **kwargs
-                )
+                source = source_constructor(source, bounds=self.ext, time_index_from=time_index_from, **kwargs)
             else:
                 source = source_constructor(source, bounds=self.ext, **kwargs)
 
@@ -240,9 +238,7 @@ class WorkflowManager:
             )
 
             if not set_time_index:
-                self.sim_data[var] = self.sim_data[var].reindex(
-                    self.time_index, method=temporal_reindex_method
-                )
+                self.sim_data[var] = self.sim_data[var].reindex(self.time_index, method=temporal_reindex_method)
 
             self.sim_data[var] = self.sim_data[var].values
 
@@ -261,9 +257,7 @@ class WorkflowManager:
         """
         Auxiliary function to extract raster values with NaN fallback options.
         """
-        assert isfile(fp), (
-            f"File '{fp}' in adjust_variable_to_long_run_average() does not exist."
-        )
+        assert isfile(fp), f"File '{fp}' in adjust_variable_to_long_run_average() does not exist."
         # execute with warnings filter since values outside of source data would trigger geokit UserWarning every time
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
@@ -271,9 +265,9 @@ class WorkflowManager:
             if points is None:
                 points = [(loc.lon, loc.lat) for loc in self.locs._locations]
             else:
-                assert isinstance(points, list) and all(
-                    [isinstance(x, tuple) and len(x) == 2 for x in points]
-                ), "points must be a list of (lon, lat) tuples."
+                assert isinstance(points, list) and all([isinstance(x, tuple) and len(x) == 2 for x in points]), (
+                    "points must be a list of (lon, lat) tuples."
+                )
 
             _lra = gk.raster.interpolateValues(fp, points, mode=spatial_interpolation)
             # if getting values fails, it could be because of interpolation method.
@@ -290,9 +284,7 @@ class WorkflowManager:
                     return np.nanmedian(vals)
 
                 points = [(loc.lon, loc.lat) for loc in self.locs._locations]
-                _lra_near = gk.raster.interpolateValues(
-                    fp, points, mode="func", func=_nanmedian
-                )
+                _lra_near = gk.raster.interpolateValues(fp, points, mode="func", func=_nanmedian)
                 _lra[np.isnan(_lra)] = _lra_near[np.isnan(_lra)]
         return _lra
 
@@ -368,11 +360,7 @@ class WorkflowManager:
         WorkflowManager
             Returns the invoking WorkflowManager (for chaining)
         """
-        if not (
-            nodata_fallback is None
-            or callable(nodata_fallback)
-            or isinstance(nodata_fallback, (float, int, str))
-        ):
+        if not (nodata_fallback is None or callable(nodata_fallback) or isinstance(nodata_fallback, (float, int, str))):
             raise TypeError(f"'nodata_fallback' must be a float or a Callable.")
 
         # first get source values
@@ -406,13 +394,9 @@ class WorkflowManager:
                 DeprecationWarning,
             )
             nodata_fallback = np.nan
-        if any(
-            np.isnan(real_lra)
-        ):  # TODO currently all real_lra are replaced by fallback, is this intentional?
+        if any(np.isnan(real_lra)):  # TODO currently all real_lra are replaced by fallback, is this intentional?
             # we are lacking long-run average values
-            if nodata_fallback is None or (
-                isinstance(nodata_fallback, float) and np.isnan(nodata_fallback)
-            ):
+            if nodata_fallback is None or (isinstance(nodata_fallback, float) and np.isnan(nodata_fallback)):
                 # nans will be returned for missing lra values
                 fallback_lra = np.array([np.nan] * len(real_lra))
             elif isinstance(nodata_fallback, (int, float)):
@@ -426,9 +410,7 @@ class WorkflowManager:
             elif isinstance(nodata_fallback, str):
                 # assume this is yet another raster path as fallback and extract missing values
                 fallback_lra = (
-                    self.get_scalar_values_from_raster(
-                        fp=nodata_fallback, spatial_interpolation=spatial_interpolation
-                    )
+                    self.get_scalar_values_from_raster(fp=nodata_fallback, spatial_interpolation=spatial_interpolation)
                     * nodata_fallback_scaling
                 )
 
@@ -446,18 +428,14 @@ class WorkflowManager:
         factors = real_lra * real_lra_scaling / source_lra
         if any(np.isnan(real_lra)):
             if allow_nans:
-                warnings.warn(
-                    f"NaN values remaining in real lra after application of nodata_fallback."
-                )
+                warnings.warn(f"NaN values remaining in real lra after application of nodata_fallback.")
             else:
-                raise ValueError(
-                    f"Missing values for variable '{variable}' and NaNs not allowed."
-                )
+                raise ValueError(f"Missing values for variable '{variable}' and NaNs not allowed.")
 
         # write info with missing values to sim_data:
-        self.placements[
-            f"missing_values_{basename(real_long_run_average)}_nodata_fallback{nodata_fallback}"
-        ] = np.isnan(factors)
+        self.placements[f"missing_values_{basename(real_long_run_average)}_nodata_fallback{nodata_fallback}"] = (
+            np.isnan(factors)
+        )
 
         self.sim_data[variable] = factors * self.sim_data[variable]
         self.placements[f"LRA_factor_{variable}"] = factors
@@ -489,10 +467,8 @@ class WorkflowManager:
         # Get values from high resolution tiff file
         if isinstance(source_high_resolution, str):
             points = [(loc.lon, loc.lat) for loc in self.locs._locations]
-            correction_values_high_res = (
-                gk.raster.interpolateValues(  # TODO change here
-                    source_high_resolution, points, mode=spatial_interpolation
-                )
+            correction_values_high_res = gk.raster.interpolateValues(  # TODO change here
+                source_high_resolution, points, mode=spatial_interpolation
             )
             # assert not np.isnan(correction_values_high_res).any() and (correction_values_high_res > 0).all()
         else:
@@ -614,21 +590,14 @@ class WorkflowManager:
         """
         if isinstance(output_variables, str):
             output_variables = [output_variables]
-        if (
-            isinstance(output_variables, list)
-            and not "RESKit_sim_order" in output_variables
-        ):
+        if isinstance(output_variables, list) and not "RESKit_sim_order" in output_variables:
             output_variables.append("RESKit_sim_order")
 
         times = self.time_index
         if times[0].tz is not None:
-            times = [
-                np.datetime64(dt.tz_convert("UTC").tz_convert(None)) for dt in times
-            ]
+            times = [np.datetime64(dt.tz_convert("UTC").tz_convert(None)) for dt in times]
         times_days = np.unique(pd.DatetimeIndex(times).date).astype("datetime64")
-        if times_days[0].astype("datetime64[Y]") != times_days[-1].astype(
-            "datetime64[Y]"
-        ):
+        if times_days[0].astype("datetime64[Y]") != times_days[-1].astype("datetime64[Y]"):
             # old tiles where shifted by 1 hour, so the last day of the previous year also appears. catch this problem whti this if clause
             times_days = times_days[1:]
         xds = OrderedDict()
@@ -798,9 +767,7 @@ def _split_locs(placements, groups):
             # splitKMeans() returns a LocationSet with coordinates very close to placements.index,
             # but not guaranteed to be exact due to floating-point precision.
             # Therefore, its rounded to 15 decimal to ensure an exact match for use in .loc[].
-            rounded_keys = [
-                (round(loc.lon, 15), round(loc.lat, 15)) for loc in loc_group[:]
-            ]
+            rounded_keys = [(round(loc.lon, 15), round(loc.lat, 15)) for loc in loc_group[:]]
             yield placements.loc[rounded_keys]
 
 
@@ -862,9 +829,7 @@ def distribute_workflow(
     from multiprocessing import Pool
 
     assert isinstance(placements, pd.DataFrame)
-    assert ("lon" in placements.columns and "lat" in placements.columns) or (
-        "geom" in placements.columns
-    )
+    assert ("lon" in placements.columns and "lat" in placements.columns) or ("geom" in placements.columns)
 
     # Split placements into groups
     if "geom" in placements.columns:
@@ -873,15 +838,11 @@ def distribute_workflow(
         placements["lon"] = locs.lons
         del placements["geom"]
     else:
-        locs = gk.LocationSet(
-            np.column_stack([placements.lon.values, placements.lat.values])
-        )
+        locs = gk.LocationSet(np.column_stack([placements.lon.values, placements.lat.values]))
     # placements.index is used in the _split_locs function, where exact key matching is required.
     # Therefore, the coordinates are rounded to 15 decimal places to ensure consistency with the
     # LocationSet keys returned by splitKMeans().
-    placements.index = [
-        (round(loc.lon, 15), round(loc.lat, 15)) for loc in locs._locations
-    ]
+    placements.index = [(round(loc.lon, 15), round(loc.lat, 15)) for loc in locs._locations]
     placements["location_id"] = np.arange(placements.shape[0])
 
     if max_batch_size is None:
@@ -902,15 +863,9 @@ def distribute_workflow(
     for gid, placement_group in enumerate(placement_groups):
         kwargs_ = kwargs.copy()
         if intermediate_output_dir is not None:
-            kwargs_["output_netcdf_path"] = join(
-                intermediate_output_dir, "simulation_group_{:05d}.nc".format(gid)
-            )
+            kwargs_["output_netcdf_path"] = join(intermediate_output_dir, "simulation_group_{:05d}.nc".format(gid))
 
-        results.append(
-            pool.apply_async(
-                func=workflow_function, args=(placement_group,), kwds=kwargs_
-            )
-        )
+        results.append(pool.apply_async(func=workflow_function, args=(placement_group,), kwds=kwargs_))
         # results.append(workflow_function(placement_group, **kwargs_ ))
 
     xdss = []
@@ -968,9 +923,7 @@ def execute_workflow_iteratively(
     """
     # check key inputs
     assert callable(workflow), f"workflow must be a callable RESkit workflow function."
-    assert "placements" in workflow_args.keys(), (
-        f"'placements' is a mandatory argument/key in workflow_args"
-    )
+    assert "placements" in workflow_args.keys(), f"'placements' is a mandatory argument/key in workflow_args"
     assert weather_path_varname in workflow_args.keys(), (
         f"weather_path_varname ('{weather_path_varname}')  must be a key in workflow_args."
     )

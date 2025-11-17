@@ -21,9 +21,7 @@ def dac_placements() -> pd.DataFrame:
 
 
 def test_lt_dac_era5_wenzel2025(dac_placements: pd.DataFrame):
-    gen = lt_dac_era5_wenzel2025(
-        placements=dac_placements, era5_path=TEST_DATA["era5-like"], model="LT_jajjawi"
-    )
+    gen = lt_dac_era5_wenzel2025(placements=dac_placements, era5_path=TEST_DATA["era5-like"], model="LT_jajjawi")
     assert np.all(
         np.isclose(
             gen.capacity_factor.mean(dim="time"),
@@ -51,9 +49,7 @@ def test_lt_dac_era5_wenzel2025(dac_placements: pd.DataFrame):
 
 
 def test_ht_dac_era5_wenzel2025(dac_placements: pd.DataFrame):
-    gen = ht_dac_era5_wenzel2025(
-        placements=dac_placements, era5_path=TEST_DATA["era5-like"], model="HT_okosun"
-    )
+    gen = ht_dac_era5_wenzel2025(placements=dac_placements, era5_path=TEST_DATA["era5-like"], model="HT_okosun")
     assert np.all(
         np.isclose(
             gen.capacity_factor.mean(dim="time"),

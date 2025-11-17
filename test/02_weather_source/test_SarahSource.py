@@ -16,9 +16,7 @@ def pt_SarahSource():
 @pytest.fixture
 def pt_BoundedSarahSource():
     aachenExt = gk.Extent.fromVector(gk._test_data_["aachenShapefile.shp"])
-    return SarahSource(
-        TEST_DATA["sarah-like"], bounds=aachenExt, index_pad=1, verbose=False
-    )
+    return SarahSource(TEST_DATA["sarah-like"], bounds=aachenExt, index_pad=1, verbose=False)
 
 
 def test_SarahSource___init__():
@@ -43,13 +41,9 @@ def test_SarahSource___init__():
     assert (ms.time_index == rawTimes).all()
 
     # Initialize a SarahSource with Aachen boundaries
-    aachenExt = (
-        gk.Extent.fromVector(gk._test_data_["aachenShapefile.shp"]).pad(0.5).fit(0.01)
-    )
+    aachenExt = gk.Extent.fromVector(gk._test_data_["aachenShapefile.shp"]).pad(0.5).fit(0.01)
 
-    ms = SarahSource(
-        TEST_DATA["sarah-like"], bounds=aachenExt, index_pad=1, verbose=False
-    )
+    ms = SarahSource(TEST_DATA["sarah-like"], bounds=aachenExt, index_pad=1, verbose=False)
 
     # ensure lats, lons and times are okay
     assert np.isclose(ms.lats[0], 49.9)
@@ -119,9 +113,7 @@ def test_SarahSource_loc_to_index(pt_SarahSource, pt_BoundedSarahSource):
     assert np.isclose(idx[1].xi, 10.799998092651375)
 
 
-def test_SarahSource_sload_global_horizontal_irradiance(
-    pt_SarahSource, pt_BoundedSarahSource
-):
+def test_SarahSource_sload_global_horizontal_irradiance(pt_SarahSource, pt_BoundedSarahSource):
     var = "global_horizontal_irradiance"
     pt_SarahSource.sload_global_horizontal_irradiance()
     assert var in pt_SarahSource.data
@@ -140,9 +132,7 @@ def test_SarahSource_sload_global_horizontal_irradiance(
     assert np.isclose(pt_BoundedSarahSource.data[var][24, 1, 2], c)
 
 
-def test_SarahSource_sload_direct_normal_irradiance(
-    pt_SarahSource, pt_BoundedSarahSource
-):
+def test_SarahSource_sload_direct_normal_irradiance(pt_SarahSource, pt_BoundedSarahSource):
     var = "direct_normal_irradiance"
     pt_SarahSource.sload_direct_normal_irradiance()
     assert var in pt_SarahSource.data

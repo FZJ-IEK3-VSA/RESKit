@@ -33,9 +33,7 @@ class EGS_workflowmanager:
     def loadPlantData(self, configuration: str, manual_values={}):
         configuration = configuration.lower()
         if not configuration in ["doublette", "triplette"]:
-            raise ValueError(
-                "Currently only 'doublette' and 'triplette' are supported types."
-            )
+            raise ValueError("Currently only 'doublette' and 'triplette' are supported types.")
 
         def eta_plant(temp_degC):
             """calcualte efficiency based on the protocol from beardsmore
@@ -101,9 +99,7 @@ class EGS_workflowmanager:
         elif configuration == "triplette":
             self.data = data_triplette
         else:
-            raise ValueError(
-                "configuration not properly defined. Something went wrong."
-            )
+            raise ValueError("configuration not properly defined. Something went wrong.")
 
         for key in manual_values:
             if key in self.data:
@@ -265,21 +261,15 @@ class EGS_workflowmanager:
                 if not np.isnan(mid_value):
                     return mid_value
 
-                mean_value_window1 = np.nanmean(
-                    data[x_mid - 1 : x_mid + 2, x_mid - 1 : x_mid + 2]
-                )
+                mean_value_window1 = np.nanmean(data[x_mid - 1 : x_mid + 2, x_mid - 1 : x_mid + 2])
                 if not np.isnan(mean_value_window1):
                     return mean_value_window1
 
-                mean_value_window2 = np.nanmean(
-                    data[x_mid - 2 : x_mid + 3, x_mid - 2 : x_mid + 3]
-                )
+                mean_value_window2 = np.nanmean(data[x_mid - 2 : x_mid + 3, x_mid - 2 : x_mid + 3])
                 if not np.isnan(mean_value_window2):
                     return mean_value_window2
 
-                mean_value_window3 = np.nanmean(
-                    data[x_mid - 3 : x_mid + 4, x_mid - 3 : x_mid + 4]
-                )
+                mean_value_window3 = np.nanmean(data[x_mid - 3 : x_mid + 4, x_mid - 3 : x_mid + 4])
                 if not np.isnan(mean_value_window3):
                     return mean_value_window3
 
@@ -322,9 +312,7 @@ class EGS_workflowmanager:
         volumes_dict = dict(zip(self.latsGlobal, volume_lat))
 
         lats_placements_rounded = list((self.placements.lat.values - 0.5).round() + 0.5)
-        DiscretizedRockVolume_placments = np.array(
-            [volumes_dict[lat] for lat in lats_placements_rounded]
-        )
+        DiscretizedRockVolume_placments = np.array([volumes_dict[lat] for lat in lats_placements_rounded])
         share = self.data["reservoir_size_m3"] / DiscretizedRockVolume_placments
 
         self.placements["share_1"] = share
@@ -337,15 +325,11 @@ class EGS_workflowmanager:
         # variables = []
         for var in variables:
             varname_new = f"{var}_placement"
-            self.sim_data[varname_new] = (
-                self.sim_data[var] * self.placements["share_1"].values
-            )
+            self.sim_data[varname_new] = self.sim_data[var] * self.placements["share_1"].values
 
     def ___calculatePlantOutput(self):
         # calculation?
-        self.sim_data["P_Plant_nom_UNITHERE"] = (
-            self.sim_data["Global_EGS_PowerTech"] * 1 / self.data["CF"]
-        )
+        self.sim_data["P_Plant_nom_UNITHERE"] = self.sim_data["Global_EGS_PowerTech"] * 1 / self.data["CF"]
 
     def VolumeMethod(self):
         """calculate the enthalpy from the temperature"""
@@ -362,17 +346,12 @@ class EGS_workflowmanager:
             rho_rock
             * cp_rock
             * self.data["reservoir_size_m3"]
-            * (
-                self.sim_data["temperature"]
-                - self.placements["surface_temperature"].values
-            )
+            * (self.sim_data["temperature"] - self.placements["surface_temperature"].values)
         )
         self.sim_data_VM["Total_thermal_energy_PJ"] = Enth / 1e15
 
         # useable enthalpy
-        R_TD = dT_drawdown / (
-            self.sim_data["temperature"] - self.placements["surface_temperature"].values
-        )
+        R_TD = dT_drawdown / (self.sim_data["temperature"] - self.placements["surface_temperature"].values)
         Enth_useable = Enth * R_TD * self.data["recovery_factor"]  # J
         Enth_useable[self.sim_data["temperature"] < T_inj] = 0
 
@@ -381,18 +360,14 @@ class EGS_workflowmanager:
         self.sim_data_VM["Qdot_out_VM_MW"] = Qdot_out / 1e6
 
         # average power
-        T_out = (
-            self.sim_data["temperature"] - dT_drawdown / 2
-        )  # water outlet temperature
+        T_out = self.sim_data["temperature"] - dT_drawdown / 2  # water outlet temperature
         eta = eta_plant(T_out)  # average temperature over lifetime
         P_out = Qdot_out * eta
         self.sim_data_VM["P_out_VM_MW"] = P_out / 1e6
 
         # resource useage
         Tdot_K_per_a = dT_drawdown / self.data["lifetime_a"]  # K/a
-        dT_useable = (
-            self.sim_data["temperature"] - self.data["minRockTemperature_degC"]
-        )  # K
+        dT_useable = self.sim_data["temperature"] - self.data["minRockTemperature_degC"]  # K
         resource_use_time = dT_useable / Tdot_K_per_a  # a
 
         # debugging
@@ -400,14 +375,10 @@ class EGS_workflowmanager:
         mdot_water = Qdot_out / (cp_water * (T_out - T_inj))  # kg/s
 
         self.sim_data_VM["mdot_water_VM_kg_per_s"] = mdot_water
-        self.sim_data_VM["mdot_water_VM_kg_per_s_per_well"] = (
-            mdot_water / self.data["n_production_wells_1"]
-        )
+        self.sim_data_VM["mdot_water_VM_kg_per_s_per_well"] = mdot_water / self.data["n_production_wells_1"]
 
         self.sim_data_VM["dT_active_res_VM_K"] = dT_drawdown
-        self.sim_data_VM["dT_total_res_VM_K"] = (
-            dT_drawdown * self.data["recovery_factor"]
-        )
+        self.sim_data_VM["dT_total_res_VM_K"] = dT_drawdown * self.data["recovery_factor"]
         self.sim_data_VM["recovery_fac_amb_VM_1"] = Enth_useable / Enth
 
         self.sim_data_VM["resourceUseTime_VM_a"] = resource_use_time
@@ -416,46 +387,29 @@ class EGS_workflowmanager:
         self.sim_data_VM["T_Rock_abandon_VM_degC"] = (
             self.sim_data["temperature"] - self.sim_data_VM["dT_total_res_VM_K"]
         )
-        self.sim_data_VM["T_Water_out_VM_degC"] = self.sim_data_VM[
-            "temperature_VM_degC"
-        ]
+        self.sim_data_VM["T_Water_out_VM_degC"] = self.sim_data_VM["temperature_VM_degC"]
         pass
 
     def GringartenMethodFixedT(self):
         """[summary]"""
         # assumptions
         x_ED = 2  # set, so that the gringarten recovery factor also leads to 14%
-        T_D = self.data["dT_drawdown"] / (
-            self.sim_data["temperature"] - self.data["T_inj"]
-        )
+        T_D = self.data["dT_drawdown"] / (self.sim_data["temperature"] - self.data["T_inj"])
         x = y = z = 1000  # m reservoir size
         t = self.data["lifetime_a"] * self.SECONDS_PER_YEAR  # s
-        t_D = (
-            0.5  # 10.5 #dimensionless time, see Augustine2016 Fig 2 for TD=0.05, xed=4
-        )
+        t_D = 0.5  # 10.5 #dimensionless time, see Augustine2016 Fig 2 for TD=0.05, xed=4
 
         # rock properties
         rho_rock = 2550  # kg/m^3
         cp_rock = 1000  # J/kg/K
         k_R = 2.5  # W/mK #TODO: real location specific values here
-        warn(
-            "K_R is set to a default value. this needs to be adapted for the final Calulations"
-        )
+        warn("K_R is set to a default value. this needs to be adapted for the final Calulations")
 
         q = (
-            np.sqrt(
-                (t_D * k_R * rho_rock * cp_rock)
-                / ((self.rho_water * self.cp_water) ** 2 * t)
-            )
-            * y
-            * z
+            np.sqrt((t_D * k_R * rho_rock * cp_rock) / ((self.rho_water * self.cp_water) ** 2 * t)) * y * z
         )  # m^3/s?, inj. water volume flow per fracture, see Augustine2016 eq(2)
-        x_E = (
-            x_ED * k_R * y * z / (self.rho_water * self.cp_water * q)
-        )  # m?, fracture spacing, see Augustine2016 eq(3)
-        n = (
-            x / (2 * x_E)
-        )  # 1, number of fractures, can be decimal as theoretical calcualtion nevertheless
+        x_E = x_ED * k_R * y * z / (self.rho_water * self.cp_water * q)  # m?, fracture spacing, see Augustine2016 eq(3)
+        n = x / (2 * x_E)  # 1, number of fractures, can be decimal as theoretical calcualtion nevertheless
         Q = q * n  # l/s, total inj. water volume flow
 
         #######################################s
@@ -489,20 +443,14 @@ class EGS_workflowmanager:
         )
 
         num_of_timesteps = 1000  # self.data['lifetime_a']
-        grin.getDimlessTime(
-            np.linspace(1, num_of_timesteps, num_of_timesteps) * self.SECONDS_PER_YEAR
-        )
+        grin.getDimlessTime(np.linspace(1, num_of_timesteps, num_of_timesteps) * self.SECONDS_PER_YEAR)
         grin.getGringartenCurve()
         grin.getWaterTemp(self.sim_data["temperature"], self.data["T_inj"])
         ans = grin.getEGSProps(timestep=self.data["lifetime_a"])
-        resource_use_time_a = grin.getResourceUseTime(
-            T_abandon=self.data["minRockTemperature_degC"]
-        )
+        resource_use_time_a = grin.getResourceUseTime(T_abandon=self.data["minRockTemperature_degC"])
 
         # calc eta
-        eta = self.data["eta_plant"](
-            ans["T_Water_out"]
-        )  # average temperature over lifetime
+        eta = self.data["eta_plant"](ans["T_Water_out"])  # average temperature over lifetime
         P_out = ans["Qdot_water"] * eta
 
         # water flow:
@@ -547,12 +495,8 @@ class EGS_workflowmanager:
         P_el_MW = Qdot_sust_W * 1e-6 * eta_plant
 
         # get water mass flow
-        mdot_water_kg_per_s = Qdot_sust_W / (
-            self.rho_water * self.cp_water * (T_water_out - self.data["T_inj"])
-        )
-        mdot_water_kg_per_s_per_well = (
-            mdot_water_kg_per_s / self.data["n_production_wells_1"]
-        )
+        mdot_water_kg_per_s = Qdot_sust_W / (self.rho_water * self.cp_water * (T_water_out - self.data["T_inj"]))
+        mdot_water_kg_per_s_per_well = mdot_water_kg_per_s / self.data["n_production_wells_1"]
 
         # save vars
         self.sim_data_SU = {}
@@ -560,9 +504,7 @@ class EGS_workflowmanager:
         self.sim_data_SU["Qdot_out_SU_MW"] = Qdot_sust_W / 1e6
         self.sim_data_SU["P_out_SU_MW"] = P_el_MW
         self.sim_data_SU["mdot_water_SU_kg_per_s"] = mdot_water_kg_per_s
-        self.sim_data_SU["mdot_water_SU_kg_per_s_per_well"] = (
-            mdot_water_kg_per_s_per_well
-        )
+        self.sim_data_SU["mdot_water_SU_kg_per_s_per_well"] = mdot_water_kg_per_s_per_well
 
         self.sim_data_SU["dT_active_res_SU_K"] = 0
         self.sim_data_SU["dT_total_res_SU_K"] = 0
@@ -590,13 +532,9 @@ class EGS_workflowmanager:
         tech_method_short = self._getTechMethodShort(techMethod)
 
         Vdot_m3_per_s_per_well = (
-            1
-            / self.rho_water
-            * sim_data_techmethod[f"mdot_water_{tech_method_short}_kg_per_s_per_well"]
+            1 / self.rho_water * sim_data_techmethod[f"mdot_water_{tech_method_short}_kg_per_s_per_well"]
         )
-        productivity_m3_per_s_per_Pa = (
-            self.data["productivity_(l_per_s)/bar"] * 1e-3 / 1e5
-        )  # Pa/(m^3/s)
+        productivity_m3_per_s_per_Pa = self.data["productivity_(l_per_s)/bar"] * 1e-3 / 1e5  # Pa/(m^3/s)
         detaP = Vdot_m3_per_s_per_well / productivity_m3_per_s_per_Pa  # Pa
 
         P_pump = detaP * Vdot_m3_per_s_per_well / self.data["eta_pump_1"]
@@ -617,17 +555,11 @@ class EGS_workflowmanager:
         if method == "aghahosseini2020":
             # Capex
             # Well
-            CAPEX_Well_MUSD = (
-                1.72 * 10**-7 * self.depths**2 + 2.3 * 10**-3 * self.depths - 0.62
-            )
+            CAPEX_Well_MUSD = 1.72 * 10**-7 * self.depths**2 + 2.3 * 10**-3 * self.depths - 0.62
             CAPEX_Well_MUSD = np.tile(CAPEX_Well_MUSD, (len(self.placements), 1)).T
             # Plant
-            P_nom = (
-                sim_data_techmethod[f"P_out_{tech_method_short}_MW"] / self.data["CF"]
-            )
-            CAPEX_Plant_MUSD = (
-                (750 + 1125 * np.exp(-0.006115 * (P_nom - 5))) * P_nom / 1e3
-            )
+            P_nom = sim_data_techmethod[f"P_out_{tech_method_short}_MW"] / self.data["CF"]
+            CAPEX_Plant_MUSD = (750 + 1125 * np.exp(-0.006115 * (P_nom - 5))) * P_nom / 1e3
             # Other
             CAPEX_Stim_MUSD = 2.5
             CAPEX_Distr_MUSD = 50 * P_nom / 1e3
@@ -646,32 +578,21 @@ class EGS_workflowmanager:
             # Capex
             # Well
             # Lukawski https://aip.scitation.org/doi/10.1063/1.4865575
-            CAPEX_Well_MUSD_Lukawski = (
-                1.72 * 10**-7 * self.depths**2 + 2.3 * 10**-3 * self.depths - 0.62
-            )
+            CAPEX_Well_MUSD_Lukawski = 1.72 * 10**-7 * self.depths**2 + 2.3 * 10**-3 * self.depths - 0.62
             # SAM Intermediate 1	Vertical Open Hole	Larger Diameter	$ 3,243,076 	0.189267288	293.4517365	1326526.313, CAPEX_Well_USD = c1*x^2 + c2 *x + c3, x in m
             # https://www.energy.gov/eere/geothermal/geovision
             CAPEX_Well_MUSD_SAM_Intermed1 = (
                 1326526.313 + 293.4517365 * self.depths + 0.189267288 * self.depths**2
             ) / 1e6
 
-            CAPEX_Well_MUSD = np.tile(
-                CAPEX_Well_MUSD_SAM_Intermed1, (len(self.placements), 1)
-            ).T
+            CAPEX_Well_MUSD = np.tile(CAPEX_Well_MUSD_SAM_Intermed1, (len(self.placements), 1)).T
             # Plant
-            P_nom = (
-                sim_data_techmethod[f"P_out_{tech_method_short}_MW"] / self.data["CF"]
-            )
-            CAPEX_Plant_MUSD = (
-                1560 * P_nom / 1e3
-            )  # 1560 EUR/kW from 2006_Heidinger-et-al
+            P_nom = sim_data_techmethod[f"P_out_{tech_method_short}_MW"] / self.data["CF"]
+            CAPEX_Plant_MUSD = 1560 * P_nom / 1e3  # 1560 EUR/kW from 2006_Heidinger-et-al
             # Other
             CAPEX_Stim_MUSD = 2.5
             CAPEX_Pump_MUSD = (
-                1720
-                * sim_data_techmethod[f"P_Pump_{tech_method_short}_MW"]
-                * self.data["n_production_wells_1"]
-                / 1e3
+                1720 * sim_data_techmethod[f"P_Pump_{tech_method_short}_MW"] * self.data["n_production_wells_1"] / 1e3
             )
             CAPEX_Expl_MUSD = 1.85
             # add up
@@ -686,9 +607,9 @@ class EGS_workflowmanager:
             CAPEX_Total_MUSD = np.nan
 
         # calc annuity
-        self.data["annuity"] = (
-            (1 + self.data["WACC"]) ** self.data["lifetime_a"] * self.data["WACC"]
-        ) / ((1 + self.data["WACC"]) ** self.data["lifetime_a"] - 1)
+        self.data["annuity"] = ((1 + self.data["WACC"]) ** self.data["lifetime_a"] * self.data["WACC"]) / (
+            (1 + self.data["WACC"]) ** self.data["lifetime_a"] - 1
+        )
 
         # get yearly costs
         CAPEX_Total_MUSD_per_a = CAPEX_Total_MUSD * self.data["annuity"]
@@ -696,9 +617,7 @@ class EGS_workflowmanager:
         OPEX_var_MUSD_per_a = 0
 
         # sum it up to TOTEX
-        TOTEX_MUSD_per_a = (
-            CAPEX_Total_MUSD_per_a + OPEX_fix_MUSD_per_a + OPEX_var_MUSD_per_a
-        )
+        TOTEX_MUSD_per_a = CAPEX_Total_MUSD_per_a + OPEX_fix_MUSD_per_a + OPEX_var_MUSD_per_a
         sim_data_techmethod[f"TOTEX_MUSD_{tech_method_short}_per_a"] = TOTEX_MUSD_per_a
         pass
 
@@ -728,9 +647,7 @@ class EGS_workflowmanager:
 
         LCOE_considerable = sim_data_techmethod[f"LCOE_{tech_method_short}_EUR_per_kWh"]
         # filter by temperature if using the volume method
-        LCOE_considerable[
-            self.sim_data["temperature"] < self.data["minRockTemperature_degC"]
-        ] = np.inf
+        LCOE_considerable[self.sim_data["temperature"] < self.data["minRockTemperature_degC"]] = np.inf
 
         # filter by max depth:
         maxDepth = self.data["maxDepth_m"]
@@ -765,9 +682,7 @@ class EGS_workflowmanager:
 
         def getOptimalValue(self, mat, argminOptDepth):
             """returns the values at the optimal depth"""
-            placement = np.arange(
-                0, len(argminOptDepth)
-            )  # np.arange(0, len(self.placements))
+            placement = np.arange(0, len(argminOptDepth))  # np.arange(0, len(self.placements))
             return mat[argminOptDepth, placement]
 
         # write optimal values into placements(results!) based on their type
@@ -790,9 +705,7 @@ class EGS_workflowmanager:
             # if its an depth depending matrix, select the right depth depending value
             elif isinstance(var, np.ndarray):
                 notEligible = sim_data_techmethod[f"notEligible_{tech_method_short}"]
-                argminOptDepth = sim_data_techmethod[
-                    f"argmin_opt_depth_{tech_method_short}_m"
-                ]
+                argminOptDepth = sim_data_techmethod[f"argmin_opt_depth_{tech_method_short}_m"]
 
                 # get eligible Values
                 argminOptDepthEligible = argminOptDepth[~notEligible].astype(int)
@@ -811,20 +724,14 @@ class EGS_workflowmanager:
         tech_method_short = self._getTechMethodShort(techMethod)
 
         Q_out_Wa = (
-            sim_data_techmethod[f"Qdot_out_{tech_method_short}_MW"]
-            * 1e6
-            * self.data["lifetime_a"]
+            sim_data_techmethod[f"Qdot_out_{tech_method_short}_MW"] * 1e6 * self.data["lifetime_a"]
         )  # Wa = Watt*year
         delta_depth = self.depths[1] - self.depths[0]  # m
         regeneration_time = Q_out_Wa / (
-            self.data["reservoir_size_m3"]
-            / delta_depth
-            * self.placements["qdot_sust_W_per_m2"].values
+            self.data["reservoir_size_m3"] / delta_depth * self.placements["qdot_sust_W_per_m2"].values
         )  # a
 
-        sim_data_techmethod[f"regeneration_time_{tech_method_short}_a"] = (
-            regeneration_time
-        )
+        sim_data_techmethod[f"regeneration_time_{tech_method_short}_a"] = regeneration_time
 
     def saveOutput(self, savepath=None, deepsave=False):
         """saved to nc4 or shape file or csv to savepath
@@ -906,9 +813,7 @@ class EGS_workflowmanager:
                 techMethods = self._getTechMethods()
                 techMethods.append("sim_data")
                 for techMethod in techMethods:
-                    savepathDeepsaveFileld = savepathDeepsave.replace(
-                        "<TECHMETHOD>", str(techMethod)
-                    )
+                    savepathDeepsaveFileld = savepathDeepsave.replace("<TECHMETHOD>", str(techMethod))
                     # save as excel:
                     techMethodDict = getattr(self, techMethod)
                     with pd.ExcelWriter(savepathDeepsaveFileld) as writer:
@@ -1022,9 +927,7 @@ class EGS_workflowmanager:
             return 0.00052 * temp_degC + 0.032
 
         # total enthalpy
-        Enth = (
-            rho_rock * cp_rock * reservoir_size_m3 * (temperature - surface_temperature)
-        )
+        Enth = rho_rock * cp_rock * reservoir_size_m3 * (temperature - surface_temperature)
 
         # useable enthalpy
         R_TD = dT_drawdown / (temperature - surface_temperature)
@@ -1055,19 +958,13 @@ class EGS_workflowmanager:
         ### COST
 
         CAPEX_Well_MUSD = 1.72 * 10**-7 * depth**2 + 2.3 * 10**-3 * depth - 0.62
-        CAPEX_Plant_MUSD = (
-            (750 + 1125 * np.exp(-0.006115 * (P_nom / 1e6 - 5))) * P_nom / 1e9
-        )
+        CAPEX_Plant_MUSD = (750 + 1125 * np.exp(-0.006115 * (P_nom / 1e6 - 5))) * P_nom / 1e9
         CAPEX_Stim_MUSD = 2.5
         CAPEX_Distr_MUSD = 50 * P_nom / 1e9
         CAPEX_Expl_MUSD = 1.12 * (1 + 0.6 * CAPEX_Well_MUSD)
 
         CAPEX_Total_MUSD = (
-            CAPEX_Well_MUSD * n_wells
-            + CAPEX_Plant_MUSD
-            + CAPEX_Stim_MUSD
-            + CAPEX_Distr_MUSD
-            + CAPEX_Expl_MUSD
+            CAPEX_Well_MUSD * n_wells + CAPEX_Plant_MUSD + CAPEX_Stim_MUSD + CAPEX_Distr_MUSD + CAPEX_Expl_MUSD
         )
 
         # calc annuity
@@ -1079,14 +976,10 @@ class EGS_workflowmanager:
         OPEX_var_MUSD_per_a = 0
 
         # sum it up
-        TOTEX_MUSD_per_a = (
-            CAPEX_Total_MUSD_per_a + OPEX_fix_MUSD_per_a + OPEX_var_MUSD_per_a
-        )
+        TOTEX_MUSD_per_a = CAPEX_Total_MUSD_per_a + OPEX_fix_MUSD_per_a + OPEX_var_MUSD_per_a
 
         ### LCOE
-        LCOE_tech_EUR_per_kWh = (
-            TOTEX_MUSD_per_a * USD2EUR * 1e6 / (P_out_MW * 1e3 * 8760)
-        )
+        LCOE_tech_EUR_per_kWh = TOTEX_MUSD_per_a * USD2EUR * 1e6 / (P_out_MW * 1e3 * 8760)
         pass
 
         # recocvery factor

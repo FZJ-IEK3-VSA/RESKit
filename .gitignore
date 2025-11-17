@@ -23,3 +23,6 @@ testing/results/eligibility_plots
 test/*/*.ipynb
 reskit/*/*.ipynb
 _readthedocs/
+# MyST build outputs
+_build/
+conf.py

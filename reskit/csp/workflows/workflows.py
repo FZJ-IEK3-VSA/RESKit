@@ -169,9 +169,7 @@ def CSP_PTR_ERA5_specific_dataset(
     if verbose:
         tic_start = time.time()
         print(
-            "Simulation started for {n_placements} placements.".format(
-                n_placements=len(wf.placements)
-            ),
+            "Simulation started for {n_placements} placements.".format(n_placements=len(wf.placements)),
             flush=True,
         )
         print("Reading in Weather data.", flush=True)
@@ -239,9 +237,7 @@ def CSP_PTR_ERA5_specific_dataset(
 
     # 6) doing selfmade calulations until Heat to HTF
     wf.calculateIAM(a1=ptr_data["a1"], a2=ptr_data["a2"], a3=ptr_data["a3"])
-    wf.calculateShadowLosses(
-        method="wagner2011", SF_density=ptr_data["SF_density_direct"]
-    )
+    wf.calculateShadowLosses(method="wagner2011", SF_density=ptr_data["SF_density_direct"])
     wf.calculateWindspeedLosses(max_windspeed_threshold=ptr_data["maxWindspeed"])
     wf.calculateDegradationLosses(
         efficencyDropPerYear=ptr_data["efficencyDropPerYear"],
@@ -269,9 +265,7 @@ def CSP_PTR_ERA5_specific_dataset(
 
     if verbose:
         tic_pre = time.time()
-        print(
-            "Preanalysis within {dt}s.".format(dt=str(tic_pre - tic_read)), flush=True
-        )
+        print("Preanalysis within {dt}s.".format(dt=str(tic_pre - tic_read)), flush=True)
         print("Starting core simulation of the solar field.", flush=True)
     # 7) calculation heat to plant with loss model
     wf.applyHTFHeatLossModel(
@@ -317,13 +311,9 @@ def CSP_PTR_ERA5_specific_dataset(
         lifetime=ptr_data["lifetime"],
         calculationmethod="franzmann2021",
         params={
-            "CAPEX_solar_field_EUR_per_m^2_aperture": ptr_data[
-                "CAPEX_solar_field_EUR_per_m^2_aperture"
-            ],
+            "CAPEX_solar_field_EUR_per_m^2_aperture": ptr_data["CAPEX_solar_field_EUR_per_m^2_aperture"],
             "CAPEX_land_EUR_per_m^2_land": ptr_data["CAPEX_land_EUR_per_m^2_land"],
-            "CAPEX_indirect_cost_perc_CAPEX": ptr_data[
-                "CAPEX_indirect_cost_perc_CAPEX"
-            ],
+            "CAPEX_indirect_cost_perc_CAPEX": ptr_data["CAPEX_indirect_cost_perc_CAPEX"],
             "electricity_price_EUR_per_kWh": ptr_data["electricity_price_EUR_per_kWh"],
             "OPEX_perc_CAPEX": ptr_data["OPEX_perc_CAPEX"],
         },
@@ -332,16 +322,12 @@ def CSP_PTR_ERA5_specific_dataset(
     if verbose:
         tic_sf_sim = time.time()
         print(
-            "Solar field simulation done in {dt}s.".format(
-                dt=str(tic_sf_sim - tic_pre)
-            ),
+            "Solar field simulation done in {dt}s.".format(dt=str(tic_sf_sim - tic_pre)),
             flush=True,
         )
         print("Starting optimizing plant electric output.", flush=True)
 
-    wf.optimize_plant_size(
-        onlynightuse=onlynightuse, fullvariation=fullvariation, debug_vars=debug_vars
-    )
+    wf.optimize_plant_size(onlynightuse=onlynightuse, fullvariation=fullvariation, debug_vars=debug_vars)
 
     # wf.optimize_heat_output_4D()
     # wf.calculateEconomics_Plant_Storage_4D()
@@ -368,6 +354,4 @@ def CSP_PTR_ERA5_specific_dataset(
     if return_self == True:
         return wf
     else:
-        return wf.to_xarray(
-            output_netcdf_path=output_netcdf_path, output_variables=output_variables
-        )
+        return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)

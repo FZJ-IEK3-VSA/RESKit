@@ -17,9 +17,7 @@ def build_ws_correction_function(type, data_dict):
         build the correction function
     """
     if isinstance(data_dict, str):
-        assert os.path.isfile(data_dict), (
-            f"data_dict is a str but not an existing file: {data_dict}"
-        )
+        assert os.path.isfile(data_dict), f"data_dict is a str but not an existing file: {data_dict}"
         assert os.path.splitext(data_dict)[-1] in [
             ".yaml",
             ".yml",
@@ -31,9 +29,7 @@ def build_ws_correction_function(type, data_dict):
         if isinstance(data_dict, (list, tuple)):
             # assume that the polynomial factors a_i*x^^i are sorted (a_n, ..., a_2, a_1, a_0)
             data_dict = {i: v for i, v in enumerate(list(data_dict)[::-1])}
-        assert isinstance(data_dict, dict), (
-            f"data_dict must be a dict if not given as a tuple of polynomial factors."
-        )
+        assert isinstance(data_dict, dict), f"data_dict must be a dict if not given as a tuple of polynomial factors."
         assert all([x % 1 == 0 for x in data_dict.keys()]), (
             f"All data_dict keys must be integers i with values a_i, for all required polynomial factors a_i*x^^i."
         )
@@ -46,12 +42,8 @@ def build_ws_correction_function(type, data_dict):
 
         return correction_function
     elif type == "ws_bins":
-        assert "ws_bins" in data_dict.keys(), (
-            "data_dict must contain key 'ws_bins' with a dict of ws bins and factors."
-        )
-        if not all(
-            isinstance(ws_bin, Interval) for ws_bin in data_dict["ws_bins"].keys()
-        ):
+        assert "ws_bins" in data_dict.keys(), "data_dict must contain key 'ws_bins' with a dict of ws bins and factors."
+        if not all(isinstance(ws_bin, Interval) for ws_bin in data_dict["ws_bins"].keys()):
             ws_bins_dict = {}
             for range_str, factor in data_dict["ws_bins"].copy().items():
                 left, right = range_str.split("-")
@@ -61,9 +53,7 @@ def build_ws_correction_function(type, data_dict):
             data_dict["ws_bins"] = ws_bins_dict
 
         # check if all keys are of instance Interval
-        assert all(
-            isinstance(ws_bin, Interval) for ws_bin in data_dict["ws_bins"].keys()
-        )
+        assert all(isinstance(ws_bin, Interval) for ws_bin in data_dict["ws_bins"].keys())
         ws_bins_correction = data_dict["ws_bins"]
 
         def correction_function(x):
@@ -98,19 +88,13 @@ def build_ws_correction_function(type, data_dict):
 
             corrected_x = x.copy()
             for mean_ws_bin, mean_ws_bin_dict in ws_bins_correction.items():
-                mask_mean_ws = (mean_ws >= mean_ws_bin.left) & (
-                    mean_ws < mean_ws_bin.right
-                )
+                mask_mean_ws = (mean_ws >= mean_ws_bin.left) & (mean_ws < mean_ws_bin.right)
                 for ws_bin, factor in mean_ws_bin_dict.items():
                     mask_hourly_ws = (x >= ws_bin.left) & (x < ws_bin.right)
-                    corrected_x[mask_mean_ws & mask_hourly_ws] = x[
-                        mask_mean_ws & mask_hourly_ws
-                    ] * (1 - factor)
+                    corrected_x[mask_mean_ws & mask_hourly_ws] = x[mask_mean_ws & mask_hourly_ws] * (1 - factor)
             return corrected_x
 
         return correction_function
 
     else:
-        raise ValueError(
-            f"Invalid ws_correction_func type: {type}. Select from: 'polynomial', 'ws_bins'."
-        )
+        raise ValueError(f"Invalid ws_correction_func type: {type}. Select from: 'polynomial', 'ws_bins'.")

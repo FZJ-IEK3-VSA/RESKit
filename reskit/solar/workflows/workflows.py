@@ -137,16 +137,10 @@ def openfield_pv_merra_ryberg2019(
     if inverter is not None:
         wf.apply_inverter_losses(inverter=inverter, **inverter_kwargs)
 
-    variables = [
-        _var
-        for _var in ["capacity_factor", "total_system_generation"]
-        if _var in wf.sim_data.keys()
-    ]
+    variables = [_var for _var in ["capacity_factor", "total_system_generation"] if _var in wf.sim_data.keys()]
     wf.apply_loss_factor(0.20, variables=variables)
 
-    return wf.to_xarray(
-        output_netcdf_path=output_netcdf_path, output_variables=output_variables
-    )
+    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
 
 def openfield_pv_era5(
@@ -368,16 +362,10 @@ def openfield_pv_era5(
         wf.apply_inverter_losses(inverter=inverter, **inverter_kwargs)
 
     loss_factor = 0.115  # validation by d.franzmann, 2022/01/13
-    variables = [
-        _var
-        for _var in ["capacity_factor", "total_system_generation"]
-        if _var in wf.sim_data.keys()
-    ]
+    variables = [_var for _var in ["capacity_factor", "total_system_generation"] if _var in wf.sim_data.keys()]
     wf.apply_loss_factor(loss_factor, variables=variables)
 
-    return wf.to_xarray(
-        output_netcdf_path=output_netcdf_path, output_variables=output_variables
-    )
+    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
 
 def openfield_pv_sarah_unvalidated(
@@ -516,16 +504,10 @@ def openfield_pv_sarah_unvalidated(
     if inverter is not None:
         wf.apply_inverter_losses(inverter=inverter, **inverter_kwargs)
 
-    variables = [
-        _var
-        for _var in ["capacity_factor", "total_system_generation"]
-        if _var in wf.sim_data.keys()
-    ]
+    variables = [_var for _var in ["capacity_factor", "total_system_generation"] if _var in wf.sim_data.keys()]
     wf.apply_loss_factor(0.20, variables=variables)
 
-    return wf.to_xarray(
-        output_netcdf_path=output_netcdf_path, output_variables=output_variables
-    )
+    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
 
 def openfield_pv_iconlam(
@@ -656,13 +638,9 @@ def openfield_pv_iconlam(
     # )
 
     loss_factor = 0.107  # general loss_factor by s.chen, 2024/05/08
-    wf.apply_loss_factor(
-        loss_factor, variables=["capacity_factor", "total_system_generation"]
-    )
+    wf.apply_loss_factor(loss_factor, variables=["capacity_factor", "total_system_generation"])
 
-    return wf.to_xarray(
-        output_netcdf_path=output_netcdf_path, output_variables=output_variables
-    )
+    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
 
 ########################

@@ -1,9 +1,7 @@
 import numpy as np
 
 
-def compute_air_density(
-    temperature=20, pressure=101325, relative_humidity=0, dew_temperature=None
-):
+def compute_air_density(temperature=20, pressure=101325, relative_humidity=0, dew_temperature=None):
     """Computes air density, following the apprach of "Revised formula for the density of moist air (CIPM-2007)" by A Picard, R S Davis, M Glaser and K Fujii"""
 
     if relative_humidity is None and dew_temperature is None:
@@ -44,14 +42,7 @@ def compute_air_density(
 
     Z = (
         1
-        - (p / T)
-        * (
-            a0
-            - a1 * t
-            + a2 * np.power(t, 2)
-            + (b0 + b1 * t) * xv
-            + (c0 + c1 * t) * np.power(xv, 2)
-        )
+        - (p / T) * (a0 - a1 * t + a2 * np.power(t, 2) + (b0 + b1 * t) * xv + (c0 + c1 * t) * np.power(xv, 2))
         + np.power(p / T, 2) * (d + e * np.power(xv, 2))
     )
 

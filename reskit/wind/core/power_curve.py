@@ -182,9 +182,7 @@ class PowerCurve:
         --------
             PowerCurve.from_specific_power( <turbine specific power> )
         """
-        return PowerCurve.from_specific_power(
-            compute_specific_power(capacity, rotor_diam)
-        )
+        return PowerCurve.from_specific_power(compute_specific_power(capacity, rotor_diam))
 
     def simulate(self, wind_speed):
         """
@@ -206,9 +204,7 @@ class PowerCurve:
         output = powerCurveInterp(wind_speed)
 
         if isinstance(wind_speed, pd.DataFrame):
-            output = pd.DataFrame(
-                output, index=wind_speed.index, columns=wind_speed.columns
-            )
+            output = pd.DataFrame(output, index=wind_speed.index, columns=wind_speed.columns)
 
         return output
 
@@ -260,9 +256,7 @@ class PowerCurve:
         meanCapFac = (gen * pdf).sum() * dws
         return meanCapFac
 
-    def expected_capacity_factor_from_distribution(
-        self, wind_speed_values, wind_speed_counts
-    ):
+    def expected_capacity_factor_from_distribution(self, wind_speed_values, wind_speed_counts):
         """
         Computes the expected average capacity factor of a wind turbine based on an explicitly-provided wind speed distribution
 
@@ -303,9 +297,7 @@ class PowerCurve:
             if not wind_speed_counts.shape[0] == wind_speed_values.shape[0]:
                 raise ResError("Dimensional incompatibility")
 
-            wind_speed_values = np.reshape(
-                wind_speed_values, (wind_speed_counts.shape[0], 1)
-            )
+            wind_speed_values = np.reshape(wind_speed_values, (wind_speed_counts.shape[0], 1))
 
         # Estimate generation distribution
         gen = (
@@ -397,9 +389,7 @@ class PowerCurve:
         # Begin convolution
         convolutedCF = np.zeros(_steps)
         for i, ws_ in enumerate(ws):
-            convolutedCF[i] = (
-                norm.pdf(ws, loc=ws_, scale=scaling * ws_ + base) * cf
-            ).sum() * dws
+            convolutedCF[i] = (norm.pdf(ws, loc=ws_, scale=scaling * ws_ + base) * cf).sum() * dws
 
         # Correct cutoff, maybe
         if not extend_beyond_cut_out:

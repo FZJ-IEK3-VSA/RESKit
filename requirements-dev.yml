@@ -5,8 +5,6 @@ dependencies:
   - python
   - papermill
   - jupyter
-  - notebook
-  - jupyterlab
   - pip
   - matplotlib
   - descartes
@@ -22,11 +20,12 @@ dependencies:
   - xarray
   - pvlib-python =0.9.0
   - windpowerlib
+  - cdsapi
   # dev
   - nbconvert
   - ruff
   - pytest
   - pytest-cov
   # Documentation
-  - jupyter-book
+  - jupyter-book <2.0
   - sphinx-autoapi

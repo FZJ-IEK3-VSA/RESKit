@@ -197,9 +197,7 @@ class NCSource(object):
 
         sources = addSource(source)
         if len(sources) == 0:
-            raise ResError(
-                f"No '.nc' or '.nc4' files found for tile base path: {source}"
-            )
+            raise ResError(f"No '.nc' or '.nc4' files found for tile base path: {source}")
         sources.sort()
 
         # Collect all variable information
@@ -235,8 +233,7 @@ class NCSource(object):
                 else:
                     if ds[var].shape[1:] != expectedShape[var][1:]:
                         raise ResError(
-                            "Variable %s does not match expected shape %s. From %s"
-                            % (var, expectedShape[var], src)
+                            "Variable %s does not match expected shape %s. From %s" % (var, expectedShape[var], src)
                         )
             ds.close()
 
@@ -320,36 +317,18 @@ class NCSource(object):
                     bot[1:, :] = np.logical_and(bot[1:, :], bot[:-1, :])
 
                 self._lonStart = np.argmin((bot | left | top).all(0)) - 1 - index_pad
-                self._lonStop = (
-                    self._lonN
-                    - np.argmin((bot | top | right).all(0)[::-1])
-                    + 1
-                    + index_pad
-                )
+                self._lonStop = self._lonN - np.argmin((bot | top | right).all(0)[::-1]) + 1 + index_pad
                 self._latStart = np.argmin((bot | left | right).all(1)) - 1 - index_pad
-                self._latStop = (
-                    self._latN
-                    - np.argmax((left | top | right).all(1)[::-1])
-                    + 1
-                    + index_pad
-                )
+                self._latStop = self._latN - np.argmax((left | top | right).all(1)[::-1]) + 1 + index_pad
 
             else:
-                tmp = np.logical_and(
-                    self._allLons >= self.bounds.xMin, self._allLons <= self.bounds.xMax
-                )
+                tmp = np.logical_and(self._allLons >= self.bounds.xMin, self._allLons <= self.bounds.xMax)
                 self._lonStart = np.argmax(tmp) - 1
-                self._lonStop = (
-                    self._lonStart + 1 + np.argmin(tmp[self._lonStart + 1 :]) + 1
-                )
+                self._lonStop = self._lonStart + 1 + np.argmin(tmp[self._lonStart + 1 :]) + 1
 
-                tmp = np.logical_and(
-                    self._allLats >= self.bounds.yMin, self._allLats <= self.bounds.yMax
-                )
+                tmp = np.logical_and(self._allLats >= self.bounds.yMin, self._allLats <= self.bounds.yMax)
                 self._latStart = np.argmax(tmp) - 1
-                self._latStop = (
-                    self._latStart + 1 + np.argmin(tmp[self._latStart + 1 :]) + 1
-                )
+                self._latStop = self._latStart + 1 + np.argmin(tmp[self._latStart + 1 :]) + 1
 
                 self._lonStart = max(0, self._lonStart - index_pad)
                 self._lonStop = min(self._allLons.size, self._lonStop + index_pad)
@@ -373,12 +352,8 @@ class NCSource(object):
         self._flip_lon = flip_lon
 
         if self.dependent_coordinates:
-            self.lats = self._allLats[
-                self._latStart : self._latStop, self._lonStart : self._lonStop
-            ]
-            self.lons = self._allLons[
-                self._latStart : self._latStop, self._lonStart : self._lonStop
-            ]
+            self.lats = self._allLats[self._latStart : self._latStop, self._lonStart : self._lonStop]
+            self.lons = self._allLons[self._latStart : self._latStop, self._lonStart : self._lonStop]
 
             if flip_lat:
                 self.lats = self.lats[::-1, :]
@@ -548,13 +523,9 @@ class NCSource(object):
             if hasattr(self, "sload_" + var):
                 getattr(self, "sload_" + var)()
             else:
-                raise RuntimeError(
-                    var + " is not an acceptable key for this weather source"
-                )
+                raise RuntimeError(var + " is not an acceptable key for this weather source")
 
-    def load(
-        self, variable, name=None, height_idx=None, processor=None, overwrite=False
-    ):
+    def load(self, variable, name=None, height_idx=None, processor=None, overwrite=False):
         """Load a variable into the source's data table
 
         Parameters:
@@ -632,9 +603,7 @@ class NCSource(object):
                     % (variable, self.time_index.shape[0], tmp.shape[0])
                 )
 
-            lastTimeIndex = nc.num2date(
-                ds[self.time_name][-1], ds[self.time_name].units
-            )
+            lastTimeIndex = nc.num2date(ds[self.time_name][-1], ds[self.time_name].units)
 
             if not lastTimeIndex in self._timeindex_raw:
                 raise ResError("Filling is only intended to fill the last missing step")
@@ -713,10 +682,7 @@ class NCSource(object):
                 else:
                     return Index(yi=latI[0], xi=lonI[0])
             else:
-                return [
-                    None if _oob else Index(yi=y, xi=x)
-                    for _oob, y, x in zip(oob, latI, lonI)
-                ]
+                return [None if _oob else Index(yi=y, xi=x) for _oob, y, x in zip(oob, latI, lonI)]
 
         return func
 
@@ -815,10 +781,7 @@ class NCSource(object):
                 lonDistI = lonDist[lonI] / np.mean(lonDists)
 
             # Check for out of bounds
-            if (
-                np.abs(latDistI) > self._maximal_lat_difference
-                or np.abs(lonDistI) > self._maximal_lon_difference
-            ):
+            if np.abs(latDistI) > self._maximal_lat_difference or np.abs(lonDistI) > self._maximal_lon_difference:
                 if not outside_okay:
                     raise ResError("(%f,%f) are outside the boundaries" % (lat, lon))
                 else:
@@ -973,9 +936,7 @@ class NCSource(object):
 
             # ensure boundaries are okay
             if yiMin < 0 or xiMin < 0 or yiMax > self._latN or xiMax > self._lonN:
-                raise ResError(
-                    "Insufficient data. Try expanding the boundary of the extracted data"
-                )
+                raise ResError("Insufficient data. Try expanding the boundary of the extracted data")
 
             ##########
             # TODO: Update interpolation schemes to handle out-of-bounds indices
@@ -1016,9 +977,7 @@ class NCSource(object):
             output = np.stack(output)
 
         else:
-            raise ResError(
-                "Interpolation scheme not one of: 'near', 'cubic', or 'bilinear'"
-            )
+            raise ResError("Interpolation scheme not one of: 'near', 'cubic', or 'bilinear'")
 
         # Create a list of strings from coordinates in the format "(lon, lat)" for all Location objects in a LocationSet.
         locations_str = [f"({loc.lon}, {loc.lat})" for loc in locations._locations]
@@ -1028,8 +987,6 @@ class NCSource(object):
             return pd.DataFrame(output, index=self.time_index, columns=locations_str)
         else:
             try:
-                return pd.Series(
-                    output[:, 0], index=self.time_index, name=locations_str[0]
-                )
+                return pd.Series(output[:, 0], index=self.time_index, name=locations_str[0])
             except:
                 return pd.Series(output, index=self.time_index, name=locations_str[0])

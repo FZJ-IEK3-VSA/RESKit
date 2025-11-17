@@ -70,11 +70,7 @@ def onshore_turbine_capex(
     """
     # initialize OnshoreParameters class and feed with custom param values
     OnshoreParams = OnshoreParameters(
-        **{
-            k: v
-            for k, v in locals().items()
-            if not k in ["capacity", "hub_height", "rotor_diam"]
-        }
+        **{k: v for k, v in locals().items() if not k in ["capacity", "hub_height", "rotor_diam"]}
     )
 
     # PREPROCESS INPUTS
@@ -117,9 +113,7 @@ def onshore_turbine_capex(
     return total_costs
 
 
-def onshore_tcc(
-    cp, hh, rd, gdp_escalator=None, blade_material_escalator=None, blades=None
-):
+def onshore_tcc(cp, hh, rd, gdp_escalator=None, blade_material_escalator=None, blades=None):
     """
     A function to determine the turbine capital cost (TCC) of a 3 blade standar onshore wind turbine based capacity, hub height and rotor diameter values according to the cost model by Fingersh et al. [1].
 
@@ -292,9 +286,7 @@ def onshore_bos(cp, hh, rd):
     assemblyAndInstallationCost = 1.965 * np.power((hh * rd), 1.1736)
 
     # Electrical Interface and connections
-    electricalInterfaceAndConnectionFactor = (
-        (3.49e-6 * np.power(cp, 2)) - (0.0221 * cp) + 109.7
-    )
+    electricalInterfaceAndConnectionFactor = (3.49e-6 * np.power(cp, 2)) - (0.0221 * cp) + 109.7
     electricalInterfaceAndConnectionCost = electricalInterfaceAndConnectionFactor * cp
 
     # Engineering and permit factor

@@ -9,9 +9,7 @@ def test_OnshoreParameters_default():
 
 
 def test_OnshoreParameters_custom():
-    OnshoreParams = OnshoreParameters(
-        fp=TEST_DATA["baseline_turbine_testdummy.csv"], year=2030
-    )
+    OnshoreParams = OnshoreParameters(fp=TEST_DATA["baseline_turbine_testdummy.csv"], year=2030)
     assert OnshoreParams.min_tip_height == 0
     assert OnshoreParams.base_rotor_diam == 118
 

@@ -69,15 +69,11 @@ def visibility_from_topography(
     thetas_r = np.arange(0, 2 * np.pi, theta_step_r) + theta_step_r
     thetas = np.degrees(thetas_r)
 
-    approx_center_earth_thetas = (
-        np.arange(0, max_degree + degree_step, degree_step) + degree_step / 2
-    )
+    approx_center_earth_thetas = np.arange(0, max_degree + degree_step, degree_step) + degree_step / 2
     approx_center_earth_thetas_r = np.radians(approx_center_earth_thetas)
 
     if base_elevation is None:
-        base_elevation = (
-            gk.raster.interpolateValues(elevation_raster, (lon, lat)) + eye_level
-        )
+        base_elevation = gk.raster.interpolateValues(elevation_raster, (lon, lat)) + eye_level
 
     # Construct sample points
     # TODO: construct the sample points in a way that ensure equal distances!
@@ -95,9 +91,9 @@ def visibility_from_topography(
     R_earth = 6378137.0  # Earth radius at sea level
     Ro = R_earth + base_elevation
 
-    BdotC = np.sin(lat_r) * np.sin(sample_lats_r) * np.cos(
-        lon_r - sample_lons_r
-    ) + np.cos(lat_r) * np.cos(sample_lats_r)
+    BdotC = np.sin(lat_r) * np.sin(sample_lats_r) * np.cos(lon_r - sample_lons_r) + np.cos(lat_r) * np.cos(
+        sample_lats_r
+    )
     center_earth_theta = np.arccos(BdotC)
 
     locs = np.column_stack(
@@ -106,9 +102,7 @@ def visibility_from_topography(
             sample_lats.flatten(),
         ]
     )
-    elevs = gk.raster.interpolateValues(
-        elevation_raster, locs, interpolate=_interpolation
-    )
+    elevs = gk.raster.interpolateValues(elevation_raster, locs, interpolate=_interpolation)
     #     elevs = np.full( locs.shape[0], base_elevation-eye_level)
     elevs = elevs.reshape(sample_lons.shape)
 
@@ -171,7 +165,4 @@ if __name__ == "__main__":
     plt.colorbar(h)
     plt.show()
 
-    print(
-        a["ground_visibility"].sum().sum()
-        / (a["ground_visibility"].shape[0] * a["ground_visibility"].shape[1])
-    )
+    print(a["ground_visibility"].sum().sum() / (a["ground_visibility"].shape[0] * a["ground_visibility"].shape[1]))
