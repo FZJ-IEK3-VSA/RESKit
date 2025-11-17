@@ -36,4 +36,27 @@ pythonpath = [
 console_output_style = "count"
 
 [tool.codespell]
-ignore-words-list = ["GES", "vas", "edn", "ans", "Trough"]
+ignore-words-list = [
+  "GES",
+  "vas",
+  "edn",
+  "ans",
+  "Trough",
+  # Exceptions from the examples. Might be hidden in the json cells
+  "bu",
+  "fpT",
+  "OLt",
+  "fO",
+  "yUr",
+  "oT",
+  "te",
+  "Nd",
+  "ALO",
+  "ND",
+  "INH",
+  "Caf",
+  "INH",
+  "fOf",
+  "wHe",
+  "cAnN",
+]

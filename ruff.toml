@@ -5,7 +5,7 @@ max-doc-length = 120
 max-line-length = 120
 
 [lint]
-select = ["D"]
+select = ["D", "F"]
 ignore = [
     "F401", # imported but unused
     "F405", # Variable is undefined or from star import
@@ -23,11 +23,13 @@ ignore = [
     "D401", # First line of docstring should be in imperative mood: "Runs the EGSworkflow and returns the output.
     "D100", # Missing docstring in public module
     "D101", # Missing docstring in public class
+    "D102", # Missing docstring in public method
     "D103", # Missing docstring in public function
     "D104", # Missing docstring in public package
     "D105", # Missing docstring in magic method
     "D200", # One-line docstring should fit on one line
     "D205", # blank line required between summary line and description
+    "D301", # Use `r"""` if any backslashes in a docstring
     "D400", # First line should end with a period
     "D404", # First word of the docstring should not be "This"
 ]
@@ -35,3 +37,7 @@ unfixable = ["F401"]
 
 [lint.pydocstyle]
 convention = "numpy"
+
+[format]
+docstring-code-format = true
+docstring-code-line-length = 20

@@ -589,11 +589,11 @@ def test_calculateWindspeedLosses(pt_PTRWorkflowManager_loaded):
 def test_calculateDegradationLosses(pt_PTRWorkflowManager_initialized):
     wfm = pt_PTRWorkflowManager_initialized
 
-    wfm.calculateDegradationLosses(efficencyDropPerYear=0.02, lifetime=20)
+    wfm.calculateDegradationLosses(efficiencyDropPerYear=0.02, lifetime=20)
 
     assert np.isclose(wfm.sim_data["eta_degradation"], 0.8643604692000185)
 
-    wfm.calculateDegradationLosses(efficencyDropPerYear=0, lifetime=20)
+    wfm.calculateDegradationLosses(efficiencyDropPerYear=0, lifetime=20)
 
     assert np.isclose(wfm.sim_data["eta_degradation"], 1)
 
