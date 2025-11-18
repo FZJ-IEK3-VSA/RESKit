@@ -205,11 +205,11 @@ def openfield_pv_era5(
             When global_solar_atlas_dni_path has no data, one can decide between different fallback options, by default 1.0:
             - np.nan or None : return np.nan for missing values in global_solar_atlas_dni_path
             - float : Apply this float value as a scaling factor for all no-data locations only: source_long_run_average * DNI_nodata_fallback.
-                NOTE: A value of 1.0 will return the source lra value in case of missing global_solar_atlas_dni_path values.
+            NOTE: A value of 1.0 will return the source lra value in case of missing global_solar_atlas_dni_path values.
             - str : Will be interpreted as a filepath to a raster with alternative absolute global_solar_atlas_dni_path values
             - callable : any callable method taking the arguments (all iterables): 'locs' and 'source_long_run_average_value'
-                (the locations as gk.geom.point objects and original value from source data). The output values will be considered as
-                the new real_long_run_average for missing locations only.
+            (the locations as gk.geom.point objects and original value from source data). The output values will be considered as
+            the new real_long_run_average for missing locations only.
             NOTE: np.nan will also be returned in case that the nodata fallback does not yield values either.
 
     DNI_nodata_fallback_scaling: float, optional

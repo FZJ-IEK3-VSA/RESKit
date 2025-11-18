@@ -11,8 +11,13 @@ logo: docs/visualizations/logos/fzj_logo.svg
 #   execute_notebooks: cache
 
 execute:
-  execute_notebooks: "force"
+  execute_notebooks: "auto"
   timeout: 1000
+  stderr_output: remove
+  exclude_patterns:
+    - "1_1_1_how_to_download_era5_data.ipynb"
+    - "1_1_2_wind_speed_from_vectors_in_era5.ipynb"
+    - "1_3_1_process_power_curves_from_thewindpower_net.ipynb"
 
 # Define the name of the latex output file for PDF builds
 latex:
@@ -56,8 +61,8 @@ sphinx:
     autoapi_keep_files: true
     autoapi_generate_api_docs: true
     suppress_warnings: ["etoc.toctree"]
-    # Use Google docstrings
-    napoleon_google_docstring: True
+    # Use Numpy docstrings
+    napoleon_numpy_docstring: True
     autoapi_python_class_content: "both"
     napoleon_include_init_with_doc: True
     autodoc_typehints: "description"

@@ -38,7 +38,6 @@ class WorkflowManager:
       - Applying simple loss factors
       - Saving the state of WorkflowManagers to XArray datasets, either in memory or on disc
 
-
     Initialization:
     ---------------
 
@@ -147,28 +146,28 @@ class WorkflowManager:
         variables : str or list of strings
             The variables (or variables) to be read from the specified source
             - If a path to a weather source is given, then only the 'standard' variables
-                configured for that source type are available (see the doc string for the
-                weather source you are interested in)
+            configured for that source type are available (see the doc string for the
+            weather source you are interested in)
             - If either 'elevated_wind_speed' or 'surface_wind_speed' is included in the
-                variable list, then the members `.elevated_wind_speed_height` and
-                `.surface_wind_speed_height`, respectfully, are also added. These are constants
-                which specify what the 'native' wind speed height is, which depends on the source
+            variable list, then the members `.elevated_wind_speed_height` and
+            `.surface_wind_speed_height`, respectfully, are also added. These are constants
+            which specify what the 'native' wind speed height is, which depends on the source
             - A pre-loaded NCSource can also be given, thus allowing for any variable in the
-                source to be specified in the `variables` list. But the user needs to take care
-                of initializing the NCSource and loading the data they want
+            source to be specified in the `variables` list. But the user needs to take care
+            of initializing the NCSource and loading the data they want
 
         source_type : str
             The type of weather datasource which is to be loaded. Can be one of:
-              "ERA5", "SARAH", "MERRA", or 'user'
+            "ERA5", "SARAH", "MERRA", or 'user'
             - If a pre-loaded NCSource is given for the `source` object, then the `source_type`
-              should be "user"
+            should be "user"
 
         source : str or rk.weather.NCSource
             The source to read weather variables from
 
         set_time_index : bool, optional
             If True, instructs the workflow manager to set the time index to that which is read
-              from the weather source
+            from the weather source
             - By default False
 
         spatial_interpolation_mode : str, optional
@@ -313,16 +312,16 @@ class WorkflowManager:
         source_long_run_average : Union[str, float, np.ndarray]
             The variable's native long run average (the average in the weather file)
             - If a string is given, it is expected to be a path to a raster file which can be
-              used to look up the average values from using the coordinates in `.placements`
+            used to look up the average values from using the coordinates in `.placements`
             - If a numpy ndarray (or derivative) is given, the shape must be one of (time, placements)
-              or at least (placements)
+            or at least (placements)
 
         real_long_run_average : Union[str, float, np.ndarray]
             The variables 'true' long run average
             - If a string is given, it is expected to be a path to a raster file which can be
-              used to look up the average values from using the coordinates in `.placements`
+            used to look up the average values from using the coordinates in `.placements`
             - If a numpy ndarray (or derivative) is given, the shape must be one of (time, placements)
-              or at least (placements)
+            or at least (placements)
 
         real_lra_scaling : float, optional
             An optional scaling factor to apply to the values derived from `real_long_run_average`.
@@ -340,11 +339,12 @@ class WorkflowManager:
             When real_long_run_average has no data, one can decide between different fallback options, by default np.nan:
             - np.nan or None : return np.nan for missing values in real_long_run_average
             - float : Apply this float value as a scaling factor for all no-data locations only: source_long_run_average * nodata_fallback.
-              NOTE: A value of 1.0 will return the source lra value in case of missing real lra values (no additional nodata_fallback_scaling applied).
+            NOTE: A value of 1.0 will return the source lra value in case of missing real lra values (no additional nodata_fallback_scaling applied).
             - str : Will be interpreted as a filepath to a raster with alternative real_long_run_average values, scaled by nodata_fallback_scaling.
             - callable : any callable method taking the arguments (all iterables): 'locs' and 'source_long_run_average_value'
-              (the locations as gk.geom.point objects and original value from source data). The output values will be considered as
-              the new real_long_run_average for missing locations only (absolute data, no additional nodata_fallback_scaling applied).
+            (the locations as gk.geom.point objects and original value from source data). The output values will be considered as
+            the new real_long_run_average for missing locations only (absolute data, no additional nodata_fallback_scaling applied).
+
             NOTE: np.nan will also be returned in case that the nodata fallback does not yield values either.
 
         nodata_fallback_scaling: float
@@ -506,16 +506,15 @@ class WorkflowManager:
         loss : Union[float, np.ndarray, FunctionType]
             The loss factor(s) to be applied
             - If a float or a numpy ndarray is given, then the following operation is performed:
-                > variable = variable * (1 - loss)
+            > variable = variable * (1 - loss)
             - If a function is given, then  the following operation is performed:
-                > variable = variable * (1 - loss(variable) )
+            > variable = variable * (1 - loss(variable) )
             - If a numpy ndarray is given, it must be broadcastable to the variable's shape in
-              `.sim_data`
+            `.sim_data`
 
         variables : Union[str, List[str]], optional
             The variable or variables to apply the loss factor to
             - By default ["capacity_factor"]
-
 
         Returns
         -------
@@ -790,15 +789,15 @@ def distribute_workflow(
         The workflow function to be parallelized
         - All RESKit workflow functions should be suitable here
         - If you want to make your own function, the only requirement is that its first argument
-          should be a pandas DataFrame in the form of a placements table (i.e. has a 'lat' and
-          'lon' column)
+        should be a pandas DataFrame in the form of a placements table (i.e. has a 'lat' and
+        'lon' column)
         - Don't forget that that all inputs required for the workflow function are still required,
-          and are passed on as constants through any specified `kwargs`
+        and are passed on as constants through any specified `kwargs`
 
     placements : pandas.DataFrame
         A DataFrame describing the placements to be simulated
         For example, if you are simulating wind turbines, the following columns are likely required:
-            ['lon','lat','capacity','hub_height','rotor_diam',]
+        ['lon','lat','capacity','hub_height','rotor_diam',]
 
     jobs : int, optional
         The number of parallel jobs
@@ -807,17 +806,17 @@ def distribute_workflow(
     max_batch_size : int, optional
         If given, limits the maximum number of total placements which are simulated in parallel
         - Use this to reduce the memory requirements of the simulations (in turn increasing
-          overall simulation time)
+        overall simulation time)
         - By default None
 
     intermediate_output_dir : str, optional
         In case of very large outputs (which are too large to be joined into a singular XArray dataset),
-          use this to write the individual simulation results to the specified directory
+        use this to write the individual simulation results to the specified directory
         - By default None
 
     **kwargs:
         All all key word arguments are passed on as constants to each simulation
-        - Use these to set the required arguments for the given `workflow_function`
+        - Use these to set the required arguments for the given ``workflow_function``
 
     Returns
     -------
@@ -913,13 +912,16 @@ def execute_workflow_iteratively(
 
     workflow : RESkit workflow
         Callable workflow function, e.g. reskit.wind.wind_era5_2023
+
     weather_path_varname : str
         Str formatted name of the weather path variable in this workflow, e.g. 'era5_path' for
         reskit.wind.wind_era5_2023. Must must be a key of workflow_args.
+
     zoom : int, optional
         The zoom level of the weather tiles, required only if <X-TILE> or <Y-TILE> in weather path.
+
     **workflow_args
-        Passed on to the workflow specified above. Must contain 'placements' and the above
+        Passed on to the workflow specified above. Must contain ''placements'' and the above
         weather_path_varname as keys.
     """
     # check key inputs
@@ -991,15 +993,15 @@ class WorkflowQueue:
     Parameters
     ----------
     workflow : FunctionType
-        The workflow function to be parallelized
-        - All RESKit workflow functions should be suitable here
-        - Don't forget that that all inputs required for the workflow function are still required,
-          and are passed on either as constants through `kwargs` specified in the initializer, or
-          else in the subsequent '.append(...)' calls
+    The workflow function to be parallelized
+    - All RESKit workflow functions should be suitable here
+    - Don't forget that that all inputs required for the workflow function are still required,
+    and are passed on either as constants through ``kwargs`` specified in the initializer, or
+    else in the subsequent ''.append(...)'' calls
 
     **kwargs:
         All key word arguments are passed on as constants to each simulation
-        - Use these to set the required arguments for the given `workflow`
+        Use these to set the required arguments for the given ``workflow``
 
     """
 

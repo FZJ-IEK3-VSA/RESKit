@@ -217,8 +217,8 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
         Returns
         -------
         float or np.ndarray
-            Pump power demand in kWh per kWh of cooling. Returns a single value if
-            `designTemperature` is provided, or a time series array otherwise.
+        Pump power demand in kWh per kWh of cooling. Returns a single value if
+        `designTemperature` is provided, or a time series array otherwise.
 
         Notes
         -----
@@ -294,8 +294,9 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
         Returns
         -------
         None
-            The method stores the calculated relative cost factor in `self.sim_data["relative_cost_factor"]`
-            and updates the `self.units` dictionary with air-cooling system units.
+
+        The method stores the calculated relative cost factor in `self.sim_data["relative_cost_factor"]`
+        and updates the `self.units` dictionary with air-cooling system units.
 
         Notes
         -----

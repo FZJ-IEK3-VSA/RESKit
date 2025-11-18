@@ -75,7 +75,7 @@ def funct():
     #         real_lra_scaling=1000 / 24,  # cast to hourly average kWh
     # )
 
-    # 6) doing selfmade calulations until Heat to HTF
+    # 6) doing selfmade calculations until Heat to HTF
     # wf.calculateCosineLossesParabolicTrough(orientation=ptr_data['orientation']) shifted
     wf.calculateIAM(a1=ptr_data["a1"], a2=ptr_data["a2"], a3=ptr_data["a3"])
     wf.calculateShadowLosses(method="wagner2011", SF_density=ptr_data["SF_density_direct"])
@@ -341,7 +341,7 @@ def pt_PTRWorkflowManager_solarpos() -> PTRWorkflowManager:
     return wfm
 
 
-# test calcualte solar position
+# test calculate solar position
 
 
 def test_calculateSolarPosition(pt_PTRWorkflowManager_solarpos):
@@ -879,7 +879,7 @@ def test_get_totex_from_self(pt_PTRWorkflowManager_economics):
         TOTEX_EUR_per_a.values,
         [18431137.22318471, 36862274.44636942, 18431137.22318471],
     ).all()
-    # assert np.isclose(TOTEX_EUR_per_a.values, [16.01572773E6, 2*16.01572773E6, 16.01572773E6]).all() # use those values, if 'Parasitics_solarfield_W_el' arent bought as varOPEX
+    # assert np.isclose(TOTEX_EUR_per_a.values, [16.01572773E6, 2*16.01572773E6, 16.01572773E6]).all() # use those values, if 'Parasitics_solarfield_W_el' aren't bought as varOPEX
 
     TOTEX_EUR_per_a = wfm._get_totex_from_self(sm_manipulation=1, tes_manipulation=10)
     # use those values, if 'Parasitics_solarfield_W_el' are bought as varOPEX
@@ -887,7 +887,7 @@ def test_get_totex_from_self(pt_PTRWorkflowManager_economics):
         TOTEX_EUR_per_a.values,
         [26681959.73652098, 53363919.47304196, 26681959.73652098],
     ).all()
-    # assert np.isclose(TOTEX_EUR_per_a.values, [24266550.23652098, 48533100.47304196, 24266550.23652098]).all() # use those values, if 'Parasitics_solarfield_W_el' arent bought as varOPEX
+    # assert np.isclose(TOTEX_EUR_per_a.values, [24266550.23652098, 48533100.47304196, 24266550.23652098]).all() # use those values, if 'Parasitics_solarfield_W_el' aren't bought as varOPEX
 
     # Test from Excel sheet. cannot calculate parasitic losses
     wfm.sim_data_daily["P_backup_heating_daily_Wh_el"] = np.array([[0, 0, 0], [0, 0, 0]])

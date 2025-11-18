@@ -75,7 +75,7 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
         A xarray dataset including all the output variables you defined as your output variables.
 
     Sources
-    ------
+    -------
     [1] European Centre for Medium-Range Weather Forecasts. (2019). ERA5 dataset. https://www.ecmwf.int/en/forecasts/datasets/reanalysis-datasets/era5
     [2] International Energy Agency. (2023). Renewables Market Report. https://www.iea.org/reports/renewables-2023
     [3] Peña-Sánchez, Dunkel, Winkler et al. (2025): Towards high resolution, validated and open global wind power assessments. https://doi.org/10.48550/arXiv.2501.07937
@@ -198,7 +198,7 @@ def onshore_wind_merra_ryberg2019_europe(
         A xarray dataset including all the output variables you defined as your output variables.
 
     Sources
-    ------
+    -------
     [1] NASA (National Aeronautics and Space Administration). (2019). Modern-Era Retrospective analysis for Research and Applications, Version 2. NASA Goddard Earth Sciences (GES) Data and Information Services Center (DISC). https://disc.gsfc.nasa.gov/datasets?keywords=%22MERRA-2%22&page=1&source=Models%2FAnalyses MERRA-2
     [2] DTU Wind Energy. (2019). Global Wind Atlas. https://globalwindatlas.info/
     [3] Copernicus (European Union’s Earth Observation Programme). (2012). Corine Land Cover 2012. Copernicus. https://land.copernicus.eu/pan-european/corine-land-cover/clc-2012
@@ -269,7 +269,7 @@ def offshore_wind_merra_caglayan2019(
         A xarray dataset including all the output variables you defined as your output variables.
 
     Sources
-    ------
+    -------
     [1] National Aeronautics and Space Administration. (2019). Modern-Era Retrospective analysis for Research and Applications, Version 2. NASA Goddard Earth Sciences (GES) Data and Information Services Center (DISC). https://disc.gsfc.nasa.gov/datasets?keywords=%22MERRA-2%22&page=1&source=Models%2FAnalyses MERRA-2
 
     """
@@ -341,7 +341,7 @@ def onshore_wind_iconlam_2023(
         A xarray dataset including all the output variables.
 
     Sources
-    ------
+    -------
     [1] Chen, S., Goergen, K., Hendricks Franssen, H. J., Winkler, C., Poll, S., Houssoukri Zounogo Wahabou, Y., ... & Heinrichs, H. (2024). Higher onshore wind energy potentials revealed by kilometer‐scale atmospheric modeling. Geophysical Research Letters, 51(19), e2024GL110122. https://doi.org/10.1029/2024GL110122
     [2] ESA. Land Cover CCI Product User Guide Version 2. Tech. Rep. (2017). Available at: maps.elie.ucl.ac.be/CCI/viewer/download/ESACCI-LC-Ph2-PUGv2_2.0.pdf
     """
@@ -630,7 +630,7 @@ def wind_era5_2023(**kwargs):
     Simulates onshore and offshore (200km from shoreline) wind generation using ECMWF's ERA5 database [1].
 
     Sources
-    ------
+    -------
     [1] European Centre for Medium-Range Weather Forecasts. (2019). ERA5 dataset. https://www.ecmwf.int/en/forecasts/datasets/reanalysis-datasets/era5
     """
     # this is the commit hash with the latest workflow status
@@ -643,7 +643,7 @@ def onshore_wind_era5(**kwargs):
     Simulates onshore wind generation using ECMWF's ERA5 database [1].
 
     Sources
-    ------
+    -------
     [1] European Centre for Medium-Range Weather Forecasts. (2019). ERA5 dataset. https://www.ecmwf.int/en/forecasts/datasets/reanalysis-datasets/era5
     """
     # this is the commit hash with the latest workflow status
@@ -656,7 +656,7 @@ def offshore_wind_era5(**kwargs):
     Simulates offshore wind generation using NASA's ERA5 database [1].
 
     Sources
-    ------
+    -------
     [1] European Centre for Medium-Range Weather Forecasts. (2019). ERA5 dataset. https://www.ecmwf.int/en/forecasts/datasets/reanalysis-datasets/era5.
 
     """
@@ -672,7 +672,7 @@ def onshore_wind_era5_pure_2023(**kwargs):
     and power curve convolution.
 
     Sources
-    ------
+    -------
     [1] European Centre for Medium-Range Weather Forecasts. (2019). ERA5 dataset. https://www.ecmwf.int/en/forecasts/datasets/reanalysis-datasets/era5
     """
     # this is the commit hash with the latest workflow status

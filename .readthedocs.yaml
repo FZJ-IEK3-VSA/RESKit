@@ -27,6 +27,8 @@ build:
         - ls -lR
         - echo $READTHEDOCS_OUTPUT
         # by the time of testing $READTHEDOCS_OUTPUT=_readthedocs
+        # For local execution paste the following command from an activated environment
+        # sphinx-build -vvv -T -b html --jobs auto -D language=en . _readthedocs/html
         - conda run --name latest sphinx-build -vvv -T -b html --jobs auto -D language=en . $READTHEDOCS_OUTPUT/html
         - ls -lR
 conda:

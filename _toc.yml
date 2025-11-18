@@ -15,37 +15,43 @@ parts:
     maxdepth: 3
     chapters:
       # - caption: Overview
-      - file: docs/articles/_0_example_overview.md
+      - file: docs/example_articles/0_example_overview.md
       # - caption: Download Weather Data
-      - file: docs/articles/_1_download_weather_data.md
+      - file: docs/example_articles/1_download_input_data.md
         sections:
-          - file: examples/_1_load_weater_data/1.01-Weather-Reading_Weather_Data.ipynb
-          - file: examples/_1_load_weater_data/1.03-Weather-Vertically_project_wind_speed.ipynb
+          - file: examples/1_load_input_data/1_1_1_how_to_download_era5_data.ipynb
+          - file: examples/1_load_input_data/1_1_2_wind_speed_from_vectors_in_era5.ipynb
+          - file: examples/1_load_input_data/1_2_1_reading_merra_weather_data.ipynb
+          - file: examples/1_load_input_data/1_2_2_vertically_project_wind_speed_from_merra.ipynb
+          - file: examples/1_load_input_data/1_3_1_process_power_curves_from_thewindpower_net.ipynb
       # - caption: Evaluate Economics
-      - file: docs/articles/_2_evaluate_economics.md
+      - file: docs/example_articles/2_evaluate_economics.md
         sections:
-          - file: examples/_2_economic/2.01-Economic-Compute_levelized_cost_of_electricity.ipynb
-      - file: docs/articles/_3_wind_power.md
+          - file: examples/2_economic/2_1_economic_compute_levelized_cost_of_electricity.ipynb
+      - file: docs/example_articles/3_wind_power.md
         sections:
-          - file: examples/_3_wind/3.01a-Wind-Load_Power_Curve.ipynb
-          - file: examples/_3_wind/3.01b-Wind-Synthetic_Power_Curve.ipynb
-          - file: examples/_3_wind/3.02-Wind-Convolute_a_Power_Curve.ipynb
-          - file: examples/_3_wind/3.03-Wind-Design_Onshore_Turbine.ipynb
-          - file: examples/_3_wind/3.04-Wind-Estimate_Turbine_Capital_Cost.ipynb
-          - file: examples/_3_wind/3.05a-Wind-Basic_Turbine_Simulation.ipynb
-          - file: examples/_3_wind/3.05b-Wind-Turbine_Simulation_Workflow.ipynb
-          - file: examples/_3_wind/3.05c-Wind-Automated_Turbine_Simulation_Workflow.ipynb
-      - file: docs/articles/_4_solar.md
+          - file: examples/3_wind/3_1_wind_workflows_overview.ipynb
+          - file: examples/3_wind/3_2_1_wind_load_power_curve.ipynb
+          - file: examples/3_wind/3_2_2_wind_synthetic_power_curve.ipynb
+          - file: examples/3_wind/3_3_wind_convolute_a_power_curve.ipynb
+          - file: examples/3_wind/3_4_wind_design_onshore_turbine.ipynb
+          - file: examples/3_wind/3_5_wind_estimate_turbine_capital_cost.ipynb
+          - file: examples/3_wind/3_6_1_wind_basic_turbine_simulation.ipynb
+          - file: examples/3_wind/3_6_2_wind_turbine_simulation_workflow.ipynb
+          - file: examples/3_wind/3_6_3_wind_automated_turbine_simulation_workflow.ipynb
+          - file: examples/3_wind/3_7_example_ethos_reskit_wind_workflow.ipynb
+      - file: docs/example_articles/4_solar.md
         sections:
-          - file: examples/_4_solar/4.01-Solar-Load_Module.ipynb
-          - file: examples/_4_solar/4.03-Solar-Automated_Simulation_Workflow.ipynb
-      - file: docs/articles/_5_geothermal.md
+          - file: examples/4_solar/4_1_solar_workflows_overview.ipynb
+          - file: examples/4_solar/4_2_check_available_pv_modules.ipynb
+          - file: examples/4_solar/4_3_solar_automated_simulation_workflow.ipynb
+      - file: docs/example_articles/5_geothermal.md
         sections:
-          - file: examples/_5_geothermal/5.01-Run-Geothermal-Simulations.ipynb
-      - file: docs/articles/_6_direct_air_capture.md
+          - file: examples/5_geothermal/5_run_geothermal_simulations.ipynb
+      - file: docs/example_articles/6_direct_air_capture.md
         sections:
-          - file: examples/_6_direct_air_capture/ETHOS.RESKit.DAC.ipynb
-          - file: examples/_6_direct_air_capture/ETHOS.RESKit.CoolingHeating.ipynb
+          - file: examples/6_direct_air_capture/6_1_direct_air_capture.ipynb
+          - file: examples/6_direct_air_capture/6_2_cooling_heating.ipynb
 
   - caption: API
     chapters:
