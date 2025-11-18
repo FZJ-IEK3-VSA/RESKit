@@ -57,3 +57,7 @@ parts:
     chapters:
       # The API documentation is written to the folder
       - file: _readthedocs/reskit/index.rst
+  - caption: Code of Conduct
+    chapters:
+      # The API documentation is written to the folder
+      - file: docs/CODE_OF_CONDUCT.md
