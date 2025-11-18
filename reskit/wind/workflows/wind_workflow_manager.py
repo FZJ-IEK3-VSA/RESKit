@@ -201,7 +201,7 @@ class WindWorkflowManager(WorkflowManager):
 
         elif height_scaling_method[0] == "lra":
             # we have an interpolation method based on other available LRA wind speed heights
-            
+
             # if keys of height_scaling_data are str, try to convert to int or float
             if isinstance(height_scaling_data, dict) and all(
                 [isinstance(k, str) for k in height_scaling_data.keys()]
@@ -219,7 +219,7 @@ class WindWorkflowManager(WorkflowManager):
                             )
                     new_dict[new_k] = v
                 height_scaling_data = new_dict
-            
+
             lra_funcs = {
                 "linear": {
                     "func": self.wind_shear_projection_of_wind_speeds_to_hub_height,
