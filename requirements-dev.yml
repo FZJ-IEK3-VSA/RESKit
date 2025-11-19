@@ -26,6 +26,7 @@ dependencies:
   - ruff
   - pytest
   - pytest-cov
+  - pytest-xdist
   # Documentation
   - jupyter-book <2.0
   - sphinx-autoapi
