@@ -1,8 +1,9 @@
-import numpy as np
-from reskit.util.weather_tile import get_dataframe_with_weather_tilepaths, get_tile_XY
-from reskit import TEST_DATA
 import geokit as gk
+import numpy as np
 import pytest
+
+from reskit import TEST_DATA
+from reskit.util.weather_tile import get_dataframe_with_weather_tilepaths, get_tile_XY
 
 
 def test_weather_tilepaths():

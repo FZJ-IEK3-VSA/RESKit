@@ -1,10 +1,13 @@
+| Version                                                                                                             |
+| ------------------------------------------------------------------------------------------------------------------- |
+| [![Conda Version](https://img.shields.io/conda/vn/conda-forge/reskit.svg)](https://anaconda.org/conda-forge/reskit) |
 # RESKit - **R**enewable **E**nergy **S**imulation tool**kit** for Python
 
 <p float="left">
 <a href="https://www.fz-juelich.de/en/ice/ice-2"><img src="https://github.com/FZJ-IEK3-VSA/README_assets/blob/main/JSA-Header.svg?raw=True" alt="Jülich Systems Analysis Logo" width="300px"></a>
 </p>
 
-RESKit aids with the broad-scale simulation of renewable energy systems, primarily for the purpose of input generation to Energy System Design Models. Simulation tools currently exist for onshore and offshore wind turbines, as well as for solar photovoltaic (PV) systems and concentrated solar power (CSP), in addtion to general weather-data manipulation tools. Simulations are performed in the context of singular units, however high computational performance is nevertheless maintained. As a result, this tool allows for the simulation of millions of individual turbines and PV/CSP systems in a matter of minutes depending on the hardware.
+RESKit aids with the broad-scale simulation of renewable energy systems, primarily for the purpose of input generation to Energy System Design Models. Simulation tools currently exist for onshore and offshore wind turbines, as well as for solar photovoltaic (PV) systems and concentrated solar power (CSP), in addition to general weather-data manipulation tools. Simulations are performed in the context of singular units, however high computational performance is nevertheless maintained. As a result, this tool allows for the simulation of millions of individual turbines and PV/CSP systems in a matter of minutes depending on the hardware.
 
 ## Features
 
@@ -49,20 +52,6 @@ conda env update --file requirements-dev.yml -n <ENVIRONMENT-NAME>
 pip install -e .
 ```
 
-## Examples
-
-See the [Examples page](Examples/)
-
-If you intend to use **ETHOS.RESKit.Wind** please follow the following instructions:
-1. Download ERA5 and further datasets: 
-  1.1. Download ERA5: [How_to_download_ERA5_data_public.ipynb](examples/How_to_download_ERA5_data_public.ipynb) <br>
-  1.2. Process ERA5 Wind Speeds:  [WindSpeed_from_vectors_public.ipynb](examples/WindSpeed_from_vectors_public.ipynb) <br>
-  1.3. Download ESA Land Cover CCI v2.1.1 (2018): https://cds.climate.copernicus.eu/datasets/satellite-land-cover?tab=download <br>
-  1.4. Download GWAv3: https://globalwindatlas.info/api/gis/global/wind-speed/100 (https://globalwindatlas.info/en/download/gis-files) <br>
-2. (optional) If you have purchased PowerCurves from thewindpower.net, please use the following script to process them: [ETHOS.RESKit.Wind_process_power_curves.ipynb](examples/ETHOS.RESKit.Wind_process_power_curves.ipynb)
-3. You can find an example on how to use ETHOS.RESKit.Wind here: [ETHOS.RESKit.Wind.ipynb](examples/ETHOS.RESKit.Wind.ipynb)
-
-Paths to a custom turbine library and baseline turbine definitions can be set in [default_paths.yaml](reskit/default_paths.yaml)
 
 ## Citation
 
@@ -117,7 +106,7 @@ Every contributions are welcome:
 - If you want to contribute with additional features or code improvements, open a [Pull request](https://github.com/FZJ-IEK3-VSA/RESKit/pulls).
 
 ## Code of Conduct
-Please respect our [code of conduct](CODE_OF_CONDUCT.md).
+Please respect our [code of conduct](./docs/CODE_OF_CONDUCT.md).
 
 ## Acknowledgement
 This work was initially supported by the Helmholtz Association under the Joint Initiative ["Energy System 2050   A Contribution of the Research Field Energy"](https://www.helmholtz.de/en/research/energy/energy_system_2050/). 

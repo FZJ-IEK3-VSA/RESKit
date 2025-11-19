@@ -1,12 +1,14 @@
 # import primary packages
-import numpy as np
 import os
-import pandas as pd
 import warnings
+
+import numpy as np
+import pandas as pd
+
+import reskit.util as rk_util
 
 # import modules
 import reskit.weather as rk_weather
-import reskit.util as rk_util
 from reskit.wind.core.data import DATAFOLDER
 from reskit.wind.core.windspeed_correction import build_ws_correction_function
 from reskit.wind.workflows.wind_workflow_manager import WindWorkflowManager
@@ -73,7 +75,7 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
         A xarray dataset including all the output variables you defined as your output variables.
 
     Sources
-    ------
+    -------
     [1] European Centre for Medium-Range Weather Forecasts. (2019). ERA5 dataset. https://www.ecmwf.int/en/forecasts/datasets/reanalysis-datasets/era5
     [2] International Energy Agency. (2023). Renewables Market Report. https://www.iea.org/reports/renewables-2023
     [3] Peña-Sánchez, Dunkel, Winkler et al. (2025): Towards high resolution, validated and open global wind power assessments. https://doi.org/10.48550/arXiv.2501.07937
@@ -84,9 +86,7 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
         "ws_bins",
         os.path.join(DATAFOLDER, f"ws_correction_factors_PSDW2025.yaml"),
     )
-    cf_correction_factor = os.path.join(
-        DATAFOLDER, f"cf_correction_factors_PSDW2025.tif"
-    )
+    cf_correction_factor = os.path.join(DATAFOLDER, f"cf_correction_factors_PSDW2025.tif")
     wake_curve = "dena_mean"
     availability_factor = 0.98
     nodata_fallback = np.nan
@@ -133,9 +133,7 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
         type=ws_correction_func[0],
         data_dict=ws_correction_func[1],
     )
-    wf.sim_data["elevated_wind_speed"] = ws_correction_func(
-        wf.sim_data["elevated_wind_speed"]
-    )
+    wf.sim_data["elevated_wind_speed"] = ws_correction_func(wf.sim_data["elevated_wind_speed"])
 
     # apply air density correction
     wf.apply_air_density_correction_to_wind_speeds()
@@ -160,9 +158,7 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
     # apply availability factor
     wf.apply_availability_factor(availability_factor=availability_factor)
 
-    return wf.to_xarray(
-        output_netcdf_path=output_netcdf_path, output_variables=output_variables
-    )
+    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
 
 def onshore_wind_merra_ryberg2019_europe(
@@ -202,13 +198,12 @@ def onshore_wind_merra_ryberg2019_europe(
         A xarray dataset including all the output variables you defined as your output variables.
 
     Sources
-    ------
+    -------
     [1] NASA (National Aeronautics and Space Administration). (2019). Modern-Era Retrospective analysis for Research and Applications, Version 2. NASA Goddard Earth Sciences (GES) Data and Information Services Center (DISC). https://disc.gsfc.nasa.gov/datasets?keywords=%22MERRA-2%22&page=1&source=Models%2FAnalyses MERRA-2
     [2] DTU Wind Energy. (2019). Global Wind Atlas. https://globalwindatlas.info/
     [3] Copernicus (European Union’s Earth Observation Programme). (2012). Corine Land Cover 2012. Copernicus. https://land.copernicus.eu/pan-european/corine-land-cover/clc-2012
 
     """
-
     wf = WindWorkflowManager(placements)
 
     wf.read(
@@ -239,13 +234,9 @@ def onshore_wind_merra_ryberg2019_europe(
 
     wf.simulate(max_batch_size=max_batch_size)
 
-    wf.apply_loss_factor(
-        loss=lambda x: rk_util.low_generation_loss(x, base=0.0, sharpness=5.0)
-    )
+    wf.apply_loss_factor(loss=lambda x: rk_util.low_generation_loss(x, base=0.0, sharpness=5.0))
 
-    return wf.to_xarray(
-        output_netcdf_path=output_netcdf_path, output_variables=output_variables
-    )
+    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
 
 def offshore_wind_merra_caglayan2019(
@@ -278,11 +269,10 @@ def offshore_wind_merra_caglayan2019(
         A xarray dataset including all the output variables you defined as your output variables.
 
     Sources
-    ------
+    -------
     [1] National Aeronautics and Space Administration. (2019). Modern-Era Retrospective analysis for Research and Applications, Version 2. NASA Goddard Earth Sciences (GES) Data and Information Services Center (DISC). https://disc.gsfc.nasa.gov/datasets?keywords=%22MERRA-2%22&page=1&source=Models%2FAnalyses MERRA-2
 
     """
-
     wf = WindWorkflowManager(placements)
 
     wf.read(
@@ -307,14 +297,10 @@ def offshore_wind_merra_caglayan2019(
     wf.simulate(max_batch_size=max_batch_size)
 
     wf.apply_loss_factor(
-        loss=lambda x: rk_util.low_generation_loss(
-            x, base=0.1, sharpness=3.5
-        )  # TODO: Check values with Dil
+        loss=lambda x: rk_util.low_generation_loss(x, base=0.1, sharpness=3.5)  # TODO: Check values with Dil
     )
 
-    return wf.to_xarray(
-        output_netcdf_path=output_netcdf_path, output_variables=output_variables
-    )
+    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
 
 def onshore_wind_iconlam_2023(
@@ -355,11 +341,10 @@ def onshore_wind_iconlam_2023(
         A xarray dataset including all the output variables.
 
     Sources
-    ------
+    -------
     [1] Chen, S., Goergen, K., Hendricks Franssen, H. J., Winkler, C., Poll, S., Houssoukri Zounogo Wahabou, Y., ... & Heinrichs, H. (2024). Higher onshore wind energy potentials revealed by kilometer‐scale atmospheric modeling. Geophysical Research Letters, 51(19), e2024GL110122. https://doi.org/10.1029/2024GL110122
     [2] ESA. Land Cover CCI Product User Guide Version 2. Tech. Rep. (2017). Available at: maps.elie.ucl.ac.be/CCI/viewer/download/ESACCI-LC-Ph2-PUGv2_2.0.pdf
     """
-
     wf = WindWorkflowManager(placements)
 
     # read data through wind workflow
@@ -399,9 +384,7 @@ def onshore_wind_iconlam_2023(
     # simulate wind power
     wf.simulate(max_batch_size=max_batch_size)
 
-    return wf.to_xarray(
-        output_netcdf_path=output_netcdf_path, output_variables=output_variables
-    )
+    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
 
 def wind_config(
@@ -492,7 +475,7 @@ def wind_config(
     ws_correction_func :float, callable, tuple, list
         An executable function that takes a numpy array as single input
         argument and returns an adapted windspeed. If 1.0 is passed, no
-        windspeed corrrection will be applied. Can also be passed as tuple
+        windspeed correction will be applied. Can also be passed as tuple
         or list of length 2 with data_type (e.g. 'linear' or 'ws_bins')
         and data dict (dict or path to yaml) with parameters.
     cf_correction_factor : float, str
@@ -509,9 +492,9 @@ def wind_config(
         'wake_curve' str can also be provided per each location in a
         'wake_curve' column of the placements dataframe, 'wake_curve'
         argument must then be None.
-    availability_factor : float, otional
+    availability_factor : float, optional
         This factor accounts for all downtimes and applies an average reduction to the output curve,
-        assuming a statistical deviation of the downtime occurences and a large enough turbine fleet.
+        assuming a statistical deviation of the downtime occurrences and a large enough turbine fleet.
         Suggested availability is 0.98 including technical availability of turbine and connector
         as well as outages for ecological reasons (e.g. bat protection). This does not include wake effects
         (see above) or curtailment/outage for economical reasons or transmission grid congestion.
@@ -604,9 +587,7 @@ def wind_config(
         )
 
     # correct wind speeds
-    wf.sim_data["elevated_wind_speed"] = ws_correction_func(
-        wf.sim_data["elevated_wind_speed"]
-    )
+    wf.sim_data["elevated_wind_speed"] = ws_correction_func(wf.sim_data["elevated_wind_speed"])
 
     wf.apply_air_density_correction_to_wind_speeds()
 
@@ -625,21 +606,15 @@ def wind_config(
     )
 
     # do simulation
-    wf.simulate(
-        cf_correction_factor=cf_correction_factor, max_batch_size=max_batch_size
-    )
+    wf.simulate(cf_correction_factor=cf_correction_factor, max_batch_size=max_batch_size)
 
     if loss_factor_args != {}:
-        wf.apply_loss_factor(
-            loss=lambda x: rk_util.low_generation_loss(x, **loss_factor_args)
-        )
+        wf.apply_loss_factor(loss=lambda x: rk_util.low_generation_loss(x, **loss_factor_args))
 
     # apply availability factor
     wf.apply_availability_factor(availability_factor=availability_factor)
 
-    return wf.to_xarray(
-        output_netcdf_path=output_netcdf_path, output_variables=output_variables
-    )
+    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
 
 ########################
@@ -655,7 +630,7 @@ def wind_era5_2023(**kwargs):
     Simulates onshore and offshore (200km from shoreline) wind generation using ECMWF's ERA5 database [1].
 
     Sources
-    ------
+    -------
     [1] European Centre for Medium-Range Weather Forecasts. (2019). ERA5 dataset. https://www.ecmwf.int/en/forecasts/datasets/reanalysis-datasets/era5
     """
     # this is the commit hash with the latest workflow status
@@ -668,7 +643,7 @@ def onshore_wind_era5(**kwargs):
     Simulates onshore wind generation using ECMWF's ERA5 database [1].
 
     Sources
-    ------
+    -------
     [1] European Centre for Medium-Range Weather Forecasts. (2019). ERA5 dataset. https://www.ecmwf.int/en/forecasts/datasets/reanalysis-datasets/era5
     """
     # this is the commit hash with the latest workflow status
@@ -681,7 +656,7 @@ def offshore_wind_era5(**kwargs):
     Simulates offshore wind generation using NASA's ERA5 database [1].
 
     Sources
-    ------
+    -------
     [1] European Centre for Medium-Range Weather Forecasts. (2019). ERA5 dataset. https://www.ecmwf.int/en/forecasts/datasets/reanalysis-datasets/era5.
 
     """
@@ -697,7 +672,7 @@ def onshore_wind_era5_pure_2023(**kwargs):
     and power curve convolution.
 
     Sources
-    ------
+    -------
     [1] European Centre for Medium-Range Weather Forecasts. (2019). ERA5 dataset. https://www.ecmwf.int/en/forecasts/datasets/reanalysis-datasets/era5
     """
     # this is the commit hash with the latest workflow status

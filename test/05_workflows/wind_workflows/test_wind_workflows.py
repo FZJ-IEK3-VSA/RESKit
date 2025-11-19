@@ -1,19 +1,20 @@
-from reskit.wind.workflows.workflows import (
-    onshore_wind_merra_ryberg2019_europe,
-    offshore_wind_merra_caglayan2019,
-    wind_era5_PenaSanchezDunkelWinklerEtAl2025,
-    onshore_wind_iconlam_2023,
-    wind_config,
-)
-from reskit import TEST_DATA
-import pytest
-import numpy as np
-import geokit as gk
 import os
-import pandas as pd
-import reskit.weather as rk_weather
-from reskit.wind.core.data import DATAFOLDER
 
+import geokit as gk
+import numpy as np
+import pandas as pd
+import pytest
+
+import reskit.weather as rk_weather
+from reskit import TEST_DATA
+from reskit.wind.core.data import DATAFOLDER
+from reskit.wind.workflows.workflows import (
+    offshore_wind_merra_caglayan2019,
+    onshore_wind_iconlam_2023,
+    onshore_wind_merra_ryberg2019_europe,
+    wind_config,
+    wind_era5_PenaSanchezDunkelWinklerEtAl2025,
+)
 
 alternative_wind_speed_rasters = {
     50: TEST_DATA["gwa50-like.tif"],
@@ -158,9 +159,7 @@ def test_wind_config(pt_wind_placements: pd.DataFrame):
             "ws_bins",
             os.path.join(DATAFOLDER, f"ws_correction_factors_PSDW2025.yaml"),
         ),
-        cf_correction_factor=os.path.join(
-            DATAFOLDER, f"cf_correction_factors_PSDW2025.tif"
-        ),
+        cf_correction_factor=os.path.join(DATAFOLDER, f"cf_correction_factors_PSDW2025.tif"),
         wake_curve="dena_mean",
         availability_factor=0.98,
         consider_boundary_layer_height=True,

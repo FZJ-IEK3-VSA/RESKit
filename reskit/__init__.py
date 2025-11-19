@@ -1,21 +1,10 @@
-__version__ = "0.4.2"
-
-from . import util
-from . import weather
-
-from .workflow_manager import (
+from reskit import cooling_heating, csp, dac, geothermal, solar, util, weather, wind
+from reskit._test import TEST_DATA
+from reskit.parameters.parameters import OffshoreParameters, OnshoreParameters
+from reskit.workflow_manager import (
     WorkflowManager,
     WorkflowQueue,
     distribute_workflow,
-    load_workflow_result,
     execute_workflow_iteratively,
+    load_workflow_result,
 )
-from . import wind
-from . import solar
-from . import csp
-from . import geothermal
-from . import dac
-from . import cooling_heating
-
-from ._test import TEST_DATA
-from .parameters.parameters import OnshoreParameters, OffshoreParameters
