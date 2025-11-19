@@ -81,7 +81,7 @@ def funct():
     wf.calculateShadowLosses(method="wagner2011", SF_density=ptr_data["SF_density_direct"])
     wf.calculateWindspeedLosses(max_windspeed_threshold=ptr_data["maxWindspeed"])
     wf.calculateDegradationLosses(
-        efficiencyDropPerYear=ptr_data["efficencyDropPerYear"],
+        efficiencyDropPerYear=ptr_data["efficiencyDropPerYear"],
         lifetime=ptr_data["lifetime"],
     )
     wf.calculateHeattoHTF(eta_ptr_max=ptr_data["eta_ptr_max"], eta_cleaness=ptr_data["eta_cleaness"])
@@ -679,7 +679,7 @@ def pt_PTRWorkflowManager_heat_loss() -> PTRWorkflowManager:
     wf.calculateShadowLosses(method="wagner2011", SF_density=ptr_data["SF_density_direct"])
     wf.calculateWindspeedLosses(max_windspeed_threshold=ptr_data["maxWindspeed"])
     wf.calculateDegradationLosses(
-        efficiencyDropPerYear=ptr_data["efficencyDropPerYear"],
+        efficiencyDropPerYear=ptr_data["efficiencyDropPerYear"],
         lifetime=ptr_data["lifetime"],
     )
     wf.calculateHeattoHTF(

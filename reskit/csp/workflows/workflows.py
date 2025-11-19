@@ -242,7 +242,7 @@ def CSP_PTR_ERA5_specific_dataset(
     wf.calculateShadowLosses(method="wagner2011", SF_density=ptr_data["SF_density_direct"])
     wf.calculateWindspeedLosses(max_windspeed_threshold=ptr_data["maxWindspeed"])
     wf.calculateDegradationLosses(
-        efficiencyDropPerYear=ptr_data["efficencyDropPerYear"],
+        efficiencyDropPerYear=ptr_data["efficiencyDropPerYear"],
         lifetime=ptr_data["lifetime"],
     )
     wf.calculateHeattoHTF(
