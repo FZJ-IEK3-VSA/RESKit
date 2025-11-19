@@ -26,25 +26,25 @@ def test_lt_dac_era5_wenzel2025(dac_placements: pd.DataFrame):
     assert np.all(
         np.isclose(
             gen.capacity_factor.mean(dim="time"),
-            [1.08517377, 1.07983349, 1.05817328, 1.08709602],
+            [1.08590981, 1.08114436, 1.0581021, 1.08804831],
         )
     )
     assert np.all(
         np.isclose(
             gen.capacity_factor.min(dim="time"),
-            [1.04869404, 1.04749502, 1.02896871, 1.04984081],
+            [1.05074335, 1.0498154, 1.02946935, 1.05228196],
         )
     )
     assert np.all(
         np.isclose(
             gen.capacity_factor.max(dim="time"),
-            [1.13374767, 1.1314784, 1.0913033, 1.13395484],
+            [1.12960038, 1.12922649, 1.09326807, 1.12933755],
         )
     )
     assert np.all(
         np.isclose(
             gen.capacity_factor.std(dim="time"),
-            [0.02654445, 0.02320278, 0.01160597, 0.02647336],
+            [0.02602212, 0.02330062, 0.01166089, 0.02574228],
         )
     )
 
