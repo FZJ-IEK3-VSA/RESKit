@@ -103,16 +103,16 @@ def test_wind_era5_PenaSanchezDunkelWinklerEtAl2025(pt_wind_placements: pd.DataF
     )
 
     assert gen.elevated_wind_speed.shape == (140, 560)
-    assert np.isclose(gen.elevated_wind_speed.mean(), 6.07661495)
-    assert np.isclose(gen.elevated_wind_speed.min(), 0.33788731)
-    assert np.isclose(gen.elevated_wind_speed.max(), 14.16420132)
-    assert np.isclose(gen.elevated_wind_speed.std(), 2.28764179)
+    assert np.isclose(gen.elevated_wind_speed.mean(), 6.41365879)
+    assert np.isclose(gen.elevated_wind_speed.min(), 0.34054053)
+    assert np.isclose(gen.elevated_wind_speed.max(), 14.51362788)
+    assert np.isclose(gen.elevated_wind_speed.std(), 2.39538268)
 
     assert gen.capacity_factor.shape == (140, 560)
-    assert np.isclose(gen.capacity_factor.mean(), 0.35385846)
+    assert np.isclose(gen.capacity_factor.mean(), 0.35877319)
     assert np.isclose(gen.capacity_factor.min(), 0.0)
     assert np.isclose(gen.capacity_factor.max(), 0.98)
-    assert np.isclose(gen.capacity_factor.std(), 0.29527256)
+    assert np.isclose(gen.capacity_factor.std(), 0.29513281)
 
 
 def test_onshore_wind_iconlam_2023(pt_wind_placements_Zimbabwe: pd.DataFrame):
@@ -181,13 +181,13 @@ def test_wind_config(pt_wind_placements: pd.DataFrame):
     assert np.isclose(gen.roughness.std(), 0.55593945)
 
     assert gen.elevated_wind_speed.shape == (140, 560)
-    assert np.isclose(gen.elevated_wind_speed.mean(), 5.99812976)
-    assert np.isclose(gen.elevated_wind_speed.min(), 0.33788731)
-    assert np.isclose(gen.elevated_wind_speed.max(), 13.75022707)
-    assert np.isclose(gen.elevated_wind_speed.std(), 2.23741365)
+    assert np.isclose(gen.elevated_wind_speed.mean(), 6.33107411)
+    assert np.isclose(gen.elevated_wind_speed.min(), 0.34054053)
+    assert np.isclose(gen.elevated_wind_speed.max(), 14.33585715)
+    assert np.isclose(gen.elevated_wind_speed.std(), 2.34247746)
 
     assert gen.capacity_factor.shape == (140, 560)
-    assert np.isclose(gen.capacity_factor.mean(), 0.34455949)
+    assert np.isclose(gen.capacity_factor.mean(), 0.35000878)
     assert np.isclose(gen.capacity_factor.min(), 0.0)
     assert np.isclose(gen.capacity_factor.max(), 0.98)
-    assert np.isclose(gen.capacity_factor.std(), 0.2923411)
+    assert np.isclose(gen.capacity_factor.std(), 0.29240708)

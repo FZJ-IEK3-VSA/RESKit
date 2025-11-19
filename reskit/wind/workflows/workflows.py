@@ -579,6 +579,9 @@ def wind_config(
     )
 
     if height_scaling_method is not None:
+        if isinstance(height_scaling_method, list):
+            # convert to tuple
+            height_scaling_method = tuple(height_scaling_method)
         wf.project_windspeeds_to_hub_height(
             height_scaling_method=height_scaling_method,
             height_scaling_data=height_scaling_data,
