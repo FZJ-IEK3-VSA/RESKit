@@ -1,7 +1,7 @@
 on:
   workflow_dispatch:
-  push:
-    branches: ["202-test-valid-dependency-range-for-reskit-43"]
+  # push:
+  #   branches: ["202-test-valid-dependency-range-for-reskit-43"]
   pull_request:
     branches: ["master"]
 

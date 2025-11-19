@@ -1,0 +1,67 @@
+on:
+  workflow_dispatch:
+  # push:
+  #   branches: ["202-test-valid-dependency-range-for-reskit-43"]
+  pull_request:
+    branches: ["master"]
+
+jobs:
+  TestPushCondaForgeDev:
+    name: Test conda-forge development version on ${{ matrix.runner_tag }} for numpy=${{ matrix.numpy_version }}
+    strategy:
+      fail-fast: false
+      matrix:
+        runner_tag: ["ubuntu-latest", "macos-latest", "windows-latest"]
+        numpy_version:
+          [
+            "1.21.6",
+            "1.22.0",
+            "1.22.1",
+            "1.22.2",
+            "1.22.3",
+            "1.22.4",
+            "1.23.0",
+            "1.23.1",
+            "1.23.2",
+            "1.23.3",
+            "1.23.4",
+            "1.23.5",
+            "1.24.0",
+            "1.24.1",
+            "1.24.2",
+            "1.24.3",
+            "1.24.4",
+            "1.25.0",
+            "1.25.1",
+            "1.25.2",
+            "1.26.0",
+            "1.26.2",
+            "1.26.3",
+            "1.26.4",
+            "2.0.0",
+            "2.0.1",
+            "2.0.2",
+            "2.1.0",
+            "2.1.1",
+            "2.1.2",
+            "2.1.3",
+            "2.2.0",
+            "2.2.1",
+            "2.2.2",
+            "2.2.3",
+            "2.2.4",
+            "2.2.5",
+            "2.2.6",
+            "2.3.0",
+            "2.3.1",
+            "2.3.2",
+            "2.3.3",
+          ]
+    uses: FZJ-IEK3-VSA/.github/.github/workflows/_run_single_conda_forge_test.yml@main
+    with:
+      runner_tag: ${{ matrix.runner_tag }}
+      requirements_file_name: requirements-dev.yml
+      library_name: "numpy"
+      library_version: ${{ matrix.numpy_version }}
+      dependency_position_env_file: "8"
+      examples_to_execute: examples/1_load_input_data/1_2_1_reading_merra_weather_data.ipynb examples/1_load_input_data/1_2_2_vertically_project_wind_speed_from_merra.ipynb examples/2_economic/ examples/3_wind examples/4_solar examples/5_geothermal/ examples/6_direct_air_capture/

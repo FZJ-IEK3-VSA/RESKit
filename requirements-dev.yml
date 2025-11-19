@@ -12,7 +12,7 @@ dependencies:
   - openpyxl
   - numpy
   - numba
-  - scipy <=1.8.1
+  - scipy
   - scikit-learn
   - geokit >=1.4.0
   - netCDF4 >=1.5.3
