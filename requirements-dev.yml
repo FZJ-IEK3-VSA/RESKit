@@ -22,7 +22,7 @@ dependencies:
   - windpowerlib
   - cdsapi
   # dev
-  - nbconvert
+  - nbval
   - ruff
   - pytest
   - pytest-cov

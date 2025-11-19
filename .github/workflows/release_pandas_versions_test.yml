@@ -48,7 +48,7 @@ jobs:
     with:
       runner_tag: ${{ matrix.runner_tag }}
       requirements_file_name: requirements-dev.yml
-      ipynb_example_folder: "Examples"
       library_name: "pandas"
       library_version: ${{ matrix.pandas_version }}
       dependency_position_env_file: "6"
+      examples_to_execute: examples/1_load_input_data/2_1_reading_merra_weather_data.ipynb examples/1_load_input_data/2_2_vertically_project_wind_speed_from_merra.ipynb examples/2_economic/2_1_economic_compute_levelized_cost_of_electricity.ipynb examples/3_wind/3_1_wind_workflows_overview.ipynb examples/3_wind/3_2_1_wind_load_power_curve.ipynb examples/3_wind/3_2_2_wind_synthetic_power_curve.ipynb examples/3_wind/3_3_wind_convolute_a_power_curve.ipynb examples/3_wind/3_4_wind_design_onshore_turbine.ipynb examples/3_wind/3_5_wind_estimate_turbine_capital_cost.ipynb examples/3_wind/3_6_1_wind_basic_turbine_simulation.ipynb examples/3_wind/3_6_2_wind_turbine_simulation_workflow.ipynb examples/3_wind/3_6_3_wind_automated_turbine_simulation_workflow.ipynb examples/3_wind/3_7_example_ethos_reskit_wind_workflow.ipynb examples/4_solar/4_1_solar_workflows_overview.ipynb examples/4_solar/4_2_check_available_pv_modules.ipynb examples/4_solar/4_3_solar_automated_simulation_workflow.ipynb examples/5_geothermal/5_run_geothermal_simulations.ipynb examples/6_direct_air_capture/6_1_direct_air_capture.ipynb examples/6_direct_air_capture/6_2_cooling_heating.ipynb
