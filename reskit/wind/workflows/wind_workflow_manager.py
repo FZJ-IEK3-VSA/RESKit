@@ -183,9 +183,7 @@ class WindWorkflowManager(WorkflowManager):
             # we have an interpolation method based on other available LRA wind speed heights
 
             # if keys of height_scaling_data are str, try to convert to int or float
-            if isinstance(height_scaling_data, dict) and all(
-                [isinstance(k, str) for k in height_scaling_data.keys()]
-            ):
+            if isinstance(height_scaling_data, dict) and all([isinstance(k, str) for k in height_scaling_data.keys()]):
                 new_dict = dict()
                 for k, v in height_scaling_data.items():
                     try:
