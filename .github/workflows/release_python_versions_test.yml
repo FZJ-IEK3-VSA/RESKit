@@ -1,7 +1,7 @@
 on:
   workflow_dispatch:
-  push:
-    branches: ["202-test-valid-dependency-range-for-reskit-43"]
+  # push:
+  #   branches: ["202-test-valid-dependency-range-for-reskit-43"]
   pull_request:
     branches: ["master"]
 
@@ -22,7 +22,7 @@ jobs:
           #   "windows-2025",
           #   "windows-2022",
           # ]
-        python_version: ["3.13", "3.12", "3.11", "3.10"]
+        python_version: ["3.12", "3.11", "3.10"]
     uses: FZJ-IEK3-VSA/.github/.github/workflows/_run_single_conda_forge_test.yml@main
     with:
       runner_tag: ${{ matrix.runner_tag }}

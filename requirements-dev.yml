@@ -18,7 +18,7 @@ dependencies:
   - netCDF4 >=1.5.3
   - xarray
   - pvlib-python =0.9.0
-  - windpowerlib
+  - windpowerlib =0.2.1
   - cdsapi
   # dev
   - nbval

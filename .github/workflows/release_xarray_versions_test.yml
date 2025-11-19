@@ -1,13 +1,13 @@
 on:
   workflow_dispatch:
-  # push:
-  #   branches: ["202-test-valid-dependency-range-for-reskit-43"]
+  push:
+    branches: ["202-test-valid-dependency-range-for-reskit-43"]
   pull_request:
     branches: ["master"]
 
 jobs:
   TestPushCondaForgeDev:
-    name: Test conda-forge development version on ${{ matrix.runner_tag }} for netcdf4=${{ matrix.numpy_version }}
+    name: Test conda-forge development version on ${{ matrix.runner_tag }} for xarray=${{ matrix.numpy_version }}
     strategy:
       fail-fast: false
       matrix:
