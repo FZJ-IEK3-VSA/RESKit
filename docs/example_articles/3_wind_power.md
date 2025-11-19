@@ -13,11 +13,11 @@ RESKit provides a feature-rich wind power simulation, as demonstrated by the fol
    1. First, a [basic simulation](../../examples/3_wind/3_6_1_wind_basic_turbine_simulation.ipynb) is shown.
    2. Then, a [more advanced example](../../examples/3_wind/3_6_2_wind_turbine_simulation_workflow.ipynb) is shown, which accounts for more realistic effects.
    3. Lastly, [it is demonstrated](../../examples/3_wind/3_6_3_wind_automated_turbine_simulation_workflow.ipynb) how to use one of the predefined workflows provided by RESKit.
+      1. To apply this workflow outside of the test example, you need the full ESA Land Cover Dataset. It can be downloaded here: https://cds.climate.copernicus.eu/datasets/satellite-land-cover?tab=download.
 7. [The final example](../../examples/3_wind/3_7_example_ethos_reskit_wind_workflow.ipynb) shows how to apply the ETHOS.RESKit.Wind workflow.
    1. This requires the ERA5 dataset, for which a download instructions can be found [here](../../examples/1_load_input_data/1_1_1_how_to_download_era5_data.ipynb).
    2. To use the workflow, it is required to calculate the absolute wind speeds from the ERA5 dataset, as shown [here](../../examples/1_load_input_data/1_1_2_wind_speed_from_vectors_in_era5.ipynb).
-   3. Download the ESA Land Cover CCI v2.1.1 (2018): https://cds.climate.copernicus.eu/datasets/satellite-land-cover?tab=download
-   4. [Download GWAv3](https://globalwindatlas.info/api/gis/global/wind-speed/100):  https://globalwindatlas.info/en/download/gis-files
-   5. (Optional) If you have purchased Power Curves from thewindpower.net, please use the following script to process them: [Process Power Curves](../../examples/1_load_input_data/1_3_1_process_power_curves_from_thewindpower_net.ipynb)
+   3. To increase the horizontal and vertical spatial resolution of the simulation, the GWAv4 (Global Wind Atlas) is used. This example provides a small test data sample for application purposes. For applications outside the test example, however, the full GWAv4 dataset is required, which can be downloaded here: https://globalwindatlas.info/en/download/gis-files.
+   4. (Optional) If you have purchased Power Curves from thewindpower.net, please use the following script to process them: [Process Power Curves](../../examples/1_load_input_data/1_3_1_process_power_curves_from_thewindpower_net.ipynb)
 
 Paths to a custom turbine library and baseline turbine definitions can be set in [default_paths.yaml](../../reskit/default_paths.yaml).
