@@ -3,7 +3,7 @@ from collections import OrderedDict
 
 import numpy as np
 import pandas as pd
-from scipy.interpolate import griddata
+from scipy.interpolate import RegularGridInterpolator
 
 from reskit.dac.data import DATAFOLDER
 
@@ -133,98 +133,60 @@ class DACWorkflowManager(WorkflowManager):
             "nearest",
         ], f"Filling Method: {fillMethod} not implemented."
 
-        elec = griddata(
-            (self.dac_data["T"], self.dac_data["RH"]),
-            self.dac_data["totalElectricity"],
-            (
-                self.sim_data["surface_air_temperature"],
-                self.sim_data["relative_humidity"],
-            ),
-            method="linear",
-        )
-        thermal = griddata(
-            (self.dac_data["T"], self.dac_data["RH"]),
-            self.dac_data["totalThermal"],
-            (
-                self.sim_data["surface_air_temperature"],
-                self.sim_data["relative_humidity"],
-            ),
-            method="linear",
-        )
-        water = griddata(
-            (self.dac_data["T"], self.dac_data["RH"]),
-            self.dac_data["waterDesorption"],
-            (
-                self.sim_data["surface_air_temperature"],
-                self.sim_data["relative_humidity"],
-            ),
-            method="linear",
-        )
-        relProd = griddata(
-            (self.dac_data["T"], self.dac_data["RH"]),
-            self.dac_data["relProd"],
-            (
-                self.sim_data["surface_air_temperature"],
-                self.sim_data["relative_humidity"],
-            ),
-            method="linear",
-        )
+        # create unique grid as well as interpolators and evaluate for each property:
+        properties = ["totalElectricity", "totalThermal", "waterDesorption", "relProd"]
+        interpolated_outputs = {}
+
+        for prop in properties:
+            # Pivot table for this property
+            pivot = self.dac_data.pivot_table(values=prop, index="T", columns="RH")
+
+            # Create interpolator
+            interpolator = RegularGridInterpolator(
+                points=(pivot.index.values, pivot.columns.values.astype("float64")),
+                values=pivot.values,
+                bounds_error=False,
+            )
+
+            # Evaluate interpolator at simulation data and store into dict
+            interpolated_outputs[prop] = interpolator(
+                (self.sim_data["surface_air_temperature"], self.sim_data["relative_humidity"])
+            )
 
         if (fillMethod == "offTmin") or (fillMethod == "nearest"):
             # fill points outside the convex hull with "nearest" :
-            elecFill = griddata(
-                (self.dac_data["T"], self.dac_data["RH"]),
-                self.dac_data["totalElectricity"],
-                (
-                    self.sim_data["surface_air_temperature"],
-                    self.sim_data["relative_humidity"],
-                ),
-                method="nearest",
-            )
-            thermalFill = griddata(
-                (self.dac_data["T"], self.dac_data["RH"]),
-                self.dac_data["totalThermal"],
-                (
-                    self.sim_data["surface_air_temperature"],
-                    self.sim_data["relative_humidity"],
-                ),
-                method="nearest",
-            )
-            waterFill = griddata(
-                (self.dac_data["T"], self.dac_data["RH"]),
-                self.dac_data["waterDesorption"],
-                (
-                    self.sim_data["surface_air_temperature"],
-                    self.sim_data["relative_humidity"],
-                ),
-                method="nearest",
-            )
-            relProdFill = griddata(
-                (self.dac_data["T"], self.dac_data["RH"]),
-                self.dac_data["relProd"],
-                (
-                    self.sim_data["surface_air_temperature"],
-                    self.sim_data["relative_humidity"],
-                ),
-                method="nearest",
-            )
+            fill_outputs = {}
+            for prop in properties:
+                # Create interpolator using nearest-neighbor
+                pivot = self.dac_data.pivot_table(values=prop, index="T", columns="RH")
+                interpolator = RegularGridInterpolator(
+                    points=(pivot.index.values, pivot.columns.values.astype("float64")),
+                    values=pivot.values,
+                    method="nearest",
+                    bounds_error=False,
+                    fill_value=None,
+                )
+                # Evaluate at simulation points
+                fill_outputs[prop] = interpolator(
+                    (self.sim_data["surface_air_temperature"], self.sim_data["relative_humidity"])
+                )
         if fillMethod == "offTmin":
             # fill RH values outside range by nearest and force no operation below/above T bounds by setting relProd=0
             Tmin = self.dac_data["T"].min()
-            relProdFill[self.sim_data["surface_air_temperature"] < Tmin] = 0
+            fill_outputs["relProd"][self.sim_data["surface_air_temperature"] < Tmin] = 0
 
         # combine:
-        elec = np.where(np.isnan(elec), elecFill, elec)
-        thermal = np.where(np.isnan(thermal), thermalFill, thermal)
-        water = np.where(np.isnan(water), waterFill, water)
-        relProd = np.where(np.isnan(relProd), relProdFill, relProd)
+        for prop in properties:
+            interpolated_outputs[prop] = np.where(
+                np.isnan(interpolated_outputs[prop]), fill_outputs[prop], interpolated_outputs[prop]
+            )
 
-        self.sim_data["capacity_factor"] = (
-            relProd  # the relative productivity for DAC plants equals to the capacity factor for other renewable energy plants, i.e. wind turbines
-        )
-        self.sim_data["conversion_factor_electricity"] = elec  # MWh_el/t_CO2
-        self.sim_data["conversion_factor_heat"] = thermal  # MWh_th/t_CO2
-        self.sim_data["conversion_factor_water"] = water  # t_H2O/t_CO2
+        self.sim_data["capacity_factor"] = interpolated_outputs[
+            "relProd"
+        ]  # the relative productivity for DAC plants equals to the capacity factor for other renewable energy plants, i.e. wind turbines
+        self.sim_data["conversion_factor_electricity"] = interpolated_outputs["totalElectricity"]  # MWh_el/t_CO2
+        self.sim_data["conversion_factor_heat"] = interpolated_outputs["totalThermal"]  # MWh_th/t_CO2
+        self.sim_data["conversion_factor_water"] = interpolated_outputs["waterDesorption"]  # t_H2O/t_CO2
 
         # Now, besides the conversion factors which are relative to the produced CO2 mass, also simulate the specified plant with the specified capacity:
         self.sim_data["CO2_output"] = self.sim_data["capacity_factor"] * np.array(
