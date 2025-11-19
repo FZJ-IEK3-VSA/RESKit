@@ -39,7 +39,6 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
         [2] https://www.engineeringtoolbox.com/air-specific-heat-capacity-d_705.html
 
         """
-
         # Do basic workflow construction
         assert all([a in placements.columns for a in ["lon", "lat", "capacity"]]), (
             "Placements must contain the columns lon,lat and capacity"
@@ -108,7 +107,7 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
             ],
             data=airData,
             columns=["cp", "density"],
-        )  # index referes to ambient air temperature
+        )  # index refers to ambient air temperature
 
     def calculate_fan_power_air_cooling(
         self,
@@ -171,14 +170,7 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
 
         # Calculate Power demand for 1 kWh of cooling:
         WFan = (
-            (
-                1
-                / (
-                    cpAir
-                    * (temperatureCoolant - heatTransferDelta - airTemp)
-                    * densityAir
-                )
-            )
+            (1 / (cpAir * (temperatureCoolant - heatTransferDelta - airTemp) * densityAir))
             / efficiencyFan
             * pressureDropAir
         )
@@ -225,8 +217,8 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
         Returns
         -------
         float or np.ndarray
-            Pump power demand in kWh per kWh of cooling. Returns a single value if
-            `designTemperature` is provided, or a time series array otherwise.
+        Pump power demand in kWh per kWh of cooling. Returns a single value if
+        `designTemperature` is provided, or a time series array otherwise.
 
         Notes
         -----
@@ -302,8 +294,9 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
         Returns
         -------
         None
-            The method stores the calculated relative cost factor in `self.sim_data["relative_cost_factor"]`
-            and updates the `self.units` dictionary with air-cooling system units.
+
+        The method stores the calculated relative cost factor in `self.sim_data["relative_cost_factor"]`
+        and updates the `self.units` dictionary with air-cooling system units.
 
         Notes
         -----
@@ -318,7 +311,6 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
         [1] 10.1016/j.energy.2015.05.081
         [2] 10.1016/j.enconman.2020.113610
         """
-
         # At design point:
         PFanDesign = -self.calculate_fan_power_air_cooling(
             temperatureCoolant,
@@ -430,16 +422,11 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
             self.sim_data["surface_air_temperature"] <= designTemperature,
             1,  # Case 1: below design temperature, the system can always provide enough cooling.
             xr.where(
-                self.sim_data["surface_air_temperature"]
-                < (temperatureCoolant - heatTransferDelta),
+                self.sim_data["surface_air_temperature"] < (temperatureCoolant - heatTransferDelta),
                 # Case 2: between design and shut off temperature. The system can not provide sufficient cooling. Its limited by:
                 np.minimum(
-                    PPumpDesign
-                    / self.sim_data[
-                        "conversion_factor_pump_electricity"
-                    ],  # either the pump
-                    PFanDesign
-                    / self.sim_data["conversion_factor_fan_electricity"],  # or the fan
+                    PPumpDesign / self.sim_data["conversion_factor_pump_electricity"],  # either the pump
+                    PFanDesign / self.sim_data["conversion_factor_fan_electricity"],  # or the fan
                 ),
                 0.0,  # Case 3: too hot. The system needs to shut off.
             ),
@@ -481,9 +468,7 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
             / (targetTemperature - self.sim_data["surface_air_temperature"])
             * secondLawEfficiency
         )
-        self.sim_data["conversion_factor_electricity"] = (
-            -1 / self.sim_data["COP"]
-        )  # kWhel/kWhth
+        self.sim_data["conversion_factor_electricity"] = -1 / self.sim_data["COP"]  # kWhel/kWhth
 
         # set the units of an air source heat pump:
         units = {

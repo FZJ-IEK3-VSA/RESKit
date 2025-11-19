@@ -1,9 +1,10 @@
-import pandas as pd
-import numpy as np
-from reskit.solar import SolarWorkflowManager
-import reskit as rk
 import geokit as gk
+import numpy as np
+import pandas as pd
 import pytest
+
+import reskit as rk
+from reskit.solar import SolarWorkflowManager
 
 
 def print_testresults(variable):
@@ -305,18 +306,10 @@ def test_SolarWorkflowManager_determine_extra_terrestrial_irradiance(
     print_testresults(man.sim_data["extra_terrestrial_irradiance"])
 
     assert man.sim_data["extra_terrestrial_irradiance"].shape == (140, 5)
-    assert np.isclose(
-        man.sim_data["extra_terrestrial_irradiance"].mean(), 1413.9980694079702
-    )
-    assert np.isclose(
-        man.sim_data["extra_terrestrial_irradiance"].std(), 0.019625866056578487
-    )
-    assert np.isclose(
-        man.sim_data["extra_terrestrial_irradiance"].min(), 1413.940576307916
-    )
-    assert np.isclose(
-        man.sim_data["extra_terrestrial_irradiance"].max(), 1414.0192010311885
-    )
+    assert np.isclose(man.sim_data["extra_terrestrial_irradiance"].mean(), 1413.9980694079702)
+    assert np.isclose(man.sim_data["extra_terrestrial_irradiance"].std(), 0.019625866056578487)
+    assert np.isclose(man.sim_data["extra_terrestrial_irradiance"].min(), 1413.940576307916)
+    assert np.isclose(man.sim_data["extra_terrestrial_irradiance"].max(), 1414.0192010311885)
 
     return man
 
@@ -359,12 +352,8 @@ def test_SolarWorkflowManager_apply_DIRINT_model(
     print_testresults(man.sim_data["direct_normal_irradiance"])
 
     assert man.sim_data["direct_normal_irradiance"].shape == (54, 5)
-    assert np.isclose(
-        man.sim_data["direct_normal_irradiance"].mean(), 167.86780412863015
-    )
-    assert np.isclose(
-        man.sim_data["direct_normal_irradiance"].std(), 202.51729861336193
-    )
+    assert np.isclose(man.sim_data["direct_normal_irradiance"].mean(), 167.86780412863015)
+    assert np.isclose(man.sim_data["direct_normal_irradiance"].std(), 202.51729861336193)
     assert np.isclose(man.sim_data["direct_normal_irradiance"].min(), 0.0)
     assert np.isclose(man.sim_data["direct_normal_irradiance"].max(), 720.1159360124137)
 
@@ -388,18 +377,10 @@ def test_SolarWorkflowManager_diffuse_horizontal_irradiance_from_trigonometry(
     print_testresults(man.sim_data["diffuse_horizontal_irradiance"])
 
     assert man.sim_data["diffuse_horizontal_irradiance"].shape == (54, 5)
-    assert np.isclose(
-        man.sim_data["diffuse_horizontal_irradiance"].mean(), 48.582931923941324
-    )
-    assert np.isclose(
-        man.sim_data["diffuse_horizontal_irradiance"].std(), 34.69121106889705
-    )
-    assert np.isclose(
-        man.sim_data["diffuse_horizontal_irradiance"].min(), 0.15659047212134164
-    )
-    assert np.isclose(
-        man.sim_data["diffuse_horizontal_irradiance"].max(), 124.98184251575456
-    )
+    assert np.isclose(man.sim_data["diffuse_horizontal_irradiance"].mean(), 48.582931923941324)
+    assert np.isclose(man.sim_data["diffuse_horizontal_irradiance"].std(), 34.69121106889705)
+    assert np.isclose(man.sim_data["diffuse_horizontal_irradiance"].min(), 0.15659047212134164)
+    assert np.isclose(man.sim_data["diffuse_horizontal_irradiance"].max(), 124.98184251575456)
 
 
 def test_SolarWorkflowManager_direct_normal_irradiance_from_trigonometry(
@@ -412,9 +393,7 @@ def test_SolarWorkflowManager_direct_normal_irradiance_from_trigonometry(
     print_testresults(man.sim_data["direct_normal_irradiance"])
 
     assert man.sim_data["direct_normal_irradiance"].shape == (54, 5)
-    assert np.isclose(
-        man.sim_data["direct_normal_irradiance"].mean(), 158.21469197801994
-    )
+    assert np.isclose(man.sim_data["direct_normal_irradiance"].mean(), 158.21469197801994)
     assert np.isclose(man.sim_data["direct_normal_irradiance"].std(), 179.6328322092467)
     assert np.isclose(man.sim_data["direct_normal_irradiance"].min(), 0.0)
     assert np.isclose(man.sim_data["direct_normal_irradiance"].max(), 616.5611489924958)
@@ -644,9 +623,7 @@ def test_SolarWorkflowManager_simulate_with_interpolated_single_diode_approximat
     print(man.sim_data["module_dc_voltage_at_mpp"].mean())
     print(man.sim_data["total_system_generation"].mean())
     assert np.isclose(man.sim_data["module_dc_power_at_mpp"].mean(), 56.820853030607246)
-    assert np.isclose(
-        man.sim_data["module_dc_voltage_at_mpp"].mean(), 37.39738372317519
-    )
+    assert np.isclose(man.sim_data["module_dc_voltage_at_mpp"].mean(), 37.39738372317519)
     assert np.isclose(man.sim_data["total_system_generation"].mean(), 724.3133157683136)
 
 
@@ -670,9 +647,7 @@ def test_SolarWorkflowManager_apply_inverter_losses(
     man.placements["strings_per_inverter"] = 1
     del man.placements["capacity"]
 
-    man.apply_inverter_losses(
-        inverter="ABB__MICRO_0_25_I_OUTD_US_208__208V_", method="sandia"
-    )
+    man.apply_inverter_losses(inverter="ABB__MICRO_0_25_I_OUTD_US_208__208V_", method="sandia")
 
     print_testresults(man.sim_data["capacity_factor"])
     assert man.sim_data["capacity_factor"].shape == (54, 5)
@@ -685,14 +660,10 @@ def test_SolarWorkflowManager_apply_inverter_losses(
     print(man.sim_data["inverter_ac_power_at_mpp"].mean())
 
     assert np.isclose(man.sim_data["total_system_generation"].mean(), 53.68695534660521)
-    assert np.isclose(
-        man.sim_data["inverter_ac_power_at_mpp"].mean(), 53.68695534660521
-    )
+    assert np.isclose(man.sim_data["inverter_ac_power_at_mpp"].mean(), 53.68695534660521)
 
 
-def test_SolarWorkflowManager_nan_values_tilt_azimuth_elev___init__() -> (
-    SolarWorkflowManager
-):
+def test_SolarWorkflowManager_nan_values_tilt_azimuth_elev___init__() -> SolarWorkflowManager:
     # (self, placements):
     placements = pd.DataFrame()
     placements["lon"] = [

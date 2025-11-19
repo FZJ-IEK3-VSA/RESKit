@@ -1,5 +1,6 @@
-from reskit.wind.core.turbine_library import TurbineLibrary
 import numpy as np
+
+from reskit.wind.core.turbine_library import TurbineLibrary
 
 
 def test_TurbineLibrary():

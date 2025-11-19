@@ -1,13 +1,13 @@
-import pandas as pd
-import numpy as np
 import os
-
 from collections import OrderedDict
+
+import numpy as np
+import pandas as pd
 from scipy.interpolate import griddata
 
+from reskit.dac.data import DATAFOLDER
 
 from ...workflow_manager import WorkflowManager
-from reskit.dac.data import DATAFOLDER
 
 """
 
@@ -32,11 +32,10 @@ class DACWorkflowManager(WorkflowManager):
             -The capacity is the nominal capacity of the DAC plant in tCO2/h
 
         Returns
-        ----------
+        -------
         DACWorkflowManager
 
         """
-
         # Do basic workflow construction
         assert all([a in placements.columns for a in ["lon", "lat", "capacity"]]), (
             "Placements must contain the columns lon,lat and capacity"
@@ -231,16 +230,11 @@ class DACWorkflowManager(WorkflowManager):
         self.sim_data["CO2_output"] = self.sim_data["capacity_factor"] * np.array(
             self.placements["capacity"]
         )  # t_CO2/h
-        self.sim_data["H2O_output"] = (
-            self.sim_data["CO2_output"] * self.sim_data["conversion_factor_water"]
-        )  # t_H2O/h
+        self.sim_data["H2O_output"] = self.sim_data["CO2_output"] * self.sim_data["conversion_factor_water"]  # t_H2O/h
         self.sim_data["electricity_input"] = (
-            self.sim_data["CO2_output"]
-            * -self.sim_data["conversion_factor_electricity"]
+            self.sim_data["CO2_output"] * -self.sim_data["conversion_factor_electricity"]
         )  # MWh_el/h
-        self.sim_data["heat_input"] = (
-            self.sim_data["CO2_output"] * -self.sim_data["conversion_factor_heat"]
-        )  # MWh_th/h
+        self.sim_data["heat_input"] = self.sim_data["CO2_output"] * -self.sim_data["conversion_factor_heat"]  # MWh_th/h
 
     def simulate_ht_dac_model(self, model: str = "HT_okosun"):
         """
@@ -273,7 +267,6 @@ class DACWorkflowManager(WorkflowManager):
         [2] 10.3389/fclim.2020.618644
         [3] 10.1016/j.adapen.2025.100229
         """
-
         # Calculate capture rate, relative productivity and energy (w/o compression)
         if model == "HT_okosun":
             capture_rate = (
@@ -281,14 +274,12 @@ class DACWorkflowManager(WorkflowManager):
                 + 0.141875496 * self.sim_data["relative_humidity"]
                 + 0.961897256 * self.sim_data["surface_air_temperature"]
                 - 0.000550616476 * self.sim_data["relative_humidity"] ** 2
-                + 0.00266221049
-                * self.sim_data["surface_air_temperature"]
-                * self.sim_data["relative_humidity"]
+                + 0.00266221049 * self.sim_data["surface_air_temperature"] * self.sim_data["relative_humidity"]
                 - 0.00588467947 * self.sim_data["surface_air_temperature"] ** 2
             )  # equation fitted by k.okosun as described in [3]. Describes the share [%] of co2 captured from the incoming air dependent on the ambient conditions. See also [1,2].
 
-            ElecDemand = (
-                7.2082 * capture_rate ** (-0.317)
+            ElecDemand = 7.2082 * capture_rate ** (
+                -0.317
             )  # equation fitted by k.okosun as described in [3]. Relates the capture rate to the energy demand.
             relative_productivity = (
                 capture_rate / 40 * 527702.4 / 1000000
@@ -309,7 +300,6 @@ class DACWorkflowManager(WorkflowManager):
         )  # t_CO2/h
         self.sim_data["H2O_output"] = np.nan  # t_H2O/h
         self.sim_data["electricity_input"] = (
-            self.sim_data["CO2_output"]
-            * -self.sim_data["conversion_factor_electricity"]
+            self.sim_data["CO2_output"] * -self.sim_data["conversion_factor_electricity"]
         )  # MWh_el/h
         self.sim_data["heat_input"] = np.nan  # MWh_th/h

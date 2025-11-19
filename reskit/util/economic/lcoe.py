@@ -1,5 +1,6 @@
 import numpy as np
-from .. import ResError
+
+from reskit.util.errors import ResError
 
 
 def levelized_cost_of_electricity_simplified(

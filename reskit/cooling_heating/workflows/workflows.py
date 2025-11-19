@@ -1,8 +1,8 @@
 # import primary packages
-import numpy as np
-import pandas as pd
 from typing import List
 
+import numpy as np
+import pandas as pd
 
 # import othert modules
 from .cooling_heating_workflow_manager import CoolingHeatingWorkflowManager
@@ -129,14 +129,11 @@ def air_cooling_wenzel2025(
 
     # calculate total conversion factor electricity:
     wf.sim_data["conversion_factor_electricity"] = (
-        wf.sim_data["conversion_factor_fan_electricity"]
-        + wf.sim_data["conversion_factor_pump_electricity"]
+        wf.sim_data["conversion_factor_fan_electricity"] + wf.sim_data["conversion_factor_pump_electricity"]
     )  # kWh_el/kWh_th
 
     # Calculate needed electricity in each time step for design capacity:
-    wf.sim_data["cooling_output"] = wf.sim_data["capacity_factor"] * np.array(
-        wf.placements["capacity"]
-    )  # kWh_th/h
+    wf.sim_data["cooling_output"] = wf.sim_data["capacity_factor"] * np.array(wf.placements["capacity"])  # kWh_th/h
     wf.sim_data["electricity_input"] = (
         -wf.sim_data["conversion_factor_electricity"]
         * wf.sim_data["capacity_factor"]
@@ -222,17 +219,13 @@ def air_source_heat_pump(
         set_time_index=True,
         verbose=False,
     )
-    wf.simulate_air_source_heat_pump(
-        targetTemperature=targetTemperature, secondLawEfficiency=secondLawEfficiency
-    )
+    wf.simulate_air_source_heat_pump(targetTemperature=targetTemperature, secondLawEfficiency=secondLawEfficiency)
 
-    wf.sim_data["electricity_input"] = -wf.sim_data[
-        "conversion_factor_electricity"
-    ] * np.array(wf.placements["capacity"])  # kWh_el/h
+    wf.sim_data["electricity_input"] = -wf.sim_data["conversion_factor_electricity"] * np.array(
+        wf.placements["capacity"]
+    )  # kWh_el/h
 
-    wf.sim_data["heat_output"] = np.ones(
-        wf.sim_data["electricity_input"].shape
-    ) * np.array(wf.placements["capacity"])
+    wf.sim_data["heat_output"] = np.ones(wf.sim_data["electricity_input"].shape) * np.array(wf.placements["capacity"])
 
     return wf.to_xarray(
         output_netcdf_path=output_netcdf_path,

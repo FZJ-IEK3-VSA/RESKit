@@ -1,11 +1,12 @@
-from reskit.dac.workflows.workflows import (
-    lt_dac_era5_wenzel2025,
-    ht_dac_era5_wenzel2025,
-)
-from reskit import TEST_DATA
-import pytest
 import numpy as np
 import pandas as pd
+import pytest
+
+from reskit import TEST_DATA
+from reskit.dac.workflows.workflows import (
+    ht_dac_era5_wenzel2025,
+    lt_dac_era5_wenzel2025,
+)
 
 
 @pytest.fixture
@@ -21,9 +22,7 @@ def dac_placements() -> pd.DataFrame:
 
 
 def test_lt_dac_era5_wenzel2025(dac_placements: pd.DataFrame):
-    gen = lt_dac_era5_wenzel2025(
-        placements=dac_placements, era5_path=TEST_DATA["era5-like"], model="LT_jajjawi"
-    )
+    gen = lt_dac_era5_wenzel2025(placements=dac_placements, era5_path=TEST_DATA["era5-like"], model="LT_jajjawi")
     assert np.all(
         np.isclose(
             gen.capacity_factor.mean(dim="time"),
@@ -51,9 +50,7 @@ def test_lt_dac_era5_wenzel2025(dac_placements: pd.DataFrame):
 
 
 def test_ht_dac_era5_wenzel2025(dac_placements: pd.DataFrame):
-    gen = ht_dac_era5_wenzel2025(
-        placements=dac_placements, era5_path=TEST_DATA["era5-like"], model="HT_okosun"
-    )
+    gen = ht_dac_era5_wenzel2025(placements=dac_placements, era5_path=TEST_DATA["era5-like"], model="HT_okosun")
     assert np.all(
         np.isclose(
             gen.capacity_factor.mean(dim="time"),
