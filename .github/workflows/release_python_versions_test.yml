@@ -1,0 +1,33 @@
+on:
+  workflow_dispatch:
+  push:
+    branches: ["202-test-valid-dependency-range-for-reskit-43"]
+  pull_request:
+    branches: ["master"]
+
+jobs:
+  TestPushCondaForgeDev:
+    name: Test conda-forge development version on ${{ matrix.runner_tag }} for python=${{ matrix.python_version }}
+    strategy:
+      fail-fast: false
+      matrix:
+        runner_tag:
+          ["self-hosted"]
+          # [
+          #   "ubuntu-24.04",
+          #   "ubuntu-22.04",
+          #   "macos-13",
+          #   "macos-14",
+          #   "macos-15",
+          #   "windows-2025",
+          #   "windows-2022",
+          # ]
+        python_version: ["3.13", "3.12", "3.11", "3.10", "3.9", "3.8"]
+    uses: FZJ-IEK3-VSA/.github/.github/workflows/_run_single_conda_forge_test.yml@main
+    with:
+      runner_tag: ${{ matrix.runner_tag }}
+      requirements_file_name: requirements-dev.yml
+      ipynb_example_folder: "Examples"
+      library_name: "python"
+      library_version: ${{ matrix.python_version }}
+      dependency_position_env_file: "0"
