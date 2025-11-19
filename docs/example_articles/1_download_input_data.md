@@ -21,6 +21,6 @@ Examples are provided for
 2. Global Wind Atlas  (GWA) # No Example -->
 
 # Wind Power Curves 
-Provides the behavior of electricity supply for wind offshore turbines in dependence of the wind speed.
+A wind turbine power curve is a chart that shows how much power a turbine generates at various wind speeds.
 
-1. Power Curves from https://www.thewindpower.net/ which can be integrated in RESKit as shown in this [example](../../examples/1_load_input_data/1_3_1_process_power_curves_from_thewindpower_net.ipynb)
+1. Power Curves from https://www.thewindpower.net/ can be integrated in RESKit as shown in this [example](../../examples/1_load_input_data/1_3_1_process_power_curves_from_thewindpower_net.ipynb)
