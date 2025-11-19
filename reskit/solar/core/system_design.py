@@ -8,8 +8,6 @@ from ...util import ResError
 
 def location_to_tilt(locs, convention="Ryberg2020", **kwargs):
     """
-    Def location_to_tilt(locs, convention="Ryberg2020", **kwargs)
-
     Simple system tilt estimator based off latitude and longitude coordinates
 
 
