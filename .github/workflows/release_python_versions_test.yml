@@ -7,21 +7,18 @@ on:
 
 jobs:
   TestPushCondaForgeDev:
-    name: Test conda-forge development version on ${{ matrix.runner_tag }} for python=${{ matrix.python_version }}
     strategy:
       fail-fast: false
       matrix:
         runner_tag:
-          ["self-hosted"]
-          # [
-          #   "ubuntu-24.04",
-          #   "ubuntu-22.04",
-          #   "macos-13",
-          #   "macos-14",
-          #   "macos-15",
-          #   "windows-2025",
-          #   "windows-2022",
-          # ]
+          [
+            "ubuntu-24.04",
+            "ubuntu-22.04",
+            "macos-14",
+            "macos-15",
+            "windows-2025",
+            "windows-2022",
+          ]
         python_version: ["3.12", "3.11", "3.10"]
     uses: FZJ-IEK3-VSA/.github/.github/workflows/_run_single_conda_forge_test.yml@main
     with:
