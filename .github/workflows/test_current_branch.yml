@@ -1,0 +1,16 @@
+on:
+  workflow_dispatch:
+  push:
+    branches: ["**"]
+
+jobs:
+  TestPushCondaForgeDev:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner_tag: ["self-hosted"]
+    uses: FZJ-IEK3-VSA/.github/.github/workflows/_run_single_conda_forge_test.yml@main
+    with:
+      runner_tag: ${{ matrix.runner_tag }}
+      requirements_file_name: requirements-dev.yml
+      examples_to_execute: examples/1_load_input_data/1_2_1_reading_merra_weather_data.ipynb examples/1_load_input_data/1_2_2_vertically_project_wind_speed_from_merra.ipynb examples/2_economic/ examples/3_wind examples/4_solar examples/5_geothermal/ examples/6_direct_air_capture/

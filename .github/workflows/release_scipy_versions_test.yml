@@ -1,0 +1,59 @@
+on:
+  workflow_dispatch:
+  # push:
+  #   branches: ["202-test-valid-dependency-range-for-reskit-43"]
+  pull_request:
+    branches: ["master"]
+
+jobs:
+  TestPushCondaForgeDev:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner_tag: ["self-hosted"]
+        scipy_version:
+          [
+            "1.7.2",
+            "1.7.3",
+            "1.8.0",
+            "1.8.1",
+            "1.9.0",
+            "1.9.1",
+            "1.9.2",
+            "1.9.3",
+            "1.10.0",
+            "1.10.1",
+            "1.11.0",
+            "1.11.1",
+            "1.11.2",
+            "1.11.3",
+            "1.11.4",
+            "1.12.0",
+            "1.13.0",
+            "1.13.1",
+            "1.14.0",
+            "1.14.1",
+          ]
+    uses: FZJ-IEK3-VSA/.github/.github/workflows/_run_single_conda_forge_test.yml@main
+    with:
+      runner_tag: ${{ matrix.runner_tag }}
+      requirements_file_name: requirements-dev.yml
+      library_name: "scipy"
+      library_version: ${{ matrix.scipy_version }}
+      dependency_position_env_file: "10"
+      examples_to_execute: examples/1_load_input_data/1_2_1_reading_merra_weather_data.ipynb examples/1_load_input_data/1_2_2_vertically_project_wind_speed_from_merra.ipynb examples/2_economic/ examples/3_wind examples/4_solar examples/5_geothermal/ examples/6_direct_air_capture/
+
+  TestOtherOSCondaForge:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner_tag: ["windows-latest", "macos-latest"]
+        scipy_version: ["1.7.2"]
+    uses: FZJ-IEK3-VSA/.github/.github/workflows/_run_single_conda_forge_test.yml@main
+    with:
+      runner_tag: ${{ matrix.runner_tag }}
+      requirements_file_name: requirements-dev.yml
+      library_name: "scipy"
+      library_version: ${{ matrix.scipy_version }}
+      dependency_position_env_file: "10"
+      examples_to_execute: examples/1_load_input_data/1_2_1_reading_merra_weather_data.ipynb examples/1_load_input_data/1_2_2_vertically_project_wind_speed_from_merra.ipynb examples/2_economic/ examples/3_wind examples/4_solar examples/5_geothermal/ examples/6_direct_air_capture/
