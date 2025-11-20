@@ -44,7 +44,7 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
     era5_path : str
         Path to the ERA5 data.
     gwa_100m_path : str
-        Path to the Global Wind Atlas v3 (GWA3) at 100m [4] raster file.
+        Path to the Global Wind Atlas v4 (GWA4) at 100m [4] raster file.
     height_scaling_data : dict
         The data required for the height_scaling_method ("lra", "linear").
         Dict with integer heights as keys and str paths to the Global Wind Atlas
@@ -79,7 +79,7 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
     [1] European Centre for Medium-Range Weather Forecasts. (2019). ERA5 dataset. https://www.ecmwf.int/en/forecasts/datasets/reanalysis-datasets/era5
     [2] International Energy Agency. (2023). Renewables Market Report. https://www.iea.org/reports/renewables-2023
     [3] Peña-Sánchez, Dunkel, Winkler et al. (2025): Towards high resolution, validated and open global wind power assessments. https://doi.org/10.48550/arXiv.2501.07937
-    [4] DTU Wind Energy. (2024). Global Wind Atlas v3. https://globalwindatlas.info/
+    [4] DTU Wind Energy. (2025). Global Wind Atlas v4. https://globalwindatlas.info/
     """
     # default data used as per [3]
     ws_correction_func = (
