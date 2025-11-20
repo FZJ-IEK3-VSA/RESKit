@@ -10,15 +10,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        runner_tag:
-          [
-            "ubuntu-24.04",
-            "ubuntu-22.04",
-            "macos-14",
-            "macos-15",
-            "windows-2025",
-            "windows-2022",
-          ]
+        runner_tag: ["ubuntu-24.04", "macos-15", "windows-2025"]
         python_version: ["3.12", "3.10"]
     uses: FZJ-IEK3-VSA/.github/.github/workflows/_run_single_conda_forge_test.yml@main
     with:
