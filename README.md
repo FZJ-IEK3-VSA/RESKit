@@ -1,8 +1,8 @@
-| Version                                                                                                             |
-| ------------------------------------------------------------------------------------------------------------------- |
-| [![Conda Version](https://img.shields.io/conda/vn/conda-forge/reskit.svg)](https://anaconda.org/conda-forge/reskit) |
+| Version                                                                                                             | Zenodo Release                                                   | Docstring Styl                                                                   |
+| ------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| [![Conda Version](https://img.shields.io/conda/vn/conda-forge/reskit.svg)](https://anaconda.org/conda-forge/reskit) | ![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17668776.svg) | ![Numpy docstring Style](https://img.shields.io/badge/%20style-numpy-459db9.svg) |
 # RESKit - **R**enewable **E**nergy **S**imulation tool**kit** for Python
-
+https://doi.org/10.5281/zenodo.17668776
 <p float="left">
 <a href="https://www.fz-juelich.de/en/ice/ice-2"><img src="https://github.com/FZJ-IEK3-VSA/README_assets/blob/main/JSA-Header.svg?raw=True" alt="Jülich Systems Analysis Logo" width="300px"></a>
 </p>
