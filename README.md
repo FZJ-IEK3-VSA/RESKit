@@ -1,6 +1,6 @@
-| Version                                                                                                             |
-| ------------------------------------------------------------------------------------------------------------------- |
-| [![Conda Version](https://img.shields.io/conda/vn/conda-forge/reskit.svg)](https://anaconda.org/conda-forge/reskit) |
+| Version                                                                                                             | Zenodo Release                                                                                              | Docstring Style                                                                  |
+| ------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| [![Conda Version](https://img.shields.io/conda/vn/conda-forge/reskit.svg)](https://anaconda.org/conda-forge/reskit) | [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17668775.svg)](https://doi.org/10.5281/zenodo.17668775) | ![Numpy docstring Style](https://img.shields.io/badge/%20style-numpy-459db9.svg) |
 # RESKit - **R**enewable **E**nergy **S**imulation tool**kit** for Python
 
 <p float="left">

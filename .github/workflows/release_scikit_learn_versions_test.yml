@@ -27,7 +27,6 @@ jobs:
             "1.6.1",
             "1.7.0",
             "1.7.1",
-            "1.7.2",
           ]
     uses: FZJ-IEK3-VSA/.github/.github/workflows/_run_single_conda_forge_test.yml@main
     with:
