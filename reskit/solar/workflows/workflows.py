@@ -1,11 +1,13 @@
 # import primary packages
-import numpy as np
 import warnings
+
+import numpy as np
+
+from ... import util as rk_util
 
 # import othert modules
 from ... import weather as rk_weather
 from .solar_workflow_manager import SolarWorkflowManager
-from ... import util as rk_util
 
 
 def openfield_pv_merra_ryberg2019(
@@ -56,7 +58,7 @@ def openfield_pv_merra_ryberg2019(
 
 
     inverter: str
-        Determines wether or not you want to model your PV system with an inverter.
+        Determines whether or not you want to model your PV system with an inverter.
         Default is None, meaning no inverter is assumed
         See reskit.solar.SolarWorkflowManager.apply_inverter_losses for more usage information
 
@@ -79,7 +81,6 @@ def openfield_pv_merra_ryberg2019(
     A xarray dataset including all the output variables you defined as your output_variables.
 
     """
-
     wf = SolarWorkflowManager(placements)
     wf.configure_cec_module(module, tech_year)
     # ensure the tracking parameter is correct
@@ -137,11 +138,10 @@ def openfield_pv_merra_ryberg2019(
     if inverter is not None:
         wf.apply_inverter_losses(inverter=inverter, **inverter_kwargs)
 
-    wf.apply_loss_factor(0.20, variables=["capacity_factor", "total_system_generation"])
+    variables = [_var for _var in ["capacity_factor", "total_system_generation"] if _var in wf.sim_data.keys()]
+    wf.apply_loss_factor(0.20, variables=variables)
 
-    return wf.to_xarray(
-        output_netcdf_path=output_netcdf_path, output_variables=output_variables
-    )
+    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
 
 def openfield_pv_era5(
@@ -191,13 +191,13 @@ def openfield_pv_era5(
             Elevation that you want to model your PV system at.
 
     tracking: str
-            Determines wether your PV system is fixed or not.
+            Determines whether your PV system is fixed or not.
             Default is fixed.
             Option 1 is 'fixed' meaning that the module does not have any tracking capabilities.
             Option 2 is 'single_axis' meaning that the module has single_axis tracking capabilities.
 
     inverter: str
-            Determines wether you want to model your PV system with an inverter or not.
+            Determines whether you want to model your PV system with an inverter or not.
             Default is None.
             See reskit.solar.SolarWorkflowManager.apply_inverter_losses for more usage information.
 
@@ -205,11 +205,11 @@ def openfield_pv_era5(
             When global_solar_atlas_dni_path has no data, one can decide between different fallback options, by default 1.0:
             - np.nan or None : return np.nan for missing values in global_solar_atlas_dni_path
             - float : Apply this float value as a scaling factor for all no-data locations only: source_long_run_average * DNI_nodata_fallback.
-                NOTE: A value of 1.0 will return the source lra value in case of missing global_solar_atlas_dni_path values.
+            NOTE: A value of 1.0 will return the source lra value in case of missing global_solar_atlas_dni_path values.
             - str : Will be interpreted as a filepath to a raster with alternative absolute global_solar_atlas_dni_path values
             - callable : any callable method taking the arguments (all iterables): 'locs' and 'source_long_run_average_value'
-                (the locations as gk.geom.point objects and original value from source data). The output values will be considered as
-                the new real_long_run_average for missing locations only.
+            (the locations as gk.geom.point objects and original value from source data). The output values will be considered as
+            the new real_long_run_average for missing locations only.
             NOTE: np.nan will also be returned in case that the nodata fallback does not yield values either.
 
     DNI_nodata_fallback_scaling: float, optional
@@ -257,7 +257,6 @@ def openfield_pv_era5(
     -------
     A xarray dataset including all the output variables you defined as your output_variables.
     """
-
     wf = SolarWorkflowManager(placements)
     wf.configure_cec_module(module, tech_year)
 
@@ -363,13 +362,10 @@ def openfield_pv_era5(
         wf.apply_inverter_losses(inverter=inverter, **inverter_kwargs)
 
     loss_factor = 0.115  # validation by d.franzmann, 2022/01/13
-    wf.apply_loss_factor(
-        loss_factor, variables=["capacity_factor", "total_system_generation"]
-    )
+    variables = [_var for _var in ["capacity_factor", "total_system_generation"] if _var in wf.sim_data.keys()]
+    wf.apply_loss_factor(loss_factor, variables=variables)
 
-    return wf.to_xarray(
-        output_netcdf_path=output_netcdf_path, output_variables=output_variables
-    )
+    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
 
 def openfield_pv_sarah_unvalidated(
@@ -389,7 +385,6 @@ def openfield_pv_sarah_unvalidated(
     """
 
     openfield_pv_sarah_unvalidated(placements, sarah_path, era5_path, module="WINAICO WSx-240P6", elev=300, tracking="fixed", inverter=None, inverter_kwargs={}, tracking_args={}, output_netcdf_path=None, output_variables=None)
-
 
     Simulation of an openfield  PV openfield system based on Sarah and ERA5 Data.
 
@@ -416,13 +411,13 @@ def openfield_pv_sarah_unvalidated(
             Elevation that you want to model your PV system at.
 
     tracking: str
-                Determines wether your PV system is fixed or not.
+                Determines whether your PV system is fixed or not.
                 Default is fixed.
                 Option 1 is 'fixed' meaning that the module does not have any tracking capabilities.
                 Option 2 is 'single_axis' meaning that the module has single_axis tracking capabilities.
 
     inverter: str
-                Determines wether you want to model your PV system with an inverter or not.
+                Determines whether you want to model your PV system with an inverter or not.
                 Default is None.
                 See reskit.solar.SolarWorkflowManager.apply_inverter_losses for more usage information.
 
@@ -445,7 +440,6 @@ def openfield_pv_sarah_unvalidated(
     A xarray dataset including all the output variables you defined as your output_variables.
 
     """
-
     wf = SolarWorkflowManager(placements)
     wf.configure_cec_module(module, tech_year)
     # ensure the tracking parameter is correct
@@ -508,11 +502,10 @@ def openfield_pv_sarah_unvalidated(
     if inverter is not None:
         wf.apply_inverter_losses(inverter=inverter, **inverter_kwargs)
 
-    wf.apply_loss_factor(0.20, variables=["capacity_factor", "total_system_generation"])
+    variables = [_var for _var in ["capacity_factor", "total_system_generation"] if _var in wf.sim_data.keys()]
+    wf.apply_loss_factor(0.20, variables=variables)
 
-    return wf.to_xarray(
-        output_netcdf_path=output_netcdf_path, output_variables=output_variables
-    )
+    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
 
 def openfield_pv_iconlam(
@@ -550,13 +543,13 @@ def openfield_pv_iconlam(
             SChen: Or you can provide a string directory when a terrain raster can be found
 
     tracking: str
-            Determines wether your PV system is fixed or not.
+            Determines whether your PV system is fixed or not.
             Default is fixed.
             Option 1 is 'fixed' meaning that the module does not have any tracking capabilities.
             Option 2 is 'single_axis' meaning that the module has single_axis tracking capabilities.
 
     inverter: str
-            Determines wether you want to model your PV system with an inverter or not.
+            Determines whether you want to model your PV system with an inverter or not.
             Default is None.
             See reskit.solar.SolarWorkflowManager.apply_inverter_losses for more usage information.
 
@@ -578,7 +571,6 @@ def openfield_pv_iconlam(
     -------
     A xarray dataset including all the output variables you defined as your output_variables.
     """
-
     wf = SolarWorkflowManager(placements)
     wf.configure_cec_module(module, tech_year)
 
@@ -643,13 +635,9 @@ def openfield_pv_iconlam(
     # )
 
     loss_factor = 0.107  # general loss_factor by s.chen, 2024/05/08
-    wf.apply_loss_factor(
-        loss_factor, variables=["capacity_factor", "total_system_generation"]
-    )
+    wf.apply_loss_factor(loss_factor, variables=["capacity_factor", "total_system_generation"])
 
-    return wf.to_xarray(
-        output_netcdf_path=output_netcdf_path, output_variables=output_variables
-    )
+    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
 
 ########################

@@ -1,9 +1,9 @@
 from collections import namedtuple
+from os.path import dirname, join
+
 import numpy as np
-from os.path import join, dirname
 import pandas as pd
-from scipy.interpolate import splrep, splev
-from scipy.interpolate import PchipInterpolator
+from scipy.interpolate import PchipInterpolator, splev, splrep
 from scipy.stats import norm
 
 from ...util import ResError
@@ -85,8 +85,9 @@ class PowerCurve:
     def _repr_svg_(self):
         # return str(self)
 
-        import matplotlib.pyplot as plt
         from io import BytesIO
+
+        import matplotlib.pyplot as plt
 
         plt.figure(figsize=(7, 3))
         plt.plot(
@@ -128,7 +129,7 @@ class PowerCurve:
         -------
         [1] Ryberg, D. S., Caglayan, D. G., Schmitt, S., Linßen, J., Stolten, D., & Robinius, M. (2019). The future of European onshore wind energy potential: Detailed distribution and simulation of advanced turbine designs. Energy. https://doi.org/10.1016/j.energy.2019.06.052
 
-        See also
+        See Also
         --------
             PowerCurve.from_capacity_and_rotor_diam( <turbine capacity>, <turbine rotor diameter> )
         """
@@ -178,13 +179,11 @@ class PowerCurve:
         -------
         [1] Ryberg, D. S., Caglayan, D. G., Schmitt, S., Linßen, J., Stolten, D., & Robinius, M. (2019). The future of European onshore wind energy potential: Detailed distribution and simulation of advanced turbine designs. Energy. https://doi.org/10.1016/j.energy.2019.06.052
 
-        See also
+        See Also
         --------
             PowerCurve.from_specific_power( <turbine specific power> )
         """
-        return PowerCurve.from_specific_power(
-            compute_specific_power(capacity, rotor_diam)
-        )
+        return PowerCurve.from_specific_power(compute_specific_power(capacity, rotor_diam))
 
     def simulate(self, wind_speed):
         """
@@ -201,14 +200,11 @@ class PowerCurve:
             CorrespongDing capacity fators for the given wind speeds
 
         """
-
         powerCurveInterp = PchipInterpolator(self.wind_speed, self.capacity_factor)
         output = powerCurveInterp(wind_speed)
 
         if isinstance(wind_speed, pd.DataFrame):
-            output = pd.DataFrame(
-                output, index=wind_speed.index, columns=wind_speed.columns
-            )
+            output = pd.DataFrame(output, index=wind_speed.index, columns=wind_speed.columns)
 
         return output
 
@@ -229,8 +225,8 @@ class PowerCurve:
         numeric
             Average capacity factor
 
-        See also
-        -------
+        See Also
+        --------
             PowerCurve.expected_capacity_factor_from_distribution
 
         """
@@ -260,9 +256,7 @@ class PowerCurve:
         meanCapFac = (gen * pdf).sum() * dws
         return meanCapFac
 
-    def expected_capacity_factor_from_distribution(
-        self, wind_speed_values, wind_speed_counts
-    ):
+    def expected_capacity_factor_from_distribution(self, wind_speed_values, wind_speed_counts):
         """
         Computes the expected average capacity factor of a wind turbine based on an explicitly-provided wind speed distribution
 
@@ -287,8 +281,8 @@ class PowerCurve:
         numeric
             Average capacity factor
 
-        See also
-        -------
+        See Also
+        --------
             PowerCurve.expected_capacity_factor_from_weibull
 
         """
@@ -303,9 +297,7 @@ class PowerCurve:
             if not wind_speed_counts.shape[0] == wind_speed_values.shape[0]:
                 raise ResError("Dimensional incompatibility")
 
-            wind_speed_values = np.reshape(
-                wind_speed_values, (wind_speed_counts.shape[0], 1)
-            )
+            wind_speed_values = np.reshape(wind_speed_values, (wind_speed_counts.shape[0], 1))
 
         # Estimate generation distribution
         gen = (
@@ -362,7 +354,7 @@ class PowerCurve:
             The resulting convoluted power curve
 
         Notes
-        ------
+        -----
         The wind-speed-dependent standard deviation is computed with: std = wind_speed * scaling + base
 
         """
@@ -397,9 +389,7 @@ class PowerCurve:
         # Begin convolution
         convolutedCF = np.zeros(_steps)
         for i, ws_ in enumerate(ws):
-            convolutedCF[i] = (
-                norm.pdf(ws, loc=ws_, scale=scaling * ws_ + base) * cf
-            ).sum() * dws
+            convolutedCF[i] = (norm.pdf(ws, loc=ws_, scale=scaling * ws_ + base) * cf).sum() * dws
 
         # Correct cutoff, maybe
         if not extend_beyond_cut_out:

@@ -51,15 +51,13 @@ class Parameters:
         subclass : sub class instance
             The sub class to which the attribute shall be added.
 
-        Returns:
-        --------
+        Returns
+        -------
             None
         """
         # check the input file
         if not isinstance(fp, str) and os.path.splitext(fp)[-1] == ".csv":
-            raise TypeError(
-                f"Parameter filepath must be a str-formatted '.csv' file: {fp}"
-            )
+            raise TypeError(f"Parameter filepath must be a str-formatted '.csv' file: {fp}")
         if not os.path.isfile(fp):
             raise FileNotFoundError(f"Parameter filepath does not exist: {fp}")
 
@@ -73,14 +71,13 @@ class Parameters:
 
         def _get_value(data, year):
             """Interpolates values between neighboring years, or returns
-            exact value when available."""
-            assert isinstance(
-                data, pd.Series
-            ), f"data must be of pd.Series type. Here: {type(data)}: {data}"
+            exact value when available.
+            """
+            assert isinstance(data, pd.Series), f"data must be of pd.Series type. Here: {type(data)}: {data}"
             # avoid extrapolation
-            assert (
-                year >= data.index.min() and year <= data.index.max()
-            ), f"'year' {year} must be between the min. and max. ({data.index.min()}-{data.index.max()}) given data years to avoid extrapolation."
+            assert year >= data.index.min() and year <= data.index.max(), (
+                f"'year' {year} must be between the min. and max. ({data.index.min()}-{data.index.max()}) given data years to avoid extrapolation."
+            )
             # get the nearest year below and above the passed 'year' (if not 'year' available)
             _lower_year = data.index[data.index >= year].min()
             _higher_year = data.index[data.index <= year].max()
@@ -90,23 +87,20 @@ class Parameters:
                 _val = data[_lower_year]
             else:
                 # interpolate between the nearest years and return result
-                _val = data[_lower_year] + (data[_higher_year] - data[_lower_year]) * (
-                    year - _lower_year
-                ) / (_higher_year - _lower_year)
+                _val = data[_lower_year] + (data[_higher_year] - data[_lower_year]) * (year - _lower_year) / (
+                    _higher_year - _lower_year
+                )
 
             return _val
 
         # handle csv files
         if os.path.splitext(os.path.basename(fp))[-1] == ".csv":
-
             # load data from csv
             params_df = pd.read_csv(fp)
 
             # make sure year is in columns and set as index
             if not "year" in params_df.columns:
-                raise AttributeError(
-                    f"'year' is a mandatory column in parameter dataframe: {fp}"
-                )
+                raise AttributeError(f"'year' is a mandatory column in parameter dataframe: {fp}")
             if not all([isinstance(x, int) and x >= 0 for x in params_df.year]):
                 raise ValueError(
                     f"All 'year' entries in parameter dataframe must be integers > 0. Currently: {','.join([str(x) for x in params_df.year])}"
@@ -117,16 +111,14 @@ class Parameters:
             def _return_colum_type(_param):
                 try:
                     # check if we have a plant parameter
-                    assert (_param in getattr(subclass, "mand_args")) or (
-                        _param in getattr(subclass, "opt_args")
-                    )
+                    assert (_param in getattr(subclass, "mand_args")) or (_param in getattr(subclass, "opt_args"))
                     return "parameter"
                 except:
                     try:
                         # check if we have a plant parameter unit
-                        assert (
-                            _param.strip("_unit") in getattr(subclass, "mand_args")
-                        ) or (_param.strip("_unit") in getattr(subclass, "opt_args"))
+                        assert (_param.strip("_unit") in getattr(subclass, "mand_args")) or (
+                            _param.strip("_unit") in getattr(subclass, "opt_args")
+                        )
                         return "unit"
                     except:
                         return "other"
@@ -199,9 +191,7 @@ class Parameters:
                         flush=True,
                     )
             else:
-                raise AttributeError(
-                    f"kwarg '{_param}' is not an attribute of '{subclass.__class__.__name__}'"
-                )
+                raise AttributeError(f"kwarg '{_param}' is not an attribute of '{subclass.__class__.__name__}'")
 
 
 class OnshoreParameters(Parameters):
@@ -211,7 +201,7 @@ class OnshoreParameters(Parameters):
     onshore parameters.
 
     constant_rotor_diam : bool, optional
-        Whether the rotor diameter is mantained constant or not, by default True
+        Whether the rotor diameter is maintained constant or not, by default True
 
     base_capacity : numeric or array_like, optional
         Baseline turbine capacity in kW, by default 4200.
@@ -272,9 +262,7 @@ class OnshoreParameters(Parameters):
         if fp is None:
             # use the default file
             if DEFAULT_PATHS["baseline_onshore_turbine_definition_path"] is None:
-                fp = os.path.join(
-                    DATAFOLDER, "baseline_turbine_onshore_RybergEtAl2019.csv"
-                )
+                fp = os.path.join(DATAFOLDER, "baseline_turbine_onshore_RybergEtAl2019.csv")
             else:
                 fp = DEFAULT_PATHS["baseline_onshore_turbine_definition_path"]
 
@@ -308,17 +296,17 @@ class OffshoreParameters(Parameters):
         Refers to the number of mooring lines are there attaching a turbine only applicable for floating foundation types. By default 3 assuming a triangular attachment to the seafloor.
 
     anchor : str, optional
-        Turbine's anchor type only applicable for floating foundation types, by default as reccomended by [1].
+        Turbine's anchor type only applicable for floating foundation types, by default as recommended by [1].
         Arguments accepted are "dea" (drag embedment anchor) or "spa" (suction pile anchor).
 
     turbine_count : numeric, optional
         Number of turbines in the offshore windpark. CSM valid for the range [3-200], by default 80
 
     turbine_spacing : numeric, optional
-        Spacing distance in a row of turbines (turbines that share the electrical connection) to the bus. The value must be a multiplyer of rotor diameter. CSM valid for the range [4-9], by default 5
+        Spacing distance in a row of turbines (turbines that share the electrical connection) to the bus. The value must be a multiplier of rotor diameter. CSM valid for the range [4-9], by default 5
 
     turbine_row_spacing : numeric, optional
-        Spacing distance between rows of turbines. The value must be a multiplyer of rotor diameter. CSM valid for the range [4-10], by default 9
+        Spacing distance between rows of turbines. The value must be a multiplier of rotor diameter. CSM valid for the range [4-10], by default 9
 
     """
 
@@ -353,9 +341,7 @@ class OffshoreParameters(Parameters):
         if fp is None:
             # use the default file
             if DEFAULT_PATHS["baseline_offshore_turbine_definition_path"] is None:
-                fp = os.path.join(
-                    DATAFOLDER, "baseline_turbine_offshore_CaglayanEtAl2019.csv"
-                )
+                fp = os.path.join(DATAFOLDER, "baseline_turbine_offshore_CaglayanEtAl2019.csv")
             else:
                 fp = DEFAULT_PATHS["baseline_offshore_turbine_definition_path"]
 

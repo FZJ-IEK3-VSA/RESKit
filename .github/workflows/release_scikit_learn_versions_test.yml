@@ -1,0 +1,55 @@
+on:
+  workflow_dispatch:
+  # push:
+  #   branches: ["202-test-valid-dependency-range-for-reskit-43"]
+  pull_request:
+    branches: ["master"]
+
+jobs:
+  TestPushCondaForgeDev:
+    name: Test conda-forge development version on ${{ matrix.runner_tag }} for scikit-learn=${{ matrix.numpy_version }}
+    strategy:
+      fail-fast: false
+      matrix:
+        runner_tag: ["self-hosted"]
+        numpy_version:
+          [
+            "1.3.0",
+            "1.3.1",
+            "1.3.2",
+            "1.4.0",
+            "1.4.1.post1",
+            "1.4.2",
+            "1.5.0",
+            "1.5.1",
+            "1.5.2",
+            "1.6.0",
+            "1.6.1",
+            "1.7.0",
+            "1.7.1",
+            "1.7.2",
+          ]
+    uses: FZJ-IEK3-VSA/.github/.github/workflows/_run_single_conda_forge_test.yml@main
+    with:
+      runner_tag: ${{ matrix.runner_tag }}
+      requirements_file_name: requirements-dev.yml
+      library_name: "scikit-learn"
+      library_version: ${{ matrix.numpy_version }}
+      dependency_position_env_file: "11"
+      examples_to_execute: examples/1_load_input_data/1_2_1_reading_merra_weather_data.ipynb examples/1_load_input_data/1_2_2_vertically_project_wind_speed_from_merra.ipynb examples/2_economic/ examples/3_wind examples/4_solar examples/5_geothermal/ examples/6_direct_air_capture/
+
+  TestOtherOSCondaForge:
+    name: Test conda-forge development version on ${{ matrix.runner_tag }} for scikit-learn=${{ matrix.numpy_version }}
+    strategy:
+      fail-fast: false
+      matrix:
+        runner_tag: ["macos-latest", "windows-latest"]
+        numpy_version: ["1.3.0"]
+    uses: FZJ-IEK3-VSA/.github/.github/workflows/_run_single_conda_forge_test.yml@main
+    with:
+      runner_tag: ${{ matrix.runner_tag }}
+      requirements_file_name: requirements-dev.yml
+      library_name: "scikit-learn"
+      library_version: ${{ matrix.numpy_version }}
+      dependency_position_env_file: "11"
+      examples_to_execute: examples/1_load_input_data/1_2_1_reading_merra_weather_data.ipynb examples/1_load_input_data/1_2_2_vertically_project_wind_speed_from_merra.ipynb examples/2_economic/ examples/3_wind examples/4_solar examples/5_geothermal/ examples/6_direct_air_capture/

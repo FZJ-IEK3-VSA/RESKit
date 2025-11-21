@@ -1,14 +1,13 @@
-import numpy as np
-import geokit as gk
 from os.path import isfile
+
+import geokit as gk
+import numpy as np
 
 from ...util import ResError
 
 
 def location_to_tilt(locs, convention="Ryberg2020", **kwargs):
     """
-    def location_to_tilt(locs, convention="Ryberg2020", **kwargs)
-
     Simple system tilt estimator based off latitude and longitude coordinates
 
 

@@ -1,9 +1,17 @@
-import pandas as pd
+import copy
+
 import numpy as np
-from reskit.wind import WindWorkflowManager, PowerCurve
-import reskit as rk
+import pandas as pd
 import pytest
+
+import reskit as rk
 from reskit import TEST_DATA
+from reskit.wind import PowerCurve, WindWorkflowManager
+
+alternative_wind_speed_rasters = {
+    50: TEST_DATA["gwa50-like.tif"],
+    200: TEST_DATA["gwa200-like.tif"],
+}
 
 
 def test_WindWorkflowManager___init__():
@@ -32,37 +40,21 @@ def test_WindWorkflowManager___init__():
     placements["capacity"] = [2000, 3000, 4000, 5000, 6000]
     placements["rotor_diam"] = [136, 136, 136, 136, 136]
 
-    man = WindWorkflowManager(
-        placements, synthetic_power_curve_cut_out=25, synthetic_power_curve_rounding=1
-    )
+    man = WindWorkflowManager(placements, synthetic_power_curve_cut_out=25, synthetic_power_curve_rounding=1)
 
     assert np.isclose(man.ext.xMin, 6.083000)
     assert np.isclose(man.ext.xMax, 6.183000)
     assert np.isclose(man.ext.yMin, 50.475000)
     assert np.isclose(man.ext.yMax, 50.875000)
 
-    assert "SPC:138,25" in man.powerCurveLibrary and isinstance(
-        man.powerCurveLibrary["SPC:138,25"], PowerCurve
-    )
-    assert "SPC:207,25" in man.powerCurveLibrary and isinstance(
-        man.powerCurveLibrary["SPC:207,25"], PowerCurve
-    )
-    assert "SPC:275,25" in man.powerCurveLibrary and isinstance(
-        man.powerCurveLibrary["SPC:275,25"], PowerCurve
-    )
-    assert "SPC:344,25" in man.powerCurveLibrary and isinstance(
-        man.powerCurveLibrary["SPC:344,25"], PowerCurve
-    )
-    assert "SPC:413,25" in man.powerCurveLibrary and isinstance(
-        man.powerCurveLibrary["SPC:413,25"], PowerCurve
-    )
+    assert "SPC:138,25" in man.powerCurveLibrary and isinstance(man.powerCurveLibrary["SPC:138,25"], PowerCurve)
+    assert "SPC:207,25" in man.powerCurveLibrary and isinstance(man.powerCurveLibrary["SPC:207,25"], PowerCurve)
+    assert "SPC:275,25" in man.powerCurveLibrary and isinstance(man.powerCurveLibrary["SPC:275,25"], PowerCurve)
+    assert "SPC:344,25" in man.powerCurveLibrary and isinstance(man.powerCurveLibrary["SPC:344,25"], PowerCurve)
+    assert "SPC:413,25" in man.powerCurveLibrary and isinstance(man.powerCurveLibrary["SPC:413,25"], PowerCurve)
 
-    assert np.isclose(
-        man.powerCurveLibrary["SPC:138,25"].capacity_factor.mean(), 0.5743801652892562
-    )
-    assert np.isclose(
-        man.powerCurveLibrary["SPC:138,25"].capacity_factor.std(), 0.3267113684649957
-    )
+    assert np.isclose(man.powerCurveLibrary["SPC:138,25"].capacity_factor.mean(), 0.5743801652892562)
+    assert np.isclose(man.powerCurveLibrary["SPC:138,25"].capacity_factor.std(), 0.3267113684649957)
 
     assert (man.placements["lon"] == placements["lon"]).all()
     assert (man.placements["lat"] == placements["lat"]).all()
@@ -70,8 +62,7 @@ def test_WindWorkflowManager___init__():
     assert (man.placements["capacity"] == placements["capacity"]).all()
     assert (man.placements["rotor_diam"] == placements["rotor_diam"]).all()
     assert (
-        man.placements["powerCurve"]
-        == ["SPC:138,25", "SPC:207,25", "SPC:275,25", "SPC:344,25", "SPC:413,25"]
+        man.placements["powerCurve"] == ["SPC:138,25", "SPC:207,25", "SPC:275,25", "SPC:344,25", "SPC:413,25"]
     ).all()
 
     return man
@@ -84,9 +75,7 @@ def test_WindWorkflowManager_with_ws___init__():
     wind_speeds = np.random.randint(0, 16, size=(24, len(man.placements)))
     man.sim_data["elevated_wind_speed"] = wind_speeds
     # add wind speed height
-    man.elevated_wind_speed_height = np.random.randint(
-        60, 140, size=(1, len(man.placements))
-    )
+    man.elevated_wind_speed_height = np.random.randint(60, 140, size=(1, len(man.placements)))
     return man
 
 
@@ -107,9 +96,7 @@ def test_WindWorkflowManager_estimate_roughness_from_land_cover(
     pt_WindWorkflowManager_initialized,
 ):
     man = pt_WindWorkflowManager_initialized
-    man.estimate_roughness_from_land_cover(
-        rk.TEST_DATA["clc-aachen_clipped.tif"], source_type="clc"
-    )
+    man.estimate_roughness_from_land_cover(rk.TEST_DATA["clc-aachen_clipped.tif"], source_type="clc")
     assert (man.placements["roughness"] == [0.5, 0.0005, 0.03, 0.03, 0.3]).all()
 
 
@@ -148,6 +135,56 @@ def test_WindWorkflowManager_logarithmic_projection_of_wind_speeds_to_hub_height
     assert np.isclose(man.sim_data["elevated_wind_speed"].std(), 2.9112541058945705)
 
 
+def test_WindWorkflowManager_wind_shear_projection_of_wind_speeds_to_hub_height(
+    pt_WindWorkflowManager_loaded,
+):
+    man = pt_WindWorkflowManager_loaded
+
+    man.real_lra = np.array(
+        [5.64914904, 5.42147512, 5.65448952, 5.75908499, 5.94873524]
+    )  # set hardcoded values for 100m, are usually extracted before
+
+    man.wind_shear_projection_of_wind_speeds_to_hub_height(
+        alternative_wind_speed_rasters=alternative_wind_speed_rasters
+    )
+
+    assert np.isclose(man.sim_data["elevated_wind_speed"].mean(), 8.513871079082824)
+    assert np.isclose(man.sim_data["elevated_wind_speed"].std(), 3.0918568121980496)
+
+
+def test_WindWorkflowManager_project_windspeeds_to_hub_height(
+    pt_WindWorkflowManager_loaded,
+):
+    man = copy.copy(pt_WindWorkflowManager_loaded)
+
+    # exemplary test for LRA scaling
+    man.real_lra = np.array(
+        [5.64914904, 5.42147512, 5.65448952, 5.75908499, 5.94873524]
+    )  # set hardcoded values for 100m, are usually extracted before
+
+    man.project_windspeeds_to_hub_height(
+        height_scaling_method=("lra", "linear"),
+        height_scaling_data=alternative_wind_speed_rasters,
+        consider_boundary_layer_height=False,
+    )
+
+    assert np.isclose(man.sim_data["elevated_wind_speed"].mean(), 8.513871079082824)
+    assert np.isclose(man.sim_data["elevated_wind_speed"].std(), 3.0918568121980496)
+
+    # exemplary test for log scaling
+
+    man = copy.copy(pt_WindWorkflowManager_loaded)  # reset workflow manager
+
+    man.project_windspeeds_to_hub_height(
+        height_scaling_method=("log", "cci"),
+        height_scaling_data=TEST_DATA["ESA_CCI_2018_clip.tif"],
+        consider_boundary_layer_height=False,
+    )
+
+    assert np.isclose(man.sim_data["elevated_wind_speed"].mean(), 8.867024095907745)
+    assert np.isclose(man.sim_data["elevated_wind_speed"].std(), 3.2201061773430104)
+
+
 def test_WindWorkflowManager_apply_air_density_correction_to_wind_speeds(
     pt_WindWorkflowManager_loaded,
 ):
@@ -163,16 +200,11 @@ def test_WindWorkflowManager_convolute_power_curves(pt_WindWorkflowManager_initi
     man = pt_WindWorkflowManager_initialized
     man.convolute_power_curves(scaling=0.06, base=0.1)
 
-    assert np.isclose(
-        man.powerCurveLibrary["SPC:138,25"].capacity_factor.mean(), 0.47633148562562416
-    )
-    assert np.isclose(
-        man.powerCurveLibrary["SPC:138,25"].capacity_factor.std(), 0.4521186399908671
-    )
+    assert np.isclose(man.powerCurveLibrary["SPC:138,25"].capacity_factor.mean(), 0.47633148562562416)
+    assert np.isclose(man.powerCurveLibrary["SPC:138,25"].capacity_factor.std(), 0.4521186399908671)
 
 
 def test_WindWorkflowManager_apply_wake_correction_of_wind_speeds():
-
     # first without any "wake_curve"
     man = test_WindWorkflowManager_with_ws___init__()
     assert not "wake_curve" in man.placements.columns
@@ -237,9 +269,7 @@ def test_WindWorkflowManager_simulate(pt_WindWorkflowManager_loaded):
     )
 
     # repeat with correction factor raster
-    correction_raster = TEST_DATA[
-        "dummy_correction_factors.tif"
-    ]  # abuse GSA raster for correction (mean ~2.9)
+    correction_raster = TEST_DATA["dummy_correction_factors.tif"]  # abuse GSA raster for correction (mean ~2.9)
     man.simulate(cf_correction_factor=correction_raster, tolerance=tolerance)
 
     avg_corr_factor = 0.8348340150085444  # from dummy data
@@ -277,34 +307,19 @@ def test_WindWorkflowManager_mixed_values___init___():
     placements["rotor_diam"] = [136, 136, 136, 116, 136]
     placements["powerCurve"] = [None, None, None, "V117-3300", None]
 
-    man = WindWorkflowManager(
-        placements, synthetic_power_curve_cut_out=25, synthetic_power_curve_rounding=1
-    )
+    man = WindWorkflowManager(placements, synthetic_power_curve_cut_out=25, synthetic_power_curve_rounding=1)
 
-    assert "SPC:138,25" in man.powerCurveLibrary and isinstance(
-        man.powerCurveLibrary["SPC:138,25"], PowerCurve
-    )
-    assert "SPC:207,25" in man.powerCurveLibrary and isinstance(
-        man.powerCurveLibrary["SPC:207,25"], PowerCurve
-    )
-    assert "SPC:275,25" in man.powerCurveLibrary and isinstance(
-        man.powerCurveLibrary["SPC:275,25"], PowerCurve
-    )
-    assert "V117-3300" in man.powerCurveLibrary and isinstance(
-        man.powerCurveLibrary["V117-3300"], PowerCurve
-    )
-    assert "SPC:413,25" in man.powerCurveLibrary and isinstance(
-        man.powerCurveLibrary["SPC:413,25"], PowerCurve
-    )
+    assert "SPC:138,25" in man.powerCurveLibrary and isinstance(man.powerCurveLibrary["SPC:138,25"], PowerCurve)
+    assert "SPC:207,25" in man.powerCurveLibrary and isinstance(man.powerCurveLibrary["SPC:207,25"], PowerCurve)
+    assert "SPC:275,25" in man.powerCurveLibrary and isinstance(man.powerCurveLibrary["SPC:275,25"], PowerCurve)
+    assert "V117-3300" in man.powerCurveLibrary and isinstance(man.powerCurveLibrary["V117-3300"], PowerCurve)
+    assert "SPC:413,25" in man.powerCurveLibrary and isinstance(man.powerCurveLibrary["SPC:413,25"], PowerCurve)
 
     assert (man.placements["lon"] == placements["lon"]).all()
     assert (man.placements["lat"] == placements["lat"]).all()
     assert (man.placements["hub_height"] == placements["hub_height"]).all()
     assert (man.placements["capacity"] == placements["capacity"]).all()
     assert (man.placements["rotor_diam"] == placements["rotor_diam"]).all()
-    assert (
-        man.placements["powerCurve"]
-        == ["SPC:138,25", "SPC:207,25", "SPC:275,25", "V117-3300", "SPC:413,25"]
-    ).all()
+    assert (man.placements["powerCurve"] == ["SPC:138,25", "SPC:207,25", "SPC:275,25", "V117-3300", "SPC:413,25"]).all()
 
     return man

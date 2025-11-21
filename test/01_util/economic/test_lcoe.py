@@ -1,8 +1,9 @@
+import numpy as np
+
 from reskit.util.economic.lcoe import (
     levelized_cost_of_electricity,
     levelized_cost_of_electricity_simplified,
 )
-import numpy as np
 
 
 def test_levelized_cost_of_electricity():
