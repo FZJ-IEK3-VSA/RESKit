@@ -562,25 +562,19 @@ def onshoreTcc(
     return turbineCapitalCost
 
 
-
-
-
-
 def installationCostTurbine(
-    
-    waterDepth=17, #m
-    maxJacketDepth=55, #m
-    vesselCapacity=7, #units/lift
-    portDistance=17,#km
-    vesselSpeed=18.5,#km/h
-    loadingTime=30,#h
+    waterDepth=17,  # m
+    maxJacketDepth=55,  # m
+    vesselCapacity=7,  # units/lift
+    portDistance=17,  # km
+    vesselSpeed=18.5,  # km/h
+    loadingTime=30,  # h
     installationTime=90,
-    numberOfWindTurbines=2, #numberofWIndturbines in WIndpark
-    dayRate=40000, #€/d,
-    turbineCapacity=15, #MW
-    vesselCapacityFixedFoundationTurbines=40, #MW transported per lift by Rougeau et al.
+    numberOfWindTurbines=2,  # numberofWIndturbines in WIndpark
+    dayRate=40000,  # €/d,
+    turbineCapacity=15,  # MW
+    vesselCapacityFixedFoundationTurbines=40,  # MW transported per lift by Rougeau et al.
 ):
-    
     """
     Calculates the installation cost per turbine for an offshore wind farm, based on
     water depth, vessel logistics, loading and installation times, and turbine capacity.
@@ -623,61 +617,63 @@ def installationCostTurbine(
         Installation cost per turbine, in euros.
 
     """
-    assert 0<=waterDepth , f'waterdepth is {waterDepth}, but must not be smaller than 0.'
+    assert 0 <= waterDepth, (
+        f"waterdepth is {waterDepth}, but must not be smaller than 0."
+    )
 
-
-
-    if waterDepth<=maxJacketDepth:
-        platformType='fixed'
+    if waterDepth <= maxJacketDepth:
+        platformType = "fixed"
     else:
-        platformType='anchorages'
+        platformType = "anchorages"
 
-    
-    if platformType=='fixed':
-        VesselSpeed=18.5
-        loadingTime=24
-        installationTime=144
-        dayRate=200000
-        vesselCapacity=math.floor(vesselCapacityFixedFoundationTurbines/turbineCapacity)
-    
+    if platformType == "fixed":
+        VesselSpeed = 18.5
+        loadingTime = 24
+        installationTime = 144
+        dayRate = 200000
+        vesselCapacity = math.floor(
+            vesselCapacityFixedFoundationTurbines / turbineCapacity
+        )
+
     else:
-        VesselSpeed=18.5
-        loadingTime=30
-        installationTime=90
-        dayRate=40000
-        vesselCapacity=7
+        VesselSpeed = 18.5
+        loadingTime = 30
+        installationTime = 90
+        dayRate = 40000
+        vesselCapacity = 7
 
-    # calculate the number of requried lifts for the whole windpark 
+    # calculate the number of requried lifts for the whole windpark
 
-    liftNumber=numberOfWindTurbines/vesselCapacity
-    turbineInstallationCost=(liftNumber *((2*portDistance/VesselSpeed)+loadingTime)+installationTime*numberOfWindTurbines)*(dayRate/24) #  € installation Cost for whole windpark 
+    liftNumber = numberOfWindTurbines / vesselCapacity
+    turbineInstallationCost = (
+        liftNumber * ((2 * portDistance / VesselSpeed) + loadingTime)
+        + installationTime * numberOfWindTurbines
+    ) * (dayRate / 24)  #  € installation Cost for whole windpark
 
-    installedPowerPerWindpark=numberOfWindTurbines*turbineCapacity
+    installedPowerPerWindpark = numberOfWindTurbines * turbineCapacity
 
-    turbineInstallationCostperTurbine=turbineInstallationCost/numberOfWindTurbines # Euro/Turbine
-    turbineInstallationCostperCapacity=turbineInstallationCost/installedPowerPerWindpark #Euro/MW
-
+    turbineInstallationCostperTurbine = (
+        turbineInstallationCost / numberOfWindTurbines
+    )  # Euro/Turbine
+    turbineInstallationCostperCapacity = (
+        turbineInstallationCost / installedPowerPerWindpark
+    )  # Euro/MW
 
     return turbineInstallationCostperTurbine
 
 
-
-
-def installationCostPlattform (
-        
-
-    waterDepth=17, #m
-    maxJacketDepth=55, #m
-    vesselCapacity=3, #units/lift
-    portDistance=17,#km
-    vesselSpeed=18.5,#km/h
-    loadingTime=30,#h
+def installationCostPlattform(
+    waterDepth=17,  # m
+    maxJacketDepth=55,  # m
+    vesselCapacity=3,  # units/lift
+    portDistance=17,  # km
+    vesselSpeed=18.5,  # km/h
+    loadingTime=30,  # h
     installationTime=90,
-    numberOfPlatforms=1, #numberofWIndturbines in WIndpark
-    dayRate=40000, #€/d,
-    turbineCapacity=15, #MW
-    numberOfWindTurbines=3
-  
+    numberOfPlatforms=1,  # numberofWIndturbines in WIndpark
+    dayRate=40000,  # €/d,
+    turbineCapacity=15,  # MW
+    numberOfWindTurbines=3,
 ):
     """
     Calculates the installation cost per turbine for offshore platforms (fixed or floating),
@@ -725,49 +721,52 @@ def installationCostPlattform (
 
     """
 
-    assert 0<=waterDepth , f'waterdepth is {waterDepth}, but must not be smaller than 0.'
+    assert 0 <= waterDepth, (
+        f"waterdepth is {waterDepth}, but must not be smaller than 0."
+    )
 
-
-
-    if waterDepth<=maxJacketDepth:
-        platformType='fixed'
+    if waterDepth <= maxJacketDepth:
+        platformType = "fixed"
     else:
-        platformType='anchorages'
+        platformType = "anchorages"
 
-    
-    if platformType=='fixed':
-        vesselSpeed=18.5
-        loadingTime=24
-        installationTime=96
-        dayRate=200000
-        vesselCapacity=1
-        
-    
+    if platformType == "fixed":
+        vesselSpeed = 18.5
+        loadingTime = 24
+        installationTime = 96
+        dayRate = 200000
+        vesselCapacity = 1
+
     else:
-        vesselSpeed=18.5
-        loadingTime=30
-        installationTime=90
-        dayRate=40000
-        vesselCapacity=3
+        vesselSpeed = 18.5
+        loadingTime = 30
+        installationTime = 90
+        dayRate = 40000
+        vesselCapacity = 3
 
-    # calculate the number of requried lifts for the whole windpark 
+    # calculate the number of requried lifts for the whole windpark
 
-    liftNumber=numberOfPlatforms/vesselCapacity
-    platformInstallationCost=(liftNumber *((2*portDistance/vesselSpeed)+loadingTime)+installationTime*numberOfPlatforms)*(dayRate/24) #  € installation Cost for whole windpark 
+    liftNumber = numberOfPlatforms / vesselCapacity
+    platformInstallationCost = (
+        liftNumber * ((2 * portDistance / vesselSpeed) + loadingTime)
+        + installationTime * numberOfPlatforms
+    ) * (dayRate / 24)  #  € installation Cost for whole windpark
 
- 
+    platformInstallationCostperTurbine = (
+        platformInstallationCost / numberOfWindTurbines
+    )  # Euro/Turbine
 
-    platformInstallationCostperTurbine=platformInstallationCost/numberOfWindTurbines # Euro/Turbine
-    
-    platformInstallationCostperCapacity=platformInstallationCost/(numberOfWindTurbines*turbineCapacity) # Euro/MW
+    platformInstallationCostperCapacity = platformInstallationCost / (
+        numberOfWindTurbines * turbineCapacity
+    )  # Euro/MW
 
     return platformInstallationCostperTurbine
 
 
-#TODO considering how to include cable cost.... seems to be highly complicated and is implmened wrongly here so far
+# TODO considering how to include cable cost.... seems to be highly complicated and is implmened wrongly here so far
 def installationCostCables(
-    lengthOfCables=17000, # m
-    voltageType="dc"
+    lengthOfCables=17000,  # m
+    voltageType="dc",
 ):
     """
     Calculates the installation cost of offshore cables based on cable length and voltage type.
@@ -791,31 +790,25 @@ def installationCostCables(
 
     """
 
+    assert voltageType in ["dc", "ac", "interarray"], (
+        "voltatgeType must be ac, dc, or interarray"
+    )
 
-    assert voltageType in ["dc","ac","interarray"], "voltatgeType must be ac, dc, or interarray"
+    if voltageType == "dc":
+        linearInstallationCost = 1
 
-    
-    if voltageType=="dc":
-        linearInstallationCost=1
-    
-    if voltageType=="ac":
-         linearInstallationCost=1
-    
-    if voltageType=="interarray":
-        linearInstallationCost=1
-    
-    
-        
+    if voltageType == "ac":
+        linearInstallationCost = 1
 
-    CableInstallationCost=linearInstallationCost*lengthOfCables
+    if voltageType == "interarray":
+        linearInstallationCost = 1
+
+    CableInstallationCost = linearInstallationCost * lengthOfCables
 
     return CableInstallationCost
 
 
-def installationPipelineCost(
-    pipelineType="export",
-    lengthOfPipe=17000
-):
+def installationPipelineCost(pipelineType="export", lengthOfPipe=17000):
     """
     Calculates the installation cost of an offshore pipeline based on pipeline type and length.
 
@@ -841,19 +834,17 @@ def installationPipelineCost(
     Sustainable Energy Reviews 187, p. 113699. DOI: 10.1016/j.rser.2023.113699.
     """
 
-    assert pipelineType in ["infield","export"], "pipelineType must be in ['infield','export]"
+    assert pipelineType in ["infield", "export"], (
+        "pipelineType must be in ['infield','export]"
+    )
 
+    if pipelineType == "infield":
+        layRate = 7000  # meter/day
+        dayrateVessel = 400000  # euro/day
 
-    if pipelineType=="infield":
-        layRate=7000 #meter/day
-        dayrateVessel=400000 #euro/day      
-
-    if pipelineType=="export":
-        layRate=4000 #meter/day
-        dayrateVessel=700000 #euro/day   
-    PipelineInstallationCOst=lengthOfPipe/layRate*dayrateVessel
-
+    if pipelineType == "export":
+        layRate = 4000  # meter/day
+        dayrateVessel = 700000  # euro/day
+    PipelineInstallationCOst = lengthOfPipe / layRate * dayrateVessel
 
     return PipelineInstallationCOst
-    
-
