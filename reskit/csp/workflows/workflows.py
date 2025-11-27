@@ -161,58 +161,73 @@ def CSP_PTR_ERA5_specific_dataset(
     Date: 27.07.2021
     Author: David Franzmann, IEK-3
 
-    Args:
-        placements (pd.DataFrame):
-            DataFrame containing locations for simulation.
-            Required columns: longitude, latitude, and one area column ("area_m2", "area", "aperture_area_m2", or "land_area_m2").
-        era5_path (str or rk_weather.NCSource):
-            Path to ERA5 weather data or an NCSource object.
-            Must provide columns: "direct_horizontal_irradiance", "surface_wind_speed", "surface_air_temperature".
-        global_solar_atlas_dni_path (str, float, np.ndarray):
+    Parameters
+    ----------
+    placements: Pandas DataFrame
+        Locations where to perform simulations at.
+        Required columns: longitude, latitude, and one area column ("area_m2", "area", "aperture_area_m2", or "land_area_m2").
+    
+    era5_path: str or rk_weather.NCSource
+        Path to ERA5 weather data or an NCSource object.
+        Required columns: "direct_horizontal_irradiance", "surface_wind_speed", "surface_air_temperature".
+    
+    global_solar_atlas_dni_path: str or float or np.ndarray
+        Long-term average DNI data for placements. Could be provided as:
             - str: Path to raster file with DNI data from Global Solar Atlas.
             - float: Constant DNI value for all placements.
             - np.ndarray: Array of DNI values, shape must match (placements,) or (time, placements).
-        datasetname (str, optional):
-            Name of the CSP technology dataset (e.g., "Heliosol", "SolarSalt").
-            Defaults to "Validation 10". See csp/data/CSP_database.xlsx for options.
-        elev_path (str or list, optional):
+    
+    datasetname: str, optional
+        Name of the CSP technology dataset (e.g., "Heliosol", "SolarSalt").
+        Defaults to "Validation 10". See csp/data/CSP_database.xlsx for options.
+    
+    elev_path: str or list, optional
+        Elevation data for placements. Could be provided as:
             - str: Path to raster file with elevation data.
             - list: Elevation values for each placement.
-        output_netcdf_path (str, optional):
-            If provided, writes the resulting XArray dataset to this path.
-            Defaults to None.
-        output_variables (List[str], optional):
-            List of variable names to include in the output dataset.
-            If None, includes all suitable variables from placements, workflow parameters, simulation data, and time index.
-            Only numeric or string variables are supported due to NetCDF4 limitations.
-        return_self (bool, optional):
-            If True, returns the workflow manager object.
-            If False, returns the output as an XArray dataset.
-            Defaults to True.
-        JITaccelerate (bool, optional):
-            If True, enables JIT acceleration for some calculations.
-            Defaults to False.
-        verbose (bool, optional):
-            If True, prints progress information.
-            Defaults to False.
-        debug_vars (bool, optional):
-            If True, retains intermediate variables for debugging.
-            Defaults to False.
-        onlynightuse (bool, optional):
-            If True, optimizes plant size for night use only.
-            Defaults to True.
-        fullvariation (bool, optional):
-            If True, applies full variation in calculations.
-            Defaults to False.
-        _validation (bool, optional):
-            If True, runs in validation mode (some input data may be replaced).
-            Defaults to False.
+    
+    output_netcdf_path: str, optional
+        Path to a file that you want to save your output NETCDF file at.
+        Defaults to None.
+    
+    output_variables: List[str, numeric], optional
+        Output variables of the simulation that you want to save.
+        If None, includes all suitable variables from placements, workflow parameters, simulation data, and time index.
+    
+    return_self: bool, optional
+        If True, returns the workflow manager object.
+        If False, returns the output as an XArray dataset.
+        Defaults to True.
+    
+    JITaccelerate: bool, optional
+        If True, enables JIT acceleration for some calculations.
+        Defaults to False.
+    
+    verbose: bool, optional
+        If True, prints progress information.
+        Defaults to False.
+    
+    debug_vars: bool, optional
+        If True, retains intermediate variables for debugging.
+        Defaults to False.
+    
+    onlynightuse: bool, optional
+        If True, optimizes plant size for night use only.
+        Defaults to True.
+    
+    fullvariation: bool, optional
+        If True, applies full variation in calculations.
+        Defaults to False.
+    
+    _validation: bool, optional
+        If True, runs in validation mode (some input data may be replaced).
+        Defaults to False.
 
-    Returns:
-        wf (PTRWorkflowManager) if return_self is True:
-            The workflow manager object containing all simulation results and data.
-        xr.Dataset if return_self is False:
-            XArray dataset with simulation results, optionally written to disk if output_netcdf_path is provided.
+    Returns
+    -------
+    if return_self is True, the workflow manager object (PTRWorkflowManager) containing all simulation results and data.
+    if return_self is False, a xarray dataset containing the final simulation results. This dataset is optionally written to disk if output_netcdf_path was specified.
+    
     """
   
 
@@ -270,12 +285,6 @@ def CSP_PTR_ERA5_specific_dataset(
     # ERA5 DIN: Heat flux per horizontal plane
     # DNI convention: Heat flux per normal (to zenith) plane
     wf.direct_normal_irradiance_from_trigonometry()
-
-    # do long run averaging for DNI
-    # TODO: remove
-    if global_solar_atlas_dni_path == "default_cluster":
-        global_solar_atlas_dni_path = r"/fast/central/shared_data/2023_gears/geography/irradiance/global_solar_atlas_v2.5/World_DNI_GISdata_LTAy_AvgDailyTotals_GlobalSolarAtlas-v2_GEOTIFF/DNI.tif"
-
 
     if _validation:
         # when doing the valitadion, the dni atlas was not finally processed,
