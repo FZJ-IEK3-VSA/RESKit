@@ -110,13 +110,15 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
             columns=["cp", "density"],
         )  # index refers to ambient air temperature
 
-        self.evaporationCoolingData = pd.DataFrame(data=[[1006, 1860, 2.257*10**6, 4184]], columns = ["cp_air", "cp_vapor", "evaporationHeat", "cp_water"]) #J/(kg*K), J/(kg*K), J/(kg), J/(kg*K)  
+        self.evaporationCoolingData = pd.DataFrame(
+            data=[[1006, 1860, 2.257 * 10**6, 4184]], columns=["cp_air", "cp_vapor", "evaporationHeat", "cp_water"]
+        )  # J/(kg*K), J/(kg*K), J/(kg), J/(kg*K)
 
     def calculate_approach_evaporative_cooling(
-            self,
-            temperatureCoolant: float | int,
-            heatTransferDelta: float | int,
-            efficiencyCoolingTower: float | int,
+        self,
+        temperatureCoolant: float | int,
+        heatTransferDelta: float | int,
+        efficiencyCoolingTower: float | int,
     ):
         """
         Calculate the approach temperature for an evaporative-cooling system.
@@ -170,9 +172,9 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
         efficiencyCoolingTower : float | int
             Efficiency of the cooling tower system [0, 1]
         factorDriftLosses : float | int
-            Drift losses by small water droplets carried away by the exhaust air. Defaults to 0.001. [1] 
+            Drift losses by small water droplets carried away by the exhaust air. Defaults to 0.001. [1]
         typical_cycles_blowdown: int
-            after how many cycles the blowdown occurs to prevent accumulation of impurities. Defaults to 5. [2] 
+            after how many cycles the blowdown occurs to prevent accumulation of impurities. Defaults to 5. [2]
 
         Returns
         -------
@@ -186,43 +188,63 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
         """
         specific_humidity_inlet = calculate_specific_humidity(
             self.sim_data["surface_air_temperature"],
-            self.sim_data["relative_humidity"]/100, #relative humidity between 0,1 needed to calcaulte the specific humidity
-            )
+            self.sim_data["relative_humidity"]
+            / 100,  # relative humidity between 0,1 needed to calcaulte the specific humidity
+        )
         specific_humidity_outlet = calculate_specific_humidity(
             self.sim_data["wet_bulb_temperature"] + self.sim_data["approach_temperature_evaporative_cooling"],
-            np.full_like(self.sim_data["wet_bulb_temperature"], 1.0), 
-            )
-        
-        specific_enthalpy_inlet = self.evaporationCoolingData["cp_air"][0] * (self.sim_data["surface_air_temperature"] + 273.15) + specific_humidity_inlet * (self.evaporationCoolingData["cp_vapor"][0] * (self.sim_data["surface_air_temperature"] + 273.15) + self.evaporationCoolingData["evaporationHeat"][0]) # J/kg
-        specific_enthalpy_outlet = self.evaporationCoolingData["cp_air"][0] * ((self.sim_data["wet_bulb_temperature"]+273.15) + self.sim_data["approach_temperature_evaporative_cooling"]) + specific_humidity_outlet * (self.evaporationCoolingData["cp_vapor"][0] * ((self.sim_data["wet_bulb_temperature"]+273.15) + self.sim_data["approach_temperature_evaporative_cooling"]) + self.evaporationCoolingData["evaporationHeat"][0]) # J/kg
+            np.full_like(self.sim_data["wet_bulb_temperature"], 1.0),
+        )
 
-        #calculate needed air mass specific for 1 kWh cooling load
-        air_mass = 1 / ((specific_enthalpy_outlet - specific_enthalpy_inlet)/3600000) #enthalpy from J/kg to kWh/kg --> air_mass in kg (per kWh)
+        specific_enthalpy_inlet = self.evaporationCoolingData["cp_air"][0] * (
+            self.sim_data["surface_air_temperature"] + 273.15
+        ) + specific_humidity_inlet * (
+            self.evaporationCoolingData["cp_vapor"][0] * (self.sim_data["surface_air_temperature"] + 273.15)
+            + self.evaporationCoolingData["evaporationHeat"][0]
+        )  # J/kg
+        specific_enthalpy_outlet = self.evaporationCoolingData["cp_air"][0] * (
+            (self.sim_data["wet_bulb_temperature"] + 273.15) + self.sim_data["approach_temperature_evaporative_cooling"]
+        ) + specific_humidity_outlet * (
+            self.evaporationCoolingData["cp_vapor"][0]
+            * (
+                (self.sim_data["wet_bulb_temperature"] + 273.15)
+                + self.sim_data["approach_temperature_evaporative_cooling"]
+            )
+            + self.evaporationCoolingData["evaporationHeat"][0]
+        )  # J/kg
+
+        # calculate needed air mass specific for 1 kWh cooling load
+        air_mass = 1 / (
+            (specific_enthalpy_outlet - specific_enthalpy_inlet) / 3600000
+        )  # enthalpy from J/kg to kWh/kg --> air_mass in kg (per kWh)
         evaporation_loss = air_mass * (specific_humidity_outlet - specific_humidity_inlet)
         self.sim_data["specific_mass_evaporation_loss"] = evaporation_loss
 
-        #drift losses:
-        water_mass =  1 / (self.evaporationCoolingData["cp_water"] * heatTransferDelta /3600000) #calcualte total water mass, enthalpy from J/kg to kWh/kg --> water_mass in kg (per kWh)
+        # drift losses:
+        water_mass = 1 / (
+            self.evaporationCoolingData["cp_water"] * heatTransferDelta / 3600000
+        )  # calcualte total water mass, enthalpy from J/kg to kWh/kg --> water_mass in kg (per kWh)
         drift_losses = water_mass * factorDriftLosses
         self.sim_data["specific_mass_drift_loss"] = drift_losses
 
-        #blowdown losses (periodic discharge of water to prevent accumulation of impurities):
+        # blowdown losses (periodic discharge of water to prevent accumulation of impurities):
         blowdown_losses = evaporation_loss / (typical_cycles_blowdown - 1)
         self.sim_data["specific_mass_blowdown_loss"] = blowdown_losses
 
-        self.sim_data["conversion_factor_water"] = -(evaporation_loss + drift_losses[0] + blowdown_losses) #corresponds to the water losses (therefore negative)
+        self.sim_data["conversion_factor_water"] = -(
+            evaporation_loss + drift_losses[0] + blowdown_losses
+        )  # corresponds to the water losses (therefore negative)
 
         units = {
             "capacity": "kW_th",
             "conversion_factor_water": "kg_H2O/kWh_th",
             "wet_bulb_temperature": "°C",
             "approach_temperature_evaporative_cooling": "K",
-            "specific_mass_evaporation_loss" : "kg_H2O/kWh_th",
-            "specific_mass_drift_loss" : "kg_H2O/kWh_th",
-            "specific_mass_blowdown_loss" : "kg_H2O/kWh_th",
+            "specific_mass_evaporation_loss": "kg_H2O/kWh_th",
+            "specific_mass_drift_loss": "kg_H2O/kWh_th",
+            "specific_mass_blowdown_loss": "kg_H2O/kWh_th",
         }
         self.units = OrderedDict(units)
-
 
     def calculate_fan_power_air_cooling(
         self,

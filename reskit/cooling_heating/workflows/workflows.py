@@ -9,6 +9,7 @@ from .cooling_heating_workflow_manager import CoolingHeatingWorkflowManager
 from ...util.relative_humidity import calculate_relative_humidity
 from ...util.wet_bulb_temperature import calculate_wet_bulb_temperature
 
+
 def evaporative_cooling_wortmann2025(
     placements: pd.DataFrame,
     era5_path: str,
@@ -83,10 +84,6 @@ def evaporative_cooling_wortmann2025(
     assert 0 < efficiencyPump <= 1, "efficiencyPump must be between 0 and 1"
 
     wf = CoolingHeatingWorkflowManager(placements)
-
-
-
-
 
 
 def air_cooling_wenzel2025(
@@ -376,7 +373,6 @@ def evaporative_cooling_wortmann2025(
     assert 0 < efficiencyCoolingTower <= 1, "efficiencyCoolingTower must be between 0 and 1"
     assert 0 < factorDriftLosses <= 1, "factorDriftLosses must be between 0 and 1"
 
-
     wf = CoolingHeatingWorkflowManager(placements)
 
     wf.read(
@@ -393,14 +389,13 @@ def evaporative_cooling_wortmann2025(
     )
 
     wf.sim_data["wet_bulb_temperature"] = calculate_wet_bulb_temperature(
-        air_temperature=wf.sim_data["surface_air_temperature"],
-        relative_humidity=wf.sim_data["relative_humidity"]
+        air_temperature=wf.sim_data["surface_air_temperature"], relative_humidity=wf.sim_data["relative_humidity"]
     )
 
     wf.calculate_approach_evaporative_cooling(
-            temperatureCoolant=temperatureCoolant,
-            heatTransferDelta=heatTransferDelta,
-            efficiencyCoolingTower=efficiencyCoolingTower
+        temperatureCoolant=temperatureCoolant,
+        heatTransferDelta=heatTransferDelta,
+        efficiencyCoolingTower=efficiencyCoolingTower,
     )
 
     wf.calculate_water_losses_evaporative_cooling(
@@ -408,14 +403,11 @@ def evaporative_cooling_wortmann2025(
         heatTransferDelta=heatTransferDelta,
         efficiencyCoolingTower=efficiencyCoolingTower,
         factorDriftLosses=factorDriftLosses,
-        typical_cycles_blowdown=typical_cycles_blowdown
+        typical_cycles_blowdown=typical_cycles_blowdown,
     )
 
-    #calculate total water demand for the plant 
-    wf.sim_data["total_water_losses"] = (
-        -wf.sim_data["conversion_factor_water"]
-        * np.array(wf.placements["capacity"])
-    )
+    # calculate total water demand for the plant
+    wf.sim_data["total_water_losses"] = -wf.sim_data["conversion_factor_water"] * np.array(wf.placements["capacity"])
 
     return wf.to_xarray(
         output_netcdf_path=output_netcdf_path,

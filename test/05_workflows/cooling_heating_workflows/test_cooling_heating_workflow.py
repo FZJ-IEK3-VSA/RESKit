@@ -7,7 +7,11 @@ import pytest
 
 import reskit.weather as rk_weather
 from reskit import TEST_DATA
-from reskit.cooling_heating.workflows.workflows import air_cooling_wenzel2025, air_source_heat_pump, evaporative_cooling_wortmann2025
+from reskit.cooling_heating.workflows.workflows import (
+    air_cooling_wenzel2025,
+    air_source_heat_pump,
+    evaporative_cooling_wortmann2025,
+)
 
 
 @pytest.fixture
@@ -53,6 +57,7 @@ def test_air_cooling_wenzel2025(placements: pd.DataFrame):
             [0.00075725, 0.00066738, 0.00079315],
         )
     )
+
 
 def test_evaporative_cooling_wortmann2025(placements: pd.DataFrame):
     gen = evaporative_cooling_wortmann2025(
