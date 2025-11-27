@@ -1,17 +1,16 @@
-import pytest
-from papermill import execute_notebook
 from glob import glob
 from os import path
+
+import pytest
+from papermill import execute_notebook
 
 TEST_DIR = path.dirname(__file__)
 notebooks = glob(path.join(TEST_DIR, "..", "..", "..", "examples", "*.ipynb"))
 
 # This will create a test function for each ".ipynb" file in the examples folder
-# Note: The notebooks are only checked that they can run without rasing an error.
+# Note: The notebooks are only checked that they can run without raising an error.
 #       The outputs are not tested
 
 for notebook in notebooks:
     notebook_name = path.splitext(path.basename(notebook))[0]
-    globals()["test_" + notebook_name] = lambda: execute_notebook(
-        notebook, notebook_name + ".ipynb"
-    )
+    globals()["test_" + notebook_name] = lambda: execute_notebook(notebook, notebook_name + ".ipynb")

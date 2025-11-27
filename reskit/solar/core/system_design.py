@@ -56,8 +56,6 @@ def location_to_module_azimuth(
 
 def location_to_module_tilt(locs, convention: str = "Ryberg2020", **kwargs):
     """
-    def location_to_tilt(locs, convention="Ryberg2020", **kwargs)
-
     Simple system tilt estimator based off latitude and longitude coordinates
 
 

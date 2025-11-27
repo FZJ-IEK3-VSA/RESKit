@@ -4,13 +4,15 @@ import numpy as np
 import yaml
 
 from os.path import isfile, splitext
+from collections import OrderedDict
+from types import FunctionType
 import warnings
 from scipy.interpolate import RectBivariateSpline
 import json
 import numbers
 from collections.abc import Iterable, Callable
 
-# from reskit import solarpower
+from ...workflow_manager import WorkflowManager
 
 from reskit.solar import core as rk_solar_core
 from reskit.workflow_manager import WorkflowManager
@@ -32,7 +34,6 @@ class LazyLoader:
         """
         LazyLoader is a utility class which postpones the "real" importing of the desired module until the time when it is actually needed
         """
-
         self.lib_name = lib_name
         self._mod = None
 
@@ -64,7 +65,6 @@ class SolarWorkflowManager(WorkflowManager):
         SolarWorkflorManager
 
         """
-
         # Do basic workflow construction
         super().__init__(placements)
         self._time_sel_ = None
@@ -727,13 +727,9 @@ class SolarWorkflowManager(WorkflowManager):
         solar_position_library = dict()
 
         # pd.DataFrame(np.nan, index=self.time_index, columns=self.locs)
-        self.sim_data["solar_azimuth"] = np.full_like(
-            self.sim_data["surface_pressure"], np.nan
-        )
+        self.sim_data["solar_azimuth"] = np.full_like(self.sim_data["surface_pressure"], np.nan)
         # pd.DataFrame(np.nan, index=self.time_index, columns=self.locs)
-        self.sim_data["apparent_solar_zenith"] = np.full_like(
-            self.sim_data["surface_pressure"], np.nan
-        )
+        self.sim_data["apparent_solar_zenith"] = np.full_like(self.sim_data["surface_pressure"], np.nan)
         # self.sim_data['apparent_solar_elevation'] = np.full_like(self.sim_data['surface_pressure'], np.nan)  # pd.DataFrame(np.nan, index=self.time_index, columns=self.locs)
 
         for loc, row in enumerate(rounded_locs.itertuples()):
@@ -796,7 +792,6 @@ class SolarWorkflowManager(WorkflowManager):
         -----
         Required data in the sim_data dictionary are 'apparent_solar_zenith'.
         """
-
         if self._time_sel_ is not None:
             warnings.warn("Filtering already applied, skipping...")
             return self
@@ -844,15 +839,10 @@ class SolarWorkflowManager(WorkflowManager):
         [6]	ASCE, 2005. The ASCE Standardized Reference Evapotranspiration Equation, Environmental and Water Resources Institute of the American Civil Engineers, Ed. R. G. Allen et al.
 
         """
-
-        dni_extra = pvlib.irradiance.get_extra_radiation(
-            self._time_index_, **kwargs
-        ).values
+        dni_extra = pvlib.irradiance.get_extra_radiation(self._time_index_, **kwargs).values
 
         shape = len(self._time_index_), self.locs.count
-        self.sim_data["extra_terrestrial_irradiance"] = np.broadcast_to(
-            dni_extra.reshape((shape[0], 1)), shape
-        )
+        self.sim_data["extra_terrestrial_irradiance"] = np.broadcast_to(dni_extra.reshape((shape[0], 1)), shape)
 
         return self
 
@@ -902,10 +892,8 @@ class SolarWorkflowManager(WorkflowManager):
         assert "apparent_solar_zenith" in self.sim_data,\
             "'apparent_solar_zenith' is a mandatory self.sim_data argument. Calculate e.g. via self.determine_solar_position()"
 
-        # 29 becasue that what the function seems to max out at as zenith approaches 90
-        self.sim_data["air_mass"] = np.full_like(
-            self.sim_data["apparent_solar_zenith"], 29
-        )
+        # 29 because that what the function seems to max out at as zenith approaches 90
+        self.sim_data["air_mass"] = np.full_like(self.sim_data["apparent_solar_zenith"], 29)
 
         s = self.sim_data["apparent_solar_zenith"] < 90
         self.sim_data["air_mass"][s] = pvlib.atmosphere.get_relative_airmass(
@@ -945,7 +933,6 @@ class SolarWorkflowManager(WorkflowManager):
         [3]	Maxwell, E. L., “A Quasi-Physical Model for Converting Hourly Global Horizontal to Direct Normal Insolation”, Technical Report No. SERI/TR-215-3087, Golden, CO: Solar Energy Research Institute, 1987.
 
         """
-
         assert "global_horizontal_irradiance" in self.sim_data
         assert "surface_pressure" in self.sim_data
         assert "surface_dew_temperature" in self.sim_data
@@ -956,21 +943,11 @@ class SolarWorkflowManager(WorkflowManager):
         g = self.sim_data["global_horizontal_irradiance"].flatten()
         z = self.sim_data["apparent_solar_zenith"].flatten()
         p = self.sim_data["surface_pressure"].flatten() if use_pressure else None
-        td = (
-            self.sim_data["surface_dew_temperature"].flatten()
-            if use_dew_temperature
-            else None
-        )
-        times = pd.DatetimeIndex(
-            np.column_stack(
-                [self._time_index_ for x in range(self._sim_shape_[1])]
-            ).flatten()
-        )
+        td = self.sim_data["surface_dew_temperature"].flatten() if use_dew_temperature else None
+        times = pd.DatetimeIndex(np.column_stack([self._time_index_ for x in range(self._sim_shape_[1])]).flatten())
 
         self.sim_data["direct_normal_irradiance"] = (
-            pvlib.irradiance.dirint(
-                ghi=g, solar_zenith=z, times=times, pressure=p, temp_dew=td
-            )
+            pvlib.irradiance.dirint(ghi=g, solar_zenith=z, times=times, pressure=p, temp_dew=td)
             .fillna(0)
             .values.reshape(self._sim_shape_)
         )
@@ -1019,7 +996,6 @@ class SolarWorkflowManager(WorkflowManager):
 
         direct_normal_irradiance_from_trigonometry(self):
 
-
         Parameters
         ----------
         None
@@ -1043,7 +1019,6 @@ class SolarWorkflowManager(WorkflowManager):
             solar_zenith -> The solar zenith angle in radians
 
         """
-
         # TODO: This can also cover the case when we know GHI & DiffHI
         assert "direct_horizontal_irradiance" in self.sim_data
         assert "apparent_solar_zenith" in self.sim_data
@@ -1051,11 +1026,9 @@ class SolarWorkflowManager(WorkflowManager):
         dni_flat = self.sim_data["direct_horizontal_irradiance"]
         zen = np.radians(self.sim_data["apparent_solar_zenith"])
 
-        self.sim_data["direct_normal_irradiance"] = dni_flat / np.maximum(
-            np.cos(zen), 0.2
-        )
+        self.sim_data["direct_normal_irradiance"] = dni_flat / np.maximum(np.cos(zen), 0.2)
 
-        # catch outliners from zero devision
+        # catch outliners from zero division
         index_out = (dni_flat < 25) & (np.cos(zen) < 0.05)
         self.sim_data["direct_normal_irradiance"][index_out] = 0
 
@@ -1110,7 +1083,6 @@ class SolarWorkflowManager(WorkflowManager):
         [2]	Lorenzo, E et al., 2011, “Tracking and back-tracking”, Prog. in Photovoltaics: Research and Applications, v. 19, pp. 747-753.
 
         """
-
         """See pvlib.tracking.singleaxis for parameter info"""
         assert self.tracking == "singleaxis", \
             f"tracking flag must be 'singleaxis' for permit_single_axis_tracking() but is instead: {self.tracking}"
@@ -1185,7 +1157,6 @@ class SolarWorkflowManager(WorkflowManager):
         Required data in the sim_data dictionary are 'apparent_solar_zenith' and 'solar_azimuth'.
 
         """
-
         """tracking can be: 'fixed' or 'singleaxis'"""
         assert "apparent_solar_zenith" in self.sim_data
         assert "solar_azimuth" in self.sim_data
@@ -1234,7 +1205,6 @@ class SolarWorkflowManager(WorkflowManager):
         [1] https://pvlib-python.readthedocs.io/en/stable/generated/pvlib.irradiance.get_total_irradiance.html
 
         """
-
         assert "apparent_solar_zenith" in self.sim_data
         assert "solar_azimuth" in self.sim_data
         assert "direct_normal_irradiance" in self.sim_data
@@ -1487,7 +1457,6 @@ class SolarWorkflowManager(WorkflowManager):
         """
         apply_angle_of_incidence_losses_to_poa(self)
 
-
         Applies the angle of incidence losses to the plane-of-array irradiance using the pvlib.pvsystem.iam.physical() function [1].
 
         Parameters
@@ -1624,9 +1593,7 @@ class SolarWorkflowManager(WorkflowManager):
                 )
             # avoid extrapolations
             if not start_year <= tech_year <= 2050:
-                raise ValueError(
-                    f"tech_year must be between {start_year} and 2050 (max. projection) for this module"
-                )
+                raise ValueError(f"tech_year must be between {start_year} and 2050 (max. projection) for this module")
 
             # get the original (unprojected) module parameters
             try:
@@ -1650,9 +1617,9 @@ class SolarWorkflowManager(WorkflowManager):
                     # ignore, set dummy nan
                     module[param] = np.nan
                 elif isinstance(val_proj, (int, float, np.integer)):
-                    module[param] = original_module[param] + (
-                        val_proj - original_module[param]
-                    ) * (tech_year - start_year) / (2050 - start_year)
+                    module[param] = original_module[param] + (val_proj - original_module[param]) * (
+                        tech_year - start_year
+                    ) / (2050 - start_year)
                 else:
                     assert val_proj == original_module[param], (
                         f"parameter '{param}' is not the same for original ({original_module[param]}) and projected ({val_proj}) modules"
@@ -1935,12 +1902,8 @@ class SolarWorkflowManager(WorkflowManager):
             kx=3,
             ky=3,  # np.array() since type changed between pvlib versions
         )
-        self.sim_data["module_dc_power_at_mpp"] = np.zeros_like(
-            self.sim_data["poa_global"]
-        )
-        self.sim_data["module_dc_power_at_mpp"][sel] = interpolator(
-            cell_temp, poa, grid=False
-        )
+        self.sim_data["module_dc_power_at_mpp"] = np.zeros_like(self.sim_data["poa_global"])
+        self.sim_data["module_dc_power_at_mpp"][sel] = interpolator(cell_temp, poa, grid=False)
 
         interpolator = RectBivariateSpline(
             _temp,
@@ -1949,12 +1912,8 @@ class SolarWorkflowManager(WorkflowManager):
             kx=3,
             ky=3,  # np.array() since type changed between pvlib versions
         )
-        self.sim_data["module_dc_voltage_at_mpp"] = np.zeros_like(
-            self.sim_data["poa_global"]
-        )
-        self.sim_data["module_dc_voltage_at_mpp"][sel] = interpolator(
-            cell_temp, poa, grid=False
-        )
+        self.sim_data["module_dc_voltage_at_mpp"] = np.zeros_like(self.sim_data["poa_global"])
+        self.sim_data["module_dc_voltage_at_mpp"][sel] = interpolator(cell_temp, poa, grid=False)
 
         self.sim_data["capacity_factor"] = self.sim_data["module_dc_power_at_mpp"] / (
             self.module.I_mp_ref * self.module.V_mp_ref
@@ -1962,23 +1921,20 @@ class SolarWorkflowManager(WorkflowManager):
 
         # Estimate total system generation
         if "capacity" in self.placements.columns:
-            self.sim_data["total_system_generation"] = self.sim_data[
-                "capacity_factor"
-            ] * np.broadcast_to(self.placements.capacity, self._sim_shape_)
+            self.sim_data["total_system_generation"] = self.sim_data["capacity_factor"] * np.broadcast_to(
+                self.placements.capacity, self._sim_shape_
+            )
 
-        if (
-            "modules_per_string" in self.placements.columns
-            and "strings_per_inverter" in self.placements.columns
-        ):
+        if "modules_per_string" in self.placements.columns and "strings_per_inverter" in self.placements.columns:
             total_modules = (
                 self.placements.modules_per_string
                 * self.placements.strings_per_inverter
                 * getattr(self.placements, "number_of_inverters", 1)
             )
 
-            self.sim_data["total_system_generation"] = self.sim_data[
-                "module_dc_power_at_mpp"
-            ] * np.broadcast_to(total_modules, self._sim_shape_)
+            self.sim_data["total_system_generation"] = self.sim_data["module_dc_power_at_mpp"] * np.broadcast_to(
+                total_modules, self._sim_shape_
+            )
 
         return self
 
@@ -1990,34 +1946,34 @@ class SolarWorkflowManager(WorkflowManager):
         """
          apply_inverter_losses(self, inverter, method="sandia", )
 
-         Applies inverter losses using the pvlib.pvsystem.snlinverter() fuction [1], the pvlib.pvsystem.retrieve_sam() fuction [2] and the
-         pvlib.pvsystem.adrinverter() fuction [3].
+         Applies inverter losses using the pvlib.pvsystem.snlinverter() function [1], the pvlib.pvsystem.retrieve_sam() function [2] and the
+         pvlib.pvsystem.adrinverter() function [3].
 
 
-         Parameters
-         ----------
+        Parameters
+        ----------
          inverter: str
                    Describes the inverter.
-                   [TODO: Add a more detailed desciption following the example of 'configure_cec_module']
+                   [TODO: Add a more detailed description following the example of 'configure_cec_module']
          method: str
                  Options:
                  "scandia"
                  "driesse"
                  Describes the used method to apply the inverter losses.
 
-         Returns
-         -------
+        Returns
+        -------
          Returns a reference to the invoking SolarWorkflowManager object.
 
-         Notes
-         -----
+        Notes
+        -----
          Required data in the sim_data dictionary are 'module_dc_power_at_mpp' and 'module_dc_voltage_at_mpp'.
          Required data in the placements dataframe are 'modules_per_string' and 'strings_per_inverter'.
          Cannot simultaneously provide 'capacity' and inverter-string parameters.
 
 
-         References
-         ----------
+        References
+        ----------
         [1] https://pvlib-python.readthedocs.io/en/stable/generated/pvlib.pvsystem.snlinverter.html
 
         [2] https://pvlib-python.readthedocs.io/en/stable/generated/pvlib.pvsystem.retrieve_sam.html
@@ -2031,7 +1987,6 @@ class SolarWorkflowManager(WorkflowManager):
         [6]	Beyond the Curves: Modeling the Electrical Efficiency of Photovoltaic Inverters, PVSC 2008, Anton Driesse et. al.
 
         """
-
         """method can be: 'sandia' or 'driesse'
 
         TODO: Make it work with multiplt inverter definitions
@@ -2056,8 +2011,7 @@ class SolarWorkflowManager(WorkflowManager):
                 * np.broadcast_to(self.placements.modules_per_string, self._sim_shape_),
                 p_dc=self.sim_data["module_dc_power_at_mpp"]
                 * np.broadcast_to(
-                    self.placements.modules_per_string
-                    * self.placements.strings_per_inverter,
+                    self.placements.modules_per_string * self.placements.strings_per_inverter,
                     self._sim_shape_,
                 ),
                 inverter=inverter,
@@ -2073,17 +2027,16 @@ class SolarWorkflowManager(WorkflowManager):
                 * np.broadcast_to(self.placements.modules_per_string, self._sim_shape_),
                 p_dc=self.sim_data["module_dc_power_at_mpp"]
                 * np.broadcast_to(
-                    self.placements.modules_per_string
-                    * self.placements.strings_per_inverter,
+                    self.placements.modules_per_string * self.placements.strings_per_inverter,
                     self._sim_shape_,
                 ),
                 inverter=inverter,
             )
 
         number_of_inverters = getattr(self.placements, "number_of_inverters", 1)
-        self.sim_data["total_system_generation"] = self.sim_data[
-            "inverter_ac_power_at_mpp"
-        ] * np.broadcast_to(number_of_inverters, self._sim_shape_)
+        self.sim_data["total_system_generation"] = self.sim_data["inverter_ac_power_at_mpp"] * np.broadcast_to(
+            number_of_inverters, self._sim_shape_
+        )
 
         total_capacity = (
             self.module.I_mp_ref
@@ -2093,8 +2046,8 @@ class SolarWorkflowManager(WorkflowManager):
             * number_of_inverters
         )
 
-        self.sim_data["capacity_factor"] = self.sim_data[
-            "total_system_generation"
-        ] / np.broadcast_to(total_capacity, self._sim_shape_)
+        self.sim_data["capacity_factor"] = self.sim_data["total_system_generation"] / np.broadcast_to(
+            total_capacity, self._sim_shape_
+        )
 
         return self

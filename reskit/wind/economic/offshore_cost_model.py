@@ -12,6 +12,8 @@ from reskit.util.local_values import *
 from .onshore_cost_model import onshore_tcc
 from reskit.parameters.parameters import OffshoreParameters
 
+from .onshore_cost_model import onshore_tcc
+
 
 # %%
 def calculateOffshoreCapex(

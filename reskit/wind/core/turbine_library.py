@@ -1,12 +1,14 @@
+import re
 from collections import OrderedDict, namedtuple
+from glob import glob
+from os.path import dirname, join
+
 import numpy as np
 import pandas as pd
-from glob import glob
-import re
-from os.path import join, dirname
+
+from reskit.default_paths import DEFAULT_PATHS
 
 from .power_curve import PowerCurve
-from reskit.default_paths import DEFAULT_PATHS
 
 ##################################################
 # Make a turbine model library
@@ -23,7 +25,6 @@ def parse_turbine(path):
 
     Used for loading into the TurbineLibrary table
     """
-
     meta = OrderedDict()
     with open(path) as fin:
         # Meta extraction mode
@@ -83,7 +84,8 @@ def TurbineLibrary():
     if _Turbine_Library is None:
         if DEFAULT_PATHS["turbine_library_path"] is None:
             turbineFiles = glob(join(dirname(__file__), "data", "turbines", "*.csv"))
-
+        else:
+            turbineFiles = glob(join(DEFAULT_PATHS["turbine_library_path"], "*.csv"))
         tmp = []
         already_added_models = []
         for f in turbineFiles:
