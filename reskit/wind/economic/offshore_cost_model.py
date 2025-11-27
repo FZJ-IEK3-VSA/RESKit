@@ -4,6 +4,7 @@ import pickle
 import glob
 import geokit as gk
 import warnings
+import math
 
 
 from reskit.default_paths import DEFAULT_PATHS
@@ -559,3 +560,300 @@ def onshoreTcc(
     )
 
     return turbineCapitalCost
+
+
+
+
+
+
+def installationCostTurbine(
+    
+    waterDepth=17, #m
+    maxJacketDepth=55, #m
+    vesselCapacity=7, #units/lift
+    portDistance=17,#km
+    vesselSpeed=18.5,#km/h
+    loadingTime=30,#h
+    installationTime=90,
+    numberOfWindTurbines=2, #numberofWIndturbines in WIndpark
+    dayRate=40000, #€/d,
+    turbineCapacity=15, #MW
+    vesselCapacityFixedFoundationTurbines=40, #MW transported per lift by Rougeau et al.
+):
+    
+    """
+    Calculates the installation cost per turbine for an offshore wind farm, based on
+    water depth, vessel logistics, loading and installation times, and turbine capacity.
+
+    Parameters
+    ----------
+    waterDepth : float, optional
+        Water depth at the installation site in meters. Determines whether turbines
+        use fixed foundations or anchorage systems. Default is 17 m.
+    maxJacketDepth : float, optional
+        Maximum feasible water depth for jacket-based fixed foundations. If exceeded,
+        anchorage-based platforms are assumed. Default is 55 m.
+    vesselCapacity : int, optional
+        Number of turbines that can be transported per lift for anchorage cases.
+        Overridden internally for fixed-foundation installations. Default is 7 units/lift.
+    portDistance : float, optional
+        Round-trip transit distance between port and installation site in kilometers.
+        Default is 17 km.
+    vesselSpeed : float, optional
+        Vessel transit speed in km/h. Default is 18.5 km/h.
+    loadingTime : float, optional
+        Loading time per lift in hours. Default is 30 h; overridden internally.
+    installationTime : float, optional
+        Installation time per turbine in hours. Default is 90 h; overridden internally.
+    numberOfWindTurbines : int, optional
+        Total number of turbines to install in the wind farm. Default is 2.
+    dayRate : float, optional
+        Vessel day rate in euros/day. Default is €40,000/day; overridden internally.
+    turbineCapacity : float, optional
+        Rated power per turbine in MW. Default is 15 MW.
+    vesselCapacityFixedFoundationTurbines : float, optional
+        Maximum turbine capacity (MW) that can be transported in one lift for fixed foundations,
+        based on Rougeau et al. The vessel capacity is computed as:
+        floor(vesselCapacityFixedFoundationTurbines / turbineCapacity).
+        Default is 40 MW.
+
+    Returns
+    -------
+    float
+        Installation cost per turbine, in euros.
+
+    """
+    assert 0<=waterDepth , f'waterdepth is {waterDepth}, but must not be smaller than 0.'
+
+
+
+    if waterDepth<=maxJacketDepth:
+        platformType='fixed'
+    else:
+        platformType='anchorages'
+
+    
+    if platformType=='fixed':
+        VesselSpeed=18.5
+        loadingTime=24
+        installationTime=144
+        dayRate=200000
+        vesselCapacity=math.floor(vesselCapacityFixedFoundationTurbines/turbineCapacity)
+    
+    else:
+        VesselSpeed=18.5
+        loadingTime=30
+        installationTime=90
+        dayRate=40000
+        vesselCapacity=7
+
+    # calculate the number of requried lifts for the whole windpark 
+
+    liftNumber=numberOfWindTurbines/vesselCapacity
+    turbineInstallationCost=(liftNumber *((2*portDistance/VesselSpeed)+loadingTime)+installationTime*numberOfWindTurbines)*(dayRate/24) #  € installation Cost for whole windpark 
+
+    installedPowerPerWindpark=numberOfWindTurbines*turbineCapacity
+
+    turbineInstallationCostperTurbine=turbineInstallationCost/numberOfWindTurbines # Euro/Turbine
+    turbineInstallationCostperCapacity=turbineInstallationCost/installedPowerPerWindpark #Euro/MW
+
+
+    return turbineInstallationCostperTurbine
+
+
+
+
+def installationCostPlattform (
+        
+
+    waterDepth=17, #m
+    maxJacketDepth=55, #m
+    vesselCapacity=3, #units/lift
+    portDistance=17,#km
+    vesselSpeed=18.5,#km/h
+    loadingTime=30,#h
+    installationTime=90,
+    numberOfPlatforms=1, #numberofWIndturbines in WIndpark
+    dayRate=40000, #€/d,
+    turbineCapacity=15, #MW
+    numberOfWindTurbines=3
+  
+):
+    """
+    Calculates the installation cost per turbine for offshore platforms (fixed or floating),
+    based on site conditions, vessel operations, and logistical parameters.
+
+    Parameters
+    ----------
+    waterDepth : float, optional
+        Water depth at the installation site in meters. Determines whether a fixed
+        platform (jacket) or a floating anchorage system is used. Default is 17 m.
+    maxJacketDepth : float, optional
+        Maximum feasible water depth for jacket foundations. If exceeded, the
+        platform type switches to anchorage-based. Default is 55 m.
+    vesselCapacity : int, optional
+        Number of platform units that can be transported per vessel trip. Default is 3.
+        This value is overridden internally depending on platform type.
+    portDistance : float, optional
+        Distance from port to the installation site in kilometers. Default is 17 km.
+    vesselSpeed : float, optional
+        Vessel transit speed in km/h. Default is 18.5 km/h.
+    loadingTime : float, optional
+        Time required to load one vessel trip in hours. Default is 30 h.
+        This value is overridden internally depending on platform type.
+    installationTime : float, optional
+        Time required to install one platform in hours. Default is 90 h.
+        This value is overridden internally depending on platform type.
+    numberOfPlatforms : int, optional
+        Total number of platforms to be installed (usually equal to the number
+        of turbines). Default is 1.
+    dayRate : float, optional
+        Vessel day rate in euros/day. Default is €40,000/day.
+        This value is overridden internally depending on platform type.
+    turbineCapacity : float, optional
+        Rated power of one turbine in MW. Provided for compatibility; not used
+        in calculations. Default is 15 MW.
+    numberOfWIndTurbines : int, optional
+        Number of turbines in the farm. Provided for compatibility; not used
+        in calculations. Default is 3.
+
+    Returns
+    -------
+    float
+        Installation cost per turbine in euros.
+
+
+    """
+
+    assert 0<=waterDepth , f'waterdepth is {waterDepth}, but must not be smaller than 0.'
+
+
+
+    if waterDepth<=maxJacketDepth:
+        platformType='fixed'
+    else:
+        platformType='anchorages'
+
+    
+    if platformType=='fixed':
+        vesselSpeed=18.5
+        loadingTime=24
+        installationTime=96
+        dayRate=200000
+        vesselCapacity=1
+        
+    
+    else:
+        vesselSpeed=18.5
+        loadingTime=30
+        installationTime=90
+        dayRate=40000
+        vesselCapacity=3
+
+    # calculate the number of requried lifts for the whole windpark 
+
+    liftNumber=numberOfPlatforms/vesselCapacity
+    platformInstallationCost=(liftNumber *((2*portDistance/vesselSpeed)+loadingTime)+installationTime*numberOfPlatforms)*(dayRate/24) #  € installation Cost for whole windpark 
+
+ 
+
+    platformInstallationCostperTurbine=platformInstallationCost/numberOfWindTurbines # Euro/Turbine
+    
+    platformInstallationCostperCapacity=platformInstallationCost/(numberOfWindTurbines*turbineCapacity) # Euro/MW
+
+    return platformInstallationCostperTurbine
+
+
+#TODO considering how to include cable cost.... seems to be highly complicated and is implmened wrongly here so far
+def installationCostCables(
+    lengthOfCables=17000, # m
+    voltageType="dc"
+):
+    """
+    Calculates the installation cost of offshore cables based on cable length and voltage type.
+
+    Parameters
+    ----------
+    lengthOfCables : float, optional
+        Total length of cables to be installed, in meters.
+        Default is 17,000 m.
+    voltageType : str, optional
+        Voltage type of the cable system. Must be one of:
+        - "dc"          (direct current export cables)
+        - "ac"          (alternating current export cables)
+        - "interarray"  (inter-array cables within the wind farm)
+        Default is "dc".
+
+    Returns
+    -------
+    float
+        Total cable installation cost in monetary units.
+
+    """
+
+
+    assert voltageType in ["dc","ac","interarray"], "voltatgeType must be ac, dc, or interarray"
+
+    
+    if voltageType=="dc":
+        linearInstallationCost=1
+    
+    if voltageType=="ac":
+         linearInstallationCost=1
+    
+    if voltageType=="interarray":
+        linearInstallationCost=1
+    
+    
+        
+
+    CableInstallationCost=linearInstallationCost*lengthOfCables
+
+    return CableInstallationCost
+
+
+def installationPipelineCost(
+    pipelineType="export",
+    lengthOfPipe=17000
+):
+    """
+    Calculates the installation cost of an offshore pipeline based on pipeline type and length.
+
+    Parameters
+    ----------
+    pipelineType : str, optional
+        Type of pipeline being installed. Must be either "infield" or "export".
+        Determines the lay rate (m/day) and vessel day rate (€/day).
+        Default is "export".
+    lengthOfPipe : float, optional
+        Total length of the pipeline in meters. Default is 17,000 meters.
+
+    Returns
+    -------
+    float
+        Total pipeline installation cost in euros.
+
+    -------
+    Source:    [1] Rogeau, Antoine; Vieubled, Julien; Coatpont, Matthieu de; Affonso
+    Nobrega, Pedro; Erbs, Guillaume; Girard, Robin (2023): Techno-economic
+    evaluation and resource assessment of hydrogen production through
+    offshore wind farms: A European perspective. In Renewable and
+    Sustainable Energy Reviews 187, p. 113699. DOI: 10.1016/j.rser.2023.113699.
+    """
+
+    assert pipelineType in ["infield","export"], "pipelineType must be in ['infield','export]"
+
+
+    if pipelineType=="infield":
+        layRate=7000 #meter/day
+        dayrateVessel=400000 #euro/day      
+
+    if pipelineType=="export":
+        layRate=4000 #meter/day
+        dayrateVessel=700000 #euro/day   
+    PipelineInstallationCOst=lengthOfPipe/layRate*dayrateVessel
+
+
+    return PipelineInstallationCOst
+    
+
