@@ -5,6 +5,7 @@ import pytest
 import reskit as rk
 from reskit import TEST_DATA
 
+
 @pytest.fixture
 def pt_pv_placements() -> pd.DataFrame:
     placements = pd.DataFrame()
@@ -27,8 +28,8 @@ def pt_pv_placements() -> pd.DataFrame:
 
 # %%
 
-def test_CSP_PTR_ERA5(pt_pv_placements):
 
+def test_CSP_PTR_ERA5(pt_pv_placements):
     out = rk.csp.CSP_PTR_ERA5(
         placements=pt_pv_placements,
         era5_path=rk.TEST_DATA["csp-era5-like"],
