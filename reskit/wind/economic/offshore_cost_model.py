@@ -1,6 +1,8 @@
 import numpy as np
-from .onshore_cost_model import onshore_tcc
+
 from reskit.parameters.parameters import OffshoreParameters
+
+from .onshore_cost_model import onshore_tcc
 
 
 def offshore_turbine_capex(
@@ -19,7 +21,7 @@ def offshore_turbine_capex(
 ):
     """
     A cost and scaling model (CSM) to calculate the total cost of a 3-bladed, direct drive offshore wind turbine according to the cost model proposed by Fingersh et al. [1] and Maples et al. [2].
-    The CSM distinguises between seaflor-fixed foundation types; "monopile" and "jacket" and floating foundation types; "semisubmersible" and "spar".
+    The CSM distinguishes between seaflor-fixed foundation types; "monopile" and "jacket" and floating foundation types; "semisubmersible" and "spar".
     The total turbine cost includes the contributions of the turbine capital cost (TCC), amounting 32.9% for fixed or 23.9% for floating structures, the balance of system costs (BOS) contribution, amounting 46.2% and 60.8% respectively, as well as the finantial costs as the complementary percentage contribution (15.9% and 20.9%) in the same manner [3].
     A CSM normalization is done such that a chosen baseline offshore turbine taken by Caglayan et al. [4] (see notes for details) corresponds to an expected specific cost of 2300 €/kW in a 2050 European context as suggested by the 2016 cost of wind energy review by Stehly [3].
 
@@ -50,31 +52,31 @@ def offshore_turbine_capex(
         Refers to the number of mooring lines are there attaching a turbine only applicable for floating foundation types. By default 3 assuming a triangular attachment to the seafloor.
 
     anchor : str, optional
-        Turbine's anchor type only applicable for floating foundation types, by default as reccomended by [1].
+        Turbine's anchor type only applicable for floating foundation types, by default as recommended by [1].
         Arguments accepted are "dea" (drag embedment anchor) or "spa" (suction pile anchor).
 
     turbine_count : numeric, optional
         Number of turbines in the offshore windpark. CSM valid for the range [3-200], by default 80
 
     turbine_spacing : numeric, optional
-        Spacing distance in a row of turbines (turbines that share the electrical connection) to the bus. The value must be a multiplyer of rotor diameter. CSM valid for the range [4-9], by default 5
+        Spacing distance in a row of turbines (turbines that share the electrical connection) to the bus. The value must be a multiplier of rotor diameter. CSM valid for the range [4-9], by default 5
 
     turbine_row_spacing : numeric, optional
-        Spacing distance between rows of turbines. The value must be a multiplyer of rotor diameter. CSM valid for the range [4-10], by default 9
+        Spacing distance between rows of turbines. The value must be a multiplier of rotor diameter. CSM valid for the range [4-10], by default 9
 
     Returns
-    --------
+    -------
     numeric or array-like
         Offshore turbine total cost
 
 
-    See also
+    See Also
     --------
         onshore_turbine_capex(capacity, hub_height, rotor_diam, base_capex, base_capacity, base_hub_height, base_rotor_diam, tcc_share, bos_share)
 
     Notes
-    -------
-        The baseline offshore turbine correspongs to the optimal desing for Europe according to Caglayan et al. [4]: capacity = 9400 kW, hub height = 135 m, rotor diameter = 210 m, "monopile" foundation, reference water depth = 40 m, and reference distance to shore = 60 km.
+    -----
+        The baseline offshore turbine correspongs to the optimal design for Europe according to Caglayan et al. [4]: capacity = 9400 kW, hub height = 135 m, rotor diameter = 210 m, "monopile" foundation, reference water depth = 40 m, and reference distance to shore = 60 km.
 
     Sources
     -------
@@ -96,8 +98,7 @@ def offshore_turbine_capex(
         **{
             k: v
             for k, v in locals().items()
-            if not k
-            in ["capacity", "hub_height", "rotor_diam", "depth", "distance_to_shore"]
+            if not k in ["capacity", "hub_height", "rotor_diam", "depth", "distance_to_shore"]
         }
     )
 
@@ -152,7 +153,7 @@ def offshore_bos(
     turbine_row_spacing,
 ):
     """
-    A function to determine the balance of the system cost (BOS) of an offshore turbine based on the capacity, hub height and rotor diamter values according to Fingersh et al. [1].
+    A function to determine the balance of the system cost (BOS) of an offshore turbine based on the capacity, hub height and rotor diameter values according to Fingersh et al. [1].
 
     Parameters
     ----------
@@ -181,17 +182,17 @@ def offshore_bos(
         Refers to the number of mooring lines are there attaching a turbine only applicable for floating foundation types. By default 3 assuming a triangular attachment to the seafloor.
 
     anchor : str, optional
-        Turbine's anchor type only applicable for floating foundation types, by default as reccomended by [1].
+        Turbine's anchor type only applicable for floating foundation types, by default as recommended by [1].
         Arguments accepted are "dea" (drag embedment anchor) or "spa" (suction pile anchor).
 
     turbine_count : numeric, optional
         Number of turbines in the offshore windpark. CSM valid for the range [3-200], by default 80
 
     turbine_spacing : numeric, optional
-        Spacing distance in a row of turbines (turbines that share the electrical connection) to the bus. The value must be a multiplyer of rotor diameter. CSM valid for the range [4-9], by default 5
+        Spacing distance in a row of turbines (turbines that share the electrical connection) to the bus. The value must be a multiplier of rotor diameter. CSM valid for the range [4-9], by default 5
 
     turbine_row_spacing : numeric, optional
-        Spacing distance between rows of turbines. The value must be a multiplyer of rotor diameter. CSM valid for the range [4-10], by default 9
+        Spacing distance between rows of turbines. The value must be a multiplier of rotor diameter. CSM valid for the range [4-10], by default 9
 
     Returns
     -------
@@ -199,11 +200,11 @@ def offshore_bos(
         Offshore turbine's balance of the system cost (BOS) in monetary units.
 
     Notes
-    ------
+    -----
     Assembly and installation costs could not be implemented due to the excessive number of unspecified constants considered by Smart et al. [8]. Therefore empirical equations were derived which fit the sensitivities to the baseline plants shown in [8]. These ended up being linear equations in turbine capacity and sea depth (only for floating turbines).
 
     Sources
-    ---------
+    -------
 
     [1] Fingersh, L., Hand, M., & Laxson, A. (2006). Wind Turbine Design Cost and Scaling Model. Nrel. https://www.nrel.gov/docs/fy07osti/40566.pdf
     [2] Maples, B., Hand, M., & Musial, W. (2010). Comparative Assessment of Direct Drive High Temperature Superconducting Generators in Multi-Megawatt Class Wind Turbines. Energy. https://doi.org/10.2172/991560
@@ -216,7 +217,6 @@ def offshore_bos(
     [9] RPG CABLES, & KEC International limited. (n.d.). EXTRA HIGH VOLTAGE cables. RPG CABLES. www.rpgcables.com/images/product/EHV-catalogue.pdf
 
     """
-
     # rr = rd / 2
 
     # prevent problems with negative depth values
@@ -234,7 +234,7 @@ def offshore_bos(
         )
 
     # CONSTANTS AND ASSUMPTIONS (all from [1] except where noted)
-    # Stucture are foundation
+    # Structure are foundation
     # embedmentDepth = 30  # meters
     monopileCostRate = 2250  # dollars/tonne
     monopileTPCostRate = 3230  # dollars/tonne
@@ -272,7 +272,7 @@ def offshore_bos(
     singleTurbineInterfaceCost = 0  # Could not find a number...
     substationInterfaceCost = 0  # Could not find a number...
     dynamicCableFactor = 2
-    mainPowerTransformerCostRate = 12500  # dollers/MVA
+    mainPowerTransformerCostRate = 12500  # dollars/MVA
     highVoltageSwitchgearCost = 950000  # dollars
     mediumVoltageSwitchgearCost = 500000  # dollars
     shuntReactorCostRate = 35000  # dollars/MVA
@@ -286,7 +286,7 @@ def offshore_bos(
     substationSubstructurePileCostRate = 2250  # dollars/tonne
     interconnectVoltage = 345  # kV
 
-    # GENERAL (APEENDIX B in NREL BOS MODEL)
+    # GENERAL (APPENDIX B in NREL BOS MODEL)
     # hubDiam = cp / 4 + 2
     # bladeLength = (rd - hubDiam) / 2
 
@@ -313,9 +313,7 @@ def offshore_bos(
 
         # monopile transition piece mass is called as monopileTPMass
 
-        monopileTPMass = np.exp(
-            2.77 + 1.04 * np.power(cp, 0.5) + 0.00127 * np.power(depth, 1.5)
-        )
+        monopileTPMass = np.exp(2.77 + 1.04 * np.power(cp, 0.5) + 0.00127 * np.power(depth, 1.5))
         monopileTPCost = monopileTPMass * monopileTPCostRate
 
         foundationCost = monopileCost + monopileTPCost
@@ -323,15 +321,11 @@ def offshore_bos(
 
     elif foundation == "jacket":
         # jacket main lattice mass is called as jacketMLMass
-        jacketMLMass = np.exp(
-            3.71 + 0.00176 * np.power(cp, 2.5) + 0.645 * np.log(np.power(depth, 1.5))
-        )
+        jacketMLMass = np.exp(3.71 + 0.00176 * np.power(cp, 2.5) + 0.645 * np.log(np.power(depth, 1.5)))
         jacketMLCost = jacketMLMass * jacketMLCostRate
 
         # jacket transition piece mass is called as jacketTPMass
-        jacketTPMass = 1 / (
-            ((-0.0131 + 0.0381) / np.log(cp)) - 0.00000000227 * np.power(depth, 3)
-        )
+        jacketTPMass = 1 / (((-0.0131 + 0.0381) / np.log(cp)) - 0.00000000227 * np.power(depth, 3))
         jacketTPCost = jacketTPMass * jacketTPCostRate
 
         # jacket pile mass is called as jacketPileMass
@@ -384,9 +378,7 @@ def offshore_bos(
         semiSubmersibleHPMass = -0.4397 * np.power(cp, 2) + 21.145 * cp + 177.42
         semiSubmersibleHPCost = semiSubmersibleHPMass * semiSubmersibleHPCostRate
 
-        foundationCost = (
-            semiSubmersibleSCCost + semiSubmersibleTCost + semiSubmersibleHPCost
-        )
+        foundationCost = semiSubmersibleSCCost + semiSubmersibleTCost + semiSubmersibleHPCost
 
         if anchor == "dea":
             anchorCost = DEA_anchorCost
@@ -411,32 +403,22 @@ def offshore_bos(
 
     elif foundation == "spar":
         secondarySteelSubstructureMass = np.exp(
-            3.58
-            + 0.196 * np.power(cp, 0.5) * np.log(cp)
-            + 0.00001 * depth * np.log(depth)
+            3.58 + 0.196 * np.power(cp, 0.5) * np.log(cp) + 0.00001 * depth * np.log(depth)
         )
 
     elif foundation == "semisubmersible":
         secondarySteelSubstructureMass = -0.153 * np.power(cp, 2) + 6.54 * cp + 128.34
 
-    secondarySteelSubstructureCost = (
-        secondarySteelSubstructureMass * outfittingSteelCost
-    )
+    secondarySteelSubstructureCost = secondarySteelSubstructureMass * outfittingSteelCost
 
     totalStructureAndFoundationCosts = (
-        foundationCost
-        + mooringAndAnchorCost * mooring_count
-        + secondarySteelSubstructureCost
+        foundationCost + mooringAndAnchorCost * mooring_count + secondarySteelSubstructureCost
     )
 
     # ELECTRICAL INFRASTRUCTURE
     # in the calculation of singleStringPower1 and 2, bur depth is assumed to be 1. Because of that the equation is simplified.
-    singleStringPower1 = (
-        np.sqrt(3) * cable1CurrentRating * arrayVoltage * powerFactor / 1000
-    )
-    singleStringPower2 = (
-        np.sqrt(3) * cable2CurrentRating * arrayVoltage * powerFactor / 1000
-    )
+    singleStringPower1 = np.sqrt(3) * cable1CurrentRating * arrayVoltage * powerFactor / 1000
+    singleStringPower2 = np.sqrt(3) * cable2CurrentRating * arrayVoltage * powerFactor / 1000
 
     numberofStrings = np.floor_divide(turbine_count * cp, singleStringPower2)
 
@@ -448,52 +430,34 @@ def offshore_bos(
 
     numberofTurbinesperArrayCable2 = np.floor_divide(singleStringPower2, cp)
 
-    numberofTurbineInterfacesPerArrayCable1 = (
-        numberofTurbinesperArrayCable1 * numberofStrings * 2
-    )
+    numberofTurbineInterfacesPerArrayCable1 = numberofTurbinesperArrayCable1 * numberofStrings * 2
 
-    max1_Cable1 = np.maximum(
-        numberofTurbinesperArrayCable1 - numberofTurbinesperArrayCable2, 0
-    )
+    max1_Cable1 = np.maximum(numberofTurbinesperArrayCable1 - numberofTurbinesperArrayCable2, 0)
     max2_Cable1 = 0
-    numberofTurbineInterfacesPerArrayCable2 = (
-        max1_Cable1 * numberofStrings + max2_Cable1
-    ) * 2
+    numberofTurbineInterfacesPerArrayCable2 = (max1_Cable1 * numberofStrings + max2_Cable1) * 2
 
     numberofArrayCableSubstationInterfaces = numberofStrings
 
     if fixedType:
         arrayCable1Length = (
-            (turbine_spacing * rd + depth * 2)
-            * (numberofTurbineInterfacesPerArrayCable1 / 2)
-            * (1 + excessCableFactor)
+            (turbine_spacing * rd + depth * 2) * (numberofTurbineInterfacesPerArrayCable1 / 2) * (1 + excessCableFactor)
         )
         arrayCable1Length /= 1000  # convert to km
         # print("arrayCable1Length:", arrayCable1Length)
     else:
         systemAngle = -0.0047 * depth + 18.743
 
-        freeHangingCableLength = (
-            depth / np.cos(systemAngle * np.pi / 180) * (catenaryLengthFactor + 1)
-        ) + 190
+        freeHangingCableLength = (depth / np.cos(systemAngle * np.pi / 180) * (catenaryLengthFactor + 1)) + 190
 
-        fixedCableLength = (
-            (turbine_spacing * rd)
-            - (2 * np.tan(systemAngle * np.pi / 180) * depth)
-            - 70
-        )
+        fixedCableLength = (turbine_spacing * rd) - (2 * np.tan(systemAngle * np.pi / 180) * depth) - 70
 
         arrayCable1Length = (
-            (2 * freeHangingCableLength)
-            * (numberofTurbineInterfacesPerArrayCable1 / 2)
-            * (1 + excessCableFactor)
+            (2 * freeHangingCableLength) * (numberofTurbineInterfacesPerArrayCable1 / 2) * (1 + excessCableFactor)
         )
         arrayCable1Length /= 1000  # convert to km
 
     max1_Cable2 = np.maximum(numberofTurbinesperArrayCable2 - 1, 0)
-    max2_Cable2 = np.maximum(
-        numberofTurbinesperPartialString - numberofTurbinesperArrayCable2 - 1, 0
-    )
+    max2_Cable2 = np.maximum(numberofTurbinesperPartialString - numberofTurbinesperArrayCable2 - 1, 0)
 
     strFac = numberofStrings / numberOfSubStations
 
@@ -503,34 +467,21 @@ def offshore_bos(
         ) + numberOfSubStations * (
             strFac * (rd * turbine_row_spacing)
             + (
-                np.sqrt(
-                    np.power((rd * turbine_spacing * (strFac - 1)), 2)
-                    + np.power((rd * turbine_row_spacing), 2)
-                )
+                np.sqrt(np.power((rd * turbine_spacing * (strFac - 1)), 2) + np.power((rd * turbine_row_spacing), 2))
                 / 2
             )
             + strFac * depth
-        ) * (
-            excessCableFactor + 1
-        )
+        ) * (excessCableFactor + 1)
         arrayCable2Length /= 1000  # convert to km
 
-        arrayCable1AndAncillaryCost = (
-            arrayCable1Length * arrayCableCost
-            + singleTurbineInterfaceCost
-            * (
-                numberofTurbineInterfacesPerArrayCable1
-                + numberofTurbineInterfacesPerArrayCable2
-            )
+        arrayCable1AndAncillaryCost = arrayCable1Length * arrayCableCost + singleTurbineInterfaceCost * (
+            numberofTurbineInterfacesPerArrayCable1 + numberofTurbineInterfacesPerArrayCable2
         )
 
         arrayCable2AndAncillaryCost = (
             arrayCable2Length * arrayCableCost
             + singleTurbineInterfaceCost
-            * (
-                numberofTurbineInterfacesPerArrayCable1
-                + numberofTurbineInterfacesPerArrayCable2
-            )
+            * (numberofTurbineInterfacesPerArrayCable1 + numberofTurbineInterfacesPerArrayCable2)
             + substationInterfaceCost * numberofArrayCableSubstationInterfaces
         )
 
@@ -552,61 +503,39 @@ def offshore_bos(
                 + np.power(fixedCableLength + 2 * freeHangingCableLength, 2)
             )
             / 2
-        ) * (
-            excessCableFactor + 1
-        )
+        ) * (excessCableFactor + 1)
         arrayCable2Length /= 1000  # convert to km
 
         arrayCable1AndAncillaryCost = dynamicCableFactor * (
             arrayCable1Length * arrayCableCost
             + singleTurbineInterfaceCost
-            * (
-                numberofTurbineInterfacesPerArrayCable1
-                + numberofTurbineInterfacesPerArrayCable2
-            )
+            * (numberofTurbineInterfacesPerArrayCable1 + numberofTurbineInterfacesPerArrayCable2)
         )
 
         arrayCable2AndAncillaryCost = dynamicCableFactor * (
             arrayCable2Length * arrayCableCost
             + singleTurbineInterfaceCost
-            * (
-                numberofTurbineInterfacesPerArrayCable1
-                + numberofTurbineInterfacesPerArrayCable2
-            )
+            * (numberofTurbineInterfacesPerArrayCable1 + numberofTurbineInterfacesPerArrayCable2)
             + substationInterfaceCost * numberofArrayCableSubstationInterfaces
         )
 
-    singleExportCablePower = (
-        np.sqrt(3) * cable2CurrentRating * arrayVoltage * powerFactor / 1000
-    )
-    numberOfExportCables = (
-        np.floor_divide(cp * turbine_count, singleExportCablePower) + 1
-    )
+    singleExportCablePower = np.sqrt(3) * cable2CurrentRating * arrayVoltage * powerFactor / 1000
+    numberOfExportCables = np.floor_divide(cp * turbine_count, singleExportCablePower) + 1
 
     if fixedType:
-        exportCableLength = (
-            (distance_to_shore * 1000 + depth) * numberOfExportCables * 1.1
-        )
+        exportCableLength = (distance_to_shore * 1000 + depth) * numberOfExportCables * 1.1
         exportCableLength /= 1000  # convert to km
 
         exportCableandAncillaryCost = (
-            exportCableLength * externalCableCost
-            + numberOfExportCables * substationInterfaceCost
+            exportCableLength * externalCableCost + numberOfExportCables * substationInterfaceCost
         )
     else:
-        exportCableLength = (
-            (distance_to_shore * 1000 + freeHangingCableLength + 500)
-            * numberOfExportCables
-            * 1.1
-        )
+        exportCableLength = (distance_to_shore * 1000 + freeHangingCableLength + 500) * numberOfExportCables * 1.1
         exportCableLength /= 1000  # convert to km
 
         exportCableandAncillaryCost = (
             exportCableLength * externalCableCost
-            + (
-                (exportCableLength - freeHangingCableLength - 500)
-                + dynamicCableFactor * (500 + freeHangingCableLength)
-            )
+            + ((exportCableLength - freeHangingCableLength - 500) + dynamicCableFactor * (500 + freeHangingCableLength))
             + numberOfExportCables * substationInterfaceCost
         )
 
@@ -615,32 +544,18 @@ def offshore_bos(
     numberOfMainPowerTransformers = np.floor_divide(turbine_count * cp, 250) + 1
 
     # equation 72 in [1] is simplified
-    singleMPTRating = np.round(
-        turbine_count * cp * 1.15 / numberOfMainPowerTransformers, -1
-    )
+    singleMPTRating = np.round(turbine_count * cp * 1.15 / numberOfMainPowerTransformers, -1)
 
-    mainPowerTransformerCost = (
-        numberOfMainPowerTransformers * singleMPTRating * mainPowerTransformerCostRate
-    )
+    mainPowerTransformerCost = numberOfMainPowerTransformers * singleMPTRating * mainPowerTransformerCostRate
 
-    switchgearCost = numberOfMainPowerTransformers * (
-        highVoltageSwitchgearCost + mediumVoltageSwitchgearCost
-    )
+    switchgearCost = numberOfMainPowerTransformers * (highVoltageSwitchgearCost + mediumVoltageSwitchgearCost)
 
-    shuntReactorCost = (
-        singleMPTRating * numberOfMainPowerTransformers * shuntReactorCostRate * 0.5
-    )
+    shuntReactorCost = singleMPTRating * numberOfMainPowerTransformers * shuntReactorCostRate * 0.5
 
-    ancillarySystemsCost = (
-        dieselGeneratorBackupCost + workspaceCost + otherAncillaryCosts
-    )
+    ancillarySystemsCost = dieselGeneratorBackupCost + workspaceCost + otherAncillaryCosts
 
-    offshoreSubstationTopsideMass = (
-        3.85 * (singleMPTRating * numberOfMainPowerTransformers) + 285
-    )
-    offshoreSubstationTopsideCost = (
-        offshoreSubstationTopsideMass * fabricationCostRate + topsideDesignCost
-    )
+    offshoreSubstationTopsideMass = 3.85 * (singleMPTRating * numberOfMainPowerTransformers) + 285
+    offshoreSubstationTopsideCost = offshoreSubstationTopsideMass * fabricationCostRate + topsideDesignCost
     assemblyFactor = 1  # could not find a number...
 
     offshoreSubstationTopsideLandAssemblyCost = (
@@ -650,9 +565,7 @@ def offshore_bos(
     if fixedType:
         offshoreSubstationSubstructureMass = 0.4 * offshoreSubstationTopsideMass
 
-        substationSubstructurePileMass = 8 * np.power(
-            offshoreSubstationSubstructureMass, 0.5574
-        )
+        substationSubstructurePileMass = 8 * np.power(offshoreSubstationSubstructureMass, 0.5574)
 
         offshoreSubstationSubstructureCost = (
             offshoreSubstationSubstructureMass * offshoreSubstationSubstructureCostRate
@@ -660,9 +573,7 @@ def offshore_bos(
         )
     else:
         # copied from above in case of spar
-        if (
-            foundation == "spar"
-        ):  # WHY WAS IT SPAR BEFORE? WE ARE DOING THINGS WITH SEMISUBMERSIBLE
+        if foundation == "spar":  # WHY WAS IT SPAR BEFORE? WE ARE DOING THINGS WITH SEMISUBMERSIBLE
             # if foundation == 'semisubmersible':
             semiSubmersibleSCMass = -0.9571 * np.power(cp, 2) + 40.89 * cp + 802.09
             semiSubmersibleSCCost = semiSubmersibleSCMass * semiSubmersibleSCCostRate
@@ -675,29 +586,21 @@ def offshore_bos(
             semiSubmersibleHPMass = -0.4397 * np.power(cp, 2) + 21.145 * cp + 177.42
             semiSubmersibleHPCost = semiSubmersibleHPMass * semiSubmersibleHPCostRate
 
-        semiSubmersibleMass = (
-            semiSubmersibleSCMass + semiSubmersibleTMass + semiSubmersibleHPMass
-        )
+        semiSubmersibleMass = semiSubmersibleSCMass + semiSubmersibleTMass + semiSubmersibleHPMass
 
-        offshoreSubstationSubstructureMass = 2 * (
-            semiSubmersibleMass + secondarySteelSubstructureMass
-        )
+        offshoreSubstationSubstructureMass = 2 * (semiSubmersibleMass + secondarySteelSubstructureMass)
 
         substationSubstructurePileMass = 0
 
         # semiSubmersibleCost = semiSubmersibleSCCost + semiSubmersibleTCost + semiSubmersibleHPCost
-        offshoreSubstationSubstructureCost = 2 * (
-            semiSubmersibleTCostRate + mooringAndAnchorCost
-        )
+        offshoreSubstationSubstructureCost = 2 * (semiSubmersibleTCostRate + mooringAndAnchorCost)
 
     onshoreSubstationCost = 11652 * (interconnectVoltage + cp * turbine_count) + 1200000
 
     onshoreSubstationMiscCost = 11795 * np.power(cp * turbine_count, 0.3549) + 350000
 
     overheadTransmissionLineCost = (
-        (1176 * interconnectVoltage + 218257)
-        * np.power(distance_to_bus, -0.1063)
-        * distance_to_bus
+        (1176 * interconnectVoltage + 218257) * np.power(distance_to_bus, -0.1063) * distance_to_bus
     )
 
     switchyardCost = 18115 * interconnectVoltage + 165944
@@ -734,11 +637,9 @@ def offshore_bos(
         pass
     else:
         # Normalized to 1 at 250m depth
-        assemblyAndInstallationCost *= (
-            0.00041757917648320338 * depth + 0.89560520587919934
-        )
+        assemblyAndInstallationCost *= 0.00041757917648320338 * depth + 0.89560520587919934
 
-    # Capacity dependance
+    # Capacity dependence
     # Normalized to 1 at 6 MW
     assemblyAndInstallationCost *= 0.05947387 * cp + 0.64371944
 
@@ -757,7 +658,7 @@ def offshore_bos(
     # development = tot*0.02
 
     #########################################
-    # The below cooresponds to cost percentages in [7]
+    # The below corresponds to cost percentages in [7]
     if fixedType:
         tot = (
             assemblyAndInstallationCost * 19.0

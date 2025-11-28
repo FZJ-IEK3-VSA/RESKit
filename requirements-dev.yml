@@ -2,28 +2,31 @@ name: reskit_env
 channels:
   - conda-forge
 dependencies:
-  - python
-  - pytest
-  - pytest-cov
-  - pylint
-  - papermill
-  - autopep8
-  - jupyter
-  - notebook
-  - jupyterlab
-  - pip
-  - matplotlib
-  - descartes
-  - pandas<2.0.0
-  - openpyxl
-  - numpy
-  - numba
-  - scipy<1.12
-  - scikit-learn
-  - geokit>=1.4.0
-  - gdal=3.4.*
-  - netCDF4>=1.5.3
-  - xarray
-  - pvlib-python=0.9.0
-  - windpowerlib
-  - nbconvert
+  - python >=3.10,<=3.12.12
+  - papermill <=2.6.0
+  - jupyter <=1.1.1
+  - pip <=25.3
+  - matplotlib <=3.10.5
+  - descartes <=1.1.0
+  - pandas >=1.4.0,<=2.3.3
+  - openpyxl <=3.1.5
+  - numpy >=1.21.5,<=1.26.4
+  - numba >=0.55,<=0.62.1
+  - scipy >=1.7.2,<=1.14.1
+  - scikit-learn >=1.3.0,<=1.7.1
+  - geokit >=1.4.0,<=1.6.0
+  - netcdf4 >=1.5.8,!=1.6.3,<=1.7.3
+  - xarray >=0.16.0,<=2025.11.0
+  - pvlib-python =0.9.0
+  - windpowerlib =0.2.1
+  - cdsapi <=0.7.7
+  # dev
+  - nbval <=0.11.0
+  - ruff =0.14.1
+  - pytest <=9.0.1
+  - pytest-cov <=7.0.0
+  - pytest-xdist <=3.8.0
+  # Documentation
+  - jupyter-book <2.0
+  - sphinx-autoapi <=3.6.1
+  - codespell <2.4.1

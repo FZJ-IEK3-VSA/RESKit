@@ -5,8 +5,10 @@
 # from scipy.stats import exponweib
 import numpy as np
 import pandas as pd
-from .power_curve import compute_specific_power
+
 from reskit.parameters.parameters import OnshoreParameters
+
+from .power_curve import compute_specific_power
 
 
 def onshore_turbine_from_avg_wind_speed(
@@ -32,7 +34,7 @@ def onshore_turbine_from_avg_wind_speed(
         Local average wind speed close to or at the hub height.
 
     constant_rotor_diam : bool, optional
-        Whether the rotor diameter is mantained constant or not, by default True
+        Whether the rotor diameter is maintained constant or not, by default True
 
     base_capacity : numeric or array_like, optional
         Baseline turbine capacity in kW, by default 4200.
@@ -57,7 +59,7 @@ def onshore_turbine_from_avg_wind_speed(
         value, by default 200.
 
     tech_year : int, optional
-        The year definining the baseline turbine design that shall be used.
+        The year defining the baseline turbine design that shall be used.
 
     baseline_turbine_fp : str, optional
         A json or csv file that contains baseline turbine parameters. Will
@@ -69,11 +71,11 @@ def onshore_turbine_from_avg_wind_speed(
         Returns a the suggested values of hub height in m, specific power in W/m2, and capacity in kW as dictionary when numeric values are input or as a pandas DataFrame when array-like objects are input.
 
     Notes
-    -------
+    -----
     The default baseline onshore turbine has 4200 kW capacity, 120m hub height, and 136m rotor diameter [1]
 
     References
-    -------
+    ----------
     [1] David S. Ryberg, Dilara C. Caglayan, Sabrina Schmitt, Jochen Linssen, Detlef Stolten, Martin Robinius - The Future of European Onshore Wind Energy Potential:
     Detailed Distributionand Simulation of Advanced Turbine Designs, Energy, 2019, available at https://www.sciencedirect.com/science/article/abs/pii/S0360544219311818
     """
@@ -100,12 +102,8 @@ def onshore_turbine_from_avg_wind_speed(
     multi = wind_speed.size > 1
 
     # Design Specific Power
-    scaling = compute_specific_power(
-        baseline_params["base_capacity"], baseline_params["base_rotor_diam"]
-    ) / (
-        np.exp(
-            0.53769024 * np.log(baseline_params["reference_wind_speed"]) + 4.74917728
-        )
+    scaling = compute_specific_power(baseline_params["base_capacity"], baseline_params["base_rotor_diam"]) / (
+        np.exp(0.53769024 * np.log(baseline_params["reference_wind_speed"]) + 4.74917728)
     )
     specific_power = scaling * np.exp(0.53769024 * np.log(wind_speed) + 4.74917728)
     if multi:
@@ -125,9 +123,7 @@ def onshore_turbine_from_avg_wind_speed(
 
     # Design Hub Height
     scaling = baseline_params["base_hub_height"] / (
-        np.exp(
-            -0.84976623 * np.log(baseline_params["reference_wind_speed"]) + 6.1879937
-        )
+        np.exp(-0.84976623 * np.log(baseline_params["reference_wind_speed"]) + 6.1879937)
     )
     hub_height = scaling * np.exp(-0.84976623 * np.log(wind_speed) + 6.1879937)
     if multi:
@@ -136,9 +132,7 @@ def onshore_turbine_from_avg_wind_speed(
             if baseline_params["constant_rotor_diam"]:
                 hub_height[lowerlt] = rotor_diam / 2 + baseline_params["min_tip_height"]
             else:
-                hub_height[lowerlt] = (
-                    rotor_diam[lowerlt] / 2 + baseline_params["min_tip_height"]
-                )
+                hub_height[lowerlt] = rotor_diam[lowerlt] / 2 + baseline_params["min_tip_height"]
 
         upperlt = hub_height > baseline_params["max_hub_height"]
         if upperlt.any():

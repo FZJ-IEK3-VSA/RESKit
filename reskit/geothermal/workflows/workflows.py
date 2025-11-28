@@ -24,7 +24,8 @@ def EGSworkflow(
     """
     Executes the Enhanced Geothermal System (EGS) workflow for given placements.
 
-    Parameters:
+    Parameters
+    ----------
         placements (pd.DataFrame): Locations where the EGS workflow will be applied. Needs to have lat lon and geokit geoms.
         sourceTemperature (str or Path, optional): Path to the geothermal temperature data.
             Defaults to `path_temperatures`.
@@ -35,7 +36,8 @@ def EGSworkflow(
             Defaults to 'doublette'.
         manual_values (dict, optional): Dictionary of manually specified values for overriding defaults.
 
-    Returns:
+    Returns
+    -------
         None or xarray object: Workflow results, optionally saved to `savepath`.
 
     Citation:
@@ -43,14 +45,12 @@ def EGSworkflow(
          from Geothermal Power Under Technical, Economic, Sustainable Evaluation. Available at SSRN:
          https://ssrn.com/abstract=5029989 or http://dx.doi.org/10.2139/ssrn.5029989
     """
-
     citation = """
     This workflow can be cited as:
     Franzmann, David and Heinrichs, Heidi
     and Stolten, Detlef, Global Electricity Potentials from Geothermal Power
     Under Technical, Economic, Sustainable Evaluation.
-    Available at SSRN:
-    https://ssrn.com/abstract=5029989
+    Available at SSRN: https://ssrn.com/abstract=5029989
     or http://dx.doi.org/10.2139/ssrn.5029989
     """
 
@@ -83,7 +83,7 @@ def EGSworkflow(
         manual_values=manual_values,
     )
 
-    ### Calulations
+    ### Calculations
     tic_calc = time.time()
     now = datetime.now()
     print("Starting calc =", now, flush=True)
@@ -112,12 +112,10 @@ def EGSworkflow(
 
     tic_done = time.time()
     print("\nTime eval.:")
-    print(f"Data loading finished in {str(int(tic_calc-tic_data_loading))}s.")
-    print(f"Calculation finished in {str(int(tic_cost-tic_calc))}s.")
-    print(f"Cost calculation finished in {str(int(tic_done-tic_cost))}s.")
-    print(
-        f"RESkit EGS done within {str(int(tic_done-tic_data_loading))}s for {len(placements)} points.."
-    )
+    print(f"Data loading finished in {str(int(tic_calc - tic_data_loading))}s.")
+    print(f"Calculation finished in {str(int(tic_cost - tic_calc))}s.")
+    print(f"Cost calculation finished in {str(int(tic_done - tic_cost))}s.")
+    print(f"RESkit EGS done within {str(int(tic_done - tic_data_loading))}s for {len(placements)} points..")
 
     if savepath is None:
         return output

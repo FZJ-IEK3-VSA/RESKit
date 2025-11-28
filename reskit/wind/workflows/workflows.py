@@ -1,12 +1,14 @@
 # import primary packages
-import numpy as np
 import os
+import warnings
+
+import numpy as np
 import pandas as pd
-import yaml
+
+import reskit.util as rk_util
 
 # import modules
 import reskit.weather as rk_weather
-import reskit.util as rk_util
 from reskit.wind.core.data import DATAFOLDER
 from reskit.wind.core.windspeed_correction import build_ws_correction_function
 from reskit.wind.workflows.wind_workflow_manager import WindWorkflowManager
@@ -16,7 +18,7 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
     placements,
     era5_path,
     gwa_100m_path,
-    esa_cci_path,
+    height_scaling_data,
     output_netcdf_path=None,
     cf_correction=True,
     output_variables=None,
@@ -42,9 +44,12 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
     era5_path : str
         Path to the ERA5 data.
     gwa_100m_path : str
-        Path to the Global Wind Atlas at 100m [4] raster file.
-    esa_cci_path : str
-        Path to the ESA CCI raster file [5].
+        Path to the Global Wind Atlas v4 (GWA4) at 100m [4] raster file.
+    height_scaling_data : dict
+        The data required for the height_scaling_method ("lra", "linear").
+        Dict with integer heights as keys and str paths to the Global Wind Atlas
+        windspeeds [4] at the respective heights as values. Must contain at
+        least one higher and one lower height than 100 [m].
     output_netcdf_path : str, optional
         Path to a directory to put the output files, by default None
     cf_correction : bool, optional
@@ -70,21 +75,18 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
         A xarray dataset including all the output variables you defined as your output variables.
 
     Sources
-    ------
+    -------
     [1] European Centre for Medium-Range Weather Forecasts. (2019). ERA5 dataset. https://www.ecmwf.int/en/forecasts/datasets/reanalysis-datasets/era5
     [2] International Energy Agency. (2023). Renewables Market Report. https://www.iea.org/reports/renewables-2023
     [3] Peña-Sánchez, Dunkel, Winkler et al. (2025): Towards high resolution, validated and open global wind power assessments. https://doi.org/10.48550/arXiv.2501.07937
-    [4] DTU Wind Energy. (2019). Global Wind Atlas. https://globalwindatlas.info/
-    [5] ESA. Land Cover CCI Product User Guide Version 2. Tech. Rep. (2017). Available at: maps.elie.ucl.ac.be/CCI/viewer/download/ESACCI-LC-Ph2-PUGv2_2.0.pdf
+    [4] DTU Wind Energy. (2025). Global Wind Atlas v4. https://globalwindatlas.info/
     """
     # default data used as per [3]
     ws_correction_func = (
         "ws_bins",
         os.path.join(DATAFOLDER, f"ws_correction_factors_PSDW2025.yaml"),
     )
-    cf_correction_factor = os.path.join(
-        DATAFOLDER, f"cf_correction_factors_PSDW2025.tif"
-    )
+    cf_correction_factor = os.path.join(DATAFOLDER, f"cf_correction_factors_PSDW2025.tif")
     wake_curve = "dena_mean"
     availability_factor = 0.98
     nodata_fallback = np.nan
@@ -116,10 +118,14 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
         spatial_interpolation="average",
     )
 
-    # estimate roughness and use for velocity correction based on hub height
-    wf.estimate_roughness_from_land_cover(path=esa_cci_path, source_type="cci")
-    wf.logarithmic_projection_of_wind_speeds_to_hub_height(
-        consider_boundary_layer_height=True
+    # project the windspeeds to the respective hub heights
+    wf.project_windspeeds_to_hub_height(
+        height_scaling_method=(
+            "lra",
+            "linear",
+        ),  # calibration uses the linear interpolation of different GWA
+        height_scaling_data=height_scaling_data,
+        consider_boundary_layer_height=True,
     )
 
     # generate the actual ws corr func and correct wind speeds
@@ -127,9 +133,7 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
         type=ws_correction_func[0],
         data_dict=ws_correction_func[1],
     )
-    wf.sim_data["elevated_wind_speed"] = ws_correction_func(
-        wf.sim_data["elevated_wind_speed"]
-    )
+    wf.sim_data["elevated_wind_speed"] = ws_correction_func(wf.sim_data["elevated_wind_speed"])
 
     # apply air density correction
     wf.apply_air_density_correction_to_wind_speeds()
@@ -154,9 +158,7 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
     # apply availability factor
     wf.apply_availability_factor(availability_factor=availability_factor)
 
-    return wf.to_xarray(
-        output_netcdf_path=output_netcdf_path, output_variables=output_variables
-    )
+    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
 
 def onshore_wind_merra_ryberg2019_europe(
@@ -196,13 +198,12 @@ def onshore_wind_merra_ryberg2019_europe(
         A xarray dataset including all the output variables you defined as your output variables.
 
     Sources
-    ------
+    -------
     [1] NASA (National Aeronautics and Space Administration). (2019). Modern-Era Retrospective analysis for Research and Applications, Version 2. NASA Goddard Earth Sciences (GES) Data and Information Services Center (DISC). https://disc.gsfc.nasa.gov/datasets?keywords=%22MERRA-2%22&page=1&source=Models%2FAnalyses MERRA-2
     [2] DTU Wind Energy. (2019). Global Wind Atlas. https://globalwindatlas.info/
     [3] Copernicus (European Union’s Earth Observation Programme). (2012). Corine Land Cover 2012. Copernicus. https://land.copernicus.eu/pan-european/corine-land-cover/clc-2012
 
     """
-
     wf = WindWorkflowManager(placements)
 
     wf.read(
@@ -233,13 +234,9 @@ def onshore_wind_merra_ryberg2019_europe(
 
     wf.simulate(max_batch_size=max_batch_size)
 
-    wf.apply_loss_factor(
-        loss=lambda x: rk_util.low_generation_loss(x, base=0.0, sharpness=5.0)
-    )
+    wf.apply_loss_factor(loss=lambda x: rk_util.low_generation_loss(x, base=0.0, sharpness=5.0))
 
-    return wf.to_xarray(
-        output_netcdf_path=output_netcdf_path, output_variables=output_variables
-    )
+    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
 
 def offshore_wind_merra_caglayan2019(
@@ -272,11 +269,10 @@ def offshore_wind_merra_caglayan2019(
         A xarray dataset including all the output variables you defined as your output variables.
 
     Sources
-    ------
+    -------
     [1] National Aeronautics and Space Administration. (2019). Modern-Era Retrospective analysis for Research and Applications, Version 2. NASA Goddard Earth Sciences (GES) Data and Information Services Center (DISC). https://disc.gsfc.nasa.gov/datasets?keywords=%22MERRA-2%22&page=1&source=Models%2FAnalyses MERRA-2
 
     """
-
     wf = WindWorkflowManager(placements)
 
     wf.read(
@@ -301,14 +297,10 @@ def offshore_wind_merra_caglayan2019(
     wf.simulate(max_batch_size=max_batch_size)
 
     wf.apply_loss_factor(
-        loss=lambda x: rk_util.low_generation_loss(
-            x, base=0.1, sharpness=3.5
-        )  # TODO: Check values with Dil
+        loss=lambda x: rk_util.low_generation_loss(x, base=0.1, sharpness=3.5)  # TODO: Check values with Dil
     )
 
-    return wf.to_xarray(
-        output_netcdf_path=output_netcdf_path, output_variables=output_variables
-    )
+    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
 
 def onshore_wind_iconlam_2023(
@@ -349,11 +341,10 @@ def onshore_wind_iconlam_2023(
         A xarray dataset including all the output variables.
 
     Sources
-    ------
+    -------
     [1] Chen, S., Goergen, K., Hendricks Franssen, H. J., Winkler, C., Poll, S., Houssoukri Zounogo Wahabou, Y., ... & Heinrichs, H. (2024). Higher onshore wind energy potentials revealed by kilometer‐scale atmospheric modeling. Geophysical Research Letters, 51(19), e2024GL110122. https://doi.org/10.1029/2024GL110122
     [2] ESA. Land Cover CCI Product User Guide Version 2. Tech. Rep. (2017). Available at: maps.elie.ucl.ac.be/CCI/viewer/download/ESACCI-LC-Ph2-PUGv2_2.0.pdf
     """
-
     wf = WindWorkflowManager(placements)
 
     # read data through wind workflow
@@ -393,9 +384,7 @@ def onshore_wind_iconlam_2023(
     # simulate wind power
     wf.simulate(max_batch_size=max_batch_size)
 
-    return wf.to_xarray(
-        output_netcdf_path=output_netcdf_path, output_variables=output_variables
-    )
+    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
 
 def wind_config(
@@ -407,13 +396,14 @@ def wind_config(
     real_lra_ws_scaling,
     real_lra_ws_spatial_interpolation,
     real_lra_ws_nodata_fallback,
-    landcover_path,
-    landcover_source_type,
+    height_scaling_method,
+    height_scaling_data,
     ws_correction_func,
     cf_correction_factor,
     wake_curve,
     availability_factor,
     consider_boundary_layer_height,
+    allow_height_extrapolation,
     power_curve_scaling,
     power_curve_base,
     convolute_power_curves_args={},
@@ -457,17 +447,35 @@ def wind_config(
             (ERA-5) value in the format:
             nodata_fallback(locs, weather_lra_ws_path_value)
         (4) a filepath to a raster file containing the fallback values
-    landcover_path : str
-        The path to the categorical landcover raster file.
-        Set to None if no hub height scaling at all shall be applied.
-    landcover_source_type : str
-        Determines the conversion of landcover categories into roughness
-        factors, e.g. 'cci', 'clc-code', 'clc', 'globCover', 'modis'.
-        Takes effect only if landcover_path is not None.
+    height_scaling_method : tuple
+        The method to project the windspeeds from the default height (here
+        100m in ERA-5/GWA3) to hub height (possibly affected by the planetary
+        boundary layer height). First tuple entry (str) describes the general
+        approach (e.g. logarithmic scaling or based on long-run-average
+        windspeeds). No height scaling will be applied when None. Options are:
+        ("lra", [vertical method]) : Calculation based on the long-run average
+            wind speeds (e.g. GWA) of the 2 nearest available height levels.
+            [vertical method] (str) describes the form of interpolation. By
+            default "linear".
+        ("log", [landcover]) : Logarithmic height scaling based on surface
+            roughness defined via a mapping of the land cover category.
+            [landcover] (str) defines the landcover data used for roughness
+            mapping. All landcover types accepted as land_cover_type in
+            logarithmic_profile.roughness_from_land_cover_classification() are
+            allowed, by default "cci" (ESA CCI raster).
+    height_scaling_data : str, dict
+        The data required for the selected height_scaling_method (see above).
+        The expected data formats are, depending on height_scaling_method:
+        ("log", [landcover]) : str
+            Path to the respective "landcover" raster file.
+        ("lra", [vertical method]) : {int : str}
+            Dict with heights as keys and paths to the LRA-windspeeds at the
+            respective heights as values. Must contain at least one higher and
+            one lower height than the reference height of real_lra_ws_path.
     ws_correction_func :float, callable, tuple, list
         An executable function that takes a numpy array as single input
         argument and returns an adapted windspeed. If 1.0 is passed, no
-        windspeed corrrection will be applied. Can also be passed as tuple
+        windspeed correction will be applied. Can also be passed as tuple
         or list of length 2 with data_type (e.g. 'linear' or 'ws_bins')
         and data dict (dict or path to yaml) with parameters.
     cf_correction_factor : float, str
@@ -484,14 +492,18 @@ def wind_config(
         'wake_curve' str can also be provided per each location in a
         'wake_curve' column of the placements dataframe, 'wake_curve'
         argument must then be None.
-    availability_factor : float, otional
+    availability_factor : float, optional
         This factor accounts for all downtimes and applies an average reduction to the output curve,
-        assuming a statistical deviation of the downtime occurences and a large enough turbine fleet.
+        assuming a statistical deviation of the downtime occurrences and a large enough turbine fleet.
         Suggested availability is 0.98 including technical availability of turbine and connector
         as well as outages for ecological reasons (e.g. bat protection). This does not include wake effects
         (see above) or curtailment/outage for economical reasons or transmission grid congestion.
     consider_boundary_layer_height : bool
         If True, boundary layer height will be considered.
+    allow_height_extrapolation : bool
+        Takes effect only if a height scaling method based on interpolation is
+        chosen, will then allow or forbid extrapolation beyond the min/max
+        provided height range.
     power_curve_scaling : float
         The scaling factor to smoothen the power curve, for details see:
         convolute_power_curves()
@@ -538,9 +550,9 @@ def wind_config(
             type=ws_correction_func[0],
             data_dict=ws_correction_func[1],
         )
-    assert callable(
-        ws_correction_func
-    ), f"ws_correction_func must be an executable with a single argument that can be passed as np.array (if not 1)."
+    assert callable(ws_correction_func), (
+        f"ws_correction_func must be an executable with a single argument that can be passed as np.array (if not 1)."
+    )
 
     wf = WindWorkflowManager(placements)
 
@@ -566,19 +578,19 @@ def wind_config(
         real_lra_scaling=real_lra_ws_scaling,
     )
 
-    if landcover_path:
-        wf.estimate_roughness_from_land_cover(
-            path=landcover_path, source_type=landcover_source_type
-        )
-
-        wf.logarithmic_projection_of_wind_speeds_to_hub_height(
-            consider_boundary_layer_height=consider_boundary_layer_height
+    if height_scaling_method is not None:
+        if isinstance(height_scaling_method, list):
+            # convert to tuple
+            height_scaling_method = tuple(height_scaling_method)
+        wf.project_windspeeds_to_hub_height(
+            height_scaling_method=height_scaling_method,
+            height_scaling_data=height_scaling_data,
+            consider_boundary_layer_height=consider_boundary_layer_height,
+            allow_extrapolation=allow_height_extrapolation,
         )
 
     # correct wind speeds
-    wf.sim_data["elevated_wind_speed"] = ws_correction_func(
-        wf.sim_data["elevated_wind_speed"]
-    )
+    wf.sim_data["elevated_wind_speed"] = ws_correction_func(wf.sim_data["elevated_wind_speed"])
 
     wf.apply_air_density_correction_to_wind_speeds()
 
@@ -597,21 +609,15 @@ def wind_config(
     )
 
     # do simulation
-    wf.simulate(
-        cf_correction_factor=cf_correction_factor, max_batch_size=max_batch_size
-    )
+    wf.simulate(cf_correction_factor=cf_correction_factor, max_batch_size=max_batch_size)
 
     if loss_factor_args != {}:
-        wf.apply_loss_factor(
-            loss=lambda x: rk_util.low_generation_loss(x, **loss_factor_args)
-        )
+        wf.apply_loss_factor(loss=lambda x: rk_util.low_generation_loss(x, **loss_factor_args))
 
     # apply availability factor
     wf.apply_availability_factor(availability_factor=availability_factor)
 
-    return wf.to_xarray(
-        output_netcdf_path=output_netcdf_path, output_variables=output_variables
-    )
+    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
 
 ########################
@@ -627,7 +633,7 @@ def wind_era5_2023(**kwargs):
     Simulates onshore and offshore (200km from shoreline) wind generation using ECMWF's ERA5 database [1].
 
     Sources
-    ------
+    -------
     [1] European Centre for Medium-Range Weather Forecasts. (2019). ERA5 dataset. https://www.ecmwf.int/en/forecasts/datasets/reanalysis-datasets/era5
     """
     # this is the commit hash with the latest workflow status
@@ -640,7 +646,7 @@ def onshore_wind_era5(**kwargs):
     Simulates onshore wind generation using ECMWF's ERA5 database [1].
 
     Sources
-    ------
+    -------
     [1] European Centre for Medium-Range Weather Forecasts. (2019). ERA5 dataset. https://www.ecmwf.int/en/forecasts/datasets/reanalysis-datasets/era5
     """
     # this is the commit hash with the latest workflow status
@@ -653,7 +659,7 @@ def offshore_wind_era5(**kwargs):
     Simulates offshore wind generation using NASA's ERA5 database [1].
 
     Sources
-    ------
+    -------
     [1] European Centre for Medium-Range Weather Forecasts. (2019). ERA5 dataset. https://www.ecmwf.int/en/forecasts/datasets/reanalysis-datasets/era5.
 
     """
@@ -669,7 +675,7 @@ def onshore_wind_era5_pure_2023(**kwargs):
     and power curve convolution.
 
     Sources
-    ------
+    -------
     [1] European Centre for Medium-Range Weather Forecasts. (2019). ERA5 dataset. https://www.ecmwf.int/en/forecasts/datasets/reanalysis-datasets/era5
     """
     # this is the commit hash with the latest workflow status

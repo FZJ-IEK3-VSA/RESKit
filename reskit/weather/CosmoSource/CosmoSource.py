@@ -1,22 +1,23 @@
 """TODO: NEEDS UPDATING!!!"""
 
-from ..NCSource import *
 import pytz
+
+from ..NCSource import *
 
 # Define constants
 
 
 class CosmoSource(NCSource):
     """
-    Handles the sources Sev created from the COSMO-REA6 dataset (cannot handle the orginal sources because they're whack)
+    Handles the sources Sev created from the COSMO-REA6 dataset (cannot handle the original sources because they're whack)
     """
 
     GWA50_CONTEXT_MEAN_SOURCE = None
     GWA100_CONTEXT_MEAN_SOURCE = None
 
-    # a LARGE ooverestimate of how much space should be inbetween a given point and the nearest index
+    # a LARGE ooverestimate of how much space should be in between a given point and the nearest index
     MAX_LON_DIFFERENCE = 0.6
-    # a LARGE ooverestimate of how much space should be inbetween a given point and the nearest index
+    # a LARGE ooverestimate of how much space should be in between a given point and the nearest index
     MAX_LAT_DIFFERENCE = 0.6
 
     def __init__(s, source, bounds=None, indexPad=0, **kwargs):
@@ -31,7 +32,7 @@ class CosmoSource(NCSource):
 
         bounds : Anything acceptable to geokit.Extent.load(), optional
             The boundaries of the data which is needed
-              * Usage of this will help with memory mangement
+              * Usage of this will help with memory management
               * If None, the full dataset is loaded in memory
 
         padExtent : numeric, optional
@@ -55,7 +56,7 @@ class CosmoSource(NCSource):
             _maxLonDiff=s.MAX_LON_DIFFERENCE,
             _maxLatDiff=s.MAX_LAT_DIFFERENCE,
             tz=pytz.FixedOffset(60),
-            **kwargs
+            **kwargs,
         )
 
     def loc2Index(s, loc, outsideOkay=False, asInt=True):
@@ -143,12 +144,10 @@ class CosmoSource(NCSource):
             else:
                 return Index(yi=latI[0], xi=lonI[0])
         else:
-            return [
-                None if ss else Index(yi=y, xi=x) for ss, y, x in zip(s, latI, lonI)
-            ]
+            return [None if ss else Index(yi=y, xi=x) for ss, y, x in zip(s, latI, lonI)]
 
     def loadRadiation(s):
-        """frankCorrection: "Bias correction of a novel European reanalysis data set for solar energy applications" """
+        """frankCorrection: 'Bias correction of a novel European reanalysis data set for solar energy applications'"""
         s.load("SWDIFDS_RAD", "dhi")
         s.load("SWDIRS_RAD", "dni_flat")
         s.data["ghi"] = s.data["dhi"] + s.data["dni_flat"]
@@ -194,9 +193,7 @@ class CosmoSource(NCSource):
 
                 fac = (height - 50) / (100 - 50)
 
-                newWspd = s.data["windspeed_100"] * fac + s.data["windspeed_50"] * (
-                    1 - fac
-                )
+                newWspd = s.data["windspeed_100"] * fac + s.data["windspeed_50"] * (1 - fac)
                 s.data["windspeed"] = newWspd
 
                 del s.data["windspeed_50"]
@@ -208,20 +205,18 @@ class CosmoSource(NCSource):
 
                 fac = (height - 100) / (140 - 100)
 
-                newWspd = s.data["windspeed_140"] * fac + s.data["windspeed_100"] * (
-                    1 - fac
-                )
+                newWspd = s.data["windspeed_140"] * fac + s.data["windspeed_100"] * (1 - fac)
                 s.data["windspeed"] = newWspd
 
                 del s.data["windspeed_100"]
                 del s.data["windspeed_140"]
 
     def loadTemperature(s, processor=lambda x: x - 273.15):
-        """load the typical pressure variable"""
+        """Load the typical pressure variable"""
         s.load("2t", name="air_temp", processor=processor)
 
     def loadPressure(s):
-        """load the typical pressure variable"""
+        """Load the typical pressure variable"""
         s.load("sp", name="pressure")
 
     def loadSet_PV(s, verbose=False, _clockstart=None, _header=""):
@@ -232,32 +227,28 @@ class CosmoSource(NCSource):
                 _clockstart = dt.now()
             print(
                 _header,
-                "Loading radiation at: +%.2fs"
-                % (dt.now() - _clockstart).total_seconds(),
+                "Loading radiation at: +%.2fs" % (dt.now() - _clockstart).total_seconds(),
             )
         s.loadRadiation()
 
         if verbose:
             print(
                 _header,
-                "Loading wind speed at: +%.2fs"
-                % (dt.now() - _clockstart).total_seconds(),
+                "Loading wind speed at: +%.2fs" % (dt.now() - _clockstart).total_seconds(),
             )
         s.loadWindSpeedAtHeight(10)
 
         if verbose:
             print(
                 _header,
-                "Loading pressure at: +%.2fs"
-                % (dt.now() - _clockstart).total_seconds(),
+                "Loading pressure at: +%.2fs" % (dt.now() - _clockstart).total_seconds(),
             )
         s.loadPressure()
 
         if verbose:
             print(
                 _header,
-                "Loading temperature at: +%.2fs"
-                % (dt.now() - _clockstart).total_seconds(),
+                "Loading temperature at: +%.2fs" % (dt.now() - _clockstart).total_seconds(),
             )
         s.loadTemperature()
 
@@ -308,7 +299,6 @@ class CosmoSource(NCSource):
 
         Returns
         -------
-
         If a single location is given: pandas.Series
           * Indexes match to times
 
