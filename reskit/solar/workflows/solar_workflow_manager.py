@@ -1318,7 +1318,7 @@ class SolarWorkflowManager(WorkflowManager):
                     return np.full(self._sim_shape_[0], fallback)
                 else:
                     # fall back to defaults
-                    defaults = {"n_pvrows" : 3, "index_observed_pvrow" : 1}
+                    defaults = {"n_pvrows" : 3, "index_observed_pvrow" : 1, "pvrow_width" : 2.384*2} # default width for 2P orientation of large commercial module
                     if var not in defaults:
                         raise KeyError(f"Variable '{var}' is neither a sim_data system variable, nor a column in placements dataframe nor has a default value.")
                     return defaults[var]
@@ -1341,6 +1341,7 @@ class SolarWorkflowManager(WorkflowManager):
             pvfts_args["albedo"] = _extract_var("grdalbedo", "system_grdalbedo")
             pvfts_args["n_pvrows"] = _extract_var("n_pvrows")
             pvfts_args["index_observed_pvrow"] = _extract_var("index_observed_pvrow")
+            pvfts_args["pvrow_width"] = _extract_var("pvrow_width")
 
             # handle kwargs for this location
             kwargs_iloc = {}
@@ -1350,20 +1351,13 @@ class SolarWorkflowManager(WorkflowManager):
                     if not v.shape==self._sim_shape_:
                         raise ValueError(f"kwarg '{k}' was passed as {v.shape} numpy.ndarray, must either be 1d or of shape (Ntimesteps, Nlocations), here: {self._sim_shape_}.")
                     # set only the respective locational slice
-                    kwargs_iloc[k] = v[:, iloc]
+                    pvfts_args[k] = v[:, iloc]
                 elif not hasattr(v, "__iter__"):
                     # scalar value, set the same for all locations
-                    kwargs_iloc[k] = v
+                    pvfts_args[k] = v
                 else:
                     raise TypeError(f"kwargs for pvlib.bifacial.pvfactors.pvfactors_timeseries() must be scalar or numpy.ndarray type: {k}:{v}")
-            pvfts_args.update(kwargs_iloc) # add/overwrite with location-specific kwargs if applicable
-            # special case: PV row width if not given should match gcr, assume lateral module placement -> module row is 2m wide
-            if "pvrow_width" not in pvfts_args:
-                # calculate it based on the GCR and axis height
-                _panel_width = 2 # m
-                assert (0 < np.atleast_1d(pvfts_args["gcr"])).all() & (np.atleast_1d(pvfts_args["gcr"]) <= 1).all(), "gcr must be a float value between 0 and 1 for all placements" # make sure
-                pvfts_args["pvrow_width"] = _panel_width/pvfts_args["gcr"]
-            
+
             # simulate and append locational output to total results
             _poa_frontside, _poa_backside, _poa_frontside_absorbed, _poa_backside_absorbed = pvlib.bifacial.pvfactors_timeseries(**pvfts_args)
 
