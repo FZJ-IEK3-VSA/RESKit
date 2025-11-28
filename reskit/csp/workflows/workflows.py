@@ -308,8 +308,6 @@ def CSP_PTR_ERA5_specific_dataset(
     if return_self is False, a xarray dataset containing the final simulation results. This dataset is optionally written to disk if output_netcdf_path was specified.
     
     """
-  
-
     # 1) Load input data
     wf = PTRWorkflowManager(placements) 
 
