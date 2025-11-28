@@ -34,8 +34,85 @@ def CSP_PTR_ERA5(
     It is a wrapper around the function "CSP_PTR_ERA5_specific_dataset" below, to include the case of multiple datasets.
     Multiple datasets are refering to multiple heat transfer fluids and therefore also different power plants. In that case, for each placement the optimal HTF is selected.
 
-    Args: 
-        global_solar_atlas_tamb_path (str): path to temperature data from global solar atlas. Used for selecting at which placement which HTF is optimal.
+    Parameters
+    ----------
+    placements: Pandas DataFrame
+        Locations where to perform simulations at.
+        Required columns: longitude, latitude, and one area column ("area_m2", "area", "aperture_area_m2", or "land_area_m2").
+    
+    era5_path: str or rk_weather.NCSource
+        Path to ERA5 weather data or an NCSource object.
+        Required columns: "direct_horizontal_irradiance", "surface_wind_speed", "surface_air_temperature".
+    
+    global_solar_atlas_dni_path: str or float or np.ndarray
+        Long-term average DNI data for placements. Could be provided as:
+            - str: Path to raster file with DNI data from Global Solar Atlas.
+            - float: Constant DNI value for all placements.
+            - np.ndarray: Array of DNI values, shape must match (placements,) or (time, placements).
+    
+    global_solar_atlas_tamb_path: str, optional
+        path to temperature data from global solar atlas. Used for selecting at which placement which HTF is optimal.
+
+    datasetname: str, optional
+        Name of the CSP technology dataset (e.g., "Heliosol", "SolarSalt").
+        Defaults to "Validation 10". See csp/data/CSP_database.xlsx for options.
+        
+    cost_year: int, optional
+        Year for cost calculation of the CSP plant.
+        Defaults to 2050.
+        
+    HTF_sel: list of str, optional
+        List of heat transfer fluids to consider for the simulation.
+        Each heat transfer fluid corresponds to a different CSP technology dataset.
+        Options: ["Heliosol", "SolarSalt", "Therminol"].
+    
+    elev_path: str or list, optional
+        Elevation data for placements. Could be provided as:
+            - str: Path to raster file with elevation data.
+            - list: Elevation values for each placement.
+    
+    output_netcdf_path: str, optional
+        Path to a file that you want to save your output NETCDF file at.
+        Defaults to None.
+    
+    output_variables: list of {str, number}, optional
+        Output variables of the simulation that you want to save.
+        If None, includes all suitable variables from placements, workflow parameters, simulation data, and time index.
+    
+    return_self: bool, optional
+        If True, returns the workflow manager object.
+        If False, returns the output as an XArray dataset.
+        Defaults to True.
+    
+    JITaccelerate: bool, optional
+        If True, enables JIT acceleration for some calculations.
+        Defaults to False.
+    
+    verbose: bool, optional
+        If True, prints progress information.
+        Defaults to False.
+    
+    debug_vars: bool, optional
+        If True, retains intermediate variables for debugging.
+        Defaults to False.
+    
+    onlynightuse: bool, optional
+        If True, optimizes plant size for night use only.
+        Defaults to True.
+    
+    fullvariation: bool, optional
+        If True, applies full variation in calculations.
+        Defaults to False.
+    
+    _validation: bool, optional
+        If True, runs in validation mode (some input data may be replaced).
+        Defaults to False.
+
+    Returns
+    -------
+    if return_self is True, the workflow manager object (PTRWorkflowManager) containing all simulation results and data.
+    if return_self is False, a xarray dataset containing the final simulation results. This dataset is optionally written to disk if output_netcdf_path was specified.
+    
         rest: see CSP_PTR_ERA5_specific_dataset
     """
     # handle inputs for datasets
@@ -190,7 +267,7 @@ def CSP_PTR_ERA5_specific_dataset(
         Path to a file that you want to save your output NETCDF file at.
         Defaults to None.
     
-    output_variables: List[str, numeric], optional
+    output_variables: list of {str, number}, optional
         Output variables of the simulation that you want to save.
         If None, includes all suitable variables from placements, workflow parameters, simulation data, and time index.
     
