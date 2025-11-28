@@ -6,6 +6,84 @@ import pandas as pd
 
 # import othert modules
 from .cooling_heating_workflow_manager import CoolingHeatingWorkflowManager
+from ...util.relative_humidity import calculate_relative_humidity
+from ...util.wet_bulb_temperature import calculate_wet_bulb_temperature
+
+
+def evaporative_cooling_wortmann2025(
+    placements: pd.DataFrame,
+    era5_path: str,
+    temperatureCoolant: int | float,
+    designTemperature: int | float,
+    heatTransferDelta: int | float = 5,
+    efficiencyFan: int | float = 0.7,
+    pressureDropAir: int | float = 261,
+    efficiencyPump: int | float = 0.7,
+    pressureDropWater: int | float = 200000,
+    output_netcdf_path: str = None,
+    output_variables: List[str] = None,
+):
+    """
+    Simulate an evaporative-cooling system based on ERA5 weather data.
+
+    This function calculates the fan and pump power requirements, capacity factor,
+    and total electricity demand for air-cooling systems at varying ambient temperatures.
+    Results can be saved to a NetCDF file.
+
+    Parameters
+    ----------
+    placements : pd.DataFrame
+        DataFrame specifying the plant locations and their capacities.
+    era5_path : str
+        Path to the ERA5 weather data source.
+    temperatureCoolant : float
+        Temperature of the heat load to be cooled [°C].
+    designTemperature : float
+        Temperature for the nominal design point of the air cooling system [°C].
+    heatTransferDelta : float, optional
+        Temperature difference required for heat transfer from air to coolant [K]. Default is 5.
+    efficiencyFan : float, optional
+        Efficiency of the fan system [0, 1]. Default is 0.7.
+    pressureDropAir : float, optional
+        Pressure drop of air through the cooling frame channels [Pa]. Default is 261.
+    efficiencyPump : float, optional
+        Efficiency of the pump system [0, 1]. Default is 0.7.
+    pressureDropWater : float, optional
+        Pressure drop of water through the circuit [Pa]. Default is 200000.
+    output_netcdf_path : str, optional
+        Path to save the output NetCDF file. Default is None.
+    output_variables : list of str, optional
+        List of simulation variables to save to the NetCDF file. If None, all variables are saved.
+
+    Returns
+    -------
+    xarray.Dataset
+        Simulation results, including capacity factor, fan/pump/electricity inputs, and cooling output.
+        Can be limited to `output_variables` if specified.
+
+    Notes
+    -----
+    - Calculates fan and pump power using `calculate_fan_power_air_cooling` and `calculate_pump_power_air_cooling`.
+    - Computes the system capacity factor relative to the design temperature using `calculate_capacity_factor_air_cooling`.
+    - Total electricity input includes contributions from both fan and pump.
+    - Stores all relevant units in `wf.units` for reference.
+
+    Raises
+    ------
+    AssertionError
+        If input parameters are not of expected type or if efficiency values are not within (0, 1].
+    """
+    assert isinstance(temperatureCoolant, (int, float))
+    assert isinstance(designTemperature, (int, float))
+    assert isinstance(heatTransferDelta, (int, float))
+    assert isinstance(efficiencyFan, (int, float))
+    assert isinstance(pressureDropAir, (int, float))
+    assert isinstance(efficiencyPump, (int, float))
+    assert isinstance(pressureDropWater, (int, float))
+    assert 0 < efficiencyFan <= 1, "efficiencyFan must be between 0 and 1"
+    assert 0 < efficiencyPump <= 1, "efficiencyPump must be between 0 and 1"
+
+    wf = CoolingHeatingWorkflowManager(placements)
 
 
 def air_cooling_wenzel2025(
@@ -226,6 +304,110 @@ def air_source_heat_pump(
     )  # kWh_el/h
 
     wf.sim_data["heat_output"] = np.ones(wf.sim_data["electricity_input"].shape) * np.array(wf.placements["capacity"])
+
+    return wf.to_xarray(
+        output_netcdf_path=output_netcdf_path,
+        output_variables=output_variables,
+        custom_attributes=wf.units,
+    )
+
+
+def evaporative_cooling_wortmann2025(
+    placements: pd.DataFrame,
+    era5_path: str,
+    temperatureCoolant: int | float,
+    heatTransferDelta: int | float,
+    efficiencyCoolingTower: int | float,
+    factorDriftLosses: float | int = 0.001,
+    typical_cycles_blowdown: int = 5,
+    output_netcdf_path: str = None,
+    output_variables: List[str] = None,
+):
+    """
+    Simulate an evaporative-cooling system based on ERA5 weather data.
+
+    This function calculates the water losses of an evaporative-cooling systems at varying ambient conditions (temperature, humidity).
+    Results can be saved to a NetCDF file.
+
+    Parameters
+    ----------
+    placements : pd.DataFrame
+        DataFrame specifying the plant locations and their capacities.
+    era5_path : str
+        Path to the ERA5 weather data source.
+    temperatureCoolant : float | int
+        Temperature of the cooling load (lower temperature if sensible heat transfer) in °C.
+    heatTransferDelta : float | int
+        Temperature difference required for heat transfer from air to coolant [K]
+    efficiencyCoolingTower : float | int
+        Efficiency of the cooling tower system [0, 1]
+    factorDriftLosses : float | int
+        Drift losses by small water droplets carried away by the exhaust air. Defaults to 0.001.
+    typical_cycles_blowdown: int
+        after how many cycles the blowdown occurs to prevent accumulation of impurities. Defaults to 5.
+    output_netcdf_path : str, optional
+        Path to save the output NetCDF file. Default is None.
+    output_variables : list of str, optional
+        List of simulation variables to save to the NetCDF file. If None, all variables are saved.
+
+    Returns
+    -------
+    xarray.Dataset
+        Simulation results, including water losses.
+        Can be limited to `output_variables` if specified.
+
+    Notes
+    -----
+    - Stores all relevant units in `wf.units` for reference.
+
+    Raises
+    ------
+    AssertionError
+        If input parameters are not of expected type or if efficiency values are not within (0, 1].
+    """
+    assert isinstance(temperatureCoolant, (int, float))
+    assert isinstance(heatTransferDelta, (int, float))
+    assert isinstance(efficiencyCoolingTower, (int, float))
+    assert isinstance(factorDriftLosses, (int, float))
+    assert isinstance(typical_cycles_blowdown, (int, float))
+    assert 0 < efficiencyCoolingTower <= 1, "efficiencyCoolingTower must be between 0 and 1"
+    assert 0 < factorDriftLosses <= 1, "factorDriftLosses must be between 0 and 1"
+
+    wf = CoolingHeatingWorkflowManager(placements)
+
+    wf.read(
+        variables=["surface_air_temperature", "surface_dew_temperature"],
+        source_type="ERA5",
+        source=era5_path,
+        set_time_index=True,
+        verbose=False,
+    )
+
+    wf.sim_data["relative_humidity"] = calculate_relative_humidity(
+        dewpoint_temperature=wf.sim_data["surface_dew_temperature"],
+        air_temperature=wf.sim_data["surface_air_temperature"],
+    )
+
+    wf.sim_data["wet_bulb_temperature"] = calculate_wet_bulb_temperature(
+        air_temperature=wf.sim_data["surface_air_temperature"], relative_humidity=wf.sim_data["relative_humidity"]
+    )
+
+    wf.calculate_approach_evaporative_cooling(
+        temperatureCoolant=temperatureCoolant,
+        heatTransferDelta=heatTransferDelta,
+        efficiencyCoolingTower=efficiencyCoolingTower,
+    )
+
+    wf.calculate_water_losses_evaporative_cooling(
+        temperatureCoolant=temperatureCoolant,
+        heatTransferDelta=heatTransferDelta,
+        efficiencyCoolingTower=efficiencyCoolingTower,
+        factorDriftLosses=factorDriftLosses,
+        typical_cycles_blowdown=typical_cycles_blowdown,
+    )
+
+    # calculate total water demand for the plant
+    wf.sim_data["total_water_losses"] = -wf.sim_data["conversion_factor_water"] * np.array(wf.placements["capacity"])
 
     return wf.to_xarray(
         output_netcdf_path=output_netcdf_path,
