@@ -284,7 +284,7 @@ def openfield_pv_era5(
         warnings.warn(f"'tilt' column will be interpreted as and renamed to 'modtilt'.")
         wf.placements.rename(columns={"tilt" : "modtilt"})
     if "azimuth" in wf.placements:
-        assert "modazimuth" not in wf.placements, f"'azimuth' and '{"modazimuth"}' columns cannot exist both when tracking == 'fixed'."
+        assert "modazimuth" not in wf.placements, f"'azimuth' and 'modazimuth' columns cannot exist both when tracking == 'fixed'."
         warnings.warn(f"'azimuth' column will be interpreted as and renamed to 'modazimuth'.")
         wf.placements.rename(columns={"azimuth" : "modazimuth"})
     # estimates tilt, azimuth and elev
@@ -767,7 +767,6 @@ def pv_era5_WinklerUnpublished(
         tech_year=tech_year, 
         bifaciality_factor=bifaciality_factor, 
         tracking=tracking, 
-        tracking_args=tracking_args,
         database="CEC Modules.csv"
         )
 
