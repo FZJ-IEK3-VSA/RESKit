@@ -57,7 +57,7 @@ LCclass_groundtype_mapper:
     201 : bare # -> Consolidated bare areas
     202 : bare # -> Unconsolidated bare areas
     210 : water # Water bodies 
-    220 : snow # Permanent snow and ice 
+    220 : snow/ice # Permanent snow and ice 
 
 # References:
 # -----------
