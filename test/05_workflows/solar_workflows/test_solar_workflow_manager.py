@@ -5,9 +5,6 @@ import pytest
 
 import reskit as rk
 from reskit.solar import SolarWorkflowManager
-import reskit as rk
-import geokit as gk
-import pytest
 
 placements = pd.DataFrame()
 placements["lon"] = [
@@ -694,7 +691,7 @@ def test_SolarWorkflowManager_nan_values_tilt_azimuth_elev___init__() -> SolarWo
         35,
         40,
     ]
-    placements["modazimuth"] = [
+    placements["modazimuth"] = [0, 0, None, 180, 180]
     man = SolarWorkflowManager(placements)
     man.configure_cec_module(module="WINAICO WSx-240P6")
 
