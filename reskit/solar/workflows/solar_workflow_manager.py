@@ -18,7 +18,7 @@ from ...workflow_manager import WorkflowManager
 from reskit.solar import core as rk_solar_core
 from reskit.workflow_manager import WorkflowManager
 
-from reskit.solar import DATA
+from reskit.solar import DATA #TODO move data into core analog to wind/core/data
 
 # Lazily import PVLib
 import importlib
