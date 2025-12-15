@@ -153,7 +153,7 @@ def location_to_tracker_axis_azimuth(locs, convention:str="North", **kwargs):
     return axazimuths
 
 
-def location_to_tracker_axis_tilt(locs, convention:str="flat", **kwargs):
+def location_to_tracker_axis_tilt(locs, convention:str="flat", fallback:int|float=None, **kwargs):
     """
     Simple tilt estimator for the tracker axis in single-axis tracking systems 
     based off latitude coordinates. 
@@ -161,13 +161,17 @@ def location_to_tracker_axis_tilt(locs, convention:str="flat", **kwargs):
     Parameters
     ----------
     locs : geokit.LocationSet or iterable of (lon,lat) pairs
-        The locations at which to estimate module azimuth angle
+        The locations at which to estimate module azimuth angle#TODO update
 
     convention : str, optional #TODO update docstr, seems to be still azimuth
         The calculation method used to suggest tracker axis tilt angles.
         * "flat" will assign a 0° axis tilt to all locations 
         * A path to a raster file from which the location specific axis 
           tilt (in clockwise degree starting North) is extracted
+
+    fallback : int | float, optional
+        Will replace possible NaN values in the axis tilt iterable after 
+        application of the main function if given. By default None, i.e. no effect.
 
     kwargs: 
         Will be forwarded to geokit.raster.interpolateValues(), only applies 
@@ -192,10 +196,13 @@ def location_to_tracker_axis_tilt(locs, convention:str="flat", **kwargs):
     else:  
         raise ValueError(f"Unknown axis tilt convention '{convention}'.")
     
+    if fallback is not None:
+        axtilts[np.isnan(axtilts)] = fallback
+    
     return axtilts
 
 
-def location_to_cross_axis_tilt(locs, convention:str="flat", **kwargs):
+def location_to_cross_axis_tilt(locs, convention:str="flat", fallback:int|float=None, **kwargs):
     """
     Simple estimator for the cross axis slope in single-axis tracking 
     systems based off latitude coordinates.
@@ -210,6 +217,10 @@ def location_to_cross_axis_tilt(locs, convention:str="flat", **kwargs):
         * "flat" will assign a 0° cross axis tilt to all locations 
         * A path to a raster file from which the location specific
           cross-axis tilt is extracted
+
+    fallback : int | float, optional
+        Will replace possible NaN values in the cross-axis tilt iterable after 
+        application of the main function if given. By default None, i.e. no effect.
 
     kwargs: 
         Will be forwarded to geokit.raster.interpolateValues(), only applies 
@@ -234,6 +245,9 @@ def location_to_cross_axis_tilt(locs, convention:str="flat", **kwargs):
     else:  
         raise ValueError(f"Unknown cross axis tilt convention '{convention}'.")
     
+    if fallback is not None:
+        caxtilts[np.isnan(caxtilts)] = fallback
+
     return caxtilts
 
 
