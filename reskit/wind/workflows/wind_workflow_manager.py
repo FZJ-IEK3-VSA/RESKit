@@ -1019,6 +1019,6 @@ class WindWorkflowManager(WorkflowManager):
             correction_factors = [correction_factors] * len(self.locs)
 
         # write to attribute
-        self.correction_factors = np.array(correction_factors)
+        self.correction_factors = np.atleast_1d(correction_factors)
 
         return self
