@@ -87,6 +87,7 @@ class SolarWorkflowManager(WorkflowManager):
         singleaxis_tilt_convention=None,
         singleaxis_azimuth_convention=None,
         crossaxis_tilt_convention=None,
+        consider_snow_albedo=False,
     ):
         """
         This function checks mandatory parameters and estimates them based on a 
@@ -123,6 +124,10 @@ class SolarWorkflowManager(WorkflowManager):
             See 'convention' argument in 
             reskit.solar.core.system_design.location_to_cross_axis_tilt(), 
             by default None. Required only if tracking == "singleaxis".
+        consider_snow_albedo : bool, optional
+            If True, will consider hourly snow cover in the ground albedo.
+            Requires that snow_albedo, snow_density and snow_depth_water_equivalent
+            have been loaded into sim_data. By default False.
 
         Returns
         -------
@@ -160,7 +165,8 @@ class SolarWorkflowManager(WorkflowManager):
             elev=elev, fallback_elev=840
         )  # mean landmass elevation as fallback
         self.assign_ground_albedo(
-            ground_albedo=ground_albedo
+            ground_albedo=ground_albedo,
+            consider_snow_albedo=consider_snow_albedo,
         )
         self.assign_gcr(gcr=gcr)
 
@@ -349,7 +355,7 @@ class SolarWorkflowManager(WorkflowManager):
         return self
 
 
-    def assign_ground_albedo(self, ground_albedo:float|Iterable):
+    def assign_ground_albedo(self, ground_albedo:float|Iterable, consider_snow_albedo:bool=False):
         """
         Assigns a ground albedo value to every placement in self.placements in a
         new column, unless column exists already, if so existing values will be 
@@ -362,12 +368,17 @@ class SolarWorkflowManager(WorkflowManager):
             * tuple/list : Must then contain landcover dataset information and 
               be formatted like (dataset_name:str, dataset_filepath:str, fallback: float, optional).
 
+        consider_snow_albedo : bool, optional
+            If True, will consider hourly snow cover in the ground albedo.
+            Requires that snow cover data is available in sim_data attribute. #TODO which exact attribute?
+            By default False.
+
         Returns
         -------
         obj
             reference to the invoking SolarWorkflowManager object
         """
-        if not all([isinstance(x, float) for x in np.atleast_1d(ground_albedo)]) or (hasattr(ground_albedo, "__iter__") and len(ground_albedo) in [2,3] and all([isinstance(x, str) for x in ground_albedo[:2]])):
+        if not (all([isinstance(x, float) for x in np.atleast_1d(ground_albedo)]) or (hasattr(ground_albedo, "__iter__") and len(ground_albedo) in [2,3] and all([isinstance(x, str) for x in ground_albedo[:2]]))):
             raise TypeError(f"Unknown ground_albedo argument of type '{type(ground_albedo)}': {ground_albedo}. Must be float, iterable of floats or tuple/list of 2 strings.")
     
         # define an aux function to extract ground albedos from landcover name and path
@@ -375,6 +386,7 @@ class SolarWorkflowManager(WorkflowManager):
             """
             Get the mean snow-free broadband white sky albedos for the respective
             landcover per placement based on category type in the landcover dataset.
+            Extracts value for the centroid point in case of polygons.
             
             Parameters
             ----------
@@ -404,12 +416,17 @@ class SolarWorkflowManager(WorkflowManager):
                 raise TypeError(f"landcover_path must point to a raster type file: {e}")
             
             # get the landcover type categories for all placements
-            if "geom" not in self.placements:
-                self.placements["geom"] = self.placements.apply(lambda x : gk.geom.point(x.lon, x.lat, srs=4326), axis=1)
-            assert all([g.GetGeometryName()=="POINT" for g in self.placements.geom]) # make sure
+            if "geom" in self.placements:
+                _geoms = self.placements["geom"].to_list()
+                if not all([g.GetGeometryName()=="POINT" for g in _geoms]):
+                    # get only the centroids, with SRS
+                    _CentroidWithSRS = lambda g, srs: (g.AssignSpatialReference(srs), g)[1]
+                    _geoms = [_CentroidWithSRS(g.Centroid(), g.GetSpatialReference()) for g in _geoms]
+            else:
+                _geoms = self.placements.apply(lambda x : gk.geom.point(x.lon, x.lat, srs=4326), axis=1).to_list()
             LCclasses = gk.raster.interpolateValues(
                 source = landcover_path,
-                points = self.placements.geom.to_list(), 
+                points = _geoms, 
                 pointSRS="latlon", 
                 mode="near"
                 )
@@ -439,8 +456,21 @@ class SolarWorkflowManager(WorkflowManager):
             attr_fallback=_fallback,
             **_funcargs)
         
+        # change scalar ground albedo per location to hourly system_grdalbedo array per location
+        self.sim_data["system_grdalbedo"] = np.tile(self.placements["grdalbedo"].to_numpy()[None, :], (self._sim_shape_[0], 1))
+
+        # consider snow albedo if applicable
+        if consider_snow_albedo:
+            # make sure that we have loaded all required snow data variables
+            if not all([var in self.sim_data for var in ["snow_albedo", "snow_depth_water_equivalent", "snow_density"]]):
+                raise AttributeError("consider_snow_albedo=True but no 'snow_albedo', 'snow_depth_water_equivalent' and/or 'snow_density' data found in sim_data attribute.")
+            # mask only the timesteps with actual snow (>= 1cm) on the ground
+            snow_mask = self.sim_data["snow_depth_water_equivalent"] * (1000 / self.sim_data["snow_density"]) >= 0.01 # m/h actual snow height on the ground
+            # replace all ground albedo values at snowy timesteps by snow albedo
+            self.sim_data["system_grdalbedo"] = np.where(snow_mask, self.sim_data["snow_albedo"], self.sim_data["system_grdalbedo"])
+
         # final sanity check
-        if not self.placements.grdalbedo.apply(lambda x : 0<x<1).all():
+        if not np.all((self.sim_data["system_grdalbedo"] > 0) & (self.sim_data["system_grdalbedo"] < 1)):
             raise ValueError("ground albedo must be >0 and <1 for all locations.")
         
         return self
@@ -1256,6 +1286,123 @@ class SolarWorkflowManager(WorkflowManager):
         return self
 
 
+    def estimate_snow_coverage_loss(self, num_strings=None, format: str = "portrait", self_cleaning: bool = True, threshold_snowfall : float = 1.0):
+        """
+        Calculates and sets as attribute a timeseries of partial module snow 
+        cover area ratio, for every timestep and location separately. Estimates 
+        snowfall rate in cm per timestep based on empirical equation by Anderson 
+        [1].
+
+        Parameters
+        ----------
+        num_strings: int, optional
+            The number of parallel cell strings atop of each other along slant 
+            height axis. Will be extracted from self.module["N_p"] if not given 
+            and format is 'landscape', else 1. By default None.
+        format: str, optional
+            Either 'portrait' or 'landscape'. Takes effect only if num_strings 
+            is None, then uses the number of parallel strings from module "N_p" 
+            parameter as num_strings when format is landscape. By default 
+            portrait.
+        self_cleaning : bool, optional
+            If True, the modules will be assumed to be tilted to the maximum 
+            possible angle to facilitate snow shedding. Will not take effect for
+            fixed tilt systems. By default True.
+        threshold_snowfall : float, optional
+            The snowfall rate threshold in cm/h below which no snow coverage
+            is assumed. By default 1.0 cm/h (default in pvlib.snow.coverage_nrel).
+
+        Returns
+        -------
+        obj
+            a reference to the invoking SolarWorkflowManager object, with added
+            "partial_snowcov" sim_data attribute.
+
+        References
+        ----------
+        [1] Anderson, Eric A. (1976). A  point energy and mass balance model of a snow cover.
+        """
+        assert format in ["portrait", "landscape"], \
+            f"format must be 'portrait' or 'landscape'."
+        assert num_strings is None or (isinstance(num_strings,int) and num_strings>0),\
+            "num_strings must be an integer > 0 if not None."
+        assert isinstance(self_cleaning, bool), "self_cleaning must be boolean"
+        assert "snowfall_water_equivalent" in self.sim_data
+        assert "poa_global" in self.sim_data
+        assert "surface_air_temperature" in self.sim_data
+
+        # save time for non-snow affected locations
+        if self.sim_data["snowfall_water_equivalent"].max()/50*1000 * 100  <= threshold_snowfall: #m snowfall_water_equivalent is water equiv. in m/h x 100 cm/m, corrected by water over snow density
+            # even at lowest possible fresh snow density (50kg/m3), we do not ever have 
+            # enough snowfall to possibly take effect, can be skipped
+            self.sim_data["partial_snowcov"] = np.zeros_like(self.sim_data["snowfall_water_equivalent"])
+            return self
+
+        # get the respective slide angle per tracking mode
+        if self.tracking == "singleaxis":
+            if self_cleaning:
+                # the module can be tilted to the max. possible angle whenever needed to remove snow
+                assert "btmaxangle" in self.placements.columns, \
+                    f"'btmaxangle' is a required plant attribute when tracking == 'singleaxis'"
+                _angle = self.placements["btmaxangle"]
+            else:
+                # use the current module tilt angle due to solar position
+                _angle = self.sim_data["system_modtilt"]
+        elif self.tracking == "fixed":
+            # set the fixed module tilt angle
+            _angle = self.placements["modtilt"]
+        else:
+            raise ValueError(f"No slide angle defined for self.tracking='{self.tracking}'.")
+        
+        # calculate the snow fall in "fluffy" cm/h based on water equivalent in mm/h
+        # use Anderson (1976) equation: simple. no wind speed, medium values compared to other models, used in SNOWPACK model
+        # accept minor deviation due to SURFACE (corrected by fixed 0.065K/10m, International Standard Atmosphere lapse rate) instead of 10m height air temperature to save an additional variable
+        fresh_snow_density = 50 + np.maximum(1.7 * np.power(self.sim_data["surface_air_temperature"]-0.065 + 15, 1.5), 0)
+        snowfall_rate_cm = self.sim_data["snowfall_water_equivalent"] * (1000/fresh_snow_density) * 100 # m/h x 100 cm/m
+
+        if np.nanmax(snowfall_rate_cm) <= threshold_snowfall:
+            # even at the snowiest location, we do not ever have enough snowfall to possibly take effect, can be skipped
+            self.sim_data["partial_snowcov"] = np.zeros_like(self.sim_data["snowfall_water_equivalent"]) # set dummy no cover
+            return self
+
+        # estimate the share of snow-covered surface along the slant height axis
+
+        # the function needs ALL timesteps to properly track accumulation and melting, complete timeseries and store as dataframes
+        def complete_timeseries_df(data):
+            tmp = np.full((len(self.time_index), self.locs.count), 0.0, dtype=float)
+            tmp[self._time_sel_, :] = data
+            return pd.DataFrame(tmp, index=self.time_index)
+        snowfall_rate_cm_df = complete_timeseries_df(snowfall_rate_cm)
+        poa_global_df = complete_timeseries_df(self.sim_data["poa_global"])
+        surface_air_temperature_df = complete_timeseries_df(self.sim_data["surface_air_temperature"])
+        
+        # calculate partial snow coverage for each location iteratively
+        partial_snowcov = np.zeros((self._time_sel_.sum(), self.locs.count)) # initialize only for timesteps of interest
+        for iloc in range(self.locs.count):
+            # if the max. snowfall rate is below threshold, set all reduction factors to zero
+            if np.nanmax(snowfall_rate_cm[:, iloc]) <= threshold_snowfall:
+                # this particular location does not exceed the threshold ever, set dummy reduction factors of 0 and skip
+                partial_snowcov[:, iloc] = np.zeros(self._sim_shape_[0])
+                continue
+            # else calculate reduction factors
+            partial_snowcov_loc = pvlib.snow.coverage_nrel(
+                snowfall = snowfall_rate_cm_df.iloc[:, iloc], # as pd.Series
+                poa_irradiance = poa_global_df.iloc[:, iloc],
+                temp_air = surface_air_temperature_df.iloc[:, iloc], 
+                surface_tilt = _angle.iloc[iloc], 
+                initial_coverage=0, # always start at zero
+                threshold_snowfall=threshold_snowfall, 
+                can_slide_coefficient=-80.0, # pvlib.snow.coverage_nrel default
+                slide_amount_coefficient=0.197 # pvlib.snow.coverage_nrel default
+                )
+            # reduce to only daylight timesteps of interest and append to overall factors matrix
+            partial_snowcov[:, iloc] = partial_snowcov_loc.to_numpy()[self._time_sel_]
+            
+        # save partial snow coverage as attribute
+        self.sim_data["partial_snowcov"] = partial_snowcov
+
+        return self
+
     def estimate_absorbed_plane_of_array_irradiances(self, **kwargs):
         """
         Estimates the incoming and absorbed plane of array irradiance using the 
@@ -1511,6 +1658,7 @@ class SolarWorkflowManager(WorkflowManager):
         assert (self.sim_data["poa_global"] < 1600).all() 
 
         return self
+
 
     def configure_cec_module(
         self,
@@ -1796,11 +1944,23 @@ class SolarWorkflowManager(WorkflowManager):
         return self
 
 
-    def simulate_with_interpolated_single_diode_approximation(self):
+    def simulate_with_interpolated_single_diode_approximation(self, consider_snow_cover : bool = False, format: str = "portrait", num_strings : int =None):
         """
         Does the simulation with an interpolated single diode approximation 
         using the pvlib.pvsystem.calcparams_desoto() [1] function and the
         pvlib.pvsystem.singlediode() [2] function.
+
+        consider_snow_cover : bool, optional
+            If True, 
+        format: str, optional
+            Either 'portrait' or 'landscape'. Takes effect only if num_strings 
+            is None, then uses the number of parallel strings from module "N_p" 
+            parameter as num_strings when format is landscape. By default 
+            portrait.
+        num_strings: int, optional
+            The number of parallel cell strings atop of each other along slant 
+            height axis. Will be extracted from self.module["N_p"] if not given 
+            and format is 'landscape', else 1. By default None.
 
         Returns
         -------
@@ -1838,77 +1998,113 @@ class SolarWorkflowManager(WorkflowManager):
         """
         assert "poa_global" in self.sim_data
         assert "cell_temperature" in self.sim_data
+        if consider_snow_cover:
+            assert "partial_snowcov" in self.sim_data, f"'partial_snowcov' must be calculated first if 'consider_snow_cover'."
 
         assert self.module is not None, "Configure module te be simulated first via configure_cec_module()."
 
         sel = self.sim_data["poa_global"] > 0
         cell_temp = self.sim_data["cell_temperature"][sel]
 
-        # different front- and backside irradiances would trigger (physically impossible) different electrical reactions of the same cell
-        # so reconcile front- and backside parameters: combine front and back POAs at the beginning and use a single interpolator 
-        # introduces a marginal rounding error but is much simpler/faster since params need to be calculated only once and are already aligned
-        poa = self.sim_data["poa_global"][sel]
-        if self.bifacial:
-            # add the backside irradiance, reduced by bifaciality factor (simplified)
-            poa += self.bifaciality_factor * self.sim_data["poa_backside_global"][sel]
+        if consider_snow_cover: #TODO move this block to the plant (or module?) system setup and save parallel number of strings as attr
+            # calculate the number of cell strings in each module parallel to the snow cover line
+            if num_strings is None:
+                # take data from module if possible
+                if format == "landscape" and hasattr(self.module, "N_p"): #TODO get format from plant data
+                    # use the No of cell strings parallel to the long side
+                    assert isinstance(self.module["N_p"], int) and self.module["N_p"]>0 # make sure
+                    num_strings = self.module["N_p"]
+                else:
+                    # for portrait, all parallel strings are always affected, ergo only 1 parallel string along short side
+                    num_strings = 1 # also fall back on binary on/off solution when no N_p available
+            else:
+                assert isinstance(num_strings, int) and num_strings>0 # make sure
+        else:
+            # no snow coverage means no difference between strings, assume a single string for calculation efficiency
+            num_strings = 1
+        
+        # iterate over strings in module from bottom to top and simulate yield per each string separately as it may be covered or not
+        # Note that bottom/top side are inverted every half day when e.g. singleaxis, but has no effect on overall production as long as partial coverage remains the same
+        for _string in range(num_strings):
+            # each of the cell strings may produce on both sides, or only backside if frontside is covered
+            if consider_snow_cover:
+                # conservative assumption based on pvlib.snow.dc_loss_nrel(): no production when at least partial coverage of string area
+                _production = 1- (self.sim_data["partial_snowcov"] > _string/num_strings)
+            else:
+                # never covered, set to dummy with every time step exposed
+                _production = np.ones(shape=self._sim_shape_)
 
-        # Use RectBivariateSpline to speed up simulation, but at the cost of accuracy (should still be >99.996%)
-        maxpoa = np.nanmax(poa)
+            #TODO repeat simulation only for THOSE timesteps where the frontside cover boolean is different from cell strings calculated before -> save time when num_strings > 1
 
-        _poa = np.concatenate(
-            [
-                np.logspace(-1, np.log10(maxpoa / 10), 20, endpoint=False),
-                np.linspace(maxpoa / 10, maxpoa, 80),
-            ]
-        )
-        _temp = np.linspace(cell_temp.min(), cell_temp.max(), 100)
-        poaM, tempM = np.meshgrid(_poa, _temp)
+            # different front- and backside irradiances would trigger (physically impossible) different electrical reactions of the same cell
+            # so reconcile front- and backside parameters: combine front and back POAs at the beginning and use a single interpolator 
+            # introduces a marginal rounding error but is much simpler/faster since params need to be calculated only once and are already aligned
+            poa = np.multiply(
+                self.sim_data["poa_global"],
+                _production # _production will be zero for non-production timesteps for this string (e.g. when snow-covered)
+            )[sel]
+            if self.bifacial:
+                # add the backside irradiance, reduced by bifaciality factor (simplified)
+                poa += self.bifaciality_factor * self.sim_data["poa_backside_global"][sel]
 
-        sotoParams = pvlib.pvsystem.calcparams_desoto(
-            effective_irradiance=poaM.flatten(),
-            temp_cell=tempM.flatten(),
-            alpha_sc=self.module.alpha_sc,
-            a_ref=self.module.a_ref,
-            I_L_ref=self.module.I_L_ref,
-            I_o_ref=self.module.I_o_ref,
-            R_sh_ref=self.module.R_sh_ref,
-            R_s=self.module.R_s,
-            EgRef=1.121,  # PVLIB v0.7.2 Default
-            dEgdT=-0.0002677,  # PVLIB v0.7.2 Default
-            irrad_ref=1000,  # PVLIB v0.7.2 Default
-            temp_ref=25,  # PVLIB v0.7.2 Default
-        )
+            # Use RectBivariateSpline to speed up simulation, but at the cost of accuracy (should still be >99.996%)
+            maxpoa = np.nanmax(poa)
 
-        photoCur, satCur, resSeries, resShunt, nNsVth = sotoParams
-        gen = pvlib.pvsystem.singlediode(
-            photocurrent=photoCur,
-            saturation_current=satCur,
-            resistance_series=resSeries,
-            resistance_shunt=resShunt,
-            nNsVth=nNsVth,
-            method="lambertw",  # PVLIB v0.7.2 Default
-        )
+            _poa = np.concatenate(
+                [
+                    np.logspace(-1, np.log10(maxpoa / 10), 20, endpoint=False),
+                    np.linspace(maxpoa / 10, maxpoa, 80),
+                ]
+            )
+            _temp = np.linspace(cell_temp.min(), cell_temp.max(), 100)
+            poaM, tempM = np.meshgrid(_poa, _temp)
 
-        interpolator = RectBivariateSpline(
-            _temp,
-            _poa,
-            np.array(gen["p_mp"]).reshape(poaM.shape),
-            kx=3,
-            ky=3,  # np.array() since type changed between pvlib versions
-        )
-        self.sim_data["module_dc_power_at_mpp"] = np.zeros_like(self.sim_data["poa_global"])
-        self.sim_data["module_dc_power_at_mpp"][sel] = interpolator(cell_temp, poa, grid=False)
+            sotoParams = pvlib.pvsystem.calcparams_desoto(
+                effective_irradiance=poaM.flatten(),
+                temp_cell=tempM.flatten(),
+                alpha_sc=self.module.alpha_sc,
+                a_ref=self.module.a_ref,
+                I_L_ref=self.module.I_L_ref,
+                I_o_ref=self.module.I_o_ref,
+                R_sh_ref=self.module.R_sh_ref,
+                R_s=self.module.R_s,
+                EgRef=1.121,  # PVLIB v0.7.2 Default
+                dEgdT=-0.0002677,  # PVLIB v0.7.2 Default
+                irrad_ref=1000,  # PVLIB v0.7.2 Default
+                temp_ref=25,  # PVLIB v0.7.2 Default
+            )
 
-        interpolator = RectBivariateSpline(
-            _temp,
-            _poa,
-            np.array(gen["v_mp"]).reshape(poaM.shape),
-            kx=3,
-            ky=3,  # np.array() since type changed between pvlib versions
-        )
-        self.sim_data["module_dc_voltage_at_mpp"] = np.zeros_like(self.sim_data["poa_global"])
-        self.sim_data["module_dc_voltage_at_mpp"][sel] = interpolator(cell_temp, poa, grid=False)
+            photoCur, satCur, resSeries, resShunt, nNsVth = sotoParams
+            gen = pvlib.pvsystem.singlediode(
+                photocurrent=photoCur,
+                saturation_current=satCur,
+                resistance_series=resSeries,
+                resistance_shunt=resShunt,
+                nNsVth=nNsVth,
+                method="lambertw",  # PVLIB v0.7.2 Default
+            )
+            if num_strings > 1: #TODO power could be added iteratively for more than one string but how to deal with different voltages per string, how to combine into one MODULE_dc_voltage_at_mpp?
+                raise NotImplementedError("Define string-wise module_dc_power_at_mpp and module_dc_voltage_at_mpp combination for num_strings > 1 first.")
+            interpolator = RectBivariateSpline(
+                _temp,
+                _poa,
+                np.array(gen["p_mp"]).reshape(poaM.shape),
+                kx=3,
+                ky=3,  # np.array() since type changed between pvlib versions
+            )
+            self.sim_data["module_dc_power_at_mpp"] = np.zeros_like(self.sim_data["poa_global"])
+            self.sim_data["module_dc_power_at_mpp"][sel] = interpolator(cell_temp, poa, grid=False)
 
+            interpolator = RectBivariateSpline(
+                _temp,
+                _poa,
+                np.array(gen["v_mp"]).reshape(poaM.shape),
+                kx=3,
+                ky=3,  # np.array() since type changed between pvlib versions
+            )
+            self.sim_data["module_dc_voltage_at_mpp"] = np.zeros_like(self.sim_data["poa_global"])
+            self.sim_data["module_dc_voltage_at_mpp"][sel] = interpolator(cell_temp, poa, grid=False)
+        
         self.sim_data["capacity_factor"] = self.sim_data["module_dc_power_at_mpp"] / (
             self.module.I_mp_ref * self.module.V_mp_ref
         )

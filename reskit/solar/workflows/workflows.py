@@ -413,6 +413,7 @@ def pv_era5_WinklerUnpublished(
     output_variables=None,
     tech_year=2050,
     new_style=True,
+    consider_snow_effects=True,
 ):
     """
     Simulation of an openfield  PV openfield system based on ERA5 Data.
@@ -528,6 +529,34 @@ def pv_era5_WinklerUnpublished(
     """
     # initialize workflow manager and module/system
     wf = SolarWorkflowManager(placements)
+
+    # read weather variables
+    vars = [
+        "global_horizontal_irradiance",
+        "direct_horizontal_irradiance",
+        "surface_wind_speed",
+        "surface_pressure",
+        "surface_air_temperature",
+        "surface_dew_temperature",
+    ]
+    if consider_snow_effects:
+        # add snow variables to the vars to be loaded from ERA-5
+        vars += [        
+        "snowfall_water_equivalent",
+        "snow_albedo",
+        "snow_depth_water_equivalent",
+        "snow_density",
+    ]
+    wf.read(
+        variables=vars,
+        source_type="ERA5",
+        source=era5_path,
+        set_time_index=True,
+        time_index_from="direct_horizontal_irradiance",
+        verbose=False,
+    )
+
+    # configure the module
     wf.configure_cec_module(
         module=module, 
         tech_year=tech_year, 
@@ -547,24 +576,7 @@ def pv_era5_WinklerUnpublished(
         singleaxis_tilt_convention="flat", #TODO
         singleaxis_azimuth_convention="North",
         crossaxis_tilt_convention="flat", #TODO
-    )
-    
-    # read weather variables
-    wf.read(
-        variables=[
-            "global_horizontal_irradiance",
-            "direct_horizontal_irradiance",
-            "surface_wind_speed",
-            "surface_pressure",
-            "surface_air_temperature",
-            "surface_dew_temperature",
-            # TODO add snow variables
-        ],
-        source_type="ERA5",
-        source=era5_path,
-        set_time_index=True,
-        time_index_from="direct_horizontal_irradiance",
-        verbose=False,
+        consider_snow_albedo=consider_snow_effects,
     )
 
     # apply geometric operations to solar radiation angles
@@ -607,8 +619,10 @@ def pv_era5_WinklerUnpublished(
         wf.apply_angle_of_incidence_losses_to_poa()
 
     # simulate module response and energy yield
+    if consider_snow_effects:
+        wf.estimate_snow_coverage_loss()
     wf.cell_temperature_from_sapm()
-    wf.simulate_with_interpolated_single_diode_approximation()
+    wf.simulate_with_interpolated_single_diode_approximation(consider_snow_cover=consider_snow_effects)
 
     # apply losses from inverter and general loss factor from calibration
     if inverter is not None:

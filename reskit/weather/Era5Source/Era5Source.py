@@ -320,3 +320,43 @@ class Era5Source(NCSource):
         variable 'global_horizontal_irradiance' in the data library
         """
         return self.load("ssrd_t_adj", name="global_horizontal_irradiance")
+
+    def sload_snow_albedo(self):
+        """Standard loader function for the variable 'snow_albedo'
+
+        unit: dimensionless, instantaneous
+
+        Automatically reads the variable "asn" from the given ERA5 source and saves it as the
+        variable 'snow_albedo' in the data library
+        """
+        return self.load("asn", name="snow_albedo")
+    
+    def sload_snow_density(self):
+        """Standard loader function for the variable 'snow_density'
+
+        unit: kg/m^3, instantaneous
+
+        Automatically reads the variable "rsn" from the given ERA5 source and saves it as the
+        variable 'snow_density' in the data library
+        """
+        return self.load("rsn", name="snow_density")
+
+    def sload_snow_depth_water_equivalent(self):
+        """Standard loader function for the variable 'snow_depth_water_equivalent'
+
+        unit: meters, instantaneous
+
+        Automatically reads the variable "sd" from the given ERA5 source and saves it as the
+        variable 'snow_depth_water_equivalent' in the data library
+        """
+        return self.load("sd", name="snow_depth_water_equivalent")
+    
+    def sload_snowfall_water_equivalent(self):
+        """Standard loader function for the variable 'snowfall_water_equivalent'
+
+        unit: meters per time step, accumulation
+
+        Automatically reads the variable "sf" from the given ERA5 source and saves it as the
+        variable 'snowfall_water_equivalent' in the data library
+        """
+        return self.load("sf", name="snowfall_water_equivalent")
