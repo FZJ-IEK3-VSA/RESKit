@@ -466,11 +466,11 @@ def calulate_row_pitch_and_gcr(
         "min_interrow_distance must be int if not None."
     
     # first get solar elevation
-    solelevs = _get_winter_solstice_solar_elevation(lats=lats, solar_hour=solar_hour)
+    solelevs = _get_winter_solstice_solar_elevation(lats=np.atleast_1d(lats), solar_hour=solar_hour)
     
     # prep the degree values as rads
-    module_tilts_rad = module_tilts * np.pi/180
-    north_slopes_rad = north_slopes * np.pi/180
+    module_tilts_rad = np.atleast_1d(module_tilts) * np.pi/180
+    north_slopes_rad = np.atleast_1d(north_slopes) * np.pi/180
     solelevs_rad = solelevs * np.pi/180
     
     # then calculate the row picth geometrically
