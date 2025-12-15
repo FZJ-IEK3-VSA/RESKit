@@ -2,6 +2,7 @@ import geokit as gk
 import pandas as pd
 import numpy as np
 import yaml
+import rasterio
 
 from os.path import isfile, splitext
 from collections import OrderedDict
@@ -72,6 +73,7 @@ class SolarWorkflowManager(WorkflowManager):
         self.module = None
         self.bifacial = False # init as False, may be overwritten when module is configured
         self.bifaciality_factor = None # same
+        self.horizon_angles = None
 
     ####################################
     # PREPROCESS LOCATIONAL ATTRIBUTES #
@@ -1069,6 +1071,210 @@ class SolarWorkflowManager(WorkflowManager):
         self.sim_data["direct_normal_irradiance"][sel] = 0
 
         return self
+    
+
+    def calculate_horizon_profile(
+        self,
+        digital_surface_model_path:str | Iterable,
+        angle_stepsize: float = 3.0,
+        max_distance: int = 10000,
+        distance_stepsize: int = 30,
+        exp_spacing_factor: float = 1.01,
+        digital_terrain_model_path:str = None,
+        out_of_bounds_tol : int = 0, #TODO 100 for the current run
+    ):
+        """
+        Returns the horizon profile based on a digital elevation model raster as 
+        an iterable of horizon angles for one or multiple locations. Azimuthal 
+        sampling rate and reach/distance can be adapted. 
+
+        Parameters
+        ----------
+        digital_surface_model_path : str
+            The path to the digital elevation model that shall be used to 
+            extract the elevation of the horizon features, typically a DSM incl. 
+            tree, building etc. feature heights. Will also be used to extract 
+            the plant elevation if digital_terrain_model_path is None.
+        angle_stepsize : float, optional
+            The azimuthal angle steps for the view direction sampling points of 
+            the horizont profile, by default every 3°.
+        max_distance : int, optional
+            The maximum distance in meters up to which horizon features will be 
+            considered for the profile. By default 10 000 [m].
+        distance_stepsize : int, optional
+            The initial distance sampling step in every direction, i.e. every x 
+            meters, an elevation value will be extracted. The resulting step 
+            width beyond the first cell can be constant or non-linear, depending
+            on exp_spacing_factor. By default 30 [m].
+        exp_spacing_factor : float, optional
+            Leads to a constant distance step size if 1.0, else the step size 
+            depends on the distance to the location non-linearly as follows:
+            s(n)= s_0**^(k**n), k=exp_spacing_factor and s_0=distance_stepsize
+            By default k = 1.01.
+        digital_terrain_model_path : str, optional
+            Will be used to extract the plant elevation if given, allows to use 
+            a DTM dataset for a plant location on bare terrain with consideration 
+            of surrounding feature heights as indicated in a DSM model. If not 
+            given, the digital_surface_model_path will be used for both feature 
+            and plant elevation. By default None.
+        out_of_bounds_tol : int, optional
+            The accepted number of pixels that a lat/lon can be out of bounds of
+            the DEM raster so that still a NaN value will be returned for this 
+            angle. Beyond this pixel tolerance it will fail.
+
+        Returns
+        -------
+        obj
+            A reference to the invoking SolarWorkflowManager object, with 
+            horizon_angles attribute set to a numpy array with one elevation 
+            angle per azimuthal sampling point.
+        """
+        if digital_surface_model_path is True:
+            # must then be an attribute of placements, extract and set as new variable
+            assert "digital_surface_model_path" in self.placements, f"If 'digital_surface_model_path' is None, it must be a placements df column."
+            digital_surface_model_path = self.placements["digital_surface_model_path"].to_list()
+        elif isinstance(digital_surface_model_path, str):
+            # we only have one file for all locations, expand to iterable
+            digital_surface_model_path = [digital_surface_model_path]*len(self.placements)
+        else:
+            assert hasattr(digital_surface_model_path, "__iter__"), \
+                f"digital_surface_model_path must be True, str or an iterable of strings" 
+        assert len(digital_surface_model_path)==len(self.placements),\
+            f"digital_surface_model_path length ({len(digital_surface_model_path)}) must match length of placements ({len(self.placements)}) if given as iterable."
+        assert all([isinstance(x, str) for x in digital_surface_model_path]),\
+            f"digital_surface_model_path iterable must only contain str formatted values"
+        assert all([isfile(x) for x in digital_surface_model_path]),\
+            f"All values of digital_surface_model_path must be existing filepaths."
+
+        # define a lines of view array adding up to 360° around the location
+        azimuths = np.arange(0, 360, angle_stepsize)
+        # iterate over all locations and generate horizon profiles for the azimuths
+        horizons = [] # initialize collector for all locational profiles
+        old_str = None # save the last DEM filepath to save the time for loading it again in case that the file remains the same
+        for i, (lat, lon) in enumerate(zip(self.placements.lat, self.placements.lon)): #.iterrows():
+            lats = np.atleast_1d(lat)
+            lons = np.atleast_1d(lon)
+            dsm_path = digital_surface_model_path[i]
+
+            # load DEM only if necessary, i.e. only when new filepath
+            if dsm_path != old_str:
+                old_str = dsm_path
+                with rasterio.open(dsm_path) as src: #TODO replace by osgeo approach to avoid rasterio import
+                    dem = src.read(1)
+                    transform = src.transform
+                    crs = src.crs
+                    if crs.to_epsg() != 4326:
+                        raise ValueError("DEM must be in EPSG:4326")
+            
+            #TODO load location elevation from digital_terrain_model_path if given
+            if not digital_terrain_model_path is None:
+                raise NotImplementedError("digital_terrain_model_path is not implemented yet.")
+
+            nrows, ncols = dem.shape
+            res_lon = transform.a
+            res_lat = -transform.e
+            xmin = transform.c
+            ymax = transform.f
+
+            def get_cell_id(lon_arr, lat_arr):
+                cols = ((lon_arr - xmin) / res_lon).astype(int)
+                rows = ((ymax - lat_arr) / res_lat).astype(int)
+                return rows, cols
+
+            # get cell row/col ids for all locations
+            r0, c0 = get_cell_id(lons, lats)
+
+            # calculate if/by how many pixels the location exceeds the raster bounds
+            exceeds = np.maximum.reduce([
+                np.maximum(-r0, 0),              # top
+                np.maximum(r0 - (nrows - 1), 0), # bottom
+                np.maximum(-c0, 0),              # left
+                np.maximum(c0 - (ncols - 1), 0)  # right
+            ]).astype(int)
+
+            # sometimes, the lat/lon is only SLIGHTLY out of bounds, in such cases allow returning NaNs - else fail based on out_of_bounds_tol
+            if np.any(exceeds > out_of_bounds_tol):
+                # this exceeds the tolerances, too far away - fail!
+                raise IndexError(
+                    f"Observer location is outside DEM by more than out_of_bounds_tol={out_of_bounds_tol} pixel, here {max(exceeds)} pixel/s."
+                )
+            elif np.any(exceeds > 0):
+                # we are only < out_of_bounds_tol pixel away from the raster, move the location "inwards" to the outmost pixel
+                print(f"NOTE: Location was {max(exceeds)} pixels out of bounds, but below tolerance = {out_of_bounds_tol} pixels. Location shifted inwards slightly.")
+                r0 = np.clip(r0, 0, nrows-1)
+                c0 = np.clip(c0, 0, ncols-1)
+
+            # get the plant elevations (zero distance)
+            elev0 = dem[r0, c0]
+            
+            # create a distance spacing array based on step and exponential growth factor
+            distances = [distance_stepsize, distance_stepsize + distance_stepsize**exp_spacing_factor]
+            while distances[-1] < max_distance:
+                # growth linearly for exp_spacing_factor==1, else exponentially
+                distances.append(distances[-1]+(distances[-1]-distances[-2])**exp_spacing_factor)
+            distances = np.array(distances)
+
+            # get the radians of the azimuths
+            az_rad = np.radians(azimuths)[:, None]
+            
+            # dx/dy for all azimuths & distances
+            d = distances[None, :]
+            dx = d * np.sin(az_rad)
+            dy = d * np.cos(az_rad)
+
+            # convert meters to degrees (depends on observer lat!)
+            meters_per_deg_lat = 111320
+            meters_per_deg_lon = 111320 * np.cos(np.radians(lats))
+
+            # reshape for broadcasting
+            lats_r = lats[:, None, None]
+            lons_r = lons[:, None, None]
+            mpd_lat = meters_per_deg_lat
+            mpd_lon = meters_per_deg_lon[:, None, None]
+            dx = dx[None, :, :]
+            dy = dy[None, :, :]
+
+            # compute sampling points along the rays for all observers
+            dlat = dy / mpd_lat # mpd_lat is scalar
+            dlon = dx / mpd_lon # mpd_lon is an array, depends on lat
+            lat_pts = lats_r + dlat
+            lon_pts = lons_r + dlon
+
+            # extract the elevation values for all of these points
+            rows, cols = get_cell_id(lon_pts, lat_pts)
+
+            # mask out-of-bounds
+            in_bounds = (
+                (rows >= 0) & (rows < nrows) &
+                (cols >= 0) & (cols < ncols)
+            )
+
+            # flatten for indexing
+            flat_rows = rows.ravel()
+            flat_cols = cols.ravel()
+            flat_mask = in_bounds.ravel()
+
+            elev_flat = np.full(flat_rows.size, np.nan)
+            valid_idx = np.where(flat_mask)[0]
+            elev_flat[valid_idx] = dem[flat_rows[valid_idx], flat_cols[valid_idx]]
+
+            elev_sampled = elev_flat.reshape(rows.shape)
+
+            # calculate horizon angles
+            elev_diff = elev_sampled - elev0[:, None, None]
+            angles = np.degrees(np.arctan2(elev_diff, d))
+            angles[~in_bounds] = -np.inf
+            horizon = np.nanmax(angles, axis=2)
+
+            # append profile to the overall list with all locations
+            horizons.append(horizon)
+
+        # recombine different locational profiles and set as attribute
+        horizon = np.vstack(horizons)
+        assert self.horizon_angles is None #TODO change to interpolation to existing profile and maximum if attribute has value already
+        self.horizon_angles = horizon.T
+
+        return self
 
 
     def permit_single_axis_tracking(self, max_angle=90, backtrack=True):
@@ -1131,6 +1337,11 @@ class SolarWorkflowManager(WorkflowManager):
             for i in range(self.locs.count):
                 placement = self.placements.iloc[i]
 
+                # invert the axis azimuth (and hence axis and cross axis tilt) when axis tilt is negative, pvlib.tracking.singleaxis cannot deal with it
+                axtilt = placement.axtilt if placement.axtilt >= 0 else -placement.axtilt
+                axazimuth = placement.axazimuth if placement.axtilt >= 0 else (placement.axazimuth + 180) % 360
+                caxtilt = placement.caxtilt if placement.axtilt >= 0 else -placement.caxtilt
+                # calculate the optimal tracking orientations
                 tmp = pvlib.tracking.singleaxis(
                     # zenith is defined as angle from vertical and >90° is impossible, set maximum of 90° to avoid nans
                     apparent_zenith = pd.Series(
@@ -1140,11 +1351,12 @@ class SolarWorkflowManager(WorkflowManager):
                     apparent_azimuth=pd.Series(
                         self.sim_data["solar_azimuth"][:, i], index=self._time_index_
                     ),
-                    axis_tilt=placement.axtilt,
-                    axis_azimuth=placement.axazimuth,
-                    max_angle=max_angle,
-                    backtrack=backtrack,
+                    axis_tilt=axtilt,
+                    axis_azimuth=axazimuth,
+                    max_angle=placement.btmaxangle,
+                    backtrack=placement.backtrack,
                     gcr=placement.gcr,
+                    cross_axis_tilt=caxtilt,
                 )
 
                 system_modtilt[:, i] = tmp["surface_tilt"].values
@@ -1399,6 +1611,144 @@ class SolarWorkflowManager(WorkflowManager):
         self.sim_data["partial_snowcov"] = partial_snowcov
 
         return self
+    
+
+    def calculate_horizon_based_on_hillslope(self, hill_slope: Iterable = None, slope_azimuth : Iterable = None):
+        """
+        Calculates an eliptical horizon based on the assumption of a plant 
+        hillslope plane which is much larger than the plant height, leading to 
+        a horizon angle equal to the hillslope angle in the direction of the 
+        slope line and horizon angle = 0° crosswise. The azimuth sampling points 
+        for the hillslope horizon will be selected equal to the distant horizon 
+        profile, the final horizon profile will then be composed of the the 
+        maximum angle of both profiles per every azimuth.
+
+        Parameters
+        ----------
+        hill_slope : Iterable, optional
+            The hill slope in degrees of every plant location. If not given, the 
+            tracking axis will be assumed parallel to the ground and hill slope 
+            will be calculated based on axis and cross-axis tilts. By default None.
+        slope_azimuth : Iterable, optional
+            The slope azimuth [°] (North = 0°) of every plant location. If not 
+            given, the azimuth will be calculated based on axis azimuth and axis 
+            and cross-axis tilts. Is mandatory if hill_slope is not None. By #
+            default None.
+
+        Returns
+        -------
+        obj
+            a reference to the invoking SolarWorkflowManager object, with 
+            updated horizon_angles attribute.
+        """
+        if hill_slope is not None:
+            if slope_azimuth is None:
+                raise ValueError(f"slope_azimuth must not be None when hill_slope is not None.")
+            #TODO assert that hill_slope and slope_azimuth are iterables of len()==len(placements)
+            # consider allowing slope extraction from slope/gradient rasters here as well?
+        elif not "caxtilt" in self.placements: #TODO other ways to define hillslope, now fixed tilt can never have sloped arrays
+            if self.horizon_angles is None:
+                # set all 360 deg to zero
+                self.horizon_angles = np.zeros(shape=(360, self._sim_shape_[1]))
+            return self
+        else:
+            # assume hillslope and azimuth based on axis azimuth, tilt and cross-axis tilt
+            # slopes in tracker frame (x' = cross-axis, y' = axis)
+            p = -np.tan(np.deg2rad(self.placements.caxtilt.values))   # cross-axis component 
+            q = -np.tan(np.deg2rad(self.placements.axtilt.values))    # along axis (downhill in +axis_azimuth direction)
+            # unit vectors in global EN coordinates
+            uy_E, uy_N = np.sin(np.deg2rad(self.placements.axazimuth.values)), np.cos(np.deg2rad(self.placements.axazimuth.values)) # along axis
+            ux_E, ux_N = np.cos(np.deg2rad(self.placements.axazimuth.values)), -np.sin(np.deg2rad(self.placements.axazimuth.values)) # 90° clockwise from axis
+            # global horizontal gradient (uphill) components
+            g_E = p * ux_E + q * uy_E
+            g_N = p * ux_N + q * uy_N
+            g_mag = np.hypot(g_E, g_N)
+            # Hill tilt from horizontal
+            hill_slope_rad = np.arctan(g_mag)
+            hill_slope = np.rad2deg(hill_slope_rad)
+            # calculate the downhill-facing azimuth (opposite direction of gradient)
+            slope_azimuth_rad = np.arctan2(-g_E, -g_N)
+            slope_azimuth = (np.rad2deg(slope_azimuth_rad) + 360.0) % 360.0
+
+        # invert the downward sloping azimuth and convert to radians
+        uphill_slope_azimuth = (slope_azimuth + 180.0) % 360.0
+        uphill_slope_azimuth_rad = np.deg2rad(uphill_slope_azimuth)
+
+        # combine the distant horizon (can be all zero if not applied) with the local local hillslope-induced angles if applicable
+        if self.horizon_angles is None:
+            # define new evenly spaced azimuth angles every 1° and save as new profile angles
+            self.horizon_angles = hill_slope * np.cos(np.deg2rad(np.arange(0, 360+1, 1))[:, None] - uphill_slope_azimuth_rad)
+        else:
+            # use the sampling azimuths of horizon profile and set the max. of terrain and local slope horizon angles
+            horizon_slope_deg = hill_slope * np.cos(np.deg2rad(np.linspace(0, 360, len(self.horizon_angles[:, 0]), endpoint=False))[:, None] - uphill_slope_azimuth_rad)
+            self.horizon_angles = np.maximum(self.horizon_angles, horizon_slope_deg)
+
+        return self
+    
+
+    def scale_to_unshaded_real_lra(self, min_scaling_factor:float = None):
+        """
+        Allows to revert the effect of shading on the long-run average 
+        irradiance values that are used for spatial disaggregation, e.g. Global 
+        Solar Atlas. The hourly values of DNI and GHI are then scaled by the 
+        factor of all over unshaded cumulative irradiance for the current year,
+        following this equation: real_lra = real_lra / v_shaded.sum()/v_all.sum()
+        This allows later reapplication of shading on the affected timesteps 
+        without duplicating the terrain shading effects.
+
+        Assumptions based on horizon shading approach in pvlib-python:
+        https://pvlib-python.readthedocs.io/en/stable/gallery/shading/plot_simple_irradiance_adjustment_for_horizon_shading.html 
+
+        min_scaling_factor : float, optional
+            Limits the ratio between shaded and unshaded real lra to a minimum 
+            factor if given, else no effect. By default None.
+
+        Returns
+        -------
+        obj
+            a reference to the invoking SolarWorkflowManager object, with 
+            updated 'direct_normal_irradiance' and 'global_horizontal_irradiance' 
+            sim_data attributes.
+        """
+        assert "solar_azimuth" in self.sim_data, f"solar_azimuth data expected in self.sim_data"
+        assert "apparent_solar_zenith" in self.sim_data, f"apparent_solar_zenith data expected in self.sim_data"
+        assert "direct_normal_irradiance" in self.sim_data, "'direct_normal_irradiance' attribute is expected in self.sim_data"
+        assert "global_horizontal_irradiance" in self.sim_data, "'global_horizontal_irradiance' attribute is expected in self.sim_data"
+
+        # first calculate the shaded timesteps based on the horizon profile
+        
+        # interpolate the horizon profile angles for the solar azimuths covered by our irradiance data, iteratively for every location
+        horizon_angles = np.vstack([
+            np.interp(self.sim_data["solar_azimuth"][:, i], np.linspace(0, 360, len(self.horizon_angles), endpoint=False), self.horizon_angles[:, i])
+            for i in range(len(self.placements))
+        ]).T 
+
+        # calculate the timesteps when the plant is shaded by the horizon
+        _unshaded_ts = (90-self.sim_data["apparent_solar_zenith"]) > horizon_angles
+        
+        # first caculate the DNI rescaling factor as 1 / (sum of all unshaded DNI values over all DNI values)
+        # assume 100% DNI shading based on pvlib
+        _dni_unshaded_agg = (self.sim_data["direct_normal_irradiance"] * _unshaded_ts).sum(axis=0)
+        _dni_total_agg = self.sim_data["direct_normal_irradiance"].sum(axis=0)
+        _dni_scaling = 1 / (_dni_unshaded_agg / _dni_total_agg)
+        assert (_dni_scaling >= 1).all() # make sure
+        if min_scaling_factor is not None:
+            # limit the scaling factors per location to a maximum value
+            assert isinstance(min_scaling_factor, float) and min_scaling_factor >=1, "min_scaling_factor must be float >= 1.0 if given"
+            _dni_scaling = np.minimum(_dni_scaling, min_scaling_factor)
+        
+        # calculate corrected DNI without shading losses, store in temp variable for now
+        _dni_new = self.sim_data["direct_normal_irradiance"] * _dni_scaling
+
+        # correct GHI based on equation GHI = DNI + cos(teta) * DHI, with teta as solar zenith angle
+        # GHI increases simply by the DNI delta since DHI is unaffected by horizon shading by pvlib assumption
+        self.sim_data["global_horizontal_irradiance"] = self.sim_data["global_horizontal_irradiance"] + (_dni_new - self.sim_data["direct_normal_irradiance"])
+
+        # now overwrite DNI as well with corrected value
+        self.sim_data["direct_normal_irradiance"] = _dni_new
+
+        return self
+
 
     def estimate_absorbed_plane_of_array_irradiances(self, **kwargs):
         """
@@ -1487,8 +1837,22 @@ class SolarWorkflowManager(WorkflowManager):
             pvfts_args["index_observed_pvrow"] = _extract_var("index_observed_pvrow")
             pvfts_args["pvrow_width"] = _extract_var("pvrow_width")
 
+            # # CONSIDER IRRADIANCE SHADING BY HORIZON EFFECTS
+
+            # the following equations and assumptions have been adapted to the context herein from pvlib-python read the docs
+            # adapted from: https://pvlib-python.readthedocs.io/en/stable/gallery/shading/plot_simple_irradiance_adjustment_for_horizon_shading.html
+            # interpolate to hourly solar azimuths indices
+            horizon_angles = np.interp( 
+                pvfts_args["solar_azimuth"],
+                np.linspace(0, 360, len(self.horizon_angles[:, iloc]), endpoint=False),
+                self.horizon_angles[:, iloc],
+            ) 
+            # calculate the timesteps when the plant is shaded by the horizon
+            _horizon_shaded = (90-self.sim_data["apparent_solar_zenith"][:, iloc]) <= horizon_angles
+            # correct dni by setting it to zero for timesteps when sun is shaded by horizon - DHI is assumed to be practically not affected
+            pvfts_args["dni"] = np.where(_horizon_shaded, 0, pvfts_args["dni"])
+
             # handle kwargs for this location
-            kwargs_iloc = {}
             for k, v in kwargs.items():
                 if isinstance(v, np.ndarray) and not v.shape==(self._sim_shape_[0],):
                     # we have a multi-dimensional numpy array, make sure it is of shape (t,n)

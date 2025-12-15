@@ -414,6 +414,7 @@ def pv_era5_WinklerUnpublished(
     tech_year=2050,
     new_style=True,
     consider_snow_effects=True,
+    horizont_dem=None,
 ):
     """
     Simulation of an openfield  PV openfield system based on ERA5 Data.
@@ -583,6 +584,17 @@ def pv_era5_WinklerUnpublished(
     wf.filter_positive_solar_elevation()
     wf.direct_normal_irradiance_from_trigonometry()
 
+    # calculate horizon profile and shaded timesteps
+    if horizont_dem is not None:
+        # first distant horizon, only if DEM is provided
+        wf.calculate_horizon_profile(
+            digital_surface_model_path = horizont_dem,
+            angle_stepsize = 3.0,
+            max_distance = 10000,
+            distance_stepsize = 30,
+            exp_spacing_factor = 1.01,
+        )
+
     # disaggregate ERA-5 hourly variables based on high-res long-run average values
     wf.adjust_variable_to_long_run_average(
         variable="global_horizontal_irradiance",
@@ -600,6 +612,17 @@ def pv_era5_WinklerUnpublished(
         nodata_fallback=DNI_nodata_fallback,
         nodata_fallback_scaling=DNI_nodata_fallback_scaling,
     )
+    #  correct the shading-affected real LRA if distant horizon shading is applied explicitly
+    if horizont_dem is not None:
+        # this stage, local plant slope has no effect yet, this is only location shading
+        wf.scale_to_unshaded_real_lra(min_scaling_factor=1/0.9) # GSA terrain losses limited to 10%
+
+    # then always apply local horizon from plant slope
+    wf.calculate_horizon_based_on_hillslope(
+        hill_slope=None, 
+        slope_azimuth=None
+        )
+
     if not new_style:
         wf.determine_extra_terrestrial_irradiance(model="spencer", solar_constant=1370)
         wf.determine_air_mass(model="kastenyoung1989")
