@@ -1867,7 +1867,8 @@ class SolarWorkflowManager(WorkflowManager):
                     raise TypeError(f"kwargs for pvlib.bifacial.pvfactors.pvfactors_timeseries() must be scalar or numpy.ndarray type: {k}:{v}")
 
             # simulate and append locational output to total results
-            _poa_frontside, _poa_backside, _poa_frontside_absorbed, _poa_backside_absorbed = pvlib.bifacial.pvfactors_timeseries(**pvfts_args)
+            assert (np.atleast_1d(pvfts_args["pvrow_height"])-0.5*np.atleast_1d(pvfts_args["pvrow_width"]) > 0).all(),\
+                f"pvrow_height must exceed 0.5 x pvrow_width in all cases." # leads to unrealistic results in pvlib.bifacial.pvfactors_timeseries() otherwise
 
             poa_frontside[:, iloc] = _poa_frontside.values
             poa_backside[:, iloc] = _poa_backside.values
