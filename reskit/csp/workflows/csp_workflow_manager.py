@@ -351,10 +351,7 @@ class PTRWorkflowManager(SolarWorkflowManager):
         self.placements["capacity_sf_W_th"] = Q_sf_des
         self.placements["I_DNI_nom_W_per_m2"] = I_DNI_nom
 
-        if len(self.placements) > 1:
-            assert ((self.sim_data["HeattoHTF_W"].mean(axis=0) / self.placements.capacity_sf_W_th) < 1).all()
-        else:
-            assert (self.sim_data["HeattoHTF_W"].mean(axis=0) / self.placements.capacity_sf_W_th) < 1
+        assert ((self.sim_data["HeattoHTF_W"].mean(axis=0) / self.placements.capacity_sf_W_th) < 1).all()
 
     def calculateSolarPosition(self):
         """Calculates the solar position in terms of hour angle and declination from time series and location series of the current object
@@ -424,7 +421,7 @@ class PTRWorkflowManager(SolarWorkflowManager):
         return self
 
     def calculateIAM(self, a1: float = 0.000884, a2: float = 0.00005369, a3: float = 0):
-        """Calculates the IAM angle modifier from incidence angle. Formula and default values are from:
+        """Calculates the IAM (Incident Angle Modifier) angle modifier from incidence angle. Formula and default values are from:
         [1]	GAFUROV, Tokhir, Julio USAOLA, and Milan PRODANOVIC. Modelling of concentrating
         solar power plant for power system reliability studies [online]. IET Renewable Power
         Generation. 2015, 9(2), 120-130. Available from: 10.1049/iet-rpg.2013.0377.
