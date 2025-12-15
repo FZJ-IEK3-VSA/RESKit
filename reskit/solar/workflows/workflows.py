@@ -562,7 +562,6 @@ def pv_era5_WinklerUnpublished(
         tech_year=tech_year, 
         bifaciality_factor=bifaciality_factor, 
         tracking=tracking, 
-        tracking_args=tracking_args,
         database="CEC Modules.csv"
         )
 
