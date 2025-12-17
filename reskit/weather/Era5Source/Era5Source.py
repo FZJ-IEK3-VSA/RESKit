@@ -83,13 +83,23 @@ class Era5Source(NCSource):
     LONG_RUN_AVERAGE_WINDSPEED = join(dirname(__file__), "data", "ERA5_wind_speed_100m_mean.tiff")
     LONG_RUN_AVERAGE_WINDSPEED_2008TO2017 = join(dirname(__file__), "data", "ERA5_wind_speed_100m_mean_2008to2017.tiff")
     LONG_RUN_AVERAGE_WINDDIR = join(dirname(__file__), "data", "ERA5_wind_direction_100m_mean.tiff")
-    LONG_RUN_AVERAGE_GHI = join(dirname(__file__), "data", "ERA5_surface_solar_radiation_downwards_mean.tiff")
+    LONG_RUN_AVERAGE_GHI = join(
+        dirname(__file__), 
+        "data", 
+        # "ERA5_surface_solar_radiation_downwards_mean.tiff"
+        "ERA5_long_run_avg_surface_solar_radiation_downwards.processed.t_adjusted_1994_2018.tiff"
+        )
     LONG_RUN_AVERAGE_DNI_archive = join(
         dirname(__file__),
         "data",
         "ERA5_total_sky_direct_solar_radiation_at_surface_mean.tiff",
     )
-    LONG_RUN_AVERAGE_DNI = join(dirname(__file__), "data", "ERA5_DNI_mean.tif")
+    LONG_RUN_AVERAGE_DNI = join(
+        dirname(__file__), 
+        "data", 
+        # "ERA5_DNI_mean.tif"
+        "ERA5_long_run_avg_total_sky_direct_solar_radiation_at_surface.processed.t_adjusted_1994_2018.tiff"
+        )
     DNI_90_PERC_QUANT = join(dirname(__file__), "data", "ERA5_DNI_percentile_90_2000_to_2020.tif")
 
     MAX_LON_DIFFERENCE = 0.26
