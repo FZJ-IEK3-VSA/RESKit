@@ -426,12 +426,12 @@ class SolarWorkflowManager(WorkflowManager):
                     _geoms = [_CentroidWithSRS(g.Centroid(), g.GetSpatialReference()) for g in _geoms]
             else:
                 _geoms = self.placements.apply(lambda x : gk.geom.point(x.lon, x.lat, srs=4326), axis=1).to_list()
-            LCclasses = gk.raster.interpolateValues(
+            LCclasses = np.atleast_1d(gk.raster.interpolateValues(
                 source = landcover_path,
                 points = _geoms, 
                 pointSRS="latlon", 
                 mode="near"
-                )
+                ))
             # map the LC class number to albedo via ground types 
             classtype = ground_cover_albedos["dataset_classtype_mapper"][landcover_name]
             LCclass_groundtype_mapper = ground_cover_albedos["LCclass_groundtype_mapper"][classtype]

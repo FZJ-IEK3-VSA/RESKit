@@ -190,7 +190,7 @@ def location_to_tracker_axis_tilt(locs, convention:str="flat", fallback:int|floa
     elif isinstance(convention, str) and isfile(convention):
         # try to extract data from raster
         try:
-            axtilts = gk.raster.interpolateValues(convention, locs, **kwargs)
+            axtilts = np.atleast_1d(gk.raster.interpolateValues(convention, locs, **kwargs))
         except Exception:
             raise OSError(f"Axis tilt file cannot be read by gk.raster.interpolateValues(): {convention}.")
     else:  
@@ -239,7 +239,7 @@ def location_to_cross_axis_tilt(locs, convention:str="flat", fallback:int|float=
     elif isinstance(convention, str) and isfile(convention):
         # try to extract data from raster
         try:
-            caxtilts = gk.raster.interpolateValues(convention, locs, **kwargs)
+            caxtilts = np.atleast_1d(gk.raster.interpolateValues(convention, locs, **kwargs))
         except Exception:
             raise OSError(f"File cannot be read by gk.raster.interpolateValues(): {convention}.")
     else:  
