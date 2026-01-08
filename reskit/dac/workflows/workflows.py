@@ -1,9 +1,11 @@
 # import primary packages
 # import othert modules
-from .dac_workflow_manager import DACWorkflowManager
 from typing import List
+
 import pandas as pd
+
 from ...util.relative_humidity import calculate_relative_humidity
+from .dac_workflow_manager import DACWorkflowManager
 
 
 def lt_dac_era5_wenzel2025(
@@ -52,7 +54,6 @@ def lt_dac_era5_wenzel2025(
     - electricity, heat, and water conversion factors
     - CO2, water, electricity, and heat outputs per plant
     """
-
     wf = DACWorkflowManager(placements)
 
     wf.read(

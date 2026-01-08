@@ -7,6 +7,8 @@ import reskit._test.data as pkg_data
 from pathlib import Path
 from importlib.resources import files, as_file
 
+from reskit.wind.economic.offshore_cost_model import offshore_turbine_capex
+
 
 def test_waterDepthFromLocation():
     # GPS Coordiantes for location in Aachen to test Reading from tif file

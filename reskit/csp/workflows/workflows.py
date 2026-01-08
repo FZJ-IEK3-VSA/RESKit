@@ -1,13 +1,15 @@
+import time
 from logging import warning
+
+import numpy as np
+import xarray as xr
 from numpy.lib.arraysetops import isin
 
 from reskit import workflow_manager
+
 from ... import weather as rk_weather
 from .csp_workflow_manager import PTRWorkflowManager
 from .dataset_handler import dataset_handler
-import numpy as np
-import xarray as xr
-import time
 
 
 def CSP_PTR_ERA5(
@@ -29,6 +31,92 @@ def CSP_PTR_ERA5(
     fullvariation=False,
     _validation=False,
 ):
+    """
+    This function is the overall workflow for the csp simulation and calls all subfunctions.
+    It is a wrapper around the function "CSP_PTR_ERA5_specific_dataset" below, to include the case of multiple datasets.
+    Multiple datasets are refering to multiple heat transfer fluids and therefore also different power plants. In that case, for each placement the optimal HTF is selected.
+
+    Parameters
+    ----------
+    placements: Pandas DataFrame
+        Locations where to perform simulations at.
+        Required columns: longitude, latitude, and one area column ("area_m2", "area", "aperture_area_m2", or "land_area_m2").
+
+    era5_path: str or rk_weather.NCSource
+        Path to ERA5 weather data or an NCSource object.
+        Required columns: "direct_horizontal_irradiance", "surface_wind_speed", "surface_air_temperature".
+
+    global_solar_atlas_dni_path: str or float or np.ndarray
+        Long-term average DNI data for placements. Could be provided as:
+            - str: Path to raster file with DNI data from Global Solar Atlas.
+            - float: Constant DNI value for all placements.
+            - np.ndarray: Array of DNI values, shape must match (placements,) or (time, placements).
+
+    global_solar_atlas_tamb_path: str, optional
+        path to temperature data from global solar atlas. Used for selecting at which placement which HTF is optimal.
+
+    datasetname: str, optional
+        Name of the CSP technology dataset (e.g., "Heliosol", "SolarSalt").
+        Defaults to "Validation 10". See csp/data/CSP_database.xlsx for options.
+
+    cost_year: int, optional
+        Year for cost calculation of the CSP plant.
+        Defaults to 2050.
+
+    HTF_sel: list of str, optional
+        List of heat transfer fluids to consider for the simulation.
+        Each heat transfer fluid corresponds to a different CSP technology dataset.
+        Options: ["Heliosol", "SolarSalt", "Therminol"].
+
+    elev_path: str or list, optional
+        Elevation data for placements. Could be provided as:
+            - str: Path to raster file with elevation data.
+            - list: Elevation values for each placement.
+
+    output_netcdf_path: str, optional
+        Path to a file that you want to save your output NETCDF file at.
+        Defaults to None.
+
+    output_variables: list of {str, number}, optional
+        Output variables of the simulation that you want to save.
+        If None, includes all suitable variables from placements, workflow parameters, simulation data, and time index.
+
+    return_self: bool, optional
+        If True, returns the workflow manager object.
+        If False, returns the output as an XArray dataset.
+        Defaults to True.
+
+    JITaccelerate: bool, optional
+        If True, enables JIT acceleration for some calculations.
+        Defaults to False.
+
+    verbose: bool, optional
+        If True, prints progress information.
+        Defaults to False.
+
+    debug_vars: bool, optional
+        If True, retains intermediate variables for debugging.
+        Defaults to False.
+
+    onlynightuse: bool, optional
+        If True, optimizes plant size for night use only.
+        Defaults to True.
+
+    fullvariation: bool, optional
+        If True, applies full variation in calculations.
+        Defaults to False.
+
+    _validation: bool, optional
+        If True, runs in validation mode (some input data may be replaced).
+        Defaults to False.
+
+    Returns
+    -------
+    if return_self is True, the workflow manager object (PTRWorkflowManager) containing all simulation results and data.
+    if return_self is False, a xarray dataset containing the final simulation results. This dataset is optionally written to disk if output_netcdf_path was specified.
+
+        rest: see CSP_PTR_ERA5_specific_dataset
+    """
     # handle inputs for datasets
     single_dataset = False
     if datasets == None:
@@ -46,7 +134,7 @@ def CSP_PTR_ERA5(
             single_dataset = True
             datasets = datasets[0]
     else:
-        raise TypeError(f"datasets got unkown datatype")
+        raise TypeError(f"datasets got unknown datatype")
 
     if not single_dataset:
         assert isinstance(global_solar_atlas_tamb_path, str)
@@ -71,7 +159,7 @@ def CSP_PTR_ERA5(
         return output
 
     else:  # multiple datasets found
-        # 1) split up placements for each htf
+        # 1) split up placements for each htf (e.g. solar salt or heliosol)
         d = dataset_handler(datasets)
         placements = d.split_placements(
             placements=placements,
@@ -81,7 +169,7 @@ def CSP_PTR_ERA5(
         del d
 
         # 2) run each simulation
-        ouputs = []
+        outputs = []
         for dataset in datasets:
             # select placements for current dataset
             placements_dataset = placements[placements["Dataset_opt"] == dataset]
@@ -119,12 +207,12 @@ def CSP_PTR_ERA5(
             output_dataset["location"] = placements_dataset.index
 
             # remember outputs for each dataset
-            ouputs.append(output_dataset)
+            outputs.append(output_dataset)
             del output_dataset
 
         # 3) merge data
         # TODO: merge together
-        output = xr.concat(ouputs, dim="location").sortby("location")
+        output = xr.concat(outputs, dim="location").sortby("location")
         return output
 
 
@@ -144,34 +232,95 @@ def CSP_PTR_ERA5_specific_dataset(
     fullvariation=False,
     _validation=False,
 ):
-    """Calculates the heat output from the solar field based on parabolic trough technology. The workflow is not yet finally validated (but is still plausible).
-        Date: 27.07.2021
-        Author: David Franzmann IEK -3
-
-    Args:
-        placements ([type]): [description]
-        era5_path ([type]): [description]
-        output_netcdf_path ([type], optional): [description]. Defaults to None.
-        output_variables ([type], optional): [description]. Defaults to None.
-        return_self (bool, optional): [description]. Defaults to True.
-
-    Returns:
-        [type]: [description]
     """
+    Calculates the heat output from the solar field based on parabolic trough technology (PTC).
+    This workflow simulates the performance of a CSP plant for given placements and technology datasets.
+    Not yet fully validated, but results are plausible.
 
+    Date: 27.07.2021
+    Author: David Franzmann, IEK-3
+
+    Parameters
+    ----------
+    placements: Pandas DataFrame
+        Locations where to perform simulations at.
+        Required columns: longitude, latitude, and one area column ("area_m2", "area", "aperture_area_m2", or "land_area_m2").
+
+    era5_path: str or rk_weather.NCSource
+        Path to ERA5 weather data or an NCSource object.
+        Required columns: "direct_horizontal_irradiance", "surface_wind_speed", "surface_air_temperature".
+
+    global_solar_atlas_dni_path: str or float or np.ndarray
+        Long-term average DNI data for placements. Could be provided as:
+            - str: Path to raster file with DNI data from Global Solar Atlas.
+            - float: Constant DNI value for all placements.
+            - np.ndarray: Array of DNI values, shape must match (placements,) or (time, placements).
+
+    datasetname: str, optional
+        Name of the CSP technology dataset (e.g., "Heliosol", "SolarSalt").
+        Defaults to "Validation 10". See csp/data/CSP_database.xlsx for options.
+
+    elev_path: str or list, optional
+        Elevation data for placements. Could be provided as:
+            - str: Path to raster file with elevation data.
+            - list: Elevation values for each placement.
+
+    output_netcdf_path: str, optional
+        Path to a file that you want to save your output NETCDF file at.
+        Defaults to None.
+
+    output_variables: list of {str, number}, optional
+        Output variables of the simulation that you want to save.
+        If None, includes all suitable variables from placements, workflow parameters, simulation data, and time index.
+
+    return_self: bool, optional
+        If True, returns the workflow manager object.
+        If False, returns the output as an XArray dataset.
+        Defaults to True.
+
+    JITaccelerate: bool, optional
+        If True, enables JIT acceleration for some calculations.
+        Defaults to False.
+
+    verbose: bool, optional
+        If True, prints progress information.
+        Defaults to False.
+
+    debug_vars: bool, optional
+        If True, retains intermediate variables for debugging.
+        Defaults to False.
+
+    onlynightuse: bool, optional
+        If True, optimizes plant size for night use only.
+        Defaults to True.
+
+    fullvariation: bool, optional
+        If True, applies full variation in calculations.
+        Defaults to False.
+
+    _validation: bool, optional
+        If True, runs in validation mode (some input data may be replaced).
+        Defaults to False.
+
+    Returns
+    -------
+    if return_self is True, the workflow manager object (PTRWorkflowManager) containing all simulation results and data.
+    if return_self is False, a xarray dataset containing the final simulation results. This dataset is optionally written to disk if output_netcdf_path was specified.
+
+    """
     # 1) Load input data
     wf = PTRWorkflowManager(placements)
 
-    ptr_data = wf.loadPTRdata(datasetname=datasetname)
-    wf.determine_area()
+    ptr_data = wf.loadPTRdata(
+        datasetname=datasetname
+    )  # PTRdata referes to the different csp models, i.e. helisol or solar salt: csp/data/CSP_database.xlsx
+    wf.determine_area()  # either determines aperture_area from land_area, or the other way around
 
     # 3) read in Input data
     if verbose:
         tic_start = time.time()
         print(
-            "Simulation started for {n_placements} placements.".format(
-                n_placements=len(wf.placements)
-            ),
+            "Simulation started for {n_placements} placements.".format(n_placements=len(wf.placements)),
             flush=True,
         )
         print("Reading in Weather data.", flush=True)
@@ -214,11 +363,6 @@ def CSP_PTR_ERA5_specific_dataset(
     # DNI convention: Heat flux per normal (to zenith) plane
     wf.direct_normal_irradiance_from_trigonometry()
 
-    # do long run averaging for DNI
-    # TODO: remove
-    if global_solar_atlas_dni_path == "default_cluster":
-        global_solar_atlas_dni_path = r"/storage/internal/data/gears/geography/irradiance/global_solar_atlas_v2.5/World_DNI_GISdata_LTAy_AvgDailyTotals_GlobalSolarAtlas-v2_GEOTIFF/DNI.tif"
-
     if _validation:
         # when doing the valitadion, the dni atlas was not finally processed,
         # so it was replaced with 1. As only the plant and not the weather simulation
@@ -237,14 +381,12 @@ def CSP_PTR_ERA5_specific_dataset(
     # manipulationof input values for variation calculation
     wf._applyVariation()  # only for developers, can be ignored otherwise
 
-    # 6) doing selfmade calulations until Heat to HTF
+    # 6) doing selfmade calulations until Heat to HTF (Heat transfer fluid)
     wf.calculateIAM(a1=ptr_data["a1"], a2=ptr_data["a2"], a3=ptr_data["a3"])
-    wf.calculateShadowLosses(
-        method="wagner2011", SF_density=ptr_data["SF_density_direct"]
-    )
+    wf.calculateShadowLosses(method="wagner2011", SF_density=ptr_data["SF_density_direct"])
     wf.calculateWindspeedLosses(max_windspeed_threshold=ptr_data["maxWindspeed"])
     wf.calculateDegradationLosses(
-        efficencyDropPerYear=ptr_data["efficencyDropPerYear"],
+        efficiencyDropPerYear=ptr_data["efficiencyDropPerYear"],
         lifetime=ptr_data["lifetime"],
     )
     wf.calculateHeattoHTF(
@@ -269,9 +411,7 @@ def CSP_PTR_ERA5_specific_dataset(
 
     if verbose:
         tic_pre = time.time()
-        print(
-            "Preanalysis within {dt}s.".format(dt=str(tic_pre - tic_read)), flush=True
-        )
+        print("Preanalysis within {dt}s.".format(dt=str(tic_pre - tic_read)), flush=True)
         print("Starting core simulation of the solar field.", flush=True)
     # 7) calculation heat to plant with loss model
     wf.applyHTFHeatLossModel(
@@ -317,13 +457,9 @@ def CSP_PTR_ERA5_specific_dataset(
         lifetime=ptr_data["lifetime"],
         calculationmethod="franzmann2021",
         params={
-            "CAPEX_solar_field_EUR_per_m^2_aperture": ptr_data[
-                "CAPEX_solar_field_EUR_per_m^2_aperture"
-            ],
+            "CAPEX_solar_field_EUR_per_m^2_aperture": ptr_data["CAPEX_solar_field_EUR_per_m^2_aperture"],
             "CAPEX_land_EUR_per_m^2_land": ptr_data["CAPEX_land_EUR_per_m^2_land"],
-            "CAPEX_indirect_cost_perc_CAPEX": ptr_data[
-                "CAPEX_indirect_cost_perc_CAPEX"
-            ],
+            "CAPEX_indirect_cost_perc_CAPEX": ptr_data["CAPEX_indirect_cost_perc_CAPEX"],
             "electricity_price_EUR_per_kWh": ptr_data["electricity_price_EUR_per_kWh"],
             "OPEX_perc_CAPEX": ptr_data["OPEX_perc_CAPEX"],
         },
@@ -332,16 +468,12 @@ def CSP_PTR_ERA5_specific_dataset(
     if verbose:
         tic_sf_sim = time.time()
         print(
-            "Solar field simulation done in {dt}s.".format(
-                dt=str(tic_sf_sim - tic_pre)
-            ),
+            "Solar field simulation done in {dt}s.".format(dt=str(tic_sf_sim - tic_pre)),
             flush=True,
         )
         print("Starting optimizing plant electric output.", flush=True)
 
-    wf.optimize_plant_size(
-        onlynightuse=onlynightuse, fullvariation=fullvariation, debug_vars=debug_vars
-    )
+    wf.optimize_plant_size(onlynightuse=onlynightuse, fullvariation=fullvariation, debug_vars=debug_vars)
 
     # wf.optimize_heat_output_4D()
     # wf.calculateEconomics_Plant_Storage_4D()
@@ -368,6 +500,4 @@ def CSP_PTR_ERA5_specific_dataset(
     if return_self == True:
         return wf
     else:
-        return wf.to_xarray(
-            output_netcdf_path=output_netcdf_path, output_variables=output_variables
-        )
+        return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)

@@ -1,5 +1,6 @@
-from . import NCSource
 import numpy as np
+
+from . import NCSource
 
 
 class SarahSource(NCSource):
@@ -24,8 +25,8 @@ class SarahSource(NCSource):
                 to extract data for
 
 
-    See Also:
-    ---------
+    See Also
+    --------
     reskit.weather.MerraSource
     reskit.weather.SarahSource
     reskit.weather.Era5Source
@@ -47,8 +48,8 @@ class SarahSource(NCSource):
             * time_offset_minutes = 0
 
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
         path : str or list of str
             The path to the main data file(s) to load
 
@@ -58,7 +59,7 @@ class SarahSource(NCSource):
 
         bounds : Anything acceptable to geokit.Extent.load(), optional
             The boundaries of the data which is needed
-              * Usage of this will help with memory mangement
+              * Usage of this will help with memory management
               * If None, the full dataset is loaded in memory
               * The actual extent of the loaded data depends on the source's
                 available data
@@ -76,13 +77,12 @@ class SarahSource(NCSource):
             * Generally, there should be no missing data at all. This option is only intended to
                 catch the rare scenarios where one or two timesteps are missing
 
-        See Also:
-        ---------
+        See Also
+        --------
         MerraSource
         SarahSource
         Era5Source
         """
-
         super().__init__(
             source=source,
             bounds=bounds,

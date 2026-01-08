@@ -1,6 +1,8 @@
-from .. import NCSource
-import numpy as np
 from os.path import dirname, join
+
+import numpy as np
+
+from .. import NCSource
 
 
 class Era5Source(NCSource):
@@ -68,8 +70,8 @@ class Era5Source(NCSource):
             * The averaging is performed globally
 
 
-    See Also:
-    ---------
+    See Also
+    --------
     reskit.weather.MerraSource
     reskit.weather.SarahSource
     reskit.weather.Era5Source
@@ -78,34 +80,22 @@ class Era5Source(NCSource):
     ELEVATED_WIND_SPEED_HEIGHT = 100
     SURFACE_WIND_SPEED_HEIGHT = 10
 
-    LONG_RUN_AVERAGE_WINDSPEED = join(
-        dirname(__file__), "data", "ERA5_wind_speed_100m_mean.tiff"
-    )
-    LONG_RUN_AVERAGE_WINDSPEED_2008TO2017 = join(
-        dirname(__file__), "data", "ERA5_wind_speed_100m_mean_2008to2017.tiff"
-    )
-    LONG_RUN_AVERAGE_WINDDIR = join(
-        dirname(__file__), "data", "ERA5_wind_direction_100m_mean.tiff"
-    )
-    LONG_RUN_AVERAGE_GHI = join(
-        dirname(__file__), "data", "ERA5_surface_solar_radiation_downwards_mean.tiff"
-    )
+    LONG_RUN_AVERAGE_WINDSPEED = join(dirname(__file__), "data", "ERA5_wind_speed_100m_mean.tiff")
+    LONG_RUN_AVERAGE_WINDSPEED_2008TO2017 = join(dirname(__file__), "data", "ERA5_wind_speed_100m_mean_2008to2017.tiff")
+    LONG_RUN_AVERAGE_WINDDIR = join(dirname(__file__), "data", "ERA5_wind_direction_100m_mean.tiff")
+    LONG_RUN_AVERAGE_GHI = join(dirname(__file__), "data", "ERA5_surface_solar_radiation_downwards_mean.tiff")
     LONG_RUN_AVERAGE_DNI_archive = join(
         dirname(__file__),
         "data",
         "ERA5_total_sky_direct_solar_radiation_at_surface_mean.tiff",
     )
     LONG_RUN_AVERAGE_DNI = join(dirname(__file__), "data", "ERA5_DNI_mean.tif")
-    DNI_90_PERC_QUANT = join(
-        dirname(__file__), "data", "ERA5_DNI_percentile_90_2000_to_2020.tif"
-    )
+    DNI_90_PERC_QUANT = join(dirname(__file__), "data", "ERA5_DNI_percentile_90_2000_to_2020.tif")
 
     MAX_LON_DIFFERENCE = 0.26
     MAX_LAT_DIFFERENCE = 0.26
 
-    def __init__(
-        self, source, bounds=None, index_pad=5, time_index_from=None, **kwargs
-    ):
+    def __init__(self, source, bounds=None, index_pad=5, time_index_from=None, **kwargs):
         """Initialize a ERA5 style netCDF4 file source
 
         Compared to the generic NCSource object, the following parameters are automatically set:
@@ -118,8 +108,8 @@ class Era5Source(NCSource):
             * time_offset_minutes = -30
 
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
         path : str or list of str
             The path to the main data file(s) to load
 
@@ -129,7 +119,7 @@ class Era5Source(NCSource):
 
         bounds : Anything acceptable to geokit.Extent.load(), optional
             The boundaries of the data which is needed
-              * Usage of this will help with memory mangement
+              * Usage of this will help with memory management
               * If None, the full dataset is loaded in memory
               * The actual extent of the loaded data depends on the source's
                 available data
@@ -147,13 +137,12 @@ class Era5Source(NCSource):
             * Generally, there should be no missing data at all. This option is only intended to
                 catch the rare scenarios where one or two timesteps are missing
 
-        See Also:
-        ---------
+        See Also
+        --------
         MerraSource
         SarahSource
         Era5Source
         """
-
         # translate the mos common lear names for time_index_from
         ERA5_names = {
             "global_horizontal_irradiance_archive": "ssrd",
@@ -167,7 +156,7 @@ class Era5Source(NCSource):
             # if time_index_from is a known clear name use the dict
             time_index_from = ERA5_names[time_index_from]
         else:
-            # hope it is a well known ERA5 string. checkes in super.__init__
+            # hope it is a well known ERA5 string. checks in super.__init__
             pass
 
         super().__init__(
@@ -209,9 +198,7 @@ class Era5Source(NCSource):
 
         TODO: Update function to also be able to handle raw ERA5 inputs for u & v
         """
-        return self.load(
-            "ws{}".format(self.ELEVATED_WIND_SPEED_HEIGHT), "elevated_wind_speed"
-        )
+        return self.load("ws{}".format(self.ELEVATED_WIND_SPEED_HEIGHT), "elevated_wind_speed")
 
     def sload_surface_wind_speed(self):
         """Standard loader function for the variable 'surface_wind_speed'
@@ -226,9 +213,7 @@ class Era5Source(NCSource):
 
         TODO: Update function to also be able to handle raw ERA5 inputs for u & v
         """
-        return self.load(
-            "ws{}".format(self.SURFACE_WIND_SPEED_HEIGHT), "surface_wind_speed"
-        )
+        return self.load("ws{}".format(self.SURFACE_WIND_SPEED_HEIGHT), "surface_wind_speed")
 
     def sload_wind_speed_at_100m(self):
         """Standard loader function for the variable 'wind_speed_at_100m'
@@ -287,9 +272,7 @@ class Era5Source(NCSource):
 
         Temperature values are also converted from kelvin to degrees celsius
         """
-        return self.load(
-            "t2m", name="surface_air_temperature", processor=lambda x: x - 273.15
-        )
+        return self.load("t2m", name="surface_air_temperature", processor=lambda x: x - 273.15)
 
     def sload_surface_dew_temperature(self):
         """Standard loader function for the variable 'surface_dew_temperature'
@@ -299,9 +282,7 @@ class Era5Source(NCSource):
 
         Temperature values are also converted from kelvin to degrees celsius
         """
-        return self.load(
-            "d2m", name="surface_dew_temperature", processor=lambda x: x - 273.15
-        )
+        return self.load("d2m", name="surface_dew_temperature", processor=lambda x: x - 273.15)
 
     def sload_direct_horizontal_irradiance_archive(self):
         """Standard loader function for the variable 'direct_horizontal_irradiance'
@@ -329,9 +310,7 @@ class Era5Source(NCSource):
         Automatically reads the variable "ssrd" from the given ERA5 source and saves it as the
         variable 'global_horizontal_irradiance' in the data library
         """
-        print(
-            "WARNING: Non time corrected ERA5-GHI loaded. Only do this, if you understand the implications of this!"
-        )
+        print("WARNING: Non time corrected ERA5-GHI loaded. Only do this, if you understand the implications of this!")
         return self.load("ssrd", name="global_horizontal_irradiance_archive")
 
     def sload_global_horizontal_irradiance(self):

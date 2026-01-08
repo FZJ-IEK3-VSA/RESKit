@@ -6,6 +6,7 @@ from collections import OrderedDict
 from scipy.interpolate import interp1d
 
 from ...workflow_manager import WorkflowManager
+from ...util.specific_humidity import calculate_specific_humidity
 
 
 """
@@ -39,7 +40,6 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
         [2] https://www.engineeringtoolbox.com/air-specific-heat-capacity-d_705.html
 
         """
-
         # Do basic workflow construction
         assert all([a in placements.columns for a in ["lon", "lat", "capacity"]]), (
             "Placements must contain the columns lon,lat and capacity"
@@ -108,7 +108,143 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
             ],
             data=airData,
             columns=["cp", "density"],
-        )  # index referes to ambient air temperature
+        )  # index refers to ambient air temperature
+
+        self.evaporationCoolingData = pd.DataFrame(
+            data=[[1006, 1860, 2.257 * 10**6, 4184]], columns=["cp_air", "cp_vapor", "evaporationHeat", "cp_water"]
+        )  # J/(kg*K), J/(kg*K), J/(kg), J/(kg*K)
+
+    def calculate_approach_evaporative_cooling(
+        self,
+        temperatureCoolant: float | int,
+        heatTransferDelta: float | int,
+        efficiencyCoolingTower: float | int,
+    ):
+        """
+        Calculate the approach temperature for an evaporative-cooling system.
+
+
+        Parameters
+        ----------
+        temperatureCoolant : float | int
+            Temperature of the cooling load (lower temperature if sensible heat transfer) in °C.
+        heatTransferDelta : float | int
+            Temperature difference required for heat transfer from air to coolant [K]
+        efficiencyCoolingTower : float | int
+            Efficiency of the cooling tower system [0, 1]
+
+        Returns
+        -------
+        float or np.ndarray
+            Approach temperature for the specified weather conditions.
+
+        References
+        ----------
+        [1] 10.1016/j.ijhydene.2024.11.381
+        """
+        # Calculate T_CChot
+        T_CChot = temperatureCoolant - heatTransferDelta
+        # Calculate T_CCcold using wet bulb temperature approximation
+        T_CCcold = T_CChot - efficiencyCoolingTower * (T_CChot - self.sim_data["wet_bulb_temperature"])
+        # Calculate approach temperature
+        approach_temperature = T_CCcold - self.sim_data["wet_bulb_temperature"]
+
+        self.sim_data["approach_temperature_evaporative_cooling"] = approach_temperature
+
+    def calculate_water_losses_evaporative_cooling(
+        self,
+        temperatureCoolant: float | int,
+        heatTransferDelta: float | int,
+        efficiencyCoolingTower: float | int,
+        factorDriftLosses: float | int = 0.001,
+        typical_cycles_blowdown: int = 5,
+    ):
+        """
+        Calculate the water losses for an evaporative-cooling system.
+
+
+        Parameters
+        ----------
+        temperatureCoolant : float | int
+            Temperature of the cooling load (lower temperature if sensible heat transfer) in °C.
+        heatTransferDelta : float | int
+            Temperature difference required for heat transfer from air to coolant [K]
+        efficiencyCoolingTower : float | int
+            Efficiency of the cooling tower system [0, 1]
+        factorDriftLosses : float | int
+            Drift losses by small water droplets carried away by the exhaust air. Defaults to 0.001. [1]
+        typical_cycles_blowdown: int
+            after how many cycles the blowdown occurs to prevent accumulation of impurities. Defaults to 5. [2]
+
+        Returns
+        -------
+        float or np.ndarray
+            Specific water losses of evaporative cooling towers (per kWh of cooling load) for the specified weather conditions.
+
+        References
+        ----------
+        [1] 10.1016/j.ijhydene.2024.11.381
+        [2] 10.1016/j.enconman.2020.113610
+        """
+        specific_humidity_inlet = calculate_specific_humidity(
+            self.sim_data["surface_air_temperature"],
+            self.sim_data["relative_humidity"]
+            / 100,  # relative humidity between 0,1 needed to calcaulte the specific humidity
+        )
+        specific_humidity_outlet = calculate_specific_humidity(
+            self.sim_data["wet_bulb_temperature"] + self.sim_data["approach_temperature_evaporative_cooling"],
+            np.full_like(self.sim_data["wet_bulb_temperature"], 1.0),
+        )
+
+        specific_enthalpy_inlet = self.evaporationCoolingData["cp_air"][0] * (
+            self.sim_data["surface_air_temperature"] + 273.15
+        ) + specific_humidity_inlet * (
+            self.evaporationCoolingData["cp_vapor"][0] * (self.sim_data["surface_air_temperature"] + 273.15)
+            + self.evaporationCoolingData["evaporationHeat"][0]
+        )  # J/kg
+        specific_enthalpy_outlet = self.evaporationCoolingData["cp_air"][0] * (
+            (self.sim_data["wet_bulb_temperature"] + 273.15) + self.sim_data["approach_temperature_evaporative_cooling"]
+        ) + specific_humidity_outlet * (
+            self.evaporationCoolingData["cp_vapor"][0]
+            * (
+                (self.sim_data["wet_bulb_temperature"] + 273.15)
+                + self.sim_data["approach_temperature_evaporative_cooling"]
+            )
+            + self.evaporationCoolingData["evaporationHeat"][0]
+        )  # J/kg
+
+        # calculate needed air mass specific for 1 kWh cooling load
+        air_mass = 1 / (
+            (specific_enthalpy_outlet - specific_enthalpy_inlet) / 3600000
+        )  # enthalpy from J/kg to kWh/kg --> air_mass in kg (per kWh)
+        evaporation_loss = air_mass * (specific_humidity_outlet - specific_humidity_inlet)
+        self.sim_data["specific_mass_evaporation_loss"] = evaporation_loss
+
+        # drift losses:
+        water_mass = 1 / (
+            self.evaporationCoolingData["cp_water"] * heatTransferDelta / 3600000
+        )  # calcualte total water mass, enthalpy from J/kg to kWh/kg --> water_mass in kg (per kWh)
+        drift_losses = water_mass * factorDriftLosses
+        self.sim_data["specific_mass_drift_loss"] = drift_losses
+
+        # blowdown losses (periodic discharge of water to prevent accumulation of impurities):
+        blowdown_losses = evaporation_loss / (typical_cycles_blowdown - 1)
+        self.sim_data["specific_mass_blowdown_loss"] = blowdown_losses
+
+        self.sim_data["conversion_factor_water"] = -(
+            evaporation_loss + drift_losses[0] + blowdown_losses
+        )  # corresponds to the water losses (therefore negative)
+
+        units = {
+            "capacity": "kW_th",
+            "conversion_factor_water": "kg_H2O/kWh_th",
+            "wet_bulb_temperature": "°C",
+            "approach_temperature_evaporative_cooling": "K",
+            "specific_mass_evaporation_loss": "kg_H2O/kWh_th",
+            "specific_mass_drift_loss": "kg_H2O/kWh_th",
+            "specific_mass_blowdown_loss": "kg_H2O/kWh_th",
+        }
+        self.units = OrderedDict(units)
 
     def calculate_fan_power_air_cooling(
         self,
@@ -171,14 +307,7 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
 
         # Calculate Power demand for 1 kWh of cooling:
         WFan = (
-            (
-                1
-                / (
-                    cpAir
-                    * (temperatureCoolant - heatTransferDelta - airTemp)
-                    * densityAir
-                )
-            )
+            (1 / (cpAir * (temperatureCoolant - heatTransferDelta - airTemp) * densityAir))
             / efficiencyFan
             * pressureDropAir
         )
@@ -225,8 +354,8 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
         Returns
         -------
         float or np.ndarray
-            Pump power demand in kWh per kWh of cooling. Returns a single value if
-            `designTemperature` is provided, or a time series array otherwise.
+        Pump power demand in kWh per kWh of cooling. Returns a single value if
+        `designTemperature` is provided, or a time series array otherwise.
 
         Notes
         -----
@@ -302,8 +431,9 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
         Returns
         -------
         None
-            The method stores the calculated relative cost factor in `self.sim_data["relative_cost_factor"]`
-            and updates the `self.units` dictionary with air-cooling system units.
+
+        The method stores the calculated relative cost factor in `self.sim_data["relative_cost_factor"]`
+        and updates the `self.units` dictionary with air-cooling system units.
 
         Notes
         -----
@@ -318,7 +448,6 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
         [1] 10.1016/j.energy.2015.05.081
         [2] 10.1016/j.enconman.2020.113610
         """
-
         # At design point:
         PFanDesign = -self.calculate_fan_power_air_cooling(
             temperatureCoolant,
@@ -430,16 +559,11 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
             self.sim_data["surface_air_temperature"] <= designTemperature,
             1,  # Case 1: below design temperature, the system can always provide enough cooling.
             xr.where(
-                self.sim_data["surface_air_temperature"]
-                < (temperatureCoolant - heatTransferDelta),
+                self.sim_data["surface_air_temperature"] < (temperatureCoolant - heatTransferDelta),
                 # Case 2: between design and shut off temperature. The system can not provide sufficient cooling. Its limited by:
                 np.minimum(
-                    PPumpDesign
-                    / self.sim_data[
-                        "conversion_factor_pump_electricity"
-                    ],  # either the pump
-                    PFanDesign
-                    / self.sim_data["conversion_factor_fan_electricity"],  # or the fan
+                    PPumpDesign / self.sim_data["conversion_factor_pump_electricity"],  # either the pump
+                    PFanDesign / self.sim_data["conversion_factor_fan_electricity"],  # or the fan
                 ),
                 0.0,  # Case 3: too hot. The system needs to shut off.
             ),
@@ -481,9 +605,7 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
             / (targetTemperature - self.sim_data["surface_air_temperature"])
             * secondLawEfficiency
         )
-        self.sim_data["conversion_factor_electricity"] = (
-            -1 / self.sim_data["COP"]
-        )  # kWhel/kWhth
+        self.sim_data["conversion_factor_electricity"] = -1 / self.sim_data["COP"]  # kWhel/kWhth
 
         # set the units of an air source heat pump:
         units = {
