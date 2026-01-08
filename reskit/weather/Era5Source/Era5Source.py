@@ -184,7 +184,7 @@ class Era5Source(NCSource):
 
         """
         return self.load("blh", "boundary_layer_height")
-    
+
     def _sload_wind_speed(self, height, target_name):
         """
         Generic loader for wind speed variables.
@@ -200,7 +200,7 @@ class Era5Source(NCSource):
             Wind speed height (e.g. 10, 100)
         target_name : str
             Name to store in self.data
-    
+
         """
 
         ws_var = f"ws{height}"
@@ -218,10 +218,7 @@ class Era5Source(NCSource):
         # Case 2: compute from u and v
         # --------------------------------------
         # Explicit protection: both components must exist
-        missing_uv = [
-            var for var in (u_var, v_var)
-            if var not in self.variables.index
-        ]
+        missing_uv = [var for var in (u_var, v_var) if var not in self.variables.index]
         if missing_uv:
             raise RuntimeError(
                 f"Cannot load {target_name}: "
@@ -247,26 +244,22 @@ class Era5Source(NCSource):
         self.data.pop(v_var, None)
 
     def sload_elevated_wind_speed(self):
-        """Standard loader function for the variable 'elevated_wind_speed'
-        """
+        """Standard loader function for the variable 'elevated_wind_speed'"""
 
         return self._sload_wind_speed(height=self.ELEVATED_WIND_SPEED_HEIGHT, target_name="elevated_wind_speed")
 
     def sload_surface_wind_speed(self):
-        """Standard loader function for the variable 'surface_wind_speed'
-        """
+        """Standard loader function for the variable 'surface_wind_speed'"""
 
         return self._sload_wind_speed(height=self.SURFACE_WIND_SPEED_HEIGHT, target_name="surface_wind_speed")
 
     def sload_wind_speed_at_100m(self):
-        """Standard loader function for the variable 'wind_speed_at_100m'
-        """
+        """Standard loader function for the variable 'wind_speed_at_100m'"""
 
         return self._sload_wind_speed(height=100, target_name="wind_speed_at_100m")
 
     def sload_wind_speed_at_10m(self):
-        """Standard loader function for the variable 'wind_speed_at_10m'
-        """
+        """Standard loader function for the variable 'wind_speed_at_10m'"""
 
         return self._sload_wind_speed(height=10, target_name="wind_speed_at_10m")
 
