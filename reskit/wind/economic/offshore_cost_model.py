@@ -722,7 +722,6 @@ def installationCostPlattform(
 
 
     """
-
     assert 0 <= waterDepth, (
         f"waterdepth is {waterDepth}, but must not be smaller than 0."
     )
@@ -791,7 +790,6 @@ def installationCostCables(
         Total cable installation cost in monetary units.
 
     """
-
     assert voltageType in ["dc", "ac", "interarray"], (
         "voltatgeType must be ac, dc, or interarray"
     )
@@ -835,7 +833,6 @@ def installationPipelineCost(pipelineType="export", lengthOfPipe=17000):
     offshore wind farms: A European perspective. In Renewable and
     Sustainable Energy Reviews 187, p. 113699. DOI: 10.1016/j.rser.2023.113699.
     """
-
     assert pipelineType in ["infield", "export"], (
         "pipelineType must be in ['infield','export]"
     )
