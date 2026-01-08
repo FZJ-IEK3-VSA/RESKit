@@ -202,7 +202,6 @@ class Era5Source(NCSource):
             Name to store in self.data
 
         """
-
         ws_var = f"ws{height}"
         u_var = f"u{height}"
         v_var = f"v{height}"
@@ -245,22 +244,18 @@ class Era5Source(NCSource):
 
     def sload_elevated_wind_speed(self):
         """Standard loader function for the variable 'elevated_wind_speed'"""
-
         return self._sload_wind_speed(height=self.ELEVATED_WIND_SPEED_HEIGHT, target_name="elevated_wind_speed")
 
     def sload_surface_wind_speed(self):
         """Standard loader function for the variable 'surface_wind_speed'"""
-
         return self._sload_wind_speed(height=self.SURFACE_WIND_SPEED_HEIGHT, target_name="surface_wind_speed")
 
     def sload_wind_speed_at_100m(self):
         """Standard loader function for the variable 'wind_speed_at_100m'"""
-
         return self._sload_wind_speed(height=100, target_name="wind_speed_at_100m")
 
     def sload_wind_speed_at_10m(self):
         """Standard loader function for the variable 'wind_speed_at_10m'"""
-
         return self._sload_wind_speed(height=10, target_name="wind_speed_at_10m")
 
     def sload_elevated_wind_direction(self):
