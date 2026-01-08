@@ -663,7 +663,7 @@ def installationCostTurbine(
 
     return turbineInstallationCostperTurbine
 
-
+ 
 def installationCostPlattform(
     waterDepth=17,  # m
     maxJacketDepth=55,  # m
