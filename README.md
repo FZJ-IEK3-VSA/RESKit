@@ -59,14 +59,18 @@ If you decide to use RESkit anywhere in a published work related to wind energy,
 
 When using the ETHOS.RESKit.Wind workflow please cite: 
 ```bibtex
-@article{PenaSanchezDunkelWinklerEtAl2025,
-      title={Towards high resolution, validated and open global wind power assessments}, 
-      author={Edgar Ubaldo Peña-Sánchez and Philipp Dunkel and Christoph Winkler and Heidi Heinrichs and Florian Prinz and Jann Weinand and Rachel Maier and Sebastian Dickler and Shuying Chen and Katharina Gruber and Theresa Klütz and Jochen Linßen and Detlef Stolten},
-      year={2025},
-      eprint={2501.07937},
-      archivePrefix={arXiv},
-      primaryClass={physics.soc-ph},
-      url={https://arxiv.org/abs/2501.07937}, 
+@article{PenaSanchezDunkelWinklerEtAl2026,
+  title = {Towards High Resolution, Validated and Open Global Wind Power Assessments},
+  author = {{Pe{\~n}a-S{\'a}nchez}, E. U. and Dunkel, P. and Winkler, C. and Heinrichs, H. and Prinz, F. and Weinand, J. M. and Maier, R. and Dickler, S. and Chen, S. and Gruber, K. and Kl{\"u}tz, T. and Lin{\ss}en, J. and Stolten, D.},
+  year = 2026,
+  month = jan,
+  journal = {Nature Communications},
+  volume = {17},
+  number = {1},
+  pages = {539},
+  issn = {2041-1723},
+  doi = {10.1038/s41467-026-68337-z},
+  url = {http://dx.doi.org/10.1038/s41467-026-68337-z},
 }
 ```
 
