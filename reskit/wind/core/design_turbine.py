@@ -14,7 +14,13 @@ def onshore_turbine_from_avg_wind_speed(wind_speed, **kwargs):
     """
     Convenience function for backward compatibility, will be removed soon.
     All kwargs are passed to turbine_design_from_avg_wind_speed() with
-    technology='onshore'.
+    technology='onshore'. 
+    
+    NOTE: 'reference_wind_speed' is allowed as kwarg here for backward 
+    compatibility only and will be set for both 'reference_wind_speed_hubheight' 
+    and 'reference_wind_speed_specpow'. This allows to use the former workflow 
+    reference_wind_speed param with the new turbine_design_from_avg_wind_speed() 
+    function. It is recommended to use specific values for each parameter though.
 
     wind_speed : numeric or array_like
         Local average wind speed close to or at the hub height.
@@ -31,6 +37,14 @@ def onshore_turbine_from_avg_wind_speed(wind_speed, **kwargs):
     )
     kwargs["wind_speed"] = wind_speed
     kwargs["technology"] = "onshore"
+    # check if reference_wind_speed if in kwargs, if so, replace by 
+    # reference_wind_speed_specpow and reference_wind_speed_hubheight
+    if "reference_wind_speed" in kwargs:
+        assert not any([k in kwargs for k in ["reference_wind_speed_specpow", "reference_wind_speed_hubheight"]]),\
+            "legacy argument 'reference_wind_speed' cannot be given together with current arguments 'reference_wind_speed_specpow' or 'reference_wind_speed_hubheight'"
+        refws = kwargs.pop("reference_wind_speed", "None")
+        kwargs["reference_wind_speed_specpow"] = refws
+        kwargs["reference_wind_speed_hubheight"] = refws
     # return results of turbine_design_from_avg_wind_speed
     return turbine_design_from_avg_wind_speed(**kwargs)
 
@@ -42,7 +56,6 @@ def turbine_design_from_avg_wind_speed(
     base_capacity=None,
     base_hub_height=None,
     base_rotor_diam=None,
-    reference_wind_speed=None,
     reference_wind_speed_hubheight=None,
     reference_wind_speed_specpow=None,
     min_tip_height=None,
@@ -75,9 +88,6 @@ def turbine_design_from_avg_wind_speed(
 
     base_rotor_diam : numeric or array_like, optional
         Baseline turbine rotor diameter in m, by default 136.
-
-    reference_wind_speed : numeric, optional
-        Average wind speed corresponding to the baseline turbine design, by default 6.7.
 
     reference_wind_speed_hubheight : numeric, optional
         Average wind speed corresponding to the baseline hub height value, 
@@ -215,12 +225,8 @@ def turbine_design_from_avg_wind_speed(
     # specific_power = scaling * scaling_funcs["specific_power"](ws=wind_speed)
 
     # get reference wind speed, can be general (e.g. RybergEtAl2019) or parameter-specific (e.g. WinklerEtAl2026)
-    try:
-        reference_wind_speed_specpow = baseline_params["reference_wind_speed_specpow"]
-        assert not pd.isnull(reference_wind_speed_specpow)
-    except: #TODO discuss if this shall be risked - allowing fallback on standard ref ws means distortion of WinklerEtAl approach which needs specific ref ws!
-        reference_wind_speed_specpow = baseline_params["reference_wind_speed"]
-        assert not pd.isnull(reference_wind_speed_specpow), f"Either reference_wind_speed or reference_wind_speed_specpow must be given."
+    reference_wind_speed_specpow = baseline_params["reference_wind_speed_specpow"]
+    assert not pd.isnull(reference_wind_speed_specpow), "reference_wind_speed_specpow must be given."
     # apply the respective scaling function
     specific_power = scaling_funcs["specific_power"](
         ws=wind_speed, 
@@ -249,12 +255,8 @@ def turbine_design_from_avg_wind_speed(
     # )
     # hub_height = scaling * scaling_funcs["hub_height"](ws=wind_speed)
     # get reference wind speed, can be general (e.g. RybergEtAl2019) or parameter-specific (e.g. WinklerEtAl2026)
-    try:
-        reference_wind_speed_hubheight = baseline_params["reference_wind_speed_hubheight"]
-        assert not pd.isnull(reference_wind_speed_hubheight)
-    except: #TODO discuss if fallback makes sense, see above
-        reference_wind_speed_hubheight = baseline_params["reference_wind_speed"]
-        assert not pd.isnull(reference_wind_speed_hubheight), f"Either reference_wind_speed or reference_wind_speed_hubheight must be given."
+    reference_wind_speed_hubheight = baseline_params["reference_wind_speed_hubheight"]
+    assert not pd.isnull(reference_wind_speed_hubheight), "reference_wind_speed_hubheight must be given."
     # apply the respective scaling function
     hub_height = scaling_funcs["hub_height"](
         ws=wind_speed, 
