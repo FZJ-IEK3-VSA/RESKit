@@ -317,8 +317,8 @@ def location_to_gcr(
         if convention == "EquatorFacingWinkler2026":
 
             # east slope is not used in this convention
-            if east_slope is not None:
-                warnings.warn(f"east_slope ({east_slope}) is not None but tracking='fixed' and contention='{convention}', will be ignored.")
+            if east_slope not in [None, 0]:
+                warnings.warn(f"east_slope ({east_slope}) is not None or zero, but will be ignored by tracking='fixed' and convention='{convention}'.")
 
             if isinstance(north_slope, str):
                 # assume a slope raster
