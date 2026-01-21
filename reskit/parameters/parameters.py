@@ -354,7 +354,10 @@ class OffshoreParameters(Parameters):
 
         # extract json params from file
         self.load_and_set_custom_params(fp=fp, year=year, subclass=self, **kwargs)
-        print(f"Baseline plant parameters have been loaded from: {fp}", flush=True)
+        print(
+            f"Baseline plant parameters have been loaded for year {year} from: {fp}",
+            flush=True,
+        )
 
         # update custom parameters
         self.update_custom_parameters(subclass=self, **kwargs)
