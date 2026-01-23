@@ -19,7 +19,7 @@ depends_on = {
 def download_and_process(workflow, start_date, end_date, boundary_box, output_dir, tiling=False, zoom_level=4):
     output_paths = {
         "wind_era5_PenaSanchezDunkelWinklerEtAl2025": {
-            "era5_path": rk.preparing_era5(
+            "era5_path": rk.prepare_era5(
                 start_date=start_date,
                 end_date=end_date,
                 boundary_box=boundary_box,

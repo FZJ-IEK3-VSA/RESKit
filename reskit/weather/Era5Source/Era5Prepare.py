@@ -10,7 +10,7 @@ and preprocess the data to adjust solar radiation variables and compute wind spe
 
 To make it happen, you need to have:
 1. An account at the Copernicus Climate Data Store (CDS) and have your API key set up in the ~/.cdsapirc file. See here for more details: https://cds.climate.copernicus.eu/how-to-api
-2. The CDO (Climate Data Operators) installed on your system. Install python-cdo from channel conda-forge for example: conda install -c conda-forge python-cdo
+2. The CDO (Climate Data Operators) installed on your system. Install cdo and python-cdo from channel conda-forge will do the job, for example: conda install -c conda-forge cdo python-cdo
 """
 
 
@@ -60,103 +60,120 @@ def era5_downloader(
     )
 
 
-def preprocess_era5_data(era5_dir: str):
+def preprocess_era5_data(focus_nc: str):
+    """
+    Ssrd and fdir are hourly backward accumulated quantities in ERA5 with the unit: J m⁻².
+    Each value at time t represents the accumulated energy over the previous hour.
+
+    When you divide it by 3600 seconds, you convert the accumulated energy (J m⁻²)
+    into an average power flux (W m⁻²) over that hour.
+
+    However, in solar observation and other models,
+    this value represents the instantaneous mean over the next hour.
+    This matches:
+        PV modeling conventions
+        Many energy system models
+        atlite / PyPSA conventions
+
+    So, we need to do two things:
+    1. Convert the accumulated quantity to an average power flux by dividing by 3600
+    2. Shift the time axis forward by one hour to represent the average over the next hour.
+    """
     # prepare cdo instance
     cdo = Cdo()
 
-    # find nc files
-    nc_files = sorted(f for f in os.listdir(era5_dir) if f.endswith(".nc"))
-    if not nc_files:
-        raise FileNotFoundError(f"No NetCDF files found in {era5_dir}")
-    # iterate nc files
-    for fname in nc_files:
-        input_nc = os.path.join(era5_dir, fname)
-        # detect variables
-        varnames = cdo.showname(input=input_nc)[0].split()
-        varset = set(varnames)
+    # helper function to check variables in nc file, to skip processing if already done
+    def nc_file_has_vars(cdo, nc_path, required_vars):
+        """Check whether a NetCDF file exists and contains required variables."""
+        if not os.path.exists(nc_path):
+            return False
+        try:
+            vars_in_file = set(cdo.showname(input=nc_path)[0].split())
+            return set(required_vars) <= vars_in_file
+        except Exception:
+            return False
 
-        # process for solar radiation variables
-        """
-        ssrd and fdir are hourly backward accumulated quantities in ERA5 with the unit: J m⁻². 
-        Each value at time t represents the accumulated energy over the previous hour.
+    # detect variables in the nc file
+    varnames = cdo.showname(input=focus_nc)[0].split()
+    varset = set(varnames)
 
-        When you divide it by 3600 seconds, you convert the accumulated energy (J m⁻²)
-        into an average power flux (W m⁻²) over that hour.
+    dir = os.path.dirname(focus_nc)
+    f_name = os.path.basename(focus_nc)
+    # process for solar radiation variables
+    # solar_out = os.path.join(dir, f"{f_name.split('.')[0]}_processed_solar.nc")
+    # if {"ssrd", "fdir"} & varset:
+    #     if not nc_file_has_vars(cdo, solar_out, ["ssrd", "fdir"]):
+    #         unit = "W m**-2"
+    #         cdo.copy(
+    #             input=(
+    #                 f"-setattribute,ssrd@units=\"{unit}\" "
+    #                 f"-setattribute,fdir@units=\"{unit}\" "
+    #                 f"-divc,3600 "
+    #                 f"-selname,ssrd,fdir "
+    #                 f"{focus_nc}"
+    #             ),
+    #             output=solar_out,
+    #         )
+    #     else:
+    #         print(f"Skipping solar preprocessing (exists): {solar_out}")
 
-        However, in solar observation and other models, 
-        this value represents the instantaneous mean over the next hour. 
-        This matches:
-            PV modeling conventions
-            Many energy system models
-            atlite / PyPSA conventions
-        
-        So, we need to do two things:
-        1. Convert the accumulated quantity to an average power flux by dividing by 3600
-        2. Shift the time axis forward by one hour to represent the average over the next hour.
-        """
-        if "ssrd" in varset:
+    # process for solar radiation variables (time adjusted)
+    solar_t_out = os.path.join(dir, f"{f_name.split('.')[0]}_processed_solar_t_adjusted.nc")
+    if {"ssrd", "fdir"} & varset:
+        if not nc_file_has_vars(cdo, solar_t_out, ["ssrd_t_adj", "fdir_t_adj"]):
             unit = "W m**-2"
-            cdo.divc(
-                3600,
-                input=f"-selname,ssrd {input_nc}",
-                options=f"-L -setattribute,ssrd@units={unit}",
-                output=os.path.join(
-                    era5_dir,
-                    f"{fname.split('.')[0]}_processed_ssrd.nc",
+            cdo.copy(
+                input=(
+                    f"-chname,ssrd,ssrd_t_adj,fdir,fdir_t_adj "
+                    f'-setattribute,ssrd@units="{unit}" '
+                    f'-setattribute,fdir@units="{unit}" '
+                    f"-shifttime,+1hour "
+                    f"-divc,3600 "
+                    f"-selname,ssrd,fdir "
+                    f"{focus_nc}"
                 ),
+                output=solar_t_out,
             )
-            cdo.chname(
-                "ssrd,ssrd_t_adj",
-                input=f"-selname,ssrd -shifttime,+1hour -divc,3600 -setattribute,ssrd@units={unit} {input_nc}",
-                options="-L",
-                output=os.path.join(
-                    era5_dir,
-                    f"{fname.split('.')[0]}_processed_ssrd_t_adjusted.nc",
-                ),
-            )
-        if "fdir" in varset:
-            unit = "W m**-2"
-            cdo.divc(
-                3600,
-                input=f"-selname,fdir {input_nc}",
-                options=f"-L -setattribute,fdir@units={unit}",
-                output=os.path.join(
-                    era5_dir,
-                    f"{fname.split('.')[0]}_processed_fdir.nc",
-                ),
-            )
-            cdo.chname(
-                "fdir,fdir_t_adj",
-                input=f"-selname,fdir -shifttime,+1hour -divc,3600 -setattribute,fdir@units={unit} {input_nc}",
-                options="-L",
-                output=os.path.join(
-                    era5_dir,
-                    f"{fname.split('.')[0]}_processed_fdir_t_adjusted.nc",
-                ),
-            )
+        else:
+            print(f"Skipping process time-adjusted solar (exists): {solar_t_out}")
 
-        # process for wind speed variables
-        if {"u100", "v100"} <= varset:
-            cdo.expr(
-                "'ws100=sqrt(u100*u100+v100*v100)'",
-                input=input_nc,
-                output=os.path.join(
-                    era5_dir,
-                    f"{fname.split('.')[0]}_processed_ws100.nc",
+    # process for wind speed variables
+    ws100_out = os.path.join(dir, f"{f_name.split('.')[0]}_processed_ws100.nc")
+    if {"u100", "v100"} <= varset:
+        if not nc_file_has_vars(cdo, ws100_out, ["ws100"]):
+            unit = "m s**-1"
+            long_name = "100 metre wind speed"
+            cdo.copy(
+                input=(
+                    f'-setattribute,ws100@long_name="{long_name}" '
+                    f'-setattribute,ws100@units="{unit}" '
+                    f"-expr,'ws100=sqrt(u100*u100+v100*v100)' "
+                    f"{focus_nc}"
                 ),
+                output=ws100_out,
             )
-        if {"u10", "v10"} <= varset:
-            cdo.expr(
-                "'ws10=sqrt(u10*u10+v10*v10)'",
-                input=input_nc,
-                output=os.path.join(
-                    era5_dir,
-                    f"{fname.split('.')[0]}_processed_ws10.nc",
+        else:
+            print(f"Skipping process ws100 (exists): {ws100_out}")
+
+    ws10_out = os.path.join(dir, f"{f_name.split('.')[0]}_processed_ws10.nc")
+    if {"u10", "v10"} <= varset:
+        if not nc_file_has_vars(cdo, ws10_out, ["ws10"]):
+            unit = "m s**-1"
+            long_name = "10 metre wind speed"
+            cdo.copy(
+                input=(
+                    f'-setattribute,ws10@long_name="{long_name}" '
+                    f'-setattribute,ws10@units="{unit}" '
+                    f"-expr,'ws10=sqrt(u10*u10+v10*v10)' "
+                    f"{focus_nc}"
                 ),
+                output=ws10_out,
             )
+        else:
+            print(f"Skipping process ws10 (exists): {ws10_out}")
 
 
-def preparing_era5(
+def prepare_era5(
     start_date: str,
     end_date: str,
     boundary_box: dict,
@@ -164,6 +181,7 @@ def preparing_era5(
     variables: Optional[List[str]] = None,
 ):
     # 1. download ERA5 data for the given date range and boundary box
+    # initial preparation
     os.makedirs(output_dir, exist_ok=True)
 
     # resolve variables
@@ -182,9 +200,11 @@ def preparing_era5(
         boundary_box["east"],
     )
 
+    # start download
     output_file = os.path.join(
         output_dir, f"{era5_dataset}_{dates[0].strftime('%Y%m')}-{dates[-1].strftime('%Y%m')}.nc"
     )
+    # check if file exists
     if not os.path.exists(output_file):
         era5_downloader(
             target_filename=output_file,
@@ -193,10 +213,11 @@ def preparing_era5(
             variables=variables,
             area=area,
         )
-
-        # 2. preprocess ERA5 data
-        preprocess_era5_data(era5_dir=output_dir)
     else:
-        print(f"ERA5 data already exists at {output_file}, skipping download and preprocessing.")
+        print(f"ERA5 data already exists at {output_file}, skipping download.")
+
+    # 2. preprocess ERA5 data
+    preprocess_era5_data(focus_nc=output_file)
+    print("era5 preparation done.")
 
     return output_dir
