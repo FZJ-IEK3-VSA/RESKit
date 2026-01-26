@@ -1,13 +1,15 @@
 # %%
 import os
-import reskit as rk
+from glob import glob
+
+import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import xarray as xr
-import numpy as np
-from smopy import deg2num
-from glob import glob
-import matplotlib.pyplot as plt
 from scipy import stats
+from smopy import deg2num
+
+import reskit as rk
 
 # import fathon
 # from fathon import fathonUtils as fu

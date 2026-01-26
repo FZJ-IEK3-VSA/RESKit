@@ -1,16 +1,16 @@
+import os
+import time
+from datetime import datetime
 from distutils.log import warn
+
+import geokit as gk
 import numpy as np
 import pandas as pd
 import xarray as xr
-import os
-import geokit as gk
-import time
-from datetime import datetime
+
+from reskit.geothermal.data import path_heat_flow_sustainable_W_per_m2, path_temperatures
 
 from .egs_workflow_manager import EGS_workflowmanager
-
-from reskit.geothermal.data import path_temperatures
-from reskit.geothermal.data import path_heat_flow_sustainable_W_per_m2
 
 
 def EGSworkflow(

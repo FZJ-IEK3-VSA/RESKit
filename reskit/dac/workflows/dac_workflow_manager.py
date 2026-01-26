@@ -6,7 +6,6 @@ import pandas as pd
 from scipy.interpolate import RegularGridInterpolator
 
 from reskit.dac.data import DATAFOLDER
-
 from reskit.workflow_manager import WorkflowManager
 
 """

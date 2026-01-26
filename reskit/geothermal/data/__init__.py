@@ -1,4 +1,5 @@
 from pathlib import Path
+
 from . import gringarten
 
 # Get the current directory of the 'data' package

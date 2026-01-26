@@ -1,14 +1,14 @@
-from os.path import join, isfile, isdir
+from collections import OrderedDict, namedtuple
 from glob import glob
-from scipy.interpolate import RectBivariateSpline
-from collections import namedtuple, OrderedDict
+from os.path import isdir, isfile, join
+
+import geokit as gk
 import netCDF4 as nc
 import numpy as np
-import geokit as gk
 import pandas as pd
+from scipy.interpolate import RectBivariateSpline
 
 from reskit.util import ResError
-
 
 # make a data handler
 Index = namedtuple("Index", "yi xi")

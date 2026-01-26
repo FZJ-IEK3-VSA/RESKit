@@ -11,8 +11,8 @@ import numpy as np
 import pandas as pd
 import windpowerlib
 
-from reskit.workflow_manager import WorkflowManager
 from reskit.wind import core as rk_wind_core
+from reskit.workflow_manager import WorkflowManager
 
 
 class WindWorkflowManager(WorkflowManager):

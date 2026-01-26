@@ -7,7 +7,6 @@ import numpy as np
 import pandas as pd
 
 from reskit.default_paths import DEFAULT_PATHS
-
 from reskit.wind.core.power_curve import PowerCurve
 
 ##################################################

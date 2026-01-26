@@ -1,13 +1,12 @@
-import pandas as pd
-import numpy as np
-import xarray as xr
-
 from collections import OrderedDict
+
+import numpy as np
+import pandas as pd
+import xarray as xr
 from scipy.interpolate import interp1d
 
-from reskit.workflow_manager import WorkflowManager
 from reskit.util.specific_humidity import calculate_specific_humidity
-
+from reskit.workflow_manager import WorkflowManager
 
 """
 

@@ -7,7 +7,6 @@ import numpy as np
 import pandas as pd
 
 from reskit.parameters.parameters import OnshoreParameters
-
 from reskit.wind.core.power_curve import compute_specific_power
 
 

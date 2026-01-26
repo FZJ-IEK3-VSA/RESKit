@@ -1,7 +1,7 @@
 # Add useful paths for testing and stuff
 from collections import OrderedDict
 from glob import glob
-from os.path import join, dirname, basename
+from os.path import basename, dirname, join
 
 TEST_DATA = OrderedDict()
 

@@ -1,7 +1,6 @@
 import numpy as np
 
 from reskit.parameters.parameters import OffshoreParameters
-
 from reskit.wind.economic.onshore_cost_model import onshore_tcc
 
 
