@@ -8,7 +8,7 @@ from numpy.lib.arraysetops import isin
 from reskit import weather as rk_weather
 from reskit import workflow_manager
 from reskit.csp.workflows.csp_workflow_manager import PTRWorkflowManager
-from reskit.csp.workflows.dataset_handler import dataset_handler
+from reskit.csp.workflows.dataset_handler import DatasetHandler
 
 
 def csp_ptr_era5(
@@ -159,7 +159,7 @@ def csp_ptr_era5(
 
     else:  # multiple datasets found
         # 1) split up placements for each htf (e.g. solar salt or heliosol)
-        d = dataset_handler(datasets)
+        d = DatasetHandler(datasets)
         placements = d.split_placements(
             placements=placements,
             gsa_dni_path=global_solar_atlas_dni_path,
@@ -337,7 +337,7 @@ def csp_ptr_era5_specific_dataset(
         verbose=False,
     )
 
-    wf.check_ERA5_input()
+    wf.check_era5_input()
 
     if verbose:
         tic_read = time.time()
@@ -378,14 +378,14 @@ def csp_ptr_era5_specific_dataset(
         )
 
     # manipulationof input values for variation calculation
-    wf._applyVariation()  # only for developers, can be ignored otherwise
+    wf._apply_variation()  # only for developers, can be ignored otherwise
 
     # 6) doing selfmade calulations until Heat to HTF (Heat transfer fluid)
     wf.calculate_iam(a1=ptr_data["a1"], a2=ptr_data["a2"], a3=ptr_data["a3"])
-    wf.calculate_shadow_losses(method="wagner2011", SF_density=ptr_data["SF_density_direct"])
+    wf.calculate_shadow_losses(method="wagner2011", sf_density=ptr_data["SF_density_direct"])
     wf.calculate_windspeed_losses(max_windspeed_threshold=ptr_data["maxWindspeed"])
     wf.calculate_degradation_losses(
-        efficiencyDropPerYear=ptr_data["efficiencyDropPerYear"],
+        efficiency_drop_per_year=ptr_data["efficiencyDropPerYear"],
         lifetime=ptr_data["lifetime"],
     )
     wf.calculate_heat_to_htf(
@@ -452,7 +452,7 @@ def csp_ptr_era5_specific_dataset(
 
     # 9) calculate economics
     wf.calculate_economics_solar_field(
-        WACC=ptr_data["WACC"],
+        wacc=ptr_data["WACC"],
         lifetime=ptr_data["lifetime"],
         calculationmethod="franzmann2021",
         params={
@@ -486,7 +486,7 @@ def csp_ptr_era5_specific_dataset(
         )
 
     wf.calculate_electrical_output(onlynightuse=onlynightuse, debug_vars=debug_vars)
-    wf.calculate_LCOE()
+    wf.calculate_lcoe()
     wf.calculate_capacity_factors()
 
     if verbose:

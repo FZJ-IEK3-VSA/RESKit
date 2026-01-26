@@ -115,9 +115,9 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
 
     def calculate_approach_evaporative_cooling(
         self,
-        temperatureCoolant: float | int,
-        heatTransferDelta: float | int,
-        efficiencyCoolingTower: float | int,
+        temperature_coolant: float | int,
+        heat_transfer_delta: float | int,
+        efficiency_cooling_tower: float | int,
     ):
         """
         Calculate the approach temperature for an evaporative-cooling system.
@@ -142,9 +142,9 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
         [1] 10.1016/j.ijhydene.2024.11.381
         """
         # Calculate T_CChot
-        T_CChot = temperatureCoolant - heatTransferDelta
+        T_CChot = temperature_coolant - heat_transfer_delta
         # Calculate T_CCcold using wet bulb temperature approximation
-        T_CCcold = T_CChot - efficiencyCoolingTower * (T_CChot - self.sim_data["wet_bulb_temperature"])
+        T_CCcold = T_CChot - efficiency_cooling_tower * (T_CChot - self.sim_data["wet_bulb_temperature"])
         # Calculate approach temperature
         approach_temperature = T_CCcold - self.sim_data["wet_bulb_temperature"]
 
@@ -152,10 +152,10 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
 
     def calculate_water_losses_evaporative_cooling(
         self,
-        temperatureCoolant: float | int,
-        heatTransferDelta: float | int,
-        efficiencyCoolingTower: float | int,
-        factorDriftLosses: float | int = 0.001,
+        temperature_coolant: float | int,
+        heat_transfer_delta: float | int,
+        efficiency_cooling_tower: float | int,
+        factor_drift_losses: float | int = 0.001,
         typical_cycles_blowdown: int = 5,
     ):
         """
@@ -221,9 +221,9 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
 
         # drift losses:
         water_mass = 1 / (
-            self.evaporationCoolingData["cp_water"] * heatTransferDelta / 3600000
+            self.evaporationCoolingData["cp_water"] * heat_transfer_delta / 3600000
         )  # calcualte total water mass, enthalpy from J/kg to kWh/kg --> water_mass in kg (per kWh)
-        drift_losses = water_mass * factorDriftLosses
+        drift_losses = water_mass * factor_drift_losses
         self.sim_data["specific_mass_drift_loss"] = drift_losses
 
         # blowdown losses (periodic discharge of water to prevent accumulation of impurities):
@@ -247,11 +247,11 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
 
     def calculate_fan_power_air_cooling(
         self,
-        temperatureCoolant: float | int,
-        heatTransferDelta: float | int = 5,
-        efficiencyFan: float | int = 0.7,
-        pressureDropAir: float | int = 261,
-        designTemperature: float | int = None,
+        temperature_coolant: float | int,
+        heat_transfer_delta: float | int = 5,
+        efficiency_fan: float | int = 0.7,
+        pressure_drop_air: float | int = 261,
+        design_temperature: float | int = None,
     ):
         """
         Calculate the fan power demand for an air-cooling system.
@@ -292,8 +292,8 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
         [1] 10.1016/j.ijhydene.2024.11.381
         [2] http://hdl.handle.net/1853/55674
         """
-        if designTemperature:
-            airTemp = designTemperature
+        if design_temperature:
+            airTemp = design_temperature
         else:
             airTemp = self.sim_data["surface_air_temperature"]
 
@@ -306,26 +306,26 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
 
         # Calculate Power demand for 1 kWh of cooling:
         WFan = (
-            (1 / (cpAir * (temperatureCoolant - heatTransferDelta - airTemp) * densityAir))
-            / efficiencyFan
-            * pressureDropAir
+            (1 / (cpAir * (temperature_coolant - heat_transfer_delta - airTemp) * densityAir))
+            / efficiency_fan
+            * pressure_drop_air
         )
         WFan = WFan / 1000 / 3600  # Convert J to kWh
-        if designTemperature:
+        if design_temperature:
             return -WFan
         else:
-            WFan[(temperatureCoolant - heatTransferDelta - airTemp) <= 0] = (
+            WFan[(temperature_coolant - heat_transfer_delta - airTemp) <= 0] = (
                 np.inf
             )  # Assign high value if cooling is not possible
             self.sim_data["conversion_factor_fan_electricity"] = -WFan
 
     def calculate_pump_power_air_cooling(
         self,
-        temperatureCoolant: float | int,
-        heatTransferDelta: float | int = 5,
-        efficiencyPump: float | int = 0.7,
-        pressureDropWater: float | int = 200000,
-        designTemperature: float | int = None,
+        temperature_coolant: float | int,
+        heat_transfer_delta: float | int = 5,
+        efficiency_pump: float | int = 0.7,
+        pressure_drop_water: float | int = 200000,
+        design_temperature: float | int = None,
     ):
         """
         Calculate the pump power demand for an air-cooling system.
@@ -367,8 +367,8 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
         [1] 10.1016/j.ijhydene.2024.11.381
         [2] 10.1016/j.enconman.2020.113610
         """
-        if designTemperature:
-            airTemp = designTemperature
+        if design_temperature:
+            airTemp = design_temperature
         else:
             airTemp = self.sim_data["surface_air_temperature"]
 
@@ -377,28 +377,28 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
 
         # Calculate Power demand for 1 kWh of cooling:
         WPump = (
-            (1 / (cp * (temperatureCoolant - heatTransferDelta - airTemp) * density))
-            / efficiencyPump
-            * pressureDropWater
+            (1 / (cp * (temperature_coolant - heat_transfer_delta - airTemp) * density))
+            / efficiency_pump
+            * pressure_drop_water
         )
         WPump = WPump / 1000 / 3600  # Convert J to kWh
-        if designTemperature:
+        if design_temperature:
             return -WPump
         else:
-            WPump[(temperatureCoolant - heatTransferDelta - airTemp) <= 0] = (
+            WPump[(temperature_coolant - heat_transfer_delta - airTemp) <= 0] = (
                 np.inf
             )  # Assign high value if cooling is not possible
             self.sim_data["conversion_factor_pump_electricity"] = -WPump
 
     def calculate_relative_cost_factor_air_cooling(
         self,
-        designTemperature: float | int,
-        temperatureCoolant: float | int,
-        heatTransferDelta: float | int = 5,
-        efficiencyFan: float | int = 0.7,
-        efficiencyPump: float | int = 0.7,
-        pressureDropAir: float | int = 261,
-        pressureDropWater: float | int = 200000,
+        design_temperature: float | int,
+        temperature_coolant: float | int,
+        heat_transfer_delta: float | int = 5,
+        efficiency_fan: float | int = 0.7,
+        efficiency_pump: float | int = 0.7,
+        pressure_drop_air: float | int = 261,
+        pressure_drop_water: float | int = 200000,
     ):
         """
         Calculate the relative (air temperature dependent) cost factor of an air-cooling system.
@@ -449,19 +449,19 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
         """
         # At design point:
         PFanDesign = -self.calculate_fan_power_air_cooling(
-            temperatureCoolant,
-            heatTransferDelta=heatTransferDelta,
-            efficiencyFan=efficiencyFan,
-            pressureDropAir=pressureDropAir,
-            designTemperature=designTemperature,
+            temperature_coolant,
+            heat_transfer_delta=heat_transfer_delta,
+            efficiency_fan=efficiency_fan,
+            pressure_drop_air=pressure_drop_air,
+            design_temperature=design_temperature,
         )
         CAPEXFanDesign = 2.8 * 12300 * (PFanDesign / 50) ** 0.76  # [1]
         PPumpDesign = -self.calculate_pump_power_air_cooling(
-            temperatureCoolant,
-            heatTransferDelta=heatTransferDelta,
-            efficiencyPump=efficiencyPump,
-            pressureDropWater=pressureDropWater,
-            designTemperature=designTemperature,
+            temperature_coolant,
+            heat_transfer_delta=heat_transfer_delta,
+            efficiency_pump=efficiency_pump,
+            pressure_drop_water=pressure_drop_water,
+            design_temperature=design_temperature,
         )
         CAPEXPumpDesign = 2.8 * 3540 * (PPumpDesign) ** 0.71  # [1]
 
@@ -473,7 +473,7 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
 
         # Air Cooler Cost stays the same in any case:
         alpha = 1.135  # kW/(m2K) [2]
-        A = 1 / (alpha * heatTransferDelta)  # needed A-frame size for 1 kW of cooling
+        A = 1 / (alpha * heat_transfer_delta)  # needed A-frame size for 1 kW of cooling
         CAPEXAC = 2.8 * 156000 * (A / 200) ** 0.89  # [1]
 
         CAPEXDesign = CAPEXFanDesign + CAPEXPumpDesign + CAPEXAC
@@ -498,13 +498,13 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
 
     def calculate_capacity_factor_air_cooling(
         self,
-        designTemperature: float | int,
-        temperatureCoolant: float | int,
-        heatTransferDelta: float | int = 5,
-        efficiencyFan: float | int = 0.7,
-        efficiencyPump: float | int = 0.7,
-        pressureDropAir: float | int = 261,
-        pressureDropWater: float | int = 200000,
+        design_temperature: float | int,
+        temperature_coolant: float | int,
+        heat_transfer_delta: float | int = 5,
+        efficiency_fan: float | int = 0.7,
+        efficiency_pump: float | int = 0.7,
+        pressure_drop_air: float | int = 261,
+        pressure_drop_water: float | int = 200000,
     ):
         """
         Calculate the capacity factor of an air-cooling system.
@@ -540,25 +540,25 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
         """
         # At design point:
         PFanDesign = self.calculate_fan_power_air_cooling(
-            temperatureCoolant,
-            heatTransferDelta=heatTransferDelta,
-            efficiencyFan=efficiencyFan,
-            pressureDropAir=pressureDropAir,
-            designTemperature=designTemperature,
+            temperature_coolant,
+            heat_transfer_delta=heat_transfer_delta,
+            efficiency_fan=efficiency_fan,
+            pressure_drop_air=pressure_drop_air,
+            design_temperature=design_temperature,
         )
         PPumpDesign = self.calculate_pump_power_air_cooling(
-            temperatureCoolant,
-            heatTransferDelta=heatTransferDelta,
-            efficiencyPump=efficiencyPump,
-            pressureDropWater=pressureDropWater,
-            designTemperature=designTemperature,
+            temperature_coolant,
+            heat_transfer_delta=heat_transfer_delta,
+            efficiency_pump=efficiency_pump,
+            pressure_drop_water=pressure_drop_water,
+            design_temperature=design_temperature,
         )
 
         self.sim_data["capacity_factor"] = xr.where(
-            self.sim_data["surface_air_temperature"] <= designTemperature,
+            self.sim_data["surface_air_temperature"] <= design_temperature,
             1,  # Case 1: below design temperature, the system can always provide enough cooling.
             xr.where(
-                self.sim_data["surface_air_temperature"] < (temperatureCoolant - heatTransferDelta),
+                self.sim_data["surface_air_temperature"] < (temperature_coolant - heat_transfer_delta),
                 # Case 2: between design and shut off temperature. The system can not provide sufficient cooling. Its limited by:
                 np.minimum(
                     PPumpDesign / self.sim_data["conversion_factor_pump_electricity"],  # either the pump
@@ -570,8 +570,8 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
 
     def simulate_air_source_heat_pump(
         self,
-        targetTemperature: float | int = 100,
-        secondLawEfficiency: float | int = 0.5,
+        target_temperature: float | int = 100,
+        second_law_efficiency: float | int = 0.5,
     ):
         """
         Simulate an air-source heat pump and calculate its coefficient of performance (COP) and conversion factors.
@@ -600,9 +600,9 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
         and electricity input (`kWh_el`).
         """
         self.sim_data["COP"] = (
-            (targetTemperature + 273.15)
-            / (targetTemperature - self.sim_data["surface_air_temperature"])
-            * secondLawEfficiency
+            (target_temperature + 273.15)
+            / (target_temperature - self.sim_data["surface_air_temperature"])
+            * second_law_efficiency
         )
         self.sim_data["conversion_factor_electricity"] = -1 / self.sim_data["COP"]  # kWhel/kWhth
 

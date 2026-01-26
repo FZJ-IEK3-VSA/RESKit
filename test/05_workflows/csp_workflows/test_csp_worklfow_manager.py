@@ -72,10 +72,10 @@ def funct():
     # 6) doing selfmade calculations until Heat to HTF
     # wf.calculateCosineLossesParabolicTrough(orientation=ptr_data['orientation']) shifted
     wf.calculate_iam(a1=ptr_data["a1"], a2=ptr_data["a2"], a3=ptr_data["a3"])
-    wf.calculate_shadow_losses(method="wagner2011", SF_density=ptr_data["SF_density_direct"])
+    wf.calculate_shadow_losses(method="wagner2011", sf_density=ptr_data["SF_density_direct"])
     wf.calculate_windspeed_losses(max_windspeed_threshold=ptr_data["maxWindspeed"])
     wf.calculate_degradation_losses(
-        efficiencyDropPerYear=ptr_data["efficiencyDropPerYear"],
+        efficiency_drop_per_year=ptr_data["efficiencyDropPerYear"],
         lifetime=ptr_data["lifetime"],
     )
     wf.calculate_heat_to_htf(eta_ptr_max=ptr_data["eta_ptr_max"], eta_cleaness=ptr_data["eta_cleaness"])
@@ -116,7 +116,7 @@ def funct():
     # 9) calculate economics
     # Todo: adjust size of annual_heat... from 1D to 2D, or change the storage type
     wf.calculate_economics_solar_field(
-        WACC=ptr_data["WACC"],
+        wacc=ptr_data["WACC"],
         lifetime=ptr_data["lifetime"],
         calculationmethod="franzmann2021",
         params={
@@ -553,7 +553,7 @@ def pt_ptr_workflow_manager_shadow() -> PTRWorkflowManager:
 def test_calculate_shadow_losses(pt_ptr_workflow_manager_shadow: PTRWorkflowManager):
     wfm = pt_ptr_workflow_manager_shadow
 
-    wfm.calculate_shadow_losses(method="wagner2011", SF_density=0.43)
+    wfm.calculate_shadow_losses(method="wagner2011", sf_density=0.43)
     print_testresults(wfm.sim_data["eta_shdw"])
     assert np.isclose(wfm.sim_data["eta_shdw"].mean(), 0.20020204625315727)
     assert np.isclose(wfm.sim_data["eta_shdw"].std(), 0.3461275222093702)
@@ -586,11 +586,11 @@ def test_calculate_windspeed_losses(pt_ptr_workflow_manager_loaded: PTRWorkflowM
 def test_calculate_degradation_losses(pt_ptr_workflow_manager_initialized: PTRWorkflowManager):
     wfm = pt_ptr_workflow_manager_initialized
 
-    wfm.calculate_degradation_losses(efficiencyDropPerYear=0.02, lifetime=20)
+    wfm.calculate_degradation_losses(efficiency_drop_per_year=0.02, lifetime=20)
 
     assert np.isclose(wfm.sim_data["eta_degradation"], 0.8643604692000185)
 
-    wfm.calculate_degradation_losses(efficiencyDropPerYear=0, lifetime=20)
+    wfm.calculate_degradation_losses(efficiency_drop_per_year=0, lifetime=20)
 
     assert np.isclose(wfm.sim_data["eta_degradation"], 1)
 
@@ -672,10 +672,10 @@ def pt_ptr_workflow_manager_heat_loss() -> PTRWorkflowManager:
     wf.direct_normal_irradiance_from_trigonometry()
 
     wf.calculate_iam(a1=ptr_data["a1"], a2=ptr_data["a2"], a3=ptr_data["a3"])
-    wf.calculate_shadow_losses(method="wagner2011", SF_density=ptr_data["SF_density_direct"])
+    wf.calculate_shadow_losses(method="wagner2011", sf_density=ptr_data["SF_density_direct"])
     wf.calculate_windspeed_losses(max_windspeed_threshold=ptr_data["maxWindspeed"])
     wf.calculate_degradation_losses(
-        efficiencyDropPerYear=ptr_data["efficiencyDropPerYear"],
+        efficiency_drop_per_year=ptr_data["efficiencyDropPerYear"],
         lifetime=ptr_data["lifetime"],
     )
     wf.calculate_heat_to_htf(
@@ -783,17 +783,17 @@ def test_get_capex(pt_ptr_workflow_manager_initialized: PTRWorkflowManager):
     wfm = pt_ptr_workflow_manager_initialized
 
     capex_total_eur = wfm._get_capex(
-        A_aperture_m2=3e5,
-        A_land_m2=1e6,
-        Qdot_field_des_W=3e5 * 0.8 * 900,
+        a_aperture_m2=3e5,
+        a_land_m2=1e6,
+        q_dot_field_des_w=3e5 * 0.8 * 900,
         eta_des_power_plant=0.4,
         sm=2,
         tes=12,
-        c_field_per_aperture_area_EUR_per_m2=165.44,
-        c_land_per_land_area_EUR_per_m2=0.88,
-        c_storage_EUR_per_kWh_th=25.52,
-        c_plant_EUR_per_kW_el=1003.2,
-        c_indirect_cost_perc_per_direct_Capex=11,
+        c_field_per_aperture_area_eur_per_m2=165.44,
+        c_land_per_land_area_eur_per_m2=0.88,
+        c_storage_eur_per_kwh_th=25.52,
+        c_plant_eur_per_kw_el=1003.2,
+        c_indirect_cost_perc_per_direct_capex=11,
     )
     assert np.isclose(capex_total_eur, 140885817.6)
 
@@ -802,18 +802,18 @@ def test_get_opex(pt_ptr_workflow_manager_initialized: PTRWorkflowManager):
     wfm = pt_ptr_workflow_manager_initialized
 
     opex_eur_per_a = wfm._get_opex(
-        CAPEX_total_EUR=140885817.6,
-        OPEX_fix_perc_CAPEX_per_a=2,
-        auxilary_power_Wh_per_a=0,
-        electricity_price_EUR_per_kWh=0.05,
+        capex_total_eur=140885817.6,
+        opex_fix_perc_capex_per_a=2,
+        auxilary_power_wh_per_a=0,
+        electricity_price_eur_per_kwh=0.05,
     )
     assert np.isclose(opex_eur_per_a, 2.817716352e6)
 
     opex_eur_per_a = wfm._get_opex(
-        CAPEX_total_EUR=140885817.6,
-        OPEX_fix_perc_CAPEX_per_a=2,
-        auxilary_power_Wh_per_a=4.830819e10,
-        electricity_price_EUR_per_kWh=0.05,
+        capex_total_eur=140885817.6,
+        opex_fix_perc_capex_per_a=2,
+        auxilary_power_wh_per_a=4.830819e10,
+        electricity_price_eur_per_kwh=0.05,
     )
     assert np.isclose(opex_eur_per_a, 5233125.852)
 
@@ -822,8 +822,8 @@ def test_get_totex(pt_ptr_workflow_manager_initialized: PTRWorkflowManager):
     wfm = pt_ptr_workflow_manager_initialized
 
     totex_eur_per_a = wfm._get_totex(
-        CAPEX_total_EUR_per_a=10,
-        OPEX_EUR_per_a=2,
+        capex_total_eur_per_a=10,
+        opex_eur_per_a=2,
     )
     assert np.isclose(totex_eur_per_a, 12)
 
@@ -986,7 +986,7 @@ def test_calculate_economics_solar_field(pt_ptr_workflow_manager_economics_sf: P
         "OPEX_perc_CAPEX": 0.03,
     }
 
-    wfm.calculate_economics_solar_field(WACC=0.08, lifetime=30, calculationmethod="franzmann2021", params=params)
+    wfm.calculate_economics_solar_field(wacc=0.08, lifetime=30, calculationmethod="franzmann2021", params=params)
 
     assert "annualHeatfromSF_Wh" in wfm.placements.columns
     assert "CAPEX_SF_EUR" in wfm.placements.columns
@@ -1134,7 +1134,7 @@ def pt_ptr_workflow_manager_calc_lcoe(
 def test_calculate_lcoe(pt_ptr_workflow_manager_calc_lcoe: PTRWorkflowManager):
     wfm = pt_ptr_workflow_manager_calc_lcoe
 
-    wfm.calculate_LCOE()
+    wfm.calculate_lcoe()
 
     a = np.array([9.21556861, 18.43113722, 9.21556861])
     assert np.isclose(wfm.placements["lcoe_EURct_per_kWh_el"].values, a).all()

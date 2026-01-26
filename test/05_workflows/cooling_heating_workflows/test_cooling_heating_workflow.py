@@ -30,8 +30,8 @@ def test_air_cooling_wenzel2025(placements: pd.DataFrame):
     gen = air_cooling_wenzel2025(
         placements=placements,
         era5_path=TEST_DATA["era5-like"],
-        temperatureCoolant=40,
-        designTemperature=20,
+        temperature_coolant=40,
+        design_temperature=20,
     )
     assert np.all(
         np.isclose(
@@ -63,9 +63,9 @@ def test_evaporative_cooling_wortmann2025(placements: pd.DataFrame):
     gen = evaporative_cooling_wortmann2025(
         placements=placements,
         era5_path=TEST_DATA["era5-like"],
-        temperatureCoolant=80,
-        heatTransferDelta=10,
-        efficiencyCoolingTower=0.65,
+        temperature_coolant=80,
+        heat_transfer_delta=10,
+        efficiency_cooling_tower=0.65,
     )
     assert np.all(
         np.isclose(
