@@ -5,8 +5,8 @@ import xarray as xr
 from collections import OrderedDict
 from scipy.interpolate import interp1d
 
-from ...workflow_manager import WorkflowManager
-from ...util.specific_humidity import calculate_specific_humidity
+from reskit.workflow_manager import WorkflowManager
+from reskit.util.specific_humidity import calculate_specific_humidity
 
 
 """

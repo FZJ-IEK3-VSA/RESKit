@@ -8,7 +8,7 @@ import pandas as pd
 
 from reskit.default_paths import DEFAULT_PATHS
 
-from .power_curve import PowerCurve
+from reskit.wind.core.power_curve import PowerCurve
 
 ##################################################
 # Make a turbine model library

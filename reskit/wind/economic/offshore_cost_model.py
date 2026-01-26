@@ -2,7 +2,7 @@ import numpy as np
 
 from reskit.parameters.parameters import OffshoreParameters
 
-from .onshore_cost_model import onshore_tcc
+from reskit.wind.economic.onshore_cost_model import onshore_tcc
 
 
 def offshore_turbine_capex(

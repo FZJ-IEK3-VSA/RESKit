@@ -8,7 +8,7 @@ import pandas as pd
 
 from reskit.parameters.parameters import OnshoreParameters
 
-from .power_curve import compute_specific_power
+from reskit.wind.core.power_curve import compute_specific_power
 
 
 def onshore_turbine_from_avg_wind_speed(
