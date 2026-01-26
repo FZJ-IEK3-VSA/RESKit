@@ -26,10 +26,10 @@ def placements():
 @pytest.fixture
 def egs_output(placements):
     """Runs the EGSworkflow and returns the output."""
-    return rk.geothermal.EGSworkflow(
+    return rk.geothermal.egs_workflow(
         placements=placements,
-        sourceTemperature=source_temperature,
-        sourceSustainableHeatflow=source_sustainable_heat_flow,
+        source_temperature=source_temperature,
+        source_sustainable_heatflow=source_sustainable_heat_flow,
         manual_values={"x_ED_1": 8},
         savepath=None,
     )

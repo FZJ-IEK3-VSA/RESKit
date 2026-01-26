@@ -1,2 +1,2 @@
-from . import data, workflows
-from .workflows.workflows import EGSworkflow
+from reskit.geothermal import data, workflows
+from reskit.geothermal.workflows.workflows import egs_workflow

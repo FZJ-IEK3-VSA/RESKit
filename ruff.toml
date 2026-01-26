@@ -33,6 +33,7 @@ ignore = [
     "D400", # First line should end with a period
     "D404", # First word of the docstring should not be "This"
     "N813", # Camelcase `netCDF4` imported as lowercase `nc
+    "N806", # Variable  in function should be lowercase
 ]
 unfixable = ["F401"]
 

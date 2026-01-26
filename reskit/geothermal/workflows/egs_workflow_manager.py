@@ -11,7 +11,7 @@ import xarray as xr
 from reskit.geothermal.data.gringarten import gringarten
 
 
-class EGS_workflowmanager:
+class EGSWorkflowManager:
     SECONDS_PER_YEAR = 365 * 24 * 3600
     USD2EUR = 0.88  # EUR
     rho_water = 1000  # kg/m^3
@@ -331,7 +331,7 @@ class EGS_workflowmanager:
         # calculation?
         self.sim_data["P_Plant_nom_UNITHERE"] = self.sim_data["Global_EGS_PowerTech"] * 1 / self.data["CF"]
 
-    def VolumeMethod(self):
+    def volume_method(self):
         """Calculate the enthalpy from the temperature"""
         self.sim_data_VM = {}
         # define rock properties
@@ -424,7 +424,7 @@ class EGS_workflowmanager:
 
         pass
 
-    def GringartenMethodFixeVdot(self):
+    def gringarten_method_fixe_v_dot(self):
         """Calculates the Gringarten solution for a given fracture configuration"""
         assert self.data["lifetime_a"] % 1 == 0  # check if its a natural number
 
@@ -474,7 +474,7 @@ class EGS_workflowmanager:
 
         self.sim_data_GR["temperature_GR_degC"] = self.sim_data["temperature"]
 
-    def SustainableHeat(self):
+    def sustainable_heat(self):
         assert "qdot_sust_W_per_m2" in self.placements.columns
 
         qdot_sust_W_per_m2 = self.placements["qdot_sust_W_per_m2"].values
@@ -517,7 +517,7 @@ class EGS_workflowmanager:
 
         self.sim_data_SU["temperature_SU_degC"] = self.sim_data["temperature"]
 
-    def calculatePumpLosses(self, method="default", techMethod=None):
+    def calculate_pump_losses(self, method="default", tech_method=None):
         """[summary]
 
         Parameters
@@ -528,8 +528,8 @@ class EGS_workflowmanager:
             [description], by default None
         """
         # get the data from self
-        sim_data_techmethod = getattr(self, techMethod)
-        tech_method_short = self._getTechMethodShort(techMethod)
+        sim_data_techmethod = getattr(self, tech_method)
+        tech_method_short = self._getTechMethodShort(tech_method)
 
         Vdot_m3_per_s_per_well = (
             1 / self.rho_water * sim_data_techmethod[f"mdot_water_{tech_method_short}_kg_per_s_per_well"]
@@ -545,11 +545,11 @@ class EGS_workflowmanager:
             sim_data_techmethod[f"P_out_{tech_method_short}_MW"] - P_pump_MW
         )
 
-    def calculateCosts(self, method="default", techMethod=None):
+    def calculate_costs(self, method="default", tech_method=None):
         """Calculate the CAPEX cost for the plant"""
         # get the data from self
-        sim_data_techmethod = getattr(self, techMethod)
-        tech_method_short = self._getTechMethodShort(techMethod)
+        sim_data_techmethod = getattr(self, tech_method)
+        tech_method_short = self._getTechMethodShort(tech_method)
 
         if method == "aghahosseini2020":
             # Capex
@@ -620,9 +620,9 @@ class EGS_workflowmanager:
         sim_data_techmethod[f"TOTEX_MUSD_{tech_method_short}_per_a"] = TOTEX_MUSD_per_a
         pass
 
-    def calculateLCOE(self, techMethod):
-        sim_data_techmethod = getattr(self, techMethod)
-        tech_method_short = self._getTechMethodShort(techMethod)
+    def calculate_lcoe(self, tech_method):
+        sim_data_techmethod = getattr(self, tech_method)
+        tech_method_short = self._getTechMethodShort(tech_method)
 
         # self.sim_data['LCOE_sust_MUSD_per_unkwn'] = self.sim_data['TOTEX_MUSD_per_a'] / (self.sim_data['Global_EGS_PowerSust'] * 8760)
         sim_data_techmethod[f"LCOE_gross_{tech_method_short}_EUR_per_kWh"] = (
@@ -638,10 +638,10 @@ class EGS_workflowmanager:
             / (sim_data_techmethod[f"P_out_net_{tech_method_short}_MW"] * 1e3 * 8760)
         )
 
-    def getOptDepth(self, techMethod):
+    def get_opt_depth(self, tech_method):
         """Gets the optimal depth value based on the lowest LCOE"""
-        sim_data_techmethod = getattr(self, techMethod)
-        tech_method_short = self._getTechMethodShort(techMethod)
+        sim_data_techmethod = getattr(self, tech_method)
+        tech_method_short = self._getTechMethodShort(tech_method)
 
         LCOE_considerable = sim_data_techmethod[f"LCOE_{tech_method_short}_EUR_per_kWh"]
         # filter by temperature if using the volume method
@@ -673,10 +673,10 @@ class EGS_workflowmanager:
         sim_data_techmethod[f"argmin_opt_depth_{tech_method_short}_m"] = argminDepth
         sim_data_techmethod[f"notEligible_{tech_method_short}"] = notEligible
 
-    def getValuesAtOptDepth(self, techMethod):
+    def get_values_at_opt_depth(self, tech_method):
         """[summary]"""
-        sim_data_techmethod = getattr(self, techMethod)
-        tech_method_short = self._getTechMethodShort(techMethod)
+        sim_data_techmethod = getattr(self, tech_method)
+        tech_method_short = self._getTechMethodShort(tech_method)
 
         def getOptimalValue(self, mat, argminOptDepth):
             """Returns the values at the optimal depth"""
@@ -717,9 +717,9 @@ class EGS_workflowmanager:
 
                 self.placements[varname] = var
 
-    def getRegenerationTime(self, techMethod):
-        sim_data_techmethod = getattr(self, techMethod)
-        tech_method_short = self._getTechMethodShort(techMethod)
+    def get_regeneration_time(self, tech_method):
+        sim_data_techmethod = getattr(self, tech_method)
+        tech_method_short = self._getTechMethodShort(tech_method)
 
         Q_out_Wa = (
             sim_data_techmethod[f"Qdot_out_{tech_method_short}_MW"] * 1e6 * self.data["lifetime_a"]
@@ -731,7 +731,7 @@ class EGS_workflowmanager:
 
         sim_data_techmethod[f"regeneration_time_{tech_method_short}_a"] = regeneration_time
 
-    def saveOutput(self, savepath=None, deepsave=False):
+    def save_output(self, savepath=None, deepsave=False):
         """Saved to nc4 or shape file or csv to savepath
 
         Parameters
@@ -824,7 +824,7 @@ class EGS_workflowmanager:
                                 df_temp = pd.DataFrame(var)
                             df_temp.to_excel(writer, sheet_name=key)
 
-    def _getTechMethods(self):
+    def _get_tech_methods(self):
         # get tech_methods
         techMethods = []
         for i in self.__dir__():

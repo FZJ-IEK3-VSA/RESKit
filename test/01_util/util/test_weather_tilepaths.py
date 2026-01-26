@@ -3,7 +3,7 @@ import numpy as np
 import pytest
 
 from reskit import TEST_DATA
-from reskit.util.weather_tile import get_dataframe_with_weather_tilepaths, get_tile_XY
+from reskit.util.weather_tile import get_dataframe_with_weather_tilepaths, get_tile_xy
 
 
 def test_weather_tilepaths():
@@ -70,8 +70,8 @@ def test_get_tile_xy():
     df = gk.vector.extractFeatures(TEST_DATA["turbinePlacements.shp"])
 
     # test geom
-    x, y = get_tile_XY(zoom=4, lon=None, lat=None, geom=df.geom[0])
+    x, y = get_tile_xy(zoom=4, lon=None, lat=None, geom=df.geom[0])
     assert (x, y) == (8, 5)
     # test lat/lon
-    x, y = get_tile_XY(zoom=4, lon=df.geom[0].GetX(), lat=df.geom[0].GetY(), geom=None)
+    x, y = get_tile_xy(zoom=4, lon=df.geom[0].GetX(), lat=df.geom[0].GetY(), geom=None)
     assert (x, y) == (8, 5)

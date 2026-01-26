@@ -117,7 +117,7 @@ def openfield_pv_merra_ryberg2019(
     wf.filter_positive_solar_elevation()
     wf.determine_extra_terrestrial_irradiance(model="spencer", solar_constant=1370)
     wf.determine_air_mass(model="kastenyoung1989")
-    wf.apply_DIRINT_model()
+    wf.apply_dirint_model()
     wf.diffuse_horizontal_irradiance_from_trigonometry()
 
     if tracking == "single_axis":
@@ -155,10 +155,10 @@ def openfield_pv_era5(
     inverter=None,
     inverter_kwargs={},
     tracking_args={},
-    DNI_nodata_fallback=1.0,
-    DNI_nodata_fallback_scaling=1.0,
-    GHI_nodata_fallback=1.0,
-    GHI_nodata_fallback_scaling=1.0,
+    dni_nodata_fallback=1.0,
+    dni_nodata_fallback_scaling=1.0,
+    ghi_nodata_fallback=1.0,
+    ghi_nodata_fallback_scaling=1.0,
     output_netcdf_path=None,
     output_variables=None,
     gsa_nodata_fallback="source",
@@ -305,7 +305,7 @@ def openfield_pv_era5(
             DeprecationWarning,
         )
         # deprecated gsa nodata fallback has been changed!
-        if GHI_nodata_fallback != 1.0 or DNI_nodata_fallback == 1.0:
+        if ghi_nodata_fallback != 1.0 or dni_nodata_fallback == 1.0:
             # also, changes have been made to GHI and DNI fallbacks
             raise ValueError(
                 f"When GHI_nodata_fallback and DNI_nodata_fallback have been adapted, gsa_nodata_fallback must not be adapted (recommended to ignore, deprecated)"
@@ -313,8 +313,8 @@ def openfield_pv_era5(
         else:
             # GHI and DNI fallbacks have not been changed, but 'source' has - adapt DNI and GHI fallbacks accordingly
             if gsa_nodata_fallback == "nan":
-                GHI_nodata_fallback = np.nan
-                DNI_nodata_fallback = np.nan
+                ghi_nodata_fallback = np.nan
+                dni_nodata_fallback = np.nan
             else:
                 raise ValueError(
                     f"'gsa_nodata_fallback' (deprecated) must be 'nan' or 'source'. Better use 'GHI_nodata_fallback' and 'GHI_nodata_fallback' instead, however."
@@ -325,8 +325,8 @@ def openfield_pv_era5(
         source_long_run_average=rk_weather.Era5Source.LONG_RUN_AVERAGE_GHI,
         real_long_run_average=global_solar_atlas_ghi_path,
         real_lra_scaling=1000 / 24,  # cast to hourly average kWh
-        nodata_fallback=GHI_nodata_fallback,
-        nodata_fallback_scaling=GHI_nodata_fallback_scaling,
+        nodata_fallback=ghi_nodata_fallback,
+        nodata_fallback_scaling=ghi_nodata_fallback_scaling,
     )
 
     wf.adjust_variable_to_long_run_average(
@@ -334,8 +334,8 @@ def openfield_pv_era5(
         source_long_run_average=rk_weather.Era5Source.LONG_RUN_AVERAGE_DNI,
         real_long_run_average=global_solar_atlas_dni_path,
         real_lra_scaling=1000 / 24,  # cast to hourly average kWh
-        nodata_fallback=DNI_nodata_fallback,
-        nodata_fallback_scaling=DNI_nodata_fallback_scaling,
+        nodata_fallback=dni_nodata_fallback,
+        nodata_fallback_scaling=dni_nodata_fallback_scaling,
     )
 
     wf.determine_extra_terrestrial_irradiance(model="spencer", solar_constant=1370)

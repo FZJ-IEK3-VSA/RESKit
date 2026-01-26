@@ -6,8 +6,8 @@ def compute_air_density(temperature=20, pressure=101325, relative_humidity=0, de
     if relative_humidity is None and dew_temperature is None:
         relative_humidity = 0
 
-    t = temperature
-    T = 273.15 + t
+    temperature_celsius = temperature
+    temperature_kelvin = 273.15 + temperature_celsius
     p = pressure
 
     A = 1.2378847e-5
@@ -25,8 +25,8 @@ def compute_air_density(temperature=20, pressure=101325, relative_humidity=0, de
         f = a_ + b_ * p + y_ * np.power(dew_temperature, 2)
         xv = f * psv / p
     else:
-        psv = np.exp(A * np.power(T, 2) + B * T + C + D / T)
-        f = a_ + b_ * p + y_ * np.power(t, 2)
+        psv = np.exp(A * np.power(temperature_kelvin, 2) + B * temperature_kelvin + C + D / temperature_kelvin)
+        f = a_ + b_ * p + y_ * np.power(temperature_celsius, 2)
         xv = relative_humidity * f * psv / p
 
     a0 = 1.58123e-6
@@ -41,14 +41,21 @@ def compute_air_density(temperature=20, pressure=101325, relative_humidity=0, de
 
     Z = (
         1
-        - (p / T) * (a0 - a1 * t + a2 * np.power(t, 2) + (b0 + b1 * t) * xv + (c0 + c1 * t) * np.power(xv, 2))
-        + np.power(p / T, 2) * (d + e * np.power(xv, 2))
+        - (p / temperature_kelvin)
+        * (
+            a0
+            - a1 * temperature_celsius
+            + a2 * np.power(temperature_celsius, 2)
+            + (b0 + b1 * temperature_celsius) * xv
+            + (c0 + c1 * temperature_celsius) * np.power(xv, 2)
+        )
+        + np.power(p / temperature_kelvin, 2) * (d + e * np.power(xv, 2))
     )
 
     Ma = 28.96546e-3
     Mv = 18.01528e-3
     R = 8.314472
 
-    airden = p * Ma / (Z * R * T) * (1 - xv * (1 - (Mv / Ma)))
+    airden = p * Ma / (Z * R * temperature_kelvin) * (1 - xv * (1 - (Mv / Ma)))
 
     return airden

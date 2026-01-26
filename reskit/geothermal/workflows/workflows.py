@@ -9,14 +9,13 @@ import pandas as pd
 import xarray as xr
 
 from reskit.geothermal.data import path_heat_flow_sustainable_W_per_m2, path_temperatures
+from reskit.geothermal.workflows.egs_workflow_manager import EGSWorkflowManager
 
-from .egs_workflow_manager import EGS_workflowmanager
 
-
-def EGSworkflow(
+def egs_workflow(
     placements: pd.DataFrame,
-    sourceTemperature=path_temperatures,
-    sourceSustainableHeatflow=path_heat_flow_sustainable_W_per_m2,
+    source_temperature=path_temperatures,
+    source_sustainable_heatflow=path_heat_flow_sustainable_W_per_m2,
     savepath=None,
     configuration="doublette",
     manual_values={},
@@ -27,9 +26,9 @@ def EGSworkflow(
     Parameters
     ----------
         placements (pd.DataFrame): Locations where the EGS workflow will be applied. Needs to have lat lon and geokit geoms.
-        sourceTemperature (str or Path, optional): Path to the geothermal temperature data.
+        source_temperature (str or Path, optional): Path to the geothermal temperature data.
             Defaults to `path_temperatures`.
-        sourceSustainableHeatflow (str or Path, optional): Path to the sustainable heat flow data.
+        source_sustainable_heatflow (str or Path, optional): Path to the sustainable heat flow data.
             Defaults to `path_heat_flow_sustainable_W_per_m2`.
         savepath (str or Path, optional): Directory where results will be saved. Defaults to None which outputs the data.
         configuration (str, optional): Type of geothermal system configuration.
@@ -56,7 +55,7 @@ def EGSworkflow(
 
     print(citation)
 
-    wfm = EGS_workflowmanager(placements=placements)
+    wfm = EGSWorkflowManager(placements=placements)
 
     ### data loading
     tic_data_loading = time.time()
@@ -67,14 +66,14 @@ def EGSworkflow(
         vars=[
             "temperature",
         ],
-        source=sourceTemperature,
+        source=source_temperature,
     )
-    wfm.loadData(vars=["surface_temperature"], source=sourceTemperature)
+    wfm.loadData(vars=["surface_temperature"], source=source_temperature)
     wfm.loadData(
         vars=[
             "heat_flow_sustainable_W_per_m2",
         ],
-        source=sourceSustainableHeatflow,
+        source=source_sustainable_heatflow,
         newVarNamesDict={"heat_flow_sustainable_W_per_m2": "qdot_sust_W_per_m2"},
     )
 
@@ -89,26 +88,26 @@ def EGSworkflow(
     print("Starting calc =", now, flush=True)
 
     # own data
-    wfm.VolumeMethod()
-    wfm.GringartenMethodFixeVdot()
-    wfm.SustainableHeat()
+    wfm.volume_method()
+    wfm.gringarten_method_fixe_v_dot()
+    wfm.sustainable_heat()
 
     ### Cost and selecting
     tic_cost = time.time()
     now = datetime.now()
     print("Starting cost calc =", now, flush=True)
 
-    techMethods = wfm._getTechMethods()
+    techMethods = wfm._get_tech_methods()
     # loop all considered technological approaches
     for techMethod in techMethods:
-        wfm.calculatePumpLosses(techMethod=techMethod)
-        wfm.calculateCosts(techMethod=techMethod)
-        wfm.calculateLCOE(techMethod=techMethod)
-        wfm.getRegenerationTime(techMethod=techMethod)
-        wfm.getOptDepth(techMethod=techMethod)
-        wfm.getValuesAtOptDepth(techMethod=techMethod)
+        wfm.calculate_pump_losses(tech_method=techMethod)
+        wfm.calculate_costs(tech_method=techMethod)
+        wfm.calculate_lcoe(tech_method=techMethod)
+        wfm.get_regeneration_time(tech_method=techMethod)
+        wfm.get_opt_depth(tech_method=techMethod)
+        wfm.get_values_at_opt_depth(tech_method=techMethod)
 
-    output = wfm.saveOutput(savepath=savepath, deepsave=True)  # TODO: change to False
+    output = wfm.save_output(savepath=savepath, deepsave=True)  # TODO: change to False
 
     tic_done = time.time()
     print("\nTime eval.:")

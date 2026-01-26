@@ -417,10 +417,10 @@ class SolarWorkflowManager(WorkflowManager):
             self.sim_data["apparent_solar_zenith"][s], model=model
         )
 
-    def apply_DIRINT_model(self, use_pressure=False, use_dew_temperature=False):
+    def apply_dirint_model(self, use_pressure=False, use_dew_temperature=False):
         """
 
-        apply_DIRINT_model(self, use_pressure=False, use_dew_temperature=False)
+        apply_dirint_model(self, use_pressure=False, use_dew_temperature=False)
 
         Determines direct normal irradiance (DNI) using the pvlib.irradiance.dirint() function [1].
 

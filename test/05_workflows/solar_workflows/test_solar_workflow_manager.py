@@ -347,7 +347,7 @@ def test_solar_workflow_manager_apply_dirint_model(
     pt_solar_workflow_manager_loaded2: SolarWorkflowManager,
 ):
     man = pt_solar_workflow_manager_loaded2
-    man.apply_DIRINT_model(use_pressure=True, use_dew_temperature=True)
+    man.apply_dirint_model(use_pressure=True, use_dew_temperature=True)
 
     print_testresults(man.sim_data["direct_normal_irradiance"])
 
@@ -363,7 +363,7 @@ def pt_solar_workflow_manager_dni(
     pt_solar_workflow_manager_loaded2: SolarWorkflowManager,
 ) -> SolarWorkflowManager:
     man = pt_solar_workflow_manager_loaded2
-    man.apply_DIRINT_model(use_pressure=True, use_dew_temperature=True)
+    man.apply_dirint_model(use_pressure=True, use_dew_temperature=True)
 
     return man
 

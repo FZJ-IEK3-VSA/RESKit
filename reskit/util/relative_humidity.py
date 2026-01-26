@@ -23,13 +23,13 @@ def calculate_relative_humidity(dewpoint_temperature, air_temperature):
 
         temperature: temperature in °C
         """
-        temperature_Kelvin = temperature + 273.15
+        temperature_kelvin = temperature + 273.15
         vapor_pressure = np.exp(
-            -6096.9385 / temperature_Kelvin
+            -6096.9385 / temperature_kelvin
             + 21.2409642
-            - 2.711193 * 10**-2 * temperature_Kelvin
-            + 1.673952 * 10**-5 * temperature_Kelvin**2
-            + 2.433502 * np.log(temperature_Kelvin)
+            - 2.711193 * 10**-2 * temperature_kelvin
+            + 1.673952 * 10**-5 * temperature_kelvin**2
+            + 2.433502 * np.log(temperature_kelvin)
         )  # vapor pressure [1]
         return vapor_pressure
 
