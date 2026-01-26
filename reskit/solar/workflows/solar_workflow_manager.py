@@ -12,10 +12,10 @@ import numpy as np
 import pandas as pd
 from scipy.interpolate import RectBivariateSpline
 
-from ...workflow_manager import WorkflowManager
+from reskit.workflow_manager import WorkflowManager
 
 # from reskit import solarpower
-from .. import core as rk_solar_core
+from reskit.solar import core as rk_solar_core
 
 """
 

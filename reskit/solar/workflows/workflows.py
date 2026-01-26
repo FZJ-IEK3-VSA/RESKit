@@ -3,11 +3,11 @@ import warnings
 
 import numpy as np
 
-from ... import util as rk_util
+from reskit import util as rk_util
 
 # import othert modules
-from ... import weather as rk_weather
-from .solar_workflow_manager import SolarWorkflowManager
+from reskit import weather as rk_weather
+from reskit.solar.workflows.solar_workflow_manager import SolarWorkflowManager
 
 
 def openfield_pv_merra_ryberg2019(
