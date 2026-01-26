@@ -66,30 +66,30 @@ class WindWorkflowManager(WorkflowManager):
             """
             Generates synthetic power curves for all placements that do not have a power curve defined.
             """
-            placements_wo_PC = self.placements[
+            placements_wo_pc = self.placements[
                 self.placements.powerCurve.isna() | (self.placements.powerCurve == "nan")
             ]
-            assert "rotor_diam" in placements_wo_PC.columns, "Placements needs 'rotor_diam' or 'powerCurve' specified"
+            assert "rotor_diam" in placements_wo_pc.columns, "Placements needs 'rotor_diam' or 'powerCurve' specified"
 
-            if len(placements_wo_PC) == 0:
+            if len(placements_wo_pc) == 0:
                 return
 
-            specificPower = rk_wind_core.power_curve.compute_specific_power(
-                placements_wo_PC["capacity"], placements_wo_PC["rotor_diam"]
+            specific_power = rk_wind_core.power_curve.compute_specific_power(
+                placements_wo_pc["capacity"], placements_wo_pc["rotor_diam"]
             ).astype(float)
 
             if synthetic_power_curve_rounding is not None:
-                specificPower = (
-                    np.round(specificPower / synthetic_power_curve_rounding) * synthetic_power_curve_rounding
+                specific_power = (
+                    np.round(specific_power / synthetic_power_curve_rounding) * synthetic_power_curve_rounding
                 )
-                specificPower = specificPower.astype(int)
+                specific_power = specific_power.astype(int)
 
-            powerCurve = []
-            for sppow in specificPower:
+            power_curve = []
+            for sppow in specific_power:
                 pcid = "SPC:%d,%d" % (sppow, synthetic_power_curve_cut_out)
-                powerCurve.append(pcid)
+                power_curve.append(pcid)
 
-            self.placements.loc[placements_wo_PC.index, "powerCurve"] = powerCurve
+            self.placements.loc[placements_wo_pc.index, "powerCurve"] = power_curve
 
         if not "powerCurve" in self.placements.columns:
             assert "rotor_diam" in self.placements.columns, (
@@ -439,8 +439,8 @@ class WindWorkflowManager(WorkflowManager):
 
         def _get_ws(arr):
             """Extracts windspeeds for given reference height arrays."""
-            noData = -9999
-            ws = np.full(shape=arr.shape, fill_value=noData)  # initialize as noData=-9999
+            no_data = -9999
+            ws = np.full(shape=arr.shape, fill_value=no_data)  # initialize as noData=-9999
 
             # first set the previously extracted elevated_wind_speed at default reference height
             sel = arr == self.elevated_wind_speed_height
@@ -478,7 +478,7 @@ class WindWorkflowManager(WorkflowManager):
                 for i, c in enumerate(col_idx):
                     ws[sel[:, c], c] = _ws[i]
 
-            assert not (ws == noData).any()  # make sure that values for all locs were extracted
+            assert not (ws == no_data).any()  # make sure that values for all locs were extracted
 
             return ws
 
@@ -826,32 +826,32 @@ class WindWorkflowManager(WorkflowManager):
                         _arr[:] = np.nan
                         return _arr
 
-                    FLH_in = np.sum(arr)
-                    FLH_target = target_mean * len(arr)
-                    FLH_diff = FLH_target - FLH_in
+                    flh_in = np.sum(arr)
+                    flh_target = target_mean * len(arr)
+                    flh_diff = flh_target - flh_in
                     _break = False
 
-                    if FLH_diff > 0:
-                        while sum(arr) < FLH_target:
+                    if flh_diff > 0:
+                        while sum(arr) < flh_target:
                             delta_max = 1 - arr[arr < 1].max()
                             _add = np.where(arr > 0.5, delta_max, arr * delta_max)
                             _add[arr == 1.0] = 0  # set delta to zero for cf=1 to have a correct total FLH delta
                             # scale if needed
-                            if _add.sum() > (FLH_target - arr.sum()):
-                                _add = _add * (FLH_target - arr.sum()) / _add.sum()
+                            if _add.sum() > (flh_target - arr.sum()):
+                                _add = _add * (flh_target - arr.sum()) / _add.sum()
                                 _break = True
                             arr = np.where(arr < 1, arr + _add, arr)
                             if _break:
                                 break
 
-                    if FLH_diff < 0:
-                        while sum(arr) > FLH_target:
+                    if flh_diff < 0:
+                        while sum(arr) > flh_target:
                             delta_min = arr[arr > 0].min()
                             _ded = np.where(arr < 0.5, delta_min, (1 - arr) * delta_min)
                             _ded[arr == 0] = 0  # set delta to zero for cf=0 to have a correct total FLH delta
                             # scale if needed
-                            if _ded.sum() > (arr.sum() - FLH_target):
-                                _ded = _ded * abs(arr.sum() - FLH_target) / _ded.sum()
+                            if _ded.sum() > (arr.sum() - flh_target):
+                                _ded = _ded * abs(arr.sum() - flh_target) / _ded.sum()
                                 _break = True
                             arr = np.where(arr > 0, arr - _ded, arr)
                             if _break:

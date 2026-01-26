@@ -32,6 +32,7 @@ ignore = [
     "D301", # Use `r"""` if any backslashes in a docstring
     "D400", # First line should end with a period
     "D404", # First word of the docstring should not be "This"
+    "N813", # Camelcase `netCDF4` imported as lowercase `nc
 ]
 unfixable = ["F401"]
 

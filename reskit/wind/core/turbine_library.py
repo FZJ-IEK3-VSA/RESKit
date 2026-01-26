@@ -82,12 +82,12 @@ def turbine_library() -> pd.DataFrame:
 
     if _Turbine_Library is None:
         if DEFAULT_PATHS["turbine_library_path"] is None:
-            turbineFiles = glob(join(dirname(__file__), "data", "turbines", "*.csv"))
+            turbine_files = glob(join(dirname(__file__), "data", "turbines", "*.csv"))
         else:
-            turbineFiles = glob(join(DEFAULT_PATHS["turbine_library_path"], "*.csv"))
+            turbine_files = glob(join(DEFAULT_PATHS["turbine_library_path"], "*.csv"))
         tmp = []
         already_added_models = []
-        for f in turbineFiles:
+        for f in turbine_files:
             try:
                 _parsed = parse_turbine(f)
                 model_id = parse_turbine(f)[1]["Model"]

@@ -70,7 +70,7 @@ def onshore_turbine_capex(
     [4] Ryberg, D. S., Caglayan, D. G., Schmitt, S., Linßen, J., Stolten, D., & Robinius, M. (2019). The future of European onshore wind energy potential: Detailed distribution and simulation of advanced turbine designs. Energy. https://doi.org/10.1016/j.energy.2019.06.052
     """
     # initialize OnshoreParameters class and feed with custom param values
-    OnshoreParams = OnshoreParameters(
+    onshore_params = OnshoreParameters(
         **{k: v for k, v in locals().items() if not k in ["capacity", "hub_height", "rotor_diam"]}
     )
 
@@ -84,30 +84,30 @@ def onshore_turbine_capex(
     # normalizations chosen to make the default turbine (4200-cap, 120-hub, 136-rot) match both a total
     # cost of 1100 EUR/kW as well as matching the percentages given in [3]
     tcc_scaling = (
-        OnshoreParams.base_capex
-        * OnshoreParams.tcc_share
+        onshore_params.base_capex
+        * onshore_params.tcc_share
         / onshore_tcc(
-            cp=OnshoreParams.base_capacity,
-            hh=OnshoreParams.base_hub_height,
-            rd=OnshoreParams.base_rotor_diam,
+            cp=onshore_params.base_capacity,
+            hh=onshore_params.base_hub_height,
+            rd=onshore_params.base_rotor_diam,
         )
     )
     tcc = onshore_tcc(cp=cp, hh=hh, rd=rd) * tcc_scaling
 
     bos_scaling = (
-        OnshoreParams.base_capex
-        * OnshoreParams.bos_share
+        onshore_params.base_capex
+        * onshore_params.bos_share
         / onshore_bos(
-            cp=OnshoreParams.base_capacity,
-            hh=OnshoreParams.base_hub_height,
-            rd=OnshoreParams.base_rotor_diam,
+            cp=onshore_params.base_capacity,
+            hh=onshore_params.base_hub_height,
+            rd=onshore_params.base_rotor_diam,
         )
     )
     bos = onshore_bos(cp=cp, hh=hh, rd=rd) * bos_scaling
 
     # print(tcc_scaling, bos_scaling)
 
-    total_costs = (tcc + bos) / (OnshoreParams.tcc_share + OnshoreParams.bos_share)
+    total_costs = (tcc + bos) / (onshore_params.tcc_share + onshore_params.bos_share)
 
     # other_costs = total_costs * (1 - OnshoreParams.tcc_share - OnshoreParams.bos_share)
 
@@ -144,7 +144,7 @@ def onshore_tcc(cp, hh, rd, gdp_escalator=None, blade_material_escalator=None, b
 
     """
     # initialize OnshoreParameters class and feed with custom param values
-    OnshoreParams = OnshoreParameters(
+    onshore_params = OnshoreParameters(
         gdp_escalator=gdp_escalator,
         blade_material_escalator=blade_material_escalator,
         blades=blades,
@@ -154,95 +154,95 @@ def onshore_tcc(cp, hh, rd, gdp_escalator=None, blade_material_escalator=None, b
     sa = np.pi * rr * rr
 
     # Blade Cost
-    singleBladeMass = 0.4948 * np.power(rr, 2.53)
-    singleBladeCost = (
-        (0.4019 * np.power(rr, 3) - 21051) * OnshoreParams.blade_material_escalator
-        + 2.7445 * np.power(rr, 2.5025) * OnshoreParams.gdp_escalator
+    single_blade_mass = 0.4948 * np.power(rr, 2.53)
+    single_blade_cost = (
+        (0.4019 * np.power(rr, 3) - 21051) * onshore_params.blade_material_escalator
+        + 2.7445 * np.power(rr, 2.5025) * onshore_params.gdp_escalator
     ) * (1 - 0.28)
 
     # Hub
-    hubMass = 0.945 * singleBladeMass + 5680.3
-    hubCost = hubMass * 4.25
+    hub_mass = 0.945 * single_blade_mass + 5680.3
+    hub_cost = hub_mass * 4.25
 
     # Pitch and bearings
     # pitchBearingMass = 0.1295 * (singleBladeMass * blades) + 491.31
     # pitchSystemMass = pitchBearingMass*1.328+555
-    pitchSystemCost = 2.28 * (0.2106 * np.power(rd, 2.6578))
+    pitch_system_cost = 2.28 * (0.2106 * np.power(rd, 2.6578))
 
     # Spinner and nosecone
-    noseConeMass = 18.5 * rd - 520.5
-    noseConeCost = noseConeMass * 5.57
+    nose_cone_mass = 18.5 * rd - 520.5
+    nose_cone_cost = nose_cone_mass * 5.57
 
     # Low Speed Shaft
     # lowSpeedShaftMass = 0.0142 * np.power(rd, 2.888)
-    lowSpeedShaftCost = 0.01 * np.power(rd, 2.887)
+    low_speed_shaft_cost = 0.01 * np.power(rd, 2.887)
 
     # Main bearings
-    bearingMass = (rd * 8 / 600 - 0.033) * 0.0092 * np.power(rd, 2.5)
-    bearingCost = 2 * bearingMass * 17.6
+    bearing_mass = (rd * 8 / 600 - 0.033) * 0.0092 * np.power(rd, 2.5)
+    bearing_cost = 2 * bearing_mass * 17.6
 
     # Gearbox
     # Gearbox not included for direct drive turbines
 
     # Break, coupling, and others
-    breakCouplingCost = 1.9894 * cp - 0.1141
+    break_coupling_cost = 1.9894 * cp - 0.1141
     # breakCouplingMass = breakCouplingCost/10
 
     # Generator (Assuming direct drive)
     # generatorMass = 6661.25 * np.power(lowSpeedShaftTorque, 0.606) # wtf is the torque?
-    generatorCost = cp * 219.33
+    generator_cost = cp * 219.33
 
     # Electronics
-    electronicsCost = cp * 79
+    electronics_cost = cp * 79
 
     # Yaw drive and bearing
     # yawSystemMass = 1.6*(0.0009*np.power(rd, 3.314))
-    yawSystemCost = 2 * (0.0339 * np.power(rd, 2.964))
+    yaw_system_cost = 2 * (0.0339 * np.power(rd, 2.964))
 
     # Mainframe (Assume direct drive)
-    mainframeMass = 1.228 * np.power(rd, 1.953)
-    mainframeCost = 627.28 * np.power(rd, 0.85)
+    mainframe_mass = 1.228 * np.power(rd, 1.953)
+    mainframe_cost = 627.28 * np.power(rd, 0.85)
 
     # Platform and railings
-    platformAndRailingMass = 0.125 * mainframeMass
-    platformAndRailingCost = platformAndRailingMass * 8.7
+    platform_and_railing_mass = 0.125 * mainframe_mass
+    platform_and_railing_cost = platform_and_railing_mass * 8.7
 
     # Electrical Connections
-    electricalConnectionCost = cp * 40
+    electrical_connection_cost = cp * 40
 
     # Hydraulic and Cooling systems
     # hydraulicAndCoolingSystemMass = 0.08 * cp
-    hydraulicAndCoolingSystemCost = cp * 12
+    hydraulic_and_cooling_system_cost = cp * 12
 
     # Nacelle Cover
-    nacelleCost = 11.537 * cp + 3849.7
+    nacelle_cost = 11.537 * cp + 3849.7
     # nacelleMass = nacelleCost/10
 
     # Tower
-    towerMass = 0.2694 * sa * hh + 1779
-    towerCost = towerMass * 1.5
+    tower_mass = 0.2694 * sa * hh + 1779
+    tower_cost = tower_mass * 1.5
 
     # Add up the turbine capital cost
-    turbineCapitalCost = (
-        singleBladeCost * OnshoreParams.blades
-        + hubCost
-        + pitchSystemCost
-        + noseConeCost
-        + lowSpeedShaftCost
-        + bearingCost
-        + breakCouplingCost
-        + generatorCost
-        + electronicsCost
-        + yawSystemCost
-        + mainframeCost
-        + platformAndRailingCost
-        + electricalConnectionCost
-        + hydraulicAndCoolingSystemCost
-        + nacelleCost
-        + towerCost
+    turbine_capital_cost = (
+        single_blade_cost * onshore_params.blades
+        + hub_cost
+        + pitch_system_cost
+        + nose_cone_cost
+        + low_speed_shaft_cost
+        + bearing_cost
+        + break_coupling_cost
+        + generator_cost
+        + electronics_cost
+        + yaw_system_cost
+        + mainframe_cost
+        + platform_and_railing_cost
+        + electrical_connection_cost
+        + hydraulic_and_cooling_system_cost
+        + nacelle_cost
+        + tower_cost
     )
 
-    return turbineCapitalCost
+    return turbine_capital_cost
 
 
 def onshore_bos(cp, hh, rd):
@@ -273,35 +273,35 @@ def onshore_bos(cp, hh, rd):
     sa = np.pi * rr * rr
 
     # Foundation
-    foundationCost = 303.24 * np.power((hh * sa), 0.4037)
+    foundation_cost = 303.24 * np.power((hh * sa), 0.4037)
 
     # Transportation
-    transporationCostFactor = 1.581e-5 * np.power(cp, 2) - 0.0375 * cp + 54.7
-    transporationCost = transporationCostFactor * cp
+    transportation_cost_factor = 1.581e-5 * np.power(cp, 2) - 0.0375 * cp + 54.7
+    transportation_cost = transportation_cost_factor * cp
 
     # Roads and civil work
-    roadsAndCivilWorkFactor = 2.17e-6 * np.power(cp, 2) - 0.0145 * cp + 69.54
-    roadsAndCivilWorkCost = roadsAndCivilWorkFactor * cp
+    roads_and_civil_work_factor = 2.17e-6 * np.power(cp, 2) - 0.0145 * cp + 69.54
+    roads_and_civil_work_cost = roads_and_civil_work_factor * cp
 
     # Assembly and installation
-    assemblyAndInstallationCost = 1.965 * np.power((hh * rd), 1.1736)
+    assembly_and_installation_cost = 1.965 * np.power((hh * rd), 1.1736)
 
     # Electrical Interface and connections
-    electricalInterfaceAndConnectionFactor = (3.49e-6 * np.power(cp, 2)) - (0.0221 * cp) + 109.7
-    electricalInterfaceAndConnectionCost = electricalInterfaceAndConnectionFactor * cp
+    electrical_interface_and_connection_factor = (3.49e-6 * np.power(cp, 2)) - (0.0221 * cp) + 109.7
+    electrical_interface_and_connection_cost = electrical_interface_and_connection_factor * cp
 
     # Engineering and permit factor
-    engineeringAndPermitCostFactor = 9.94e-4 * cp + 20.31
-    engineeringAndPermitCost = engineeringAndPermitCostFactor * cp
+    engineering_and_permit_cost_factor = 9.94e-4 * cp + 20.31
+    engineering_and_permit_cost = engineering_and_permit_cost_factor * cp
 
     # Add up other costs
-    bosCosts = (
-        foundationCost
-        + transporationCost
-        + roadsAndCivilWorkCost
-        + assemblyAndInstallationCost
-        + electricalInterfaceAndConnectionCost
-        + engineeringAndPermitCost
+    bos_costs = (
+        foundation_cost
+        + transportation_cost
+        + roads_and_civil_work_cost
+        + assembly_and_installation_cost
+        + electrical_interface_and_connection_cost
+        + engineering_and_permit_cost
     )
 
-    return bosCosts
+    return bos_costs

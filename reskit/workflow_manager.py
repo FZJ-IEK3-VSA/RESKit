@@ -278,7 +278,7 @@ class WorkflowManager:
             # try the (nan)median of the surrounding cells
             if np.isnan(_lra).any():
 
-                def _nanmedian(vals, xOff, yOff):
+                def _nanmedian(vals, x_off, y_off):
                     """Aux function to mimic the 3 expected inputs in interpolateValues()"""
                     return np.nanmedian(vals)
 
