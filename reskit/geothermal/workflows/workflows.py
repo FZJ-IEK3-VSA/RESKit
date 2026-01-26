@@ -8,14 +8,14 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
-from reskit.geothermal.data import path_heat_flow_sustainable_W_per_m2, path_temperatures
+from reskit.geothermal.data import path_heat_flow_sustainable_w_per_m2, path_temperatures
 from reskit.geothermal.workflows.egs_workflow_manager import EGSWorkflowManager
 
 
 def egs_workflow(
     placements: pd.DataFrame,
     source_temperature=path_temperatures,
-    source_sustainable_heatflow=path_heat_flow_sustainable_W_per_m2,
+    source_sustainable_heatflow=path_heat_flow_sustainable_w_per_m2,
     savepath=None,
     configuration="doublette",
     manual_values={},
@@ -62,22 +62,22 @@ def egs_workflow(
     now = datetime.now()
     print("Starting loading data =", now, flush=True)
 
-    wfm.loadDataAllDepths(
+    wfm.load_data_all_depths(
         vars=[
             "temperature",
         ],
         source=source_temperature,
     )
-    wfm.loadData(vars=["surface_temperature"], source=source_temperature)
-    wfm.loadData(
+    wfm.load_data(vars=["surface_temperature"], source=source_temperature)
+    wfm.load_data(
         vars=[
             "heat_flow_sustainable_W_per_m2",
         ],
         source=source_sustainable_heatflow,
-        newVarNamesDict={"heat_flow_sustainable_W_per_m2": "qdot_sust_W_per_m2"},
+        new_var_names_dict={"heat_flow_sustainable_W_per_m2": "qdot_sust_W_per_m2"},
     )
 
-    wfm.loadPlantData(
+    wfm.load_plant_data(
         configuration=configuration,
         manual_values=manual_values,
     )

@@ -113,13 +113,13 @@ class dataset_handler:
         for datasetname in datasetnames:
             print("datasetname", datasetname)
 
-            out = rk.csp.workflows.workflows.CSP_PTR_ERA5_specific_dataset(
+            out = rk.csp.workflows.workflows.csp_ptr_era5_specific_dataset(
                 placements=placements,
                 era5_path=era5_path,
                 global_solar_atlas_dni_path=global_solar_atlas_dni_path,
                 datasetname=datasetname,
                 return_self=True,
-                JITaccelerate=False,
+                jit_accelerate=False,
                 verbose=True,
                 debug_vars=False,
                 onlynightuse=True,

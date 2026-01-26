@@ -7,7 +7,7 @@ import reskit as rk
 
 # Default variables
 source_temperature = rk.geothermal.data.path_temperatures
-source_sustainable_heat_flow = rk.geothermal.data.path_heat_flow_sustainable_W_per_m2
+source_sustainable_heat_flow = rk.geothermal.data.path_heat_flow_sustainable_w_per_m2
 
 
 @pytest.fixture

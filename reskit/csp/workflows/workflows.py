@@ -11,19 +11,19 @@ from reskit.csp.workflows.csp_workflow_manager import PTRWorkflowManager
 from reskit.csp.workflows.dataset_handler import dataset_handler
 
 
-def CSP_PTR_ERA5(
+def csp_ptr_era5(
     placements,
     era5_path,
     global_solar_atlas_dni_path,
     global_solar_atlas_tamb_path=None,
     datasets=None,
     cost_year=2050,
-    HTF_sel=["Heliosol", "SolarSalt", "Therminol"],
+    htf_sel=["Heliosol", "SolarSalt", "Therminol"],
     elev_path=None,
     output_netcdf_path=None,
     output_variables=None,
     return_self=True,
-    JITaccelerate=False,
+    jit_accelerate=False,
     verbose=False,
     debug_vars=False,
     onlynightuse=True,
@@ -120,7 +120,7 @@ def CSP_PTR_ERA5(
     single_dataset = False
     if datasets == None:
         # get datasets from HTF_sel and cost_year
-        datasets = ["Dataset_" + htf + "_" + str(cost_year) for htf in HTF_sel]
+        datasets = ["Dataset_" + htf + "_" + str(cost_year) for htf in htf_sel]
         if len(datasets) == 1:
             single_dataset = True
             datasets = datasets[0]
@@ -139,7 +139,7 @@ def CSP_PTR_ERA5(
         assert isinstance(global_solar_atlas_tamb_path, str)
 
     if single_dataset:  # only one dataset given
-        output = CSP_PTR_ERA5_specific_dataset(
+        output = csp_ptr_era5_specific_dataset(
             placements=placements,
             era5_path=era5_path,
             global_solar_atlas_dni_path=global_solar_atlas_dni_path,
@@ -148,7 +148,7 @@ def CSP_PTR_ERA5(
             output_netcdf_path=output_netcdf_path,
             output_variables=output_variables,
             return_self=return_self,
-            JITaccelerate=JITaccelerate,
+            jit_accelerate=jit_accelerate,
             verbose=verbose,
             debug_vars=debug_vars,
             onlynightuse=onlynightuse,
@@ -178,7 +178,7 @@ def CSP_PTR_ERA5(
                 continue
 
             # starting core simulation
-            output_dataset = CSP_PTR_ERA5_specific_dataset(
+            output_dataset = csp_ptr_era5_specific_dataset(
                 placements=placements_dataset,
                 era5_path=era5_path,
                 global_solar_atlas_dni_path=global_solar_atlas_dni_path,
@@ -187,7 +187,7 @@ def CSP_PTR_ERA5(
                 output_netcdf_path=output_netcdf_path,
                 output_variables=output_variables,
                 return_self=False,
-                JITaccelerate=JITaccelerate,
+                jit_accelerate=jit_accelerate,
                 verbose=verbose,
                 debug_vars=debug_vars,
                 onlynightuse=onlynightuse,
@@ -215,7 +215,7 @@ def CSP_PTR_ERA5(
         return output
 
 
-def CSP_PTR_ERA5_specific_dataset(
+def csp_ptr_era5_specific_dataset(
     placements,
     era5_path,
     global_solar_atlas_dni_path,
@@ -224,7 +224,7 @@ def CSP_PTR_ERA5_specific_dataset(
     output_netcdf_path=None,
     output_variables=None,
     return_self=True,
-    JITaccelerate=False,
+    jit_accelerate=False,
     verbose=False,
     debug_vars=False,
     onlynightuse=True,
@@ -419,7 +419,7 @@ def CSP_PTR_ERA5_specific_dataset(
             "b": ptr_data["b"],
             "relTMplant": ptr_data["relTMplant"],
             "maxHTFTemperature": ptr_data["maxHTFTemperature"],
-            "JITaccelerate": JITaccelerate,  # TODO: from ptr manager
+            "JITaccelerate": jit_accelerate,  # TODO: from ptr manager
             "minHTFTemperature": ptr_data["minHTFTemperature"],
             "inletHTFTemperature": ptr_data["inletHTFTemperature"],
             "add_losses_coefficient": ptr_data["add_losses_coefficient"],

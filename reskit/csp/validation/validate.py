@@ -57,13 +57,13 @@ def main(datasetname, validation_output_folder):
         y = placement["tiley"].iloc[0]
 
         # run reskit
-        out = rk.csp.CSP_PTR_ERA5(
+        out = rk.csp.csp_ptr_era5(
             placements=placement,
             era5_path=era5_path.format(x=x, y=y),
             global_solar_atlas_dni_path="default_cluster",
             datasets=datasetname,
             verbose=True,
-            JITaccelerate=False,
+            jit_accelerate=False,
             debug_vars=True,
             _validation=True,
             return_self=False,

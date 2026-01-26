@@ -104,7 +104,7 @@ class DACWorkflowManager(WorkflowManager):
             f"Missing columns: {set(required_cols) - set(self.dac_data.columns)}"
         )
 
-    def simulate_lt_dac_model(self, fillMethod: str = "nearest"):
+    def simulate_lt_dac_model(self, fill_method: str = "nearest"):
         """
         Simulate the LT DAC (Direct Air Capture) model for the specified plant locations.
 
@@ -127,10 +127,10 @@ class DACWorkflowManager(WorkflowManager):
         NotImplementedError
             If a filling method other than "nearest" or "offTmin" is requested.
         """
-        assert fillMethod in [
+        assert fill_method in [
             "offTmin",
             "nearest",
-        ], f"Filling Method: {fillMethod} not implemented."
+        ], f"Filling Method: {fill_method} not implemented."
 
         # create unique grid as well as interpolators and evaluate for each property:
         properties = ["totalElectricity", "totalThermal", "waterDesorption", "relProd"]
@@ -152,7 +152,7 @@ class DACWorkflowManager(WorkflowManager):
                 (self.sim_data["surface_air_temperature"], self.sim_data["relative_humidity"])
             )
 
-        if (fillMethod == "offTmin") or (fillMethod == "nearest"):
+        if (fill_method == "offTmin") or (fill_method == "nearest"):
             # fill points outside the convex hull with "nearest" :
             fill_outputs = {}
             for prop in properties:
@@ -169,7 +169,7 @@ class DACWorkflowManager(WorkflowManager):
                 fill_outputs[prop] = interpolator(
                     (self.sim_data["surface_air_temperature"], self.sim_data["relative_humidity"])
                 )
-        if fillMethod == "offTmin":
+        if fill_method == "offTmin":
             # fill RH values outside range by nearest and force no operation below/above T bounds by setting relProd=0
             Tmin = self.dac_data["T"].min()
             fill_outputs["relProd"][self.sim_data["surface_air_temperature"] < Tmin] = 0
