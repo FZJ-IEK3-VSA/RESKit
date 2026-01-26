@@ -7,9 +7,9 @@ from numpy.lib.arraysetops import isin
 
 from reskit import workflow_manager
 
-from ... import weather as rk_weather
-from .csp_workflow_manager import PTRWorkflowManager
-from .dataset_handler import dataset_handler
+from reskit import weather as rk_weather
+from reskit.csp.workflows.csp_workflow_manager import PTRWorkflowManager
+from reskit.csp.workflows.dataset_handler import dataset_handler
 
 
 def CSP_PTR_ERA5(

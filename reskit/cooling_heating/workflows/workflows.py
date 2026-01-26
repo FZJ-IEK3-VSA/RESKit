@@ -5,9 +5,9 @@ import numpy as np
 import pandas as pd
 
 # import othert modules
-from .cooling_heating_workflow_manager import CoolingHeatingWorkflowManager
-from ...util.relative_humidity import calculate_relative_humidity
-from ...util.wet_bulb_temperature import calculate_wet_bulb_temperature
+from reskit.cooling_heating.workflows.cooling_heating_workflow_manager import CoolingHeatingWorkflowManager
+from reskit.util.relative_humidity import calculate_relative_humidity
+from reskit.util.wet_bulb_temperature import calculate_wet_bulb_temperature
 
 
 def evaporative_cooling_wortmann2025(

@@ -3,7 +3,7 @@ from os.path import isfile
 import geokit as gk
 import numpy as np
 
-from ...util import ResError
+from reskit.util import ResError
 
 
 def location_to_tilt(locs, convention="Ryberg2020", **kwargs):

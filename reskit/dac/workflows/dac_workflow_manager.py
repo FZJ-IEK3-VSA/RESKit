@@ -7,7 +7,7 @@ from scipy.interpolate import RegularGridInterpolator
 
 from reskit.dac.data import DATAFOLDER
 
-from ...workflow_manager import WorkflowManager
+from reskit.workflow_manager import WorkflowManager
 
 """
 

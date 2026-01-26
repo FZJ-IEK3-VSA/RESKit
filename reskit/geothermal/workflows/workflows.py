@@ -9,8 +9,8 @@ from datetime import datetime
 
 from .egs_workflow_manager import EGS_workflowmanager
 
-from ..data import path_temperatures
-from ..data import path_heat_flow_sustainable_W_per_m2
+from reskit.geothermal.data import path_temperatures
+from reskit.geothermal.data import path_heat_flow_sustainable_W_per_m2
 
 
 def EGSworkflow(

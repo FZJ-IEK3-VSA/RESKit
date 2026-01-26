@@ -7,7 +7,7 @@ import geokit as gk
 import time
 from datetime import datetime
 
-from ..data.gringarten import gringarten
+from reskit.geothermal.data.gringarten import gringarten
 
 
 class EGS_workflowmanager:

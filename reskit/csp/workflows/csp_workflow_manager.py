@@ -2,7 +2,7 @@ from logging import warn, warning
 
 from reskit.csp.data.database_loader import load_dataset
 from reskit.solar.workflows.solar_workflow_manager import SolarWorkflowManager
-from ... import weather as rk_weather
+from reskit import weather as rk_weather
 import numpy as np
 import pandas as pd
 import pvlib
