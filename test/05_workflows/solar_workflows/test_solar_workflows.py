@@ -20,15 +20,15 @@ def pt_pv_placements() -> pd.DataFrame:
 
 
 @pytest.fixture
-def pt_pv_placements_Zimbabwe() -> pd.DataFrame:
+def pt_pv_placements_zimbabwe() -> pd.DataFrame:
     df = pd.read_csv(TEST_DATA["module_placements_cityBulawayoInZimbabwa.csv"])
 
     return df
 
 
-def test_openfield_pv_iconlam(pt_pv_placements_Zimbabwe):
+def test_openfield_pv_iconlam(pt_pv_placements_zimbabwe):
     gen = openfield_pv_iconlam(
-        placements=pt_pv_placements_Zimbabwe,
+        placements=pt_pv_placements_zimbabwe,
         icon_lam_path=TEST_DATA["iconlam-like"],
         module="WINAICO WSx-240P6",
         elev=300,

@@ -14,7 +14,7 @@ def print_testresults(variable):
     print("max: ", variable[0:140, :].max())
 
 
-def test_SolarWorkflowManager___init__() -> SolarWorkflowManager:
+def test_solar_workflow_manager___init__() -> SolarWorkflowManager:
     # (self, placements):
     placements = pd.DataFrame()
     placements["lon"] = [
@@ -64,15 +64,15 @@ def test_SolarWorkflowManager___init__() -> SolarWorkflowManager:
 
 
 @pytest.fixture
-def pt_SolarWorkflowManager_initialized() -> SolarWorkflowManager:
-    return test_SolarWorkflowManager___init__()
+def pt_solar_workflow_manager_initialized() -> SolarWorkflowManager:
+    return test_solar_workflow_manager___init__()
 
 
-def test_SolarWorkflowManager_estimate_tilt_from_latitude(
-    pt_SolarWorkflowManager_initialized,
+def test_solar_workflow_manager_estimate_tilt_from_latitude(
+    pt_solar_workflow_manager_initialized,
 ):
     # (self, convention):
-    man = pt_SolarWorkflowManager_initialized
+    man = pt_solar_workflow_manager_initialized
 
     man.estimate_tilt_from_latitude("Ryberg2020")
 
@@ -89,10 +89,10 @@ def test_SolarWorkflowManager_estimate_tilt_from_latitude(
     ).all()
 
 
-def test_SolarWorkflowManager_estimate_azimuth_from_latitude(
-    pt_SolarWorkflowManager_initialized,
+def test_solar_workflow_manager_estimate_azimuth_from_latitude(
+    pt_solar_workflow_manager_initialized,
 ):
-    man = pt_SolarWorkflowManager_initialized
+    man = pt_solar_workflow_manager_initialized
 
     man.estimate_azimuth_from_latitude()
 
@@ -105,8 +105,8 @@ def test_SolarWorkflowManager_estimate_azimuth_from_latitude(
     assert np.isclose(man.placements["azimuth"], [0, 0, 0, 0, 0]).all()
 
 
-def test_SolarWorkflowManager_apply_elevation(pt_SolarWorkflowManager_initialized):
-    man = pt_SolarWorkflowManager_initialized
+def test_solar_workflow_manager_apply_elevation(pt_solar_workflow_manager_initialized):
+    man = pt_solar_workflow_manager_initialized
 
     fallback_elev = -1000
 
@@ -206,10 +206,10 @@ def test_SolarWorkflowManager_apply_elevation(pt_SolarWorkflowManager_initialize
 
 
 @pytest.fixture
-def pt_SolarWorkflowManager_loaded(
-    pt_SolarWorkflowManager_initialized: SolarWorkflowManager,
+def pt_solar_workflow_manager_loaded(
+    pt_solar_workflow_manager_initialized: SolarWorkflowManager,
 ) -> SolarWorkflowManager:
-    man = pt_SolarWorkflowManager_initialized
+    man = pt_solar_workflow_manager_initialized
     man.apply_elevation([100, 120, 140, 160, 2000])
 
     man.read(
@@ -230,11 +230,11 @@ def pt_SolarWorkflowManager_loaded(
     return man
 
 
-def test_SolarWorkflowManager_determine_solar_position(
-    pt_SolarWorkflowManager_loaded: SolarWorkflowManager,
+def test_solar_workflow_manager_determine_solar_position(
+    pt_solar_workflow_manager_loaded: SolarWorkflowManager,
 ) -> SolarWorkflowManager:
     # (self, lon_rounding=1, lat_rounding=1, elev_rounding=-2):
-    man = pt_SolarWorkflowManager_loaded
+    man = pt_solar_workflow_manager_loaded
 
     man.determine_solar_position(
         lon_rounding=1,
@@ -258,10 +258,10 @@ def test_SolarWorkflowManager_determine_solar_position(
 
 
 @pytest.fixture
-def pt_SolarWorkflowManager_solpos(
-    pt_SolarWorkflowManager_loaded: SolarWorkflowManager,
+def pt_solar_workflow_manager_solpos(
+    pt_solar_workflow_manager_loaded: SolarWorkflowManager,
 ) -> SolarWorkflowManager:
-    man = pt_SolarWorkflowManager_loaded
+    man = pt_solar_workflow_manager_loaded
 
     man.determine_solar_position(
         lon_rounding=1,
@@ -272,11 +272,11 @@ def pt_SolarWorkflowManager_solpos(
     return man
 
 
-def test_SolarWorkflowManager_filter_positive_solar_elevation(
-    pt_SolarWorkflowManager_solpos: SolarWorkflowManager,
+def test_solar_workflow_manager_filter_positive_solar_elevation(
+    pt_solar_workflow_manager_solpos: SolarWorkflowManager,
 ) -> SolarWorkflowManager:
     # (self):
-    man = pt_SolarWorkflowManager_solpos
+    man = pt_solar_workflow_manager_solpos
 
     man.filter_positive_solar_elevation()
 
@@ -297,10 +297,10 @@ def test_SolarWorkflowManager_filter_positive_solar_elevation(
     return man
 
 
-def test_SolarWorkflowManager_determine_extra_terrestrial_irradiance(
-    pt_SolarWorkflowManager_solpos: SolarWorkflowManager,
+def test_solar_workflow_manager_determine_extra_terrestrial_irradiance(
+    pt_solar_workflow_manager_solpos: SolarWorkflowManager,
 ) -> SolarWorkflowManager:
-    man = pt_SolarWorkflowManager_solpos
+    man = pt_solar_workflow_manager_solpos
     man.determine_extra_terrestrial_irradiance()
 
     print_testresults(man.sim_data["extra_terrestrial_irradiance"])
@@ -314,10 +314,10 @@ def test_SolarWorkflowManager_determine_extra_terrestrial_irradiance(
     return man
 
 
-def test_SolarWorkflowManager_determine_air_mass(
-    pt_SolarWorkflowManager_solpos: SolarWorkflowManager,
+def test_solar_workflow_manager_determine_air_mass(
+    pt_solar_workflow_manager_solpos: SolarWorkflowManager,
 ) -> SolarWorkflowManager:
-    man = pt_SolarWorkflowManager_solpos
+    man = pt_solar_workflow_manager_solpos
     man.determine_air_mass(model="kastenyoung1989")
 
     print_testresults(man.sim_data["air_mass"])
@@ -332,10 +332,10 @@ def test_SolarWorkflowManager_determine_air_mass(
 
 
 @pytest.fixture
-def pt_SolarWorkflowManager_loaded2(
-    pt_SolarWorkflowManager_solpos: SolarWorkflowManager,
+def pt_solar_workflow_manager_loaded2(
+    pt_solar_workflow_manager_solpos: SolarWorkflowManager,
 ) -> SolarWorkflowManager:
-    man = pt_SolarWorkflowManager_solpos
+    man = pt_solar_workflow_manager_solpos
     man.filter_positive_solar_elevation()
     man.determine_extra_terrestrial_irradiance()
     man.determine_air_mass(model="kastenyoung1989")
@@ -343,10 +343,10 @@ def pt_SolarWorkflowManager_loaded2(
     return man
 
 
-def test_SolarWorkflowManager_apply_DIRINT_model(
-    pt_SolarWorkflowManager_loaded2: SolarWorkflowManager,
-) -> SolarWorkflowManager:
-    man = pt_SolarWorkflowManager_loaded2
+def test_solar_workflow_manager_apply_dirint_model(
+    pt_solar_workflow_manager_loaded2: SolarWorkflowManager,
+):
+    man = pt_solar_workflow_manager_loaded2
     man.apply_DIRINT_model(use_pressure=True, use_dew_temperature=True)
 
     print_testresults(man.sim_data["direct_normal_irradiance"])
@@ -359,19 +359,19 @@ def test_SolarWorkflowManager_apply_DIRINT_model(
 
 
 @pytest.fixture
-def pt_SolarWorkflowManager_dni(
-    pt_SolarWorkflowManager_loaded2: SolarWorkflowManager,
+def pt_solar_workflow_manager_dni(
+    pt_solar_workflow_manager_loaded2: SolarWorkflowManager,
 ) -> SolarWorkflowManager:
-    man = pt_SolarWorkflowManager_loaded2
+    man = pt_solar_workflow_manager_loaded2
     man.apply_DIRINT_model(use_pressure=True, use_dew_temperature=True)
 
     return man
 
 
-def test_SolarWorkflowManager_diffuse_horizontal_irradiance_from_trigonometry(
-    pt_SolarWorkflowManager_dni: SolarWorkflowManager,
-) -> SolarWorkflowManager:
-    man = pt_SolarWorkflowManager_dni
+def test_solar_workflow_manager_diffuse_horizontal_irradiance_from_trigonometry(
+    pt_solar_workflow_manager_dni: SolarWorkflowManager,
+):
+    man = pt_solar_workflow_manager_dni
     man.diffuse_horizontal_irradiance_from_trigonometry()
 
     print_testresults(man.sim_data["diffuse_horizontal_irradiance"])
@@ -383,10 +383,10 @@ def test_SolarWorkflowManager_diffuse_horizontal_irradiance_from_trigonometry(
     assert np.isclose(man.sim_data["diffuse_horizontal_irradiance"].max(), 124.98184251575456)
 
 
-def test_SolarWorkflowManager_direct_normal_irradiance_from_trigonometry(
-    pt_SolarWorkflowManager_loaded2: SolarWorkflowManager,
-) -> SolarWorkflowManager:
-    man = pt_SolarWorkflowManager_loaded2
+def test_solar_workflow_manager_direct_normal_irradiance_from_trigonometry(
+    pt_solar_workflow_manager_loaded2: SolarWorkflowManager,
+):
+    man = pt_solar_workflow_manager_loaded2
 
     man.direct_normal_irradiance_from_trigonometry()
 
@@ -400,10 +400,10 @@ def test_SolarWorkflowManager_direct_normal_irradiance_from_trigonometry(
 
 
 @pytest.fixture
-def pt_SolarWorkflowManager_all_irrad(
-    pt_SolarWorkflowManager_loaded2: SolarWorkflowManager,
+def pt_solar_workflow_manager_all_irrad(
+    pt_solar_workflow_manager_loaded2: SolarWorkflowManager,
 ) -> SolarWorkflowManager:
-    man = pt_SolarWorkflowManager_loaded2
+    man = pt_solar_workflow_manager_loaded2
     # man = pt_SolarWorkflowManager_dni
     man.direct_normal_irradiance_from_trigonometry()
     man.diffuse_horizontal_irradiance_from_trigonometry()
@@ -411,10 +411,10 @@ def pt_SolarWorkflowManager_all_irrad(
     return man
 
 
-def test_SolarWorkflowManager_permit_single_axis_tracking(
-    pt_SolarWorkflowManager_all_irrad: SolarWorkflowManager,
-) -> SolarWorkflowManager:
-    man = pt_SolarWorkflowManager_all_irrad
+def test_solar_workflow_manager_permit_single_axis_tracking(
+    pt_solar_workflow_manager_all_irrad: SolarWorkflowManager,
+):
+    man = pt_solar_workflow_manager_all_irrad
     man.permit_single_axis_tracking(
         max_angle=90,
         backtrack=True,
@@ -436,10 +436,10 @@ def test_SolarWorkflowManager_permit_single_axis_tracking(
     assert np.isclose(man.sim_data["system_azimuth"].max(), 264.12802748241154)
 
 
-def test_SolarWorkflowManager_determine_angle_of_incidence(
-    pt_SolarWorkflowManager_all_irrad: SolarWorkflowManager,
-) -> SolarWorkflowManager:
-    man = pt_SolarWorkflowManager_all_irrad
+def test_solar_workflow_manager_determine_angle_of_incidence(
+    pt_solar_workflow_manager_all_irrad: SolarWorkflowManager,
+):
+    man = pt_solar_workflow_manager_all_irrad
     man.determine_angle_of_incidence()
 
     print_testresults(man.sim_data["angle_of_incidence"])
@@ -452,19 +452,19 @@ def test_SolarWorkflowManager_determine_angle_of_incidence(
 
 
 @pytest.fixture
-def pt_SolarWorkflowManager_aoi(
-    pt_SolarWorkflowManager_all_irrad: SolarWorkflowManager,
+def pt_solar_workflow_manager_aoi(
+    pt_solar_workflow_manager_all_irrad: SolarWorkflowManager,
 ) -> SolarWorkflowManager:
-    man = pt_SolarWorkflowManager_all_irrad
+    man = pt_solar_workflow_manager_all_irrad
     man.determine_angle_of_incidence()
 
     return man
 
 
-def test_SolarWorkflowManager_estimate_plane_of_array_irradiances(
-    pt_SolarWorkflowManager_aoi: SolarWorkflowManager,
-) -> SolarWorkflowManager:
-    man = pt_SolarWorkflowManager_aoi
+def test_solar_workflow_manager_estimate_plane_of_array_irradiances(
+    pt_solar_workflow_manager_aoi: SolarWorkflowManager,
+):
+    man = pt_solar_workflow_manager_aoi
     man.estimate_plane_of_array_irradiances(
         transposition_model="perez",
     )
@@ -489,19 +489,19 @@ def test_SolarWorkflowManager_estimate_plane_of_array_irradiances(
 
 
 @pytest.fixture
-def pt_SolarWorkflowManager_poa(
-    pt_SolarWorkflowManager_aoi: SolarWorkflowManager,
+def pt_solar_workflow_manager_poa(
+    pt_solar_workflow_manager_aoi: SolarWorkflowManager,
 ) -> SolarWorkflowManager:
-    man = pt_SolarWorkflowManager_aoi
+    man = pt_solar_workflow_manager_aoi
     man.estimate_plane_of_array_irradiances(transposition_model="perez", albedo=0.25)
 
     return man
 
 
-def test_SolarWorkflowManager_cell_temperature_from_sapm(
-    pt_SolarWorkflowManager_poa: SolarWorkflowManager,
-) -> SolarWorkflowManager:
-    man = pt_SolarWorkflowManager_poa
+def test_solar_workflow_manager_cell_temperature_from_sapm(
+    pt_solar_workflow_manager_poa: SolarWorkflowManager,
+):
+    man = pt_solar_workflow_manager_poa
 
     man.cell_temperature_from_sapm(mounting="glass_open_rack")
 
@@ -525,10 +525,10 @@ def test_SolarWorkflowManager_cell_temperature_from_sapm(
     assert np.isclose(man.sim_data["cell_temperature"].max(), 31.095795267573923)
 
 
-def test_SolarWorkflowManager_apply_angle_of_incidence_losses_to_poa(
-    pt_SolarWorkflowManager_poa: SolarWorkflowManager,
-) -> SolarWorkflowManager:
-    man = pt_SolarWorkflowManager_poa
+def test_solar_workflow_manager_apply_angle_of_incidence_losses_to_poa(
+    pt_solar_workflow_manager_poa: SolarWorkflowManager,
+):
+    man = pt_solar_workflow_manager_poa
     man.apply_angle_of_incidence_losses_to_poa()
 
     print_testresults(man.sim_data["poa_global"])
@@ -548,10 +548,10 @@ def test_SolarWorkflowManager_apply_angle_of_incidence_losses_to_poa(
     assert np.isclose(man.sim_data["poa_ground_diffuse"].mean(), 1.1992838129885397)
 
 
-def test_SolarWorkflowManager_configure_cec_module(
-    pt_SolarWorkflowManager_poa: SolarWorkflowManager,
-) -> SolarWorkflowManager:
-    man = pt_SolarWorkflowManager_poa
+def test_solar_workflow_manager_configure_cec_module(
+    pt_solar_workflow_manager_poa: SolarWorkflowManager,
+):
+    man = pt_solar_workflow_manager_poa
     man.configure_cec_module(module="WINAICO WSx-240P6", tech_year=2050)
     assert isinstance(man.module, pd.Series)
 
@@ -594,19 +594,19 @@ def test_SolarWorkflowManager_configure_cec_module(
 
 
 @pytest.fixture
-def pt_SolarWorkflowManager_cell_temp(
-    pt_SolarWorkflowManager_poa: SolarWorkflowManager,
+def pt_solar_workflow_manager_cell_temp(
+    pt_solar_workflow_manager_poa: SolarWorkflowManager,
 ) -> SolarWorkflowManager:
-    man = pt_SolarWorkflowManager_poa
+    man = pt_solar_workflow_manager_poa
     man.cell_temperature_from_sapm(mounting="glass_open_rack")
 
     return man
 
 
-def test_SolarWorkflowManager_simulate_with_interpolated_single_diode_approximation(
-    pt_SolarWorkflowManager_cell_temp: SolarWorkflowManager,
-) -> SolarWorkflowManager:
-    man = pt_SolarWorkflowManager_cell_temp
+def test_solar_workflow_manager_simulate_with_interpolated_single_diode_approximation(
+    pt_solar_workflow_manager_cell_temp: SolarWorkflowManager,
+):
+    man = pt_solar_workflow_manager_cell_temp
     man.simulate_with_interpolated_single_diode_approximation(
         module="WINAICO WSx-240P6",
     )
@@ -628,10 +628,10 @@ def test_SolarWorkflowManager_simulate_with_interpolated_single_diode_approximat
 
 
 @pytest.fixture
-def pt_SolarWorkflowManager_sim(
-    pt_SolarWorkflowManager_cell_temp: SolarWorkflowManager,
+def pt_solar_workflow_manager_sim(
+    pt_solar_workflow_manager_cell_temp: SolarWorkflowManager,
 ) -> SolarWorkflowManager:
-    man = pt_SolarWorkflowManager_cell_temp
+    man = pt_solar_workflow_manager_cell_temp
     man.simulate_with_interpolated_single_diode_approximation(
         module="WINAICO WSx-240P6",
     )
@@ -639,10 +639,10 @@ def pt_SolarWorkflowManager_sim(
     return man
 
 
-def test_SolarWorkflowManager_apply_inverter_losses(
-    pt_SolarWorkflowManager_sim: SolarWorkflowManager,
-) -> SolarWorkflowManager:
-    man = pt_SolarWorkflowManager_sim
+def test_solar_workflow_manager_apply_inverter_losses(
+    pt_solar_workflow_manager_sim: SolarWorkflowManager,
+):
+    man = pt_solar_workflow_manager_sim
     man.placements["modules_per_string"] = 1
     man.placements["strings_per_inverter"] = 1
     del man.placements["capacity"]
@@ -663,7 +663,7 @@ def test_SolarWorkflowManager_apply_inverter_losses(
     assert np.isclose(man.sim_data["inverter_ac_power_at_mpp"].mean(), 53.68695534660521)
 
 
-def test_SolarWorkflowManager_nan_values_tilt_azimuth_elev___init__() -> SolarWorkflowManager:
+def test_solar_workflow_manager_nan_values_tilt_azimuth_elev___init__() -> SolarWorkflowManager:
     # (self, placements):
     placements = pd.DataFrame()
     placements["lon"] = [

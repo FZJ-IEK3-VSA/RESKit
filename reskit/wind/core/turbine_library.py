@@ -74,7 +74,7 @@ def parse_turbine(path):
 _Turbine_Library = None
 
 
-def TurbineLibrary():
+def turbine_library() -> pd.DataFrame:
     """
     A dataframe of internally configured wind turbines accessible to later simulations
     """

@@ -58,7 +58,7 @@ class PTRWorkflowManager(SolarWorkflowManager):
             or "area_m2" in self.placements.columns
         )
 
-    def loadPTRdata(self, datasetname: str):
+    def load_ptr_data(self, datasetname: str):
         """Loads the dataset with the name datasetname.
 
         Parameters
@@ -355,7 +355,7 @@ class PTRWorkflowManager(SolarWorkflowManager):
 
         assert ((self.sim_data["HeattoHTF_W"].mean(axis=0) / self.placements.capacity_sf_W_th) < 1).all()
 
-    def calculateSolarPosition(self):
+    def calculate_solar_position(self):
         """Calculates the solar position in terms of hour angle and declination from time series and location series of the current object
 
         Returns
@@ -422,7 +422,7 @@ class PTRWorkflowManager(SolarWorkflowManager):
 
         return self
 
-    def calculateIAM(self, a1: float = 0.000884, a2: float = 0.00005369, a3: float = 0):
+    def calculate_iam(self, a1: float = 0.000884, a2: float = 0.00005369, a3: float = 0):
         """Calculates the IAM (Incident Angle Modifier) angle modifier from incidence angle. Formula and default values are from:
         [1]	GAFUROV, Tokhir, Julio USAOLA, and Milan PRODANOVIC. Modelling of concentrating
         solar power plant for power system reliability studies [online]. IET Renewable Power
@@ -457,7 +457,7 @@ class PTRWorkflowManager(SolarWorkflowManager):
 
         return self
 
-    def calculateShadowLosses(self, SF_density: float = 0.383, method: str = "wagner2011"):
+    def calculate_shadow_losses(self, SF_density: float = 0.383, method: str = "wagner2011"):
         """Estimates shadow losses from solar field density and solar altitude
 
         Args:
@@ -500,7 +500,7 @@ class PTRWorkflowManager(SolarWorkflowManager):
 
         return self
 
-    def calculateDegradationLosses(self, efficiencyDropPerYear=0, lifetime=40):
+    def calculate_degradation_losses(self, efficiencyDropPerYear=0, lifetime=40):
         if efficiencyDropPerYear == 0:
             self.sim_data["eta_degradation"] = 1
         else:
@@ -508,7 +508,7 @@ class PTRWorkflowManager(SolarWorkflowManager):
                 (1 - (1 - efficiencyDropPerYear) ** (lifetime + 1)) / (1 - (1 - efficiencyDropPerYear)) / lifetime
             )
 
-    def calculateWindspeedLosses(self, max_windspeed_threshold: float = 14):
+    def calculate_windspeed_losses(self, max_windspeed_threshold: float = 14):
         """If windspeed is above threshold, the efficiency is set to zero.
 
         Args:
@@ -526,7 +526,7 @@ class PTRWorkflowManager(SolarWorkflowManager):
 
         return self
 
-    def calculateHeattoHTF(
+    def calculate_heat_to_htf(
         self,
         eta_ptr_max: float = 0.742,
         eta_cleaness: float = 1,
@@ -573,7 +573,7 @@ class PTRWorkflowManager(SolarWorkflowManager):
 
         return self
 
-    def applyHTFHeatLossModel(self, calculationmethod: str = "gafurov2013", params: dict = {}):
+    def apply_htf_heat_loss_model(self, calculationmethod: str = "gafurov2013", params: dict = {}):
         """Calculate the heat losses of the HTF and determines the Heat output of the solar field
 
         Args:
@@ -950,7 +950,7 @@ class PTRWorkflowManager(SolarWorkflowManager):
 
         return self
 
-    def calculateParasitics(self, calculationmethod: str = "gafurov2013", params: dict = {}):
+    def calculate_parasitics(self, calculationmethod: str = "gafurov2013", params: dict = {}):
         """Calculating the parasitic losses of the plant
 
         Parameters
@@ -1048,7 +1048,7 @@ class PTRWorkflowManager(SolarWorkflowManager):
 
         return self
 
-    def calculateCapacityFactors(self):
+    def calculate_capacity_factors(self):
         if not "capacity_sf_W_th" in self.placements.columns:
             self.apply_capacity_sf()
         assert "HeattoPlant_W" in self.sim_data.keys()
@@ -1068,7 +1068,7 @@ class PTRWorkflowManager(SolarWorkflowManager):
             self.placements["power_plant_capacity_W_el"].values * 24
         )
 
-    def calculateEconomics_SolarField(
+    def calculate_economics_solar_field(
         self,
         WACC: float = 8,
         lifetime: float = 25,
@@ -1937,7 +1937,7 @@ class PTRWorkflowManager(SolarWorkflowManager):
     # Try to increase speed of PV-Lib by dropping one loop. Apparently, multiple locations are not supported by PV-Lib. If there are performance
     # issues, try again. So keep this in mind here
 
-    def calculateSolarPositionfaster(self):
+    def calculate_solar_position_faster(self):
         """
         DOES NOT WORK PV LIP DOES NOT SUPPORT MULTIPLE LOCATIONS
         calculates the solar position in terms of hour angle and declination from time series and location series of the current object

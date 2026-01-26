@@ -12,6 +12,7 @@ import pandas as pd
 import windpowerlib
 
 from reskit.wind import core as rk_wind_core
+from reskit.wind.core import turbine_library
 from reskit.workflow_manager import WorkflowManager
 
 
@@ -106,11 +107,11 @@ class WindWorkflowManager(WorkflowManager):
 
             if pc[:4] == "SPC:":
                 sppow, cutout = pc.split(":")[1].split(",")
-                self.powerCurveLibrary[pc] = rk_wind_core.power_curve.PowerCurve.from_specific_power(
+                self.powerCurveLibrary[pc] = rk_wind_core.PowerCurve.from_specific_power(
                     specific_power=float(sppow), cutout=float(cutout)
                 )
             else:
-                self.powerCurveLibrary[pc] = rk_wind_core.turbine_library.TurbineLibrary().loc[pc].PowerCurve
+                self.powerCurveLibrary[pc] = rk_wind_core.turbine_library.turbine_library().loc[pc].PowerCurve
 
     def project_windspeeds_to_hub_height(
         self,

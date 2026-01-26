@@ -310,7 +310,7 @@ def CSP_PTR_ERA5_specific_dataset(
     # 1) Load input data
     wf = PTRWorkflowManager(placements)
 
-    ptr_data = wf.loadPTRdata(
+    ptr_data = wf.load_ptr_data(
         datasetname=datasetname
     )  # PTRdata referes to the different csp models, i.e. helisol or solar salt: csp/data/CSP_database.xlsx
     wf.determine_area()  # either determines aperture_area from land_area, or the other way around
@@ -355,7 +355,7 @@ def CSP_PTR_ERA5_specific_dataset(
     wf.apply_azimuth()
     # 5) calculate the solar position based on pvlib
 
-    wf.calculateSolarPosition()
+    wf.calculate_solar_position()
 
     # calculate DNI from ERA5 to DNi convention
     # ERA5 DIN: Heat flux per horizontal plane
@@ -381,14 +381,14 @@ def CSP_PTR_ERA5_specific_dataset(
     wf._applyVariation()  # only for developers, can be ignored otherwise
 
     # 6) doing selfmade calulations until Heat to HTF (Heat transfer fluid)
-    wf.calculateIAM(a1=ptr_data["a1"], a2=ptr_data["a2"], a3=ptr_data["a3"])
-    wf.calculateShadowLosses(method="wagner2011", SF_density=ptr_data["SF_density_direct"])
-    wf.calculateWindspeedLosses(max_windspeed_threshold=ptr_data["maxWindspeed"])
-    wf.calculateDegradationLosses(
+    wf.calculate_iam(a1=ptr_data["a1"], a2=ptr_data["a2"], a3=ptr_data["a3"])
+    wf.calculate_shadow_losses(method="wagner2011", SF_density=ptr_data["SF_density_direct"])
+    wf.calculate_windspeed_losses(max_windspeed_threshold=ptr_data["maxWindspeed"])
+    wf.calculate_degradation_losses(
         efficiencyDropPerYear=ptr_data["efficiencyDropPerYear"],
         lifetime=ptr_data["lifetime"],
     )
-    wf.calculateHeattoHTF(
+    wf.calculate_heat_to_htf(
         eta_ptr_max=ptr_data["eta_ptr_max"],
         eta_cleaness=ptr_data["eta_cleaness"],
         eta_other=ptr_data["eta_other"],
@@ -413,7 +413,7 @@ def CSP_PTR_ERA5_specific_dataset(
         print("Preanalysis within {dt}s.".format(dt=str(tic_pre - tic_read)), flush=True)
         print("Starting core simulation of the solar field.", flush=True)
     # 7) calculation heat to plant with loss model
-    wf.applyHTFHeatLossModel(
+    wf.apply_htf_heat_loss_model(
         calculationmethod="dersch2018",
         params={
             "b": ptr_data["b"],
@@ -437,7 +437,7 @@ def CSP_PTR_ERA5_specific_dataset(
         )
 
     # 8) calculate Parasitic Losses of the plant
-    wf.calculateParasitics(
+    wf.calculate_parasitics(
         calculationmethod="dersch2018",  # 'gafurov2013',
         params={
             "PL_sf_fixed_W_per_m^2_ap": 1.486,
@@ -451,7 +451,7 @@ def CSP_PTR_ERA5_specific_dataset(
     )
 
     # 9) calculate economics
-    wf.calculateEconomics_SolarField(
+    wf.calculate_economics_solar_field(
         WACC=ptr_data["WACC"],
         lifetime=ptr_data["lifetime"],
         calculationmethod="franzmann2021",
@@ -487,7 +487,7 @@ def CSP_PTR_ERA5_specific_dataset(
 
     wf.calculate_electrical_output(onlynightuse=onlynightuse, debug_vars=debug_vars)
     wf.calculate_LCOE()
-    wf.calculateCapacityFactors()
+    wf.calculate_capacity_factors()
 
     if verbose:
         tic_final = time.time()

@@ -6,8 +6,8 @@ from numpy import allclose
 import reskit as rk
 
 # Default variables
-sourceTemperature = rk.geothermal.data.path_temperatures
-sourceSustainableHeatflow = rk.geothermal.data.path_heat_flow_sustainable_W_per_m2
+source_temperature = rk.geothermal.data.path_temperatures
+source_sustainable_heat_flow = rk.geothermal.data.path_heat_flow_sustainable_W_per_m2
 
 
 @pytest.fixture
@@ -28,8 +28,8 @@ def egs_output(placements):
     """Runs the EGSworkflow and returns the output."""
     return rk.geothermal.EGSworkflow(
         placements=placements,
-        sourceTemperature=sourceTemperature,
-        sourceSustainableHeatflow=sourceSustainableHeatflow,
+        sourceTemperature=source_temperature,
+        sourceSustainableHeatflow=source_sustainable_heat_flow,
         manual_values={"x_ED_1": 8},
         savepath=None,
     )

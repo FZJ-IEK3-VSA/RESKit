@@ -15,7 +15,7 @@ def test_compute_specific_power():
 
 
 @pytest.fixture
-def pt_power_curve():
+def pt_power_curve() -> PowerCurve:
     perf = np.array(
         [
             (1, 0.0),
@@ -48,7 +48,7 @@ def pt_power_curve():
     return PowerCurve(perf[:, 0], perf[:, 1])
 
 
-def test_PowerCurve_from_specific_power():
+def test_power_curve_from_specific_power():
     pc = PowerCurve.from_specific_power(200)
 
     assert pc.wind_speed.shape == (121,)
@@ -57,7 +57,7 @@ def test_PowerCurve_from_specific_power():
     assert np.isclose(pc.capacity_factor.mean(), 0.5743801652892562)
 
 
-def test_PowerCurve_from_capacity_and_rotor_diam():
+def test_power_curve_from_capacity_and_rotor_diam():
     pc = PowerCurve.from_capacity_and_rotor_diam(4200, 140)
 
     assert pc.wind_speed.shape == (121,)
@@ -66,7 +66,7 @@ def test_PowerCurve_from_capacity_and_rotor_diam():
     assert np.isclose(pc.capacity_factor.mean(), 0.5743801652892562)
 
 
-def test_PowerCurve_simulate(pt_power_curve):
+def test_power_curve_simulate(pt_power_curve: PowerCurve):
     wind_speeds = np.linspace(15, 0, 100)
     output = pt_power_curve.simulate(wind_speeds)
 
@@ -75,7 +75,7 @@ def test_PowerCurve_simulate(pt_power_curve):
     assert np.isclose(output.std(), 0.3982687249948226)
 
 
-def test_expected_capacity_factor_from_weibull(pt_power_curve):
+def test_expected_capacity_factor_from_weibull(pt_power_curve: PowerCurve):
     output = pt_power_curve.expected_capacity_factor_from_weibull(
         mean_wind_speed=5,
         weibull_shape=2,
@@ -84,7 +84,7 @@ def test_expected_capacity_factor_from_weibull(pt_power_curve):
     assert np.isclose(output, 0.17405615945580358)
 
 
-def test_expected_capacity_factor_from_distribution(pt_power_curve):
+def test_expected_capacity_factor_from_distribution(pt_power_curve: PowerCurve):
     output = pt_power_curve.expected_capacity_factor_from_distribution(
         wind_speed_values=[0, 2, 4, 6, 8, 10], wind_speed_counts=[5, 20, 5, 2, 5, 1]
     )
@@ -92,7 +92,7 @@ def test_expected_capacity_factor_from_distribution(pt_power_curve):
     assert np.isclose(output, 0.0907581453633421)
 
 
-def test_PowerCurve_convolute_by_gaussian(pt_power_curve):
+def test_power_curve_convolute_by_gaussian(pt_power_curve: PowerCurve):
     pc = pt_power_curve.convolute_by_gaussian(
         scaling=0.06,
         base=0.1,
@@ -104,7 +104,7 @@ def test_PowerCurve_convolute_by_gaussian(pt_power_curve):
     assert np.isclose(pc.capacity_factor.mean(), 0.41840421118709586)
 
 
-def test_PowerCurve_apply_loss_factor(pt_power_curve):
+def test_power_curve_apply_loss_factor(pt_power_curve: PowerCurve):
     pc = pt_power_curve.apply_loss_factor(0.1)
     assert pc.wind_speed.shape == (25,)
     assert pc.wind_speed.shape == pc.capacity_factor.shape

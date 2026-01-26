@@ -14,7 +14,7 @@ from reskit.wind.core.windspeed_correction import build_ws_correction_function
 from reskit.wind.workflows.wind_workflow_manager import WindWorkflowManager
 
 
-def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
+def wind_era5_pena_sanchez_dunkel_winkler_et_al_2025(
     placements,
     era5_path,
     gwa_100m_path,

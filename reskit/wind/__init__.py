@@ -9,7 +9,7 @@ from reskit.wind.core.logarithmic_profile import (
 )
 from reskit.wind.core.power_curve import PowerCurve, compute_specific_power
 from reskit.wind.core.power_profile import alpha_from_levels, apply_power_profile_projection
-from reskit.wind.core.turbine_library import TurbineLibrary
+from reskit.wind.core.turbine_library import turbine_library
 from reskit.wind.economic.offshore_cost_model import offshore_turbine_capex
 from reskit.wind.economic.onshore_cost_model import onshore_turbine_capex
 from reskit.wind.workflows.wind_workflow_manager import WindWorkflowManager

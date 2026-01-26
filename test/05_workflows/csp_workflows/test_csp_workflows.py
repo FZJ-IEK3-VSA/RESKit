@@ -29,7 +29,7 @@ def pt_pv_placements() -> pd.DataFrame:
 # %%
 
 
-def test_CSP_PTR_ERA5(pt_pv_placements):
+def test_csp_ptr_era5(pt_pv_placements):
     out = rk.csp.CSP_PTR_ERA5(
         placements=pt_pv_placements,
         era5_path=rk.TEST_DATA["csp-era5-like"],
@@ -117,6 +117,6 @@ def test_CSP_PTR_ERA5(pt_pv_placements):
 
 if __name__ == "__main__":
     placements = pt_pv_placements()
-    test_CSP_PTR_ERA5(placements)
+    test_csp_ptr_era5(placements)
 
 # %%

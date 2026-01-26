@@ -23,11 +23,11 @@ def funct():
     era5_path = rk.TEST_DATA["era5-like"]
     elev_path = rk.TEST_DATA["DEM-like.tif"]
     global_solar_atlas_dni_path = rk.TEST_DATA["gsa-dni-like.tif"]
-    JITaccelerate = False
+    jit_accelerate = False
 
     wf = PTRWorkflowManager(placements)
 
-    ptr_data = wf.loadPTRdata(datasetname=datasetname)
+    ptr_data = wf.load_ptr_data(datasetname=datasetname)
     wf.determine_area()
 
     # 3) read in Input data
@@ -53,7 +53,7 @@ def funct():
     wf.apply_azimuth()
     # 5) calculate the solar position based on pvlib
 
-    wf.calculateSolarPosition()
+    wf.calculate_solar_position()
 
     # calculate DNI from ERA5 to DNi convention
     # ERA5 DIN: Heat flux per horizontal plane
@@ -71,25 +71,25 @@ def funct():
 
     # 6) doing selfmade calculations until Heat to HTF
     # wf.calculateCosineLossesParabolicTrough(orientation=ptr_data['orientation']) shifted
-    wf.calculateIAM(a1=ptr_data["a1"], a2=ptr_data["a2"], a3=ptr_data["a3"])
-    wf.calculateShadowLosses(method="wagner2011", SF_density=ptr_data["SF_density_direct"])
-    wf.calculateWindspeedLosses(max_windspeed_threshold=ptr_data["maxWindspeed"])
-    wf.calculateDegradationLosses(
+    wf.calculate_iam(a1=ptr_data["a1"], a2=ptr_data["a2"], a3=ptr_data["a3"])
+    wf.calculate_shadow_losses(method="wagner2011", SF_density=ptr_data["SF_density_direct"])
+    wf.calculate_windspeed_losses(max_windspeed_threshold=ptr_data["maxWindspeed"])
+    wf.calculate_degradation_losses(
         efficiencyDropPerYear=ptr_data["efficiencyDropPerYear"],
         lifetime=ptr_data["lifetime"],
     )
-    wf.calculateHeattoHTF(eta_ptr_max=ptr_data["eta_ptr_max"], eta_cleaness=ptr_data["eta_cleaness"])
+    wf.calculate_heat_to_htf(eta_ptr_max=ptr_data["eta_ptr_max"], eta_cleaness=ptr_data["eta_cleaness"])
 
     # wf.apply_capacity()
 
     # 7) calculation heat to plant with loss model
-    wf.applyHTFHeatLossModel(
+    wf.apply_htf_heat_loss_model(
         calculationmethod="dersch2018",
         params={
             "b": ptr_data["b"],
             "relTMplant": ptr_data["relTMplant"],
             "maxHTFTemperature": ptr_data["maxHTFTemperature"],
-            "JITaccelerate": JITaccelerate,
+            "JITaccelerate": jit_accelerate,
             "minHTFTemperature": ptr_data["minHTFTemperature"],
             "inletHTFTemperature": ptr_data["inletHTFTemperature"],
             "add_losses_coefficient": ptr_data["add_losses_coefficient"],
@@ -99,7 +99,7 @@ def funct():
     # wf.applyHTFHeatLossModel(calculationmethod='gafurov2013', params={'relHeatLosses': relHeatLosses, 'ratedFieldOutputHeat_W': ratedFieldOutputHeat_W})
 
     # 8) calculate Parasitic Losses of the plant
-    wf.calculateParasitics(
+    wf.calculate_parasitics(
         calculationmethod="gafurov2013",
         params={
             "I_DNI_nom": ptr_data["I_DNI_nom"],
@@ -111,11 +111,11 @@ def funct():
         },
     )
 
-    wf.calculateCapacityFactors()
+    wf.calculate_capacity_factors()
 
     # 9) calculate economics
     # Todo: adjust size of annual_heat... from 1D to 2D, or change the storage type
-    wf.calculateEconomics_SolarField(
+    wf.calculate_economics_solar_field(
         WACC=ptr_data["WACC"],
         lifetime=ptr_data["lifetime"],
         calculationmethod="franzmann2021",
@@ -139,7 +139,7 @@ def print_testresults(variable):
 ####################################
 #####       TEST Init         ######
 ####################################
-def test_PTRWorkflowManager__init__() -> PTRWorkflowManager:
+def test_ptr_workflow_manager__init__() -> PTRWorkflowManager:
     placements = pd.DataFrame()
     placements["lon"] = [6.083, 6.083, 5.583]  # Longitude
     placements["lat"] = [
@@ -166,15 +166,15 @@ def test_PTRWorkflowManager__init__() -> PTRWorkflowManager:
 #####  TEST data loading      ######
 ####################################
 @pytest.fixture
-def pt_PTRWorkflowManager_initialized() -> PTRWorkflowManager:
-    return test_PTRWorkflowManager__init__()
+def pt_ptr_workflow_manager_initialized() -> PTRWorkflowManager:
+    return test_ptr_workflow_manager__init__()
 
 
 # load ptr data
-def test_loadPTRdata(pt_PTRWorkflowManager_initialized):
-    wfm = pt_PTRWorkflowManager_initialized
+def test_load_ptr_data(pt_ptr_workflow_manager_initialized: PTRWorkflowManager):
+    wfm = pt_ptr_workflow_manager_initialized
 
-    ptr_data = wfm.loadPTRdata(datasetname="Initial")
+    ptr_data = wfm.load_ptr_data(datasetname="Initial")
 
     assert hasattr(wfm, "ptr_data")
     # assert ptr_data.shape  == (45,)
@@ -187,10 +187,10 @@ def test_loadPTRdata(pt_PTRWorkflowManager_initialized):
 # determine area
 
 
-def test_determine_area(pt_PTRWorkflowManager_initialized):
-    wfm = pt_PTRWorkflowManager_initialized
+def test_determine_area(pt_ptr_workflow_manager_initialized: PTRWorkflowManager):
+    wfm = pt_ptr_workflow_manager_initialized
 
-    ptr_data = wfm.loadPTRdata(datasetname="Initial")
+    ptr_data = wfm.load_ptr_data(datasetname="Initial")
     assert ptr_data["SF_density_total"] == 0.383
 
     wfm.determine_area()
@@ -211,8 +211,8 @@ def test_determine_area(pt_PTRWorkflowManager_initialized):
 # elevation
 
 
-def test_apply_elevation(pt_PTRWorkflowManager_initialized):
-    wfm = pt_PTRWorkflowManager_initialized
+def test_apply_elevation(pt_ptr_workflow_manager_initialized: PTRWorkflowManager):
+    wfm = pt_ptr_workflow_manager_initialized
 
     # load from file
     wfm.apply_elevation(rk.TEST_DATA["DEM-like.tif"])
@@ -226,7 +226,7 @@ def test_apply_elevation(pt_PTRWorkflowManager_initialized):
     assert np.isclose(wfm.placements["elev"].tolist(), [1, 2, 4]).all()
 
     # elev from number
-    wfm = pt_PTRWorkflowManager_initialized
+    wfm = pt_ptr_workflow_manager_initialized
     wfm.placements.drop(columns=["elev"], inplace=True)
     wfm.apply_elevation(11)
     print(wfm.placements)
@@ -234,8 +234,8 @@ def test_apply_elevation(pt_PTRWorkflowManager_initialized):
 
 
 # test apply azimuth
-def test_apply_azimuth(pt_PTRWorkflowManager_initialized):
-    wfm = pt_PTRWorkflowManager_initialized
+def test_apply_azimuth(pt_ptr_workflow_manager_initialized: PTRWorkflowManager):
+    wfm = pt_ptr_workflow_manager_initialized
 
     wfm.ptr_data = pd.Series()
     wfm.ptr_data["orientation"] = "northsouth"
@@ -264,8 +264,8 @@ def test_apply_azimuth(pt_PTRWorkflowManager_initialized):
 # test read ERA5
 
 
-def test_read_ERA5(pt_PTRWorkflowManager_initialized):
-    wfm = pt_PTRWorkflowManager_initialized
+def test_read_era5(pt_ptr_workflow_manager_initialized: PTRWorkflowManager):
+    wfm = pt_ptr_workflow_manager_initialized
     wfm.read(
         variables=[
             "direct_horizontal_irradiance",
@@ -290,10 +290,10 @@ def test_read_ERA5(pt_PTRWorkflowManager_initialized):
 
 
 @pytest.fixture
-def pt_PTRWorkflowManager_loaded(
-    pt_PTRWorkflowManager_initialized: PTRWorkflowManager,
+def pt_ptr_workflow_manager_loaded(
+    pt_ptr_workflow_manager_initialized: PTRWorkflowManager,
 ) -> PTRWorkflowManager:
-    wfm = pt_PTRWorkflowManager_initialized
+    wfm = pt_ptr_workflow_manager_initialized
 
     wfm.read(
         variables=[
@@ -309,8 +309,8 @@ def pt_PTRWorkflowManager_loaded(
     return wfm
 
 
-def test_get_timesteps(pt_PTRWorkflowManager_loaded):
-    wfm = pt_PTRWorkflowManager_loaded
+def test_get_timesteps(pt_ptr_workflow_manager_loaded: PTRWorkflowManager):
+    wfm = pt_ptr_workflow_manager_loaded
 
     wfm.get_timesteps()
 
@@ -324,8 +324,8 @@ def test_get_timesteps(pt_PTRWorkflowManager_loaded):
 
 
 @pytest.fixture
-def pt_PTRWorkflowManager_solarpos() -> PTRWorkflowManager:
-    wfm = test_PTRWorkflowManager__init__()
+def pt_ptr_workflow_manager_solarpos() -> PTRWorkflowManager:
+    wfm = test_ptr_workflow_manager__init__()
     wfm.placements["azimuth"] = [90, 180, 180]
     wfm.placements["elev"] = [90, 180, 180]
     wfm.time_index = pd.date_range("2014-12-31 23:30:00", periods=100, freq="H")
@@ -338,9 +338,9 @@ def pt_PTRWorkflowManager_solarpos() -> PTRWorkflowManager:
 # test calculate solar position
 
 
-def test_calculateSolarPosition(pt_PTRWorkflowManager_solarpos):
-    wfm = pt_PTRWorkflowManager_solarpos
-    wfm.calculateSolarPosition()
+def test_calculate_solar_position(pt_ptr_workflow_manager_solarpos: PTRWorkflowManager):
+    wfm = pt_ptr_workflow_manager_solarpos
+    wfm.calculate_solar_position()
 
     assert wfm.sim_data["solar_zenith_degree"].shape == (100, 3)
 
@@ -371,15 +371,15 @@ def test_calculateSolarPosition(pt_PTRWorkflowManager_solarpos):
 
 
 @pytest.mark.skip(reason="Function not used atm")
-def test_calculateSolarPositionfaster(pt_PTRWorkflowManager_solarpos):
-    wfm = pt_PTRWorkflowManager_solarpos
+def test_calculate_solar_position_faster(pt_ptr_workflow_manager_solarpos: PTRWorkflowManager):
+    wfm = pt_ptr_workflow_manager_solarpos
 
-    wfm.calculateSolarPositionfaster()
+    wfm.calculate_solar_position_faster()
     solar_zenith_degree_fast = wfm.sim_data["solar_zenith_degree"]
     solar_altitude_angle_degree_fast = wfm.sim_data["solar_altitude_angle_degree"]
     theta_fast = wfm.sim_data["theta"]
     stracking_angle_fast = wfm.sim_data["tracking_angle"]
-    wfm.calculateSolarPosition()
+    wfm.calculate_solar_position()
     assert np.isclose(solar_zenith_degree_fast, wfm.sim_data["solar_zenith_degree"])
     assert np.isclose(solar_altitude_angle_degree_fast, wfm.sim_data["solar_altitude_angle_degree"])
     assert np.isclose(theta_fast, wfm.sim_data["theta"])
@@ -393,10 +393,10 @@ def test_calculateSolarPositionfaster(pt_PTRWorkflowManager_solarpos):
 
 
 @pytest.fixture
-def pt_PTRWorkflowManager_dni_from_trig(
-    pt_PTRWorkflowManager_loaded: PTRWorkflowManager,
+def pt_ptr_workflow_manager_dni_from_trig(
+    pt_ptr_workflow_manager_loaded: PTRWorkflowManager,
 ) -> PTRWorkflowManager:
-    wfm = pt_PTRWorkflowManager_loaded
+    wfm = pt_ptr_workflow_manager_loaded
 
     wfm.ptr_data = [90, 180, 180]
     wfm.ptr_data = [90, 180, 180]
@@ -407,7 +407,7 @@ def pt_PTRWorkflowManager_dni_from_trig(
     wfm.placements["azimuth"] = 180
 
     # include this heres, as this is a mainly pv lib function
-    wfm.calculateSolarPosition()
+    wfm.calculate_solar_position()
     return wfm
 
 
@@ -415,9 +415,9 @@ def pt_PTRWorkflowManager_dni_from_trig(
 
 
 def test_direct_normal_irradiance_from_trigonometry(
-    pt_PTRWorkflowManager_dni_from_trig,
+    pt_ptr_workflow_manager_dni_from_trig,
 ):
-    wfm = pt_PTRWorkflowManager_dni_from_trig
+    wfm = pt_ptr_workflow_manager_dni_from_trig
 
     wfm.direct_normal_irradiance_from_trigonometry()
 
@@ -436,10 +436,10 @@ def test_direct_normal_irradiance_from_trigonometry(
 
 
 @pytest.fixture
-def pt_PTRWorkflowManager_LRA(
-    pt_PTRWorkflowManager_loaded: PTRWorkflowManager,
+def pt_ptr_workflow_manager_lra(
+    pt_ptr_workflow_manager_loaded: PTRWorkflowManager,
 ) -> PTRWorkflowManager:
-    wfm = pt_PTRWorkflowManager_loaded
+    wfm = pt_ptr_workflow_manager_loaded
 
     return wfm
 
@@ -448,8 +448,8 @@ def pt_PTRWorkflowManager_LRA(
 
 
 @pytest.mark.skip(reason="Function not used atm")
-def test_adjust_variable_to_long_run_average(pt_PTRWorkflowManager_solarpos):
-    wfm = pt_PTRWorkflowManager_solarpos
+def test_adjust_variable_to_long_run_average(pt_ptr_workflow_manager_solarpos: PTRWorkflowManager):
+    wfm = pt_ptr_workflow_manager_solarpos
 
     print("before LRA")
     assert np.isclose(wfm.sim_data["direct_horizontal_irradiance"].mean(), 15.151816929634485)
@@ -476,32 +476,34 @@ def test_adjust_variable_to_long_run_average(pt_PTRWorkflowManager_solarpos):
     assert np.isclose(wfm.sim_data["direct_normal_irradiance"].max(), 257.65673305845195)
 
 
-@pytest.mark.skip(reason="Function not used atm")
-def test_calculateCosineLossesParabolicTrough(pt_PTRWorkflowManager_DNI):
-    wfm = pt_PTRWorkflowManager_DNI
+# @pytest.mark.skip(reason="Function not used atm")
+# def test_calculateCosineLossesParabolicTrough(
+#     pt_ptr_workflow_manager_dni: PTRWorkflowManager,
+# ):
+#     wfm = pt_ptr_workflow_manager_dni
 
-    wfm.calculateCosineLossesParabolicTrough(orientation="northsouth")
+#     wfm.calculateCosineLossesParabolicTrough(orientation="northsouth")
 
-    assert np.isclose(wfm.sim_data["theta"].mean(), 20.048007412410186)
-    assert np.isclose(wfm.sim_data["theta"].std(), 28.55629)
-    assert np.isclose(wfm.sim_data["theta"].min(), 0)
-    assert np.isclose(wfm.sim_data["theta"].max(), 74.30066)
+#     assert np.isclose(wfm.sim_data["theta"].mean(), 20.048007412410186)
+#     assert np.isclose(wfm.sim_data["theta"].std(), 28.55629)
+#     assert np.isclose(wfm.sim_data["theta"].min(), 0)
+#     assert np.isclose(wfm.sim_data["theta"].max(), 74.30066)
 
-    wfm = pt_PTRWorkflowManager_solarpos
+#     wfm = pt_PTRWorkflowManager_solarpos
 
-    wfm.calculateCosineLossesParabolicTrough(orientation="eastwest")
-    assert np.isclose(wfm.sim_data["theta"].mean(), 9.30592)
-    assert np.isclose(wfm.sim_data["theta"].std(), 15.76566)
-    assert np.isclose(wfm.sim_data["theta"].min(), 0)
-    assert np.isclose(wfm.sim_data["theta"].max(), 51.09474)
+#     wfm.calculateCosineLossesParabolicTrough(orientation="eastwest")
+#     assert np.isclose(wfm.sim_data["theta"].mean(), 9.30592)
+#     assert np.isclose(wfm.sim_data["theta"].std(), 15.76566)
+#     assert np.isclose(wfm.sim_data["theta"].min(), 0)
+#     assert np.isclose(wfm.sim_data["theta"].max(), 51.09474)
 
-    wfm = pt_PTRWorkflowManager_solarpos
+#     wfm = pt_PTRWorkflowManager_solarpos
 
-    wfm.calculateCosineLossesParabolicTrough(orientation="song2013")
-    assert np.isclose(wfm.sim_data["theta"].mean(), 9.30592)
-    assert np.isclose(wfm.sim_data["theta"].std(), 15.76566)
-    assert np.isclose(wfm.sim_data["theta"].min(), 0)
-    assert np.isclose(wfm.sim_data["theta"].max(), 51.09474)
+#     wfm.calculateCosineLossesParabolicTrough(orientation="song2013")
+#     assert np.isclose(wfm.sim_data["theta"].mean(), 9.30592)
+#     assert np.isclose(wfm.sim_data["theta"].std(), 15.76566)
+#     assert np.isclose(wfm.sim_data["theta"].min(), 0)
+#     assert np.isclose(wfm.sim_data["theta"].max(), 51.09474)
 
 
 # %% test calculate IAM
@@ -512,8 +514,8 @@ def test_calculateCosineLossesParabolicTrough(pt_PTRWorkflowManager_DNI):
 
 
 @pytest.fixture
-def pt_PTRWorkflowManager_IAM() -> PTRWorkflowManager:
-    wfm = test_PTRWorkflowManager__init__()
+def pt_ptr_workflow_manager_iam() -> PTRWorkflowManager:
+    wfm = test_ptr_workflow_manager__init__()
     wfm.placements["azimuth"] = [90, 180, 180]
     wfm.placements["elev"] = [90, 180, 180]
     wfm.time_index = pd.date_range("2014-12-31 23:30:00", periods=100, freq="H")
@@ -524,10 +526,10 @@ def pt_PTRWorkflowManager_IAM() -> PTRWorkflowManager:
     return wfm
 
 
-def test_calculateIAM(pt_PTRWorkflowManager_IAM):
-    wfm = pt_PTRWorkflowManager_IAM
+def test_calculate_iam(pt_ptr_workflow_manager_iam: PTRWorkflowManager):
+    wfm = pt_ptr_workflow_manager_iam
     print(wfm.sim_data.keys())
-    wfm.calculateIAM(a1=0.000884, a2=0.00005369, a3=0)
+    wfm.calculate_iam(a1=0.000884, a2=0.00005369, a3=0)
     print_testresults(wfm.sim_data["IAM"])
     assert np.isclose(wfm.sim_data["IAM"].mean(), 0.8697242301082351)
     assert np.isclose(wfm.sim_data["IAM"].std(), 0.27154198202026364)
@@ -541,17 +543,17 @@ def test_calculateIAM(pt_PTRWorkflowManager_IAM):
 
 
 @pytest.fixture
-def pt_PTRWorkflowManager_Shadow() -> PTRWorkflowManager:
-    wfm = test_PTRWorkflowManager__init__()
+def pt_ptr_workflow_manager_shadow() -> PTRWorkflowManager:
+    wfm = test_ptr_workflow_manager__init__()
     wfm.sim_data["tracking_angle"] = tracking_angle_test
     wfm.sim_data["solar_zenith_degree"] = zenith_test
     return wfm
 
 
-def test_calculateShadowLosses(pt_PTRWorkflowManager_Shadow):
-    wfm = pt_PTRWorkflowManager_Shadow
+def test_calculate_shadow_losses(pt_ptr_workflow_manager_shadow: PTRWorkflowManager):
+    wfm = pt_ptr_workflow_manager_shadow
 
-    wfm.calculateShadowLosses(method="wagner2011", SF_density=0.43)
+    wfm.calculate_shadow_losses(method="wagner2011", SF_density=0.43)
     print_testresults(wfm.sim_data["eta_shdw"])
     assert np.isclose(wfm.sim_data["eta_shdw"].mean(), 0.20020204625315727)
     assert np.isclose(wfm.sim_data["eta_shdw"].std(), 0.3461275222093702)
@@ -564,10 +566,10 @@ def test_calculateShadowLosses(pt_PTRWorkflowManager_Shadow):
 ####################################
 
 
-def test_calculateWindspeedLosses(pt_PTRWorkflowManager_loaded):
-    wfm = pt_PTRWorkflowManager_loaded
+def test_calculate_windspeed_losses(pt_ptr_workflow_manager_loaded: PTRWorkflowManager):
+    wfm = pt_ptr_workflow_manager_loaded
 
-    wfm.calculateWindspeedLosses(max_windspeed_threshold=9)
+    wfm.calculate_windspeed_losses(max_windspeed_threshold=9)
 
     print_testresults(wfm.sim_data["eta_wind"])
     assert np.isclose(wfm.sim_data["eta_wind"].mean(), 0.988095)
@@ -581,14 +583,14 @@ def test_calculateWindspeedLosses(pt_PTRWorkflowManager_loaded):
 ####################################
 
 
-def test_calculateDegradationLosses(pt_PTRWorkflowManager_initialized):
-    wfm = pt_PTRWorkflowManager_initialized
+def test_calculate_degradation_losses(pt_ptr_workflow_manager_initialized: PTRWorkflowManager):
+    wfm = pt_ptr_workflow_manager_initialized
 
-    wfm.calculateDegradationLosses(efficiencyDropPerYear=0.02, lifetime=20)
+    wfm.calculate_degradation_losses(efficiencyDropPerYear=0.02, lifetime=20)
 
     assert np.isclose(wfm.sim_data["eta_degradation"], 0.8643604692000185)
 
-    wfm.calculateDegradationLosses(efficiencyDropPerYear=0, lifetime=20)
+    wfm.calculate_degradation_losses(efficiencyDropPerYear=0, lifetime=20)
 
     assert np.isclose(wfm.sim_data["eta_degradation"], 1)
 
@@ -597,10 +599,10 @@ def test_calculateDegradationLosses(pt_PTRWorkflowManager_initialized):
 #####  TEST Heat to HTF       ######
 ####################################
 @pytest.fixture
-def pt_PTRWorkflowManager_HeattoHTF(
-    pt_PTRWorkflowManager_initialized,
+def pt_ptr_workflow_manager_heat_to_htf(
+    pt_ptr_workflow_manager_initialized: PTRWorkflowManager,
 ) -> PTRWorkflowManager:
-    wfm = pt_PTRWorkflowManager_initialized
+    wfm = pt_ptr_workflow_manager_initialized
 
     wfm.eta_ptr_max = 0.827
     wfm.eta_cleaness = 0.9
@@ -614,10 +616,10 @@ def pt_PTRWorkflowManager_HeattoHTF(
     return wfm
 
 
-def test_calculateHeattoHTF(pt_PTRWorkflowManager_HeattoHTF):
-    wfm = pt_PTRWorkflowManager_HeattoHTF
+def test_calculate_heat_to_htf(pt_ptr_workflow_manager_heat_to_htf: PTRWorkflowManager):
+    wfm = pt_ptr_workflow_manager_heat_to_htf
 
-    wfm.calculateHeattoHTF(eta_ptr_max=0.8, eta_cleaness=0.99, eta_other=1)
+    wfm.calculate_heat_to_htf(eta_ptr_max=0.8, eta_cleaness=0.99, eta_other=1)
 
     print_testresults(wfm.sim_data["HeattoHTF_W"])
     assert np.isclose(wfm.sim_data["HeattoHTF_W"].mean(), 17292906.612040244)
@@ -630,7 +632,7 @@ def test_calculateHeattoHTF(pt_PTRWorkflowManager_HeattoHTF):
 #####  TEST Heat_loss_model   ######
 ####################################
 @pytest.fixture
-def pt_PTRWorkflowManager_heat_loss() -> PTRWorkflowManager:
+def pt_ptr_workflow_manager_heat_loss() -> PTRWorkflowManager:
     placements = pd.DataFrame()
     placements["lon"] = [6.083, 6.083, 5.583]  # Longitude
     placements["lat"] = [
@@ -647,7 +649,7 @@ def pt_PTRWorkflowManager_heat_loss() -> PTRWorkflowManager:
 
     wf = PTRWorkflowManager(placements)
 
-    ptr_data = wf.loadPTRdata(datasetname=datasetname)
+    ptr_data = wf.load_ptr_data(datasetname=datasetname)
     wf.determine_area()
 
     wf.read(
@@ -666,17 +668,17 @@ def pt_PTRWorkflowManager_heat_loss() -> PTRWorkflowManager:
     wf.get_timesteps()
     wf.apply_elevation(elev_path)
     wf.apply_azimuth()
-    wf.calculateSolarPosition()
+    wf.calculate_solar_position()
     wf.direct_normal_irradiance_from_trigonometry()
 
-    wf.calculateIAM(a1=ptr_data["a1"], a2=ptr_data["a2"], a3=ptr_data["a3"])
-    wf.calculateShadowLosses(method="wagner2011", SF_density=ptr_data["SF_density_direct"])
-    wf.calculateWindspeedLosses(max_windspeed_threshold=ptr_data["maxWindspeed"])
-    wf.calculateDegradationLosses(
+    wf.calculate_iam(a1=ptr_data["a1"], a2=ptr_data["a2"], a3=ptr_data["a3"])
+    wf.calculate_shadow_losses(method="wagner2011", SF_density=ptr_data["SF_density_direct"])
+    wf.calculate_windspeed_losses(max_windspeed_threshold=ptr_data["maxWindspeed"])
+    wf.calculate_degradation_losses(
         efficiencyDropPerYear=ptr_data["efficiencyDropPerYear"],
         lifetime=ptr_data["lifetime"],
     )
-    wf.calculateHeattoHTF(
+    wf.calculate_heat_to_htf(
         eta_ptr_max=ptr_data["eta_ptr_max"],
         eta_cleaness=ptr_data["eta_cleaness"],
         eta_other=ptr_data["eta_other"],
@@ -690,11 +692,11 @@ def pt_PTRWorkflowManager_heat_loss() -> PTRWorkflowManager:
 # test applyHTFHeatLossModel
 
 
-def test_applyHTFHeatLossModel(pt_PTRWorkflowManager_heat_loss):
-    wfm = pt_PTRWorkflowManager_heat_loss
+def test_apply_htf_heat_loss_model(pt_ptr_workflow_manager_heat_loss: PTRWorkflowManager):
+    wfm = pt_ptr_workflow_manager_heat_loss
 
     # without Jit
-    wfm.applyHTFHeatLossModel(
+    wfm.apply_htf_heat_loss_model(
         calculationmethod="dersch2018",
         params={
             "b": np.array([0, 0.02421, 2.46e-05, 1.56e-07, 1.17e-09]),
@@ -735,7 +737,7 @@ def test_applyHTFHeatLossModel(pt_PTRWorkflowManager_heat_loss):
     assert np.isclose(wfm.sim_data["P_heating_W"].max(), 19115325.849862307)
 
     # with Jit
-    wfm.applyHTFHeatLossModel(
+    wfm.apply_htf_heat_loss_model(
         calculationmethod="dersch2018",
         params={
             "b": np.array([0, 0.02421, 2.46e-05, 1.56e-07, 1.17e-09]),
@@ -777,10 +779,10 @@ def test_applyHTFHeatLossModel(pt_PTRWorkflowManager_heat_loss):
 
 
 # test applyHTFHeatLossModel
-def test_get_capex(pt_PTRWorkflowManager_initialized):
-    wfm = pt_PTRWorkflowManager_initialized
+def test_get_capex(pt_ptr_workflow_manager_initialized: PTRWorkflowManager):
+    wfm = pt_ptr_workflow_manager_initialized
 
-    CAPEX_total_EUR = wfm._get_capex(
+    capex_total_eur = wfm._get_capex(
         A_aperture_m2=3e5,
         A_land_m2=1e6,
         Qdot_field_des_W=3e5 * 0.8 * 900,
@@ -793,42 +795,42 @@ def test_get_capex(pt_PTRWorkflowManager_initialized):
         c_plant_EUR_per_kW_el=1003.2,
         c_indirect_cost_perc_per_direct_Capex=11,
     )
-    assert np.isclose(CAPEX_total_EUR, 140885817.6)
+    assert np.isclose(capex_total_eur, 140885817.6)
 
 
-def test_get_opex(pt_PTRWorkflowManager_initialized):
-    wfm = pt_PTRWorkflowManager_initialized
+def test_get_opex(pt_ptr_workflow_manager_initialized: PTRWorkflowManager):
+    wfm = pt_ptr_workflow_manager_initialized
 
-    OPEX_EUR_per_a = wfm._get_opex(
+    opex_eur_per_a = wfm._get_opex(
         CAPEX_total_EUR=140885817.6,
         OPEX_fix_perc_CAPEX_per_a=2,
         auxilary_power_Wh_per_a=0,
         electricity_price_EUR_per_kWh=0.05,
     )
-    assert np.isclose(OPEX_EUR_per_a, 2.817716352e6)
+    assert np.isclose(opex_eur_per_a, 2.817716352e6)
 
-    OPEX_EUR_per_a = wfm._get_opex(
+    opex_eur_per_a = wfm._get_opex(
         CAPEX_total_EUR=140885817.6,
         OPEX_fix_perc_CAPEX_per_a=2,
         auxilary_power_Wh_per_a=4.830819e10,
         electricity_price_EUR_per_kWh=0.05,
     )
-    assert np.isclose(OPEX_EUR_per_a, 5233125.852)
+    assert np.isclose(opex_eur_per_a, 5233125.852)
 
 
-def test_get_totex(pt_PTRWorkflowManager_initialized):
-    wfm = pt_PTRWorkflowManager_initialized
+def test_get_totex(pt_ptr_workflow_manager_initialized: PTRWorkflowManager):
+    wfm = pt_ptr_workflow_manager_initialized
 
-    TOTEX_EUR_per_a = wfm._get_totex(
+    totex_eur_per_a = wfm._get_totex(
         CAPEX_total_EUR_per_a=10,
         OPEX_EUR_per_a=2,
     )
-    assert np.isclose(TOTEX_EUR_per_a, 12)
+    assert np.isclose(totex_eur_per_a, 12)
 
 
 @pytest.fixture
-def pt_PTRWorkflowManager_economics() -> PTRWorkflowManager:
-    wfm = test_PTRWorkflowManager__init__()
+def pt_ptr_workflow_manager_economics() -> PTRWorkflowManager:
+    wfm = test_ptr_workflow_manager__init__()
 
     wfm.placements["aperture_area_m2"] = [3e5, 6e5, 3e5]
     wfm.placements["land_area_m2"] = [1e6, 2e6, 1e6]
@@ -864,29 +866,29 @@ def pt_PTRWorkflowManager_economics() -> PTRWorkflowManager:
     return wfm
 
 
-def test_get_totex_from_self(pt_PTRWorkflowManager_economics):
-    wfm = pt_PTRWorkflowManager_economics
+def test_get_totex_from_self(pt_ptr_workflow_manager_economics: PTRWorkflowManager):
+    wfm = pt_ptr_workflow_manager_economics
 
-    TOTEX_EUR_per_a = wfm._get_totex_from_self()
+    totex_eur_per_a = wfm._get_totex_from_self()
     # use those values, if 'Parasitics_solarfield_W_el' are bought as varOPEX
     assert np.isclose(
-        TOTEX_EUR_per_a.values,
+        totex_eur_per_a.values,
         [18431137.22318471, 36862274.44636942, 18431137.22318471],
     ).all()
     # assert np.isclose(TOTEX_EUR_per_a.values, [16.01572773E6, 2*16.01572773E6, 16.01572773E6]).all() # use those values, if 'Parasitics_solarfield_W_el' aren't bought as varOPEX
 
-    TOTEX_EUR_per_a = wfm._get_totex_from_self(sm_manipulation=1, tes_manipulation=10)
+    totex_eur_per_a = wfm._get_totex_from_self(sm_manipulation=1, tes_manipulation=10)
     # use those values, if 'Parasitics_solarfield_W_el' are bought as varOPEX
     assert np.isclose(
-        TOTEX_EUR_per_a.values,
+        totex_eur_per_a.values,
         [26681959.73652098, 53363919.47304196, 26681959.73652098],
     ).all()
     # assert np.isclose(TOTEX_EUR_per_a.values, [24266550.23652098, 48533100.47304196, 24266550.23652098]).all() # use those values, if 'Parasitics_solarfield_W_el' aren't bought as varOPEX
 
     # Test from Excel sheet. cannot calculate parasitic losses
     wfm.sim_data_daily["P_backup_heating_daily_Wh_el"] = np.array([[0, 0, 0], [0, 0, 0]])
-    TOTEX_EUR_per_a = wfm._get_totex_from_self()
-    assert np.isclose(TOTEX_EUR_per_a.values, [16.01572773e6, 2 * 16.01572773e6, 16.01572773e6]).all()
+    totex_eur_per_a = wfm._get_totex_from_self()
+    assert np.isclose(totex_eur_per_a.values, [16.01572773e6, 2 * 16.01572773e6, 16.01572773e6]).all()
 
 
 ####################################
@@ -895,8 +897,8 @@ def test_get_totex_from_self(pt_PTRWorkflowManager_economics):
 
 
 @pytest.fixture
-def pt_PTRWorkflowManager_parasitics() -> PTRWorkflowManager:
-    wfm = test_PTRWorkflowManager__init__()
+def pt_ptr_workflow_manager_parasitics() -> PTRWorkflowManager:
+    wfm = test_ptr_workflow_manager__init__()
     wfm.ptr_data = {}
     wfm.ptr_data["eta_powerplant_1"] = 0.5
     wfm.placements["capacity_sf_W_th"] = 58e6
@@ -908,8 +910,8 @@ def pt_PTRWorkflowManager_parasitics() -> PTRWorkflowManager:
     return wfm
 
 
-def test_calculateParasitics(pt_PTRWorkflowManager_parasitics):
-    wfm = pt_PTRWorkflowManager_parasitics
+def test_calculate_parasitics(pt_ptr_workflow_manager_parasitics: PTRWorkflowManager):
+    wfm = pt_ptr_workflow_manager_parasitics
 
     params_gafurov = {
         "PL_plant_fix": 0.0055,
@@ -927,7 +929,7 @@ def test_calculateParasitics(pt_PTRWorkflowManager_parasitics):
         "PL_plant_other": 0.019,
     }
 
-    wfm.calculateParasitics(
+    wfm.calculate_parasitics(
         calculationmethod="dersch2018",
         params=params_dersch,
     )
@@ -960,8 +962,8 @@ def test_calculateParasitics(pt_PTRWorkflowManager_parasitics):
 
 
 @pytest.fixture
-def pt_PTRWorkflowManager_economicsSF() -> PTRWorkflowManager:
-    wfm = test_PTRWorkflowManager__init__()
+def pt_ptr_workflow_manager_economics_sf() -> PTRWorkflowManager:
+    wfm = test_ptr_workflow_manager__init__()
     wfm.ptr_data = {}
     wfm.sim_data["HeattoPlant_W"] = dni_test * 1e5 * 0.7
     wfm.sim_data["Parasitics_solarfield_W_el"] = dni_test * 1e5 * 0.76 * 0.1
@@ -973,8 +975,8 @@ def pt_PTRWorkflowManager_economicsSF() -> PTRWorkflowManager:
     return wfm
 
 
-def test_calculateEconomics_SolarField(pt_PTRWorkflowManager_economicsSF):
-    wfm = pt_PTRWorkflowManager_economicsSF
+def test_calculate_economics_solar_field(pt_ptr_workflow_manager_economics_sf: PTRWorkflowManager):
+    wfm = pt_ptr_workflow_manager_economics_sf
 
     params = {
         "CAPEX_solar_field_EUR_per_m^2_aperture": 100,
@@ -984,7 +986,7 @@ def test_calculateEconomics_SolarField(pt_PTRWorkflowManager_economicsSF):
         "OPEX_perc_CAPEX": 0.03,
     }
 
-    wfm.calculateEconomics_SolarField(WACC=0.08, lifetime=30, calculationmethod="franzmann2021", params=params)
+    wfm.calculate_economics_solar_field(WACC=0.08, lifetime=30, calculationmethod="franzmann2021", params=params)
 
     assert "annualHeatfromSF_Wh" in wfm.placements.columns
     assert "CAPEX_SF_EUR" in wfm.placements.columns
@@ -1000,10 +1002,10 @@ def test_calculateEconomics_SolarField(pt_PTRWorkflowManager_economicsSF):
 
 
 @pytest.fixture
-def pt_PTRWorkflowManager_optplant(
-    pt_PTRWorkflowManager_economics,
+def pt_ptr_workflow_manager_optplant(
+    pt_ptr_workflow_manager_economics: PTRWorkflowManager,
 ) -> PTRWorkflowManager:
-    wfm = pt_PTRWorkflowManager_economics
+    wfm = pt_ptr_workflow_manager_economics
 
     wfm.placements["capacity_sf_W_th"] = 58e6
     dni = np.tile(dni_test, [63, 1])[0:8760, :]
@@ -1022,8 +1024,8 @@ def pt_PTRWorkflowManager_optplant(
     return wfm
 
 
-def test_optimize_plant_size(pt_PTRWorkflowManager_optplant):
-    wfm = pt_PTRWorkflowManager_optplant
+def test_optimize_plant_size(pt_ptr_workflow_manager_optplant: PTRWorkflowManager):
+    wfm = pt_ptr_workflow_manager_optplant
 
     debug_vars = False
 
@@ -1054,8 +1056,8 @@ def test_optimize_plant_size(pt_PTRWorkflowManager_optplant):
 
 
 @pytest.fixture
-def pt_PTRWorkflowManager_calcElecOut() -> PTRWorkflowManager:
-    wfm = test_PTRWorkflowManager__init__()
+def pt_ptr_workflow_manager_calc_elec_out() -> PTRWorkflowManager:
+    wfm = test_ptr_workflow_manager__init__()
 
     dni = np.tile(dni_test, [63, 1])[0:8760, :]
     wfm.sim_data["HeattoPlant_W"] = dni * 1e5 * 0.7
@@ -1075,8 +1077,8 @@ def pt_PTRWorkflowManager_calcElecOut() -> PTRWorkflowManager:
     return wfm
 
 
-def test_calculate_electrical_output(pt_PTRWorkflowManager_calcElecOut):
-    wfm = pt_PTRWorkflowManager_calcElecOut
+def test_calculate_electrical_output(pt_ptr_workflow_manager_calc_elec_out):
+    wfm = pt_ptr_workflow_manager_calc_elec_out
 
     debug_vars = False
 
@@ -1119,18 +1121,18 @@ def test_calculate_electrical_output(pt_PTRWorkflowManager_calcElecOut):
 
 
 @pytest.fixture
-def pt_PTRWorkflowManager_calcLCOE(
-    pt_PTRWorkflowManager_economics,
+def pt_ptr_workflow_manager_calc_lcoe(
+    pt_ptr_workflow_manager_economics: PTRWorkflowManager,
 ) -> PTRWorkflowManager:
-    wfm = pt_PTRWorkflowManager_economics
+    wfm = pt_ptr_workflow_manager_economics
 
     wfm.placements["Power_net_total_Wh_per_a"] = 2e11
 
     return wfm
 
 
-def test_calculate_LCOE(pt_PTRWorkflowManager_calcLCOE):
-    wfm = pt_PTRWorkflowManager_calcLCOE
+def test_calculate_lcoe(pt_ptr_workflow_manager_calc_lcoe: PTRWorkflowManager):
+    wfm = pt_ptr_workflow_manager_calc_lcoe
 
     wfm.calculate_LCOE()
 
@@ -1144,8 +1146,8 @@ def test_calculate_LCOE(pt_PTRWorkflowManager_calcLCOE):
 
 
 @pytest.fixture
-def pt_PTRWorkflowManager_calcCFs() -> PTRWorkflowManager:
-    wfm = test_PTRWorkflowManager__init__()
+def pt_ptr_workflow_manager_calc_cfs() -> PTRWorkflowManager:
+    wfm = test_ptr_workflow_manager__init__()
     wfm.placements["capacity_sf_W_th"] = 58e6
     wfm.sim_data["HeattoPlant_W"] = dni_test * 1e5 * 0.7
     wfm.placements["power_plant_capacity_W_el"] = 58e6 / 2 * 0.4
@@ -1162,10 +1164,10 @@ def pt_PTRWorkflowManager_calcCFs() -> PTRWorkflowManager:
     return wfm
 
 
-def test_calculateCapacityFactors(pt_PTRWorkflowManager_calcCFs):
-    wfm = pt_PTRWorkflowManager_calcCFs
+def test_calculate_capacity_factors(pt_ptr_workflow_manager_calc_cfs: PTRWorkflowManager):
+    wfm = pt_ptr_workflow_manager_calc_cfs
 
-    wfm.calculateCapacityFactors()
+    wfm.calculate_capacity_factors()
 
     assert wfm.sim_data["capacity_factor_sf"].shape == (140, 3)
     assert np.isclose(wfm.sim_data["capacity_factor_sf"].mean(), 0.08197873433178876)

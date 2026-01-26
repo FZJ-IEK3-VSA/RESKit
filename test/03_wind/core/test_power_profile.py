@@ -26,7 +26,7 @@ def test_apply_power_profile_projection():
     assert np.isclose(output[2], 6.0)
 
 
-def test_alphaFromLevels():
+def test_alpha_from_levels():
     a = alpha_from_levels(low_wind_speed=3, low_height=10, high_wind_speed=4, high_height=50)
     assert np.isclose(a, 0.1787469216608008)
 

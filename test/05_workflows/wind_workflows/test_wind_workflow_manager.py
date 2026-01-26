@@ -14,7 +14,7 @@ alternative_wind_speed_rasters = {
 }
 
 
-def test_WindWorkflowManager___init__():
+def test_wind_workflow_manager___init__():
     placements = pd.DataFrame()
     placements["lon"] = [
         6.083,
@@ -68,8 +68,8 @@ def test_WindWorkflowManager___init__():
     return man
 
 
-def test_WindWorkflowManager_with_ws___init__():
-    man = test_WindWorkflowManager___init__()
+def test_wind_workflow_manager_with_ws___init__():
+    man = test_wind_workflow_manager___init__()
     # generate random wind data for only 24 hrs and add to manager
     np.random.seed(seed=12345)
     wind_speeds = np.random.randint(0, 16, size=(24, len(man.placements)))
@@ -80,31 +80,31 @@ def test_WindWorkflowManager_with_ws___init__():
 
 
 @pytest.fixture
-def pt_WindWorkflowManager_initialized() -> WindWorkflowManager:
-    return test_WindWorkflowManager___init__()
+def pt_wind_workflow_manager_initialized() -> WindWorkflowManager:
+    return test_wind_workflow_manager___init__()
 
 
-def test_WindWorkflowManager_set_roughness(pt_WindWorkflowManager_initialized):
-    man = pt_WindWorkflowManager_initialized
+def test_wind_workflow_manager_set_roughness(pt_wind_workflow_manager_initialized):
+    man = pt_wind_workflow_manager_initialized
 
     roughnesses = [0.1, 0.01, 0.001, 0.0001, 0.00001]
     man.set_roughness(roughnesses)
     assert (man.placements["roughness"] == roughnesses).all()
 
 
-def test_WindWorkflowManager_estimate_roughness_from_land_cover(
-    pt_WindWorkflowManager_initialized,
+def test_wind_workflow_manager_estimate_roughness_from_land_cover(
+    pt_wind_workflow_manager_initialized,
 ):
-    man = pt_WindWorkflowManager_initialized
+    man = pt_wind_workflow_manager_initialized
     man.estimate_roughness_from_land_cover(rk.TEST_DATA["clc-aachen_clipped.tif"], source_type="clc")
     assert (man.placements["roughness"] == [0.5, 0.0005, 0.03, 0.03, 0.3]).all()
 
 
 @pytest.fixture
-def pt_WindWorkflowManager_loaded(
-    pt_WindWorkflowManager_initialized: WindWorkflowManager,
+def pt_wind_workflow_manager_loaded(
+    pt_wind_workflow_manager_initialized: WindWorkflowManager,
 ) -> WindWorkflowManager:
-    man = pt_WindWorkflowManager_initialized
+    man = pt_wind_workflow_manager_initialized
 
     man.read(
         variables=[
@@ -121,10 +121,10 @@ def pt_WindWorkflowManager_loaded(
     return man
 
 
-def test_WindWorkflowManager_logarithmic_projection_of_wind_speeds_to_hub_height(
-    pt_WindWorkflowManager_loaded,
+def test_wind_workflow_manager_logarithmic_projection_of_wind_speeds_to_hub_height(
+    pt_wind_workflow_manager_loaded,
 ):
-    man = pt_WindWorkflowManager_loaded
+    man = pt_wind_workflow_manager_loaded
 
     roughnesses = [0.1, 0.01, 0.001, 0.0001, 0.00001]
     man.set_roughness(roughnesses)
@@ -135,10 +135,10 @@ def test_WindWorkflowManager_logarithmic_projection_of_wind_speeds_to_hub_height
     assert np.isclose(man.sim_data["elevated_wind_speed"].std(), 2.9112541058945705)
 
 
-def test_WindWorkflowManager_wind_shear_projection_of_wind_speeds_to_hub_height(
-    pt_WindWorkflowManager_loaded,
+def test_wind_workflow_manager_wind_shear_projection_of_wind_speeds_to_hub_height(
+    pt_wind_workflow_manager_loaded,
 ):
-    man = pt_WindWorkflowManager_loaded
+    man = pt_wind_workflow_manager_loaded
 
     man.real_lra = np.array(
         [5.64914904, 5.42147512, 5.65448952, 5.75908499, 5.94873524]
@@ -152,10 +152,10 @@ def test_WindWorkflowManager_wind_shear_projection_of_wind_speeds_to_hub_height(
     assert np.isclose(man.sim_data["elevated_wind_speed"].std(), 3.0918568121980496)
 
 
-def test_WindWorkflowManager_project_windspeeds_to_hub_height(
-    pt_WindWorkflowManager_loaded,
+def test_wind_workflow_manager_project_windspeeds_to_hub_height(
+    pt_wind_workflow_manager_loaded,
 ):
-    man = copy.copy(pt_WindWorkflowManager_loaded)
+    man = copy.copy(pt_wind_workflow_manager_loaded)
 
     # exemplary test for LRA scaling
     man.real_lra = np.array(
@@ -173,7 +173,7 @@ def test_WindWorkflowManager_project_windspeeds_to_hub_height(
 
     # exemplary test for log scaling
 
-    man = copy.copy(pt_WindWorkflowManager_loaded)  # reset workflow manager
+    man = copy.copy(pt_wind_workflow_manager_loaded)  # reset workflow manager
 
     man.project_windspeeds_to_hub_height(
         height_scaling_method=("log", "cci"),
@@ -185,10 +185,10 @@ def test_WindWorkflowManager_project_windspeeds_to_hub_height(
     assert np.isclose(man.sim_data["elevated_wind_speed"].std(), 3.2201061773430104)
 
 
-def test_WindWorkflowManager_apply_air_density_correction_to_wind_speeds(
-    pt_WindWorkflowManager_loaded,
+def test_wind_workflow_manager_apply_air_density_correction_to_wind_speeds(
+    pt_wind_workflow_manager_loaded,
 ):
-    man = pt_WindWorkflowManager_loaded
+    man = pt_wind_workflow_manager_loaded
 
     man.apply_air_density_correction_to_wind_speeds()
 
@@ -196,17 +196,17 @@ def test_WindWorkflowManager_apply_air_density_correction_to_wind_speeds(
     assert np.isclose(man.sim_data["elevated_wind_speed"].std(), 2.822941278260297)
 
 
-def test_WindWorkflowManager_convolute_power_curves(pt_WindWorkflowManager_initialized):
-    man = pt_WindWorkflowManager_initialized
+def test_wind_workflow_manager_convolute_power_curves(pt_wind_workflow_manager_initialized):
+    man = pt_wind_workflow_manager_initialized
     man.convolute_power_curves(scaling=0.06, base=0.1)
 
     assert np.isclose(man.powerCurveLibrary["SPC:138,25"].capacity_factor.mean(), 0.47633148562562416)
     assert np.isclose(man.powerCurveLibrary["SPC:138,25"].capacity_factor.std(), 0.4521186399908671)
 
 
-def test_WindWorkflowManager_apply_wake_correction_of_wind_speeds():
+def test_wind_workflow_manager_apply_wake_correction_of_wind_speeds():
     # first without any "wake_curve"
-    man = test_WindWorkflowManager_with_ws___init__()
+    man = test_wind_workflow_manager_with_ws___init__()
     assert not "wake_curve" in man.placements.columns
     man.apply_wake_correction_of_wind_speeds(wake_curve=None)
 
@@ -216,7 +216,7 @@ def test_WindWorkflowManager_apply_wake_correction_of_wind_speeds():
     ).all()
 
     # now with scalar "wake_curve" function arg
-    man = test_WindWorkflowManager_with_ws___init__()
+    man = test_wind_workflow_manager_with_ws___init__()
     assert not "wake_curve" in man.placements.columns
     man.apply_wake_correction_of_wind_speeds(wake_curve="dena_mean")
 
@@ -226,7 +226,7 @@ def test_WindWorkflowManager_apply_wake_correction_of_wind_speeds():
     ).all()
 
     # and last with location-specific column value
-    man = test_WindWorkflowManager_with_ws___init__()
+    man = test_wind_workflow_manager_with_ws___init__()
     man.placements["wake_curve"] = None
     man.placements.loc[2, "wake_curve"] = "dena_mean"
     man.apply_wake_correction_of_wind_speeds(wake_curve=None)
@@ -237,15 +237,15 @@ def test_WindWorkflowManager_apply_wake_correction_of_wind_speeds():
     ).all()
 
 
-def test_WindWorkflowManager_simulate(pt_WindWorkflowManager_loaded):
-    man = pt_WindWorkflowManager_loaded
+def test_wind_workflow_manager_simulate(pt_wind_workflow_manager_loaded):
+    man = pt_wind_workflow_manager_loaded
 
     man.simulate()
     assert np.isclose(man.sim_data["capacity_factor"].mean(), 0.4845642857142858)
     assert np.isclose(man.sim_data["capacity_factor"].std(), 0.3275352284371056)
 
     # test with max_batch_size = 3
-    man_batch = pt_WindWorkflowManager_loaded
+    man_batch = pt_wind_workflow_manager_loaded
 
     man_batch.simulate(max_batch_size=3)
     assert np.isclose(
@@ -280,7 +280,7 @@ def test_WindWorkflowManager_simulate(pt_WindWorkflowManager_loaded):
     )
 
 
-def test_WindWorkflowManager_mixed_values___init___():
+def test_wind_workflow_manager_mixed_values___init___():
     placements = pd.DataFrame()
     placements["lon"] = [
         6.083,
