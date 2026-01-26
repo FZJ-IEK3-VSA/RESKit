@@ -109,98 +109,98 @@ def roughness_from_levels(low_wind_speed, low_height, high_wind_speed, high_heig
 # See CLC codes at: https://land.copernicus.eu/pan-european/corine-land-cover/clc-2000 #Link updated
 # Roughnesses defined primarily from: Silva, J., Ribeiro, C., & Guedes, R. (2007). Roughness length classification of corine land cover classes. European Wind Energy Conference and Exhibition 2007, EWEC 2007.
 
-clcCodeToRoughess = OrderedDict()
-clcCodeToRoughess[111] = 1.2  # Continuous urban fabric
-clcCodeToRoughess[311] = 0.75  # Broad-leaved forest
-clcCodeToRoughess[312] = 0.75  # Coniferous-leaved forest
-clcCodeToRoughess[313] = 0.75  # Mixed-leaved forest
-clcCodeToRoughess[141] = 0.6  # Green urban areas
-clcCodeToRoughess[324] = 0.6  # Transitional woodland/shrub
-clcCodeToRoughess[334] = 0.6  # Burnt areas
-clcCodeToRoughess[112] = 0.5  # Discontinuous urban fabric
-clcCodeToRoughess[133] = 0.5  # Construction sites
-clcCodeToRoughess[121] = 0.5  # Industrial or commercial units
-clcCodeToRoughess[142] = 0.5  # Sport and leisure facilities
-clcCodeToRoughess[123] = 0.5  # Port areas
-clcCodeToRoughess[242] = 0.3  # Agro-forestry areas
-clcCodeToRoughess[243] = 0.3  # Complex cultivation patterns
+clc_code_to_roughness = OrderedDict()
+clc_code_to_roughness[111] = 1.2  # Continuous urban fabric
+clc_code_to_roughness[311] = 0.75  # Broad-leaved forest
+clc_code_to_roughness[312] = 0.75  # Coniferous-leaved forest
+clc_code_to_roughness[313] = 0.75  # Mixed-leaved forest
+clc_code_to_roughness[141] = 0.6  # Green urban areas
+clc_code_to_roughness[324] = 0.6  # Transitional woodland/shrub
+clc_code_to_roughness[334] = 0.6  # Burnt areas
+clc_code_to_roughness[112] = 0.5  # Discontinuous urban fabric
+clc_code_to_roughness[133] = 0.5  # Construction sites
+clc_code_to_roughness[121] = 0.5  # Industrial or commercial units
+clc_code_to_roughness[142] = 0.5  # Sport and leisure facilities
+clc_code_to_roughness[123] = 0.5  # Port areas
+clc_code_to_roughness[242] = 0.3  # Agro-forestry areas
+clc_code_to_roughness[243] = 0.3  # Complex cultivation patterns
 # Land principally occupied by agriculture, with significant areas of natural vegetation
-clcCodeToRoughess[244] = 0.3
-clcCodeToRoughess[241] = 0.1  # Annual crops associated with permanent crops
-clcCodeToRoughess[221] = 0.1  # Fruit trees and berry plantations
-clcCodeToRoughess[222] = 0.1  # Vineyard
-clcCodeToRoughess[223] = 0.1  # Olive groves
-clcCodeToRoughess[122] = 0.075  # Road and rail networks and associated land
-clcCodeToRoughess[211] = 0.05  # Non-irrigated arable land
-clcCodeToRoughess[212] = 0.05  # Permanently irrigated land
-clcCodeToRoughess[213] = 0.05  # Rice fields
-clcCodeToRoughess[411] = 0.05  # Inland marshes
-clcCodeToRoughess[421] = 0.05  # Salt marshes
-clcCodeToRoughess[321] = 0.03  # Sclerophylous vegetation
-clcCodeToRoughess[322] = 0.03  # Moors and heathland
-clcCodeToRoughess[323] = 0.03  # Natural grassland
-clcCodeToRoughess[231] = 0.03  # Pastures
-clcCodeToRoughess[131] = 0.005  # Dump sites
-clcCodeToRoughess[132] = 0.005  # Mineral extraction sites
-clcCodeToRoughess[124] = 0.005  # Airports
-clcCodeToRoughess[332] = 0.005  # Bare rock
-clcCodeToRoughess[333] = 0.005  # Sparsely vegetated areas
-clcCodeToRoughess[335] = 0.001  # Glaciers and perpetual snow
-clcCodeToRoughess[422] = 0.0005  # Peatbogs
-clcCodeToRoughess[412] = 0.0005  # Salines
-clcCodeToRoughess[423] = 0.0005  # Intertidal flats
-clcCodeToRoughess[331] = 0.0003  # Beaches, dunes, and sand plains
-clcCodeToRoughess[511] = 0.001  # Water courses # SUSPICIOUS
-clcCodeToRoughess[512] = 0.0005  # Water bodies # SUSPISCIOUS
-clcCodeToRoughess[521] = 0.0005  # Costal lagoons # SUSPISCIOUS
-clcCodeToRoughess[522] = 0.0008  # Estuaries # SUSPISCIOUS
-clcCodeToRoughess[523] = 0.0002  # Sea and ocean # SUSPISCIOUS
+clc_code_to_roughness[244] = 0.3
+clc_code_to_roughness[241] = 0.1  # Annual crops associated with permanent crops
+clc_code_to_roughness[221] = 0.1  # Fruit trees and berry plantations
+clc_code_to_roughness[222] = 0.1  # Vineyard
+clc_code_to_roughness[223] = 0.1  # Olive groves
+clc_code_to_roughness[122] = 0.075  # Road and rail networks and associated land
+clc_code_to_roughness[211] = 0.05  # Non-irrigated arable land
+clc_code_to_roughness[212] = 0.05  # Permanently irrigated land
+clc_code_to_roughness[213] = 0.05  # Rice fields
+clc_code_to_roughness[411] = 0.05  # Inland marshes
+clc_code_to_roughness[421] = 0.05  # Salt marshes
+clc_code_to_roughness[321] = 0.03  # Sclerophylous vegetation
+clc_code_to_roughness[322] = 0.03  # Moors and heathland
+clc_code_to_roughness[323] = 0.03  # Natural grassland
+clc_code_to_roughness[231] = 0.03  # Pastures
+clc_code_to_roughness[131] = 0.005  # Dump sites
+clc_code_to_roughness[132] = 0.005  # Mineral extraction sites
+clc_code_to_roughness[124] = 0.005  # Airports
+clc_code_to_roughness[332] = 0.005  # Bare rock
+clc_code_to_roughness[333] = 0.005  # Sparsely vegetated areas
+clc_code_to_roughness[335] = 0.001  # Glaciers and perpetual snow
+clc_code_to_roughness[422] = 0.0005  # Peatbogs
+clc_code_to_roughness[412] = 0.0005  # Salines
+clc_code_to_roughness[423] = 0.0005  # Intertidal flats
+clc_code_to_roughness[331] = 0.0003  # Beaches, dunes, and sand plains
+clc_code_to_roughness[511] = 0.001  # Water courses # SUSPICIOUS
+clc_code_to_roughness[512] = 0.0005  # Water bodies # SUSPISCIOUS
+clc_code_to_roughness[521] = 0.0005  # Costal lagoons # SUSPISCIOUS
+clc_code_to_roughness[522] = 0.0008  # Estuaries # SUSPISCIOUS
+clc_code_to_roughness[523] = 0.0002  # Sea and ocean # SUSPISCIOUS
 
-clcGridToCode_v2006 = OrderedDict()
-clcGridToCode_v2006[1] = 111
-clcGridToCode_v2006[2] = 112
-clcGridToCode_v2006[3] = 121
-clcGridToCode_v2006[4] = 122
-clcGridToCode_v2006[5] = 123
-clcGridToCode_v2006[6] = 124
-clcGridToCode_v2006[7] = 131
-clcGridToCode_v2006[8] = 132
-clcGridToCode_v2006[9] = 133
-clcGridToCode_v2006[10] = 141
-clcGridToCode_v2006[11] = 142
-clcGridToCode_v2006[12] = 211
-clcGridToCode_v2006[13] = 212
-clcGridToCode_v2006[14] = 213
-clcGridToCode_v2006[15] = 221
-clcGridToCode_v2006[16] = 222
-clcGridToCode_v2006[17] = 223
-clcGridToCode_v2006[18] = 231
-clcGridToCode_v2006[19] = 241
-clcGridToCode_v2006[20] = 242
-clcGridToCode_v2006[21] = 243
-clcGridToCode_v2006[22] = 244
-clcGridToCode_v2006[23] = 311
-clcGridToCode_v2006[24] = 312
-clcGridToCode_v2006[25] = 313
-clcGridToCode_v2006[26] = 321
-clcGridToCode_v2006[27] = 322
-clcGridToCode_v2006[28] = 323
-clcGridToCode_v2006[29] = 324
-clcGridToCode_v2006[30] = 331
-clcGridToCode_v2006[31] = 332
-clcGridToCode_v2006[32] = 333
-clcGridToCode_v2006[33] = 334
-clcGridToCode_v2006[34] = 335
-clcGridToCode_v2006[35] = 411
-clcGridToCode_v2006[36] = 412
-clcGridToCode_v2006[37] = 421
-clcGridToCode_v2006[38] = 422
-clcGridToCode_v2006[39] = 423
-clcGridToCode_v2006[40] = 511
-clcGridToCode_v2006[41] = 512
-clcGridToCode_v2006[42] = 521
-clcGridToCode_v2006[43] = 522
-clcGridToCode_v2006[44] = 523
+clc_grid_to_code_v2006 = OrderedDict()
+clc_grid_to_code_v2006[1] = 111
+clc_grid_to_code_v2006[2] = 112
+clc_grid_to_code_v2006[3] = 121
+clc_grid_to_code_v2006[4] = 122
+clc_grid_to_code_v2006[5] = 123
+clc_grid_to_code_v2006[6] = 124
+clc_grid_to_code_v2006[7] = 131
+clc_grid_to_code_v2006[8] = 132
+clc_grid_to_code_v2006[9] = 133
+clc_grid_to_code_v2006[10] = 141
+clc_grid_to_code_v2006[11] = 142
+clc_grid_to_code_v2006[12] = 211
+clc_grid_to_code_v2006[13] = 212
+clc_grid_to_code_v2006[14] = 213
+clc_grid_to_code_v2006[15] = 221
+clc_grid_to_code_v2006[16] = 222
+clc_grid_to_code_v2006[17] = 223
+clc_grid_to_code_v2006[18] = 231
+clc_grid_to_code_v2006[19] = 241
+clc_grid_to_code_v2006[20] = 242
+clc_grid_to_code_v2006[21] = 243
+clc_grid_to_code_v2006[22] = 244
+clc_grid_to_code_v2006[23] = 311
+clc_grid_to_code_v2006[24] = 312
+clc_grid_to_code_v2006[25] = 313
+clc_grid_to_code_v2006[26] = 321
+clc_grid_to_code_v2006[27] = 322
+clc_grid_to_code_v2006[28] = 323
+clc_grid_to_code_v2006[29] = 324
+clc_grid_to_code_v2006[30] = 331
+clc_grid_to_code_v2006[31] = 332
+clc_grid_to_code_v2006[32] = 333
+clc_grid_to_code_v2006[33] = 334
+clc_grid_to_code_v2006[34] = 335
+clc_grid_to_code_v2006[35] = 411
+clc_grid_to_code_v2006[36] = 412
+clc_grid_to_code_v2006[37] = 421
+clc_grid_to_code_v2006[38] = 422
+clc_grid_to_code_v2006[39] = 423
+clc_grid_to_code_v2006[40] = 511
+clc_grid_to_code_v2006[41] = 512
+clc_grid_to_code_v2006[42] = 521
+clc_grid_to_code_v2006[43] = 522
+clc_grid_to_code_v2006[44] = 523
 
 
 def roughness_from_clc(clc_path, loc, window_range=0):
@@ -295,12 +295,12 @@ def roughness_from_clc(clc_path, loc, window_range=0):
     loc = gk.LocationSet(loc)
 
     # Get pixels values from clc
-    clcGridValues = gk.raster.interpolateValues(clc_path, loc, winRange=window_range, noDataOkay=True)
+    clc_grid_values = gk.raster.interpolateValues(clc_path, loc, winRange=window_range, noDataOkay=True)
 
     # make output array
     if window_range > 0:
         outputs = []
-        for v in clcGridValues:
+        for v in clc_grid_values:
             # Treat nodata as ocean
             v[np.isnan(v)] = 44
             v[v > 44] = 44
@@ -310,17 +310,17 @@ def roughness_from_clc(clc_path, loc, window_range=0):
 
             total = 0
             for val, cnt in zip(values, counts):
-                total += cnt * clcCodeToRoughess[clcGridToCode_v2006[val]]
+                total += cnt * clc_code_to_roughness[clc_grid_to_code_v2006[val]]
 
             outputs.append(total / counts.sum())
     else:
         # Treat nodata as ocean
-        clcGridValues[np.isnan(clcGridValues)] = 44
-        clcGridValues[clcGridValues > 44] = 44
-        clcGridValues = clcGridValues.astype(int)
+        clc_grid_values[np.isnan(clc_grid_values)] = 44
+        clc_grid_values[clc_grid_values > 44] = 44
+        clc_grid_values = clc_grid_values.astype(int)
 
         # Get the associated
-        outputs = [clcCodeToRoughess[clcGridToCode_v2006[val]] for val in clcGridValues]
+        outputs = [clc_code_to_roughness[clc_grid_to_code_v2006[val]] for val in clc_grid_values]
 
     # Done!
     if len(outputs) == 1:
@@ -331,115 +331,115 @@ def roughness_from_clc(clc_path, loc, window_range=0):
 
 ############################################################################
 # Defined primarily from [2] DTU Wind Energy. (2019). Global Wind Atlas
-globCoverCodeToRoughess = OrderedDict()
+glob_cover_code_to_roughness = OrderedDict()
 # GlobCover Number
 # Water Bodies # changed by Me from 0.0 to 0.0002
-globCoverCodeToRoughess[210] = 0.0002
-globCoverCodeToRoughess[220] = 0.0004  # Permanent Snow and ice
-globCoverCodeToRoughess[200] = 0.005  # Bare areas
-globCoverCodeToRoughess[140] = 0.03  # Grasslands, savannas or lichens/mosses
-globCoverCodeToRoughess[150] = 0.05  # Sparse vegetation
-globCoverCodeToRoughess[11] = 0.1  # Croplands
-globCoverCodeToRoughess[14] = 0.1  # Croplands
-globCoverCodeToRoughess[130] = 0.1  # Shrubland
-globCoverCodeToRoughess[180] = 0.2  # Wetlands
-globCoverCodeToRoughess[20] = 0.3  # Mosaic natural vegetation/cropland
-globCoverCodeToRoughess[30] = 0.3  # Mosaic natural vegetation/cropland
-globCoverCodeToRoughess[160] = 0.5  # Flooded forest
-globCoverCodeToRoughess[120] = 0.5  # Mosaic grassland/forest
-globCoverCodeToRoughess[170] = 0.6  # Flooded forest or shrubland
-globCoverCodeToRoughess[190] = 1.0  # Urban Areas
-globCoverCodeToRoughess[40] = 1.5  # Forests
-globCoverCodeToRoughess[50] = 1.5  # Forests
-globCoverCodeToRoughess[60] = 1.5  # Forests
-globCoverCodeToRoughess[70] = 1.5  # Forests
-globCoverCodeToRoughess[90] = 1.5  # Forests
-globCoverCodeToRoughess[100] = 1.5  # Forests
-globCoverCodeToRoughess[110] = 1.5  # Forests
+glob_cover_code_to_roughness[210] = 0.0002
+glob_cover_code_to_roughness[220] = 0.0004  # Permanent Snow and ice
+glob_cover_code_to_roughness[200] = 0.005  # Bare areas
+glob_cover_code_to_roughness[140] = 0.03  # Grasslands, savannas or lichens/mosses
+glob_cover_code_to_roughness[150] = 0.05  # Sparse vegetation
+glob_cover_code_to_roughness[11] = 0.1  # Croplands
+glob_cover_code_to_roughness[14] = 0.1  # Croplands
+glob_cover_code_to_roughness[130] = 0.1  # Shrubland
+glob_cover_code_to_roughness[180] = 0.2  # Wetlands
+glob_cover_code_to_roughness[20] = 0.3  # Mosaic natural vegetation/cropland
+glob_cover_code_to_roughness[30] = 0.3  # Mosaic natural vegetation/cropland
+glob_cover_code_to_roughness[160] = 0.5  # Flooded forest
+glob_cover_code_to_roughness[120] = 0.5  # Mosaic grassland/forest
+glob_cover_code_to_roughness[170] = 0.6  # Flooded forest or shrubland
+glob_cover_code_to_roughness[190] = 1.0  # Urban Areas
+glob_cover_code_to_roughness[40] = 1.5  # Forests
+glob_cover_code_to_roughness[50] = 1.5  # Forests
+glob_cover_code_to_roughness[60] = 1.5  # Forests
+glob_cover_code_to_roughness[70] = 1.5  # Forests
+glob_cover_code_to_roughness[90] = 1.5  # Forests
+glob_cover_code_to_roughness[100] = 1.5  # Forests
+glob_cover_code_to_roughness[110] = 1.5  # Forests
 
 # Modis Number for "no data" points of GlobCover (mostly in areas North of 60°)
-modisCodeToRoughess = OrderedDict()
-modisCodeToRoughess[0] = 0.0  # Water Bodies
-modisCodeToRoughess[15] = 0.0004  # Permanent Snow and ice
-modisCodeToRoughess[16] = 0.005  # Bare areas
-modisCodeToRoughess[10] = 0.03  # Grasslands, savannas or lichens/mosses
-modisCodeToRoughess[12] = 0.1  # Croplands
-modisCodeToRoughess[6] = 0.1  # Shrubland
-modisCodeToRoughess[7] = 0.1  # Shrubland
-modisCodeToRoughess[11] = 0.2  # Wetlands
-modisCodeToRoughess[14] = 0.3  # Mosaic natural vegetation/cropland
-modisCodeToRoughess[9] = 0.5  # Mosaic grassland/forest
-modisCodeToRoughess[13] = 1.0  # Urban Areas
-modisCodeToRoughess[1] = 1.5  # Forests
-modisCodeToRoughess[2] = 1.5  # Forests
-modisCodeToRoughess[3] = 1.5  # Forests
-modisCodeToRoughess[4] = 1.5  # Forests
-modisCodeToRoughess[5] = 1.5  # Forests
-modisCodeToRoughess[8] = 1.5  # Forests
+modis_code_to_roughness = OrderedDict()
+modis_code_to_roughness[0] = 0.0  # Water Bodies
+modis_code_to_roughness[15] = 0.0004  # Permanent Snow and ice
+modis_code_to_roughness[16] = 0.005  # Bare areas
+modis_code_to_roughness[10] = 0.03  # Grasslands, savannas or lichens/mosses
+modis_code_to_roughness[12] = 0.1  # Croplands
+modis_code_to_roughness[6] = 0.1  # Shrubland
+modis_code_to_roughness[7] = 0.1  # Shrubland
+modis_code_to_roughness[11] = 0.2  # Wetlands
+modis_code_to_roughness[14] = 0.3  # Mosaic natural vegetation/cropland
+modis_code_to_roughness[9] = 0.5  # Mosaic grassland/forest
+modis_code_to_roughness[13] = 1.0  # Urban Areas
+modis_code_to_roughness[1] = 1.5  # Forests
+modis_code_to_roughness[2] = 1.5  # Forests
+modis_code_to_roughness[3] = 1.5  # Forests
+modis_code_to_roughness[4] = 1.5  # Forests
+modis_code_to_roughness[5] = 1.5  # Forests
+modis_code_to_roughness[8] = 1.5  # Forests
 
 ############################################################################
 # CCI Landcover  classification by ESA and the Climate Change Initiative [3] European Space Agency. (2014). ESA Climate Change Initiative. https://www.esa-landcover-cci.org/?q=node/1
 # Roughnesses defined due to the comparison with CLC and globCover
-cciCodeToRoughess = OrderedDict()
+cci_code_to_roughness = OrderedDict()
 # CCI LC Number
-cciCodeToRoughess[210] = 0.0002  # Water bodies
-cciCodeToRoughess[220] = 0.001  # Permanent snow and ice
-cciCodeToRoughess[200] = 0.005  # Bare areas
-cciCodeToRoughess[201] = 0.005  # Consolidated bare areas
-cciCodeToRoughess[202] = 0.005  # Unconsolidated bare areas
+cci_code_to_roughness[210] = 0.0002  # Water bodies
+cci_code_to_roughness[220] = 0.001  # Permanent snow and ice
+cci_code_to_roughness[200] = 0.005  # Bare areas
+cci_code_to_roughness[201] = 0.005  # Consolidated bare areas
+cci_code_to_roughness[202] = 0.005  # Unconsolidated bare areas
 # Sparse vegetation (tree, shrub, herbaceous cover) (<15%)
-cciCodeToRoughess[150] = 0.005
-cciCodeToRoughess[151] = 0.005  # Sparse tree (<15%)
-cciCodeToRoughess[152] = 0.005  # Sparse shrub (<15%)
-cciCodeToRoughess[153] = 0.005  # Sparse herbaceous cover (<15%)
-cciCodeToRoughess[10] = 0.03  # Cropland, rainfed
-cciCodeToRoughess[11] = 0.03  # Herbaceous cover
-cciCodeToRoughess[120] = 0.03  # Shrubland
+cci_code_to_roughness[150] = 0.005
+cci_code_to_roughness[151] = 0.005  # Sparse tree (<15%)
+cci_code_to_roughness[152] = 0.005  # Sparse shrub (<15%)
+cci_code_to_roughness[153] = 0.005  # Sparse herbaceous cover (<15%)
+cci_code_to_roughness[10] = 0.03  # Cropland, rainfed
+cci_code_to_roughness[11] = 0.03  # Herbaceous cover
+cci_code_to_roughness[120] = 0.03  # Shrubland
 # Shrubland evergreen #barely exists, only near water bodies, ocean
-cciCodeToRoughess[121] = 0.03
+cci_code_to_roughness[121] = 0.03
 # Shrubland deciduous #barely exists, only near water bodies, ocean
-cciCodeToRoughess[122] = 0.03
-cciCodeToRoughess[12] = 0.3  # Tree or shrub cover
+cci_code_to_roughness[122] = 0.03
+cci_code_to_roughness[12] = 0.3  # Tree or shrub cover
 # Mosaic herbaceous cover (>50%) / tree and shrub (<50%)
-cciCodeToRoughess[110] = 0.03
+cci_code_to_roughness[110] = 0.03
 # Mosaic natural vegetation (tree, shrub, herbaceous cover) (>50%) / cropland (<50%)
-cciCodeToRoughess[40] = 0.03
+cci_code_to_roughness[40] = 0.03
 # Shrub or herbaceous cover, flooded, fresh/saline/brakish water
-cciCodeToRoughess[180] = 0.03
-cciCodeToRoughess[130] = 0.03  # Grassland
-cciCodeToRoughess[140] = 0.03  # Lichens and mosses
+cci_code_to_roughness[180] = 0.03
+cci_code_to_roughness[130] = 0.03  # Grassland
+cci_code_to_roughness[140] = 0.03  # Lichens and mosses
 # Tree cover, flooded, saline water (areas around river deltas and ocean)
-cciCodeToRoughess[170] = 0.1
-cciCodeToRoughess[20] = 0.1  # Cropland, irrigated or post-flooding
+cci_code_to_roughness[170] = 0.1
+cci_code_to_roughness[20] = 0.1  # Cropland, irrigated or post-flooding
 # Mosaic cropland (>50%) / natural vegetation (tree, shrub, herbaceous cover) (<50%)
-cciCodeToRoughess[30] = 0.1
+cci_code_to_roughness[30] = 0.1
 # Tree cover, flooded, fresh or brakish water, barely exists
-cciCodeToRoughess[160] = 0.5
+cci_code_to_roughness[160] = 0.5
 # Mosaic tree and shrub (>50%) / herbaceous cover (<50%)
-cciCodeToRoughess[100] = 0.75
+cci_code_to_roughness[100] = 0.75
 # Tree cover, broadleaved, evergreen, closed to open (>15%)
-cciCodeToRoughess[50] = 0.75
+cci_code_to_roughness[50] = 0.75
 # Tree cover, broadleaved, deciduous, closed to open (>15%)
-cciCodeToRoughess[60] = 0.75
+cci_code_to_roughness[60] = 0.75
 # Tree cover, broadleaved, deciduous, closed (>40%)
-cciCodeToRoughess[61] = 0.75
+cci_code_to_roughness[61] = 0.75
 # Tree cover, broadleaved, deciduous, open (15-40%)
-cciCodeToRoughess[62] = 0.75
+cci_code_to_roughness[62] = 0.75
 # Tree cover, needleleaved, evergreen, closed to open (>15%)
-cciCodeToRoughess[70] = 0.75
+cci_code_to_roughness[70] = 0.75
 # Tree cover, needleleaved, evergreen, closed (>40%)
-cciCodeToRoughess[71] = 0.75
+cci_code_to_roughness[71] = 0.75
 # Tree cover, needleleaved, evergreen, open (15-40%)
-cciCodeToRoughess[72] = 0.75
+cci_code_to_roughness[72] = 0.75
 # Tree cover, needleleaved, deciduous, closed to open (>15%)
-cciCodeToRoughess[80] = 0.75
+cci_code_to_roughness[80] = 0.75
 # Tree cover, needleleaved, deciduous, closed (>40%)
-cciCodeToRoughess[81] = 0.75
+cci_code_to_roughness[81] = 0.75
 # Tree cover, needleleaved, deciduous, open (15-40%)
-cciCodeToRoughess[82] = 0.75
+cci_code_to_roughness[82] = 0.75
 # Tree cover, mixed leaf type (broadleaved and needleleaved)
-cciCodeToRoughess[90] = 0.75
-cciCodeToRoughess[190] = 1.2  # Urban areas
+cci_code_to_roughness[90] = 0.75
+cci_code_to_roughness[190] = 1.2  # Urban areas
 
 
 def roughness_from_land_cover_classification(classification, land_cover_type="clc"):
@@ -481,27 +481,27 @@ def roughness_from_land_cover_classification(classification, land_cover_type="cl
 
         # set source
         def source(x):
-            return clcCodeToRoughess[clcGridToCode_v2006[x]]
+            return clc_code_to_roughness[clc_grid_to_code_v2006[x]]
 
     elif land_cover_type == "clc-code":
 
         def source(x):
-            return clcCodeToRoughess[x]
+            return clc_code_to_roughness[x]
 
     elif land_cover_type == "globCover":
 
         def source(x):
-            return globCoverCodeToRoughess[x]
+            return glob_cover_code_to_roughness[x]
 
     elif land_cover_type == "modis":
 
         def source(x):
-            return modisCodeToRoughess[x]
+            return modis_code_to_roughness[x]
 
     elif land_cover_type == "cci":
 
         def source(x):
-            return cciCodeToRoughess[x]
+            return cci_code_to_roughness[x]
 
     else:
         raise ResError(f"invalid input for land_cover_type: {land_cover_type}")

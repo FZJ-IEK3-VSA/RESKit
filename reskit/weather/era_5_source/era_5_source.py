@@ -144,7 +144,7 @@ class Era5Source(NCSource):
         Era5Source
         """
         # translate the mos common lear names for time_index_from
-        ERA5_names = {
+        era5_names = {
             "global_horizontal_irradiance_archive": "ssrd",
             "global_horizontal_irradiance": "ssrd_t_adj",
             "direct_horizontal_irradiance_archive": "fdir",
@@ -152,9 +152,9 @@ class Era5Source(NCSource):
             "surface_wind_speed": "w10",
             "elevated_wind_speed": "w100",
         }
-        if time_index_from in ERA5_names.keys():
+        if time_index_from in era5_names.keys():
             # if time_index_from is a known clear name use the dict
-            time_index_from = ERA5_names[time_index_from]
+            time_index_from = era5_names[time_index_from]
         else:
             # hope it is a well known ERA5 string. checks in super.__init__
             pass

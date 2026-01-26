@@ -13,7 +13,7 @@ from reskit.wind.core.power_curve import PowerCurve
 # Make a turbine model library
 TurbineInfo = namedtuple("TurbineInfo", "profile meta")
 
-rangeRE = re.compile("([0-9.]{1,})-([0-9.]{1,})")
+range_re = re.compile("([0-9.]{1,})-([0-9.]{1,})")
 
 
 def parse_turbine(path):
@@ -35,10 +35,10 @@ def parse_turbine(path):
             if "power curve" in line.lower():
                 break
 
-            sLine = line.split(",")
-            if sLine[0].lower() == "hubheight" or sLine[0].lower() == "hub_height":
+            s_line = line.split(",")
+            if s_line[0].lower() == "hubheight" or s_line[0].lower() == "hub_height":
                 heights = []
-                for h in sLine[1:]:
+                for h in s_line[1:]:
                     h = h.replace('"', "")
                     h = h.strip()
                     h = h.replace(" ", "")
@@ -48,7 +48,7 @@ def parse_turbine(path):
                         heights.append(h)
                     except:
                         try:
-                            a, b = rangeRE.search(h).groups()
+                            a, b = range_re.search(h).groups()
                             a = int(a)
                             b = int(b)
 
@@ -60,9 +60,9 @@ def parse_turbine(path):
                 meta["Hub_Height"] = np.array(heights)
             else:
                 try:
-                    meta[sLine[0].title()] = float(sLine[1])
+                    meta[s_line[0].title()] = float(s_line[1])
                 except:
-                    meta[sLine[0].title()] = sLine[1]
+                    meta[s_line[0].title()] = s_line[1]
 
         # Extract power profile
         tmp = pd.read_csv(fin)

@@ -31,19 +31,19 @@ def apply_air_density_adjustment(wind_speed, pressure, temperature, height=0):
     [1] International Electrotechnical Commission (ICE). (2017). IEC 61400-12-1:2017 (p. 558). https://webstore.iec.ch/publication/26603
 
     """
-    g0 = 9.80665  # Gravitational acceleration [m/s2]
-    Ma = 0.0289644  # Molar mass of dry air [kg/mol]
-    R = 8.3144598  # Universal gas constant [N·m/(mol·K)]
-    rhoSTD = 1.225  # Standard air density [kg/m3]
+    g_0 = 9.80665  # Gravitational acceleration [m/s2]
+    m_a = 0.0289644  # Molar mass of dry air [kg/mol]
+    r = 8.3144598  # Universal gas constant [N·m/(mol·K)]
+    rho_std = 1.225  # Standard air density [kg/m3]
 
     temperature = temperature + 273.15
 
     # Get surface density
-    rho = pressure * Ma / (R * temperature)
+    rho = pressure * m_a / (r * temperature)
 
     # Project rho to the desired height
     if not height is None:
-        rho = rho * np.exp((-g0 * Ma * height) / (R * temperature))
+        rho = rho * np.exp((-g_0 * m_a * height) / (r * temperature))
 
     # Adjust wind speeds to standard-air-density-equivalent
-    return np.power(rho / rhoSTD, 1 / 3) * wind_speed
+    return np.power(rho / rho_std, 1 / 3) * wind_speed
