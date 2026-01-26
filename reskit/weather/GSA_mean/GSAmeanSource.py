@@ -1,6 +1,6 @@
 from os.path import dirname, join
 
-from reskit.weather.NCSource import NCSource
+from reskit.weather.nc_source import NCSource
 
 
 class GSAmeanSource:

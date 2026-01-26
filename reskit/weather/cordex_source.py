@@ -1,6 +1,6 @@
 """TODO: NEEDS UPDATING!!!"""
 
-from reskit.weather.NCSource import *
+from reskit.weather.nc_source import *
 
 # Define constants
 

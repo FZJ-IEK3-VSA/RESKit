@@ -3,7 +3,7 @@ from os.path import dirname, join
 import geokit as gk
 import numpy as np
 
-from reskit.weather.NCSource import NCSource
+from reskit.weather.nc_source import NCSource
 
 
 class MerraSource(NCSource):

@@ -2,7 +2,7 @@ from os.path import dirname, join
 
 import numpy as np
 
-from reskit.weather.NCSource import NCSource
+from reskit.weather.nc_source import NCSource
 
 
 class IconlamSource(NCSource):
