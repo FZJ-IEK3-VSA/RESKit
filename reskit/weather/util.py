@@ -34,10 +34,10 @@ def rotate_from_lat_lon(lons, lats, lon_south_pole=18, lat_south_pole=-39.25):
     y_new = -np.sin(phi) * x + np.cos(phi) * y
     z_new = -np.sin(theta) * np.cos(phi) * x - np.sin(theta) * np.sin(phi) * y + np.cos(theta) * z
 
-    rlonCoords = np.degrees(np.arctan2(y_new, x_new))
-    rlatCoords = np.degrees(np.arcsin(z_new))
+    rlon_coords = np.degrees(np.arctan2(y_new, x_new))
+    rlat_coords = np.degrees(np.arcsin(z_new))
 
-    return rlonCoords, rlatCoords
+    return rlon_coords, rlat_coords
 
 
 def rotate_to_lat_lon(rlons, rlats, lon_south_pole=18, lat_south_pole=-39.25):
@@ -74,7 +74,7 @@ def rotate_to_lat_lon(rlons, rlats, lon_south_pole=18, lat_south_pole=-39.25):
     y_new = -np.cos(theta) * np.sin(phi) * x + np.cos(phi) * y - np.sin(theta) * np.sin(phi) * z
     z_new = -np.sin(theta) * x + np.cos(theta) * z
 
-    lonCoords = np.degrees(np.arctan2(y_new, x_new))
-    latCoords = np.degrees(np.arcsin(z_new))
+    lon_coords = np.degrees(np.arctan2(y_new, x_new))
+    lat_coords = np.degrees(np.arcsin(z_new))
 
-    return lonCoords, latCoords
+    return lon_coords, lat_coords

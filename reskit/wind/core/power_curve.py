@@ -6,7 +6,7 @@ import pandas as pd
 from scipy.interpolate import PchipInterpolator, splev, splrep
 from scipy.stats import norm
 
-from ...util import ResError
+from reskit.util import ResError
 
 _P = namedtuple("PowerCurve", "ws cf")
 _synthetic_power_curve_data = None
@@ -197,11 +197,11 @@ class PowerCurve:
         Returns
         -------
         array_like
-            CorrespongDing capacity fators for the given wind speeds
+            Corresponding capacity factors for the given wind speeds
 
         """
-        powerCurveInterp = PchipInterpolator(self.wind_speed, self.capacity_factor)
-        output = powerCurveInterp(wind_speed)
+        power_curve_interp = PchipInterpolator(self.wind_speed, self.capacity_factor)
+        output = power_curve_interp(wind_speed)
 
         if isinstance(wind_speed, pd.DataFrame):
             output = pd.DataFrame(output, index=wind_speed.index, columns=wind_speed.columns)
@@ -240,8 +240,8 @@ class PowerCurve:
         pdf = exponweib.pdf(ws, 1, weibull_shape, scale=lam)
 
         # Estimate generation
-        power_curveInterp = splrep(self.wind_speed, self.capacity_factor)
-        gen = splev(ws, power_curveInterp)
+        power_curve_interp = splrep(self.wind_speed, self.capacity_factor)
+        gen = splev(ws, power_curve_interp)
 
         # Do some "just in case" clean-up
         cutin = self.wind_speed.min()  # use the first defined windspeed as the cut in
@@ -253,8 +253,8 @@ class PowerCurve:
         gen[ws > cutout] = 0  # Drop power to zero after cutout
 
         # Done
-        meanCapFac = (gen * pdf).sum() * dws
-        return meanCapFac
+        mean_cap_fac = (gen * pdf).sum() * dws
+        return mean_cap_fac
 
     def expected_capacity_factor_from_distribution(self, wind_speed_values, wind_speed_counts):
         """
@@ -311,10 +311,10 @@ class PowerCurve:
             * wind_speed_counts
         )
 
-        meanGen = gen.sum(0) / wind_speed_counts.sum(0)
+        mean_gen = gen.sum(0) / wind_speed_counts.sum(0)
 
         # Done
-        return meanGen
+        return mean_gen
 
     def convolute_by_gaussian(
         self,
@@ -373,11 +373,11 @@ class PowerCurve:
                 )
 
         # Initialize vanilla power curve
-        selfInterp = splrep(ws, np.interp(ws, self.wind_speed, self.capacity_factor))
+        self_interp = splrep(ws, np.interp(ws, self.wind_speed, self.capacity_factor))
 
         cf = np.zeros(_steps)
         sel = ws < self.wind_speed.max()
-        cf[sel] = splev(ws[sel], selfInterp)
+        cf[sel] = splev(ws[sel], self_interp)
 
         # set all windspeed less than cut-in speed to 0
         cf[ws < self.wind_speed.min()] = 0
@@ -387,18 +387,18 @@ class PowerCurve:
         # cf[cf>self[:,1].max()] = self[:,1].max() # force a ceiling of the max capacity
 
         # Begin convolution
-        convolutedCF = np.zeros(_steps)
+        convoluted_cf = np.zeros(_steps)
         for i, ws_ in enumerate(ws):
-            convolutedCF[i] = (norm.pdf(ws, loc=ws_, scale=scaling * ws_ + base) * cf).sum() * dws
+            convoluted_cf[i] = (norm.pdf(ws, loc=ws_, scale=scaling * ws_ + base) * cf).sum() * dws
 
         # Correct cutoff, maybe
         if not extend_beyond_cut_out:
-            convolutedCF[ws > self.wind_speed[-1]] = 0
+            convoluted_cf[ws > self.wind_speed[-1]] = 0
 
         # Done!
         ws = ws[::40]
-        convolutedCF = convolutedCF[::40]
-        return PowerCurve(ws, convolutedCF)
+        convoluted_cf = convoluted_cf[::40]
+        return PowerCurve(ws, convoluted_cf)
 
     def apply_loss_factor(self, loss):
         """

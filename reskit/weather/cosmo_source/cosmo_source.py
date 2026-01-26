@@ -1,8 +1,9 @@
 """TODO: NEEDS UPDATING!!!"""
 
 import pytz
+from geokit.core.location import LocationSet
 
-from ..NCSource import *
+from reskit.weather.nc_source import *
 
 # Define constants
 
@@ -12,15 +13,15 @@ class CosmoSource(NCSource):
     Handles the sources Sev created from the COSMO-REA6 dataset (cannot handle the original sources because they're whack)
     """
 
-    GWA50_CONTEXT_MEAN_SOURCE = None
-    GWA100_CONTEXT_MEAN_SOURCE = None
+    gwa50_context_mean_source = None
+    gwa100_context_mean_source = None
 
     # a LARGE ooverestimate of how much space should be in between a given point and the nearest index
-    MAX_LON_DIFFERENCE = 0.6
+    max_lon_difference = 0.6
     # a LARGE ooverestimate of how much space should be in between a given point and the nearest index
-    MAX_LAT_DIFFERENCE = 0.6
+    max_lat_difference = 0.6
 
-    def __init__(s, source, bounds=None, indexPad=0, **kwargs):
+    def __init__(self, source, bounds=None, index_pad=0, **kwargs):
         """Initialize a COSMO style netCDF4 file source
 
         * Assumes REA6 conventions
@@ -46,20 +47,20 @@ class CosmoSource(NCSource):
 
         """
         NCSource.__init__(
-            s,
+            self,
             source=source,
             bounds=bounds,
-            timeName="time",
-            latName="lat",
-            lonName="lon",
-            indexPad=indexPad,
-            _maxLonDiff=s.MAX_LON_DIFFERENCE,
-            _maxLatDiff=s.MAX_LAT_DIFFERENCE,
+            time_name="time",
+            lat_name="lat",
+            lon_name="lon",
+            index_pad=index_pad,
+            _max_lon_diff=self.max_lon_difference,
+            _max_lat_diff=self.max_lat_difference,
             tz=pytz.FixedOffset(60),
             **kwargs,
         )
 
-    def loc2Index(s, loc, outsideOkay=False, asInt=True):
+    def loc2_index(self, loc, outside_okay=False, as_int=True):
         """Returns the closest X and Y indexes corresponding to a given location
         or set of locations
 
@@ -91,135 +92,135 @@ class CosmoSource(NCSource):
 
         """
         # Set REA6 Conventions
-        lonSouthPole = 18
-        latSouthPole = -39.25
-        rlonRes = 0.0550000113746
-        rlatRes = 0.0550001976179
-        rlonStart = -28.40246773
-        rlatStart = -23.40240860
+        lon_south_pole = 18
+        lat_south_pole = -39.25
+        rlon_res = 0.0550000113746
+        rlat_res = 0.0550001976179
+        rlon_start = -28.40246773
+        rlat_start = -23.40240860
 
-        if s is None:
-            _lonStart = 0
-            _latStart = 0
-            _latN = 824
-            _lonN = 848
+        if self is None:
+            _lon_start = 0
+            _lat_start = 0
+            _lat_n = 824
+            _lon_n = 848
         else:
-            _lonStart = s._lonStart
-            _latStart = s._latStart
-            _latN = s._latN
-            _lonN = s._lonN
+            _lon_start = self._lon_start
+            _lat_start = self._lat_start
+            _lat_n = self._lat_n
+            _lon_n = self._lon_n
 
         # Ensure loc is a list
         locations = LocationSet(loc)
 
         # Convert to rotated coordinates
-        rlonCoords, rlatCoords = rotateFromLatLon(
+        rlon_coords, rlat_coords = rotateFromLatLon(
             locations.lons,
             locations.lats,
-            lonSouthPole=lonSouthPole,
-            latSouthPole=latSouthPole,
+            lonSouthPole=lon_south_pole,
+            latSouthPole=lat_south_pole,
         )
 
         # Find integer locations
-        lonI = (rlonCoords - rlonStart) / rlonRes - _lonStart
-        latI = (rlatCoords - rlatStart) / rlatRes - _latStart
+        lon_i = (rlon_coords - rlon_start) / rlon_res - _lon_start
+        lat_i = (rlat_coords - rlat_start) / rlat_res - _lat_start
 
         # Check for out of bounds
-        s = (latI < 0) | (latI >= _latN) | (lonI < 0) | (lonI >= _lonN)
-        if s.any():
-            if not outsideOkay:
+        self = (lat_i < 0) | (lat_i >= _lat_n) | (lon_i < 0) | (lon_i >= _lon_n)
+        if self.any():
+            if not outside_okay:
                 print("The following locations are out of bounds")
-                print(locations[s])
+                print(locations[self])
                 raise ResError("Locations are outside the boundaries")
 
         # Make int, maybe
-        if asInt:
-            lonI = np.round(lonI).astype(int)
-            latI = np.round(latI).astype(int)
+        if as_int:
+            lon_i = np.round(lon_i).astype(int)
+            lat_i = np.round(lat_i).astype(int)
 
         # Make output
         if locations.count == 1:
-            if s[0] is True:
+            if self[0] is True:
                 return None
             else:
-                return Index(yi=latI[0], xi=lonI[0])
+                return Index(yi=lat_i[0], xi=lon_i[0])
         else:
-            return [None if ss else Index(yi=y, xi=x) for ss, y, x in zip(s, latI, lonI)]
+            return [None if ss else Index(yi=y, xi=x) for ss, y, x in zip(self, lat_i, lon_i)]
 
-    def loadRadiation(s):
+    def load_radiation(self):
         """frankCorrection: 'Bias correction of a novel European reanalysis data set for solar energy applications'"""
-        s.load("SWDIFDS_RAD", "dhi")
-        s.load("SWDIRS_RAD", "dni_flat")
-        s.data["ghi"] = s.data["dhi"] + s.data["dni_flat"]
+        self.load("SWDIFDS_RAD", "dhi")
+        self.load("SWDIRS_RAD", "dni_flat")
+        self.data["ghi"] = self.data["dhi"] + self.data["dni_flat"]
 
-        del s.data["dni_flat"], s.data["dhi"]
+        del self.data["dni_flat"], self.data["dhi"]
 
-    def loadWindSpeedLevels(s):
-        s.load("windspeed_10", name="windspeed_10")
-        s.load("windspeed_50", name="windspeed_50")
-        s.load("windspeed_100", name="windspeed_100")
-        s.load("windspeed_140", name="windspeed_140")
+    def load_wind_speed_levels(self):
+        self.load("windspeed_10", name="windspeed_10")
+        self.load("windspeed_50", name="windspeed_50")
+        self.load("windspeed_100", name="windspeed_100")
+        self.load("windspeed_140", name="windspeed_140")
 
-    def loadWindSpeedAtHeight(s, height=100):
+    def load_wind_speed_at_height(self, height=100):
         """NEEDS UPDATING!"""
         # Check if height is on of the heights we already have
         # The 3 known heights should always be 50, 100, and 140
         if height == 10:
-            s.load("windspeed_10", name="windspeed")
+            self.load("windspeed_10", name="windspeed")
         elif height == 50:
-            s.load("windspeed_50", name="windspeed")
+            self.load("windspeed_50", name="windspeed")
         elif height == 100:
-            s.load("windspeed_100", name="windspeed")
+            self.load("windspeed_100", name="windspeed")
         elif height == 140:
-            s.load("windspeed_140", name="windspeed")
+            self.load("windspeed_140", name="windspeed")
         else:
             # projection is required
             if height <= 50:
-                s.load("windspeed_10")
-                s.load("windspeed_50")
-                s.load("windspeed_100")
+                self.load("windspeed_10")
+                self.load("windspeed_50")
+                self.load("windspeed_100")
 
                 # DO CUBIC INTERP
                 raise RuntimeError("This hasn't been implemented yet :(")
 
                 # Remove unneeded data
-                del s.data["windspeed_10"]
-                del s.data["windspeed_50"]
-                del s.data["windspeed_100"]
+                del self.data["windspeed_10"]
+                del self.data["windspeed_50"]
+                del self.data["windspeed_100"]
 
             elif height < 100:
-                s.load("windspeed_50")
-                s.load("windspeed_100")
+                self.load("windspeed_50")
+                self.load("windspeed_100")
 
                 fac = (height - 50) / (100 - 50)
 
-                newWspd = s.data["windspeed_100"] * fac + s.data["windspeed_50"] * (1 - fac)
-                s.data["windspeed"] = newWspd
+                new_wspd = self.data["windspeed_100"] * fac + self.data["windspeed_50"] * (1 - fac)
+                self.data["windspeed"] = new_wspd
 
-                del s.data["windspeed_50"]
-                del s.data["windspeed_100"]
+                del self.data["windspeed_50"]
+                del self.data["windspeed_100"]
 
             else:
-                s.load("windspeed_100")
-                s.load("windspeed_140")
+                self.load("windspeed_100")
+                self.load("windspeed_140")
 
                 fac = (height - 100) / (140 - 100)
 
-                newWspd = s.data["windspeed_140"] * fac + s.data["windspeed_100"] * (1 - fac)
-                s.data["windspeed"] = newWspd
+                new_wspd = self.data["windspeed_140"] * fac + self.data["windspeed_100"] * (1 - fac)
+                self.data["windspeed"] = new_wspd
 
-                del s.data["windspeed_100"]
-                del s.data["windspeed_140"]
+                del self.data["windspeed_100"]
+                del self.data["windspeed_140"]
 
-    def loadTemperature(s, processor=lambda x: x - 273.15):
+    def load_temperature(self, processor=lambda x: x - 273.15):
         """Load the typical pressure variable"""
-        s.load("2t", name="air_temp", processor=processor)
+        self.load("2t", name="air_temp", processor=processor)
 
-    def loadPressure(s):
+    def load_pressure(self):
         """Load the typical pressure variable"""
-        s.load("sp", name="pressure")
+        self.load("sp", name="pressure")
 
-    def loadSet_PV(s, verbose=False, _clockstart=None, _header=""):
+    def load_set_pv(self, verbose=False, _clockstart=None, _header=""):
         if verbose:
             from datetime import datetime as dt
 
@@ -229,36 +230,36 @@ class CosmoSource(NCSource):
                 _header,
                 "Loading radiation at: +%.2fs" % (dt.now() - _clockstart).total_seconds(),
             )
-        s.loadRadiation()
+        self.load_radiation()
 
         if verbose:
             print(
                 _header,
                 "Loading wind speed at: +%.2fs" % (dt.now() - _clockstart).total_seconds(),
             )
-        s.loadWindSpeedAtHeight(10)
+        self.load_wind_speed_at_height(10)
 
         if verbose:
             print(
                 _header,
                 "Loading pressure at: +%.2fs" % (dt.now() - _clockstart).total_seconds(),
             )
-        s.loadPressure()
+        self.load_pressure()
 
         if verbose:
             print(
                 _header,
                 "Loading temperature at: +%.2fs" % (dt.now() - _clockstart).total_seconds(),
             )
-        s.loadTemperature()
+        self.load_temperature()
 
-    def getWindSpeedAtHeights(
-        s,
+    def get_wind_speed_at_heights(
+        self,
         locations,
         heights,
-        spatialInterpolation="near",
-        forceDataFrame=False,
-        outsideOkay=False,
+        spatial_interpolation="near",
+        force_data_frame=False,
+        outside_okay=False,
         _indicies=None,
     ):
         """
@@ -308,9 +309,9 @@ class CosmoSource(NCSource):
 
         """
         k = dict(
-            interpolation=spatialInterpolation,
-            forceDataFrame=forceDataFrame,
-            outsideOkay=outsideOkay,
+            interpolation=spatial_interpolation,
+            forceDataFrame=force_data_frame,
+            outsideOkay=outside_okay,
             _indicies=_indicies,
         )
 
@@ -324,27 +325,27 @@ class CosmoSource(NCSource):
         _50_100 = np.logical_and(heights >= 50, heights < 100)
         _100_ = heights >= 100
 
-        newWindspeed = np.empty((len(s.timeindex), locations.count))
+        new_windspeed = np.empty((len(self.timeindex), locations.count))
 
         if _0_50.any():
             raise RuntimeError("This hasn't been implemented yet below 50m :(")
         if _50_100.any():
-            ws50 = NCSource.get(s, "windspeed_50", locations=locations[_50_100], **k)
-            ws100 = NCSource.get(s, "windspeed_100", locations=locations[_50_100], **k)
+            ws50 = NCSource.get(self, "windspeed_50", locations=locations[_50_100], **k)
+            ws100 = NCSource.get(self, "windspeed_100", locations=locations[_50_100], **k)
 
             fac = (heights[_50_100] - 50) / (100 - 50)
             tmp = ws100 * fac + ws50 * (1 - fac)
 
-            newWindspeed[:, _50_100] = tmp
+            new_windspeed[:, _50_100] = tmp
 
         if _100_.any():
-            ws100 = NCSource.get(s, "windspeed_100", locations=locations[_100_], **k)
-            ws140 = NCSource.get(s, "windspeed_140", locations=locations[_100_], **k)
+            ws100 = NCSource.get(self, "windspeed_100", locations=locations[_100_], **k)
+            ws140 = NCSource.get(self, "windspeed_140", locations=locations[_100_], **k)
 
             fac = (heights[_100_] - 100) / (140 - 100)
             tmp = ws140 * fac + ws100 * (1 - fac)
             if tmp.shape[0] == 1:
                 tmp = tmp[0, :]
-            newWindspeed[:, _100_] = tmp
+            new_windspeed[:, _100_] = tmp
 
-        return pd.DataFrame(newWindspeed, columns=locations, index=s.timeindex)
+        return pd.DataFrame(new_windspeed, columns=locations, index=self.timeindex)

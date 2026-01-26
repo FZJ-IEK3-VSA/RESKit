@@ -1,6 +1,6 @@
 """TODO: NEEDS UPDATING!!!"""
 
-from ..NCSource import *
+from reskit.weather.nc_source import *
 
 # Define constants
 
@@ -32,31 +32,31 @@ class CordexSource(NCSource):
     GWA50_CONTEXT_MEAN_SOURCE = None
     GWA100_CONTEXT_MEAN_SOURCE = None
 
-    def __init__(s, path, bounds=None, domain="EUR11"):
+    def __init__(self, path, bounds=None, domain="EUR11"):
         print("WARNING: CordexSource has not been updated in awhile and is almost guaranteed to fail...")
 
         if not bounds is None:
             if isinstance(bounds, gk.Extent):
-                bounds.pad((s.MAX_LON_DIFFERENCE, s.MAX_LAT_DIFFERENCE))
+                bounds.pad((self.MAX_LON_DIFFERENCE, self.MAX_LAT_DIFFERENCE))
             else:
                 if isinstance(bounds, Bounds):
-                    lonMin = bounds.lonMin
-                    latMin = bounds.latMin
-                    lonMax = bounds.lonMax
-                    latMax = bounds.latMax
+                    lon_min = bounds.lonMin
+                    lat_min = bounds.latMin
+                    lon_max = bounds.lonMax
+                    lat_max = bounds.latMax
                 else:
                     print("Consider using a Bounds object or a gk.Extent object. They are safer!")
-                    lonMin, latMin, lonMax, latMax = bounds
+                    lon_min, lat_min, lon_max, lat_max = bounds
 
                 bounds = Bounds(
-                    lonMin=lonMin - s.MAX_LON_DIFFERENCE,
-                    latMin=latMin - s.MAX_LAT_DIFFERENCE,
-                    lonMax=lonMax + s.MAX_LON_DIFFERENCE,
-                    latMax=latMax + s.MAX_LAT_DIFFERENCE,
+                    lonMin=lon_min - self.MAX_LON_DIFFERENCE,
+                    latMin=lat_min - self.MAX_LAT_DIFFERENCE,
+                    lonMax=lon_max + self.MAX_LON_DIFFERENCE,
+                    latMax=lat_max + self.MAX_LAT_DIFFERENCE,
                 )
 
         NCSource.__init__(
-            s,
+            self,
             path=path,
             bounds=bounds,
             timeName="time",
@@ -67,47 +67,47 @@ class CordexSource(NCSource):
 
         # set maximal differences
         if domain == "EUR11":
-            s._maximal_lon_difference = 0.0625
-            s._maximal_lat_difference = 0.0625
+            self._maximal_lon_difference = 0.0625
+            self._maximal_lat_difference = 0.0625
         else:
             raise ResError("Domain not understood")
 
-    def __add__(s, o):
+    def __add__(self, o):
         out = CordexSource(None)
-        return NCSource.__add__(s, o, _shell=out)
+        return NCSource.__add__(self, o, _shell=out)
 
-    def loadWindSpeed(s, vName="vas", uName="uas"):
+    def load_wind_speed(self, v_name="vas", u_name="uas"):
         # read raw data
-        s.load(vName, heightIdx=0)
-        s.load(uName, heightIdx=0)
+        self.load(v_name, heightIdx=0)
+        self.load(u_name, heightIdx=0)
 
         # read the data
-        uData = s.data[uName]
-        vData = s.data[vName]
+        u_data = self.data[u_name]
+        v_data = self.data[v_name]
 
         # combine into a single time series matrix
-        speed = np.sqrt(uData * uData + vData * vData)  # total speed
-        direction = np.arctan2(vData, uData) * (180 / np.pi)  # total direction
+        speed = np.sqrt(u_data * u_data + v_data * v_data)  # total speed
+        direction = np.arctan2(v_data, u_data) * (180 / np.pi)  # total direction
 
         # done!
-        s.data["windspeed"] = speed
-        s.data["winddir"] = direction
+        self.data["windspeed"] = speed
+        self.data["winddir"] = direction
 
-    def loadRadiation(s, ghiName="rsds"):
+    def load_radiation(self, ghi_name="rsds"):
         # read raw data
-        s.load(ghiName, name="ghi")
+        self.load(ghi_name, name="ghi")
 
-    def loadTemperature(s, which="air", processor=lambda x: x - 273.15):
+    def load_temperature(self, which="air", processor=lambda x: x - 273.15):
         """Temperature variable loader"""
         if which.lower() == "air":
-            varName = "tas"
+            var_name = "tas"
         elif which.lower() == "dew":
-            varName = "dpas"
+            var_name = "dpas"
         else:
             raise ResMerraError("sub group '%s' not understood" % which)
 
         # load
-        s.load(varName, name=which + "_temp", processor=processor)
+        self.load(var_name, name=which + "_temp", processor=processor)
 
-    def loadPressure(s):
-        s.load("ps", name="pressure")
+    def load_pressure(self):
+        self.load("ps", name="pressure")

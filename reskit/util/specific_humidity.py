@@ -22,12 +22,12 @@ def calculate_specific_humidity(air_temperature, relative_humidity):
     p_sat_water = np.exp(23.709 - (4111 / (air_temperature_kelvin - 35.44)))  # for temperature aove 0°C [1]
 
     # Goff–Gratch equation for vapor pressure over ice [2]
-    T_triple = 273.16  # Triple point of water in Kelvin
+    t_triple = 273.16  # Triple point of water in Kelvin
     e_triple = 6.1071  # Saturation vapor pressure at the triple point in hPa
     log10_e = (
-        -9.09718 * ((T_triple / air_temperature_kelvin) - 1)
-        - 3.56654 * np.log10(T_triple / air_temperature_kelvin)
-        + 0.876793 * (1 - (air_temperature_kelvin / T_triple))
+        -9.09718 * ((t_triple / air_temperature_kelvin) - 1)
+        - 3.56654 * np.log10(t_triple / air_temperature_kelvin)
+        + 0.876793 * (1 - (air_temperature_kelvin / t_triple))
         + np.log10(e_triple)
     )
     p_sat_ice = 10**log10_e * 100

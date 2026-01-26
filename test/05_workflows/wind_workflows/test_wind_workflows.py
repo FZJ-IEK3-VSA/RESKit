@@ -13,7 +13,7 @@ from reskit.wind.workflows.workflows import (
     onshore_wind_iconlam_2023,
     onshore_wind_merra_ryberg2019_europe,
     wind_config,
-    wind_era5_PenaSanchezDunkelWinklerEtAl2025,
+    wind_era5_pena_sanchez_dunkel_winkler_et_al_2025,
 )
 
 alternative_wind_speed_rasters = {
@@ -33,7 +33,7 @@ def pt_wind_placements() -> pd.DataFrame:
 
 
 @pytest.fixture
-def pt_wind_placements_Zimbabwe() -> pd.DataFrame:
+def pt_wind_placements_zimbabwe() -> pd.DataFrame:
     df = pd.read_csv(TEST_DATA["turbine_placements_cityBulawayoInZimbabwa.csv"])
 
     return df
@@ -92,8 +92,8 @@ def test_offshore_wind_merra_caglayan2019(pt_wind_placements):
     assert np.isclose(gen.capacity_factor.std(), 0.29063037)
 
 
-def test_wind_era5_PenaSanchezDunkelWinklerEtAl2025(pt_wind_placements: pd.DataFrame):
-    gen = wind_era5_PenaSanchezDunkelWinklerEtAl2025(
+def test_wind_era5_pena_sanchez_dunkel_winkler_et_al_2025(pt_wind_placements: pd.DataFrame):
+    gen = wind_era5_pena_sanchez_dunkel_winkler_et_al_2025(
         placements=pt_wind_placements,
         era5_path=TEST_DATA["era5-like"],
         gwa_100m_path=TEST_DATA["gwa100-like.tif"],
@@ -115,9 +115,9 @@ def test_wind_era5_PenaSanchezDunkelWinklerEtAl2025(pt_wind_placements: pd.DataF
     assert np.isclose(gen.capacity_factor.std(), 0.29513281)
 
 
-def test_onshore_wind_iconlam_2023(pt_wind_placements_Zimbabwe: pd.DataFrame):
+def test_onshore_wind_iconlam_2023(pt_wind_placements_zimbabwe: pd.DataFrame):
     gen = onshore_wind_iconlam_2023(
-        placements=pt_wind_placements_Zimbabwe,
+        placements=pt_wind_placements_zimbabwe,
         icon_lam_path=TEST_DATA["iconlam-like"],
         esa_cci_path=TEST_DATA["ESA_CCI_2018_clip_cityBulawayoInZimbabwa.tif"],
         output_netcdf_path=None,

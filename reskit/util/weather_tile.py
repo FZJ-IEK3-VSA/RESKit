@@ -6,7 +6,7 @@ import pandas as pd
 from smopy import deg2num
 
 
-def get_tile_XY(zoom, lon=None, lat=None, geom=None):
+def get_tile_xy(zoom, lon=None, lat=None, geom=None):
     """
     Returns the X/Y id of the respective tile for a given
     latitude and longitude and tile No.
@@ -48,21 +48,21 @@ def get_tile_XY(zoom, lon=None, lat=None, geom=None):
         assert isinstance(lat, (int, float)) and -90 <= lat <= 90, f"lat must be an integer or float between -90/+90°"
 
     # get tile id
-    X, Y = deg2num(lat, lon, zoom=zoom)
+    x, y = deg2num(lat, lon, zoom=zoom)
 
     # deg_to_num cannot deal with extreme latitudes, set to Y edge tile manually
-    if Y < 0:
+    if y < 0:
         print(
             f"Locations (lat={lat}, lon={lon}) below the minimum tile Y-index (0) will be corrected to the lowest available tile index: 0 "
         )
-        Y = 0
-    elif Y > ((2**zoom) - 1):
+        y = 0
+    elif y > ((2**zoom) - 1):
         print(
-            f"Locations (lat={lat}, lon={lon}) outside the maximum tile Y-index ({Y}) at zoom level {zoom} will be corrected to the outmost available tile index: {zoom**2 - 1} "
+            f"Locations (lat={lat}, lon={lon}) outside the maximum tile Y-index ({y}) at zoom level {zoom} will be corrected to the outmost available tile index: {zoom**2 - 1} "
         )
-        Y = (2**zoom) - 1
+        y = (2**zoom) - 1
 
-    return (X, Y)
+    return (x, y)
 
 
 def get_dataframe_with_weather_tilepaths(placements, weather_path, zoom):
@@ -126,8 +126,8 @@ def get_dataframe_with_weather_tilepaths(placements, weather_path, zoom):
             assert isinstance(zoom, int), (
                 f"zoom must be a positive integer tiling level if weather_path contains X/Y spacers"
             )
-            _X, _Y = get_tile_XY(zoom=zoom, lon=lon, lat=lat, geom=None)
-            return weather_path.replace("<X-TILE>", str(_X)).replace("<Y-TILE>", str(_Y)).replace("<ZOOM>", str(zoom))
+            _x, _y = get_tile_xy(zoom=zoom, lon=lon, lat=lat, geom=None)
+            return weather_path.replace("<X-TILE>", str(_x)).replace("<Y-TILE>", str(_y)).replace("<ZOOM>", str(zoom))
         else:
             return weather_path
 

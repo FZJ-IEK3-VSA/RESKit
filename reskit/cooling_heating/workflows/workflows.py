@@ -5,21 +5,21 @@ import numpy as np
 import pandas as pd
 
 # import othert modules
-from .cooling_heating_workflow_manager import CoolingHeatingWorkflowManager
-from ...util.relative_humidity import calculate_relative_humidity
-from ...util.wet_bulb_temperature import calculate_wet_bulb_temperature
+from reskit.cooling_heating.workflows.cooling_heating_workflow_manager import CoolingHeatingWorkflowManager
+from reskit.util.relative_humidity import calculate_relative_humidity
+from reskit.util.wet_bulb_temperature import calculate_wet_bulb_temperature
 
 
 def evaporative_cooling_wortmann2025(
     placements: pd.DataFrame,
     era5_path: str,
-    temperatureCoolant: int | float,
-    designTemperature: int | float,
-    heatTransferDelta: int | float = 5,
-    efficiencyFan: int | float = 0.7,
-    pressureDropAir: int | float = 261,
-    efficiencyPump: int | float = 0.7,
-    pressureDropWater: int | float = 200000,
+    temperature_coolant: int | float,
+    design_temperature: int | float,
+    heat_transfer_delta: int | float = 5,
+    efficiency_dan: int | float = 0.7,
+    pressure_drop_air: int | float = 261,
+    efficiency_pump: int | float = 0.7,
+    pressure_drop_water: int | float = 200000,
     output_netcdf_path: str = None,
     output_variables: List[str] = None,
 ):
@@ -36,19 +36,19 @@ def evaporative_cooling_wortmann2025(
         DataFrame specifying the plant locations and their capacities.
     era5_path : str
         Path to the ERA5 weather data source.
-    temperatureCoolant : float
+    temperature_coolant : float
         Temperature of the heat load to be cooled [°C].
-    designTemperature : float
+    design_temperature : float
         Temperature for the nominal design point of the air cooling system [°C].
-    heatTransferDelta : float, optional
+    heat_transfer_delta : float, optional
         Temperature difference required for heat transfer from air to coolant [K]. Default is 5.
-    efficiencyFan : float, optional
+    efficiency_dan : float, optional
         Efficiency of the fan system [0, 1]. Default is 0.7.
-    pressureDropAir : float, optional
+    pressure_drop_air : float, optional
         Pressure drop of air through the cooling frame channels [Pa]. Default is 261.
-    efficiencyPump : float, optional
+    efficiency_pump : float, optional
         Efficiency of the pump system [0, 1]. Default is 0.7.
-    pressureDropWater : float, optional
+    pressure_drop_water : float, optional
         Pressure drop of water through the circuit [Pa]. Default is 200000.
     output_netcdf_path : str, optional
         Path to save the output NetCDF file. Default is None.
@@ -73,15 +73,15 @@ def evaporative_cooling_wortmann2025(
     AssertionError
         If input parameters are not of expected type or if efficiency values are not within (0, 1].
     """
-    assert isinstance(temperatureCoolant, (int, float))
-    assert isinstance(designTemperature, (int, float))
-    assert isinstance(heatTransferDelta, (int, float))
-    assert isinstance(efficiencyFan, (int, float))
-    assert isinstance(pressureDropAir, (int, float))
-    assert isinstance(efficiencyPump, (int, float))
-    assert isinstance(pressureDropWater, (int, float))
-    assert 0 < efficiencyFan <= 1, "efficiencyFan must be between 0 and 1"
-    assert 0 < efficiencyPump <= 1, "efficiencyPump must be between 0 and 1"
+    assert isinstance(temperature_coolant, (int, float))
+    assert isinstance(design_temperature, (int, float))
+    assert isinstance(heat_transfer_delta, (int, float))
+    assert isinstance(efficiency_dan, (int, float))
+    assert isinstance(pressure_drop_air, (int, float))
+    assert isinstance(efficiency_pump, (int, float))
+    assert isinstance(pressure_drop_water, (int, float))
+    assert 0 < efficiency_dan <= 1, "efficiencyFan must be between 0 and 1"
+    assert 0 < efficiency_pump <= 1, "efficiencyPump must be between 0 and 1"
 
     wf = CoolingHeatingWorkflowManager(placements)
 
@@ -89,13 +89,13 @@ def evaporative_cooling_wortmann2025(
 def air_cooling_wenzel2025(
     placements: pd.DataFrame,
     era5_path: str,
-    temperatureCoolant: int | float,
-    designTemperature: int | float,
-    heatTransferDelta: int | float = 5,
-    efficiencyFan: int | float = 0.7,
-    pressureDropAir: int | float = 261,
-    efficiencyPump: int | float = 0.7,
-    pressureDropWater: int | float = 200000,
+    temperature_coolant: int | float,
+    design_temperature: int | float,
+    heat_transfer_delta: int | float = 5,
+    efficiency_fan: int | float = 0.7,
+    pressure_drop_air: int | float = 261,
+    efficiency_pump: int | float = 0.7,
+    pressure_drop_water: int | float = 200000,
     output_netcdf_path: str = None,
     output_variables: List[str] = None,
 ):
@@ -149,15 +149,15 @@ def air_cooling_wenzel2025(
     AssertionError
         If input parameters are not of expected type or if efficiency values are not within (0, 1].
     """
-    assert isinstance(temperatureCoolant, (int, float))
-    assert isinstance(designTemperature, (int, float))
-    assert isinstance(heatTransferDelta, (int, float))
-    assert isinstance(efficiencyFan, (int, float))
-    assert isinstance(pressureDropAir, (int, float))
-    assert isinstance(efficiencyPump, (int, float))
-    assert isinstance(pressureDropWater, (int, float))
-    assert 0 < efficiencyFan <= 1, "efficiencyFan must be between 0 and 1"
-    assert 0 < efficiencyPump <= 1, "efficiencyPump must be between 0 and 1"
+    assert isinstance(temperature_coolant, (int, float))
+    assert isinstance(design_temperature, (int, float))
+    assert isinstance(heat_transfer_delta, (int, float))
+    assert isinstance(efficiency_fan, (int, float))
+    assert isinstance(pressure_drop_air, (int, float))
+    assert isinstance(efficiency_pump, (int, float))
+    assert isinstance(pressure_drop_water, (int, float))
+    assert 0 < efficiency_fan <= 1, "efficiencyFan must be between 0 and 1"
+    assert 0 < efficiency_pump <= 1, "efficiencyPump must be between 0 and 1"
 
     wf = CoolingHeatingWorkflowManager(placements)
 
@@ -172,37 +172,37 @@ def air_cooling_wenzel2025(
     )
 
     wf.calculate_fan_power_air_cooling(
-        temperatureCoolant,
-        heatTransferDelta=heatTransferDelta,
-        efficiencyFan=efficiencyFan,
-        pressureDropAir=pressureDropAir,
-        designTemperature=None,
+        temperature_coolant,
+        heat_transfer_delta=heat_transfer_delta,
+        efficiency_fan=efficiency_fan,
+        pressure_drop_air=pressure_drop_air,
+        design_temperature=None,
     )
     wf.calculate_pump_power_air_cooling(
-        temperatureCoolant,
-        heatTransferDelta=heatTransferDelta,
-        efficiencyPump=efficiencyPump,
-        pressureDropWater=pressureDropWater,
-        designTemperature=None,
+        temperature_coolant,
+        heat_transfer_delta=heat_transfer_delta,
+        efficiency_pump=efficiency_pump,
+        pressure_drop_water=pressure_drop_water,
+        design_temperature=None,
     )
     wf.calculate_relative_cost_factor_air_cooling(
-        designTemperature,
-        temperatureCoolant,
-        heatTransferDelta=heatTransferDelta,
-        efficiencyFan=efficiencyFan,
-        efficiencyPump=efficiencyPump,
-        pressureDropAir=pressureDropAir,
-        pressureDropWater=pressureDropWater,
+        design_temperature,
+        temperature_coolant,
+        heat_transfer_delta=heat_transfer_delta,
+        efficiency_fan=efficiency_fan,
+        efficiency_pump=efficiency_pump,
+        pressure_drop_air=pressure_drop_air,
+        pressure_drop_water=pressure_drop_water,
     )
 
     wf.calculate_capacity_factor_air_cooling(
-        designTemperature=designTemperature,
-        temperatureCoolant=temperatureCoolant,
-        heatTransferDelta=heatTransferDelta,
-        efficiencyFan=efficiencyFan,
-        efficiencyPump=efficiencyPump,
-        pressureDropAir=pressureDropAir,
-        pressureDropWater=pressureDropWater,
+        design_temperature=design_temperature,
+        temperature_coolant=temperature_coolant,
+        heat_transfer_delta=heat_transfer_delta,
+        efficiency_fan=efficiency_fan,
+        efficiency_pump=efficiency_pump,
+        pressure_drop_air=pressure_drop_air,
+        pressure_drop_water=pressure_drop_water,
     )
 
     # calculate total conversion factor electricity:
@@ -238,8 +238,8 @@ def air_cooling_wenzel2025(
 def air_source_heat_pump(
     placements: pd.DataFrame,
     era5_path: str,
-    targetTemperature: int | float = 100,
-    secondLawEfficiency: int | float = 0.5,
+    target_temperature: int | float = 100,
+    second_law_efficiency: int | float = 0.5,
     output_netcdf_path: str = None,
     output_variables: List[str] = None,
 ):
@@ -283,9 +283,9 @@ def air_source_heat_pump(
     - Electricity input is computed for each plant based on its capacity and the COP.
     - Units are stored in `wf.units` for reference.
     """
-    assert isinstance(targetTemperature, (int, float))
-    assert isinstance(secondLawEfficiency, (int, float))
-    assert 0 < secondLawEfficiency <= 1, "efficiency must be between 0 and 1"
+    assert isinstance(target_temperature, (int, float))
+    assert isinstance(second_law_efficiency, (int, float))
+    assert 0 < second_law_efficiency <= 1, "efficiency must be between 0 and 1"
 
     wf = CoolingHeatingWorkflowManager(placements)
     wf.read(
@@ -297,7 +297,7 @@ def air_source_heat_pump(
         set_time_index=True,
         verbose=False,
     )
-    wf.simulate_air_source_heat_pump(targetTemperature=targetTemperature, secondLawEfficiency=secondLawEfficiency)
+    wf.simulate_air_source_heat_pump(target_temperature=target_temperature, second_law_efficiency=second_law_efficiency)
 
     wf.sim_data["electricity_input"] = -wf.sim_data["conversion_factor_electricity"] * np.array(
         wf.placements["capacity"]
@@ -315,11 +315,11 @@ def air_source_heat_pump(
 def evaporative_cooling_wortmann2025(
     placements: pd.DataFrame,
     era5_path: str,
-    temperatureCoolant: int | float,
-    heatTransferDelta: int | float,
-    efficiencyCoolingTower: int | float,
-    factorDriftLosses: float | int = 0.001,
-    typical_cycles_blowdown: int = 5,
+    temperature_coolant: int | float,
+    heat_transfer_delta: int | float,
+    efficiency_cooling_tower: int | float,
+    factor_drift_losses: float | int = 0.001,
+    typical_cycles_blow_down: int = 5,
     output_netcdf_path: str = None,
     output_variables: List[str] = None,
 ):
@@ -365,13 +365,13 @@ def evaporative_cooling_wortmann2025(
     AssertionError
         If input parameters are not of expected type or if efficiency values are not within (0, 1].
     """
-    assert isinstance(temperatureCoolant, (int, float))
-    assert isinstance(heatTransferDelta, (int, float))
-    assert isinstance(efficiencyCoolingTower, (int, float))
-    assert isinstance(factorDriftLosses, (int, float))
-    assert isinstance(typical_cycles_blowdown, (int, float))
-    assert 0 < efficiencyCoolingTower <= 1, "efficiencyCoolingTower must be between 0 and 1"
-    assert 0 < factorDriftLosses <= 1, "factorDriftLosses must be between 0 and 1"
+    assert isinstance(temperature_coolant, (int, float))
+    assert isinstance(heat_transfer_delta, (int, float))
+    assert isinstance(efficiency_cooling_tower, (int, float))
+    assert isinstance(factor_drift_losses, (int, float))
+    assert isinstance(typical_cycles_blow_down, (int, float))
+    assert 0 < efficiency_cooling_tower <= 1, "efficiencyCoolingTower must be between 0 and 1"
+    assert 0 < factor_drift_losses <= 1, "factorDriftLosses must be between 0 and 1"
 
     wf = CoolingHeatingWorkflowManager(placements)
 
@@ -393,17 +393,17 @@ def evaporative_cooling_wortmann2025(
     )
 
     wf.calculate_approach_evaporative_cooling(
-        temperatureCoolant=temperatureCoolant,
-        heatTransferDelta=heatTransferDelta,
-        efficiencyCoolingTower=efficiencyCoolingTower,
+        temperature_coolant=temperature_coolant,
+        heat_transfer_delta=heat_transfer_delta,
+        efficiency_cooling_tower=efficiency_cooling_tower,
     )
 
     wf.calculate_water_losses_evaporative_cooling(
-        temperatureCoolant=temperatureCoolant,
-        heatTransferDelta=heatTransferDelta,
-        efficiencyCoolingTower=efficiencyCoolingTower,
-        factorDriftLosses=factorDriftLosses,
-        typical_cycles_blowdown=typical_cycles_blowdown,
+        temperature_coolant=temperature_coolant,
+        heat_transfer_delta=heat_transfer_delta,
+        efficiency_cooling_tower=efficiency_cooling_tower,
+        factor_drift_losses=factor_drift_losses,
+        typical_cycles_blowdown=typical_cycles_blow_down,
     )
 
     # calculate total water demand for the plant

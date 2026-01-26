@@ -2,26 +2,23 @@ from os.path import dirname, join
 
 import numpy as np
 
-from .. import NCSource
+from reskit.weather.nc_source import NCSource
 
 
-class Era5Source(NCSource):
-    """The Era5Source object manages weather data (as netCDF4 files) coming from the
-    `ERA5 climate data products<https://www.ecmwf.int/en/forecasts/datasets/reanalysis-datasets/era5>`
-
-    If furthermore allows access a number of common functionalities and constants which are
-    often encountered when simulating renewable energy technologies
+class IconlamSource(NCSource):
+    """
+    SChen: The IconlamSource from the output of ICON-LAM model minics the ERA5soure.
 
     Note:
     -----
     Various constants can have been set for this weather source which can impact later simulation workflows.
 
     These constants include:
-        MAX_LON_DIFFERENCE = 0.26
+        MAX_LON_DIFFERENCE = 0.034 # SChen this is for 0.033 ICON-LAM grid
             The maximum longitude difference to accept between a grid cell's center and the coordinates
                 to extract data for
 
-        MAX_LAT_DIFFERENCE = 0.26
+        MAX_LAT_DIFFERENCE = 0.034 # SChen this is for 0.033 ICON-LAM grid
             The maximum latitude difference to accept between a grid cell's center and the coordinates
                 to extract data for
 
@@ -80,22 +77,27 @@ class Era5Source(NCSource):
     ELEVATED_WIND_SPEED_HEIGHT = 100
     SURFACE_WIND_SPEED_HEIGHT = 10
 
-    LONG_RUN_AVERAGE_WINDSPEED = join(dirname(__file__), "data", "ERA5_wind_speed_100m_mean.tiff")
-    LONG_RUN_AVERAGE_WINDSPEED_2008TO2017 = join(dirname(__file__), "data", "ERA5_wind_speed_100m_mean_2008to2017.tiff")
-    LONG_RUN_AVERAGE_WINDDIR = join(dirname(__file__), "data", "ERA5_wind_direction_100m_mean.tiff")
-    LONG_RUN_AVERAGE_GHI = join(dirname(__file__), "data", "ERA5_surface_solar_radiation_downwards_mean.tiff")
-    LONG_RUN_AVERAGE_DNI_archive = join(
-        dirname(__file__),
-        "data",
-        "ERA5_total_sky_direct_solar_radiation_at_surface_mean.tiff",
-    )
-    LONG_RUN_AVERAGE_DNI = join(dirname(__file__), "data", "ERA5_DNI_mean.tif")
-    DNI_90_PERC_QUANT = join(dirname(__file__), "data", "ERA5_DNI_percentile_90_2000_to_2020.tif")
+    # LONG_RUN_AVERAGE_WINDSPEED = join(
+    #     dirname(__file__),
+    #     "data",
+    #     "ERA5_wind_speed_100m_mean.tiff")
+    # LONG_RUN_AVERAGE_WINDDIR = join(
+    #     dirname(__file__),
+    #     "data",
+    #     "ERA5_wind_direction_100m_mean.tiff")
+    # LONG_RUN_AVERAGE_GHI = join(
+    #     dirname(__file__),
+    #     "data",
+    #     "ERA5_surface_solar_radiation_downwards_mean.tiff")
+    # LONG_RUN_AVERAGE_DNI = join(
+    #     dirname(__file__),
+    #     "data",
+    #     "ERA5_total_sky_direct_solar_radiation_at_surface_mean.tiff")
 
-    MAX_LON_DIFFERENCE = 0.26
-    MAX_LAT_DIFFERENCE = 0.26
+    MAX_LON_DIFFERENCE = 0.034  # 0.26 SChen
+    MAX_LAT_DIFFERENCE = 0.034  # 0.26 SChen
 
-    def __init__(self, source, bounds=None, index_pad=5, time_index_from=None, **kwargs):
+    def __init__(self, source, bounds=None, index_pad=5, **kwargs):
         """Initialize a ERA5 style netCDF4 file source
 
         Compared to the generic NCSource object, the following parameters are automatically set:
@@ -105,7 +107,7 @@ class Era5Source(NCSource):
             * lon_name = "longitude"
             * flip_lat = True
             * flip_lon = False
-            * time_offset_minutes = -30
+            * time_offset_minutes = +30
 
 
         Parameters
@@ -143,39 +145,22 @@ class Era5Source(NCSource):
         SarahSource
         Era5Source
         """
-        # translate the mos common lear names for time_index_from
-        ERA5_names = {
-            "global_horizontal_irradiance_archive": "ssrd",
-            "global_horizontal_irradiance": "ssrd_t_adj",
-            "direct_horizontal_irradiance_archive": "fdir",
-            "direct_horizontal_irradiance": "fdir_t_adj",
-            "surface_wind_speed": "w10",
-            "elevated_wind_speed": "w100",
-        }
-        if time_index_from in ERA5_names.keys():
-            # if time_index_from is a known clear name use the dict
-            time_index_from = ERA5_names[time_index_from]
-        else:
-            # hope it is a well known ERA5 string. checks in super.__init__
-            pass
-
         super().__init__(
             source=source,
             bounds=bounds,
             time_name="time",
-            lat_name="latitude",
-            lon_name="longitude",
+            lat_name="lat",  # "latitude"
+            lon_name="lon",  # "longitude"
             index_pad=index_pad,
             _max_lon_diff=self.MAX_LON_DIFFERENCE,
             _max_lat_diff=self.MAX_LAT_DIFFERENCE,
             tz=None,
             flip_lat=True,
-            time_offset_minutes=-30,  # time convention -30
-            time_index_from=time_index_from,
+            time_offset_minutes=0,  # 30 SChen
             **kwargs,
         )
 
-    loc_to_index = NCSource._loc_to_index_rect(0.25, 0.25)
+    loc_to_index = NCSource._loc_to_index_rect(0.033, 0.033)  # (0.25, 0.25) SChen
 
     # STANDARD LOADERS
     def sload_boundary_layer_height(self):
@@ -284,34 +269,13 @@ class Era5Source(NCSource):
         """
         return self.load("d2m", name="surface_dew_temperature", processor=lambda x: x - 273.15)
 
-    def sload_direct_horizontal_irradiance_archive(self):
-        """Standard loader function for the variable 'direct_horizontal_irradiance'
-
-        Automatically reads the variable "fdir" from the given ERA5 source and saves it as the
-        variable 'direct_horizontal_irradiance' in the data library
-        """
-        print(
-            "WARNING: Non time corrected ERA5-direct_horizontal_irradiance loaded. Only do this, if you understand the implications of this!"
-        )
-        return self.load("fdir", name="direct_horizontal_irradiance_archive")
-
     def sload_direct_horizontal_irradiance(self):
         """Standard loader function for the variable 'direct_horizontal_irradiance'
 
         Automatically reads the variable "fdir" from the given ERA5 source and saves it as the
         variable 'direct_horizontal_irradiance' in the data library
         """
-        return self.load("fdir_t_adj", name="direct_horizontal_irradiance")
-
-    def sload_global_horizontal_irradiance_archive(self):
-        """Archive loader function for the variable 'global_horizontal_irradiance. Uses non corrected solar inputs.
-        Use only for reproduceability purposes'
-
-        Automatically reads the variable "ssrd" from the given ERA5 source and saves it as the
-        variable 'global_horizontal_irradiance' in the data library
-        """
-        print("WARNING: Non time corrected ERA5-GHI loaded. Only do this, if you understand the implications of this!")
-        return self.load("ssrd", name="global_horizontal_irradiance_archive")
+        return self.load("fdir", name="direct_horizontal_irradiance")
 
     def sload_global_horizontal_irradiance(self):
         """Standard loader function for the variable 'global_horizontal_irradiance'
@@ -319,4 +283,4 @@ class Era5Source(NCSource):
         Automatically reads the variable "ssrd" from the given ERA5 source and saves it as the
         variable 'global_horizontal_irradiance' in the data library
         """
-        return self.load("ssrd_t_adj", name="global_horizontal_irradiance")
+        return self.load("ssrd", name="global_horizontal_irradiance")

@@ -93,13 +93,13 @@ def visibility_from_topography(
     sample_lats = np.degrees(sample_lats_r)
 
     # Compute distance in plane
-    R_earth = 6378137.0  # Earth radius at sea level
-    Ro = R_earth + base_elevation
+    r_earth = 6378137.0  # Earth radius at sea level
+    ro = r_earth + base_elevation
 
-    BdotC = np.sin(lat_r) * np.sin(sample_lats_r) * np.cos(lon_r - sample_lons_r) + np.cos(lat_r) * np.cos(
+    b_dot_c = np.sin(lat_r) * np.sin(sample_lats_r) * np.cos(lon_r - sample_lons_r) + np.cos(lat_r) * np.cos(
         sample_lats_r
     )
-    center_earth_theta = np.arccos(BdotC)
+    center_earth_theta = np.arccos(b_dot_c)
 
     locs = np.column_stack(
         [
@@ -111,9 +111,9 @@ def visibility_from_topography(
     #     elevs = np.full( locs.shape[0], base_elevation-eye_level)
     elevs = elevs.reshape(sample_lons.shape)
 
-    Rt = elevs + R_earth
-    planar_dist = Rt * np.sin(center_earth_theta)
-    planar_elev = np.sqrt(np.power(Rt, 2) - np.power(planar_dist, 2)) - Ro
+    rt = elevs + r_earth
+    planar_dist = rt * np.sin(center_earth_theta)
+    planar_elev = np.sqrt(np.power(rt, 2) - np.power(planar_dist, 2)) - ro
     planar_angle = np.arctan(planar_elev / planar_dist)
 
     # Determine visibility

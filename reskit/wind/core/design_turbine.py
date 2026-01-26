@@ -7,8 +7,7 @@ import numpy as np
 import pandas as pd
 
 from reskit.parameters.parameters import OnshoreParameters
-
-from .power_curve import compute_specific_power
+from reskit.wind.core.power_curve import compute_specific_power
 
 
 def onshore_turbine_from_avg_wind_speed(
@@ -79,7 +78,7 @@ def onshore_turbine_from_avg_wind_speed(
     [1] David S. Ryberg, Dilara C. Caglayan, Sabrina Schmitt, Jochen Linssen, Detlef Stolten, Martin Robinius - The Future of European Onshore Wind Energy Potential:
     Detailed Distributionand Simulation of Advanced Turbine Designs, Energy, 2019, available at https://www.sciencedirect.com/science/article/abs/pii/S0360544219311818
     """
-    OnshoreParams = OnshoreParameters(fp=baseline_turbine_fp, year=tech_year)
+    onshore_params = OnshoreParameters(fp=baseline_turbine_fp, year=tech_year)
 
     # define a dict to hold the parameter values
     baseline_params = dict()
@@ -95,7 +94,7 @@ def onshore_turbine_from_avg_wind_speed(
             continue
         print(arg, val)
         if val is None:
-            val = getattr(OnshoreParams, arg)
+            val = getattr(onshore_params, arg)
         baseline_params[arg] = val
 
     wind_speed = np.array(wind_speed)

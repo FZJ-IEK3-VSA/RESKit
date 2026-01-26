@@ -1,6 +1,6 @@
 import numpy as np
 
-from . import NCSource
+from reskit.weather.nc_source import NCSource
 
 
 class SarahSource(NCSource):

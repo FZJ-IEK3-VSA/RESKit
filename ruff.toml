@@ -5,7 +5,7 @@ max-doc-length = 120
 max-line-length = 120
 
 [lint]
-select = ["D", "F"]
+select = ["D", "F","TID","I","N"]
 ignore = [
     "F401", # imported but unused
     "F405", # Variable is undefined or from star import
@@ -32,6 +32,8 @@ ignore = [
     "D301", # Use `r"""` if any backslashes in a docstring
     "D400", # First line should end with a period
     "D404", # First word of the docstring should not be "This"
+    "N813", # Camelcase `netCDF4` imported as lowercase `nc
+    "N806", # Variable  in function should be lowercase
 ]
 unfixable = ["F401"]
 

@@ -25,7 +25,7 @@ def pt_wind_placements() -> pd.DataFrame:
     return df
 
 
-def test_WorkflowManager___init__():
+def test_workflow_manager___init__():
     placements = pd.DataFrame()
     placements["lon"] = [
         6.083,
@@ -73,24 +73,24 @@ def test_WorkflowManager___init__():
 
 
 @pytest.fixture
-def pt_WorkflowManager_initialized() -> WorkflowManager:
-    return test_WorkflowManager___init__()
+def pt_workflow_manager_initialized() -> WorkflowManager:
+    return test_workflow_manager___init__()
 
 
-def test_WorkflowManager_set_time_index(
-    pt_WorkflowManager_initialized: WorkflowManager,
-) -> WorkflowManager:
-    man = pt_WorkflowManager_initialized
+def test_workflow_manager_set_time_index(
+    pt_workflow_manager_initialized: WorkflowManager,
+):
+    man = pt_workflow_manager_initialized
     man.set_time_index(pd.date_range("2020-01-01 00:00:00", "2020-02-01 00:00:00", freq="h"))
     assert man.time_index[10] == pd.Timestamp("2020-01-01 10:00:00")
     assert man._time_sel_ is None
     assert man._sim_shape_ == (len(man.time_index), 5)
 
 
-def test_WorkflowManager_read(
-    pt_WorkflowManager_initialized: WorkflowManager,
-) -> WorkflowManager:
-    man = pt_WorkflowManager_initialized
+def test_workflow_manager_read(
+    pt_workflow_manager_initialized: WorkflowManager,
+):
+    man = pt_workflow_manager_initialized
     man.read(
         variables=[
             "elevated_wind_speed",
@@ -116,10 +116,10 @@ def test_WorkflowManager_read(
 
 
 @pytest.fixture
-def pt_WorkflowManager_loaded(
-    pt_WorkflowManager_initialized: WorkflowManager,
+def pt_workflow_manager_loaded(
+    pt_workflow_manager_initialized: WorkflowManager,
 ) -> WorkflowManager:
-    man = pt_WorkflowManager_initialized
+    man = pt_workflow_manager_initialized
 
     man.read(
         variables=[
@@ -138,10 +138,10 @@ def pt_WorkflowManager_loaded(
     return man
 
 
-def test_WorkflowManager_spatial_disagregation(
-    pt_WorkflowManager_initialized: WorkflowManager,
-) -> WorkflowManager:
-    man = pt_WorkflowManager_initialized
+def test_workflow_manager_spatial_disagregation(
+    pt_workflow_manager_initialized: WorkflowManager,
+):
+    man = pt_workflow_manager_initialized
 
     man.read(
         variables=[
@@ -168,10 +168,10 @@ def test_WorkflowManager_spatial_disagregation(
     )
 
 
-def test_WorkflowManager_adjust_variable_to_long_run_average(
-    pt_WorkflowManager_loaded: WorkflowManager,
+def test_workflow_manager_adjust_variable_to_long_run_average(
+    pt_workflow_manager_loaded: WorkflowManager,
 ) -> WorkflowManager:
-    man = pt_WorkflowManager_loaded
+    man = pt_workflow_manager_loaded
     man.adjust_variable_to_long_run_average(
         "elevated_wind_speed",
         source_long_run_average=rk.weather.Era5Source.LONG_RUN_AVERAGE_WINDSPEED,
@@ -187,7 +187,7 @@ def test_WorkflowManager_adjust_variable_to_long_run_average(
     assert np.isclose(man.sim_data["elevated_wind_speed"].max(), 13.853410433409616)
 
 
-def test_WorkflowManager_adjust_variable_to_long_run_average_() -> WorkflowManager:
+def test_workflow_manager_adjust_variable_to_long_run_average_() -> WorkflowManager:
     # create a test placements dataframe
     columns = ["lat", "lon", "capacity"]
     data = [
@@ -293,10 +293,10 @@ def test_WorkflowManager_adjust_variable_to_long_run_average_() -> WorkflowManag
     assert np.isnan(wf2.sim_data["test_raster"][0][2])
 
 
-def test_WorkflowManager_apply_loss_factor(
-    pt_WorkflowManager_loaded: WorkflowManager,
+def test_workflow_manager_apply_loss_factor(
+    pt_workflow_manager_loaded: WorkflowManager,
 ) -> WorkflowManager:
-    man = pt_WorkflowManager_loaded
+    man = pt_workflow_manager_loaded
     man.sim_data["capacity_factor"] = man.sim_data["elevated_wind_speed"].copy()
     man.apply_loss_factor(0.05, variables=["capacity_factor"])
 
@@ -316,20 +316,20 @@ def test_WorkflowManager_apply_loss_factor(
     assert np.isclose(man.sim_data["capacity_factor_2"].max(), 14.799319879757077)
 
 
-def test_WorkflowManager_register_workflow_parameter(
-    pt_WorkflowManager_loaded: WorkflowManager,
+def test_workflow_manager_register_workflow_parameter(
+    pt_workflow_manager_loaded: WorkflowManager,
 ) -> WorkflowManager:
-    man = pt_WorkflowManager_loaded
+    man = pt_workflow_manager_loaded
     man.register_workflow_parameter(key="hats", value=12)
 
     assert "hats" in man.workflow_parameters
     assert man.workflow_parameters["hats"] == 12
 
 
-def test_WorkflowManager_to_xarray(
-    pt_WorkflowManager_loaded: WorkflowManager,
+def test_workflow_manager_to_xarray(
+    pt_workflow_manager_loaded: WorkflowManager,
 ) -> WorkflowManager:
-    man = pt_WorkflowManager_loaded
+    man = pt_workflow_manager_loaded
 
     xds = man.to_xarray(
         output_netcdf_path=None,
@@ -439,7 +439,7 @@ def test_distribute_workflow():
     assert np.isclose(float(xds["capacity_factor"].fillna(0).mean()), 3.8672000730080187)
 
 
-def test_WorkflowQueue():
+def test_workflow_queue():
     # Create a queue
     queue = WorkflowQueue(
         workflow=simple_workflow,

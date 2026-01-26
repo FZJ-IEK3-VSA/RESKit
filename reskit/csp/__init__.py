@@ -1,4 +1,2 @@
-from . import workflows
-from . import data
-
-from .workflows.workflows import CSP_PTR_ERA5
+from reskit.csp import data, workflows
+from reskit.csp.workflows.workflows import csp_ptr_era5

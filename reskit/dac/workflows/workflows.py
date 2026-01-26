@@ -4,8 +4,8 @@ from typing import List
 
 import pandas as pd
 
-from ...util.relative_humidity import calculate_relative_humidity
-from .dac_workflow_manager import DACWorkflowManager
+from reskit.dac.workflows.dac_workflow_manager import DACWorkflowManager
+from reskit.util.relative_humidity import calculate_relative_humidity
 
 
 def lt_dac_era5_wenzel2025(
@@ -14,7 +14,7 @@ def lt_dac_era5_wenzel2025(
     output_netcdf_path: str = None,
     output_variables: List[str] = None,
     model: str = "LT_jajjawi",
-    fillMethod: str = "nearest",
+    fill_method: str = "nearest",
 ):
     """
     Simulate LT-DAC plants using ERA5 weather data.
@@ -69,7 +69,7 @@ def lt_dac_era5_wenzel2025(
         air_temperature=wf.sim_data["surface_air_temperature"],
     )
     wf.load_lt_dac_model_data(model=model)
-    wf.simulate_lt_dac_model(fillMethod=fillMethod)
+    wf.simulate_lt_dac_model(fill_method=fill_method)
 
     return wf.to_xarray(
         output_netcdf_path=output_netcdf_path,

@@ -43,8 +43,8 @@ def levelized_cost_of_electricity_simplified(
 
     """
     r = discount_rate
-    N = lifetime
-    return capex * (r / (1 - np.power(1 + r, -N)) + opex_per_capex) / (mean_production)
+    n = lifetime
+    return capex * (r / (1 - np.power(1 + r, -n)) + opex_per_capex) / (mean_production)
 
 
 def levelized_cost_of_electricity(expenditures, productions, discount_rate=0.08):

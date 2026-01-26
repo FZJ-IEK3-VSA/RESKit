@@ -1,12 +1,14 @@
 # primary packages
 import json
-import numpy as np
 import os
+
+import numpy as np
 import pandas as pd
+
+from reskit.default_paths import DEFAULT_PATHS
 
 # other modules
 from reskit.wind.core.data import DATAFOLDER
-from reskit.default_paths import DEFAULT_PATHS
 
 
 class Parameters:

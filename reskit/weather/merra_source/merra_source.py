@@ -3,7 +3,7 @@ from os.path import dirname, join
 import geokit as gk
 import numpy as np
 
-from .. import NCSource
+from reskit.weather.nc_source import NCSource
 
 
 class MerraSource(NCSource):
@@ -145,29 +145,29 @@ class MerraSource(NCSource):
 
     loc_to_index = NCSource._loc_to_index_rect(lat_step=0.5, lon_step=0.625)
 
-    def context_area_at_index(self, latI, lonI):
+    def context_area_at_index(self, lat_i, lon_i):
         """Compute the context area surrounding the specified index of the original source"""
         # Make and return a box
-        lowLat = self.lats[latI] - 0.25
-        highLat = self.lats[latI] + 0.25
-        lowLon = self.lons[lonI] - 0.3125
-        highLon = self.lons[lonI] + 0.3125
+        low_lat = self.lats[lat_i] - 0.25
+        high_lat = self.lats[lat_i] + 0.25
+        low_lon = self.lons[lon_i] - 0.3125
+        high_lon = self.lons[lon_i] + 0.3125
 
-        return gk.geom.box(lowLon, lowLat, highLon, highLat, srs=gk.srs.EPSG4326)
+        return gk.geom.box(low_lon, low_lat, high_lon, high_lat, srs=gk.srs.EPSG4326)
 
     # STANDARD LOADERS
     def _load_uv(self, height):
-        U = "U{}M".format(height)
-        V = "V{}M".format(height)
+        u = "U{}M".format(height)
+        v = "V{}M".format(height)
 
-        self.load(U)
-        self.load(V)
+        self.load(u)
+        self.load(v)
 
-        return self.data[U], self.data[V]
+        return self.data[u], self.data[v]
 
     def _load_wind_speed(self, height):
-        uData, vData = self._load_uv(height=height)
-        return np.sqrt(uData * uData + vData * vData)  # total speed
+        u_data, v_data = self._load_uv(height=height)
+        return np.sqrt(u_data * u_data + v_data * v_data)  # total speed
 
     def sload_elevated_wind_speed(self):
         """Standard loader function for the variable 'elevated_wind_speed'
@@ -219,8 +219,8 @@ class MerraSource(NCSource):
         self.data["wind_speed_at_50m"] = self._load_wind_speed(50)
 
     def _load_wind_dir(self, height):
-        uData, vData = self._load_uv(height=height)
-        return np.arctan2(vData, uData) * (180 / np.pi)  # total direction
+        u_data, v_data = self._load_uv(height=height)
+        return np.arctan2(v_data, u_data) * (180 / np.pi)  # total direction
 
     def sload_elevated_wind_direction(self):
         """Standard loader function for the variable 'elevated_wind_direction'

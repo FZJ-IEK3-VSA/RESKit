@@ -1,16 +1,18 @@
+import os
+import time
+
 import geokit as gk
+import numpy as np
 import pandas as pd
 from pandas.core.frame import DataFrame
+
 import reskit as rk
-import time
-import numpy as np
-import os
 from reskit.csp.data import csp_data_path
 
 
-class dataset_handler:
+class DatasetHandler:
     def __init__(self, datasets) -> None:
-        """dataset_handelr, which applies usefulll functions for splitting up placements from different datasets
+        """DatasetHandler, which applies useful functions for splitting up placements from different datasets
 
         Parameters
         ----------
@@ -31,7 +33,7 @@ class dataset_handler:
 
         placements["tamb_gsa"] = gk.raster.interpolateValues(source=gsa_tamb_path, points=placements.geom)
 
-        mat_HTF_opt = self._get_opt_HTF_matrix()
+        mat_HTF_opt = self._get_opt_htf_matrix()
 
         placements["Dataset_opt"] = placements[["dni_gsa", "tamb_gsa"]].apply(
             lambda x: self._lookup(x[0], x[1], mat_HTF_opt), axis=1
@@ -56,7 +58,7 @@ class dataset_handler:
         path = os.path.join(csp_data_path, f"optimal_htf_selection{_list_to_str(datasets)}.csv")
         return path
 
-    def _get_opt_HTF_matrix(self):
+    def _get_opt_htf_matrix(self):
         """Tries to find the opt matrix from the given datasets. if not possible, calculate a new one
 
         Returns
@@ -71,12 +73,12 @@ class dataset_handler:
             htf_opt_matrix.columns = htf_opt_matrix.columns.astype(float).astype(int)
         else:
             print("No opt HTF matrix found. Calculating new Matrix.")
-            htf_opt_matrix = self._calc_opt_HTF_matrix()
+            htf_opt_matrix = self._calc_opt_htf_matrix()
             htf_opt_matrix.index = htf_opt_matrix.index.astype(int)
             htf_opt_matrix.columns = htf_opt_matrix.columns.astype(int)
         return htf_opt_matrix
 
-    def _calc_opt_HTF_matrix(self) -> pd.DataFrame:
+    def _calc_opt_htf_matrix(self) -> pd.DataFrame:
         """Calculates the optimal htf for a variation of t_amb and dni and stores it inside reskit
 
         Returns
@@ -85,9 +87,9 @@ class dataset_handler:
             [matrix with opt htf for different T_amb and DNIs]
         """
         dT_vector = np.arange(-40, 30, 10)
-        fDNI_vector = [0.25, 0.5, 0.75, 1.0, 1.25, 1.5]
-        dT_matrix = np.tile(dT_vector, (len(fDNI_vector), 1))
-        fDNI_matrix = np.tile(fDNI_vector, (len(dT_vector), 1)).T
+        f_dni_vector = [0.25, 0.5, 0.75, 1.0, 1.25, 1.5]
+        dT_matrix = np.tile(dT_vector, (len(f_dni_vector), 1))
+        fDNI_matrix = np.tile(f_dni_vector, (len(dT_vector), 1)).T
         variable_name = "lcoe_EURct_per_kWh_el"
 
         n_placements = fDNI_matrix.size
@@ -111,13 +113,13 @@ class dataset_handler:
         for datasetname in datasetnames:
             print("datasetname", datasetname)
 
-            out = rk.csp.workflows.workflows.CSP_PTR_ERA5_specific_dataset(
+            out = rk.csp.workflows.workflows.csp_ptr_era5_specific_dataset(
                 placements=placements,
                 era5_path=era5_path,
                 global_solar_atlas_dni_path=global_solar_atlas_dni_path,
                 datasetname=datasetname,
                 return_self=True,
-                JITaccelerate=False,
+                jit_accelerate=False,
                 verbose=True,
                 debug_vars=False,
                 onlynightuse=True,
@@ -265,8 +267,8 @@ if __name__ == "__main__":
     # , 'Dataset_Therminol_2030']
     datasetnames = ["Dataset_Heliosol_2030", "Dataset_SolarSalt_2030"]
 
-    d = dataset_handler(datasets=datasetnames)
-    htf_opt_matrix = d._get_opt_HTF_matrix()
+    d = DatasetHandler(datasets=datasetnames)
+    htf_opt_matrix = d._get_opt_htf_matrix()
 
     placements = pd.DataFrame()
     n_placements = 2

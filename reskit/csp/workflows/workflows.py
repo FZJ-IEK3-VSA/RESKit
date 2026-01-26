@@ -5,26 +5,25 @@ import numpy as np
 import xarray as xr
 from numpy.lib.arraysetops import isin
 
+from reskit import weather as rk_weather
 from reskit import workflow_manager
-
-from ... import weather as rk_weather
-from .csp_workflow_manager import PTRWorkflowManager
-from .dataset_handler import dataset_handler
+from reskit.csp.workflows.csp_workflow_manager import PTRWorkflowManager
+from reskit.csp.workflows.dataset_handler import DatasetHandler
 
 
-def CSP_PTR_ERA5(
+def csp_ptr_era5(
     placements,
     era5_path,
     global_solar_atlas_dni_path,
     global_solar_atlas_tamb_path=None,
     datasets=None,
     cost_year=2050,
-    HTF_sel=["Heliosol", "SolarSalt", "Therminol"],
+    htf_sel=["Heliosol", "SolarSalt", "Therminol"],
     elev_path=None,
     output_netcdf_path=None,
     output_variables=None,
     return_self=True,
-    JITaccelerate=False,
+    jit_accelerate=False,
     verbose=False,
     debug_vars=False,
     onlynightuse=True,
@@ -121,7 +120,7 @@ def CSP_PTR_ERA5(
     single_dataset = False
     if datasets == None:
         # get datasets from HTF_sel and cost_year
-        datasets = ["Dataset_" + htf + "_" + str(cost_year) for htf in HTF_sel]
+        datasets = ["Dataset_" + htf + "_" + str(cost_year) for htf in htf_sel]
         if len(datasets) == 1:
             single_dataset = True
             datasets = datasets[0]
@@ -140,7 +139,7 @@ def CSP_PTR_ERA5(
         assert isinstance(global_solar_atlas_tamb_path, str)
 
     if single_dataset:  # only one dataset given
-        output = CSP_PTR_ERA5_specific_dataset(
+        output = csp_ptr_era5_specific_dataset(
             placements=placements,
             era5_path=era5_path,
             global_solar_atlas_dni_path=global_solar_atlas_dni_path,
@@ -149,7 +148,7 @@ def CSP_PTR_ERA5(
             output_netcdf_path=output_netcdf_path,
             output_variables=output_variables,
             return_self=return_self,
-            JITaccelerate=JITaccelerate,
+            jit_accelerate=jit_accelerate,
             verbose=verbose,
             debug_vars=debug_vars,
             onlynightuse=onlynightuse,
@@ -160,7 +159,7 @@ def CSP_PTR_ERA5(
 
     else:  # multiple datasets found
         # 1) split up placements for each htf (e.g. solar salt or heliosol)
-        d = dataset_handler(datasets)
+        d = DatasetHandler(datasets)
         placements = d.split_placements(
             placements=placements,
             gsa_dni_path=global_solar_atlas_dni_path,
@@ -179,7 +178,7 @@ def CSP_PTR_ERA5(
                 continue
 
             # starting core simulation
-            output_dataset = CSP_PTR_ERA5_specific_dataset(
+            output_dataset = csp_ptr_era5_specific_dataset(
                 placements=placements_dataset,
                 era5_path=era5_path,
                 global_solar_atlas_dni_path=global_solar_atlas_dni_path,
@@ -188,7 +187,7 @@ def CSP_PTR_ERA5(
                 output_netcdf_path=output_netcdf_path,
                 output_variables=output_variables,
                 return_self=False,
-                JITaccelerate=JITaccelerate,
+                jit_accelerate=jit_accelerate,
                 verbose=verbose,
                 debug_vars=debug_vars,
                 onlynightuse=onlynightuse,
@@ -216,7 +215,7 @@ def CSP_PTR_ERA5(
         return output
 
 
-def CSP_PTR_ERA5_specific_dataset(
+def csp_ptr_era5_specific_dataset(
     placements,
     era5_path,
     global_solar_atlas_dni_path,
@@ -225,7 +224,7 @@ def CSP_PTR_ERA5_specific_dataset(
     output_netcdf_path=None,
     output_variables=None,
     return_self=True,
-    JITaccelerate=False,
+    jit_accelerate=False,
     verbose=False,
     debug_vars=False,
     onlynightuse=True,
@@ -311,7 +310,7 @@ def CSP_PTR_ERA5_specific_dataset(
     # 1) Load input data
     wf = PTRWorkflowManager(placements)
 
-    ptr_data = wf.loadPTRdata(
+    ptr_data = wf.load_ptr_data(
         datasetname=datasetname
     )  # PTRdata referes to the different csp models, i.e. helisol or solar salt: csp/data/CSP_database.xlsx
     wf.determine_area()  # either determines aperture_area from land_area, or the other way around
@@ -338,7 +337,7 @@ def CSP_PTR_ERA5_specific_dataset(
         verbose=False,
     )
 
-    wf.check_ERA5_input()
+    wf.check_era5_input()
 
     if verbose:
         tic_read = time.time()
@@ -356,7 +355,7 @@ def CSP_PTR_ERA5_specific_dataset(
     wf.apply_azimuth()
     # 5) calculate the solar position based on pvlib
 
-    wf.calculateSolarPosition()
+    wf.calculate_solar_position()
 
     # calculate DNI from ERA5 to DNi convention
     # ERA5 DIN: Heat flux per horizontal plane
@@ -379,17 +378,17 @@ def CSP_PTR_ERA5_specific_dataset(
         )
 
     # manipulationof input values for variation calculation
-    wf._applyVariation()  # only for developers, can be ignored otherwise
+    wf._apply_variation()  # only for developers, can be ignored otherwise
 
     # 6) doing selfmade calulations until Heat to HTF (Heat transfer fluid)
-    wf.calculateIAM(a1=ptr_data["a1"], a2=ptr_data["a2"], a3=ptr_data["a3"])
-    wf.calculateShadowLosses(method="wagner2011", SF_density=ptr_data["SF_density_direct"])
-    wf.calculateWindspeedLosses(max_windspeed_threshold=ptr_data["maxWindspeed"])
-    wf.calculateDegradationLosses(
-        efficiencyDropPerYear=ptr_data["efficiencyDropPerYear"],
+    wf.calculate_iam(a1=ptr_data["a1"], a2=ptr_data["a2"], a3=ptr_data["a3"])
+    wf.calculate_shadow_losses(method="wagner2011", sf_density=ptr_data["SF_density_direct"])
+    wf.calculate_windspeed_losses(max_windspeed_threshold=ptr_data["maxWindspeed"])
+    wf.calculate_degradation_losses(
+        efficiency_drop_per_year=ptr_data["efficiencyDropPerYear"],
         lifetime=ptr_data["lifetime"],
     )
-    wf.calculateHeattoHTF(
+    wf.calculate_heat_to_htf(
         eta_ptr_max=ptr_data["eta_ptr_max"],
         eta_cleaness=ptr_data["eta_cleaness"],
         eta_other=ptr_data["eta_other"],
@@ -414,13 +413,13 @@ def CSP_PTR_ERA5_specific_dataset(
         print("Preanalysis within {dt}s.".format(dt=str(tic_pre - tic_read)), flush=True)
         print("Starting core simulation of the solar field.", flush=True)
     # 7) calculation heat to plant with loss model
-    wf.applyHTFHeatLossModel(
+    wf.apply_htf_heat_loss_model(
         calculationmethod="dersch2018",
         params={
             "b": ptr_data["b"],
             "relTMplant": ptr_data["relTMplant"],
             "maxHTFTemperature": ptr_data["maxHTFTemperature"],
-            "JITaccelerate": JITaccelerate,  # TODO: from ptr manager
+            "JITaccelerate": jit_accelerate,  # TODO: from ptr manager
             "minHTFTemperature": ptr_data["minHTFTemperature"],
             "inletHTFTemperature": ptr_data["inletHTFTemperature"],
             "add_losses_coefficient": ptr_data["add_losses_coefficient"],
@@ -438,7 +437,7 @@ def CSP_PTR_ERA5_specific_dataset(
         )
 
     # 8) calculate Parasitic Losses of the plant
-    wf.calculateParasitics(
+    wf.calculate_parasitics(
         calculationmethod="dersch2018",  # 'gafurov2013',
         params={
             "PL_sf_fixed_W_per_m^2_ap": 1.486,
@@ -452,8 +451,8 @@ def CSP_PTR_ERA5_specific_dataset(
     )
 
     # 9) calculate economics
-    wf.calculateEconomics_SolarField(
-        WACC=ptr_data["WACC"],
+    wf.calculate_economics_solar_field(
+        wacc=ptr_data["WACC"],
         lifetime=ptr_data["lifetime"],
         calculationmethod="franzmann2021",
         params={
@@ -487,8 +486,8 @@ def CSP_PTR_ERA5_specific_dataset(
         )
 
     wf.calculate_electrical_output(onlynightuse=onlynightuse, debug_vars=debug_vars)
-    wf.calculate_LCOE()
-    wf.calculateCapacityFactors()
+    wf.calculate_lcoe()
+    wf.calculate_capacity_factors()
 
     if verbose:
         tic_final = time.time()

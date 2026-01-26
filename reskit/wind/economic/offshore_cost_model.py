@@ -1,8 +1,7 @@
 import numpy as np
 
 from reskit.parameters.parameters import OffshoreParameters
-
-from .onshore_cost_model import onshore_tcc
+from reskit.wind.economic.onshore_cost_model import onshore_tcc
 
 
 def offshore_turbine_capex(
@@ -94,7 +93,7 @@ def offshore_turbine_capex(
     # TODO: Generalize this function further(like with the onshore cost model)
 
     # initialize OffshoreParameters class and feed with custom param values
-    OffshoreParams = OffshoreParameters(
+    offshore_params = OffshoreParameters(
         **{
             k: v
             for k, v in locals().items()
@@ -119,18 +118,18 @@ def offshore_turbine_capex(
         hh=hh,
         depth=depth,
         distance_to_shore=np.array(distance_to_shore),
-        distance_to_bus=np.array(OffshoreParams.distance_to_bus),
-        foundation=OffshoreParams.foundation,
-        mooring_count=OffshoreParams.mooring_count,
-        anchor=OffshoreParams.anchor,
-        turbine_count=OffshoreParams.turbine_count,
-        turbine_spacing=OffshoreParams.turbine_spacing,
-        turbine_row_spacing=OffshoreParams.turbine_row_spacing,
+        distance_to_bus=np.array(offshore_params.distance_to_bus),
+        foundation=offshore_params.foundation,
+        mooring_count=offshore_params.mooring_count,
+        anchor=offshore_params.anchor,
+        turbine_count=offshore_params.turbine_count,
+        turbine_spacing=offshore_params.turbine_spacing,
+        turbine_row_spacing=offshore_params.turbine_row_spacing,
     )
 
     bos *= 0.3669156255898912
 
-    if OffshoreParams.foundation in ["monopile", "jacket"]:
+    if offshore_params.foundation in ["monopile", "jacket"]:
         fin = (tcc + bos) * 20.9 / (32.9 + 46.2)  # Scaled according to tcc [7]
     else:
         fin = (tcc + bos) * 15.6 / (60.8 + 23.6)  # Scaled according to tcc [7]
@@ -225,9 +224,9 @@ def offshore_bos(
     foundation = foundation.lower()
     anchor = anchor.lower()
     if foundation == "monopile" or foundation == "jacket":
-        fixedType = True
+        fixed_type = True
     elif foundation == "spar" or foundation == "semisubmersible":
-        fixedType = False
+        fixed_type = False
     else:
         raise ValueError(
             f"Please choose one of the four foundation types: monopile, jacket, spar, or semisubmersible. Here: {foundation}"
@@ -236,55 +235,55 @@ def offshore_bos(
     # CONSTANTS AND ASSUMPTIONS (all from [1] except where noted)
     # Structure are foundation
     # embedmentDepth = 30  # meters
-    monopileCostRate = 2250  # dollars/tonne
-    monopileTPCostRate = 3230  # dollars/tonne
-    sparSCCostRate = 3120  # dollars/tonne
-    sparTCCostRate = 4222  # dollars/tonne
-    sparBallCostRate = 100  # dollars/tonne
-    jacketMLCostRate = 4680  # dollars/tonne
-    jacketTPCostRate = 4500  # dollars/tonne
-    jacketPileCostRate = 2250  # dollars/tonne
-    semiSubmersibleSCCostRate = 3120  # dollars/tonne
-    semiSubmersibleTCostRate = 6250  # dollars/tonne
-    semiSubmersibleHPCostRate = 6250  # dollars/tonne
+    monopile_cost_rate = 2250  # dollars/tonne
+    monopile_tp_cost_rate = 3230  # dollars/tonne
+    spar_sc_cost_rate = 3120  # dollars/tonne
+    spar_tc_cost_rate = 4222  # dollars/tonne
+    spar_ball_cost_rate = 100  # dollars/tonne
+    jacket_ml_cost_rate = 4680  # dollars/tonne
+    jacket_tp_cost_rate = 4500  # dollars/tonne
+    jacket_pile_cost_rate = 2250  # dollars/tonne
+    semi_submersible_sc_cost_rate = 3120  # dollars/tonne
+    semi_submersible_t_cost_rate = 6250  # dollars/tonne
+    semi_submersible_hp_cost_rate = 6250  # dollars/tonne
     # dollars/tonne -- 0.12m diameter is chosen since it is the median in [1]
-    mooringCostRate = 721
-    outfittingSteelCost = 7250  # dollars/tonne
+    mooring_cost_rate = 721
+    outfitting_steel_cost = 7250  # dollars/tonne
 
     # the values of anchor cost is calculated from Table8 in [2] by assuming a euro to dollar rate of 1.35
-    DEA_anchorCost = 154  # dollars [2]
-    SPA_anchorCost = 692  # dollars [2]
+    dea_anchor_cost = 154  # dollars [2]
+    spa_anchor_cost = 692  # dollars [2]
 
     # Electrical
     # current rating values are taken from source an approximate number is chosen from tables[4]
-    cable1CurrentRating = 400  # [4]
-    cable2CurrentRating = 600  # [4]
+    cable_1_current_rating = 400  # [4]
+    cable_2_current_rating = 600  # [4]
     # exportCableCurrentRating = 1000  # [4]
-    arrayVoltage = 33
+    array_voltage = 33
     # exportCableVoltage = 220
-    powerFactor = 0.95
+    power_factor = 0.95
     # buriedDepth = 1  # this value is chosen from [5] IF THIS CHANGES FROM ONE "singleStringPower1" needs to be updated
-    catenaryLengthFactor = 0.04
-    excessCableFactor = 0.1
-    numberOfSubStations = 1  # From the example used in [5]
-    arrayCableCost = 281000 * 1.35  # dollars/km (converted from EUR) [3]
-    externalCableCost = 443000 * 1.35  # dollars/km (converted from EUR) [3]
-    singleTurbineInterfaceCost = 0  # Could not find a number...
-    substationInterfaceCost = 0  # Could not find a number...
-    dynamicCableFactor = 2
-    mainPowerTransformerCostRate = 12500  # dollars/MVA
-    highVoltageSwitchgearCost = 950000  # dollars
-    mediumVoltageSwitchgearCost = 500000  # dollars
-    shuntReactorCostRate = 35000  # dollars/MVA
-    dieselGeneratorBackupCost = 1000000  # dollars
-    workspaceCost = 2000000  # dollars
-    otherAncillaryCosts = 3000000  # dollars
-    fabricationCostRate = 14500  # dollars/tonne
-    topsideDesignCost = 4500000  # dollars
-    assemblyFactor = 1  # could not find a number...
-    offshoreSubstationSubstructureCostRate = 6250  # dollars/tonne
-    substationSubstructurePileCostRate = 2250  # dollars/tonne
-    interconnectVoltage = 345  # kV
+    catenary_length_factor = 0.04
+    excess_cable_factor = 0.1
+    number_of_sub_stations = 1  # From the example used in [5]
+    array_cable_cost = 281000 * 1.35  # dollars/km (converted from EUR) [3]
+    external_cable_cost = 443000 * 1.35  # dollars/km (converted from EUR) [3]
+    single_turbine_interface_cost = 0  # Could not find a number...
+    substation_interface_cost = 0  # Could not find a number...
+    dynamic_cable_factor = 2
+    main_power_transformer_cost_rate = 12500  # dollars/MVA
+    high_voltage_switch_gear_cost = 950000  # dollars
+    medium_voltage_switchgear_cost = 500000  # dollars
+    shunt_reactor_cost_rate = 35000  # dollars/MVA
+    diesel_generator_backup_cost = 1000000  # dollars
+    workspace_cost = 2000000  # dollars
+    other_ancillary_costs = 3000000  # dollars
+    fabrication_cost_rate = 14500  # dollars/tonne
+    topside_design_cost = 4500000  # dollars
+    assembly_factor = 1  # could not find a number...
+    offshore_substation_substructure_cost_rate = 6250  # dollars/tonne
+    substation_substructure_pile_cost_rate = 2250  # dollars/tonne
+    interconnect_voltage = 345  # kV
 
     # GENERAL (APPENDIX B in NREL BOS MODEL)
     # hubDiam = cp / 4 + 2
@@ -294,7 +293,7 @@ def offshore_bos(
     # nacelleLength = 2 * nacelleWidth
 
     # RNAMass is rotor nacelle assembly
-    RNAMass = 2.082 * cp * cp + 44.59 * cp + 22.48
+    rna_mass = 2.082 * cp * cp + 44.59 * cp + 22.48
 
     # towerDiam = cp / 2 + 4
     # towerMass = (0.4 * np.pi * np.power(rr, 2) * hh - 1500) / 1000
@@ -303,345 +302,358 @@ def offshore_bos(
     if foundation == "monopile":
         # monopileLength = depth + embedmentDepth + 5
 
-        monopileMass = (
+        monopile_mass = (
             np.power((cp * 1000), 1.5)
             + (np.power(hh, 3.7) / 10)
             + 2100 * np.power(depth, 2.25)
-            + np.power((RNAMass * 1000), 1.13)
+            + np.power((rna_mass * 1000), 1.13)
         ) / 10000
-        monopileCost = monopileMass * monopileCostRate
+        monopile_cost = monopile_mass * monopile_cost_rate
 
         # monopile transition piece mass is called as monopileTPMass
 
-        monopileTPMass = np.exp(2.77 + 1.04 * np.power(cp, 0.5) + 0.00127 * np.power(depth, 1.5))
-        monopileTPCost = monopileTPMass * monopileTPCostRate
+        monopile_tp_mass = np.exp(2.77 + 1.04 * np.power(cp, 0.5) + 0.00127 * np.power(depth, 1.5))
+        monopile_tp_cost = monopile_tp_mass * monopile_tp_cost_rate
 
-        foundationCost = monopileCost + monopileTPCost
-        mooringAndAnchorCost = 0
+        foundation_cost = monopile_cost + monopile_tp_cost
+        mooring_and_anchor_cost = 0
 
     elif foundation == "jacket":
         # jacket main lattice mass is called as jacketMLMass
-        jacketMLMass = np.exp(3.71 + 0.00176 * np.power(cp, 2.5) + 0.645 * np.log(np.power(depth, 1.5)))
-        jacketMLCost = jacketMLMass * jacketMLCostRate
+        jacket_ml_mass = np.exp(3.71 + 0.00176 * np.power(cp, 2.5) + 0.645 * np.log(np.power(depth, 1.5)))
+        jacket_ml_cost = jacket_ml_mass * jacket_ml_cost_rate
 
         # jacket transition piece mass is called as jacketTPMass
-        jacketTPMass = 1 / (((-0.0131 + 0.0381) / np.log(cp)) - 0.00000000227 * np.power(depth, 3))
-        jacketTPCost = jacketTPMass * jacketTPCostRate
+        jacket_tp_mass = 1 / (((-0.0131 + 0.0381) / np.log(cp)) - 0.00000000227 * np.power(depth, 3))
+        jacket_tp_cost = jacket_tp_mass * jacket_tp_cost_rate
 
         # jacket pile mass is called as jacketPileMass
-        jacketPileMass = 8 * np.power(jacketMLMass, 0.5574)
-        jacketPileCost = jacketPileMass * jacketPileCostRate
+        jacket_pile_mass = 8 * np.power(jacket_ml_mass, 0.5574)
+        jacket_pile_cost = jacket_pile_mass * jacket_pile_cost_rate
 
-        foundationCost = jacketMLCost + jacketTPCost + jacketPileCost
-        mooringAndAnchorCost = 0
+        foundation_cost = jacket_ml_cost + jacket_tp_cost + jacket_pile_cost
+        mooring_and_anchor_cost = 0
 
     elif foundation == "spar":
         # spar stiffened column mass is called as sparSCMass
-        sparSCMass = 535.93 + 17.664 * np.power(cp, 2) + 0.02328 * depth * np.log(depth)
-        sparSCCost = sparSCMass * sparSCCostRate
+        spar_sc_mass = 535.93 + 17.664 * np.power(cp, 2) + 0.02328 * depth * np.log(depth)
+        spar_sc_cost = spar_sc_mass * spar_sc_cost_rate
 
         # spar tapered column mass is called as sparTCMass
-        sparTCMass = 125.81 * np.log(cp) + 58.712
-        sparTCCost = sparTCMass * sparTCCostRate
+        spar_tc_mass = 125.81 * np.log(cp) + 58.712
+        spar_tc_cost = spar_tc_mass * spar_tc_cost_rate
 
         # spar ballast mass is called as sparBallMass
-        sparBallMass = -16.536 * np.power(cp, 2) + 1261.8 * cp - 1554.6
-        sparBallCost = sparBallMass * sparBallCostRate
+        spar_ball_mass = -16.536 * np.power(cp, 2) + 1261.8 * cp - 1554.6
+        spar_ball_cost = spar_ball_mass * spar_ball_cost_rate
 
-        foundationCost = sparSCCost + sparTCCost + sparBallCost
+        foundation_cost = spar_sc_cost + spar_tc_cost + spar_ball_cost
 
         if anchor == "dea":
-            anchorCost = DEA_anchorCost
+            anchor_cost = dea_anchor_cost
             # the equation is derived from [3]
-            mooringLength = 1.5 * depth + 350
+            mooring_length = 1.5 * depth + 350
 
         elif anchor == "spa":
-            anchorCost = SPA_anchorCost
+            anchor_cost = spa_anchor_cost
             # since it is assumed to have an angle of 45 degrees it is multiplied by 1.41 which is squareroot of 2 [3]
-            mooringLength = 1.41 * depth
+            mooring_length = 1.41 * depth
 
         else:
             raise ValueError("Please choose an anchor type!")
 
-        mooringAndAnchorCost = mooringLength * mooringCostRate + anchorCost
+        mooring_and_anchor_cost = mooring_length * mooring_cost_rate + anchor_cost
 
     elif foundation == "semisubmersible":
         # semiSubmersible stiffened column mass is called as semiSubmersibleSCMass
-        semiSubmersibleSCMass = -0.9571 * np.power(cp, 2) + 40.89 * cp + 802.09
-        semiSubmersibleSCCost = semiSubmersibleSCMass * semiSubmersibleSCCostRate
+        semi_submersible_sc_mass = -0.9571 * np.power(cp, 2) + 40.89 * cp + 802.09
+        semi_submersible_sc_cost = semi_submersible_sc_mass * semi_submersible_sc_cost_rate
 
         # semiSubmersible truss mass is called as semiSubmersibleTMass
-        semiSubmersibleTMass = 2.7894 * np.power(cp, 2) + 15.591 * cp + 266.03
-        semiSubmersibleTCost = semiSubmersibleTMass * semiSubmersibleTCostRate
+        semi_submersible_t_mass = 2.7894 * np.power(cp, 2) + 15.591 * cp + 266.03
+        semi_submersible_t_cost = semi_submersible_t_mass * semi_submersible_t_cost_rate
 
         # semiSubmersible heavy plate mass is called as semiSubmersibleHPMass
-        semiSubmersibleHPMass = -0.4397 * np.power(cp, 2) + 21.145 * cp + 177.42
-        semiSubmersibleHPCost = semiSubmersibleHPMass * semiSubmersibleHPCostRate
+        semi_submersible_hp_mass = -0.4397 * np.power(cp, 2) + 21.145 * cp + 177.42
+        semi_submersible_hp_cost = semi_submersible_hp_mass * semi_submersible_hp_cost_rate
 
-        foundationCost = semiSubmersibleSCCost + semiSubmersibleTCost + semiSubmersibleHPCost
+        foundation_cost = semi_submersible_sc_cost + semi_submersible_t_cost + semi_submersible_hp_cost
 
         if anchor == "dea":
-            anchorCost = DEA_anchorCost
+            anchor_cost = dea_anchor_cost
             # the equation is derived from [3]
-            mooringLength = 1.5 * depth + 350
+            mooring_length = 1.5 * depth + 350
 
         elif anchor == "spa":
-            anchorCost = SPA_anchorCost
+            anchor_cost = spa_anchor_cost
             # since it is assumed to have an angle of 45 degrees it is multiplied by 1.41 which is squareroot of 2 [3]
-            mooringLength = 1.41 * depth
+            mooring_length = 1.41 * depth
 
         else:
             raise ValueError("Please choose an anchor type!")
 
-        mooringAndAnchorCost = mooringLength * mooringCostRate + anchorCost
+        mooring_and_anchor_cost = mooring_length * mooring_cost_rate + anchor_cost
 
-    if fixedType:
+    if fixed_type:
         if cp > 4:
-            secondarySteelSubstructureMass = 40 + (0.8 * (18 + depth))
+            secondary_steel_substructure_mass = 40 + (0.8 * (18 + depth))
         else:
-            secondarySteelSubstructureMass = 35 + (0.8 * (18 + depth))
+            secondary_steel_substructure_mass = 35 + (0.8 * (18 + depth))
 
     elif foundation == "spar":
-        secondarySteelSubstructureMass = np.exp(
+        secondary_steel_substructure_mass = np.exp(
             3.58 + 0.196 * np.power(cp, 0.5) * np.log(cp) + 0.00001 * depth * np.log(depth)
         )
 
     elif foundation == "semisubmersible":
-        secondarySteelSubstructureMass = -0.153 * np.power(cp, 2) + 6.54 * cp + 128.34
+        secondary_steel_substructure_mass = -0.153 * np.power(cp, 2) + 6.54 * cp + 128.34
 
-    secondarySteelSubstructureCost = secondarySteelSubstructureMass * outfittingSteelCost
+    secondary_steel_substructure_cost = secondary_steel_substructure_mass * outfitting_steel_cost
 
-    totalStructureAndFoundationCosts = (
-        foundationCost + mooringAndAnchorCost * mooring_count + secondarySteelSubstructureCost
+    total_structure_and_foundation_costs = (
+        foundation_cost + mooring_and_anchor_cost * mooring_count + secondary_steel_substructure_cost
     )
 
     # ELECTRICAL INFRASTRUCTURE
     # in the calculation of singleStringPower1 and 2, bur depth is assumed to be 1. Because of that the equation is simplified.
-    singleStringPower1 = np.sqrt(3) * cable1CurrentRating * arrayVoltage * powerFactor / 1000
-    singleStringPower2 = np.sqrt(3) * cable2CurrentRating * arrayVoltage * powerFactor / 1000
+    single_string_power1 = np.sqrt(3) * cable_1_current_rating * array_voltage * power_factor / 1000
+    single_string_power2 = np.sqrt(3) * cable_2_current_rating * array_voltage * power_factor / 1000
 
-    numberofStrings = np.floor_divide(turbine_count * cp, singleStringPower2)
+    number_of_strings = np.floor_divide(turbine_count * cp, single_string_power2)
 
     # Only no partial string will be implemented
     # np.round(np.remainder((turbine_count*cp) , singleStringPower2))
-    numberofTurbinesperPartialString = 0
+    number_of_turbines_per_partial_string = 0
 
-    numberofTurbinesperArrayCable1 = np.floor_divide(singleStringPower1, cp)
+    number_of_turbines_per_array_cable1 = np.floor_divide(single_string_power1, cp)
 
-    numberofTurbinesperArrayCable2 = np.floor_divide(singleStringPower2, cp)
+    number_of_turbines_per_array_cable2 = np.floor_divide(single_string_power2, cp)
 
-    numberofTurbineInterfacesPerArrayCable1 = numberofTurbinesperArrayCable1 * numberofStrings * 2
+    number_of_turbine_tnterfaces_per_array_cable_1 = number_of_turbines_per_array_cable1 * number_of_strings * 2
 
-    max1_Cable1 = np.maximum(numberofTurbinesperArrayCable1 - numberofTurbinesperArrayCable2, 0)
-    max2_Cable1 = 0
-    numberofTurbineInterfacesPerArrayCable2 = (max1_Cable1 * numberofStrings + max2_Cable1) * 2
+    max1_cable1 = np.maximum(number_of_turbines_per_array_cable1 - number_of_turbines_per_array_cable2, 0)
+    max2_cable1 = 0
+    number_of_turbine_interfaces_per_array_cable_2 = (max1_cable1 * number_of_strings + max2_cable1) * 2
 
-    numberofArrayCableSubstationInterfaces = numberofStrings
+    number_of_array_cable_substation_interfaces = number_of_strings
 
-    if fixedType:
-        arrayCable1Length = (
-            (turbine_spacing * rd + depth * 2) * (numberofTurbineInterfacesPerArrayCable1 / 2) * (1 + excessCableFactor)
+    if fixed_type:
+        array_cable_1_length = (
+            (turbine_spacing * rd + depth * 2)
+            * (number_of_turbine_tnterfaces_per_array_cable_1 / 2)
+            * (1 + excess_cable_factor)
         )
-        arrayCable1Length /= 1000  # convert to km
+        array_cable_1_length /= 1000  # convert to km
         # print("arrayCable1Length:", arrayCable1Length)
     else:
-        systemAngle = -0.0047 * depth + 18.743
+        system_angle = -0.0047 * depth + 18.743
 
-        freeHangingCableLength = (depth / np.cos(systemAngle * np.pi / 180) * (catenaryLengthFactor + 1)) + 190
+        free_hanging_cable_length = (depth / np.cos(system_angle * np.pi / 180) * (catenary_length_factor + 1)) + 190
 
-        fixedCableLength = (turbine_spacing * rd) - (2 * np.tan(systemAngle * np.pi / 180) * depth) - 70
+        fixed_cable_length = (turbine_spacing * rd) - (2 * np.tan(system_angle * np.pi / 180) * depth) - 70
 
-        arrayCable1Length = (
-            (2 * freeHangingCableLength) * (numberofTurbineInterfacesPerArrayCable1 / 2) * (1 + excessCableFactor)
+        array_cable_1_length = (
+            (2 * free_hanging_cable_length)
+            * (number_of_turbine_tnterfaces_per_array_cable_1 / 2)
+            * (1 + excess_cable_factor)
         )
-        arrayCable1Length /= 1000  # convert to km
+        array_cable_1_length /= 1000  # convert to km
 
-    max1_Cable2 = np.maximum(numberofTurbinesperArrayCable2 - 1, 0)
-    max2_Cable2 = np.maximum(numberofTurbinesperPartialString - numberofTurbinesperArrayCable2 - 1, 0)
+    max1_cable2 = np.maximum(number_of_turbines_per_array_cable2 - 1, 0)
+    max2_cable2 = np.maximum(number_of_turbines_per_partial_string - number_of_turbines_per_array_cable2 - 1, 0)
 
-    strFac = numberofStrings / numberOfSubStations
+    str_fac = number_of_strings / number_of_sub_stations
 
-    if fixedType:
-        arrayCable2Length = (turbine_spacing * rd + 2 * depth) * (
-            max1_Cable2 * numberofStrings + max2_Cable2
-        ) + numberOfSubStations * (
-            strFac * (rd * turbine_row_spacing)
+    if fixed_type:
+        array_cable_2_length = (turbine_spacing * rd + 2 * depth) * (
+            max1_cable2 * number_of_strings + max2_cable2
+        ) + number_of_sub_stations * (
+            str_fac * (rd * turbine_row_spacing)
             + (
-                np.sqrt(np.power((rd * turbine_spacing * (strFac - 1)), 2) + np.power((rd * turbine_row_spacing), 2))
+                np.sqrt(np.power((rd * turbine_spacing * (str_fac - 1)), 2) + np.power((rd * turbine_row_spacing), 2))
                 / 2
             )
-            + strFac * depth
-        ) * (excessCableFactor + 1)
-        arrayCable2Length /= 1000  # convert to km
+            + str_fac * depth
+        ) * (excess_cable_factor + 1)
+        array_cable_2_length /= 1000  # convert to km
 
-        arrayCable1AndAncillaryCost = arrayCable1Length * arrayCableCost + singleTurbineInterfaceCost * (
-            numberofTurbineInterfacesPerArrayCable1 + numberofTurbineInterfacesPerArrayCable2
+        array_cable_1_and_ancillary_cost = array_cable_1_length * array_cable_cost + single_turbine_interface_cost * (
+            number_of_turbine_tnterfaces_per_array_cable_1 + number_of_turbine_interfaces_per_array_cable_2
         )
 
-        arrayCable2AndAncillaryCost = (
-            arrayCable2Length * arrayCableCost
-            + singleTurbineInterfaceCost
-            * (numberofTurbineInterfacesPerArrayCable1 + numberofTurbineInterfacesPerArrayCable2)
-            + substationInterfaceCost * numberofArrayCableSubstationInterfaces
+        array_cable_2_and_ancillary_cost = (
+            array_cable_2_length * array_cable_cost
+            + single_turbine_interface_cost
+            * (number_of_turbine_tnterfaces_per_array_cable_1 + number_of_turbine_interfaces_per_array_cable_2)
+            + substation_interface_cost * number_of_array_cable_substation_interfaces
         )
 
     else:
-        arrayCable2Length = (fixedCableLength + 2 * freeHangingCableLength) * (
-            max1_Cable2 * numberofStrings + max2_Cable2
-        ) + numberOfSubStations * (
-            strFac * (rd * turbine_row_spacing)
+        array_cable_2_length = (fixed_cable_length + 2 * free_hanging_cable_length) * (
+            max1_cable2 * number_of_strings + max2_cable2
+        ) + number_of_sub_stations * (
+            str_fac * (rd * turbine_row_spacing)
             + np.sqrt(
                 np.power(
                     (
-                        (2 * freeHangingCableLength) * (strFac - 1)
+                        (2 * free_hanging_cable_length) * (str_fac - 1)
                         + (rd * turbine_row_spacing)
-                        - (2 * np.tan(systemAngle * np.pi / 180) * depth)
+                        - (2 * np.tan(system_angle * np.pi / 180) * depth)
                         - 70
                     ),
                     2,
                 )
-                + np.power(fixedCableLength + 2 * freeHangingCableLength, 2)
+                + np.power(fixed_cable_length + 2 * free_hanging_cable_length, 2)
             )
             / 2
-        ) * (excessCableFactor + 1)
-        arrayCable2Length /= 1000  # convert to km
+        ) * (excess_cable_factor + 1)
+        array_cable_2_length /= 1000  # convert to km
 
-        arrayCable1AndAncillaryCost = dynamicCableFactor * (
-            arrayCable1Length * arrayCableCost
-            + singleTurbineInterfaceCost
-            * (numberofTurbineInterfacesPerArrayCable1 + numberofTurbineInterfacesPerArrayCable2)
+        array_cable_1_and_ancillary_cost = dynamic_cable_factor * (
+            array_cable_1_length * array_cable_cost
+            + single_turbine_interface_cost
+            * (number_of_turbine_tnterfaces_per_array_cable_1 + number_of_turbine_interfaces_per_array_cable_2)
         )
 
-        arrayCable2AndAncillaryCost = dynamicCableFactor * (
-            arrayCable2Length * arrayCableCost
-            + singleTurbineInterfaceCost
-            * (numberofTurbineInterfacesPerArrayCable1 + numberofTurbineInterfacesPerArrayCable2)
-            + substationInterfaceCost * numberofArrayCableSubstationInterfaces
+        array_cable_2_and_ancillary_cost = dynamic_cable_factor * (
+            array_cable_2_length * array_cable_cost
+            + single_turbine_interface_cost
+            * (number_of_turbine_tnterfaces_per_array_cable_1 + number_of_turbine_interfaces_per_array_cable_2)
+            + substation_interface_cost * number_of_array_cable_substation_interfaces
         )
 
-    singleExportCablePower = np.sqrt(3) * cable2CurrentRating * arrayVoltage * powerFactor / 1000
-    numberOfExportCables = np.floor_divide(cp * turbine_count, singleExportCablePower) + 1
+    single_export_cable_power = np.sqrt(3) * cable_2_current_rating * array_voltage * power_factor / 1000
+    number_of_export_cables = np.floor_divide(cp * turbine_count, single_export_cable_power) + 1
 
-    if fixedType:
-        exportCableLength = (distance_to_shore * 1000 + depth) * numberOfExportCables * 1.1
-        exportCableLength /= 1000  # convert to km
+    if fixed_type:
+        export_cable_length = (distance_to_shore * 1000 + depth) * number_of_export_cables * 1.1
+        export_cable_length /= 1000  # convert to km
 
-        exportCableandAncillaryCost = (
-            exportCableLength * externalCableCost + numberOfExportCables * substationInterfaceCost
+        export_cable_and_ancillary_cost = (
+            export_cable_length * external_cable_cost + number_of_export_cables * substation_interface_cost
         )
     else:
-        exportCableLength = (distance_to_shore * 1000 + freeHangingCableLength + 500) * numberOfExportCables * 1.1
-        exportCableLength /= 1000  # convert to km
+        export_cable_length = (
+            (distance_to_shore * 1000 + free_hanging_cable_length + 500) * number_of_export_cables * 1.1
+        )
+        export_cable_length /= 1000  # convert to km
 
-        exportCableandAncillaryCost = (
-            exportCableLength * externalCableCost
-            + ((exportCableLength - freeHangingCableLength - 500) + dynamicCableFactor * (500 + freeHangingCableLength))
-            + numberOfExportCables * substationInterfaceCost
+        export_cable_and_ancillary_cost = (
+            export_cable_length * external_cable_cost
+            + (
+                (export_cable_length - free_hanging_cable_length - 500)
+                + dynamic_cable_factor * (500 + free_hanging_cable_length)
+            )
+            + number_of_export_cables * substation_interface_cost
         )
 
-    numberOfSubStations = numberOfSubStations
+    number_of_sub_stations = number_of_sub_stations
 
-    numberOfMainPowerTransformers = np.floor_divide(turbine_count * cp, 250) + 1
+    number_of_main_power_transformers = np.floor_divide(turbine_count * cp, 250) + 1
 
     # equation 72 in [1] is simplified
-    singleMPTRating = np.round(turbine_count * cp * 1.15 / numberOfMainPowerTransformers, -1)
+    single_mpt_rating = np.round(turbine_count * cp * 1.15 / number_of_main_power_transformers, -1)
 
-    mainPowerTransformerCost = numberOfMainPowerTransformers * singleMPTRating * mainPowerTransformerCostRate
+    main_power_transformer_cost = (
+        number_of_main_power_transformers * single_mpt_rating * main_power_transformer_cost_rate
+    )
 
-    switchgearCost = numberOfMainPowerTransformers * (highVoltageSwitchgearCost + mediumVoltageSwitchgearCost)
+    switchgear_cost = number_of_main_power_transformers * (
+        high_voltage_switch_gear_cost + medium_voltage_switchgear_cost
+    )
 
-    shuntReactorCost = singleMPTRating * numberOfMainPowerTransformers * shuntReactorCostRate * 0.5
+    shunt_reactor_cost = single_mpt_rating * number_of_main_power_transformers * shunt_reactor_cost_rate * 0.5
 
-    ancillarySystemsCost = dieselGeneratorBackupCost + workspaceCost + otherAncillaryCosts
+    ancillary_systems_cost = diesel_generator_backup_cost + workspace_cost + other_ancillary_costs
 
-    offshoreSubstationTopsideMass = 3.85 * (singleMPTRating * numberOfMainPowerTransformers) + 285
-    offshoreSubstationTopsideCost = offshoreSubstationTopsideMass * fabricationCostRate + topsideDesignCost
-    assemblyFactor = 1  # could not find a number...
+    offshore_substation_topside_mass = 3.85 * (single_mpt_rating * number_of_main_power_transformers) + 285
+    offshore_substation_topside_cost = offshore_substation_topside_mass * fabrication_cost_rate + topside_design_cost
+    assembly_factor = 1  # could not find a number...
 
-    offshoreSubstationTopsideLandAssemblyCost = (
-        switchgearCost + shuntReactorCost + mainPowerTransformerCost
-    ) * assemblyFactor
+    offshore_substation_topside_land_assembly_cost = (
+        switchgear_cost + shunt_reactor_cost + main_power_transformer_cost
+    ) * assembly_factor
 
-    if fixedType:
-        offshoreSubstationSubstructureMass = 0.4 * offshoreSubstationTopsideMass
+    if fixed_type:
+        offshore_substation_substructure_mass = 0.4 * offshore_substation_topside_mass
 
-        substationSubstructurePileMass = 8 * np.power(offshoreSubstationSubstructureMass, 0.5574)
+        substation_substructure_pile_mass = 8 * np.power(offshore_substation_substructure_mass, 0.5574)
 
-        offshoreSubstationSubstructureCost = (
-            offshoreSubstationSubstructureMass * offshoreSubstationSubstructureCostRate
-            + substationSubstructurePileMass * substationSubstructurePileCostRate
+        offshore_substation_substructure_cost = (
+            offshore_substation_substructure_mass * offshore_substation_substructure_cost_rate
+            + substation_substructure_pile_mass * substation_substructure_pile_cost_rate
         )
     else:
         # copied from above in case of spar
         if foundation == "spar":  # WHY WAS IT SPAR BEFORE? WE ARE DOING THINGS WITH SEMISUBMERSIBLE
             # if foundation == 'semisubmersible':
-            semiSubmersibleSCMass = -0.9571 * np.power(cp, 2) + 40.89 * cp + 802.09
-            semiSubmersibleSCCost = semiSubmersibleSCMass * semiSubmersibleSCCostRate
+            semi_submersible_sc_mass = -0.9571 * np.power(cp, 2) + 40.89 * cp + 802.09
+            semi_submersible_sc_cost = semi_submersible_sc_mass * semi_submersible_sc_cost_rate
 
             # semiSubmersible truss mass is called as semiSubmersibleTMass
-            semiSubmersibleTMass = 2.7894 * np.power(cp, 2) + 15.591 * cp + 266.03
-            semiSubmersibleTCost = semiSubmersibleTMass * semiSubmersibleTCostRate
+            semi_submersible_t_mass = 2.7894 * np.power(cp, 2) + 15.591 * cp + 266.03
+            semi_submersible_t_cost = semi_submersible_t_mass * semi_submersible_t_cost_rate
 
             # semiSubmersible heavy plate mass is called as semiSubmersibleHPMass
-            semiSubmersibleHPMass = -0.4397 * np.power(cp, 2) + 21.145 * cp + 177.42
-            semiSubmersibleHPCost = semiSubmersibleHPMass * semiSubmersibleHPCostRate
+            semi_submersible_hp_mass = -0.4397 * np.power(cp, 2) + 21.145 * cp + 177.42
+            semi_submersible_hp_cost = semi_submersible_hp_mass * semi_submersible_hp_cost_rate
 
-        semiSubmersibleMass = semiSubmersibleSCMass + semiSubmersibleTMass + semiSubmersibleHPMass
+        semi_submersible_mass = semi_submersible_sc_mass + semi_submersible_t_mass + semi_submersible_hp_mass
 
-        offshoreSubstationSubstructureMass = 2 * (semiSubmersibleMass + secondarySteelSubstructureMass)
+        offshore_substation_substructure_mass = 2 * (semi_submersible_mass + secondary_steel_substructure_mass)
 
-        substationSubstructurePileMass = 0
+        substation_substructure_pile_mass = 0
 
         # semiSubmersibleCost = semiSubmersibleSCCost + semiSubmersibleTCost + semiSubmersibleHPCost
-        offshoreSubstationSubstructureCost = 2 * (semiSubmersibleTCostRate + mooringAndAnchorCost)
+        offshore_substation_substructure_cost = 2 * (semi_submersible_t_cost_rate + mooring_and_anchor_cost)
 
-    onshoreSubstationCost = 11652 * (interconnectVoltage + cp * turbine_count) + 1200000
+    onshore_substation_cost = 11652 * (interconnect_voltage + cp * turbine_count) + 1200000
 
-    onshoreSubstationMiscCost = 11795 * np.power(cp * turbine_count, 0.3549) + 350000
+    onshore_substation_misc_cost = 11795 * np.power(cp * turbine_count, 0.3549) + 350000
 
-    overheadTransmissionLineCost = (
-        (1176 * interconnectVoltage + 218257) * np.power(distance_to_bus, -0.1063) * distance_to_bus
+    overhead_transmission_line_cost = (
+        (1176 * interconnect_voltage + 218257) * np.power(distance_to_bus, -0.1063) * distance_to_bus
     )
 
-    switchyardCost = 18115 * interconnectVoltage + 165944
+    switchyard_cost = 18115 * interconnect_voltage + 165944
 
-    totalElectricalInfrastructureCosts = (
-        arrayCable1AndAncillaryCost
-        + arrayCable2AndAncillaryCost
-        + exportCableandAncillaryCost
-        + mainPowerTransformerCost
-        + switchgearCost
-        + shuntReactorCost
-        + ancillarySystemsCost
-        + offshoreSubstationTopsideCost
-        + offshoreSubstationTopsideLandAssemblyCost
-        + offshoreSubstationSubstructureCost
-        + onshoreSubstationCost
-        + onshoreSubstationMiscCost
-        + overheadTransmissionLineCost
-        + switchyardCost
+    total_electrical_infrastructure_costs = (
+        array_cable_1_and_ancillary_cost
+        + array_cable_2_and_ancillary_cost
+        + export_cable_and_ancillary_cost
+        + main_power_transformer_cost
+        + switchgear_cost
+        + shunt_reactor_cost
+        + ancillary_systems_cost
+        + offshore_substation_topside_cost
+        + offshore_substation_topside_land_assembly_cost
+        + offshore_substation_substructure_cost
+        + onshore_substation_cost
+        + onshore_substation_misc_cost
+        + overhead_transmission_line_cost
+        + switchyard_cost
     )
-    totalElectricalInfrastructureCosts /= turbine_count
+    total_electrical_infrastructure_costs /= turbine_count
 
     # ASSEMBLY AND INSTALLATION
 
-    assemblyAndInstallationCost = np.ones(totalElectricalInfrastructureCosts.shape)
+    assembly_and_installation_cost = np.ones(total_electrical_infrastructure_costs.shape)
 
-    if fixedType:
-        assemblyAndInstallationCost *= 4200000
+    if fixed_type:
+        assembly_and_installation_cost *= 4200000
     else:
-        assemblyAndInstallationCost *= 5500000
+        assembly_and_installation_cost *= 5500000
 
     # depth depedance
-    if fixedType:
+    if fixed_type:
         pass
     else:
         # Normalized to 1 at 250m depth
-        assemblyAndInstallationCost *= 0.00041757917648320338 * depth + 0.89560520587919934
+        assembly_and_installation_cost *= 0.00041757917648320338 * depth + 0.89560520587919934
 
     # Capacity dependence
     # Normalized to 1 at 6 MW
-    assemblyAndInstallationCost *= 0.05947387 * cp + 0.64371944
+    assembly_and_installation_cost *= 0.05947387 * cp + 0.64371944
 
     # OTHER THINGS
     # Again, many constants were used in [1] but not defined. Also, many of the costs were given in the
@@ -659,39 +671,39 @@ def offshore_bos(
 
     #########################################
     # The below corresponds to cost percentages in [7]
-    if fixedType:
+    if fixed_type:
         tot = (
-            assemblyAndInstallationCost * 19.0
-            + totalElectricalInfrastructureCosts * 9.00
-            + totalStructureAndFoundationCosts * 13.9
+            assembly_and_installation_cost * 19.0
+            + total_electrical_infrastructure_costs * 9.00
+            + total_structure_and_foundation_costs * 13.9
         ) / 46.2
 
         commissioning = tot * (0.8 / 46.2)
-        portAndStaging = tot * (0.5 / 46.2)
-        engineeringManagement = tot * (1.6 / 46.2)
+        port_and_staging = tot * (0.5 / 46.2)
+        engineering_management = tot * (1.6 / 46.2)
         development = tot * (1.4 / 46.2)
 
     else:
         tot = (
-            assemblyAndInstallationCost * 11.3
-            + totalElectricalInfrastructureCosts * 10.9
-            + totalStructureAndFoundationCosts * 34.1
+            assembly_and_installation_cost * 11.3
+            + total_electrical_infrastructure_costs * 10.9
+            + total_structure_and_foundation_costs * 34.1
         ) / 60.8
 
         commissioning = tot * (0.8 / 60.8)
-        portAndStaging = tot * (0.6 / 60.8)
-        engineeringManagement = tot * (2.2 / 60.8)
+        port_and_staging = tot * (0.6 / 60.8)
+        engineering_management = tot * (2.2 / 60.8)
         development = tot * (1 / 60.8)
 
     # TOTAL COST
-    totalCost = (
+    total_cost = (
         commissioning
-        + assemblyAndInstallationCost
-        + totalElectricalInfrastructureCosts
-        + totalStructureAndFoundationCosts
-        + portAndStaging
-        + engineeringManagement
+        + assembly_and_installation_cost
+        + total_electrical_infrastructure_costs
+        + total_structure_and_foundation_costs
+        + port_and_staging
+        + engineering_management
         + development
     )
 
-    return totalCost
+    return total_cost
