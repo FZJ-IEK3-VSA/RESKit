@@ -6,7 +6,7 @@ import pandas as pd
 from scipy.interpolate import PchipInterpolator, splev, splrep
 from scipy.stats import norm
 
-from ...util import ResError
+from reskit.util import ResError
 
 _P = namedtuple("PowerCurve", "ws cf")
 _synthetic_power_curve_data = None

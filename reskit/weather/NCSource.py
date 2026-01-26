@@ -7,7 +7,7 @@ import numpy as np
 import geokit as gk
 import pandas as pd
 
-from ..util import ResError
+from reskit.util import ResError
 
 
 # make a data handler

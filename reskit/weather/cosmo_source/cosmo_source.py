@@ -2,7 +2,7 @@
 
 import pytz
 
-from ..NCSource import *
+from reskit.weather.NCSource import *
 
 # Define constants
 

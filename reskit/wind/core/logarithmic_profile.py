@@ -3,7 +3,7 @@ from collections import OrderedDict
 import geokit as gk
 import numpy as np
 
-from ...util import ResError
+from reskit.util import ResError
 
 
 def apply_logarithmic_profile_projection(
