@@ -262,7 +262,7 @@ class SolarWorkflowManager(WorkflowManager):
                 print(
                     f"'{attr_col}' column in placements dataframe exists and will be renamed to '{attr}'."
                 )
-            self.placements.rename(columns={attr_col: attr}, inplace=True)
+                self.placements.rename(columns={attr_col: attr}, inplace=True)
             assert not self.placements[attr].isna().any(), f"{attr} data provided as self.placements column '{attr_col}' must not contain NaN values."
 
         # else either apply the given function or default to assign missing values
