@@ -384,7 +384,7 @@ class SolarWorkflowManager(WorkflowManager):
             raise TypeError(f"Unknown ground_albedo argument of type '{type(ground_albedo)}': {ground_albedo}. Must be float, iterable of floats or tuple/list of 2 strings.")
     
         # define an aux function to extract ground albedos from landcover name and path
-        def _get_ground_albedo_from_landcover(landcover_name:str, landcover_path:str):
+        def _get_ground_albedo_from_landcover(landcover_name:str, landcover_path:str, fallback_albedo:float=0.2):
             """
             Get the mean snow-free broadband white sky albedos for the respective
             landcover per placement based on category type in the landcover dataset.
@@ -397,12 +397,16 @@ class SolarWorkflowManager(WorkflowManager):
                 ground_cover_albedos.yaml file in solar/data.
             landcover_path : str
                 The filepath to the dataset described by landcover_name.
-
+            fallback_albedo : float
+                The value to set for cells which have no data in the landcover 
+                raster file. By default 0.2
             -------
             list
                 list with local ground albedo values of length of placements 
                 attribute of invoking SolarWorkflowManager object
             """
+            assert isinstance(fallback_albedo, float) and 0<fallback_albedo<1,\
+                "fallback_albedo must be a float between 0.0 and 1.0"
             # load the albedo data from yaml file
             with open(DATA.get('ground_cover_albedos.yaml'), "r") as stream:
                 ground_cover_albedos = yaml.safe_load(stream)
@@ -436,7 +440,15 @@ class SolarWorkflowManager(WorkflowManager):
             classtype = ground_cover_albedos["dataset_classtype_mapper"][landcover_name]
             LCclass_groundtype_mapper = ground_cover_albedos["LCclass_groundtype_mapper"][classtype]
             groundtype_albedo_mapper = ground_cover_albedos["groundtype_albedo_mapper"]
-            ground_albedos = [groundtype_albedo_mapper[LCclass_groundtype_mapper[c]] for c in LCclasses]
+            # deal with nans in landcover raster
+            groundtype_albedo_mapper["nodata"] = fallback_albedo
+            def val_to_lc(val):
+                if isinstance(val, float) and np.isnan(val):
+                    return "nodata"
+                return LCclass_groundtype_mapper[val]
+            if np.isnan(LCclasses).any():
+                print(f"Landcover raster has missing cell values, will be filled with fallback_albedo: {fallback_albedo}")
+            ground_albedos = [groundtype_albedo_mapper[val_to_lc(c)] for c in LCclasses]
             assert not any([np.isnan(a) for a in ground_albedos]), "NaN values found in extracted ground_albedos."
             return ground_albedos
 
