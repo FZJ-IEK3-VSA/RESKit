@@ -115,6 +115,47 @@ def test_Era5Source_loc_to_index(pt_Era5Source, pt_BoundedEra5Source):
     assert np.isclose(idx[1].xi, 3.7600000000000016)
 
 
+def test_Era5Source__sload_wind_speed(pt_Era5Source, pt_BoundedEra5Source):
+    """
+    This test is to check the internal function _sload_wind_speed, which is used by the standard loader functions for wind speed variables.
+    Since the following 4 functions are testing for pre-calculated wind speed, here this function tests the wind speed calculated from u and v components.
+    The numbers from the following 4 functions are also listed out here in a comment for comparison. The difference is at 4th digit after the decimal point, which is acceptable given the precision of the data and the calculations.
+    """
+    for var in ["elevated_wind_speed", "wind_speed_at_100m"]:
+        pt_Era5Source._sload_wind_speed(height=100, target_name=var, force_load_uv=True)
+        assert var in pt_Era5Source.data
+
+        a, b, c = (140, 13, 11), 6.650547848078094, 11.299326952960216  # 6.650457494103541, 11.29947813348796
+        assert pt_Era5Source.data[var].shape == a
+        assert np.isclose(pt_Era5Source.data[var].mean(), b)
+        assert np.isclose(pt_Era5Source.data[var][33, 1, 2], c)
+
+        pt_BoundedEra5Source._sload_wind_speed(height=100, target_name=var, force_load_uv=True)
+        assert var in pt_BoundedEra5Source.data
+
+        a, b, c = (140, 6, 6), 7.102551347044989, 12.475086200228056  # 7.102461142186705, 12.475203711050753
+        assert pt_BoundedEra5Source.data[var].shape == a
+        assert np.isclose(pt_BoundedEra5Source.data[var].mean(), b)
+        assert np.isclose(pt_BoundedEra5Source.data[var][33, 1, 2], c)
+
+    for var in ["surface_wind_speed", "wind_speed_at_10m"]:
+        pt_Era5Source._sload_wind_speed(height=10, target_name=var, force_load_uv=True)
+        assert var in pt_Era5Source.data
+
+        a, b, c = (140, 13, 11), 3.695453610733474, 6.652907948049286  # 3.69537552660054, 6.653035065767388
+        assert pt_Era5Source.data[var].shape == a
+        assert np.isclose(pt_Era5Source.data[var].mean(), b)
+        assert np.isclose(pt_Era5Source.data[var][33, 1, 2], c)
+
+        pt_BoundedEra5Source._sload_wind_speed(height=10, target_name=var, force_load_uv=True)
+        assert var in pt_BoundedEra5Source.data
+
+        a, b, c = (140, 6, 6), 3.899670648780753, 7.606956995666662  # 3.8995903495628834, 7.6075014496292
+        assert pt_BoundedEra5Source.data[var].shape == a
+        assert np.isclose(pt_BoundedEra5Source.data[var].mean(), b)
+        assert np.isclose(pt_BoundedEra5Source.data[var][33, 1, 2], c)
+
+
 def test_Era5Source_sload_elevated_wind_speed(pt_Era5Source, pt_BoundedEra5Source):
     var = "elevated_wind_speed"
     pt_Era5Source.sload_elevated_wind_speed()

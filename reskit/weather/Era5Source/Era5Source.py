@@ -185,7 +185,7 @@ class Era5Source(NCSource):
         """
         return self.load("blh", "boundary_layer_height")
 
-    def _sload_wind_speed(self, height, target_name):
+    def _sload_wind_speed(self, height, target_name, force_load_uv=False):
         """
         Generic loader for wind speed variables.
         logic:
@@ -209,7 +209,7 @@ class Era5Source(NCSource):
         # --------------------------------------
         # Case 1: precomputed wind speed exists
         # --------------------------------------
-        if ws_var in self.variables.index:
+        if not force_load_uv and (ws_var in self.variables.index):
             self.load(variable=ws_var, name=target_name)
             return
 
@@ -225,21 +225,11 @@ class Era5Source(NCSource):
                 f"missing required variable(s): {', '.join(missing_uv)}"
             )
 
-        # Load v first (needed inside processor)
+        # direct calculate from u and v
         self.load(variable=v_var, name=v_var)
-
-        def wind_speed_processor(u):
-            v = self.data[v_var]
-            return np.sqrt(u**2 + v**2)
-
-        # Load u and compute ws
-        self.load(
-            variable=u_var,
-            name=target_name,
-            processor=wind_speed_processor,
-        )
-
-        # Clean up temporary variable
+        self.load(variable=u_var, name=u_var)
+        self.data[target_name] = np.sqrt(self.data[u_var] ** 2 + self.data[v_var] ** 2)
+        self.data.pop(u_var, None)
         self.data.pop(v_var, None)
 
     def sload_elevated_wind_speed(self):
