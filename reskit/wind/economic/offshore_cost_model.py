@@ -805,45 +805,4 @@ def installationCostCables(
 
     CableInstallationCost = linearInstallationCost * lengthOfCables
 
-    return CableInstallationCost
 
-
-def installationPipelineCost(pipelineType="export", lengthOfPipe=17000):
-    """
-    Calculates the installation cost of an offshore pipeline based on pipeline type and length.
-
-    Parameters
-    ----------
-    pipelineType : str, optional
-        Type of pipeline being installed. Must be either "infield" or "export".
-        Determines the lay rate (m/day) and vessel day rate (€/day).
-        Default is "export".
-    lengthOfPipe : float, optional
-        Total length of the pipeline in meters. Default is 17,000 meters.
-
-    Returns
-    -------
-    float
-        Total pipeline installation cost in euros.
-
-    -------
-    Source:    [1] Rogeau, Antoine; Vieubled, Julien; Coatpont, Matthieu de; Affonso
-    Nobrega, Pedro; Erbs, Guillaume; Girard, Robin (2023): Techno-economic
-    evaluation and resource assessment of hydrogen production through
-    offshore wind farms: A European perspective. In Renewable and
-    Sustainable Energy Reviews 187, p. 113699. DOI: 10.1016/j.rser.2023.113699.
-    """
-    assert pipelineType in ["infield", "export"], (
-        "pipelineType must be in ['infield','export]"
-    )
-
-    if pipelineType == "infield":
-        layRate = 7000  # meter/day
-        dayrateVessel = 400000  # euro/day
-
-    if pipelineType == "export":
-        layRate = 4000  # meter/day
-        dayrateVessel = 700000  # euro/day
-    PipelineInstallationCOst = lengthOfPipe / layRate * dayrateVessel
-
-    return PipelineInstallationCOst
