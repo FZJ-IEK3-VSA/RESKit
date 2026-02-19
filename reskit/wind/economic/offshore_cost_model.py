@@ -13,8 +13,6 @@ from reskit.util.local_values import *
 from .onshore_cost_model import onshore_tcc
 from reskit.parameters.parameters import OffshoreParameters
 
-from .onshore_cost_model import onshore_tcc
-
 
 # %%
 def calculateOffshoreCapex(
@@ -151,7 +149,7 @@ def calculateOffshoreCapex(
     # Note: Rogeau et al. do not differentiate between different turbine sizes/designs, only have avg. spec. capex and avg. capacity per year
     # therefore use turbine cost scaling developed for onshore (RELATIVE effects depend on mechanics and geometry and can be considered similar enough)
     # But absolute values need to be corrected to offshore level to be able to add offshore installation cost
-    # calculate a correction factor between Rogeau et al's annual CAPEX (for the turbine = machine only!) and the onshoreTcc value for a turbine with Rogeau's annual capacity
+    # calculate a correction factor between Rogeau et al's annual CAPEX (for the turbine = machine only!) and the onshore_tcc value for a turbine with Rogeau's annual capacity
     RogeauEtAlTurbineData = {2020: (8000,1500), 2030: (15000,1200), 2050: (20000, 1000)} #(capacity [kW], spec.CAPEX [EUR/kW])
     assert min(RogeauEtAlTurbineData.keys()) <= techYear <= max(RogeauEtAlTurbineData.keys()),\
         f"techYear {techYear} is outside of the range considered by Rogeau et al.: 2020-2050"
@@ -163,8 +161,8 @@ def calculateOffshoreCapex(
     # assume constant spec. power of 350 W/m² (typical offshore) and hub height of 30.5m + rotor radius (see dissertation Winkler)
     rotordiamRogeau = np.sqrt((capacityRogeau*1000 / 350)/(np.pi))*2 # spec power 350 W/m2
     hubheightRogeau = 30.5 + rotordiamRogeau/2 # in mtrs
-    # now calculate the correction factor to align onshoreTcc with Rogeau's value for that year (contains also currency conversion/inflation)
-    offshoreCorrfacRogeau = capexRogeau/onshoreTcc(
+    # now calculate the correction factor to align onshore_tcc with Rogeau's value for that year (contains also currency conversion/inflation)
+    offshoreCorrfacRogeau = capexRogeau/onshore_tcc(
         capacityRogeau,
         hubheightRogeau,
         rotordiamRogeau,
@@ -198,7 +196,7 @@ def calculateOffshoreCapex(
     # get the component cost contributions and total default cost as per Rogeau for the given reference (base) turbine
     # consists of cost for a) turbine, b) foundation, c) cable connection - plus overhead
     # the turbine cost consist of the turbine (machine with tower with design impacts based on onshore calculations, scaled to offshore Rogeau cost level) and installation
-    turbineBaseCostDefault = onshoreTcc(
+    turbineBaseCostDefault = onshore_tcc(
         baseCap,
         baseHubHeight,
         baseRotorDiam,
@@ -236,7 +234,7 @@ def calculateOffshoreCapex(
     connectionBaseCostCustom = baseCapex * connectionBaseShare
 
     # now calculate the plant-specific default values as per Rogeau et al.
-    turbinePlantCostDefault = onshoreTcc( #80% -> 40% onshore
+    turbinePlantCostDefault = onshore_tcc(
         capacity,
         hubHeight,
         rotorDiam,
@@ -833,129 +831,3 @@ def getConverterStationCost(
         totalCost = np.asarray(totalCost).item()
 
     return totalCost
-
-#%%
-def onshoreTcc(
-    cp,
-    hh,
-    rd,
-    gdpEscalator=None,
-    bladeMaterialEscalator=None,
-    blades=None,
-):
-    """
-    Calculates the turbine capital cost (TCC) of a 3-blade onshore wind turbine.
-
-    Parameters
-    ----------
-    cp : float
-        Turbine capacity in kW.
-    hh : float
-        Hub height in meters.
-    rd : float
-        Rotor diameter in meters.
-    gdpEscalator : float, optional
-        Labor cost escalator, by default taken from OffshoreParameters.
-    bladeMaterialEscalator : float, optional
-        Blade material cost escalator, by default taken from OffshoreParameters.
-    blades : int, optional
-        Number of blades, by default taken from OffshoreParameters.
-
-    Returns
-    -------
-    float
-        Turbine capital cost (TCC) in monetary units.
-
-    References
-    ----------
-    Fingersh et al. (2006), NREL. https://www.nrel.gov/docs/fy07osti/40566.pdf
-    """
-    if gdpEscalator is None or bladeMaterialEscalator is None or blades is None:
-        offshoreParams = OffshoreParameters()
-        gdpEscalator = offshoreParams.gdp_escalator
-        bladeMaterialEscalator = offshoreParams.blade_material_escalator
-        blades = offshoreParams.blades
-
-    rr = rd / 2
-    sa = np.pi * rr * rr
-
-    singleBladeMass = 0.4948 * np.power(rr, 2.53)
-    singleBladeCost = (
-        (0.4019 * np.power(rr, 3) - 21051) * bladeMaterialEscalator
-        + 2.7445 * np.power(rr, 2.5025) * gdpEscalator
-    ) * (1 - 0.28)
-
-    # hub
-    hubMass = 0.945 * singleBladeMass + 5680.3
-    hubCost = hubMass * 4.25
-
-    # Pitch and bearings
-    pitchSystemCost = 2.28 * (0.2106 * np.power(rd, 2.6578))
-
-    # Spinner and nosecone
-    noseConeMass = 18.5 * rd - 520.5
-    noseConeCost = noseConeMass * 5.57
-
-    # Low Speed Shaft
-    lowSpeedShaftCost = 0.01 * np.power(rd, 2.887)
-
-    # Main bearings
-    bearingMass = (rd * 8 / 600 - 0.033) * 0.0092 * np.power(rd, 2.5)
-    bearingCost = 2 * bearingMass * 17.6
-
-    # Gearbox
-    # Gearbox not included for direct drive turbines
-
-    # Break, coupling, and others
-    breakCouplingCost = 1.9894 * cp - 0.1141
-
-    # Generator (Assuming direct drive)
-    generatorCost = cp * 219.33
-
-    # Electronics
-    electronicsCost = cp * 79
-
-    # Yaw drive and bearing
-    yawSystemCost = 2 * (0.0339 * np.power(rd, 2.964))
-
-    # Mainframe (Assume direct drive)
-    mainframeMass = 1.228 * np.power(rd, 1.953)
-    mainframeCost = 627.28 * np.power(rd, 0.85)
-
-    # Platform and railings
-    platformAndRailingMass = 0.125 * mainframeMass
-    platformAndRailingCost = platformAndRailingMass * 8.7
-
-    # Electrical Connections
-    electricalConnectionCost = cp * 40
-
-    # Hydraulic and Cooling systems
-    hydraulicAndCoolingSystemCost = cp * 12
-
-    # Nacelle Cover
-    nacelleCost = 11.537 * cp + 3849.7
-
-    # Tower
-    towerMass = 0.2694 * sa * hh + 1779
-    towerCost = towerMass * 1.5
-
-    turbineCapitalCost = (
-        singleBladeCost * blades
-        + hubCost
-        + pitchSystemCost
-        + noseConeCost
-        + lowSpeedShaftCost
-        + bearingCost
-        + breakCouplingCost
-        + generatorCost
-        + electronicsCost
-        + yawSystemCost
-        + mainframeCost
-        + platformAndRailingCost
-        + electricalConnectionCost
-        + hydraulicAndCoolingSystemCost
-        + nacelleCost
-        + towerCost
-    )
-
-    return turbineCapitalCost
