@@ -13,8 +13,8 @@ from . import ResError
 
 
 def waterDepthFromLocation(
-    latitude,
-    longitude,
+    latitude: int|float,
+    longitude: int|float,
     waterDepthFilePath: Optional[str] = None,
     consider_only: Literal[False, "negative", "positive"] = False,
 ):
@@ -23,9 +23,9 @@ def waterDepthFromLocation(
 
     Parameters
     ----------
-    latitude : float
+    latitude : int|float
         Latitude in decimal degrees.
-    longitude : float
+    longitude : int|float
         Longitude in decimal degrees.
     waterDepthFilePath : str, optional
        Path or pattern to one or more GeoTIFF water depth files.
