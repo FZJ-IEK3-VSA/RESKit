@@ -555,14 +555,14 @@ def getOffshoreCableCost(
         # for dc, use time-independent DC cable cost per kW and km as in Rogeau et al. (Note unit error, is indicated per W*km but actually kW*km)
         # cost already include "delivery and installation" as per Rogeau et al.
         dc_mask = (voltage == "dc")
-        costPerKm[dc_mask] = 1.35
+        costPerKm[dc_mask] = 1.35 * 1.5 # + 50% for installation acc. to Rogeau et al. [1]
         # for ac, use AC cost per km and kW from Pathway 2.0 (Ea Energy Analyses A / S et al. [2]) instead of Rogeau (Rogeau is very confusing here)
         # values include installation and have been corrected to EUR_2023 to align with cost data from Rogeau et al. [1] #TODO make sure if this is indeed EUR2023
         ac_mask = (voltage == "ac")
         if ac_mask.sum() > 0:
             # we DO have ac cases, check year and get bracketing data years first
             assert year is not None, "year is required for voltageType 'ac' if no variableCostFactor is provided."
-            acCostPerKmDict = {2020: 8.18, 2030: 7.95, 2050: 7.49}
+            acCostPerKmDict = {2020: 8.18, 2030: 7.95, 2050: 7.49} # includes installation acc. to [2] 
             years = np.array(sorted(acCostPerKmDict.keys()), dtype=int)
             if not (years.min() <= year <= years.max()):
                 raise ValueError(f"year {year} is outside range {years.min()}-{years.max()}")
