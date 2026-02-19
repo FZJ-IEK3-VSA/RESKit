@@ -174,6 +174,7 @@ def calculateOffshoreCapex(
     # define a turbine installation cost function based on Rogeau et al. section 3.2.1
     def _getSpecificTurbineInstallCost(_depth):
         # determine fixed vs floating locations
+        _depth = np.atleast_1d(_depth)
         isFixed = _depth.ravel() <= maxJacketDepth
         # initiate a container for installation cost
         instCost = np.zeros(_depth.shape[0], dtype=float)
@@ -196,20 +197,23 @@ def calculateOffshoreCapex(
     # get the component cost contributions and total default cost as per Rogeau for the given reference (base) turbine
     # consists of cost for a) turbine, b) foundation, c) cable connection - plus overhead
     # the turbine cost consist of the turbine (machine with tower with design impacts based on onshore calculations, scaled to offshore Rogeau cost level) and installation
-    turbineBaseCostDefault = onshore_tcc(
+    turbineBaseCostDefault = offshoreCorrfacRogeau * onshore_tcc( # without installation cost
         baseCap,
         baseHubHeight,
         baseRotorDiam,
         gdpEscalator=1,
         bladeMaterialEscalator=1,
         blades=3,
-    )*offshoreCorrfacRogeau + _getSpecificTurbineInstallCost(_depth=np.atleast_1d(baseDepth))
-    foundationBaseCostDefault = getOffshoreTurbineFoundationCost(
+    ) #+ _getSpecificTurbineInstallCost(_depth=np.atleast_1d(baseDepth))
+    foundationBaseCostDefault = getOffshoreTurbineFoundationCost( # without installation cost
         waterDepth=baseDepth, 
         maxMonopileDepth=maxMonopileDepth, 
         maxJacketDepth=maxJacketDepth, 
         year=techYear,
     )
+    turbAndFoundInstallBaseCostDefault = _getSpecificTurbineInstallCost(
+        baseDepth
+        )
     connectionBaseCostDefault = getOffshoreConnectionCost(
         capacity=baseCap,
         waterDepth=baseDepth,
@@ -220,31 +224,37 @@ def calculateOffshoreCapex(
         techYear=techYear,
     )
     # get the sum of the 3 components and add the relative overhead
-    totalBaseCostDefault = (turbineBaseCostDefault + foundationBaseCostDefault + connectionBaseCostDefault)/(1-shareOverhead)
-
+    totalBaseCostDefault = (turbineBaseCostDefault + foundationBaseCostDefault + turbAndFoundInstallBaseCostDefault + connectionBaseCostDefault)/(1-shareOverhead)
+    customScalingFactor = baseCapex / totalBaseCostDefault # custom CAPEX / base case CAPEX (default, here Rogeau et al.) #TODO simplify?
+    
     # component cost shares (default cost of base-location component over total base case default cost)
     turbineBaseShare = turbineBaseCostDefault/totalBaseCostDefault
     foundationBaseShare = foundationBaseCostDefault/totalBaseCostDefault
+    turbAndFoundInstallBaseShare = turbAndFoundInstallBaseCostDefault/totalBaseCostDefault
     connectionBaseShare = connectionBaseCostDefault/totalBaseCostDefault
 
     # now split the custom baseCapex according to the reference/base case component cost distribution 
     # into custom component cost for the reference/base turbine
     turbineBaseCostCustom = baseCapex * turbineBaseShare
     foundationBaseCostCustom = baseCapex * foundationBaseShare
+    turbAndFoundInstallBaseCostCustom = baseCapex * turbAndFoundInstallBaseShare
     connectionBaseCostCustom = baseCapex * connectionBaseShare
 
     # now calculate the plant-specific default values as per Rogeau et al.
-    turbinePlantCostDefault = onshore_tcc(
+    turbinePlantCostDefault = offshoreCorrfacRogeau * onshore_tcc(
         capacity,
         hubHeight,
         rotorDiam,
         gdpEscalator=1,
         bladeMaterialEscalator=1,
         blades=3,
-    )*offshoreCorrfacRogeau + _getSpecificTurbineInstallCost(_depth=waterDepth)
+    )
     foundationPlantCostDefault = getOffshoreTurbineFoundationCost(
         waterDepth, maxMonopileDepth, maxJacketDepth, year = techYear,
     )
+    turbAndFoundInstallPlantCostDefault = _getSpecificTurbineInstallCost(
+        waterDepth
+        )
     connectionPlantCostDefault = getOffshoreConnectionCost(
         capacity=capacity,
         waterDepth=waterDepth,
@@ -258,10 +268,11 @@ def calculateOffshoreCapex(
     # scale the custom component cost (based on custom "baseCapex" arg) to the plant-specific location
     turbinePlantCostCustom = turbineBaseCostCustom * (turbinePlantCostDefault/turbineBaseCostDefault)
     foundationPlantCostCustom = foundationBaseCostCustom * (foundationPlantCostDefault/foundationBaseCostDefault)
+    turbAndFoundInstallPlantCostCustom = turbAndFoundInstallBaseCostCustom * (turbAndFoundInstallPlantCostDefault/turbAndFoundInstallBaseCostDefault)
     connectionPlantCostCustom = connectionBaseCostCustom * (connectionPlantCostDefault/connectionBaseCostDefault)
 
     # calculate the total plant custom cost, including overhead
-    totalPlantCostCustom = (turbinePlantCostCustom + foundationPlantCostCustom + connectionPlantCostCustom)/(1-shareOverhead)
+    totalPlantCostCustom = (turbinePlantCostCustom + foundationPlantCostCustom + turbAndFoundInstallPlantCostCustom + connectionPlantCostCustom)/(1-shareOverhead)
 
     return totalPlantCostCustom
 
