@@ -11,7 +11,6 @@ from reskit.default_paths import DEFAULT_PATHS
 from reskit.parameters.parameters import OffshoreParameters
 from reskit.util.local_values import *
 from .onshore_cost_model import onshore_tcc
-from reskit.parameters.parameters import OffshoreParameters
 
 
 # %%
