@@ -75,7 +75,11 @@ class WindWorkflowManager(WorkflowManager):
 
             specificPower = rk_wind_core.power_curve.compute_specific_power(
                 placements_wo_PC["capacity"], placements_wo_PC["rotor_diam"]
-            ).astype(float)
+            ).astype(float) #returns specific power in W/m2 
+
+            assert specificPower.between(0.19*1000, 0.97*1000).all(), (
+                "capacity and rotor_diam do not match to give a meaningful specific power. Check if capacity is defined in correct unit (kW)"
+            )  # values 0.19 and 0.97 in kW/m2 from lower/upper bound of all turbines in Turbine_Library
 
             if synthetic_power_curve_rounding is not None:
                 specificPower = (
@@ -908,26 +912,6 @@ class WindWorkflowManager(WorkflowManager):
                 tot_gen = np.concatenate([tot_gen, gen_last], axis=1)
 
         self.sim_data["capacity_factor"] = tot_gen
-
-        return self
-
-    def apply_availability_factor(self, availability_factor):
-        """
-        Applies a relative reduction factor to the energy output (capacity factor) time series
-        to statistically account for non-availabilities.
-
-        Parameters
-        ----------
-        availability_factor : float
-            Factor that will be applied to the output time series.
-
-        Return
-        ------
-            A reference to the invoking WindWorkflowManager
-        """
-        assert availability_factor > 0 and availability_factor <= 1, f"availability_factor must be between 0 and 1.0."
-
-        self.sim_data["capacity_factor"] = self.sim_data["capacity_factor"] * availability_factor
 
         return self
 
