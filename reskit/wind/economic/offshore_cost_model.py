@@ -43,38 +43,38 @@ def calculateOffshoreCapex(
     Parameters
     ----------
     baseCapex : float
-        Reference custom CAPEX per kW (cost unit/kW) that should be scaled. base CAPEX must be given in €/kW to enable correct scaling.
+        Reference custom CAPEX per kW [cost unit/kW] that should be scaled.
     capacity : float
-        Turbine rated capacity in kW.
+        Turbine rated capacity in [kW].
     rotorDiam : float
-        Rotor diameter in meters.
+        Rotor diameter in [m].
     hubHeight : float
-        Hub height in meters.
+        Hub height in [m].
     waterDepth : float
-        Site-specific water depth in meters.
+        Site-specific water depth in [m].
     coastDistance : float
-        Distance from site to nearest coast in kilometers.
+        Distance from site to nearest coast in [km].
     portDistance : float
-        Distance from site to nearest base port suitable as installation and maintenance base in kilometers.
+        Distance from site to nearest base port suitable as installation and maintenance base in [km].
     shareOverhead : float, optional
         Share of overhead/miscellaneous costs in total CAPEX in the baseline turbine reference case. Default is 0.172 (average of baseline overheads in [1]).
     maxMonopileDepth : float, optional
-        Maximum depth for monopile foundations, by default 25.
+        Maximum depth for monopile foundations in  [m], by default 25.
     maxJacketDepth : float, optional
-        Maximum depth for jacket foundations, by default 55.
+        Maximum depth for jacket foundations in [m], by default 55.
     baseDepth : float, optional
-        Reference depth in CAPEX literature, by default 17.
+        Reference depth in [m], by default 17.
     baseDistCoast : float, optional
-        Reference coast distance, by default 27.
+        Reference coast distance in [km], by default 27.
     baseWFSize : int, optional
-        The average wind farm size in kW, by default 106858 (based on average 
+        The average wind farm size in [kW], by default 106858 (based on average 
         extracted from processed theWindPower.net database v2025/07).
     baseCap : float, optional
-        Reference turbine capacity. Loaded from CSV if not provided.
+        Reference turbine capacity in [kW]. Loaded from CSV if not provided.
     baseHubHeight : float, optional
-        Reference hub height. Loaded from CSV if not provided.
+        Reference hub height in [m]. Loaded from CSV if not provided.
     baseRotorDiam : float, optional
-        Reference rotor diameter. Loaded from CSV if not provided.
+        Reference rotor diameter in [m]. Loaded from CSV if not provided.
     defaultOffshoreParamsFp : str, optional
         Filepath to offshore turbine parameters CSV.
     techYear : int, optional
@@ -164,7 +164,7 @@ def calculateOffshoreCapex(
     rotordiamRogeau = np.sqrt((capacityRogeau*1000 / 350)/(np.pi))*2 # spec power 350 W/m2
     hubheightRogeau = 30.5 + rotordiamRogeau/2 # in mtrs
     # now calculate the correction factor to align onshoreTcc with Rogeau's value for that year (contains also currency conversion/inflation)
-    corrfacRogeau = capexRogeau/onshoreTcc(
+    offshoreCorrfacRogeau = capexRogeau/onshoreTcc(
         capacityRogeau,
         hubheightRogeau,
         rotordiamRogeau,
@@ -205,7 +205,7 @@ def calculateOffshoreCapex(
         gdpEscalator=1,
         bladeMaterialEscalator=1,
         blades=3,
-    )*corrfacRogeau + _getSpecificTurbineInstallCost(_depth=np.atleast_1d(baseDepth))
+    )*offshoreCorrfacRogeau + _getSpecificTurbineInstallCost(_depth=np.atleast_1d(baseDepth))
     foundationBaseCostDefault = getOffshoreTurbineFoundationCost(
         waterDepth=baseDepth, 
         maxMonopileDepth=maxMonopileDepth, 
@@ -243,7 +243,7 @@ def calculateOffshoreCapex(
         gdpEscalator=1,
         bladeMaterialEscalator=1,
         blades=3,
-    )*corrfacRogeau + _getSpecificTurbineInstallCost(_depth=waterDepth)
+    )*offshoreCorrfacRogeau + _getSpecificTurbineInstallCost(_depth=waterDepth)
     foundationPlantCostDefault = getOffshoreTurbineFoundationCost(
         waterDepth, maxMonopileDepth, maxJacketDepth, year = techYear,
     )
@@ -286,12 +286,12 @@ def getOffshoreConnectionCost(
     connection and capacity.
 
     capacity : int|float|np.ndarray
-        The electrical capacity of the cable connection in kW.
+        The electrical capacity of the cable connection in [kW].
     waterDepth : int|float|np.ndarray
         The water depth (positive values) at the location of the offshore 
-        converter, in meters.
+        converter, in [m].
     coastDistance : int|float|np.ndarray
-        The distance to coast in kms (>0).
+        The distance to coast in [km] (>0).
     year: int
         The year for which the reference cost shall be returned.
     voltageType : str, optional
@@ -300,13 +300,14 @@ def getOffshoreConnectionCost(
         NOTE: Returns a tuple then with the optimal voltageType as second entry
         like (cost:float, optimalVoltageType:str).
     baseWFSize : int, optional
-        The average (base) wind farm size in kW, by default 106858 (based on 
+        The average (base) wind farm size in [kW], by default 106858 (based on 
         global average extracted from processed theWindPower.net database v2025/07). 
     maxJacketDepth : int, optional
         The maximum depth up to which jacket foundations can be installed,
         by default 55 [m].
 
-    References:
+    References
+    ----------
     [1] Rogeau, Antoine; Vieubled, Julien; Coatpont, Matthieu de; Affonso
     Nobrega, Pedro; Erbs, Guillaume; Girard, Robin (2023): Techno-economic
     evaluation and resource assessment of hydrogen production through
@@ -387,17 +388,16 @@ def getOffshoreTurbineFoundationCost(
     Does not include the cost for the turbine itself or cable connection cost.
     
     Note: Excludes installation cost, those are calculated for platform 
-    #TODO does this include installation cost, or is there None here?
 
     Parameters
     ----------
     depth : int | float | np.ndarray
-        Water depth at the installation site (in meters), can be provided as an 
+        Water depth at the installation site in [m], can be provided as an 
         array per location.
     maxMonopileDepth : int | float, optional
-        Threshold depth for monopile foundations, by default 25.
+        Threshold depth for monopile foundations in [m], by default 25.
     maxJacketDepth : int | float, optional
-        Threshold depth for jacket foundations, by default 55.
+        Threshold depth for jacket foundations in [m], by default 55.
     year : int, optional
         Determines the scaling factors acc. to Rogeau et al., will interpolate 
         if year is not provided by Rogeau et al., by default 2030.
@@ -483,7 +483,7 @@ def getOffshoreTurbineFoundationCost(
 
 
 # %%
-def getOffshoreCableCost( #TODO sollte so passen, bereits vektorisiert
+def getOffshoreCableCost(
     distance: int | float | np.ndarray,
     capacity: int | float | np.ndarray,
     voltageType: str | np.ndarray,
@@ -499,15 +499,15 @@ def getOffshoreCableCost( #TODO sollte so passen, bereits vektorisiert
     Parameters
     ----------
     distance : int | float | np.ndarray
-        Distance to coastline in kilometers.
+        Distance to coastline in [km].
     capacity : int | float | np.ndarray
-        Power plant's capacity in kW.
+        Power plant's capacity in [kW].
     voltageType : str | np.ndarray
         'ac' or 'dc', takes no effect when variableCostFactor is provided.
     variableCostFactor : int | float | np.ndarray, optional
-        Cost multiplier in EUR_2023/kW/km, by default None.
+        Cost multiplier in [EUR_2023/kW/km], by default None.
     fixedCost : float, optional
-        Fixed absolute connection cost, must be in EUR_2023. Defaults to 0.
+        Fixed absolute connection cost, must be in [EUR_2023]. Defaults to 0.
     year : int, optional
         The year for which the reference cost shall be returned in case of 
         voltageType == 'ac' (year is then mandatory, else it has no effect).
@@ -516,7 +516,7 @@ def getOffshoreCableCost( #TODO sollte so passen, bereits vektorisiert
     Returns
     -------
     np.ndarray
-        Total cable connection cost in EUR_2023.
+        Total cable connection cost in [EUR_2023].
 
     References
     ----------
@@ -794,7 +794,7 @@ def getConverterStationCost(
         capacity, waterDepth, portDistance = np.broadcast_arrays(
             capacity, waterDepth, portDistance, voltageType
         )
-    target_shape = capacity.shape
+    
     if convention == "RogeauEtAl2023":
         # calculate electrical powerstation cost based on equation (10) and table 6
         RCPS = {"ac": 22.87, "dc": 102.93}  # EUR/kW
@@ -959,249 +959,3 @@ def onshoreTcc(
     )
 
     return turbineCapitalCost
-
-
-# def installationCostTurbine(
-#     waterDepth=17,  # m
-#     maxJacketDepth=55,  # m
-#     vesselCapacity=7,  # units/lift
-#     portDistance=17,  # km
-#     vesselSpeed=18.5,  # km/h
-#     loadingTime=30,  # h
-#     installationTime=90,
-#     numberOfWindTurbines=2,  # numberofWIndturbines in WIndpark
-#     dayRate=40000,  # €/d,
-#     turbineCapacity=15,  # MW
-#     vesselCapacityFixedFoundationTurbines=40,  # MW transported per lift by Rougeau et al.
-# ):
-#     """
-#     Calculates the installation cost per turbine for an offshore wind farm, based on
-#     water depth, vessel logistics, loading and installation times, and turbine capacity.
-
-#     Parameters
-#     ----------
-#     waterDepth : float, optional
-#         Water depth at the installation site in meters. Determines whether turbines
-#         use fixed foundations or anchorage systems. Default is 17 m.
-#     maxJacketDepth : float, optional
-#         Maximum feasible water depth for jacket-based fixed foundations. If exceeded,
-#         anchorage-based platforms are assumed. Default is 55 m.
-#     vesselCapacity : int, optional
-#         Number of turbines that can be transported per lift for anchorage cases.
-#         Overridden internally for fixed-foundation installations. Default is 7 units/lift.
-#     portDistance : float, optional
-#         Round-trip transit distance between port and installation site in kilometers.
-#         Default is 17 km.
-#     vesselSpeed : float, optional
-#         Vessel transit speed in km/h. Default is 18.5 km/h.
-#     loadingTime : float, optional
-#         Loading time per lift in hours. Default is 30 h; overridden internally.
-#     installationTime : float, optional
-#         Installation time per turbine in hours. Default is 90 h; overridden internally.
-#     numberOfWindTurbines : int, optional
-#         Total number of turbines to install in the wind farm. Default is 2.
-#     dayRate : float, optional
-#         Vessel day rate in euros/day. Default is €40,000/day; overridden internally.
-#     turbineCapacity : float, optional
-#         Rated power per turbine in MW. Default is 15 MW.
-#     vesselCapacityFixedFoundationTurbines : float, optional
-#         Maximum turbine capacity (MW) that can be transported in one lift for fixed foundations,
-#         based on Rougeau et al. The vessel capacity is computed as:
-#         floor(vesselCapacityFixedFoundationTurbines / turbineCapacity).
-#         Default is 40 MW.
-
-#     Returns
-#     -------
-#     float
-#         Installation cost per turbine, in euros.
-
-#     """
-#     assert 0 <= waterDepth, (
-#         f"waterdepth is {waterDepth}, but must not be smaller than 0."
-#     )
-
-#     if waterDepth <= maxJacketDepth:
-#         platformType = "fixed"
-#     else:
-#         platformType = "anchorages"
-
-#     if platformType == "fixed":
-#         VesselSpeed = 18.5
-#         loadingTime = 24
-#         installationTime = 144
-#         dayRate = 200000
-#         vesselCapacity = math.floor(
-#             vesselCapacityFixedFoundationTurbines / turbineCapacity
-#         )
-
-#     else:
-#         VesselSpeed = 18.5
-#         loadingTime = 30
-#         installationTime = 90
-#         dayRate = 40000
-#         vesselCapacity = 7
-
-#     # calculate the number of requried lifts for the whole windpark
-
-#     liftNumber = numberOfWindTurbines / vesselCapacity
-#     turbineInstallationCost = (
-#         liftNumber * ((2 * portDistance / VesselSpeed) + loadingTime)
-#         + installationTime * numberOfWindTurbines
-#     ) * (dayRate / 24)  #  € installation Cost for whole windpark
-
-#     installedPowerPerWindpark = numberOfWindTurbines * turbineCapacity
-
-#     turbineInstallationCostperTurbine = (
-#         turbineInstallationCost / numberOfWindTurbines
-#     )  # Euro/Turbine
-#     turbineInstallationCostperCapacity = (
-#         turbineInstallationCost / installedPowerPerWindpark
-#     )  # Euro/MW
-
-#     return turbineInstallationCostperTurbine
-
- 
-# def installationCostPlattform(
-#     waterDepth=17,  # m
-#     maxJacketDepth=55,  # m
-#     vesselCapacity=3,  # units/lift
-#     portDistance=17,  # km
-#     vesselSpeed=18.5,  # km/h
-#     loadingTime=30,  # h
-#     installationTime=90,
-#     numberOfPlatforms=1,  # numberofWIndturbines in WIndpark
-#     dayRate=40000,  # €/d,
-#     turbineCapacity=15,  # MW
-#     numberOfWindTurbines=3,
-# ):
-#     """
-#     Calculates the installation cost per turbine for offshore platforms (fixed or floating),
-#     based on site conditions, vessel operations, and logistical parameters.
-
-#     Parameters
-#     ----------
-#     waterDepth : float, optional
-#         Water depth at the installation site in meters. Determines whether a fixed
-#         platform (jacket) or a floating anchorage system is used. Default is 17 m.
-#     maxJacketDepth : float, optional
-#         Maximum feasible water depth for jacket foundations. If exceeded, the
-#         platform type switches to anchorage-based. Default is 55 m.
-#     vesselCapacity : int, optional
-#         Number of platform units that can be transported per vessel trip. Default is 3.
-#         This value is overridden internally depending on platform type.
-#     portDistance : float, optional
-#         Distance from port to the installation site in kilometers. Default is 17 km.
-#     vesselSpeed : float, optional
-#         Vessel transit speed in km/h. Default is 18.5 km/h.
-#     loadingTime : float, optional
-#         Time required to load one vessel trip in hours. Default is 30 h.
-#         This value is overridden internally depending on platform type.
-#     installationTime : float, optional
-#         Time required to install one platform in hours. Default is 90 h.
-#         This value is overridden internally depending on platform type.
-#     numberOfPlatforms : int, optional
-#         Total number of platforms to be installed (usually equal to the number
-#         of turbines). Default is 1.
-#     dayRate : float, optional
-#         Vessel day rate in euros/day. Default is €40,000/day.
-#         This value is overridden internally depending on platform type.
-#     turbineCapacity : float, optional
-#         Rated power of one turbine in MW. Provided for compatibility; not used
-#         in calculations. Default is 15 MW.
-#     numberOfWIndTurbines : int, optional
-#         Number of turbines in the farm. Provided for compatibility; not used
-#         in calculations. Default is 3.
-
-#     Returns
-#     -------
-#     float
-#         Installation cost per turbine in euros.
-
-
-#     """
-#     assert 0 <= waterDepth, (
-#         f"waterdepth is {waterDepth}, but must not be smaller than 0."
-#     )
-
-#     if waterDepth <= maxJacketDepth:
-#         platformType = "fixed"
-#     else:
-#         platformType = "anchorages"
-
-#     if platformType == "fixed":
-#         vesselSpeed = 18.5
-#         loadingTime = 24
-#         installationTime = 96
-#         dayRate = 200000
-#         vesselCapacity = 1
-
-#     else:
-#         vesselSpeed = 18.5
-#         loadingTime = 30
-#         installationTime = 90
-#         dayRate = 40000
-#         vesselCapacity = 3
-
-#     # calculate the number of requried lifts for the whole windpark
-
-#     liftNumber = numberOfPlatforms / vesselCapacity
-#     platformInstallationCost = (
-#         liftNumber * ((2 * portDistance / vesselSpeed) + loadingTime)
-#         + installationTime * numberOfPlatforms
-#     ) * (dayRate / 24)  #  € installation Cost for whole windpark
-
-#     platformInstallationCostperTurbine = (
-#         platformInstallationCost / numberOfWindTurbines
-#     )  # Euro/Turbine
-
-#     platformInstallationCostperCapacity = platformInstallationCost / (
-#         numberOfWindTurbines * turbineCapacity
-#     )  # Euro/MW
-
-#     return platformInstallationCostperTurbine
-
-
-# # TODO considering how to include cable cost.... seems to be highly complicated and is implmened wrongly here so far 
-# NOTE is included already in cosat assumptions of both Rogeau and the other guys, not needed here
-# def installationCostCables(
-#     lengthOfCables=17000,  # m
-#     voltageType="dc",
-# ):
-#     """
-#     Calculates the installation cost of offshore cables based on cable length and voltage type.
-
-#     Parameters
-#     ----------
-#     lengthOfCables : float, optional
-#         Total length of cables to be installed, in meters.
-#         Default is 17,000 m.
-#     voltageType : str, optional
-#         Voltage type of the cable system. Must be one of:
-#         - "dc"          (direct current export cables)
-#         - "ac"          (alternating current export cables)
-#         - "interarray"  (inter-array cables within the wind farm)
-#         Default is "dc".
-
-#     Returns
-#     -------
-#     float
-#         Total cable installation cost in monetary units.
-
-#     """
-#     assert voltageType in ["dc", "ac", "interarray"], (
-#         "voltatgeType must be ac, dc, or interarray"
-#     )
-
-#     if voltageType == "dc":
-#         linearInstallationCost = 1
-
-#     if voltageType == "ac":
-#         linearInstallationCost = 1
-
-#     if voltageType == "interarray":
-#         linearInstallationCost = 1
-
-#     CableInstallationCost = linearInstallationCost * lengthOfCables
-
-#     return CableInstallationCost
-
