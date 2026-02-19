@@ -75,9 +75,9 @@ class WindWorkflowManager(WorkflowManager):
 
             specificPower = rk_wind_core.power_curve.compute_specific_power(
                 placements_wo_PC["capacity"], placements_wo_PC["rotor_diam"]
-            ).astype(float) #returns specific power in W/m2 
+            ).astype(float)  # returns specific power in W/m2
 
-            assert specificPower.between(0.19*1000, 0.97*1000).all(), (
+            assert specificPower.between(0.19 * 1000, 0.97 * 1000).all(), (
                 "capacity and rotor_diam do not match to give a meaningful specific power. Check if capacity is defined in correct unit (kW)"
             )  # values 0.19 and 0.97 in kW/m2 from lower/upper bound of all turbines in Turbine_Library
 
