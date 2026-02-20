@@ -14,8 +14,8 @@ from .onshore_cost_model import onshore_tcc
 
 
 # %%
-def calculateOffshoreCapex(
-    baseCapex,
+def calculateSpecificOffshoreCapex(
+    baseSpecCapex,
     capacity,
     rotorDiam,
     hubHeight,
@@ -39,6 +39,8 @@ def calculateOffshoreCapex(
 
     Parameters
     ----------
+    baseSpecCapex : float
+        Reference custom CAPEX per kW [cost unit/kW] that should be scaled,
     baseCapex : float
         Reference custom CAPEX per kW [cost unit/kW] that should be scaled.
     capacity : float
@@ -80,7 +82,7 @@ def calculateOffshoreCapex(
     Returns
     -------
     float
-        Adjusted offshore wind CAPEX per kW for the given configuration. The cost unit is the same as the baseCapex.
+        Adjusted offshore wind CAPEX per kW for the given configuration. The cost unit is the same as the baseSpecCapex.
 
     References
     ----------
@@ -123,12 +125,12 @@ def calculateOffshoreCapex(
 
     # GET TURBINE DEFAULT PARAMETERS IF NEEDED
 
-    if any(_arg is None for _arg in [baseCap, baseHubHeight, baseRotorDiam, baseCapex]):
+    if any(_arg is None for _arg in [baseCap, baseHubHeight, baseRotorDiam, baseSpecCapex]):
         params = OffshoreParameters(fp=defaultOffshoreParamsFp, year=techYear)
     elif defaultOffshoreParamsFp is not None:
         raise ValueError(
             "defaultOffshoreParamsFp is expected to be None if baseCap, "
-            "baseHubHeight, baseRotorDiam and baseCapex are provided explicitly."
+            "baseHubHeight, baseRotorDiam and baseSpecCapex are provided explicitly."
         )
     if baseCap is None:
         baseCap = params.base_capacity
@@ -139,8 +141,8 @@ def calculateOffshoreCapex(
     if baseRotorDiam is None:
         baseRotorDiam = params.base_rotor_diam
         print("baseRotorDiam is taken from overall techno-economic file")
-    if baseCapex is None:
-        baseCapex = params.base_capex_per_capacity
+    if baseSpecCapex is None:
+        baseSpecCapex = params.base_capex_per_capacity
         print("inputCapex is taken from overall techno-economic file")
 
     # PREPARE TURBINE COST FUNCTIONS
@@ -254,7 +256,7 @@ def calculateOffshoreCapex(
     turbAndFoundInstallPlantCostDefault = _getSpecificTurbineInstallCost(
         waterDepth
         )
-    connectionPlantCostDefault = getOffshoreConnectionCost(
+    connectionPlantCostDefault = getSpecificOffshoreConnectionCost(
         capacity=capacity,
         waterDepth=waterDepth,
         coastDistance=coastDistance,
@@ -279,7 +281,7 @@ def calculateOffshoreCapex(
 
 #%%
 # this function returns the complete connection cost, including cable and all required converters and platforms
-def getOffshoreConnectionCost(
+def getSpecificOffshoreConnectionCost(
     capacity: int|float|np.ndarray,
     waterDepth: int|float|np.ndarray,
     coastDistance: int|float|np.ndarray,
@@ -346,8 +348,8 @@ def getOffshoreConnectionCost(
     def _getTotalConnectionCost(_voltageType):
         """Connection cost consists of 3 elements: onshore and offshore converter + cable"""
         assert _voltageType in ["ac", "dc"]
-        # get onshore converter cost first
-        convertercost_onshore_baseWFSize = getConverterStationCost(
+        # get specific onshore converter cost first
+        convertercost_onshore_baseWFSize = getSpecificConverterStationCost(
                 capacity=baseWFSize, 
                 waterDepth=None, 
                 voltageType=_voltageType, 
@@ -355,8 +357,8 @@ def getOffshoreConnectionCost(
             ) 
         convertercost_onshore = convertercost_onshore_baseWFSize * capacity/baseWFSize # scale linearly to the actual size
         
-        # then offshore converter cost
-        convertercost_offshore_baseWFSize = getConverterStationCost(
+        # then specific offshore converter cost
+        convertercost_offshore_baseWFSize = getSpecificConverterStationCost(
                 capacity=baseWFSize,
                 waterDepth=waterDepth,
                 voltageType=_voltageType,
@@ -364,8 +366,8 @@ def getOffshoreConnectionCost(
             )
         convertercost_offshore = convertercost_offshore_baseWFSize * capacity/baseWFSize # scale to actual size again
 
-        # last cable cost
-        cableCost = getOffshoreCableCost(
+        # last specific cable cost
+        cableCost = getSpecificOffshoreCableCost(
             distance=coastDistance, capacity=capacity, voltageType=_voltageType, fixedCost=0, variableCostFactor=None, year=year,
         )
         return cableCost + convertercost_offshore + convertercost_onshore
@@ -491,7 +493,7 @@ def getOffshoreTurbineFoundationCost(
 
 
 # %%
-def getOffshoreCableCost(
+def getSpecificOffshoreCableCost(
     distance: int | float | np.ndarray,
     capacity: int | float | np.ndarray,
     voltageType: str | np.ndarray,
@@ -582,15 +584,15 @@ def getOffshoreCableCost(
             costPerKm[dc_mask] = acCostPerKm
     
     # scale and add up the cost components, return as array or scalar
-    totalCost = costPerKm * distance * capacity + fixedCost
+    totalSpecCost = (costPerKm * distance * capacity + fixedCost)/capacity
     if isScalar:
-        totalCost = np.asarray(totalCost).item()
-    return totalCost
+        totalSpecCost = np.asarray(totalSpecCost).item()
+    return totalSpecCost
 
 
 #%%
 
-def getOffshorePlatformCost(
+def getSpecificOffshorePlatformCost(
     applicationType: str | np.ndarray,
     capacity: int | float | np.ndarray,
     waterDepth: int | float | np.ndarray,
@@ -600,7 +602,7 @@ def getOffshorePlatformCost(
     convention: str ="RogeauEtAl2023",
 ):
     """
-    Returns the cost of an offshore foundation in one or multiple locations
+    Returns the specific cost of an offshore foundation in one or multiple locations
     for offshore substations or electrolysis (but not wind turbines!) depending 
     on application type, water depth, port distance and installed capacity. 
     Includes installation cost.
@@ -710,6 +712,7 @@ def getOffshorePlatformCost(
 
         # calculate total equipment platform cost as the sum of capacity-dependent and fixed cost as per eq. (8)
         ECPF = RCPF * powerDensity_factors + UCPF
+        specECPF = ECPF/capacity # normalize to specific values per kW
 
         # now calculate the platform installation cost function based on Rogeau et al. section 3.2.2
         ICPF = np.zeros_like(waterDepth, dtype=float) # initiate Installation Cost container
@@ -724,21 +727,22 @@ def getOffshorePlatformCost(
         E = np.array([[40], [40.0]])
         # then apply the function to each "column" of the params separately and then add up
         ICPF[~isFixed] = (((1.0/A) * (2.0*portDistance[~isFixed][None, :]/B + C) + D) * (E/24.0)).sum(axis=0)
-        
+        # make specific - assume cost per ship stay constant but load-carrying capacity grows -> implicit (specific) transport cost (per kW) decrease with larger, future turbines
+        specICPF = (ICPF*1000)/capacity #Rogeau is in k€ x units, here 1 unit, divide by cap. per unit
         # add up
-        totalCost = ECPF + ICPF
+        totalSpecCost = specECPF + specICPF
 
     else:
         raise NotImplementedError(f"convention '{convention}' is not implemented.")
 
     if isScalar:
-        totalCost = np.asarray(totalCost).item()
-    return totalCost
+        totalSpecCost = np.asarray(totalSpecCost).item()
+    return totalSpecCost
     
 
 #%%
 # This function returns the cost for an on- or offshore converter station, includes platform cost if offshore
-def getConverterStationCost(
+def getSpecificConverterStationCost(
     capacity: int | float | np.ndarray,
     waterDepth: int | float | np.ndarray | None,
     voltageType: str | np.ndarray,
@@ -817,13 +821,14 @@ def getConverterStationCost(
         UCPS_coeffs = np.where(voltageType == "ac", UCPS["ac"], UCPS["dc"])
         # Add up powerstation cost. Note that Rogeau does list separate installation cost for the powerstation itself, only for the platform
         ECPS = RCPS_coeffs * capacity + UCPS_coeffs * 10**3
+        specECPS = ECPS/capacity
 
         if waterDepth is None:
             # an onshore station, no additional platform cost
-            ECPF = np.zeros_like(capacity, dtype=float)
+            specECPF = np.zeros_like(capacity, dtype=float)
         else:
             # get platform cost (incl. installation cost) from separate function
-            ECPF = getOffshorePlatformCost(
+            specECPF = getSpecificOffshorePlatformCost(
                 capacity=capacity,
                 applicationType=voltageType,
                 waterDepth=waterDepth,
@@ -833,11 +838,11 @@ def getConverterStationCost(
                 convention=convention,
             )
         # combine electrical and platform cost components
-        totalCost = ECPS + ECPF
+        totalSpecCost = specECPS + specECPF
     else:
         raise NotImplementedError(f"Unknown convention: '{convention}'")
 
     if isScalar:
-        totalCost = np.asarray(totalCost).item()
+        totalSpecCost = np.asarray(totalSpecCost).item()
 
-    return totalCost
+    return totalSpecCost

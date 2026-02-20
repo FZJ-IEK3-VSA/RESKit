@@ -40,9 +40,9 @@ def get_pkg_file(name: str) -> Path:
     assert np.isclose(depth, value_exact), "the waterdepthfile is not working correct"
 
 
-def test_calculateOffshoreCapex():
+def test_calculateSpecificOffshoreCapex():
     comparedCAPEX = 2934.26
-    calculatedCAPEX = calculateOffshoreCapex(
+    calculatedCAPEX = calculateSpecificOffshoreCapex(
         baseCapex=3000,
         capacity=14000,
         hubHeight=150,
