@@ -22,7 +22,6 @@ def calculateSpecificOffshoreCapex(
     waterDepth,
     coastDistance: float|int,
     portDistance: float|int = None,
-    shareOverhead: float = 0.172,
     maxMonopileDepth=25,
     maxJacketDepth=55,
     baseDepth=17,
@@ -41,8 +40,7 @@ def calculateSpecificOffshoreCapex(
     ----------
     baseSpecCapex : float
         Reference custom CAPEX per kW [cost unit/kW] that should be scaled,
-    baseCapex : float
-        Reference custom CAPEX per kW [cost unit/kW] that should be scaled.
+        incl. overhead.
     capacity : float
         Turbine rated capacity in [kW].
     rotorDiam : float
@@ -55,8 +53,6 @@ def calculateSpecificOffshoreCapex(
         Distance from site to nearest coast in [km].
     portDistance : float
         Distance from site to nearest base port suitable as installation and maintenance base in [km].
-    shareOverhead : float, optional
-        Share of overhead/miscellaneous costs in total CAPEX in the baseline turbine reference case. Default is 0.172 (average of baseline overheads in [1]).
     maxMonopileDepth : float, optional
         Maximum depth for monopile foundations in  [m], by default 25.
     maxJacketDepth : float, optional
@@ -83,23 +79,10 @@ def calculateSpecificOffshoreCapex(
     -------
     float
         Adjusted offshore wind CAPEX per kW for the given configuration. The cost unit is the same as the baseSpecCapex.
-
-    References
-    ----------
-    [1] IEA Wind TCP Task 26 (2018): Offshore Wind Energy International Comparative Analysis report, https://docs.nrel.gov/docs/fy19osti/71558.pdf
     """
     # CHECK AND PREPROCESS INPUTS
-    
-    if not 0 <= shareOverhead < 1.0:
-        raise ValueError(f"shareOverhead must be >= 0 and < 1.0, here: {shareOverhead}")
+
     assert isinstance(maxMonopileDepth, int), "maxMonopileDepth must be an integer value"
-    assert 0 < maxMonopileDepth < 55, (
-        "Maximum depth for monopile foundation must be between 0 and 55 m"
-    )
-    assert isinstance(maxJacketDepth, int), "maxJacketDepth must be an integer value"
-    assert 55 <= maxJacketDepth < 100, (
-        "Maximum depth for jacket foundation must be between 55 and 100 m"
-    )
     assert maxMonopileDepth < maxJacketDepth, (
         "Jacket depth must be greater than monopile depth"
     )
@@ -222,39 +205,29 @@ def calculateSpecificOffshoreCapex(
         voltageType="optimal",
         baseWFSize=baseWFSize,
         maxJacketDepth=maxJacketDepth,
-        techYear=techYear,
-    )
-    # get the sum of the 3 components and add the relative overhead
-    totalBaseCostDefault = (turbineBaseCostDefault + foundationBaseCostDefault + turbAndFoundInstallBaseCostDefault + connectionBaseCostDefault)/(1-shareOverhead)
-    customScalingFactor = baseCapex / totalBaseCostDefault # custom CAPEX / base case CAPEX (default, here Rogeau et al.) #TODO simplify?
-    
-    # component cost shares (default cost of base-location component over total base case default cost)
-    turbineBaseShare = turbineBaseCostDefault/totalBaseCostDefault
-    foundationBaseShare = foundationBaseCostDefault/totalBaseCostDefault
-    turbAndFoundInstallBaseShare = turbAndFoundInstallBaseCostDefault/totalBaseCostDefault
-    connectionBaseShare = connectionBaseCostDefault/totalBaseCostDefault
-
-    # now split the custom baseCapex according to the reference/base case component cost distribution 
-    # into custom component cost for the reference/base turbine
-    turbineBaseCostCustom = baseCapex * turbineBaseShare
-    foundationBaseCostCustom = baseCapex * foundationBaseShare
-    turbAndFoundInstallBaseCostCustom = baseCapex * turbAndFoundInstallBaseShare
-    connectionBaseCostCustom = baseCapex * connectionBaseShare
+    )[1] # returns tuple for optimal voltage with voltage type as first entry, only seconds entry "cost" is needed here
+    # get the sum of the 3 components
+    totalBaseCostDefault = turbineBaseCostDefault + foundationBaseCostDefault + turbAndFoundInstallBaseCostDefault + connectionBaseCostDefault
+    # calculate the scaling factor (incl. currency) from Rogeau's base cost to actual given base cost
+    customScalingFactor = baseSpecCapex / totalBaseCostDefault # custom CAPEX / base case CAPEX (default, here Rogeau et al.)
 
     # now calculate the plant-specific default values as per Rogeau et al.
     turbinePlantCostDefault = offshoreCorrfacRogeau * onshore_tcc(
-        capacity,
-        hubHeight,
-        rotorDiam,
-        gdpEscalator=1,
-        bladeMaterialEscalator=1,
+        cp = capacity,
+        hh = hubHeight,
+        rd = rotorDiam,
+        gdp_escalator=1,
+        blade_material_escalator=1,
         blades=3,
-    )
+    )/capacity
     foundationPlantCostDefault = getOffshoreTurbineFoundationCost(
-        waterDepth, maxMonopileDepth, maxJacketDepth, year = techYear,
+        depth = waterDepth, 
+        maxMonopileDepth = maxMonopileDepth, 
+        maxJacketDepth = maxJacketDepth, 
+        year = techYear,
     )
     turbAndFoundInstallPlantCostDefault = _getSpecificTurbineInstallCost(
-        waterDepth
+        _depth = waterDepth
         )
     connectionPlantCostDefault = getSpecificOffshoreConnectionCost(
         capacity=capacity,
@@ -263,17 +236,11 @@ def calculateSpecificOffshoreCapex(
         voltageType="optimal",
         baseWFSize=baseWFSize,
         maxJacketDepth=maxJacketDepth,
-        techYear=techYear,
-    )
-
-    # scale the custom component cost (based on custom "baseCapex" arg) to the plant-specific location
-    turbinePlantCostCustom = turbineBaseCostCustom * (turbinePlantCostDefault/turbineBaseCostDefault)
-    foundationPlantCostCustom = foundationBaseCostCustom * (foundationPlantCostDefault/foundationBaseCostDefault)
-    turbAndFoundInstallPlantCostCustom = turbAndFoundInstallBaseCostCustom * (turbAndFoundInstallPlantCostDefault/turbAndFoundInstallBaseCostDefault)
-    connectionPlantCostCustom = connectionBaseCostCustom * (connectionPlantCostDefault/connectionBaseCostDefault)
-
-    # calculate the total plant custom cost, including overhead
-    totalPlantCostCustom = (turbinePlantCostCustom + foundationPlantCostCustom + turbAndFoundInstallPlantCostCustom + connectionPlantCostCustom)/(1-shareOverhead)
+        year=techYear,
+    )[1] # returns tuple for optimal voltage with voltage type as first entry, only second entry "cost" is needed here
+    totalPlantCostDefault = turbinePlantCostDefault + foundationPlantCostDefault + turbAndFoundInstallPlantCostDefault + connectionPlantCostDefault
+    # scale the plant specific default (Rogeau) cost to custom reference CAPEX level
+    totalPlantCostCustom = totalPlantCostDefault * customScalingFactor
 
     return totalPlantCostCustom
 
