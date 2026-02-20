@@ -137,10 +137,13 @@ def calculateSpecificOffshoreCapex(
     RogeauEtAlTurbineData = {2020: (8000,1500), 2030: (15000,1200), 2050: (20000, 1000)} #(capacity [kW], spec.CAPEX [EUR/kW])
     assert min(RogeauEtAlTurbineData.keys()) <= techYear <= max(RogeauEtAlTurbineData.keys()),\
         f"techYear {techYear} is outside of the range considered by Rogeau et al.: 2020-2050"
-    yearBefore = max((y for y in RogeauEtAlTurbineData.keys() if y <= techYear), RogeauEtAlTurbineData=None)
-    yearAfter = min((y for y in RogeauEtAlTurbineData.keys() if y >= techYear), RogeauEtAlTurbineData=None)
-    capacityRogeau = RogeauEtAlTurbineData[yearBefore][0] + (RogeauEtAlTurbineData[yearAfter][0]-RogeauEtAlTurbineData[yearBefore][0]) * (techYear - yearBefore)/(yearAfter - yearBefore)
-    capexRogeau = RogeauEtAlTurbineData[yearBefore][1] + (RogeauEtAlTurbineData[yearAfter][1]-RogeauEtAlTurbineData[yearBefore][1]) * (techYear - yearBefore)/(yearAfter - yearBefore)
+    yearBefore = max((y for y in RogeauEtAlTurbineData.keys() if y <= techYear))
+    yearAfter = min((y for y in RogeauEtAlTurbineData.keys() if y >= techYear))
+    capacityRogeau = RogeauEtAlTurbineData[yearBefore][0] # use the yearBefore value, is the same as yearAfter
+    capexRogeau = RogeauEtAlTurbineData[yearBefore][1]
+    if yearAfter>yearBefore:
+        capacityRogeau = capacityRogeau + (RogeauEtAlTurbineData[yearAfter][0]-RogeauEtAlTurbineData[yearBefore][0]) * (techYear - yearBefore)/(yearAfter - yearBefore)
+        capexRogeau = capexRogeau + (RogeauEtAlTurbineData[yearAfter][1]-RogeauEtAlTurbineData[yearBefore][1]) * (techYear - yearBefore)/(yearAfter - yearBefore)
     # Rogeau et al provide only capacity per year, rotor diam and hub height need to be estimated for a typical turbine 
     # assume constant spec. power of 350 W/m² (typical offshore) and hub height of 30.5m + rotor radius (see dissertation Winkler)
     rotordiamRogeau = np.sqrt((capacityRogeau*1000 / 350)/(np.pi))*2 # spec power 350 W/m2
@@ -436,8 +439,8 @@ def getOffshoreTurbineFoundationCost(
     years = sorted(coeffsDict.keys())
     assert min(years) <= year <= max(years),\
         f"year {year} is outside of the cost range defined by Rogeau et al.: 2020-2050"
-    yearBefore = max((y for y in years if y <= year), default=None)
-    yearAfter = min((y for y in years if y >= year), default=None)
+    yearBefore = max((y for y in years if y <= year))
+    yearAfter = min((y for y in years if y >= year))
     # get coefficients for both bracketing years and interpolate them (all linear)
     coeffsBefore = coeffsDict[yearBefore]
     coeffsAfter = coeffsDict[yearAfter]
@@ -545,10 +548,12 @@ def getSpecificOffshoreCableCost(
             years = np.array(sorted(acCostPerKmDict.keys()), dtype=int)
             if not (years.min() <= year <= years.max()):
                 raise ValueError(f"year {year} is outside range {years.min()}-{years.max()}")
-            yearBefore = max((y for y in acCostPerKmDict.keys() if y <= year), default=None)
-            yearAfter = min((y for y in acCostPerKmDict.keys() if y >= year), default=None)
-            acCostPerKm = acCostPerKmDict[yearBefore] * (acCostPerKmDict[yearAfter]-acCostPerKmDict[yearBefore]) * (year-yearBefore)/(yearAfter-yearBefore)
-            costPerKm[dc_mask] = acCostPerKm
+            yearBefore = max((y for y in acCostPerKmDict.keys() if y <= year))
+            yearAfter = min((y for y in acCostPerKmDict.keys() if y >= year))
+            acCostPerKm = acCostPerKmDict[yearBefore] 
+            if yearAfter > yearBefore:
+                acCostPerKm  = acCostPerKm * (acCostPerKmDict[yearAfter]-acCostPerKmDict[yearBefore]) * (year-yearBefore)/(yearAfter-yearBefore)
+            costPerKm[ac_mask] = acCostPerKm
     
     # scale and add up the cost components, return as array or scalar
     totalSpecCost = (costPerKm * distance * capacity + fixedCost)/capacity
