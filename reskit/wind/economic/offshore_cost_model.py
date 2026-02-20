@@ -150,11 +150,11 @@ def calculateSpecificOffshoreCapex(
     hubheightRogeau = 30.5 + rotordiamRogeau/2 # in mtrs
     # now calculate the correction factor to align onshore_tcc with Rogeau's value for that year (contains also currency conversion/inflation)
     offshoreCorrfacRogeau = capexRogeau/onshore_tcc(
-        capacityRogeau,
-        hubheightRogeau,
-        rotordiamRogeau,
-        gdpEscalator=1,
-        bladeMaterialEscalator=1,
+        cp = capacityRogeau,
+        hh = hubheightRogeau,
+        rd = rotordiamRogeau,
+        gdp_escalator=1,
+        blade_material_escalator=1,
         blades=3,
     )/capacityRogeau
 
@@ -165,9 +165,9 @@ def calculateSpecificOffshoreCapex(
         isFixed = _depth.ravel() <= maxJacketDepth
         # initiate a container for installation cost
         instCost = np.zeros(_depth.shape[0], dtype=float)
-        # first deal with fixed foundation locations
-        a = 40.0 / capacity[isFixed] # parameter will be a location-specific array
-        instCost[isFixed] = ((1.0/a) * (2.0*portDistance[isFixed]/18.5 + 24.0) + 144.0) * (200.0/24.0)
+        # first deal with fixed foundation locations, calculate normalized per 1 windturbine foundation
+        a = 40.0 * 1000 / capacity[isFixed] # parameter will be a location-specific array, first value in MW
+        instCost[isFixed] = ((1/a) * (2.0*portDistance[isFixed]/18.5 + 24.0) + 144.0*1) * (200.0/24.0)
         # now deal with floating foundations 
         # floating has 2 terms, so define params as np.arrays of len 2
         A = np.array([[0.3], [7.0]])
@@ -176,8 +176,8 @@ def calculateSpecificOffshoreCapex(
         D = np.array([[0.0], [90.0]])
         E = np.array([[2.5], [40.0]])
         # then apply the function to each "column" of the params separately and then add up
-        instCost[~isFixed] = (((1.0/A) * (2.0*portDistance[~isFixed][None, :]/B + C) + D) * (E/24.0)).sum(axis=0)
-        return instCost/capacity # specific installation cost
+        instCost[~isFixed] = (((1/A) * (2.0*portDistance[~isFixed][None, :]/B + C) + D) * (E/24.0)).sum(axis=0) 
+        return instCost*1000/capacity # specific installation cost in EUR/kW, Rogeau et all provide cost in kEUR2022 [1]
 
     # CALCULATE LOCATION-SPECIFIC COST BY SCALING THE INDIVIDUAL TURBINE COMPONENTS
 
@@ -185,15 +185,15 @@ def calculateSpecificOffshoreCapex(
     # consists of cost for a) turbine, b) foundation, c) cable connection - plus overhead
     # the turbine cost consist of the turbine (machine with tower with design impacts based on onshore calculations, scaled to offshore Rogeau cost level) and installation
     turbineBaseCostDefault = offshoreCorrfacRogeau * onshore_tcc( # without installation cost
-        baseCap,
-        baseHubHeight,
-        baseRotorDiam,
-        gdpEscalator=1,
-        bladeMaterialEscalator=1,
+        cp = baseCap,
+        hh = baseHubHeight,
+        rd = baseRotorDiam,
+        gdp_escalator=1,
+        blade_material_escalator=1,
         blades=3,
     )/baseCap
     foundationBaseCostDefault = getOffshoreTurbineFoundationCost( # without installation cost
-        waterDepth=baseDepth, 
+        depth=baseDepth, 
         maxMonopileDepth=maxMonopileDepth, 
         maxJacketDepth=maxJacketDepth, 
         year=techYear,
@@ -208,6 +208,7 @@ def calculateSpecificOffshoreCapex(
         voltageType="optimal",
         baseWFSize=baseWFSize,
         maxJacketDepth=maxJacketDepth,
+        year=techYear,
     )[1] # returns tuple for optimal voltage with voltage type as first entry, only seconds entry "cost" is needed here
     # get the sum of the 3 components
     totalBaseCostDefault = turbineBaseCostDefault + foundationBaseCostDefault + turbAndFoundInstallBaseCostDefault + connectionBaseCostDefault
@@ -256,6 +257,7 @@ def getSpecificOffshoreConnectionCost(
     waterDepth: int|float|np.ndarray,
     coastDistance: int|float|np.ndarray,
     year: int,
+    portDistance: int = None,
     voltageType: str = "optimal",
     baseWFSize: int|float =106858,
     maxJacketDepth: int = 55,
@@ -274,6 +276,9 @@ def getSpecificOffshoreConnectionCost(
         The distance to coast in [km] (>0).
     year: int
         The year for which the reference cost shall be returned.
+    portDistance : int, optional
+        If given in [km], it will be used to calculate the installation cost,
+        else the coast distance [km] will be assumed as proxy.
     voltageType : str, optional
         Either "dc" or "ac" to return the cost for the respective connection 
         type, or "optimal" to return the cheaper option. By default "optimal".
@@ -305,6 +310,8 @@ def getSpecificOffshoreConnectionCost(
         "maxJacketDepth must be an integer > 0"
     assert voltageType in ["ac", "dc", "optimal"],\
         f"Unknown voltageType: {voltageType}"
+    assert portDistance is None or (isinstance(portDistance, (int, float)) and portDistance >= 0),\
+        "portDistance must be an integer or float >= 0 if not None"
     waterDepth = np.atleast_1d(waterDepth)
     if any(waterDepth<0):
         raise ValueError(f"waterDepth must be >= 0 for all offshore locations.")
@@ -314,6 +321,8 @@ def getSpecificOffshoreConnectionCost(
     coastDistance = np.atleast_1d(coastDistance)
     if any(coastDistance<0):
         raise ValueError(f"coastDistance must be >= 0 for all locations.")
+    if portDistance is None:
+        portDistance = coastDistance
     
     def _getTotalConnectionCost(_voltageType):
         """Connection cost consists of 3 elements: onshore and offshore converter + cable"""
@@ -322,7 +331,8 @@ def getSpecificOffshoreConnectionCost(
         convertercost_onshore_baseWFSize = getSpecificConverterStationCost(
                 capacity=baseWFSize, 
                 waterDepth=None, 
-                voltageType=_voltageType, 
+                voltageType=_voltageType,
+                portDistance=0, # onshore
                 maxJacketDepth=maxJacketDepth
             ) 
         convertercost_onshore = convertercost_onshore_baseWFSize * capacity/baseWFSize # scale linearly to the actual size
@@ -332,6 +342,7 @@ def getSpecificOffshoreConnectionCost(
                 capacity=baseWFSize,
                 waterDepth=waterDepth,
                 voltageType=_voltageType,
+                portDistance=portDistance,
                 maxJacketDepth=maxJacketDepth,
             )
         convertercost_offshore = convertercost_offshore_baseWFSize * capacity/baseWFSize # scale to actual size again
@@ -367,7 +378,7 @@ def getOffshoreTurbineFoundationCost(
     foundations based on water depth and year for one or multiple locations.
     Does not include the cost for the turbine itself or cable connection cost.
     
-    Note: Excludes installation cost, those are calculated for platform 
+    Note: Excludes installation cost. 
 
     Parameters
     ----------
@@ -394,7 +405,10 @@ def getOffshoreTurbineFoundationCost(
 
     References
     ----------
-    Rogeau et al. (2023), Renewable and Sustainable Energy Reviews.
+    [1] Rogeau et al. (2023), Renewable and Sustainable Energy Reviews.
+    [2] Jonathan Bosch, Iain Staffell, Adam D. Hawkes, Global levelised cost of 
+        electricity from offshore wind, Energy, Volume 189, 2019, 116357,
+        ISSN 0360-5442, https://doi.org/10.1016/j.energy.2019.116357.
     """
     # check and preprocess inputs
     isScalar = np.isscalar(depth) # will be returned as a scalar as well then
@@ -448,8 +462,8 @@ def getOffshoreTurbineFoundationCost(
     coeffsInterp = (1.0 - weighing) * coeffsBefore + weighing * coeffsAfter
     # now extract the actual coefficients per location via foundation code and calculate cost
     a, b, c = coeffsInterp[foundints, 0], coeffsInterp[foundints, 1], coeffsInterp[foundints, 2]
-    costs = a * depth**2 + b * depth + c * 1000.0 
-    #TODO check factor 1000, yields very high values with c coefficients from above!?
+    costs = a * depth**2 + b * depth + c * 1000.0 #Rogeau et al. do not indicate unit, but secondary source Bosch et al. [2] uses cost per MW
+    costs = costs/1000 # convert to EUR_2022/kW
 
     # prepare outputs and return
     if isScalar:
@@ -516,9 +530,9 @@ def getSpecificOffshoreCableCost(
     voltageType = np.asarray(voltageType)
     variableCostFactor = None if variableCostFactor is None else np.asarray(variableCostFactor, dtype=float)
     if variableCostFactor is None:
-        distance, capacity, fixedCost, voltage = np.broadcast_arrays(distance, capacity, fixedCost, voltage)
+        distance, capacity, fixedCost, voltageType = np.broadcast_arrays(distance, capacity, fixedCost, voltageType)
     else:
-        distance, capacity, fixedCost, voltage, variableCostFactor = np.broadcast_arrays(distance, capacity, fixedCost, voltage, variableCostFactor)
+        distance, capacity, fixedCost, voltageType, variableCostFactor = np.broadcast_arrays(distance, capacity, fixedCost, voltageType, variableCostFactor)
 
     # check inputs
     assert (distance >= 0).all(), "All distances must be larger or equal to 0"
@@ -536,11 +550,11 @@ def getSpecificOffshoreCableCost(
         costPerKm = np.empty(distance.shape, dtype=float)
         # for dc, use time-independent DC cable cost per kW and km as in Rogeau et al. (Note unit error, is indicated per W*km but actually kW*km)
         # cost already include "delivery and installation" as per Rogeau et al.
-        dc_mask = (voltage == "dc")
+        dc_mask = (voltageType == "dc")
         costPerKm[dc_mask] = 1.35 * 1.5 # + 50% for installation acc. to Rogeau et al. [1]
         # for ac, use AC cost per km and kW from Pathway 2.0 (Ea Energy Analyses A / S et al. [2]) instead of Rogeau (Rogeau is very confusing here)
         # values include installation and have been corrected to EUR_2023 to align with cost data from Rogeau et al. [1] #TODO make sure if this is indeed EUR2023
-        ac_mask = (voltage == "ac")
+        ac_mask = (voltageType == "ac")
         if ac_mask.sum() > 0:
             # we DO have ac cases, check year and get bracketing data years first
             assert year is not None, "year is required for voltageType 'ac' if no variableCostFactor is provided."
@@ -773,9 +787,9 @@ def getSpecificConverterStationCost(
     isScalar = _cap_scalar and _wd_scalar and _vt_scalar and _pd_scalar and _vt_scalar  # required by user
     # broadcast all arrays to the same dimensions
     if waterDepth is None:
-        capacity, portDistance = np.broadcast_arrays(capacity, portDistance, voltageType)
+        capacity, portDistance, voltageType = np.broadcast_arrays(capacity, portDistance, voltageType)
     else:
-        capacity, waterDepth, portDistance = np.broadcast_arrays(
+        capacity, waterDepth, portDistance, voltageType = np.broadcast_arrays(
             capacity, waterDepth, portDistance, voltageType
         )
     
