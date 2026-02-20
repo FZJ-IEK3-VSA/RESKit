@@ -156,7 +156,7 @@ def calculateSpecificOffshoreCapex(
         gdpEscalator=1,
         bladeMaterialEscalator=1,
         blades=3,
-    )
+    )/capacityRogeau
 
     # define a turbine installation cost function based on Rogeau et al. section 3.2.1
     def _getSpecificTurbineInstallCost(_depth):
@@ -191,7 +191,7 @@ def calculateSpecificOffshoreCapex(
         gdpEscalator=1,
         bladeMaterialEscalator=1,
         blades=3,
-    ) #+ _getSpecificTurbineInstallCost(_depth=np.atleast_1d(baseDepth))
+    )/baseCap
     foundationBaseCostDefault = getOffshoreTurbineFoundationCost( # without installation cost
         waterDepth=baseDepth, 
         maxMonopileDepth=maxMonopileDepth, 
@@ -201,7 +201,7 @@ def calculateSpecificOffshoreCapex(
     turbAndFoundInstallBaseCostDefault = _getSpecificTurbineInstallCost(
         baseDepth
         )
-    connectionBaseCostDefault = getOffshoreConnectionCost(
+    connectionBaseCostDefault = getSpecificOffshoreConnectionCost(
         capacity=baseCap,
         waterDepth=baseDepth,
         coastDistance=baseDistCoast,
