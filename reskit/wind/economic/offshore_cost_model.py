@@ -399,7 +399,7 @@ def getOffshoreTurbineFoundationCost(
     Returns
     -------
     float | np.ndarray | tuple
-        Rated cost in €_2023/kW, or (Rated cost in €_2023/kW, foundation type) 
+        Rated cost in €_2022/kW, or (Rated cost in €_2022/kW, foundation type) 
         if returnType is True. Both rated cost and foundation type will be 
         scalar or numpy arrays depending on the input data type of "depth".
 
@@ -499,9 +499,9 @@ def getSpecificOffshoreCableCost(
     voltageType : str | np.ndarray
         'ac' or 'dc', takes no effect when variableCostFactor is provided.
     variableCostFactor : int | float | np.ndarray, optional
-        Cost multiplier in [EUR_2023/kW/km], by default None.
+        Cost multiplier in [EUR_2022/kW/km], by default None.
     fixedCost : float, optional
-        Fixed absolute connection cost, must be in [EUR_2023]. Defaults to 0.
+        Fixed absolute connection cost, must be in [EUR_2022]. Defaults to 0.
     year : int, optional
         The year for which the reference cost shall be returned in case of 
         voltageType == 'ac' (year is then mandatory, else it has no effect).
@@ -510,7 +510,7 @@ def getSpecificOffshoreCableCost(
     Returns
     -------
     np.ndarray
-        Total cable connection cost in [EUR_2023].
+        Total cable connection cost in [EUR_2022].
 
     References
     ----------
@@ -553,12 +553,12 @@ def getSpecificOffshoreCableCost(
         dc_mask = (voltageType == "dc")
         costPerKm[dc_mask] = 1.35 * 1.5 # + 50% for installation acc. to Rogeau et al. [1]
         # for ac, use AC cost per km and kW from Pathway 2.0 (Ea Energy Analyses A / S et al. [2]) instead of Rogeau (Rogeau is very confusing here)
-        # values include installation and have been corrected to EUR_2023 to align with cost data from Rogeau et al. [1] #TODO make sure if this is indeed EUR2023
+        # values include installation and have been corrected to EUR_2022 to align with cost data from Rogeau et al. [1]
         ac_mask = (voltageType == "ac")
         if ac_mask.sum() > 0:
             # we DO have ac cases, check year and get bracketing data years first
             assert year is not None, "year is required for voltageType 'ac' if no variableCostFactor is provided."
-            acCostPerKmDict = {2020: 8.18, 2030: 7.95, 2050: 7.49} # includes installation acc. to [2] 
+            acCostPerKmDict = {2020: 7.70, 2030: 7.47, 2050: 7.05} # includes installation acc. to [2], converted to EUR_2022
             years = np.array(sorted(acCostPerKmDict.keys()), dtype=int)
             if not (years.min() <= year <= years.max()):
                 raise ValueError(f"year {year} is outside range {years.min()}-{years.max()}")
