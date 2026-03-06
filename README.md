@@ -20,34 +20,57 @@ RESKit aids with the broad-scale simulation of renewable energy systems, primari
 
 ## Installation
 
-Please follow these steps for an editable installation:
+#### For Users (Application Only)
 
-1. First clone a local copy of the repository to your computer, and move into the created directory
+1 a) If you do not have an existing conda/mamba environment:
+```
+conda env create -c conda-forge reskit -n <ENVIRONMENT-NAME>
+```
 
+1 b) If you have an existing environment, install RESKit into it:
+```
+conda install -c conda-forge reskit -n <YOUR-ENVIRONMENT-NAME>
+```
+
+2 ) Activate the environment:
+```
+conda activate <YOUR-ENVIRONMENT-NAME>
+```
+
+3 a) Get the RESKit source code (including examples):
 ```
 git clone https://github.com/FZJ-IEK3-VSA/reskit.git
 cd reskit
 ```
 
-1. (Alternative) If you want to use the 'dev' branch (or another branch) then use:
+3 b) If you do not have Git and just want to check the examples, download and extract the source code with this link:
+> https://github.com/FZJ-IEK3-VSA/RESKit/archive/refs/heads/master.zip
+
+
+#### For Developers
+Please follow these steps for an editable installation:
+
+1 ) Clone and checkout dev:
 
 ```
+git clone https://github.com/FZJ-IEK3-VSA/reskit.git
+cd reskit
 git checkout dev
 ```
 
-2. RESkit should be installable to a new environment with:
+2 a) RESkit should be installable to a new environment with:
 
 ```
 conda env create --file requirements-dev.yml
 ```
 
-2. (Alternative) Or into an existing environment with:
+2 b) (Alternative) Or into an existing environment with:
 
 ```
 conda env update --file requirements-dev.yml -n <ENVIRONMENT-NAME>
 ```
 
-3. Install an editable version of reskit (when in the reskit folder) via
+3 ) Install an editable version of reskit (when in the reskit folder) via
 ```
 pip install -e .
 ```
