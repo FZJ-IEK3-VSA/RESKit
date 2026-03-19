@@ -201,7 +201,7 @@ def calculateSpecificOffshoreCapex(
     turbAndFoundInstallBaseCostDefault = _getSpecificTurbineInstallCost(
         baseDepth
         )
-    connectionBaseCostDefault = getSpecificOffshoreConnectionCost(
+    connectionBaseCostDefault, _ = getSpecificOffshoreConnectionCost(
         capacity=baseCap,
         waterDepth=baseDepth,
         coastDistance=baseDistCoast,
@@ -233,7 +233,7 @@ def calculateSpecificOffshoreCapex(
     turbAndFoundInstallPlantCostDefault = _getSpecificTurbineInstallCost(
         _depth = waterDepth
         )
-    connectionPlantCostDefault = getSpecificOffshoreConnectionCost(
+    connectionPlantCostDefault, _ = getSpecificOffshoreConnectionCost(
         capacity=capacity,
         waterDepth=waterDepth,
         coastDistance=coastDistance,
@@ -257,7 +257,7 @@ def getSpecificOffshoreConnectionCost(
     waterDepth: int|float|np.ndarray,
     coastDistance: int|float|np.ndarray,
     year: int,
-    portDistance: int = None,
+    portDistance: int|float|np.ndarray = None,
     voltageType: str = "optimal",
     baseWFSize: int|float =106858,
     maxJacketDepth: int = 55,
@@ -291,6 +291,12 @@ def getSpecificOffshoreConnectionCost(
         The maximum depth up to which jacket foundations can be installed,
         by default 55 [m].
 
+    Returns
+    -------
+    tuple
+        A tuple of (min. specific cost, respective ac/dc connection type).
+        Will contain scalar entries if all inputs were scalar, else arrays.
+
     References
     ----------
     [1] Rogeau, Antoine; Vieubled, Julien; Coatpont, Matthieu de; Affonso
@@ -303,15 +309,19 @@ def getSpecificOffshoreConnectionCost(
     Techno-economic data (11.0) Pathway Databook_v11 - Public Version. 
     Zenodo. https://doi.org/10.5281/zenodo.13382786
     """
-    # check inputs
+    # check scalar inputs
     assert isinstance(baseWFSize, (int, float)) and baseWFSize>0,\
         "baseWFSize must be an integer or float > 0"
     assert isinstance(maxJacketDepth, int) and maxJacketDepth>0,\
         "maxJacketDepth must be an integer > 0"
     assert voltageType in ["ac", "dc", "optimal"],\
         f"Unknown voltageType: {voltageType}"
-    assert portDistance is None or (isinstance(portDistance, (int, float)) and portDistance >= 0),\
-        "portDistance must be an integer or float >= 0 if not None"
+    # check and preprocess vectorized inputs
+    isScalar = all([np.isscalar(_arg) for _arg in [portDistance, waterDepth, capacity, coastDistance]])
+    if not portDistance is None:
+        portDistance = np.atleast_1d(portDistance)
+        if any(portDistance < 0):
+            raise ValueError("If not None, portDistance must be integers or floats >= 0 for all locations.")
     waterDepth = np.atleast_1d(waterDepth)
     if any(waterDepth<0):
         raise ValueError(f"waterDepth must be >= 0 for all offshore locations.")
@@ -324,7 +334,7 @@ def getSpecificOffshoreConnectionCost(
     if portDistance is None:
         portDistance = coastDistance
     
-    def _getTotalConnectionCost(_voltageType):
+    def _getTotalSpecificConnectionCost(_voltageType):
         """Connection cost consists of 3 elements: onshore and offshore converter + cable"""
         assert _voltageType in ["ac", "dc"]
         # get specific onshore converter cost first
@@ -352,18 +362,28 @@ def getSpecificOffshoreConnectionCost(
             distance=coastDistance, capacity=capacity, voltageType=_voltageType, fixedCost=0, variableCostFactor=None, year=year,
         )
         return cableCost + convertercost_offshore + convertercost_onshore
-    
+
     if voltageType == "optimal":
         # check both AC and DC and return the cheaper option
-        _totalCostDict = {}
-        for _voltageType in ["ac", "dc"]:
-            _totalCostDict[_voltageType] = _getTotalConnectionCost(_voltageType=_voltageType)
-        # return a tuple: (minCost:float, optimalVoltageType:str)
-        return min(_totalCostDict.items(), key=lambda item: item[1])
+        voltageTypes = ["ac", "dc"]
     else:
-        # return the cost for the given coltage type only as a float
-        return _getTotalConnectionCost(_voltageType=voltageType)
-
+        # calculate only for the given voltageType
+        voltageTypes = [voltageType]
+    # calculate the cost for all eligible voltageTypes...
+    _totalCostDict = {}
+    for _voltageType in voltageTypes:
+        _totalCostDict[_voltageType] = _getTotalSpecificConnectionCost(_voltageType=_voltageType)
+    _totalCostArray = np.vstack([_totalCostDict[k] for k in _totalCostDict.keys()]) # stack all options 
+    # ... and return the lowest cost option (the ONLY option if one specific voltageType was given)
+    minCost = np.min(_totalCostArray, axis=0)
+    minType = list(_totalCostDict.keys())[0] if _totalCostArray.shape[0]==1 else np.array(list(_totalCostDict.keys()))[np.argmin(_totalCostArray, axis=0)]
+    # make scalar if all inputs were scalar
+    if isScalar:
+        minCost = minCost[0]
+        minType = minType[0]
+    # return a tuple: (minCost:float|np.array, optimalVoltageType:str|np.array)
+    return (minCost, minType)
+    
 
 # %%
 def getOffshoreTurbineFoundationCost(
