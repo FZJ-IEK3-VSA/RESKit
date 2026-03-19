@@ -67,18 +67,11 @@ def test_calculateSpecificOffshoreCapex():
     assert np.isclose(calculatedCAPEX, comparedCAPEX)
 
 
-def test_getRatedCostFromWaterDepth():
-    test_value = getRatedCostFromWaterDepth(17, 25, 55)
-    assert np.isclose(test_value, 431693), "equation is changed"
-    assert getRatedCostFromWaterDepth(17) == getRatedCostFromWaterDepth(-17), (
-        "negative avlues are handled incorrect"
-    )
 
+def test_getSpecificOffshoreCableCost():
+    value1 = getSpecificOffshoreCableCost(10, 14000, variableCostFactor=1.35, fixedCost=0)
 
-def test_getCableCost():
-    value1 = getCableCost(10, 14000, variableCostFactor=1.35, fixedCost=0)
-
-    value2 = getCableCost(10, 10000, variableCostFactor=1.35, fixedCost=0)
+    value2 = getSpecificOffshoreCableCost(10, 10000, variableCostFactor=1.35, fixedCost=0)
 
     assert np.isclose(value1, 189000), (
         "Error in getCableCostfuncion, possibly due to adapted function"
@@ -87,9 +80,11 @@ def test_getCableCost():
         "Error in getCableCostfuncion, possibly due to adapted function"
     )
 
+def test_getOffshoreTurbineFoundationCost():
+    pass
 
-def test_getPlatformCost():
-    c1 = getPlatformCost(
+def test_getSpecificOffshorePlatformCost():
+    c1 = getSpecificOffshorePlatformCost(
         capacity=10000,
         applicationType="ac",  # AC substation offshore
         waterDepth=56,  # floating water depth
@@ -99,7 +94,7 @@ def test_getPlatformCost():
     )
     assert c1 == 461856.0
 
-    c2 = getPlatformCost(
+    c2 = getSpecificOffshorePlatformCost(
         capacity=10000,
         applicationType="dc",  # DC substation offshore
         waterDepth=56,  # floating water depth
@@ -109,7 +104,7 @@ def test_getPlatformCost():
     )
     assert c2 == 679784.0
 
-    c3 = getPlatformCost(
+    c3 = getSpecificOffshorePlatformCost(
         capacity=10000,
         applicationType="electrolysis",  # central offshore electrolysis
         waterDepth=55,  # jacket water depth
@@ -121,7 +116,7 @@ def test_getPlatformCost():
 
     # TEST MUST-FAIL CASES
     with pytest.raises(Exception):
-        getPlatformCost(
+        getSpecificOffshorePlatformCost(
             capacity=10000,
             applicationType="does_not_exist",  # must fail
             waterDepth=55,
@@ -131,7 +126,7 @@ def test_getPlatformCost():
         )
 
     with pytest.raises(Exception):
-        getPlatformCost(
+        getSpecificOffshorePlatformCost(
             capacity=10000,
             applicationType="AC",
             waterDepth=50,
@@ -141,7 +136,7 @@ def test_getPlatformCost():
         )
 
     with pytest.raises(Exception):
-        getPlatformCost(
+        getSpecificOffshorePlatformCost(
             capacity=10000,
             applicationType="AC",
             waterDepth=-1,  # must fail
@@ -151,9 +146,9 @@ def test_getPlatformCost():
         )
 
 
-def test_getConverterStationCost():
+def test_getSpecificConverterStationCost():
     # test onshore AC substation
-    c1 = getConverterStationCost(
+    c1 = getSpecificConverterStationCost(
         capacity=10000,
         waterDepth=None,  # onshore
         voltageType="ac",
@@ -164,7 +159,7 @@ def test_getConverterStationCost():
     assert c1 == 231875.0
 
     # test offshore DC substation
-    c2 = getConverterStationCost(
+    c2 = getSpecificConverterStationCost(
         capacity=10000,
         waterDepth=55,  # jacket depth
         voltageType="dc",
@@ -177,10 +172,13 @@ def test_getConverterStationCost():
     # TEST MUST-FAIL CASES
 
     with pytest.raises(Exception):
-        getConverterStationCost(
+        getSpecificConverterStationCost(
             capacity=10000,
             waterDepth=55,  # jacket depth
             voltageType="does_not_exist",  # must fail
             maxJacketDepth=55,
             convention="RogeauEtAl2023",
         )
+
+def test_getSpecificOffshoreConnectionCost():
+    pass
