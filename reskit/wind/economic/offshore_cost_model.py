@@ -12,9 +12,9 @@ def calculateSpecificOffshoreCapex(
     capacity,
     rotorDiam,
     hubHeight,
-    waterDepth,
-    coastDistance: float | int,
-    portDistance: float | int = None,
+    waterDepth: float|int,
+    coastDistance: float|int,
+    portDistance: float|int = None,
     maxMonopileDepth=25,
     maxJacketDepth=55,
     baseDepth=17,
@@ -25,6 +25,7 @@ def calculateSpecificOffshoreCapex(
     baseRotorDiam=None,
     defaultOffshoreParamsFp=None,
     techYear=2050,
+    voltageType = "optimal",
 ):
     """
     Scales a generic offshore CAPEX value based on water depth and distance to shore by taking capacity, hubheight and rotor diameter of a base case. If no base case is given, a default base case is applied.
@@ -94,6 +95,7 @@ def calculateSpecificOffshoreCapex(
     capacity = np.atleast_1d(capacity)
     hubHeight = np.atleast_1d(hubHeight)
     rotorDiam = np.atleast_1d(rotorDiam)
+    # voltageType = voltageType 
 
     # GET TURBINE DEFAULT PARAMETERS IF NEEDED
 
@@ -226,7 +228,7 @@ def calculateSpecificOffshoreCapex(
         capacity=baseCap,
         waterDepth=baseDepth,
         coastDistance=baseDistCoast,
-        voltageType="optimal",
+        voltageType=voltageType,
         baseWFSize=baseWFSize,
         maxJacketDepth=maxJacketDepth,
         year=techYear,
@@ -267,7 +269,7 @@ def calculateSpecificOffshoreCapex(
         capacity=capacity,
         waterDepth=waterDepth,
         coastDistance=coastDistance,
-        voltageType="optimal",
+        voltageType=voltageType,
         baseWFSize=baseWFSize,
         maxJacketDepth=maxJacketDepth,
         year=techYear,
