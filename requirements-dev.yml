@@ -20,6 +20,9 @@ dependencies:
   - pvlib-python =0.9.0
   - windpowerlib =0.2.1
   - cdsapi <=0.7.7
+  - wisdem
+  - openmdao
+  - jsonmerge
   # dev
   - nbval <=0.11.0
   - ruff =0.14.1
