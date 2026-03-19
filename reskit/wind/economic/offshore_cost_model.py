@@ -1,16 +1,9 @@
 import numpy as np
-import os
-import pickle
-import glob
-import geokit as gk
 import warnings
-import math
 
-
-from reskit.default_paths import DEFAULT_PATHS
 from reskit.parameters.parameters import OffshoreParameters
 from reskit.util.local_values import *
-from .onshore_cost_model import onshore_tcc
+from reskit.wind.economic.onshore_cost_model import onshore_tcc
 
 
 # %%
