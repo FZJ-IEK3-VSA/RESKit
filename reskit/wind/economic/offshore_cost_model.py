@@ -159,6 +159,7 @@ def calculateSpecificOffshoreCapex(
     )/capacityRogeau
 
     # define a turbine installation cost function based on Rogeau et al. section 3.2.1
+    # Define the function inside this function so it cannot be used separately by others, since it is not really related to the other fixed-cost components.
     def _getSpecificTurbineInstallCost(_depth):
         # determine fixed vs floating locations
         _depth = np.atleast_1d(_depth)
