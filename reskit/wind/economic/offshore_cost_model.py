@@ -82,24 +82,26 @@ def calculateSpecificOffshoreCapex(
     """
     # CHECK AND PREPROCESS INPUTS
 
+    # scalar inputs
     assert isinstance(maxMonopileDepth, int), "maxMonopileDepth must be an integer value"
     assert maxMonopileDepth < maxJacketDepth, (
         "Jacket depth must be greater than monopile depth"
     )
-    if isinstance(waterDepth, (int, float)):
-        waterDepth = np.atleast_1d(waterDepth)
-    assert isinstance(waterDepth, np.ndarray) and (waterDepth>=0).all(),\
+    # vectorized inputs
+    waterDepth = np.atleast_1d(waterDepth)
+    assert (waterDepth>=0).all(),\
         "waterDepth must be an integer, float or np.ndarray with all values >= 0"
-    if isinstance(coastDistance, (int, float)):
-        coastDistance = np.atleast_1d(coastDistance)
-    assert isinstance(coastDistance, np.ndarray) and (coastDistance>=0).all(),\
+    coastDistance = np.atleast_1d(coastDistance)
+    assert (coastDistance>=0).all(),\
         "coastDistance must be an integer, float or np.ndarray with all values >= 0"
     if portDistance is None:
         portDistance = coastDistance
-    elif isinstance(portDistance, (int, float)):
+    else:
         portDistance = np.atleast_1d(portDistance)
-    assert isinstance(portDistance, np.ndarray) and (portDistance>=0).all(),\
-        "If not None, portDistance must be an integer, float or np.ndarray with all values >= 0"
+    assert (portDistance>=0).all(),\
+        "portDistance must be an integer, float or np.ndarray with all values >= 0"
+    assert (portDistance>=coastDistance).all(),\
+        "portDistance cannot be smaller than coastDistance for any location."
 
     # convert all other location-specific parameters to a np array for vectorized handling in subfunctions
     capacity = np.atleast_1d(capacity)
@@ -161,24 +163,38 @@ def calculateSpecificOffshoreCapex(
     # define a turbine installation cost function based on Rogeau et al. section 3.2.1
     # Define the function inside this function so it cannot be used separately by others, since it is not really related to the other fixed-cost components.
     def _getSpecificTurbineInstallCost(_depth):
+        # enforce the same shape for all variables
+        _depth = np.asarray(_depth, dtype=float)
+        if _depth.size == 1:
+            _depth = np.full_like(capacity, _depth.item())
+        elif _depth.shape != capacity.shape:
+            raise ValueError("depth must be scalar or same shape as capacity")
+        _portDistance = np.asarray(portDistance, dtype=float)
+        if _portDistance.size == 1:
+            _portDistance = np.full_like(capacity, _portDistance.item())
+        elif _portDistance.shape != capacity.shape:
+            raise ValueError("portDistance must be scalar or same shape as capacity")
         # determine fixed vs floating locations
-        _depth = np.atleast_1d(_depth)
-        isFixed = _depth.ravel() <= maxJacketDepth
+        _depth = np.broadcast_to(_depth, capacity.shape)
+        isFixed = _depth <= maxJacketDepth
         # initiate a container for installation cost
-        instCost = np.zeros(_depth.shape[0], dtype=float)
+        instCost = np.zeros(_depth.shape, dtype=float)
         # first deal with fixed foundation locations, calculate normalized per 1 windturbine foundation
-        a = 40.0 * 1000 / capacity[isFixed] # parameter will be a location-specific array, first value in MW
-        instCost[isFixed] = ((1/a) * (2.0*portDistance[isFixed]/18.5 + 24.0) + 144.0*1) * (200.0/24.0)
-        # now deal with floating foundations 
-        # floating has 2 terms, so define params as np.arrays of len 2
-        A = np.array([[0.3], [7.0]])
-        B = np.array([[7.5], [18.5]])
-        C = np.array([[5.0], [30.0]])
-        D = np.array([[0.0], [90.0]])
-        E = np.array([[2.5], [40.0]])
-        # then apply the function to each "column" of the params separately and then add up
-        instCost[~isFixed] = (((1/A) * (2.0*portDistance[~isFixed][None, :]/B + C) + D) * (E/24.0)).sum(axis=0) 
-        return instCost*1000/capacity # specific installation cost in EUR/kW, Rogeau et all provide cost in kEUR2022 [1]
+        if np.any(isFixed):
+            a = 40.0 * 1000 / capacity[isFixed] # parameter will be a location-specific array, first value in MW
+            instCost[isFixed] = ((1/a) * (2.0*_portDistance[isFixed]/18.5 + 24.0) + 144.0*1) * (200.0/24.0)
+        if np.any(~isFixed):
+            # now deal with floating foundations 
+            # floating has 2 terms, so define params as np.arrays of len 2
+            A = np.array([[0.3], [7.0]])
+            B = np.array([[7.5], [18.5]])
+            C = np.array([[5.0], [30.0]])
+            D = np.array([[0.0], [90.0]])
+            E = np.array([[2.5], [40.0]])
+            # then apply the function to each "column" of the params separately and then add up
+            instCost[~isFixed] = (((1/A) * (2.0*_portDistance[~isFixed][None, :]/B + C) + D) * (E/24.0)).sum(axis=0) 
+        # make installation cost specific and convert to EUR/kW, Rogeau et al provide cost in kEUR2022 [1]
+        return (instCost*1000/capacity).reshape(_depth.shape) 
 
     # CALCULATE LOCATION-SPECIFIC COST BY SCALING THE INDIVIDUAL TURBINE COMPONENTS
 
@@ -202,7 +218,7 @@ def calculateSpecificOffshoreCapex(
     turbAndFoundInstallBaseCostDefault = _getSpecificTurbineInstallCost(
         baseDepth
         )
-    connectionBaseCostDefault, _ = getSpecificOffshoreConnectionCost(
+    connectionBaseCostDefault = getSpecificOffshoreConnectionCost(
         capacity=baseCap,
         waterDepth=baseDepth,
         coastDistance=baseDistCoast,
@@ -210,7 +226,7 @@ def calculateSpecificOffshoreCapex(
         baseWFSize=baseWFSize,
         maxJacketDepth=maxJacketDepth,
         year=techYear,
-    )[1] # returns tuple for optimal voltage with voltage type as first entry, only seconds entry "cost" is needed here
+    )[0] # returns tuple for optimal voltage with min. cost as first and voltage type as second entry
     # get the sum of the 3 components
     totalBaseCostDefault = turbineBaseCostDefault + foundationBaseCostDefault + turbAndFoundInstallBaseCostDefault + connectionBaseCostDefault
     # calculate the scaling factor (incl. currency) from Rogeau's base cost to actual given base cost
