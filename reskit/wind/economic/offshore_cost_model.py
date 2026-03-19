@@ -243,7 +243,7 @@ def calculateSpecificOffshoreCapex(
     turbAndFoundInstallPlantCostDefault = _getSpecificTurbineInstallCost(
         _depth = waterDepth
         )
-    connectionPlantCostDefault, _ = getSpecificOffshoreConnectionCost(
+    connectionPlantCostDefault = getSpecificOffshoreConnectionCost(
         capacity=capacity,
         waterDepth=waterDepth,
         coastDistance=coastDistance,
@@ -251,7 +251,7 @@ def calculateSpecificOffshoreCapex(
         baseWFSize=baseWFSize,
         maxJacketDepth=maxJacketDepth,
         year=techYear,
-    )[1] # returns tuple for optimal voltage with voltage type as first entry, only second entry "cost" is needed here
+    )[0] # returns tuple for optimal voltage with min. cost as first and voltage type as second entry
     totalPlantCostDefault = turbinePlantCostDefault + foundationPlantCostDefault + turbAndFoundInstallPlantCostDefault + connectionPlantCostDefault
     # scale the plant specific default (Rogeau) cost to custom reference CAPEX level
     totalPlantCostCustom = totalPlantCostDefault * customScalingFactor
