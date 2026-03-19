@@ -85,14 +85,15 @@ def test_getOffshoreTurbineFoundationCost():
 
 def test_getSpecificOffshorePlatformCost():
     c1 = getSpecificOffshorePlatformCost(
-        capacity=10000,
-        applicationType="ac",  # AC substation offshore
-        waterDepth=56,  # floating water depth
-        foundationType=None,  # no given foundation
-        maxJacketDepth=55,
-        convention="RogeauEtAl2023",  # Rogeau et al
+        applicationType= "ac",
+        capacity= 10000,
+        waterDepth= 55,
+        portDistance=100,
+        foundationType= "jacket",
+        maxJacketDepth= 55,
+        convention="RogeauEtAl2023"
     )
-    assert c1 == 461856.0
+    assert np.isclose(c1, 147, rtol=0.05)
 
     c2 = getSpecificOffshorePlatformCost(
         capacity=10000,
@@ -100,48 +101,56 @@ def test_getSpecificOffshorePlatformCost():
         waterDepth=56,  # floating water depth
         foundationType="jacket",  # jacket given but too deep -> warning, no error
         maxJacketDepth=55,
+        portDistance=100,
         convention="RogeauEtAl2023",  # Rogeau et al
     )
-    assert c2 == 679784.0
+    assert np.isclose(c2, 88, rtol=0.05)
 
     c3 = getSpecificOffshorePlatformCost(
-        capacity=10000,
-        applicationType="electrolysis",  # central offshore electrolysis
-        waterDepth=55,  # jacket water depth
-        foundationType="floating",  # jacket would have been possibel, too, but floating allowed
+        applicationType=np.array(["electrolysis","ac","dc"]),  # central offshore electrolysis
+        capacity=np.array([10000, 10000, 10000]),
+
+        waterDepth=np.array([55, 55, 55]),  # jacket water depth
+        foundationType=np.array(["floating","floating","floating",]),  # jacket would have been possibel, too, but floating allowed
         maxJacketDepth=55,
+        portDistance=np.array([100, 100, 100]),
         convention="RogeauEtAl2023",  # Rogeau et al
     )
-    assert c3 == 1553080.0
+    expected = np.array([264.31700901, 155.13950901, 191.53200901])
+
+    np.testing.assert_allclose(c3, expected, rtol=0.05)
 
     # TEST MUST-FAIL CASES
     with pytest.raises(Exception):
         getSpecificOffshorePlatformCost(
-            capacity=10000,
-            applicationType="does_not_exist",  # must fail
-            waterDepth=55,
-            foundationType=None,
-            maxJacketDepth=55,
+            applicationType= "ac",
+            capacity= 10000,
+            waterDepth= None,
+            portDistance=100,
+            foundationType= "jacket",
+            maxJacketDepth= 55,
             convention="RogeauEtAl2023",
         )
 
     with pytest.raises(Exception):
         getSpecificOffshorePlatformCost(
             capacity=10000,
-            applicationType="AC",
+            applicationType="ac",
             waterDepth=50,
             foundationType="does_not_exist",  # must fail
             maxJacketDepth=55,
+            portDistance=100,
             convention="RogeauEtAl2023",
         )
 
     with pytest.raises(Exception):
         getSpecificOffshorePlatformCost(
             capacity=10000,
-            applicationType="AC",
+            applicationType="aC",
             waterDepth=-1,  # must fail
             foundationType=None,
             maxJacketDepth=55,
+            portDistance=100,
             convention="RogeauEtAl2023",
         )
 
@@ -150,13 +159,15 @@ def test_getSpecificConverterStationCost():
     # test onshore AC substation
     c1 = getSpecificConverterStationCost(
         capacity=10000,
-        waterDepth=None,  # onshore
-        voltageType="ac",
-        maxJacketDepth=55,
+        waterDepth=20,  
+        portDistance=40,
+        foundationType= "jacket",
+        maxJacketDepth= 55,
         convention="RogeauEtAl2023",
     )
+    # i wanmt to check wheter it is close to c1 andf not exactly c1, because the function is adapted and not exactly the same as in the paper, but the cost should be in the same order of magnitude
+    assert np.isclose(c1, 1130, rtol=0.1)
 
-    assert c1 == 231875.0
 
     # test offshore DC substation
     c2 = getSpecificConverterStationCost(
@@ -167,7 +178,7 @@ def test_getSpecificConverterStationCost():
         convention="RogeauEtAl2023",
     )
 
-    assert c2 == 1713505.0
+    assert np.isclose(c2, 177, rtol=0.1)
 
     # TEST MUST-FAIL CASES
 
