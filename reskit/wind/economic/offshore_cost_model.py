@@ -400,7 +400,7 @@ def getOffshoreTurbineFoundationCost(
     Returns
     -------
     float | np.ndarray | tuple
-        Rated cost in €_2022/kW, or (Rated cost in €_2022/kW, foundation type) 
+        Rated cost in in [EUR_2022/kW], or (Rated cost in [€_2022/kW], foundation type) 
         if returnType is True. Both rated cost and foundation type will be 
         scalar or numpy arrays depending on the input data type of "depth".
 
@@ -463,8 +463,8 @@ def getOffshoreTurbineFoundationCost(
     coeffsInterp = (1.0 - weighing) * coeffsBefore + weighing * coeffsAfter
     # now extract the actual coefficients per location via foundation code and calculate cost
     a, b, c = coeffsInterp[foundints, 0], coeffsInterp[foundints, 1], coeffsInterp[foundints, 2]
-    costs = a * depth**2 + b * depth + c * 1000.0 #Rogeau et al. do not indicate unit, but secondary source Bosch et al. [2] uses cost per MW
-    costs = costs/1000 # convert to EUR_2022/kW
+    costs = a * depth**2 + b * depth + c * 1000.0 #Rogeau et al. do not indicate unit, but secondary source Bosch et al. [2] uses cost per [MW]
+    costs = costs/1000 # convert to [EUR_2022/kW]
 
     # prepare outputs and return
     if isScalar:
