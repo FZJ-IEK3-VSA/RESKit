@@ -8,8 +8,6 @@ from pathlib import Path
 from importlib.resources import files, as_file
 
 
-
-
 def test_waterDepthFromLocation():
     # GPS Coordiantes for location in Aachen to test Reading from tif file
     lon = 5.983
@@ -67,21 +65,18 @@ def test_calculateSpecificOffshoreCapex():
     assert np.isclose(calculatedCAPEX, comparedCAPEX)
 
 
-
 def test_getSpecificOffshoreCableCost():
     value1 = getSpecificOffshoreCableCost(10, 14000, variableCostFactor=1.35, fixedCost=0)
 
     value2 = getSpecificOffshoreCableCost(10, 10000, variableCostFactor=1.35, fixedCost=0)
 
-    assert np.isclose(value1, 189000), (
-        "Error in getCableCostfuncion, possibly due to adapted function"
-    )
-    assert np.isclose(value2, 135000), (
-        "Error in getCableCostfuncion, possibly due to adapted function"
-    )
+    assert np.isclose(value1, 189000), "Error in getCableCostfuncion, possibly due to adapted function"
+    assert np.isclose(value2, 135000), "Error in getCableCostfuncion, possibly due to adapted function"
+
 
 def test_getOffshoreTurbineFoundationCost():
     pass
+
 
 def test_getSpecificOffshorePlatformCost():
     c1 = getSpecificOffshorePlatformCost(
@@ -179,6 +174,7 @@ def test_getSpecificConverterStationCost():
             maxJacketDepth=55,
             convention="RogeauEtAl2023",
         )
+
 
 def test_getSpecificOffshoreConnectionCost():
     pass
