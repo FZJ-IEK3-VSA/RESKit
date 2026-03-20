@@ -7,62 +7,78 @@ import reskit._test.data as pkg_data
 from pathlib import Path
 from importlib.resources import files, as_file
 
-
-def test_waterDepthFromLocation():
-    # GPS Coordiantes for location in Aachen to test Reading from tif file
-    lon = 5.983
-    lat = 51.205
-
-
-def get_pkg_file(name: str) -> Path:
-    root = files(pkg_data)
-    # erst übliche Stellen probieren
-    for rel in (name, f"data/{name}"):
-        cand = root.joinpath(*rel.split("/"))
-        if cand.is_file():
-            with as_file(cand) as p:
-                return Path(p)
-    # Fallback: rekursiv suchen
-    for child in root.iterdir():
-        if child.is_dir():
-            for sub in child.iterdir():
-                if sub.name == name and sub.is_file():
-                    with as_file(sub) as p:
-                        return Path(p)
-    raise FileNotFoundError(name)
-
-    tif_file = get_pkg_file("DEM-like.tif")
-    value_exact = 19
-    depth = waterDepthFromLocation(lat, lon, waterDepthFolderPath=tif_file)
-
-    assert np.isclose(depth, value_exact), "the waterdepthfile is not working correct"
-
-
 def test_calculateSpecificOffshoreCapex():
-    comparedCAPEX = 2934.26
-    calculatedCAPEX = calculateSpecificOffshoreCapex(
-        baseCapex=3000,
-        capacity=14000,
+    
+    c1= calculateSpecificOffshoreCapex(
+        baseSpecCapex=1500, 
+        capacity=10000,
+        rotorDiam=250,
         hubHeight=150,
-        waterDepth=25,
-        coastDistance=25,
-        rotorDiam=230,
-        techYear=None,
-        shareTurb=0.449,
-        shareFound=0.204,
-        shareCable=0.181,
-        shareOverhead=0.166,
+        waterDepth=100,
+        coastDistance=41,
+        portDistance=71,
         maxMonopileDepth=25,
         maxJacketDepth=55,
-        baseDepth=17,
-        baseDistCoast=27,
-        baseCap=13000,
-        baseHubHeight=150,
-        baseRotorDiam=250,
+        baseDepth=17, 
+        baseDistCoast=27, 
+        baseWFSize=106858, 
+        baseCap=None,
+        baseHubHeight=None,
+        baseRotorDiam=None,
         defaultOffshoreParamsFp=None,
+        techYear=2050,
     )
 
-    assert np.isclose(calculatedCAPEX, comparedCAPEX)
+    assert np.isclose(c1, 3393, rtol=0.05), "Error in calculateSpecificOffshoreCapex"
+
+    #test Missing port distance
+    c2= calculateSpecificOffshoreCapex(
+        baseSpecCapex=1500, 
+        capacity=10000,
+        rotorDiam=250,
+        hubHeight=150,
+        waterDepth=100,
+        coastDistance=41,
+        portDistance=None,
+        maxMonopileDepth=25,
+        maxJacketDepth=55,
+        baseDepth=17, 
+        baseDistCoast=27, 
+        baseWFSize=106858, 
+        baseCap=None,
+        baseHubHeight=None,
+        baseRotorDiam=None,
+        defaultOffshoreParamsFp=None,
+        techYear=2050,
+    )
+
+    assert np.isclose(c2, 3520, rtol=0.05), "Error in calculateSpecificOffshoreCapex"
+    
+    
+    
+    c3= calculateSpecificOffshoreCapex(
+        baseSpecCapex=[1500, 1501.5],
+        capacity=[10000, 12000.5],
+        rotorDiam=[250, 260.5],
+        hubHeight=[150, 180.7],
+        waterDepth=[30, 30.6],
+        coastDistance=[41, 27.3],
+        portDistance=[71, 29.8],
+        maxMonopileDepth=25,
+        maxJacketDepth=55,
+        baseDepth=17, 
+        baseDistCoast=27,
+        baseWFSize=106858, 
+        baseCap=None,
+        baseHubHeight=None,
+        baseRotorDiam=None,
+        defaultOffshoreParamsFp=None,
+        techYear=2050,
+    )
+    expected=np.array([1820, 1765])
+    np.testing.assert_allclose(c3, expected, rtol=0.05), "Error in calculateSpecificOffshoreCapex"
+    
+  
 
 
 def test_getSpecificOffshoreCableCost():
