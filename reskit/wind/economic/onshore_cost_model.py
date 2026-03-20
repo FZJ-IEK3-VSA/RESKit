@@ -162,8 +162,7 @@ def onshore_tcc(cp, hh, rd, gdp_escalator=None, blade_material_escalator=None, b
     # Blade Cost
     singleBladeMass = 0.4948 * np.power(rr, 2.53)
     singleBladeCost = (
-        (0.4019 * np.power(rr, 3) - 21051) * blade_material_escalator
-        + 2.7445 * np.power(rr, 2.5025) * gdp_escalator
+        (0.4019 * np.power(rr, 3) - 21051) * blade_material_escalator + 2.7445 * np.power(rr, 2.5025) * gdp_escalator
     ) * (1 - 0.28)
 
     # Hub
