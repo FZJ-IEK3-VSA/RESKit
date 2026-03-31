@@ -346,7 +346,9 @@ class Era5ZarrSource(Era5Source):
             ),
         )
 
-    def get(self, variable, locations, interpolation="near", force_as_data_frame=False, outside_okay=False, _indices=None):
+    def get(
+        self, variable, locations, interpolation="near", force_as_data_frame=False, outside_okay=False, _indices=None
+    ):
         if self._longitude_360:
             locations = gk.LocationSet(locations)
             locations = [(lon % 360.0, lat) for lon, lat in zip(locations.lons, locations.lats)]
