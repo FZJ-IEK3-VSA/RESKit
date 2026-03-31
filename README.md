@@ -75,6 +75,25 @@ conda env update --file requirements-dev.yml -n <ENVIRONMENT-NAME>
 pip install -e .
 ```
 
+## ERA5 Zarr
+
+RESKit can read ERA5 directly from regular latitude/longitude Zarr stores while keeping the existing `source_type="ERA5"` workflow API. The current implementation is intended for stores such as the [Earth Data Hub ERA5 single-level dataset](https://earthdatahub.destine.eu/collections/era5/datasets/reanalysis-era5-single-levels):
+
+```python
+wf.read(
+    variables=["surface_pressure", "surface_air_temperature", "elevated_wind_speed"],
+    source_type="ERA5",
+    source="https://data.earthdatahub.destine.eu/era5/reanalysis-era5-single-levels-v0.zarr",
+    chunks={"time": 48},
+    time_slice=slice("2020-01-01", "2020-01-31 23:00:00"),
+    set_time_index=True,
+)
+```
+
+Current limitations:
+- The implementation only supports regular `(time|valid_time, latitude, longitude)` Zarr layouts, not flattened `values`-based ERA5 archives.
+- If the Zarr store does not ship RESKit's processed `ssrd_t_adj` and `fdir_t_adj` fields, `global_horizontal_irradiance` and `direct_horizontal_irradiance` fall back to raw `ssrd` and `fdir`.
+
 
 ## Citation
 

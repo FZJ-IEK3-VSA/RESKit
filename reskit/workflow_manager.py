@@ -196,8 +196,12 @@ class WorkflowManager:
             raise RuntimeError("Time index is not available")
 
         if isinstance(source, str) and source_type != "user":
+            storage_format = kwargs.pop("storage_format", None)
+            is_era5_zarr = source_type == "ERA5" and (
+                storage_format == "zarr" or source.endswith(".zarr") or source.startswith("gs://")
+            )
             if source_type == "ERA5":
-                source_constructor = rk_weather.Era5Source
+                source_constructor = rk_weather.Era5ZarrSource if is_era5_zarr else rk_weather.Era5Source
             elif source_type == "SARAH":
                 source_constructor = rk_weather.SarahSource
             elif source_type == "MERRA":
@@ -215,9 +219,19 @@ class WorkflowManager:
             # Load the requested variables
             source.sload(*variables)
 
-        else:  # Assume source is already an initialized NCSource Object
-            for var in variables:
-                assert var in source.data
+        else:  # Assume source is already an initialized NCSource-like object
+            if not isinstance(variables, list):
+                variables = [
+                    variables,
+                ]
+
+            missing_variables = [var for var in variables if var not in source.data]
+            if missing_variables:
+                if hasattr(source, "sload"):
+                    source.sload(*missing_variables)
+                else:
+                    for var in missing_variables:
+                        assert var in source.data
 
         if set_time_index:
             self.set_time_index(source.time_index)
