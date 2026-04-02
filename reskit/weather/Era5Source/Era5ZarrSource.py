@@ -90,9 +90,7 @@ class Era5ZarrSource(Era5Source):
         _mark("build_variable_table", tic)
 
         era5_names = {
-            "global_horizontal_irradiance_archive": "ssrd",
             "global_horizontal_irradiance": "ssrd_t_adj",
-            "direct_horizontal_irradiance_archive": "fdir",
             "direct_horizontal_irradiance": "fdir_t_adj",
             "surface_wind_speed": "w10",
             "elevated_wind_speed": "w100",
@@ -313,16 +311,32 @@ class Era5ZarrSource(Era5Source):
             for label, dt in timings:
                 print(f"  {label:<28} {dt:8.2f} s")
 
-    def _load_with_fallback(self, preferred_variable, fallback_variable, target_name, warning_message=None):
+    def _load_with_fallback(self, preferred_variable, fallback_variable, target_name, warning_message=None, fallback_processor=None):
         if preferred_variable in self.variables.index:
             return self.load(preferred_variable, name=target_name)
         if fallback_variable in self.variables.index:
             if warning_message is not None:
                 warnings.warn(warning_message, stacklevel=2)
-            return self.load(fallback_variable, name=target_name)
+            return self.load(fallback_variable, name=target_name, processor=fallback_processor)
         raise RuntimeError(
             f"Cannot load {target_name}: neither '{preferred_variable}' nor '{fallback_variable}' exist in the ERA5 Zarr store"
         )
+
+    @staticmethod
+    def _solar_accumulation_to_mean_power(arr):
+        """Convert ERA5 accumulated solar radiation (J/m²) to mean power (W/m²).
+
+        Mirrors the CDO pipeline ``-divc,3600 -shifttime,+1hour``:
+        - divide by 3600 (J m⁻² per hour → W m⁻²)
+        - shift by one time step so that adj[i] = raw[i-1]  (CDO shifttime +1 h
+          re-labels each record's timestamp one hour later, which in array terms
+          means the adjusted value at position i comes from the raw position i-1)
+        - fill the first step with 0 (no preceding accumulation available)
+        """
+        out = np.empty_like(arr, dtype=np.float64)
+        out[1:] = arr[:-1] / 3600.0
+        out[0] = 0.0
+        return out
 
     def sload_boundary_layer_height(self):
         return self._load_with_fallback(
@@ -338,8 +352,9 @@ class Era5ZarrSource(Era5Source):
             target_name="direct_horizontal_irradiance",
             warning_message=(
                 "Processed ERA5 direct horizontal irradiance ('fdir_t_adj') is not available in this Zarr store; "
-                "falling back to raw 'fdir'."
+                "computing on the fly from raw 'fdir' (J/m² → W/m², time-shifted +1 h)."
             ),
+            fallback_processor=self._solar_accumulation_to_mean_power,
         )
 
     def sload_global_horizontal_irradiance(self):
@@ -349,8 +364,9 @@ class Era5ZarrSource(Era5Source):
             target_name="global_horizontal_irradiance",
             warning_message=(
                 "Processed ERA5 global horizontal irradiance ('ssrd_t_adj') is not available in this Zarr store; "
-                "falling back to raw 'ssrd'."
+                "computing on the fly from raw 'ssrd' (J/m² → W/m², time-shifted +1 h)."
             ),
+            fallback_processor=self._solar_accumulation_to_mean_power,
         )
 
     def get(
