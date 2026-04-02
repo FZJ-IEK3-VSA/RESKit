@@ -311,7 +311,9 @@ class Era5ZarrSource(Era5Source):
             for label, dt in timings:
                 print(f"  {label:<28} {dt:8.2f} s")
 
-    def _load_with_fallback(self, preferred_variable, fallback_variable, target_name, warning_message=None, fallback_processor=None):
+    def _load_with_fallback(
+        self, preferred_variable, fallback_variable, target_name, warning_message=None, fallback_processor=None
+    ):
         if preferred_variable in self.variables.index:
             return self.load(preferred_variable, name=target_name)
         if fallback_variable in self.variables.index:
