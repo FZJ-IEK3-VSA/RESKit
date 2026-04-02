@@ -82,7 +82,7 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
     [3] Peña-Sánchez, Dunkel, Winkler et al. (2025): Towards high resolution, validated and open global wind power assessments. https://doi.org/10.48550/arXiv.2501.07937
     [4] DTU Wind Energy. (2025). Global Wind Atlas v4. https://globalwindatlas.info/
     """
-    
+
     # default data used as per [3]
     ws_correction_func = (
         "ws_bins",
