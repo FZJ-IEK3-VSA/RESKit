@@ -23,6 +23,7 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
     cf_correction=True,
     output_variables=None,
     max_batch_size=15000,
+    time_slice=None,
     **simulate_kwargs,
 ):
     """
@@ -66,8 +67,8 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
         limiting RAM requirements but may affect runtime. Should be
         adapted to individual computation system (roughly 7GB RAM per
         10k locations), by default 25 000.
-    simulate_kwargs : optional
-        Will be passed on to simulate().
+    time_slice : optional
+        Limit to limit the loaded time span from the weather source before reading weather variables.
 
     Returns
     -------
@@ -81,6 +82,7 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
     [3] Peña-Sánchez, Dunkel, Winkler et al. (2025): Towards high resolution, validated and open global wind power assessments. https://doi.org/10.48550/arXiv.2501.07937
     [4] DTU Wind Energy. (2025). Global Wind Atlas v4. https://globalwindatlas.info/
     """
+    
     # default data used as per [3]
     ws_correction_func = (
         "ws_bins",
@@ -105,6 +107,7 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
         ],
         source_type="ERA5",
         source=era5_path,
+        time_slice=time_slice,
         set_time_index=True,
         verbose=False,
     )

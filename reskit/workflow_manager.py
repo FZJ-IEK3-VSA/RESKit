@@ -212,7 +212,11 @@ class WorkflowManager:
                 raise RuntimeError("Unknown source_type")
 
             if source_type == "ERA5":
-                source = source_constructor(source, bounds=self.ext, time_index_from=time_index_from, **kwargs)
+                time_slice = kwargs.pop("time_slice", None)
+                era5_kwargs = dict(kwargs)
+                if is_era5_zarr and time_slice is not None:
+                    era5_kwargs["time_slice"] = time_slice
+                source = source_constructor(source, bounds=self.ext, time_index_from=time_index_from, **era5_kwargs)
             else:
                 source = source_constructor(source, bounds=self.ext, **kwargs)
 
