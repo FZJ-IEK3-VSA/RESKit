@@ -68,7 +68,14 @@ class Era5ZarrSource(Era5Source):
 
         if time_slice is not None:
             tic = perf_counter()
-            ds = ds.sel({self.time_name: time_slice})
+            if isinstance(time_slice, slice):
+                offset = timedelta(minutes=30)
+                raw_start = pd.Timestamp(time_slice.start) + offset if time_slice.start is not None else None
+                raw_stop = pd.Timestamp(time_slice.stop) + offset if time_slice.stop is not None else None
+                raw_time_slice = slice(raw_start, raw_stop)
+            else:
+                raw_time_slice = time_slice
+            ds = ds.sel({self.time_name: raw_time_slice})
             _mark("apply_time_slice", tic)
 
         if "values" in ds.dims:
