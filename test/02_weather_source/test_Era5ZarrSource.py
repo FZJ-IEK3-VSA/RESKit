@@ -21,15 +21,15 @@ def era5_zarr_store(tmp_path):
 
     ds = xr.Dataset(
         data_vars={
-            "u100": (("time", "latitude", "longitude"), np.full((3, 6, 6), 3.0)),
-            "v100": (("time", "latitude", "longitude"), np.full((3, 6, 6), 4.0)),
-            "u10": (("time", "latitude", "longitude"), np.zeros((3, 6, 6))),
-            "v10": (("time", "latitude", "longitude"), np.full((3, 6, 6), 2.0)),
-            "sp": (("time", "latitude", "longitude"), 100000.0 + t_idx + lat_grid + 2.0 * lon_grid),
-            "t2m": (("time", "latitude", "longitude"), 273.15 + 10.0 + t_idx + lat_grid + lon_grid),
-            "d2m": (("time", "latitude", "longitude"), 273.15 + 2.0 + t_idx + lat_grid + lon_grid),
-            "ssrd": (("time", "latitude", "longitude"), 500.0 + t_idx + lat_grid + lon_grid),
-            "fdir": (("time", "latitude", "longitude"), 200.0 + t_idx + lat_grid + lon_grid),
+            "u100": (("valid_time", "latitude", "longitude"), np.full((3, 6, 6), 3.0)),
+            "v100": (("valid_time", "latitude", "longitude"), np.full((3, 6, 6), 4.0)),
+            "u10": (("valid_time", "latitude", "longitude"), np.zeros((3, 6, 6))),
+            "v10": (("valid_time", "latitude", "longitude"), np.full((3, 6, 6), 2.0)),
+            "sp": (("valid_time", "latitude", "longitude"), 100000.0 + t_idx + lat_grid + 2.0 * lon_grid),
+            "t2m": (("valid_time", "latitude", "longitude"), 273.15 + 10.0 + t_idx + lat_grid + lon_grid),
+            "d2m": (("valid_time", "latitude", "longitude"), 273.15 + 2.0 + t_idx + lat_grid + lon_grid),
+            "ssrd": (("valid_time", "latitude", "longitude"), 500.0 + t_idx + lat_grid + lon_grid),
+            "fdir": (("valid_time", "latitude", "longitude"), 200.0 + t_idx + lat_grid + lon_grid),
         },
         coords={
             "valid_time": times,
@@ -128,13 +128,20 @@ def test_Era5ZarrSource_get_bilinear(pt_Era5ZarrSource):
 
 
 def test_Era5ZarrSource_solar_fallbacks(pt_Era5ZarrSource):
-    with pytest.warns(UserWarning, match="falling back to raw 'ssrd'"):
+    with pytest.warns(UserWarning, match="computing on the fly from raw 'ssrd'"):
         pt_Era5ZarrSource.sload("global_horizontal_irradiance")
-    with pytest.warns(UserWarning, match="falling back to raw 'fdir'"):
+    with pytest.warns(UserWarning, match="computing on the fly from raw 'fdir'"):
         pt_Era5ZarrSource.sload("direct_horizontal_irradiance")
 
-    assert np.allclose(pt_Era5ZarrSource.data["global_horizontal_irradiance"][0, 4, 2], 557.25)
-    assert np.allclose(pt_Era5ZarrSource.data["direct_horizontal_irradiance"][0, 4, 2], 257.25)
+    # On-the-fly processing: adj[i] = raw[i-1] / 3600, adj[0] = 0
+    # At step 0 the first value is filled with 0
+    assert np.allclose(pt_Era5ZarrSource.data["global_horizontal_irradiance"][0, 4, 2], 0.0)
+    assert np.allclose(pt_Era5ZarrSource.data["direct_horizontal_irradiance"][0, 4, 2], 0.0)
+    # At step 1 the value equals raw step 0 / 3600
+    # raw ssrd[0, lat=51.0, lon=6.25] = 500 + 0 + 51.0 + 6.25 = 557.25
+    assert np.allclose(pt_Era5ZarrSource.data["global_horizontal_irradiance"][1, 4, 2], 557.25 / 3600)
+    # raw fdir[0, lat=51.0, lon=6.25] = 200 + 0 + 51.0 + 6.25 = 257.25
+    assert np.allclose(pt_Era5ZarrSource.data["direct_horizontal_irradiance"][1, 4, 2], 257.25 / 3600)
 
 
 def test_Era5ZarrSource_missing_variable_raises(era5_zarr_store):

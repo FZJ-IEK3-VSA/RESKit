@@ -373,8 +373,24 @@ class Era5ZarrSource(Era5Source):
         self, variable, locations, interpolation="near", force_as_data_frame=False, outside_okay=False, _indices=None
     ):
         if self._longitude_360:
-            locations = gk.LocationSet(locations)
-            locations = [(lon % 360.0, lat) for lon, lat in zip(locations.lons, locations.lats)]
+            original_locs = gk.LocationSet(locations)
+            wrapped_locs = [(lon % 360.0, lat) for lon, lat in zip(original_locs.lons, original_locs.lats)]
+            result = NCSource.get(
+                self,
+                variable=variable,
+                locations=wrapped_locs,
+                interpolation=interpolation,
+                force_as_data_frame=force_as_data_frame,
+                outside_okay=outside_okay,
+                _indices=_indices,
+            )
+            # Restore original location labels (NCSource names columns/series from the locations passed to it)
+            original_names = [f"({loc.lon}, {loc.lat})" for loc in original_locs._locations]
+            if isinstance(result, pd.DataFrame):
+                result.columns = original_names
+            else:
+                result.name = original_names[0]
+            return result
         return NCSource.get(
             self,
             variable=variable,
