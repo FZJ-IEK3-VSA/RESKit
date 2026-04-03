@@ -1890,7 +1890,7 @@ class SolarWorkflowManager(WorkflowManager):
         
         def _fix_bad_poa_and_set_attr(arr, attr):
             """Sets sim_data attribute with 0 values where raw front POA > 0"""
-            sel_bad_poa = poa_frontside >= 1600
+            sel_bad_poa = (poa_frontside >= 1600) | (arr<0) # pvlib yields negative irradiation in some cases
             self.sim_data[attr] = np.where(
                         sel_bad_poa, 0, arr
                     )
