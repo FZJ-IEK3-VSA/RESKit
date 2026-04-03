@@ -143,12 +143,18 @@ def onshore_tcc(cp, hh, rd, gdp_escalator=None, blade_material_escalator=None, b
     [1] Fingersh, L., Hand, M., & Laxson, A. (2006). Wind Turbine Design Cost and Scaling Model. NREL. https://www.nrel.gov/docs/fy07osti/40566.pdf
 
     """
-    # initialize OnshoreParameters class and feed with custom param values
-    OnshoreParams = OnshoreParameters(
-        gdp_escalator=gdp_escalator,
-        blade_material_escalator=blade_material_escalator,
-        blades=blades,
-    )
+    # use OnshoreParameters default values only if not all args are defined
+    if gdp_escalator is None or blade_material_escalator is None or blades is None:
+        # extract default values from OnshoreParameters...
+        OnshoreParams = OnshoreParameters(
+            gdp_escalator=gdp_escalator,
+            blade_material_escalator=blade_material_escalator,
+            blades=blades,
+        )
+        # ... and overwrite the args with it
+        blade_material_escalator = OnshoreParams.blade_material_escalator
+        gdp_escalator = OnshoreParams.gdp_escalator
+        blades = OnshoreParams.blades
 
     rr = rd / 2
     sa = np.pi * rr * rr
@@ -156,8 +162,7 @@ def onshore_tcc(cp, hh, rd, gdp_escalator=None, blade_material_escalator=None, b
     # Blade Cost
     singleBladeMass = 0.4948 * np.power(rr, 2.53)
     singleBladeCost = (
-        (0.4019 * np.power(rr, 3) - 21051) * OnshoreParams.blade_material_escalator
-        + 2.7445 * np.power(rr, 2.5025) * OnshoreParams.gdp_escalator
+        (0.4019 * np.power(rr, 3) - 21051) * blade_material_escalator + 2.7445 * np.power(rr, 2.5025) * gdp_escalator
     ) * (1 - 0.28)
 
     # Hub
@@ -224,7 +229,7 @@ def onshore_tcc(cp, hh, rd, gdp_escalator=None, blade_material_escalator=None, b
 
     # Add up the turbine capital cost
     turbineCapitalCost = (
-        singleBladeCost * OnshoreParams.blades
+        singleBladeCost * blades
         + hubCost
         + pitchSystemCost
         + noseConeCost

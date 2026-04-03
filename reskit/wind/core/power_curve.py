@@ -34,7 +34,7 @@ def synthetic_power_curve_data() -> pd.DataFrame:
 
 def compute_specific_power(capacity, rotor_diam, **k):
     """
-    Calculates the corresponding specific power for a wind turbine in kW/m2 from values of capacity in kW and rotor diameter in m.
+    Calculates the corresponding specific power for a wind turbine in W/m2 from values of capacity in kW and rotor diameter in m.
 
     Parameters
     ----------
@@ -47,7 +47,7 @@ def compute_specific_power(capacity, rotor_diam, **k):
     Returns
     -------
     float or array-like
-        Specific power in kW/m2
+        Specific power in W/m2
 
     """
     return capacity * 1000 / rotor_diam**2 / np.pi * 4

@@ -195,61 +195,68 @@ class Era5Source(NCSource):
         """
         return self.load("blh", "boundary_layer_height")
 
-    def sload_elevated_wind_speed(self):
-        """Standard loader function for the variable 'elevated_wind_speed'
-
-        Automatically reads the variables "ws<X>" from the given ERA5 source and saves
-        it as the variable 'elevated_wind_speed' in the data library
-
-        Where '<X>' is the height specified by `Era5Source.ELEVATED_WIND_SPEED_HEIGHT`
-
-        The "ws<X>" variable also needs to be precomputed from the raw variables "u<X>"
-            and "v<X>"
-
-        TODO: Update function to also be able to handle raw ERA5 inputs for u & v
+    def _sload_wind_speed(self, height, target_name, force_load_uv=False):
         """
-        return self.load("ws{}".format(self.ELEVATED_WIND_SPEED_HEIGHT), "elevated_wind_speed")
+        Generic loader for wind speed variables.
+        logic:
+        1) if ws<height> exists, load it directly
+        2) else, compute from u<height> and v<height>
+        3) finally, store in target_name
+        4) raise error if neither ws<height> nor both u and v exist
+
+        Parameters
+        ----------
+        height : int
+            Wind speed height (e.g. 10, 100)
+        target_name : str
+            Name to store in self.data
+
+        """
+        ws_var = f"ws{height}"
+        u_var = f"u{height}"
+        v_var = f"v{height}"
+
+        # --------------------------------------
+        # Case 1: precomputed wind speed exists
+        # --------------------------------------
+        if not force_load_uv and (ws_var in self.variables.index):
+            self.load(variable=ws_var, name=target_name)
+            return
+
+        # --------------------------------------
+        # Case 2: compute from u and v
+        # --------------------------------------
+        # Explicit protection: both components must exist
+        missing_uv = [var for var in (u_var, v_var) if var not in self.variables.index]
+        if missing_uv:
+            raise RuntimeError(
+                f"Cannot load {target_name}: "
+                f"not found precomputed variable '{ws_var}' and "
+                f"missing required variable(s): {', '.join(missing_uv)}"
+            )
+
+        # direct calculate from u and v
+        self.load(variable=v_var, name=v_var)
+        self.load(variable=u_var, name=u_var)
+        self.data[target_name] = np.sqrt(self.data[u_var] ** 2 + self.data[v_var] ** 2)
+        self.data.pop(u_var, None)
+        self.data.pop(v_var, None)
+
+    def sload_elevated_wind_speed(self):
+        """Standard loader function for the variable 'elevated_wind_speed'"""
+        return self._sload_wind_speed(height=self.ELEVATED_WIND_SPEED_HEIGHT, target_name="elevated_wind_speed")
 
     def sload_surface_wind_speed(self):
-        """Standard loader function for the variable 'surface_wind_speed'
-
-        Automatically reads the variables "ws<X>" from the given ERA5 source and saves
-        it as the variable 'surface_wind_speed' in the data library
-
-        Where '<X>' is the height specified by `Era5Source.SURFACE_WIND_SPEED_HEIGHT`
-
-        The "ws<X>" variable also needs to be precomputed from the raw variables "u<X>"
-            and "v<X>"
-
-        TODO: Update function to also be able to handle raw ERA5 inputs for u & v
-        """
-        return self.load("ws{}".format(self.SURFACE_WIND_SPEED_HEIGHT), "surface_wind_speed")
+        """Standard loader function for the variable 'surface_wind_speed'"""
+        return self._sload_wind_speed(height=self.SURFACE_WIND_SPEED_HEIGHT, target_name="surface_wind_speed")
 
     def sload_wind_speed_at_100m(self):
-        """Standard loader function for the variable 'wind_speed_at_100m'
-
-        Automatically reads the variables "ws100" from the given ERA5 source and saves
-        it as the variable 'wind_speed_at_100m' in the data library
-
-        The "ws100" variable also needs to be precomputed from the raw variables "u100"
-            and "v100"
-
-        TODO: Update function to also be able to handle raw ERA5 inputs for u & v
-        """
-        return self.load("ws100", "wind_speed_at_100m")
+        """Standard loader function for the variable 'wind_speed_at_100m'"""
+        return self._sload_wind_speed(height=100, target_name="wind_speed_at_100m")
 
     def sload_wind_speed_at_10m(self):
-        """Standard loader function for the variable 'wind_speed_at_10m'
-
-        Automatically reads the variables "ws10" from the given ERA5 source and saves
-        it as the variable 'wind_speed_at_10m' in the data library
-
-        The "ws10" variable also needs to be precomputed from the raw variables "u10"
-            and "v10"
-
-        TODO: Update function to also be able to handle raw ERA5 inputs for u & v
-        """
-        return self.load("ws10", "wind_speed_at_10m")
+        """Standard loader function for the variable 'wind_speed_at_10m'"""
+        return self._sload_wind_speed(height=10, target_name="wind_speed_at_10m")
 
     def sload_elevated_wind_direction(self):
         """Standard loader function for the variable 'elevated_wind_direction'

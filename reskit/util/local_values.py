@@ -13,8 +13,8 @@ from . import ResError
 
 
 def waterDepthFromLocation(
-    latitude,
-    longitude,
+    latitude: int | float,
+    longitude: int | float,
     waterDepthFilePath: Optional[str] = None,
     consider_only: Literal[False, "negative", "positive"] = False,
 ):
@@ -23,9 +23,9 @@ def waterDepthFromLocation(
 
     Parameters
     ----------
-    latitude : float
+    latitude : int|float
         Latitude in decimal degrees.
-    longitude : float
+    longitude : int|float
         Longitude in decimal degrees.
     waterDepthFilePath : str, optional
        Path or pattern to one or more GeoTIFF water depth files.
@@ -47,16 +47,12 @@ def waterDepthFromLocation(
     """
     if waterDepthFilePath is None:
         if "waterDepthFilePath" not in DEFAULT_PATHS:
-            raise KeyError(
-                "Add 'waterDepthFilePath' key with filepath value to default_path.yaml"
-            )
+            raise KeyError("Add 'waterDepthFilePath' key with filepath value to default_path.yaml")
 
         waterDepthFilePath = DEFAULT_PATHS["waterDepthFilePath"]
 
         if not waterDepthFilePath:
-            raise ValueError(
-                "No waterDepthFilePath provided or found in default_path.yaml."
-            )
+            raise ValueError("No waterDepthFilePath provided or found in default_path.yaml.")
 
     if os.path.isdir(waterDepthFilePath):
         candidates = sorted(glob.glob(os.path.join(waterDepthFilePath, "*.tif")))
@@ -64,9 +60,7 @@ def waterDepthFromLocation(
         candidates = sorted(glob.glob(waterDepthFilePath))
 
     if not candidates:
-        raise ValueError(
-            f"No .tif files found for path or pattern: {waterDepthFilePath}"
-        )
+        raise ValueError(f"No .tif files found for path or pattern: {waterDepthFilePath}")
 
     resultDepth = gk.raster.interpolateValues(
         source=candidates,
@@ -117,19 +111,13 @@ def distanceToCoastline(latitude, longitude, distancetoCoastFilePath=None):
     """
     if distancetoCoastFilePath is None:
         if not "distancetoCoastFilePath" in DEFAULT_PATHS:
-            raise KeyError(
-                f"Add 'distancetoCoastFilePath' key with filepath value to default_paths.yaml"
-            )
+            raise KeyError(f"Add 'distancetoCoastFilePath' key with filepath value to default_paths.yaml")
         distancetoCoastFilePath = DEFAULT_PATHS.get("distancetoCoastPath")
         if distancetoCoastFilePath is None:
-            raise ValueError(
-                "No distaneFilePath is given. Please add it to default_path.yaml."
-            )
+            raise ValueError("No distaneFilePath is given. Please add it to default_path.yaml.")
 
     try:
-        value = gk.raster.interpolateValues(
-            distancetoCoastFilePath, (longitude, latitude)
-        )
+        value = gk.raster.interpolateValues(distancetoCoastFilePath, (longitude, latitude))
 
         return value
 

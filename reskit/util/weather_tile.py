@@ -4,6 +4,7 @@ import geokit as gk
 import osgeo
 import pandas as pd
 from smopy import deg2num
+import numpy as np
 
 
 def get_tile_XY(zoom, lon=None, lat=None, geom=None):
@@ -114,7 +115,10 @@ def get_dataframe_with_weather_tilepaths(placements, weather_path, zoom):
         assert "geom" in placements.columns or all([c in placements.columns for c in ["lon", "lat"]]), (
             f"pd.DataFrame must contain 'geom' or 'lat' and 'lon' columns."
         )
-        assert not "RESKit_sim_order" in placements.columns, f"placements must not have 'RESKit_sim_order' attribute"
+        if "RESKit_sim_order" in placements.columns:
+            assert (placements["RESKit_sim_order"].to_numpy() == np.arange(len(placements))).all(), (
+                "'RESKit_sim_order' must equal range(len(placements))"
+            )
         if not "lon" in placements.columns:
             placements["lon"] = placements.geom.apply(lambda x: x.GetX())
         if not "lat" in placements.columns:
