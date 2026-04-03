@@ -509,8 +509,11 @@ class NCSource(object):
             surface_dew_temperature      -> The dew-point temperature at the surface
             global_horizontal_irradiance -> The global horizontal irradiance at the surface
             direct_normal_irradiance     -> The direct normal irradiance at the surface
-            direct_horzontal_irradiance  -> The direct irradiance at the surface on a horizontal plane
-
+            direct_horzontal_irradiance  -> The direct irradiance at the surface on a horizontal plane 
+            snow_albedo                  -> The fraction of solar (shortwave) radiation reflected by snow across the solar spectrum
+            snow_density                 -> The mass of snow per cubic metre in the snow layer
+            snow_depth_water_equivalent  -> The amount of snow from the snow-covered area of a grid box
+            snowfall_water_equivalent    -> The accumulated snow that falls to the Earth's surface
 
         See Also
         --------
