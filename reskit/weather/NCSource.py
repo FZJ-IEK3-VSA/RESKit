@@ -663,11 +663,8 @@ class NCSource(object):
 
             # Check for out of bounds
             oob = (latI < 0) | (latI >= self._latN) | (lonI < 0) | (lonI >= self._lonN)
-            if oob.any():
-                if not outside_okay:
-                    print("The following locations are out of bounds")
-                    print(locations[oob])
-                    raise ResError("Locations are outside the boundaries")
+            if oob.any() and not outside_okay:
+                    raise ResError(f"The following locations are outside the boundaries: {locations[oob]}")
 
             # As int?
             if as_int:
@@ -675,13 +672,12 @@ class NCSource(object):
                 lonI = np.round(lonI).astype(int)
 
             # Make output
+            # set the index tuples or replace the actual index by the (clipped) max or min index if oob
+            inds = [Index(yi=max(min(y, self._latStop-self._latStart), 0), xi=max(min(x, self._lonStop-self._lonStart), 0)) for y, x in zip(latI, lonI)]
             if locations.count == 1:
-                if oob[0] is True:
-                    return None
-                else:
-                    return Index(yi=latI[0], xi=lonI[0])
+                return inds[0]
             else:
-                return [None if _oob else Index(yi=y, xi=x) for _oob, y, x in zip(oob, latI, lonI)]
+                return inds
 
         return func
 

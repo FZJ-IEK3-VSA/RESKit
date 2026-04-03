@@ -234,6 +234,7 @@ class WorkflowManager:
                 self.locs,  # Manipulate locs here
                 interpolation=spatial_interpolation_mode,
                 force_as_data_frame=True,
+                outside_okay=True, # TODO make dynamic
             )
 
             if not set_time_index:
