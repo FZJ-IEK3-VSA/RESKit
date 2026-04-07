@@ -3,7 +3,7 @@ channels:
   - conda-forge
 dependencies:
   - python >=3.10,<=3.12.12
-  - papermill <=2.6.0
+  - papermill <=2.7.0
   - jupyter <=1.1.1
   - pip <=26.0.1
   - matplotlib <=3.10.5
