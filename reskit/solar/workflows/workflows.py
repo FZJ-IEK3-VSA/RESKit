@@ -657,10 +657,11 @@ def pv_era5_WinklerUnpublished(
     ]
     wf.apply_loss_factor(loss_factor, variables=variables)
 
-    return wf.to_xarray(
+    ds = wf.to_xarray(
         output_netcdf_path=output_netcdf_path, output_variables=output_variables
     )
 
+    return ds
 
 
 
