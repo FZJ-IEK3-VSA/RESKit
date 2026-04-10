@@ -1371,6 +1371,12 @@ class SolarWorkflowManager(WorkflowManager):
                     cross_axis_tilt=caxtilt,
                 )
 
+                # later simulation yields errors when fed with negative tilts, make sure that everything went as expected
+                if (tmp["surface_tilt"] < -1e9).any(): # with numeric tolerance
+                    raise ValueError(
+                        "pvlib.tracking.singleaxis returned negative surface_tilt."
+                    )
+
                 system_modtilt[:, i] = tmp["surface_tilt"].values
                 system_modazimuth[:, i] = tmp["surface_azimuth"].values
 
@@ -1655,10 +1661,10 @@ class SolarWorkflowManager(WorkflowManager):
         """
         if hill_slope is not None:
             if slope_azimuth is None:
-                raise ValueError(f"slope_azimuth must not be None when hill_slope is not None.")
+                raise ValueError("slope_azimuth must not be None when hill_slope is not None.")
             #TODO assert that hill_slope and slope_azimuth are iterables of len()==len(placements)
             # consider allowing slope extraction from slope/gradient rasters here as well?
-        elif not "caxtilt" in self.placements: #TODO other ways to define hillslope, now fixed tilt can never have sloped arrays
+        elif "caxtilt" not in self.placements: #TODO other ways to define hillslope, now fixed tilt can never have sloped arrays
             if self.horizon_angles is None:
                 # set all 360 deg to zero
                 self.horizon_angles = np.zeros(shape=(360, self._sim_shape_[1]))
@@ -1877,6 +1883,24 @@ class SolarWorkflowManager(WorkflowManager):
                     pvfts_args[k] = v
                 else:
                     raise TypeError(f"kwargs for pvlib.bifacial.pvfactors.pvfactors_timeseries() must be scalar or numpy.ndarray type: {k}:{v}")
+
+            # NOTE: surface_tilt in pvlib is defined in the range 0-180°, so negative values will be handled badly
+            if self.tracking == "fixed":
+                # fixed tilt often comes with external values where module tilt may be negative to geometrically invert azimuth
+                # in such cases, invert the tilt and surface azimuth combination so that tilt values are always positive!
+                neg_mask = pvfts_args["surface_tilt"] < 0
+                pvfts_args["surface_tilt"][neg_mask] = -pvfts_args["surface_tilt"][neg_mask]
+                pvfts_args["surface_azimuth"][neg_mask] = (pvfts_args["surface_azimuth"][neg_mask] + 180) % 360
+                # pvlib also expects the axis_azimuth to be surface azimuth + 90° for fixed tilt: adapt for flipped and ensure (with tol) for non-flipped
+                pvfts_args["axis_azimuth"][neg_mask] = (pvfts_args["surface_azimuth"][neg_mask] + 90) % 360
+                axis_azimuth_exp = (pvfts_args["surface_azimuth"] + 90) % 360 # the expected value
+                assert ((pvfts_args["axis_azimuth"] - axis_azimuth_exp + 180) % 360 - 180 < 1e9).all(), \ 
+                    "Axis azimuth must always be surface_azimuth + 90° for fixed tilt in pvlib."
+            elif self.tracking == "singleaxis":
+                # this should be correct as it usually comes out of pvlib.tracking.singleaxis, but make sure with tolerance
+                assert (pvfts_args["surface_tilt"] >= -1e-9).all(), "Negative values in surface_tilt array."
+            else:
+                raise ValueError(f"Unknown value for self.tracking: {self.tracking}")
 
             # simulate and append locational output to total results
             assert (np.atleast_1d(pvfts_args["pvrow_height"])-0.5*np.atleast_1d(pvfts_args["pvrow_width"]) > 0).all(),\
