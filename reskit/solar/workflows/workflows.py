@@ -528,6 +528,10 @@ def pv_era5_WinklerUnpublished(
     -------
     A xarray dataset including all the output variables you defined as your output_variables.
     """
+    # check inputs
+    assert isinstance(horizont_dem, str) or horizont_dem is None, \
+        "horizont_dem must be a str if not None."
+    
     # initialize workflow manager and module/system
     wf = SolarWorkflowManager(placements)
 
