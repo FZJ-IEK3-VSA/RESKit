@@ -2443,7 +2443,17 @@ class SolarWorkflowManager(WorkflowManager):
             )[sel]
             if self.bifacial:
                 # add the backside irradiance, reduced by bifaciality factor (simplified)
-                poa += self.bifaciality_factor * self.sim_data["poa_backside_global"][sel]
+                poa_back = self.bifaciality_factor * self.sim_data["poa_backside_global"][sel]
+                # special case: Avoid artefacts when simulating vertical modules with snow
+                # usually backside is not snow covered but for vertical panels, it is as exposed as the front side , so assume same snow cover
+                # NOTE: Artefacts at very steep angles just below to 90° absolute tilt are still possible!
+                if self.tracking == "fixed":
+                    # apply snow cover reduction to backside POA only of the VERTICAl modules as well
+                    vertical_mask = np.isclose(np.abs(self.placements["modtilt"].values), 90.0)
+                    vertical_mask_sel = np.broadcast_to(vertical_mask, sel.shape)[sel]
+                    poa_back[vertical_mask_sel] *= _production[sel][vertical_mask_sel]
+                # add possible snow-adjusted poa back to total poa
+                poa += poa_back
 
             # Use RectBivariateSpline to speed up simulation, but at the cost of accuracy (should still be >99.996%)
             maxpoa = np.nanmax(poa)
