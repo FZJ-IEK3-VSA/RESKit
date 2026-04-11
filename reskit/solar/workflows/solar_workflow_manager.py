@@ -1571,13 +1571,13 @@ class SolarWorkflowManager(WorkflowManager):
                 # the module can be tilted to the max. possible angle whenever needed to remove snow
                 assert "btmaxangle" in self.placements.columns, \
                     f"'btmaxangle' is a required plant attribute when tracking == 'singleaxis'"
-                _angle = self.placements["btmaxangle"]
+                _angle = abs(self.placements["btmaxangle"])
             else:
                 # use the current module tilt angle due to solar position
                 _angle = self.sim_data["system_modtilt"]
         elif self.tracking == "fixed":
-            # set the fixed module tilt angle
-            _angle = self.placements["modtilt"]
+            # set the fixed module tilt angle (must be positive from ground, so use absolute)
+            _angle = self.placements["modtilt"].abs()
         else:
             raise ValueError(f"No slide angle defined for self.tracking='{self.tracking}'.")
         
