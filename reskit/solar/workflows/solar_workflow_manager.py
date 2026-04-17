@@ -1377,6 +1377,12 @@ class SolarWorkflowManager(WorkflowManager):
                         "pvlib.tracking.singleaxis returned negative surface_tilt."
                     )
 
+                # later simulation yields errors when fed with negative tilts, make sure that everything went as expected
+                if (tmp["surface_tilt"] < -1e9).any(): # with numeric tolerance
+                    raise ValueError(
+                        "pvlib.tracking.singleaxis returned negative surface_tilt."
+                    )
+
                 system_modtilt[:, i] = tmp["surface_tilt"].values
                 system_modazimuth[:, i] = tmp["surface_azimuth"].values
 
