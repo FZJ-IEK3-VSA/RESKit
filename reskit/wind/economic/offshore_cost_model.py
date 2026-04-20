@@ -149,9 +149,8 @@ def calculateSpecificOffshoreCapex(
     rotordiamRogeau = np.sqrt((capacityRogeau * 1000 / 350) / (np.pi)) * 2  # spec power 350 W/m2
     hubheightRogeau = 30.5 + rotordiamRogeau / 2  # in mtrs
     # now calculate the correction factor to align onshore_tcc with Rogeau's value for that year (contains also currency conversion/inflation)
-    offshoreCorrfacRogeau = (
-        capexRogeau
-        / (onshore_tcc(
+    offshoreCorrfacRogeau = capexRogeau / (
+        onshore_tcc(
             cp=capacityRogeau,
             hh=hubheightRogeau,
             rd=rotordiamRogeau,
@@ -159,7 +158,7 @@ def calculateSpecificOffshoreCapex(
             blade_material_escalator=1,
             blades=3,
         )
-        / capacityRogeau)
+        / capacityRogeau
     )
 
     # define a turbine installation cost function based on Rogeau et al. section 3.2.1
