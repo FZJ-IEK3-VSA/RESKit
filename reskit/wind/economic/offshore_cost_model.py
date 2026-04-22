@@ -560,6 +560,7 @@ def getSpecificOffshoreCableCost(
     variableCostFactor: int | float | np.ndarray = None,
     fixedCost: int | float | np.ndarray = 0,
     year: int = None,
+    detourFactor: int | float | np.ndarray = 1.2,
 ):
     """
     Calculates the default cost for the cable connecting an offshore wind power
@@ -582,6 +583,10 @@ def getSpecificOffshoreCableCost(
         The year for which the reference cost shall be returned in case of
         voltageType == 'ac' (year is then mandatory, else it has no effect).
         By default None.
+    detourFactor: int | float | np.ndarray
+        The detour factor to be applied onto the coast distance of the 
+        windfarms, set to 1.0 for no effect. By default 1.2 in accordance 
+        with assumptions in [1].
 
     Returns
     -------
@@ -603,19 +608,21 @@ def getSpecificOffshoreCableCost(
     distance = np.asarray(distance, dtype=float)
     capacity = np.asarray(capacity, dtype=float)
     fixedCost = np.asarray(fixedCost, dtype=float)
+    detourFactor = np.asarray(detourFactor)
     voltageType = np.asarray(voltageType)
     variableCostFactor = None if variableCostFactor is None else np.asarray(variableCostFactor, dtype=float)
     if variableCostFactor is None:
-        distance, capacity, fixedCost, voltageType = np.broadcast_arrays(distance, capacity, fixedCost, voltageType)
+        distance, capacity, fixedCost, voltageType, detourFactor = np.broadcast_arrays(distance, capacity, fixedCost, voltageType, detourFactor)
     else:
-        distance, capacity, fixedCost, voltageType, variableCostFactor = np.broadcast_arrays(
-            distance, capacity, fixedCost, voltageType, variableCostFactor
+        distance, capacity, fixedCost, voltageType, variableCostFactor, detourFactor = np.broadcast_arrays(
+            distance, capacity, fixedCost, voltageType, variableCostFactor, detourFactor
         )
 
     # check inputs
     assert (distance >= 0).all(), "All distances must be larger or equal to 0"
     assert (capacity >= 0).all() > 0, "All turbine capacities must be larger than 0"
-    assert (fixedCost >= 0).all(), "All fixed Cost must be postive or 0"
+    assert (fixedCost >= 0).all(), "All fixed cost must be positive or 0."
+    assert (detourFactor > 0).all(), "All detour factors must be positive."
     assert ((voltageType == "ac") | (voltageType == "dc")).all(), "All voltageType must be 'ac' or 'dc'"
     assert variableCostFactor is None or (variableCostFactor > 0).all(), (
         "All variableCostFactor must be larger than 0 if not None"
@@ -659,7 +666,7 @@ def getSpecificOffshoreCableCost(
             costPerKm[ac_mask] = acCostPerKm
 
     # scale and add up the cost components, return as array or scalar
-    totalSpecCost = (costPerKm * distance * capacity + fixedCost) / capacity
+    totalSpecCost = (costPerKm * distance * detourFactor * capacity + fixedCost) / capacity
     if isScalar:
         totalSpecCost = np.asarray(totalSpecCost).item()
     return totalSpecCost
