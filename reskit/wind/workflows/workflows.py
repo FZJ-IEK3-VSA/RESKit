@@ -19,7 +19,7 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
     era5_path,
     gwa_100m_path,
     height_scaling_data,
-    gwa_nodata_fallback = 1.0,
+    gwa_nodata_fallback=1.0,
     output_netcdf_path=None,
     cf_correction=True,
     output_variables=None,
