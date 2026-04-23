@@ -743,8 +743,8 @@ def getSpecificOffshorePlatformCost(
     # check inputs
     if np.any(capacity <= 0):
         raise ValueError(f"capacity must be an int or float > 0 kW, or an array thereof")
-    if np.any(waterDepth <= 0):
-        raise ValueError(f"waterDepth must be an int or float > 0 m, or an array thereof")
+    if np.any(waterDepth < 0):
+        raise ValueError(f"waterDepth must be an int or float >= 0 m, or an array thereof")
     if np.any(portDistance < 0):
         raise ValueError(f"portDistance must be an int or float >= 0 km, or an array thereof")
 
