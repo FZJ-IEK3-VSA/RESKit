@@ -681,7 +681,8 @@ def getSpecificOffshorePlatformCost(
     waterDepth: int | float | np.ndarray,
     portDistance: int | float | np.ndarray,
     foundationType: str | np.ndarray = None,
-    maxJacketDepth: int | float = 55,
+    maxJacketDepth: int | float = 150,
+    baseWFSize: int | float = 106858,
     convention: str = "RogeauEtAl2023",
 ):
     """
@@ -704,8 +705,11 @@ def getSpecificOffshorePlatformCost(
         The type of foundation per location, will be specified automatically
         based on maxJacketDepth if not provided.
     maxJacketDepth : int | float, optional
-        The max. possible jacket foundation depth in [m]. By default 55 m
+        The max. possible jacket foundation depth in [m]. By default 150 m
         following [1].
+    baseWFSize : int | float, optional
+        The average (base) wind farm size in [kW], by default 106858 (based on
+        global average extracted from processed theWindPower.net database v2025/07).
     convention : str, optional
         The convention by which the foundation cost shall be determined,
         e.g. "RogeauEtAl2023" based on the equations in [1].
@@ -792,20 +796,20 @@ def getSpecificOffshorePlatformCost(
         if not np.isin(applicationType, ["dc", "ac", "electrolysis"]).all():
             raise ValueError(f"applicationType must be one of: {', '.join(['dc', 'ac', 'electrolysis'])}")
         mask_dc = applicationType == "dc"
-        powerDensity_factors[mask_dc] = capacity[mask_dc] / 1000.0
+        powerDensity_factors[mask_dc] = baseWFSize / 1000.0
         mask_ac = applicationType == "ac"
-        powerDensity_factors[mask_ac] = 0.5 * capacity[mask_ac] / 1000.0
+        powerDensity_factors[mask_ac] = 0.5 * baseWFSize / 1000.0
         mask_el = applicationType == "electrolysis"
-        powerDensity_factors[mask_el] = 2.0 * capacity[mask_el] / 1000.0
+        powerDensity_factors[mask_el] = 2.0 * baseWFSize / 1000.0
 
         # calculate total equipment platform cost as the sum of capacity-dependent and fixed cost as per eq. (8)
         ECPF = RCPF * powerDensity_factors + UCPF
-        specECPF = ECPF / capacity  # normalize to specific values per kW
+        specECPF = ECPF / (baseWFSize)  # normalize to specific values per kW
 
         # now calculate the platform installation cost function based on Rogeau et al. section 3.2.2
         ICPF = np.zeros_like(waterDepth, dtype=float)  # initiate Installation Cost container
         # first deal with fixed foundation locations
-        ICPF[isFixed] = ((1.0 / 1) * (2.0 * portDistance[isFixed] / 18.5 + 24.0) + 96) * (200.0 / 24.0)
+        ICPF[isFixed] = ((1.0 / 1) * (2.0 * portDistance[isFixed] / 18.5 + 24.0) + 96*1) * (200.0 / 24.0)
         # now deal with floating foundations
         # floating has 2 terms, so define params as np.arrays of len 2
         A = np.array([[1], [3]])
@@ -814,11 +818,12 @@ def getSpecificOffshorePlatformCost(
         D = np.array([[0.0], [90.0]])
         E = np.array([[40], [40.0]])
         # then apply the function to each "column" of the params separately and then add up
-        ICPF[~isFixed] = (((1.0 / A) * (2.0 * portDistance[~isFixed][None, :] / B + C) + D) * (E / 24.0)).sum(axis=0)
+        ICPF[~isFixed] = (((1.0 / A) * (2.0 * portDistance[~isFixed][None, :] / B + C) + D*1) * (E / 24.0)).sum(axis=0)
         # make specific - assume cost per ship stay constant but load-carrying capacity grows -> implicit (specific) transport cost (per kW) decrease with larger, future turbines
         specICPF = (ICPF * 1000) / capacity  # Rogeau is in k€ x units, here 1 unit, divide by cap. per unit
         # add up
         totalSpecCost = specECPF + specICPF
+        print(f"totalSpecCost: {totalSpecCost}, specECPF: {specECPF}, specICPF: {specICPF}")
 
     else:
         raise NotImplementedError(f"convention '{convention}' is not implemented.")
