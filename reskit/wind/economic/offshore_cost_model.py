@@ -682,7 +682,7 @@ def getSpecificOffshorePlatformCost(
     portDistance: int | float | np.ndarray,
     foundationType: str | np.ndarray = None,
     maxJacketDepth: int | float = 150,
-    baseWFSize: int | float = 106858,
+    baseWFSize: int | float = 180000,
     convention: str = "RogeauEtAl2023",
 ):
     """
@@ -708,8 +708,8 @@ def getSpecificOffshorePlatformCost(
         The max. possible jacket foundation depth in [m]. By default 150 m
         following [1].
     baseWFSize : int | float, optional
-        The average (base) wind farm size in [kW], by default 106858 (based on
-        global average extracted from processed theWindPower.net database v2025/07).
+        The average (base) wind farm size in [kW], by default 180000 (based on
+        global average extracted from processed theWindPower.net database v2025/07 (15 plants and 12000 MW standardsize from Rougeau)).
     convention : str, optional
         The convention by which the foundation cost shall be determined,
         e.g. "RogeauEtAl2023" based on the equations in [1].
@@ -820,10 +820,11 @@ def getSpecificOffshorePlatformCost(
         # then apply the function to each "column" of the params separately and then add up
         ICPF[~isFixed] = (((1.0 / A) * (2.0 * portDistance[~isFixed][None, :] / B + C) + D*1) * (E / 24.0)).sum(axis=0)
         # make specific - assume cost per ship stay constant but load-carrying capacity grows -> implicit (specific) transport cost (per kW) decrease with larger, future turbines
-        specICPF = (ICPF * 1000) / capacity  # Rogeau is in k€ x units, here 1 unit, divide by cap. per unit
+        specICPF = (ICPF) / (baseWFSize/capacity)  # Rogeau is in k€ x units, here 1 unit, divide by cap. per unit
         # add up
         totalSpecCost = specECPF + specICPF
-        print(f"totalSpecCost: {totalSpecCost}, specECPF: {specECPF}, specICPF: {specICPF}")
+        print(ICPF)
+        print(f"totalSpecCost Platfom Substation: {totalSpecCost}, specECPF: {specECPF}, specICPF: {specICPF}")
 
     else:
         raise NotImplementedError(f"convention '{convention}' is not implemented.")
@@ -840,7 +841,7 @@ def getSpecificConverterStationCost(
     waterDepth: int | float | np.ndarray | None,
     voltageType: str | np.ndarray,
     portDistance: int | float | np.ndarray,
-    maxJacketDepth: int | float = 55,
+    maxJacketDepth: int | float = 150,
     convention="RogeauEtAl2023",
 ):
     """
@@ -931,7 +932,9 @@ def getSpecificConverterStationCost(
                 convention=convention,
             )
         # combine electrical and platform cost components
+        
         totalSpecCost = specECPS + specECPF
+        print(f"total: {totalSpecCost}, specECPS: {specECPS}, specECPF: {specECPF}")
     else:
         raise NotImplementedError(f"Unknown convention: '{convention}'")
 
