@@ -17,9 +17,10 @@ def calculateSpecificOffshoreCapex(
     portDistance: float | int = None,
     maxMonopileDepth=25,
     maxJacketDepth=55,
+    maxJacketDepthPlatform=150,
     baseDepth=17,
     baseDistCoast=27,
-    baseWFSize=106858,
+    baseWFSize=180000,
     baseCap=None,
     baseHubHeight=None,
     baseRotorDiam=None,
@@ -51,12 +52,14 @@ def calculateSpecificOffshoreCapex(
         Maximum depth for monopile foundations in  [m], by default 25.
     maxJacketDepth : float, optional
         Maximum depth for jacket foundations in [m], by default 55.
+    maxJacketDepthPlatform : float, optional
+        Maximum depth for installing offshore platforms (e.g. for offshore converter stations) in [m], by default 150.
     baseDepth : float, optional
         Reference depth in [m], by default 17.
     baseDistCoast : float, optional
         Reference coast distance in [km], by default 27.
     baseWFSize : int, optional
-        The average wind farm size in [kW], by default 106858 (based on average
+        The average wind farm size in [kW], by default 180000 (based on average
         extracted from processed theWindPower.net database v2025/07).
     baseCap : float, optional
         Reference turbine capacity in [kW]. Loaded from CSV if not provided.
@@ -193,7 +196,7 @@ def calculateSpecificOffshoreCapex(
             D = np.array([[0.0], [90.0]])
             E = np.array([[2.5], [40.0]])
             # then apply the function to each "column" of the params separately and then add up
-            instCost[~isFixed] = (((1 / A) * (2.0 * _portDistance[~isFixed][None, :] / B + C) + D) * (E / 24.0)).sum(
+            instCost[~isFixed] = (((1 / A) * (2.0 * _portDistance[~isFixed][None, :] / B + C*1) + D) * (E / 24.0)).sum(
                 axis=0
             )
         # make installation cost specific and convert to EUR/kW, Rogeau et al provide cost in kEUR2022 [1]
@@ -229,7 +232,7 @@ def calculateSpecificOffshoreCapex(
         coastDistance=baseDistCoast,
         voltageType=voltageType,
         baseWFSize=baseWFSize,
-        maxJacketDepth=maxJacketDepth,
+        maxJacketDepthPlatform=maxJacketDepthPlatform,
         year=techYear,
     )[0]  # returns tuple for optimal voltage with min. cost as first and voltage type as second entry
     # get the sum of the 3 components
@@ -270,7 +273,7 @@ def calculateSpecificOffshoreCapex(
         coastDistance=coastDistance,
         voltageType=voltageType,
         baseWFSize=baseWFSize,
-        maxJacketDepth=maxJacketDepth,
+        maxJacketDepthPlatform=maxJacketDepthPlatform,
         year=techYear,
     )[0]  # returns tuple for optimal voltage with min. cost as first and voltage type as second entry
     totalPlantCostDefault = (
@@ -294,8 +297,8 @@ def getSpecificOffshoreConnectionCost(
     year: int,
     portDistance: int | float | np.ndarray = None,
     voltageType: str = "optimal",
-    baseWFSize: int | float = 106858,
-    maxJacketDepth: int = 55,
+    baseWFSize: int | float = 180000,
+    maxJacketDepthPlatform: int = 150,
 ):
     """
     Get offshore and - if applicable - onshore platform/converter cost plus
@@ -322,9 +325,9 @@ def getSpecificOffshoreConnectionCost(
     baseWFSize : int, optional
         The average (base) wind farm size in [kW], by default 106858 (based on
         global average extracted from processed theWindPower.net database v2025/07).
-    maxJacketDepth : int, optional
+    maxJacketDepthPlatform : int, optional
         The maximum depth up to which jacket foundations can be installed,
-        by default 55 [m].
+        by default 150 [m].
 
     Returns
     -------
@@ -346,7 +349,7 @@ def getSpecificOffshoreConnectionCost(
     """
     # check scalar inputs
     assert isinstance(baseWFSize, (int, float)) and baseWFSize > 0, "baseWFSize must be an integer or float > 0"
-    assert isinstance(maxJacketDepth, int) and maxJacketDepth > 0, "maxJacketDepth must be an integer > 0"
+    assert isinstance(maxJacketDepthPlatform, int) and maxJacketDepthPlatform > 0, "maxJacketDepthPlatform must be an integer > 0"
     assert voltageType in ["ac", "dc", "optimal"], f"Unknown voltageType: {voltageType}"
     # check and preprocess vectorized inputs
     isScalar = all([np.isscalar(_arg) for _arg in [portDistance, waterDepth, capacity, coastDistance]])
@@ -375,7 +378,7 @@ def getSpecificOffshoreConnectionCost(
             waterDepth=None,
             voltageType=_voltageType,
             portDistance=0,  # onshore
-            maxJacketDepth=maxJacketDepth,
+            maxJacketDepthPlatform=maxJacketDepthPlatform,
         )
         convertercost_onshore = (
             convertercost_onshore_baseWFSize * capacity / baseWFSize
@@ -387,7 +390,7 @@ def getSpecificOffshoreConnectionCost(
             waterDepth=waterDepth,
             voltageType=_voltageType,
             portDistance=portDistance,
-            maxJacketDepth=maxJacketDepth,
+            maxJacketDepthPlatform=maxJacketDepthPlatform,
         )
         convertercost_offshore = convertercost_offshore_baseWFSize * capacity / baseWFSize  # scale to actual size again
 
@@ -681,7 +684,7 @@ def getSpecificOffshorePlatformCost(
     waterDepth: int | float | np.ndarray,
     portDistance: int | float | np.ndarray,
     foundationType: str | np.ndarray = None,
-    maxJacketDepth: int | float = 150,
+    maxJacketDepthPlatform: int | float = 150,
     baseWFSize: int | float = 180000,
     convention: str = "RogeauEtAl2023",
 ):
@@ -704,7 +707,7 @@ def getSpecificOffshorePlatformCost(
     foundationType: str | np.ndarray, optional
         The type of foundation per location, will be specified automatically
         based on maxJacketDepth if not provided.
-    maxJacketDepth : int | float, optional
+    maxJacketDepthPlatform : int | float, optional
         The max. possible jacket foundation depth in [m]. By default 150 m
         following [1].
     baseWFSize : int | float, optional
@@ -765,7 +768,7 @@ def getSpecificOffshorePlatformCost(
         assert sorted(RCPF_factors.keys()) == sorted(UCPF_factors.keys())  # make sure
 
         # get and check foundation type
-        isFixed = waterDepth <= maxJacketDepth
+        isFixed = waterDepth <= maxJacketDepthPlatform  # fixed foundation if under max jacket depth, else floating
         if foundationType is None:
             foundationType = np.where(isFixed, "jacket", "floating")
         else:
@@ -775,9 +778,9 @@ def getSpecificOffshorePlatformCost(
                 # unknown foundation type
                 raise ValueError(f"foundationType must be in: {', '.join(RCPF_factors.keys())}")
             # warn if the foundation type is wrong acc. to given threshold
-            if ((waterDepth > maxJacketDepth) & (foundationType == "jacket")).any():
+            if ((waterDepth > maxJacketDepthPlatform) & (foundationType == "jacket")).any():
                 warnings.warn(
-                    f"waterDepth ({waterDepth} m) exceeds maxJacketDepth ({maxJacketDepth} m) but 'jacket' is enforced as foundationType."
+                    f"waterDepth ({waterDepth} m) exceeds maxJacketDepthPlatform ({maxJacketDepthPlatform} m) but 'jacket' is enforced as foundationType."
                 )
 
         # get the coefficients for the Rogeau cost equation, depending on foundation type per location
@@ -820,7 +823,7 @@ def getSpecificOffshorePlatformCost(
         # then apply the function to each "column" of the params separately and then add up
         ICPF[~isFixed] = (((1.0 / A) * (2.0 * portDistance[~isFixed][None, :] / B + C) + D*1) * (E / 24.0)).sum(axis=0)
         # make specific - assume cost per ship stay constant but load-carrying capacity grows -> implicit (specific) transport cost (per kW) decrease with larger, future turbines
-        specICPF = (ICPF) / (baseWFSize/capacity)  # Rogeau is in k€ x units, here 1 unit, divide by cap. per unit
+        specICPF = (ICPF) / (baseWFSize/1000)  # Rogeau is in k€ x units, here 1 unit, divide by cap. per unit
         # add up
         totalSpecCost = specECPF + specICPF
         print(ICPF)
@@ -841,7 +844,7 @@ def getSpecificConverterStationCost(
     waterDepth: int | float | np.ndarray | None,
     voltageType: str | np.ndarray,
     portDistance: int | float | np.ndarray,
-    maxJacketDepth: int | float = 150,
+    maxJacketDepthPlatform: int | float = 150,
     convention="RogeauEtAl2023",
 ):
     """
@@ -862,8 +865,8 @@ def getSpecificConverterStationCost(
         location and passed as array.
     portDistance : int | float|np.ndarray
         The distance from the nearest installation base port in [km].
-    maxJacketDepth : int, optional
-        The max. possible jacket foundation depth in [m]. By default 55 m
+    maxJacketDepthPlatform : int, optional
+        The max. possible jacket foundation depth in [m]. By default 150 m
         following [1].
     convention : str, optional
         The convention by which the foundation cost shall be determined,
@@ -917,6 +920,8 @@ def getSpecificConverterStationCost(
         ECPS = RCPS_coeffs * capacity + UCPS_coeffs * 10**3
         specECPS = ECPS / capacity
 
+        print(f"total Cost Substation: {ECPS}, specific Cost Substation: {specECPS}")
+
         if waterDepth is None:
             # an onshore station, no additional platform cost
             specECPF = np.zeros_like(capacity, dtype=float)
@@ -928,13 +933,14 @@ def getSpecificConverterStationCost(
                 waterDepth=waterDepth,
                 portDistance=portDistance,
                 foundationType=None,
-                maxJacketDepth=maxJacketDepth,
+                maxJacketDepthPlatform=maxJacketDepthPlatform,
                 convention=convention,
             )
         # combine electrical and platform cost components
         
+        print(f'specific Platform Cost Substation: {specECPF}')
         totalSpecCost = specECPS + specECPF
-        print(f"total: {totalSpecCost}, specECPS: {specECPS}, specECPF: {specECPF}")
+        
     else:
         raise NotImplementedError(f"Unknown convention: '{convention}'")
 
