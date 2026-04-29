@@ -1,0 +1,15 @@
+name: Mirror to JuGit
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - dev
+      - master
+
+jobs:
+  mirror:
+    uses: FZJ-IEK3-VSA/.github/.github/workflows/sync_jugit.yml@v1
+    secrets: inherit
+    with:
+      jugit_repo_path: "iek-3/shared-code/RESKit"
