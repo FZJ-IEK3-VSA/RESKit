@@ -19,6 +19,7 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
     era5_path,
     gwa_100m_path,
     height_scaling_data,
+    gwa_nodata_fallback=1.0,
     output_netcdf_path=None,
     cf_correction=True,
     output_variables=None,
@@ -50,6 +51,14 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
         Dict with integer heights as keys and str paths to the Global Wind Atlas
         windspeeds [4] at the respective heights as values. Must contain at
         least one higher and one lower height than 100 [m].
+    gwa_nodata_fallback : str, optional
+        If no GWA data is available, use for simulation:
+        (1) float value for a multiple of the respective ERA-5 value
+            (ERA5 raw), i.e. 1.0 means fall back on unscaled ERA-5 value
+        (2) np.nan for nan output
+        (3) a callable function to be applied to the ERA-5 value in the format:
+            nodata_fallback(locs, ERA5_value)
+        (4) a filepath to a raster file containing the fallback values
     output_netcdf_path : str, optional
         Path to a directory to put the output files, by default None
     cf_correction : bool, optional
@@ -89,7 +98,6 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
     cf_correction_factor = os.path.join(DATAFOLDER, f"cf_correction_factors_PSDW2025.tif")
     wake_curve = "dena_mean"
     availability_factor = 0.98
-    nodata_fallback = np.nan
     era5_lra_path = rk_weather.Era5Source.LONG_RUN_AVERAGE_WINDSPEED_2008TO2017
 
     # initialize wf manager instance
@@ -114,7 +122,7 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
         variable="elevated_wind_speed",
         source_long_run_average=era5_lra_path,
         real_long_run_average=gwa_100m_path,
-        nodata_fallback=nodata_fallback,
+        nodata_fallback=gwa_nodata_fallback,
         spatial_interpolation="average",
     )
 
