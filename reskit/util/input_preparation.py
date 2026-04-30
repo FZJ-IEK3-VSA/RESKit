@@ -12,8 +12,6 @@ depends_on = {
             "boundary_layer_height",
         ],
     },
-    "onshore_wind_iconlam_2023": ["ICONLAM"],
-    "onshore_wind_merra_ryberg2019_europe": ["MERRA-2", "GWA2"],
 }
 
 # Maps CDS API variable names to their short names inside the downloaded NetCDF file.
@@ -73,10 +71,12 @@ def download_and_process(
         if tiling:
             # return a path template for get_dataframe_with_weather_tilepaths()
             era5_path = os.path.join(era5_path, "<ZOOM>", "<X-TILE>", "<Y-TILE>")
+            
+        print(f"ERA5 data prepared and tiled at: {era5_path}. Please download data for height scaling from the Global Wind Atlas: https://globalwindatlas.info/en/download/gis-files")
 
         return {
             "era5_path": era5_path,
-            "height_scaling_data": {50: "some_path_50m", 100: "some_path_100m", 200: "some_path_200m"},
+            "height_scaling_data": {50: "Please download directly from https://globalwindatlas.info/en/download/gis-files", 100: "Please download directly from https://globalwindatlas.info/en/download/gis-files", 200: "Please download directly from https://globalwindatlas.info/en/download/gis-files"},
         }
 
     raise ValueError(f"Unknown workflow: {workflow}")
