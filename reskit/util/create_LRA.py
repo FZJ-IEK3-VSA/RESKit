@@ -48,6 +48,7 @@ _HAVE_RIOXARRAY = importlib.util.find_spec("rioxarray") is not None
 
 CombineMode = Literal["auto", "merge", "combine_by_coords"]
 
+
 def _list_tiled_nc_files(base_path: Path, year: int, variable: str, zoom_level: int) -> list[Path]:
     """List files in the tiled RESKit layout for a given year."""
 
@@ -86,8 +87,7 @@ def _find_single_year_nc_file(base_path: Path, year: int, variable: str) -> Path
 
     if not hits:
         raise FileNotFoundError(
-            "No per-year NetCDF found for non-tiled layout. "
-            f"year={year}, variable={variable}, base_path={base_path}"
+            f"No per-year NetCDF found for non-tiled layout. year={year}, variable={variable}, base_path={base_path}"
         )
 
     preview = "\n".join(f"  - {p}" for p in hits[:10])
@@ -143,10 +143,7 @@ def load_era5_year(
                 ds = _mean_over_time(ds)
             all_datasets.append(ds.load())
 
-    all_datasets = [
-        ds.sortby(["latitude", "longitude"])
-        for ds in all_datasets
-    ]
+    all_datasets = [ds.sortby(["latitude", "longitude"]) for ds in all_datasets]
     ds_merged = xr.merge(all_datasets, compat="no_conflicts")
 
     return ds_merged
@@ -192,18 +189,16 @@ def create_long_run_average(
         all_years.append(ds_year)
 
     ds_lra = xr.concat(all_years, dim="year").mean(dim="year", keep_attrs=True)
-    
+
     return ds_lra
 
-def _calculate_DNI(
-    solar_elevation_angle: xr.DataArray,
-    direct_horizontal_irradiance: xr.DataArray
-):
+
+def _calculate_DNI(solar_elevation_angle: xr.DataArray, direct_horizontal_irradiance: xr.DataArray):
     """Calculate Direct Normal Irradiance (DNI) from Direct Horizontal Irradiance and SZA."""
     # Convert SZA from degrees to radians
-    
+
     # solar_elevation_angle = 90 - solar_zenith_angle
-    
+
     _sea_cleaned = np.where(solar_elevation_angle > 1, solar_elevation_angle, np.nan)
 
     sin_z = np.sin(np.radians(_sea_cleaned))
@@ -237,10 +232,10 @@ def calc_solar_elevation_angle(times, lats, lons, temps, pressures):
     unixtime = pd.to_datetime(times).astype(np.int64).values // 10**9
     unixtime = unixtime - 1800
 
-    lat_broad       = lats[:, np.newaxis, np.newaxis]   # (Y, 1, 1)
-    lon_broad       = lons[np.newaxis, :, np.newaxis]   # (1, X, 1)
-    temp_broad      = temps[:, :, np.newaxis]            # (Y, X, 1)
-    pressures_broad = pressures[:, :, np.newaxis]        # (Y, X, 1)
+    lat_broad = lats[:, np.newaxis, np.newaxis]  # (Y, 1, 1)
+    lon_broad = lons[np.newaxis, :, np.newaxis]  # (1, X, 1)
+    temp_broad = temps[:, :, np.newaxis]  # (Y, X, 1)
+    pressures_broad = pressures[:, :, np.newaxis]  # (Y, X, 1)
 
     # spa returns shape (Y, X, T); transpose to (T, Y, X)
     spa_tuple = spa.solar_position_numpy(
@@ -256,6 +251,7 @@ def calc_solar_elevation_angle(times, lats, lons, temps, pressures):
         sst=False,
     )
     return spa_tuple[2].transpose(2, 0, 1)
+
 
 def compute_dni_year(
     base_path: str | Path,
@@ -391,6 +387,7 @@ def create_long_run_average_DNI(
 
     return xr.concat(all_years, dim="year").mean(dim="year", keep_attrs=True)
 
+
 def pick_data_var(ds: xr.Dataset, data_var: Optional[str] = None) -> xr.DataArray:
     if data_var is not None:
         if data_var not in ds.data_vars:
@@ -400,10 +397,7 @@ def pick_data_var(ds: xr.Dataset, data_var: Optional[str] = None) -> xr.DataArra
     if len(ds.data_vars) == 1:
         return ds[next(iter(ds.data_vars))]
 
-    raise ValueError(
-        "Dataset contains multiple data variables; specify --data-var. "
-        f"Available: {list(ds.data_vars)}"
-    )
+    raise ValueError(f"Dataset contains multiple data variables; specify --data-var. Available: {list(ds.data_vars)}")
 
 
 def write_geotiff_file(
@@ -419,8 +413,7 @@ def write_geotiff_file(
 
     if not _HAVE_RIOXARRAY:  # pragma: no cover
         raise RuntimeError(
-            "GeoTIFF export requires rioxarray (and rasterio). "
-            "Install e.g. `pip install rioxarray rasterio`."
+            "GeoTIFF export requires rioxarray (and rasterio). Install e.g. `pip install rioxarray rasterio`."
         )
 
     da_out = da
@@ -630,7 +623,7 @@ def create_LRA(
     )
     if variable_name_output is not None:
         variable = variable_name_output
-        
+
     output_file_name = f"{weather_source_prefix}{variable}_{start_year}_{end_year}_mean"
 
     if write_netcdf:
@@ -667,12 +660,10 @@ def create_DNI_LRA(
     log_level: str = "INFO",
     temp_dir: Optional[str | Path] = None,
     weather_source_prefix: Optional[str] = None,
-    ):
-    """Compute and write a long-run average (LRA) for Direct Normal Irradiance (DNI) using existing files for GHI and DHI.
-    
-    """
+):
+    """Compute and write a long-run average (LRA) for Direct Normal Irradiance (DNI) using existing files for GHI and DHI."""
     logging.basicConfig(level=getattr(logging, log_level), format="%(levelname)s %(message)s")
-    
+
     out_dir = Path(out_dir)
 
     if not temp_dir:
@@ -682,12 +673,12 @@ def create_DNI_LRA(
         temp_dir = Path(temp_dir)
         LOG.info("Using temporary directory for intermediate files: %s", temp_dir)
         var_out_dir = temp_dir / variable
-        
+
     if weather_source_prefix is None:
         weather_source_prefix = ""
     else:
         weather_source_prefix = f"{weather_source_prefix}_"
-        
+
     dni_lra = create_long_run_average_DNI(
         base_path=base_path,
         start_year=start_year,
@@ -702,7 +693,7 @@ def create_DNI_LRA(
         combine_mode=combine_mode,
         weather_source_prefix=weather_source_prefix,
     )
-        
+
     output_file_name = f"{weather_source_prefix}{variable_name_output}_{start_year}_{end_year}_mean"
     if write_netcdf:
         lra_nc = out_dir / f"{output_file_name}.nc"
@@ -716,13 +707,14 @@ def create_DNI_LRA(
     return dni_lra
 
 
-# main idea: generate a 3x3 array of the raster data 
+# main idea: generate a 3x3 array of the raster data
 # interpolate between the outmost data cell and the first data cell "on the othe side of the world"
 # "polar wrap" the top and bottom rows (mirror and center on antimeridian) so that interpolation can cross the poles correctly
 # the interpolate missing data in the 3x3 array
 # last clip to the bounds of interest
 
-def world_3x3_wrap(arr_center: np.ndarray, rInfo : object):
+
+def world_3x3_wrap(arr_center: np.ndarray, rInfo: object):
     """
     Build a 3x3 tiled array with correct pole-wrap and (optionally) return mosaic bounds.
     All maps are arranged such that they align with the antimeridian as center column,
@@ -743,7 +735,7 @@ def world_3x3_wrap(arr_center: np.ndarray, rInfo : object):
     Returns
     -------
     arr_3x3 : (3H, 3W) ndarray
-    bounds_3x3 : (xmin, ymin, xmax, ymax) 
+    bounds_3x3 : (xmin, ymin, xmax, ymax)
         Outer-edge bounds of the returned 3x3 array, consistent with the padded grid
         (including any extra/excess cells induced by the shift/resolution).
     """
@@ -756,12 +748,12 @@ def world_3x3_wrap(arr_center: np.ndarray, rInfo : object):
     dy = -rInfo.pixelHeight  # north-up (row index increases southward)
 
     # Choose nearest achievable world pixel-center indices to +/-180 and +/-90
-    i_left  = int(np.rint((-180.0 - x0) / rInfo.pixelWidth))
-    i_right = int(np.rint(( 180.0 - x0) / rInfo.pixelWidth))
+    i_left = int(np.rint((-180.0 - x0) / rInfo.pixelWidth))
+    i_right = int(np.rint((180.0 - x0) / rInfo.pixelWidth))
     if i_right < i_left:
         i_left, i_right = i_right, i_left
 
-    j_top    = int(np.rint(( 90.0 - y0) / dy))
+    j_top = int(np.rint((90.0 - y0) / dy))
     j_bottom = int(np.rint((-90.0 - y0) / dy))
     if j_bottom < j_top:
         j_top, j_bottom = j_bottom, j_top
@@ -802,21 +794,21 @@ def world_3x3_wrap(arr_center: np.ndarray, rInfo : object):
     out = np.full((3 * H, 3 * W), np.nan, dtype=arr_center.dtype)
 
     def write_tile(dst, tile, top, left):
-        sub = dst[top:top + H, left:left + W]
+        sub = dst[top : top + H, left : left + W]
         m = ~np.isnan(tile)
         sub[m] = tile[m]
 
     # Non-center tiles first
-    write_tile(out, padded_center, H, 0)       # middle-left
-    write_tile(out, padded_center, H, 2 * W)   # middle-right
+    write_tile(out, padded_center, H, 0)  # middle-left
+    write_tile(out, padded_center, H, 2 * W)  # middle-right
 
-    write_tile(out, pole_tile, 0, 0)           # top-left
-    write_tile(out, pole_tile, 0, W)           # top-center
-    write_tile(out, pole_tile, 0, 2 * W)       # top-right
+    write_tile(out, pole_tile, 0, 0)  # top-left
+    write_tile(out, pole_tile, 0, W)  # top-center
+    write_tile(out, pole_tile, 0, 2 * W)  # top-right
 
-    write_tile(out, pole_tile, 2 * H, 0)       # bottom-left
-    write_tile(out, pole_tile, 2 * H, W)       # bottom-center
-    write_tile(out, pole_tile, 2 * H, 2 * W)   # bottom-right
+    write_tile(out, pole_tile, 2 * H, 0)  # bottom-left
+    write_tile(out, pole_tile, 2 * H, W)  # bottom-center
+    write_tile(out, pole_tile, 2 * H, 2 * W)  # bottom-right
 
     # Center last so it wins where both have data
     write_tile(out, padded_center, H, W)
@@ -829,7 +821,7 @@ def world_3x3_wrap(arr_center: np.ndarray, rInfo : object):
     tile_ymin = y_world0 + (H - 1) * dy - rInfo.pixelHeight / 2.0  # dy < 0
 
     # Each additional tile shifts by exactly W columns and H rows in index space
-    tile_width_deg  = W * rInfo.pixelWidth
+    tile_width_deg = W * rInfo.pixelWidth
     tile_height_deg = H * rInfo.pixelHeight
 
     mosaic_xmin = tile_xmin - tile_width_deg
@@ -961,14 +953,15 @@ def extract_bbox_from_mosaic(mosaic, *, bounds_3x3, pixel_width, pixel_height, b
     cut_bounds = (bxmin, bymin, bxmax, bymax)
     return cut, cut_bounds
 
+
 def expand_to_global_coverage(
-        rstr : str, 
-        target_bounds : tuple, 
-        as_array: bool = True,
-        output_path: str | None = None,
-        ) -> np.ndarray:
+    rstr: str,
+    target_bounds: tuple,
+    as_array: bool = True,
+    output_path: str | None = None,
+) -> np.ndarray:
     """
-    Expands a near global raster to full global coverage by interpolating edge 
+    Expands a near global raster to full global coverage by interpolating edge
     cells across the antimeridian/poles
 
     Parameters
@@ -976,10 +969,10 @@ def expand_to_global_coverage(
     rstr : str
         Path to the raster file that shall be expanded.
     target_bounds : tuple
-        (xmin, ymin, xmax, ymax) bounds of the output raster. Must align with 
+        (xmin, ymin, xmax, ymax) bounds of the output raster. Must align with
         the input bounds plus/minus an integer number of pixels.
     as_array : bool, optional
-        If True, the data will be returned as array, if False, a raster will be 
+        If True, the data will be returned as array, if False, a raster will be
         written to disk, then the output_path must be given, by default True.
     output_path : str | None, optional
         Path to write the output raster if as_array is False, by default None.
@@ -999,11 +992,13 @@ def expand_to_global_coverage(
     rInfo = gk.raster.rasterInfo(rstr)
     if not (rInfo.bounds[0] <= -180.0 and rInfo.bounds[2] >= 180.0):
         # if this is needed, the interpolation function needs to be expanded
-        raise ValueError(f"Current version of this function allows only latitudinal expansion, the input raster does not extend over the full longitude range. Raster bounds are: {rInfo.bounds}")
+        raise ValueError(
+            f"Current version of this function allows only latitudinal expansion, the input raster does not extend over the full longitude range. Raster bounds are: {rInfo.bounds}"
+        )
 
     # then arrange it into a special 3x3 array that wraps around the globe correctly
     arr3x3, bounds3x3 = world_3x3_wrap(rInfo=rInfo, arr_center=arr)
-    
+
     # interpolate missing data in the 3x3 array
     arr3x3_interp = interp_vertical_1d(arr3x3=arr3x3, max_gap=None)
 
@@ -1014,12 +1009,12 @@ def expand_to_global_coverage(
         pixel_width=rInfo.pixelWidth,
         pixel_height=rInfo.pixelHeight,
         bbox=target_bounds,
-        snap_edges=True, # snap bounding box edges to pixel grid
+        snap_edges=True,  # snap bounding box edges to pixel grid
     )
-    assert bounds_out == target_bounds # sanity check
+    assert bounds_out == target_bounds  # sanity check
 
     if as_array:
-        return arr_out  
+        return arr_out
     else:
         # write to disk
         output_path = gk.raster.createRaster(
@@ -1032,7 +1027,6 @@ def expand_to_global_coverage(
             dtype=rInfo.dtype,
         )
         return output_path
-
 
 
 def main(argv: Optional[Iterable[str]] = None) -> int:
@@ -1059,4 +1053,3 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
