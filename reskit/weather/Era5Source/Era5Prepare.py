@@ -100,7 +100,7 @@ def era5_downloader(
     )
 
 
-def preprocess_era5_data(focus_nc: str):
+def preprocess_era5_data(focus_nc: str, processed_dir: Optional[str] = None):
     """
     Ssrd and fdir are hourly backward accumulated quantities in ERA5 with the unit: J m⁻².
     Each value at time t represents the accumulated energy over the previous hour.
@@ -118,6 +118,14 @@ def preprocess_era5_data(focus_nc: str):
     So, we need to do two things:
     1. Convert the accumulated quantity to an average power flux by dividing by 3600
     2. Shift the time axis forward by one hour to represent the average over the next hour.
+
+    Parameters
+    ----------
+    focus_nc : str
+        Path to the raw ERA5 NetCDF file.
+    processed_dir : str, optional
+        Directory to write processed output files. Defaults to the same directory
+        as focus_nc.
     """
     # prepare cdo instance
     cdo = Cdo()
@@ -126,7 +134,9 @@ def preprocess_era5_data(focus_nc: str):
     varnames = cdo.showname(input=focus_nc)[0].split()
     varset = set(varnames)
 
-    dir = os.path.dirname(focus_nc)
+    out_dir = processed_dir or os.path.dirname(focus_nc)
+    if processed_dir:
+        os.makedirs(processed_dir, exist_ok=True)
     f_name = os.path.basename(focus_nc)
     # process for solar radiation variables
     # solar_out = os.path.join(dir, f"{f_name.split('.')[0]}_processed_solar.nc")
@@ -147,7 +157,7 @@ def preprocess_era5_data(focus_nc: str):
     #         print(f"Skipping solar preprocessing (exists): {solar_out}")
 
     # process for solar radiation variables (time adjusted)
-    solar_t_out = os.path.join(dir, f"{f_name.split('.')[0]}_processed_solar_t_adjusted.nc")
+    solar_t_out = os.path.join(out_dir, f"{f_name.split('.')[0]}_processed_solar_t_adjusted.nc")
     if {"ssrd", "fdir"} & varset:
         if not _nc_file_has_vars(cdo, solar_t_out, ["ssrd_t_adj", "fdir_t_adj"]):
             unit = "W m**-2"
@@ -167,7 +177,7 @@ def preprocess_era5_data(focus_nc: str):
             print(f"Skipping process time-adjusted solar (exists): {solar_t_out}")
 
     # process for wind speed variables
-    ws100_out = os.path.join(dir, f"{f_name.split('.')[0]}_processed_ws100.nc")
+    ws100_out = os.path.join(out_dir, f"{f_name.split('.')[0]}_processed_ws100.nc")
     if {"u100", "v100"} <= varset:
         if not _nc_file_has_vars(cdo, ws100_out, ["ws100"]):
             unit = "m s**-1"
@@ -184,7 +194,7 @@ def preprocess_era5_data(focus_nc: str):
         else:
             print(f"Skipping process ws100 (exists): {ws100_out}")
 
-    ws10_out = os.path.join(dir, f"{f_name.split('.')[0]}_processed_ws10.nc")
+    ws10_out = os.path.join(out_dir, f"{f_name.split('.')[0]}_processed_ws10.nc")
     if {"u10", "v10"} <= varset:
         if not _nc_file_has_vars(cdo, ws10_out, ["ws10"]):
             unit = "m s**-1"
@@ -203,14 +213,15 @@ def preprocess_era5_data(focus_nc: str):
 
 
 def era5_tiler(
-    source_dir: str,
+    processed_dir: str,
     tile_output_dir: str,
     zoom_level: int = 4,
+    raw_nc: Optional[str] = None,
     raw_variables: Optional[List[str]] = None,
 ) -> str:
     """
-    Splits processed ERA5 NetCDF files in source_dir into the tiled directory
-    structure expected by Era5Source and execute_workflow_iteratively().
+    Splits processed ERA5 NetCDF files into the tiled directory structure expected
+    by Era5Source and execute_workflow_iteratively().
 
     Output follows the shared-data naming convention:
         <tile_output_dir>/<zoom>/<xi>/<yi>/<year>/
@@ -220,15 +231,17 @@ def era5_tiler(
 
     Parameters
     ----------
-    source_dir : str
+    processed_dir : str
         Directory containing processed NC files (output of preprocess_era5_data).
     tile_output_dir : str
         Root directory for the tiled output.
     zoom_level : int
         Web Mercator zoom level (default: 4 → 16×16 global grid).
+    raw_nc : str, optional
+        Path to the raw ERA5 download file, used to tile raw_variables.
     raw_variables : list of str, optional
-        NC short names to tile from the raw download file (e.g. ['t2m', 'sp', 'blh']).
-        If None, only processed files are tiled.
+        NC short names to tile from raw_nc (e.g. ['t2m', 'sp', 'blh']).
+        Ignored if raw_nc is None.
     """
     cdo = Cdo()
     source_group = "reanalysis-era5-single-levels"
@@ -236,24 +249,16 @@ def era5_tiler(
     # (source_file, [nc_var_names_to_tile]) pairs
     file_var_pairs: list[tuple[str, list[str]]] = []
 
-    for f in sorted(os.listdir(source_dir)):
+    for f in sorted(os.listdir(processed_dir)):
         if not f.endswith(".nc") or "_processed_" not in f:
             continue
-        path = os.path.join(source_dir, f)
+        path = os.path.join(processed_dir, f)
         vars_in_file = cdo.showname(input=path)[0].split()
         vars_to_tile = [v for v in vars_in_file if v in _ERA5_NC_TO_TILE_LABEL]
         if vars_to_tile:
             file_var_pairs.append((path, vars_to_tile))
 
-    if raw_variables:
-        raw_candidates = [
-            os.path.join(source_dir, f)
-            for f in os.listdir(source_dir)
-            if f.endswith(".nc") and "_processed_" not in f
-        ]
-        if not raw_candidates:
-            raise FileNotFoundError(f"No raw ERA5 download file found in {source_dir}")
-        raw_nc = raw_candidates[0]
+    if raw_nc and raw_variables:
         vars_in_raw = set(cdo.showname(input=raw_nc)[0].split())
         vars_to_tile = [
             v for v in raw_variables
@@ -320,7 +325,8 @@ def prepare_era5(
     raw_variables: Optional[List[str]] = None,
 ):
     # 1. download ERA5 data for the given date range and boundary box
-    os.makedirs(output_dir, exist_ok=True)
+    raw_dir = os.path.join(output_dir, "raw")
+    os.makedirs(raw_dir, exist_ok=True)
 
     if variables is None:
         variables = era5_variables
@@ -344,7 +350,7 @@ def prepare_era5(
         f"_W{boundary_box['west']}_E{boundary_box['east']}"
     )
     output_file = os.path.join(
-        output_dir,
+        raw_dir,
         f"{era5_dataset}_{dates[0].strftime('%Y%m')}-{dates[-1].strftime('%Y%m')}_{bbox_tag}_raw.nc",
     )
     if not os.path.exists(output_file):
@@ -363,7 +369,7 @@ def prepare_era5(
             cdo = Cdo()
             yearly_files = []
             for year, months in months_by_year.items():
-                yearly_file = os.path.join(output_dir, f"_tmp_{era5_dataset}_{year}_{bbox_tag}_raw.nc")
+                yearly_file = os.path.join(raw_dir, f"_tmp_{era5_dataset}_{year}_{bbox_tag}_raw.nc")
                 yearly_files.append(yearly_file)
                 if not os.path.exists(yearly_file):
                     era5_downloader(
@@ -379,20 +385,22 @@ def prepare_era5(
     else:
         print(f"ERA5 data already exists at {output_file}, skipping download.")
 
-    # 2. preprocess ERA5 data
-    preprocess_era5_data(focus_nc=output_file)
+    # 2. preprocess ERA5 data into processed_dir (sibling of raw/)
+    processed_dir = os.path.join(output_dir, "processed")
+    preprocess_era5_data(focus_nc=output_file, processed_dir=processed_dir)
     print("ERA5 preprocessing done.")
 
     # 3. optionally tile into <zoom>/<xi>/<yi>/<year>/ structure
     if tiling:
         _tile_out = tile_output_dir or os.path.join(output_dir, "tiles")
         era5_tiler(
-            source_dir=output_dir,
+            processed_dir=processed_dir,
             tile_output_dir=_tile_out,
             zoom_level=zoom_level,
+            raw_nc=output_file,
             raw_variables=raw_variables,
         )
         print("ERA5 tiling done.")
         return _tile_out
 
-    return output_dir
+    return processed_dir

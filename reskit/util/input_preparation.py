@@ -53,13 +53,12 @@ def download_and_process(
     tiling=False, zoom_level=4, tile_output_dir=None,
 ):
     if workflow == "wind_era5_PenaSanchezDunkelWinklerEtAl2025":
-        raw_dir = os.path.join(output_dir, "raw")
         _tile_out = tile_output_dir or os.path.join(output_dir, "tiles")
         era5_path = rk.prepare_era5(
             start_date=start_date,
             end_date=end_date,
             boundary_box=boundary_box,
-            output_dir=raw_dir,
+            output_dir=output_dir,
             variables=depends_on["wind_era5_PenaSanchezDunkelWinklerEtAl2025"]["ERA5"],
             tiling=tiling,
             zoom_level=zoom_level,

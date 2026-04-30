@@ -26,11 +26,13 @@ import reskit as rk
 # Output layout under `output_dir`:
 # ```
 # output_dir/
-# ├── raw/       ← CDS download + intermediate processed NC files
-# └── tiles/     ← tiled output: <zoom>/<x-tile>/<y-tile>/<year>/*.nc
+# ├── raw/        ← CDS download files only
+# ├── processed/  ← usable processed NC files (ws100, solar_t_adj, …)
+# └── tiles/      ← tiled output: <zoom>/<x-tile>/<y-tile>/<year>/*.nc
 # ```
 #
-# Set `tiling=False` to skip step 3 and only download + preprocess.
+# Set `tiling=False` to skip step 3; `era5_path` will then point to `processed/`
+# and can be used directly with Era5Source.
 
 # %%
 output_dir = "/path/to/your/era5_data"  # <-- adjust this

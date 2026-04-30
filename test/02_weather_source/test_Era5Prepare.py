@@ -21,47 +21,50 @@ def tile_filename(zoom, x, y, year, label):
 
 @pytest.fixture
 def era5_like_tile_input(tmp_path):
-    """Temp dir with era5-like files renamed to match era5_tiler's expected naming."""
+    """Temp dir with era5-like files renamed to match era5_tiler's expected naming.
+    Returns (processed_dir, raw_nc_path)."""
     era5_like = TEST_DATA["era5-like"]
+    processed_dir = tmp_path / "processed"
+    processed_dir.mkdir()
     shutil.copy(
         os.path.join(era5_like, "100m_wind_speed.processed.nc"),
-        tmp_path / "era5_test_processed_ws100.nc",
+        processed_dir / "era5_test_processed_ws100.nc",
     )
-    shutil.copy(
-        os.path.join(era5_like, "boundary_layer_height.nc"),
-        tmp_path / "era5_test_raw.nc",
-    )
-    return tmp_path
+    raw_nc = tmp_path / "raw" / "era5_test_raw.nc"
+    raw_nc.parent.mkdir()
+    shutil.copy(os.path.join(era5_like, "boundary_layer_height.nc"), raw_nc)
+    return processed_dir, raw_nc
 
 
 def test_era5_tiler_creates_tile_directory(era5_like_tile_input, tmp_path):
+    processed_dir, raw_nc = era5_like_tile_input
     tile_out = tmp_path / "tiles"
     era5_tiler(
-        source_dir=str(era5_like_tile_input),
+        processed_dir=str(processed_dir),
         tile_output_dir=str(tile_out),
         zoom_level=ZOOM,
+        raw_nc=str(raw_nc),
         raw_variables=["blh"],
     )
     assert (tile_out / EXPECTED_TILE_DIR).is_dir()
 
 
 def test_era5_tiler_ws100_filename(era5_like_tile_input, tmp_path):
+    processed_dir, _ = era5_like_tile_input
     tile_out = tmp_path / "tiles"
-    era5_tiler(
-        source_dir=str(era5_like_tile_input),
-        tile_output_dir=str(tile_out),
-        zoom_level=ZOOM,
-    )
+    era5_tiler(processed_dir=str(processed_dir), tile_output_dir=str(tile_out), zoom_level=ZOOM)
     expected = tile_out / EXPECTED_TILE_DIR / tile_filename(ZOOM, TILE_X, TILE_Y, TILE_YEAR, "100m_wind_speed.processed")
     assert expected.exists(), f"Expected tile file not found: {expected}"
 
 
 def test_era5_tiler_raw_variable_filename(era5_like_tile_input, tmp_path):
+    processed_dir, raw_nc = era5_like_tile_input
     tile_out = tmp_path / "tiles"
     era5_tiler(
-        source_dir=str(era5_like_tile_input),
+        processed_dir=str(processed_dir),
         tile_output_dir=str(tile_out),
         zoom_level=ZOOM,
+        raw_nc=str(raw_nc),
         raw_variables=["blh"],
     )
     expected = tile_out / EXPECTED_TILE_DIR / tile_filename(ZOOM, TILE_X, TILE_Y, TILE_YEAR, "boundary_layer_height")
@@ -69,28 +72,27 @@ def test_era5_tiler_raw_variable_filename(era5_like_tile_input, tmp_path):
 
 
 def test_era5_tiler_output_contains_correct_variable(era5_like_tile_input, tmp_path):
+    processed_dir, _ = era5_like_tile_input
     tile_out = tmp_path / "tiles"
-    era5_tiler(
-        source_dir=str(era5_like_tile_input),
-        tile_output_dir=str(tile_out),
-        zoom_level=ZOOM,
-    )
+    era5_tiler(processed_dir=str(processed_dir), tile_output_dir=str(tile_out), zoom_level=ZOOM)
     tile_file = tile_out / EXPECTED_TILE_DIR / tile_filename(ZOOM, TILE_X, TILE_Y, TILE_YEAR, "100m_wind_speed.processed")
     with nc4.Dataset(str(tile_file)) as ds:
         assert "ws100" in ds.variables
 
 
 def test_era5_tiler_skip_existing(era5_like_tile_input, tmp_path):
+    processed_dir, _ = era5_like_tile_input
     tile_out = tmp_path / "tiles"
-    era5_tiler(source_dir=str(era5_like_tile_input), tile_output_dir=str(tile_out), zoom_level=ZOOM)
+    era5_tiler(processed_dir=str(processed_dir), tile_output_dir=str(tile_out), zoom_level=ZOOM)
     tile_file = tile_out / EXPECTED_TILE_DIR / tile_filename(ZOOM, TILE_X, TILE_Y, TILE_YEAR, "100m_wind_speed.processed")
     mtime_before = tile_file.stat().st_mtime
-    era5_tiler(source_dir=str(era5_like_tile_input), tile_output_dir=str(tile_out), zoom_level=ZOOM)
+    era5_tiler(processed_dir=str(processed_dir), tile_output_dir=str(tile_out), zoom_level=ZOOM)
     assert tile_file.stat().st_mtime == mtime_before
 
 
 def test_era5_tiler_no_raw_variables(era5_like_tile_input, tmp_path):
+    processed_dir, _ = era5_like_tile_input
     tile_out = tmp_path / "tiles"
-    era5_tiler(source_dir=str(era5_like_tile_input), tile_output_dir=str(tile_out), zoom_level=ZOOM)
+    era5_tiler(processed_dir=str(processed_dir), tile_output_dir=str(tile_out), zoom_level=ZOOM)
     blh_tile = tile_out / EXPECTED_TILE_DIR / tile_filename(ZOOM, TILE_X, TILE_Y, TILE_YEAR, "boundary_layer_height")
     assert not blh_tile.exists()
