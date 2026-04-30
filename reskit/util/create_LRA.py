@@ -39,7 +39,7 @@ import xarray as xr
 from tqdm.auto import tqdm
 import numpy as np
 import pandas as pd
-import pvlib
+import geokit as gk
 
 LOG = logging.getLogger(__name__)
 
@@ -47,96 +47,6 @@ _HAVE_RIOXARRAY = importlib.util.find_spec("rioxarray") is not None
 
 
 CombineMode = Literal["auto", "merge", "combine_by_coords"]
-
-def getSZA_grid(
-    latitude: np.array, 
-    longitude: np.array,
-    time_index: pd.DatetimeIndex,
-    utc_offset: float = 0
-):
-    """
-    Calculates SZA for a GRID of latitudes and longitudes over time.
-    
-    Inputs:
-        latitude:   1D Array of shape (Y,)
-        longitude:  1D Array of shape (X,)
-        time_index: pd.DatetimeIndex of length T
-        
-    Returns:
-        np.array of shape (T, Y, X) -> (Time, Latitude, Longitude)
-    """
-    # ---------------------------------------------------------
-    # 1. Reshape Inputs for 3D Broadcasting (Time, Lat, Lon)
-    # ---------------------------------------------------------
-    
-    # Time (Axis 0): Shape (T, 1, 1)
-    # Allows broadcasting across both Lat and Lon dimensions
-    doy = time_index.dayofyear.values.reshape(-1, 1, 1)
-    h = time_index.hour.values.reshape(-1, 1, 1)
-    m = time_index.minute.values.reshape(-1, 1, 1)
-    
-    # Latitude (Axis 1): Shape (1, Y, 1)
-    # Broadcasts across Time and Lon
-    lat_rad = np.radians(np.array(latitude)).reshape(1, -1, 1)
-    
-    # Longitude (Axis 2): Shape (1, 1, X)
-    # Broadcasts across Time and Lat
-    lon = np.array(longitude).reshape(1, 1, -1)
-
-    # ---------------------------------------------------------
-    # 2. Time-dependent calculations (Result shape: T, 1, 1)
-    # ---------------------------------------------------------
-    
-    hour_minute = (h + m / 60.0) - utc_offset
-    
-    g = (360 / 365.25) * (doy + hour_minute / 24.0)
-    g_rad = np.radians(g)
-
-    # Solar Declination
-    declination = (0.396372 
-                   - 22.91327 * np.cos(g_rad) 
-                   + 4.02543 * np.sin(g_rad) 
-                   - 0.387205 * np.cos(2 * g_rad) 
-                   + 0.051967 * np.sin(2 * g_rad) 
-                   - 0.154527 * np.cos(3 * g_rad) 
-                   + 0.084798 * np.sin(3 * g_rad))
-    
-    d_rad = np.radians(declination)
-
-    # Equation of Time
-    time_correction = (0.004297 
-                       + 0.107029 * np.cos(g_rad) 
-                       - 1.837877 * np.sin(g_rad) 
-                       - 0.837378 * np.cos(2 * g_rad) 
-                       - 2.340475 * np.sin(2 * g_rad))
-
-    # ---------------------------------------------------------
-    # 3. 3D Space-Time Calculation
-    # ---------------------------------------------------------
-    
-    # SHA Calculation
-    # (T,1,1) + (1,1,X) + (T,1,1) -> Result Shape (T, 1, X)
-    SHA = (hour_minute - 12) * 15 + lon + time_correction
-    SHA_rad = np.radians(SHA)
-
-    # Cosine SZA Calculation
-    # Term 1: sin(lat)*sin(d) 
-    #         Shape: (1, Y, 1) * (T, 1, 1) -> (T, Y, 1)
-    # Term 2: cos(lat)*cos(d)*cos(SHA)
-    #         Shape: (1, Y, 1) * (T, 1, 1) * (T, 1, X) -> (T, Y, X)
-    
-    term1 = np.sin(lat_rad) * np.sin(d_rad)
-    term2 = np.cos(lat_rad) * np.cos(d_rad) * np.cos(SHA_rad)
-    
-    # Adding (T, Y, 1) + (T, Y, X) broadcasts the 1 to X -> (T, Y, X)
-    cos_sza = term1 + term2
-
-    # Clip for arccos safety
-    cos_sza = np.clip(cos_sza, -1.0, 1.0)
-
-    SZA = np.degrees(np.arccos(cos_sza))
-
-    return SZA
 
 def _list_tiled_nc_files(base_path: Path, year: int, variable: str, zoom_level: int) -> list[Path]:
     """List files in the tiled RESKit layout for a given year."""
@@ -306,55 +216,134 @@ def _calculate_DNI(
 
 
 def calc_solar_elevation_angle(times, lats, lons, temps, pressures):
-
     """Calculate solar elevation angle using pvlib's spa module.
-    Inputs:
-    times: pd.DatetimeIndex of shape (T,)
-    lats: np.array of shape (Y,)
-    lons: np.array of shape (X,)
-    temps: temperatures at lats/lons 
-    Returns:
-    np.array of shape (T, Y, X) -> (Time, Latitude, Longitude)
+
+    Parameters
+    ----------
+    times : array-like of datetime64, shape (T,)
+    lats  : np.ndarray, shape (Y,)
+    lons  : np.ndarray, shape (X,)
+    temps : np.ndarray, shape (Y, X)  — surface temperature in °C
+    pressures : np.ndarray, shape (Y, X)  — surface pressure in Pa
+
+    Returns
+    -------
+    np.ndarray, shape (T, Y, X)
     """
     from pvlib import spa
-    import time
-    
-    unixtime = pd.to_datetime(times).astype(np.int64).values // 10**9 # Shape (T,)
-    unixtime = unixtime - 1800  # Subtract 1800 seconds (30 mins)
-    
-    lat_broad = lats[:, np.newaxis, np.newaxis]   # Shape (Y, 1, 1)
-    lon_broad = lons[np.newaxis, :, np.newaxis]   # Shape (1, X, 1)
 
-    temp_broad = temps[:, :, np.newaxis]          # Shape (Y, X, 1)
-    pressures_broad = pressures[:, :, np.newaxis]  # Shape (Y, X, 1)
-    
-    # DEBUG: Verify shapes before running
-    print(f"Time Shape: {unixtime.shape}")
-    print(f"Lat  Shape: {lat_broad.shape}")
-    print(f"Lon  Shape: {lon_broad.shape}")
+    # ERA5 timestamps mark the end of the accumulation period; shift back 30 min
+    # to get the representative solar time for each interval.
+    unixtime = pd.to_datetime(times).astype(np.int64).values // 10**9
+    unixtime = unixtime - 1800
 
-    # --- 3. Run Calculation ---
-    # This results in a shape of (Y, X, T)
-    # because numpy aligns the (1)s on the right with (T)
-    start = time.time()
+    lat_broad       = lats[:, np.newaxis, np.newaxis]   # (Y, 1, 1)
+    lon_broad       = lons[np.newaxis, :, np.newaxis]   # (1, X, 1)
+    temp_broad      = temps[:, :, np.newaxis]            # (Y, X, 1)
+    pressures_broad = pressures[:, :, np.newaxis]        # (Y, X, 1)
+
+    # spa returns shape (Y, X, T); transpose to (T, Y, X)
     spa_tuple = spa.solar_position_numpy(
         unixtime=unixtime,
         lat=lat_broad,
         lon=lon_broad,
         elev=0,
-        pressure=pressures_broad/100,
+        pressure=pressures_broad / 100,  # Pa → hPa
         temp=temp_broad,
         delta_t=67.0,
         atmos_refract=0.5667,
         numthreads=1,
-        sst=False
+        sst=False,
     )
+    return spa_tuple[2].transpose(2, 0, 1)
 
-    elevation_angle = spa_tuple[2].transpose(2, 0, 1)
-    print("Solar elevation angle calculation time:", time.time() - start)
-    print(f"---"*20)
-    
-    return elevation_angle
+def compute_dni_year(
+    base_path: str | Path,
+    year: int,
+    direct_horizontal_irradiance_variable: str,
+    surface_temperature_variable: str,
+    surface_pressure_variable: str,
+    zoom_level: int = 4,
+    combine_mode: CombineMode = "auto",
+) -> xr.Dataset:
+    """Compute time-averaged DNI for a single year, tile by tile.
+
+    Temperature and pressure are loaded as annual means (memory-efficient).
+    Direct horizontal irradiance tiles are streamed one at a time with the full
+    time axis so the solar elevation angle can be computed per timestep before
+    averaging — loading the whole year at once would exceed memory limits.
+    """
+    base_path = Path(base_path)
+
+    surface_temperature_year = load_era5_year(
+        base_path=base_path,
+        year=year,
+        variable=surface_temperature_variable,
+        zoom_level=zoom_level,
+        combine_mode=combine_mode,
+        mean_over_time=True,
+    )
+    data_var_temp = list(surface_temperature_year.data_vars)[0]
+    surface_temperature_year = surface_temperature_year[data_var_temp] - 273.15  # K → °C
+
+    surface_pressure_year = load_era5_year(
+        base_path=base_path,
+        year=year,
+        variable=surface_pressure_variable,
+        zoom_level=zoom_level,
+        combine_mode=combine_mode,
+        mean_over_time=True,
+    )
+    data_var_pres = list(surface_pressure_year.data_vars)[0]
+    surface_pressure_year = surface_pressure_year[data_var_pres]
+
+    def _tile_to_dni(
+        tile_ds: xr.Dataset,
+        temp: xr.DataArray,
+        pressure: xr.DataArray,
+    ) -> xr.DataArray:
+        _temp = temp.sel(latitude=tile_ds["latitude"], longitude=tile_ds["longitude"])
+        _pres = pressure.sel(latitude=tile_ds["latitude"], longitude=tile_ds["longitude"])
+
+        sea = calc_solar_elevation_angle(
+            times=tile_ds["time"].values,
+            lats=tile_ds["latitude"].values,
+            lons=tile_ds["longitude"].values,
+            temps=_temp.values,
+            pressures=_pres.values,
+        )
+        sea_da = xr.DataArray(
+            sea,
+            coords={
+                "time": tile_ds["time"],
+                "latitude": tile_ds["latitude"],
+                "longitude": tile_ds["longitude"],
+            },
+            dims=["time", "latitude", "longitude"],
+        )
+
+        data_var = list(tile_ds.data_vars)[0]
+        dni = _calculate_DNI(
+            solar_elevation_angle=sea_da,
+            direct_horizontal_irradiance=tile_ds[data_var],
+        )
+        dni.attrs.pop("long_name", None)
+        return _mean_over_time(dni)
+
+    all_datasets: list[xr.DataArray] = []
+    tiled_files = _list_tiled_nc_files(base_path, year, direct_horizontal_irradiance_variable, zoom_level)
+
+    if not tiled_files:
+        fp = _find_single_year_nc_file(base_path, year, direct_horizontal_irradiance_variable)
+        with xr.open_dataset(fp) as ds:
+            all_datasets.append(_tile_to_dni(ds, surface_temperature_year, surface_pressure_year))
+    else:
+        for fp in tqdm(tiled_files, desc=f"DNI tiles {year}"):
+            with xr.open_dataset(fp) as ds:
+                all_datasets.append(_tile_to_dni(ds, surface_temperature_year, surface_pressure_year))
+
+    return xr.merge(all_datasets)
+
 
 def create_long_run_average_DNI(
     base_path: str | Path,
@@ -376,146 +365,31 @@ def create_long_run_average_DNI(
     out_dir.mkdir(parents=True, exist_ok=True)
 
     year_range = list(range(start_year, end_year + 1))
-    LOG.info("Computing LRA for %s, years=%s", direct_horizontal_irradiance_variable, year_range)
+    LOG.info("Computing DNI LRA for %s, years=%s", direct_horizontal_irradiance_variable, year_range)
 
     all_years: list[xr.Dataset] = []
     for year in year_range:
         yearly_fp = out_dir / f"{weather_source_prefix}merged_{variable}_{year}.nc"
         if cache_yearly and yearly_fp.exists():
             LOG.info("Using cached yearly merge: %s", yearly_fp)
-            direct_normal_irradiance = xr.open_dataset(yearly_fp)    
-
-        else:   
-            # NOTE: this does not work due to memory issues
-            # direct_horizontal_irradiance_year = load_era5_year(
-            #     base_path=base_path,
-            #     year=year,
-            #     variable=direct_horizontal_irradiance_variable,
-            #     zoom_level=zoom_level,
-            #     combine_mode=combine_mode,
-            #     mean_over_time=False
-            # )
-            
-            surface_temperature_year = load_era5_year(
+            direct_normal_irradiance = xr.open_dataset(yearly_fp)
+        else:
+            direct_normal_irradiance = compute_dni_year(
                 base_path=base_path,
                 year=year,
-                variable=surface_temperature_variable,
+                direct_horizontal_irradiance_variable=direct_horizontal_irradiance_variable,
+                surface_temperature_variable=surface_temperature_variable,
+                surface_pressure_variable=surface_pressure_variable,
                 zoom_level=zoom_level,
                 combine_mode=combine_mode,
-                mean_over_time=True)
-            data_var_temp = list(surface_temperature_year.data_vars)[0]
-            surface_temperature_year = surface_temperature_year[data_var_temp]
-            surface_temperature_year = surface_temperature_year - 273.15 # convert to Degree Celsius
-            
-            surface_pressure_year = load_era5_year(
-                base_path=base_path,
-                year=year,
-                variable=surface_pressure_variable,
-                zoom_level=zoom_level,
-                combine_mode=combine_mode,
-                mean_over_time=True)
-            data_var_pres = list(surface_pressure_year.data_vars)[0]
-            surface_pressure_year = surface_pressure_year[data_var_pres]
-                
-            
-            
-            def _DNI_ds_calculator(
-                direct_horizontal_irradiance_tile: xr.Dataset,
-                surface_temperature_year: xr.DataArray,
-                surface_pressure_year: xr.DataArray,
-            ) -> xr.DataArray:
-                
-                solar_elevation_angle = calc_solar_elevation_angle(
-                    times=direct_horizontal_irradiance_tile['time'].values,
-                    lats=direct_horizontal_irradiance_tile['latitude'].values,
-                    lons=direct_horizontal_irradiance_tile['longitude'].values,
-                    temps=surface_temperature_year.values,
-                    pressures=surface_pressure_year.values
-                    
-                )
-                    
-                solar_elevation_angle_ds = xr.DataArray(
-                    solar_elevation_angle,
-                    coords={
-                        "time": direct_horizontal_irradiance_tile['time'],
-                        "latitude": direct_horizontal_irradiance_tile['latitude'],
-                        "longitude": direct_horizontal_irradiance_tile['longitude'],
-                    },
-                    dims=["time", "latitude", "longitude"]
-                )
-                
-                data_var = list(direct_horizontal_irradiance_tile.data_vars)[0]
-                
-                direct_normal_irradiance = _calculate_DNI(
-                    solar_elevation_angle=solar_elevation_angle_ds,
-                    direct_horizontal_irradiance=direct_horizontal_irradiance_tile[data_var]
-                )
-                
-                # drop long_name from attributes if exists
-                if 'long_name' in direct_normal_irradiance.attrs:
-                    direct_normal_irradiance.attrs.pop('long_name')
-                
-                direct_normal_irradiance = _mean_over_time(direct_normal_irradiance)
-            
-                return direct_normal_irradiance
-            
-            all_datasets: list[xr.Dataset] = []
-            tiled_files = _list_tiled_nc_files(base_path, year, direct_horizontal_irradiance_variable, zoom_level)
-            # remove duplicates
-            if not tiled_files:
-                fp = _find_single_year_nc_file(base_path, year, direct_horizontal_irradiance_variable)
-                with xr.open_dataset(fp) as direct_horizontal_irradiance:
-                    # clip surface_temperature_year to lat/lon bounds of direct_horizontal_irradiance
-                    _surface_temperature_year = surface_temperature_year.sel(
-                        latitude=direct_horizontal_irradiance["latitude"],
-                        longitude=direct_horizontal_irradiance["longitude"]
-                    )
-                    _surface_pressure_year = surface_pressure_year.sel(
-                        latitude=direct_horizontal_irradiance["latitude"],
-                        longitude=direct_horizontal_irradiance["longitude"]
-                    )
-                    
-                    all_datasets.append(_DNI_ds_calculator(direct_horizontal_irradiance, _surface_temperature_year, _surface_pressure_year))
-                
-            else:
-                for fp in tqdm(tiled_files, desc=f"Reading tiles {year}"):
-                    with xr.open_dataset(fp) as direct_horizontal_irradiance:
-                        
-                        
-                        # clip surface_temperature_year to lat/lon bounds of direct_horizontal_irradiance
-                        _surface_temperature_year = surface_temperature_year.sel(
-                            latitude=direct_horizontal_irradiance["latitude"],
-                            longitude=direct_horizontal_irradiance["longitude"]
-                        )
-                        _surface_pressure_year = surface_pressure_year.sel(
-                            latitude=direct_horizontal_irradiance["latitude"],
-                            longitude=direct_horizontal_irradiance["longitude"]
-                        )
-
-                            
-                        all_datasets.append(_DNI_ds_calculator(direct_horizontal_irradiance, _surface_temperature_year, _surface_pressure_year))
-
-
-            direct_normal_irradiance = xr.merge(all_datasets)#, compat="override")
-
-            # From this, calculate Direct Normal Irradiance (DNI)
-            # solar_zenith_angle = getSZA_grid(
-            #     latitude=direct_horizontal_irradiance_year['latitude'].values,
-            #     longitude=direct_horizontal_irradiance_year['longitude'].values,
-            #     time_index=direct_horizontal_irradiance_year['time'].to_index(),
-            #     utc_offset=0
-            # )
-                        
+            )
             if cache_yearly:
                 direct_normal_irradiance.to_netcdf(yearly_fp)
-        
+
         direct_normal_irradiance = direct_normal_irradiance.assign_coords(year=year).expand_dims("year")
-        
         all_years.append(direct_normal_irradiance)
 
-    DNI_LRA = xr.concat(all_years, dim="year").mean(dim="year", keep_attrs=True)
-    
-    return DNI_LRA
+    return xr.concat(all_years, dim="year").mean(dim="year", keep_attrs=True)
 
 def pick_data_var(ds: xr.Dataset, data_var: Optional[str] = None) -> xr.DataArray:
     if data_var is not None:
@@ -787,7 +661,6 @@ def create_DNI_LRA(
     out_dir: str | Path = Path("output"),
     cache_yearly: bool = True,
     combine_mode: CombineMode = "auto",
-    data_var: Optional[str] = None,
     variable_name_output: Optional[str] = None,
     write_geotiff: bool = True,
     write_netcdf: bool = False,
@@ -841,6 +714,326 @@ def create_DNI_LRA(
         write_geotiff_file(dni_lra, tiff_fp)
         LOG.info("Wrote DNI LRA GeoTIFF: %s", tiff_fp)
     return dni_lra
+
+
+# main idea: generate a 3x3 array of the raster data 
+# interpolate between the outmost data cell and the first data cell "on the othe side of the world"
+# "polar wrap" the top and bottom rows (mirror and center on antimeridian) so that interpolation can cross the poles correctly
+# the interpolate missing data in the 3x3 array
+# last clip to the bounds of interest
+
+def world_3x3_wrap(arr_center: np.ndarray, rInfo : object):
+    """
+    Build a 3x3 tiled array with correct pole-wrap and (optionally) return mosaic bounds.
+    All maps are arranged such that they align with the antimeridian as center column,
+    slight mismatches by resolution/bounds shift are accounted for.
+    Missing cells to the +/-180°  longitude and +/-90° latitude bounds are set to NaN.
+    Center map cells overwride other data as long as not NaN.
+
+    Inputs
+    ------
+    arr_center : np.ndarray
+        array of raster data for the center tile.
+    rInfo : object
+        Raster info object with attributes:
+        - pixelWidth : float
+        - pixelHeight : float
+        - bounds : tuple of (xmin, ymin, xmax, ymax)
+
+    Returns
+    -------
+    arr_3x3 : (3H, 3W) ndarray
+    bounds_3x3 : (xmin, ymin, xmax, ymax) 
+        Outer-edge bounds of the returned 3x3 array, consistent with the padded grid
+        (including any extra/excess cells induced by the shift/resolution).
+    """
+    xmin, ymin, xmax, ymax = rInfo.bounds
+    nrows_c, ncols_c = arr_center.shape
+
+    # Pixel-center coordinates for arr_center (assuming bounds are OUTER EDGES)
+    x0 = xmin + rInfo.pixelWidth / 2.0
+    y0 = ymax - rInfo.pixelHeight / 2.0
+    dy = -rInfo.pixelHeight  # north-up (row index increases southward)
+
+    # Choose nearest achievable world pixel-center indices to +/-180 and +/-90
+    i_left  = int(np.rint((-180.0 - x0) / rInfo.pixelWidth))
+    i_right = int(np.rint(( 180.0 - x0) / rInfo.pixelWidth))
+    if i_right < i_left:
+        i_left, i_right = i_right, i_left
+
+    j_top    = int(np.rint(( 90.0 - y0) / dy))
+    j_bottom = int(np.rint((-90.0 - y0) / dy))
+    if j_bottom < j_top:
+        j_top, j_bottom = j_bottom, j_top
+
+    world_cols = i_right - i_left + 1
+    world_rows = j_bottom - j_top + 1
+
+    # Pixel-center coordinate of world tile top-left cell
+    x_world0 = x0 + i_left * rInfo.pixelWidth
+    y_world0 = y0 + j_top * dy
+
+    # Embed center into padded world tile
+    padded_center = np.full((world_rows, world_cols), np.nan, dtype=arr_center.dtype)
+
+    col0 = int(np.rint((x0 - x_world0) / rInfo.pixelWidth))
+    row0 = int(np.rint((y0 - y_world0) / dy))
+
+    r1, c1 = row0, col0
+    r2, c2 = r1 + nrows_c, c1 + ncols_c
+
+    rr1, cc1 = max(r1, 0), max(c1, 0)
+    rr2, cc2 = min(r2, world_rows), min(c2, world_cols)
+
+    if rr1 < rr2 and cc1 < cc2:
+        src_r1 = rr1 - r1
+        src_c1 = cc1 - c1
+        src_r2 = src_r1 + (rr2 - rr1)
+        src_c2 = src_c1 + (cc2 - cc1)
+        padded_center[rr1:rr2, cc1:cc2] = arr_center[src_r1:src_r2, src_c1:src_c2]
+
+    H, W = padded_center.shape
+    half_shift = W // 2  # discrete "180°" in index space for this padded tile
+
+    # Correct pole-wrap tile: lat reflection + lon reversal + antimeridian shift
+    pole_tile = np.roll(np.fliplr(np.flipud(padded_center)), half_shift, axis=1)
+
+    # Compose 3x3 mosaic
+    out = np.full((3 * H, 3 * W), np.nan, dtype=arr_center.dtype)
+
+    def write_tile(dst, tile, top, left):
+        sub = dst[top:top + H, left:left + W]
+        m = ~np.isnan(tile)
+        sub[m] = tile[m]
+
+    # Non-center tiles first
+    write_tile(out, padded_center, H, 0)       # middle-left
+    write_tile(out, padded_center, H, 2 * W)   # middle-right
+
+    write_tile(out, pole_tile, 0, 0)           # top-left
+    write_tile(out, pole_tile, 0, W)           # top-center
+    write_tile(out, pole_tile, 0, 2 * W)       # top-right
+
+    write_tile(out, pole_tile, 2 * H, 0)       # bottom-left
+    write_tile(out, pole_tile, 2 * H, W)       # bottom-center
+    write_tile(out, pole_tile, 2 * H, 2 * W)   # bottom-right
+
+    # Center last so it wins where both have data
+    write_tile(out, padded_center, H, W)
+
+    # ---- Bounds for the 3x3 mosaic (outer edges) ----
+    # Bounds for single padded world tile (padded_center)
+    tile_xmin = x_world0 - rInfo.pixelWidth / 2.0
+    tile_xmax = x_world0 + (W - 1) * rInfo.pixelWidth + rInfo.pixelWidth / 2.0
+    tile_ymax = y_world0 + rInfo.pixelHeight / 2.0
+    tile_ymin = y_world0 + (H - 1) * dy - rInfo.pixelHeight / 2.0  # dy < 0
+
+    # Each additional tile shifts by exactly W columns and H rows in index space
+    tile_width_deg  = W * rInfo.pixelWidth
+    tile_height_deg = H * rInfo.pixelHeight
+
+    mosaic_xmin = tile_xmin - tile_width_deg
+    mosaic_xmax = tile_xmax + tile_width_deg
+    mosaic_ymax = tile_ymax + tile_height_deg
+    mosaic_ymin = tile_ymin - tile_height_deg
+
+    bounds_3x3 = (mosaic_xmin, mosaic_ymin, mosaic_xmax, mosaic_ymax)
+    return out, bounds_3x3
+
+
+def interp_vertical_1d(arr3x3: np.ndarray, *, max_gap: int | None = None) -> np.ndarray:
+    """
+    Fill NaNs by 1D linear interpolation along the vertical axis for each column.
+
+    Rules
+    -----
+    - Only fills NaNs that lie strictly between two valid samples in the same column.
+    - Leaves leading/trailing NaNs untouched (not bracketed).
+    - Optionally limits filling to gaps of length <= max_gap.
+
+    Parameters
+    ----------
+    arr3x3 : 2D ndarray
+    max_gap : int or None
+        If set, only fill NaN runs up to this length (in rows). Larger gaps remain NaN.
+
+    Returns
+    -------
+    out : 2D ndarray
+    """
+    if arr3x3.ndim != 2:
+        raise ValueError("arr3x3 must be 2D")
+
+    out = arr3x3.astype(float, copy=True)
+    nrows, ncols = out.shape
+    x = np.arange(nrows)
+
+    for c in range(ncols):
+        col = out[:, c]
+        nan = np.isnan(col)
+        if not nan.any():
+            continue
+
+        valid_idx = np.flatnonzero(~nan)
+        if valid_idx.size < 2:
+            continue  # cannot bracket anything
+
+        # Candidate fill indices: NaNs between first and last valid
+        fill_idx = np.flatnonzero(nan & (x > valid_idx[0]) & (x < valid_idx[-1]))
+        if fill_idx.size == 0:
+            continue
+
+        # If max_gap is set, exclude fill indices that belong to too-long NaN runs
+        if max_gap is not None:
+            # Find NaN runs in this column
+            nan_idx = np.flatnonzero(nan)
+            # Split into contiguous runs
+            splits = np.where(np.diff(nan_idx) != 1)[0] + 1
+            runs = np.split(nan_idx, splits)
+            allowed = np.zeros_like(nan, dtype=bool)
+            for run in runs:
+                if run.size <= max_gap:
+                    allowed[run] = True
+            fill_idx = fill_idx[allowed[fill_idx]]
+            if fill_idx.size == 0:
+                continue
+
+        out[fill_idx, c] = np.interp(fill_idx, valid_idx, col[valid_idx])
+
+    return out
+
+
+def _snap_to_grid(value, origin, res, mode="round"):
+    """
+    Snap 'value' to the grid defined by origin + k*res.
+    mode: 'round'|'floor'|'ceil'
+    """
+    k = (value - origin) / res
+    if mode == "round":
+        kk = np.round(k)
+    elif mode == "floor":
+        kk = np.floor(k)
+    elif mode == "ceil":
+        kk = np.ceil(k)
+    else:
+        raise ValueError("mode must be one of: round, floor, ceil")
+    return origin + kk * res
+
+
+def extract_bbox_from_mosaic(mosaic, *, bounds_3x3, pixel_width, pixel_height, bbox, snap_edges=True):
+    """
+    Cut out a bbox (xmin,ymin,xmax,ymax) from the mosaic.
+
+    Assumptions:
+      - north-up grid: row 0 is at ymax, increasing rows go south
+      - pixel_height is positive
+
+    If snap_edges=True, bbox edges are snapped to the pixel grid of the mosaic.
+    """
+    mxmin, mymin, mxmax, mymax = bounds_3x3
+    bxmin, bymin, bxmax, bymax = bbox
+
+    if snap_edges:
+        # snap x edges to grid anchored at mxmin
+        bxmin = _snap_to_grid(bxmin, mxmin, pixel_width, mode="round")
+        bxmax = _snap_to_grid(bxmax, mxmin, pixel_width, mode="round")
+        # snap y edges to grid anchored at mymax (top edge), moving down by pixel_height
+        # so y = mymax - r*pixel_height  => r = (mymax - y)/pixel_height
+        bymin = _snap_to_grid(bymin, mymax, -pixel_height, mode="round")  # negative step in y
+        bymax = _snap_to_grid(bymax, mymax, -pixel_height, mode="round")
+
+    # Ensure proper ordering
+    if bxmax <= bxmin or bymax <= bymin:
+        raise ValueError("Invalid bbox after snapping: must satisfy xmax>xmin and ymax>ymin")
+
+    # Convert bbox to pixel indices in mosaic
+    # cols: x = mxmin + c*pw at left edge of pixel c
+    c0 = int(round((bxmin - mxmin) / pixel_width))
+    c1 = int(round((bxmax - mxmin) / pixel_width))
+
+    # rows: y = mymax - r*ph at top edge of pixel r
+    r0 = int(round((mymax - bymax) / pixel_height))  # bymax is the top of requested bbox
+    r1 = int(round((mymax - bymin) / pixel_height))  # bymin is the bottom
+
+    # Slice (note: Python slicing excludes end)
+    cut = mosaic[r0:r1, c0:c1]
+
+    cut_bounds = (bxmin, bymin, bxmax, bymax)
+    return cut, cut_bounds
+
+def expand_to_global_coverage(
+        rstr : str, 
+        target_bounds : tuple, 
+        as_array: bool = True,
+        output_path: str | None = None,
+        ) -> np.ndarray:
+    """
+    Expands a near global raster to full global coverage by interpolating edge 
+    cells across the antimeridian/poles
+
+    Parameters
+    ----------
+    rstr : str
+        Path to the raster file that shall be expanded.
+    target_bounds : tuple
+        (xmin, ymin, xmax, ymax) bounds of the output raster. Must align with 
+        the input bounds plus/minus an integer number of pixels.
+    as_array : bool, optional
+        If True, the data will be returned as array, if False, a raster will be 
+        written to disk, then the output_path must be given, by default True.
+    output_path : str | None, optional
+        Path to write the output raster if as_array is False, by default None.
+
+    Returns
+    -------
+    np.ndarray
+        _description_
+
+    Raises
+    ------
+    ValueError
+        _description_
+    """
+    # first get the numpy data array and the raster info
+    arr = gk.raster.extractMatrix(rstr)
+    rInfo = gk.raster.rasterInfo(rstr)
+    if not (rInfo.bounds[0] <= -180.0 and rInfo.bounds[2] >= 180.0):
+        # if this is needed, the interpolation function needs to be expanded
+        raise ValueError(f"Current version of this function allows only latitudinal expansion, the input raster does not extend over the full longitude range. Raster bounds are: {rInfo.bounds}")
+
+    # then arrange it into a special 3x3 array that wraps around the globe correctly
+    arr3x3, bounds3x3 = world_3x3_wrap(rInfo=rInfo, arr_center=arr)
+    
+    # interpolate missing data in the 3x3 array
+    arr3x3_interp = interp_vertical_1d(arr3x3=arr3x3, max_gap=None)
+
+    # now clip it to the bounds of interest, enforce matching the pixel grid
+    arr_out, bounds_out = extract_bbox_from_mosaic(
+        arr3x3_interp,
+        bounds_3x3=bounds3x3,
+        pixel_width=rInfo.pixelWidth,
+        pixel_height=rInfo.pixelHeight,
+        bbox=target_bounds,
+        snap_edges=True, # snap bounding box edges to pixel grid
+    )
+    assert bounds_out == target_bounds # sanity check
+
+    if as_array:
+        return arr_out  
+    else:
+        # write to disk
+        output_path = gk.raster.createRaster(
+            data=arr_out,
+            bounds=target_bounds,
+            pixelWidth=rInfo.pixelWidth,
+            pixelHeight=rInfo.pixelHeight,
+            output=output_path,
+            srs=rInfo.srs,
+            dtype=rInfo.dtype,
+        )
+        return output_path
+
+
 
 def main(argv: Optional[Iterable[str]] = None) -> int:
     args = build_arg_parser().parse_args(list(argv) if argv is not None else None)
