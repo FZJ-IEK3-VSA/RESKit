@@ -372,27 +372,23 @@ def getSpecificOffshoreConnectionCost(
     def _getTotalSpecificConnectionCost(_voltageType):
         """Connection cost consists of 3 elements: onshore and offshore converter + cable"""
         assert _voltageType in ["ac", "dc"]
-        # get specific onshore converter cost first
-        convertercost_onshore_baseWFSize = getSpecificConverterStationCost(
-            capacity=baseWFSize,
+        # get specific onshore converter cost
+        convertercost_onshore = getSpecificConverterStationCost(
+            capacity=capacity,
             waterDepth=None,
             voltageType=_voltageType,
             portDistance=0,  # onshore
             maxJacketDepthPlatform=maxJacketDepthPlatform,
         )
-        convertercost_onshore = (
-            convertercost_onshore_baseWFSize * capacity / baseWFSize
-        )  # scale linearly to the actual size
 
-        # then specific offshore converter cost
-        convertercost_offshore_baseWFSize = getSpecificConverterStationCost(
-            capacity=baseWFSize,
+        # get specific offshore converter cost
+        convertercost_offshore = getSpecificConverterStationCost(
+            capacity=capacity,
             waterDepth=waterDepth,
             voltageType=_voltageType,
             portDistance=portDistance,
             maxJacketDepthPlatform=maxJacketDepthPlatform,
         )
-        convertercost_offshore = convertercost_offshore_baseWFSize * capacity / baseWFSize  # scale to actual size again
 
         # last specific cable cost
         cableCost = getSpecificOffshoreCableCost(
@@ -924,7 +920,7 @@ def getSpecificConverterStationCost(
 
         print(f"total Cost Substation: {ECPS}, specific Cost Substation: {specECPS}, voltageType: {voltageType}")
 
-        if waterDepth is None:
+o        if waterDepth is None:
             # an onshore station, no additional platform cost
             specECPF = np.zeros_like(capacity, dtype=float)
         else:
