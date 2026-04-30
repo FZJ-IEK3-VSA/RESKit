@@ -220,7 +220,7 @@ def onshore_wind_merra_ryberg2019_europe(
 
     wf.adjust_variable_to_long_run_average(
         variable="elevated_wind_speed",
-        source_long_run_average=rk_weather.MerraSource.LONG_RUN_AVERAGE_WINDSPEED,
+        source_long_run_average=rk_weather.MerraSource.LONG_RUN_AVERAGE_WINDSPEED_LEGACY,
         real_long_run_average=gwa_50m_path,
     )
 

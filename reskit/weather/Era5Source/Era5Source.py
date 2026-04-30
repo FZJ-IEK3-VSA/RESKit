@@ -80,17 +80,19 @@ class Era5Source(NCSource):
     ELEVATED_WIND_SPEED_HEIGHT = 100
     SURFACE_WIND_SPEED_HEIGHT = 10
 
-    LONG_RUN_AVERAGE_WINDSPEED = join(dirname(__file__), "data", "ERA5_wind_speed_100m_mean.tiff")
-    LONG_RUN_AVERAGE_WINDSPEED_2008TO2017 = join(dirname(__file__), "data", "ERA5_wind_speed_100m_mean_2008to2017.tiff")
-    LONG_RUN_AVERAGE_WINDDIR = join(dirname(__file__), "data", "ERA5_wind_direction_100m_mean.tiff")
-    LONG_RUN_AVERAGE_GHI = join(dirname(__file__), "data", "ERA5_surface_solar_radiation_downwards_mean.tiff")
-    LONG_RUN_AVERAGE_DNI_archive = join(
-        dirname(__file__),
-        "data",
-        "ERA5_total_sky_direct_solar_radiation_at_surface_mean.tiff",
-    )
-    LONG_RUN_AVERAGE_DNI = join(dirname(__file__), "data", "ERA5_DNI_mean.tif")
+    LONG_RUN_AVERAGE_WINDSPEED_LEGACY = join(dirname(__file__), "data", "ERA5_wind_speed_100m_mean.tiff")
+    # LONG_RUN_AVERAGE_WINDSPEED_2008TO2017 = join(dirname(__file__), "data", "ERA5_wind_speed_100m_mean_2008to2017.tiff")
+    LONG_RUN_AVERAGE_WINDDIR_LEGACY = join(dirname(__file__), "data", "ERA5_wind_direction_100m_mean.tiff")
+    LONG_RUN_AVERAGE_GHI_LEGACY = join(dirname(__file__), "data", "ERA5_surface_solar_radiation_downwards_mean.tiff")
+    LONG_RUN_AVERAGE_DNI_LEGACY = join(dirname(__file__), "data", "ERA5_DNI_mean.tif")
+
     DNI_90_PERC_QUANT = join(dirname(__file__), "data", "ERA5_DNI_percentile_90_2000_to_2020.tif")
+
+    # These were created with create_DNI_LRA and create_LRA
+    LONG_RUN_AVERAGE_WINDSPEED_2008TO2017 = join(dirname(__file__), "data", "ERA5_100m_wind_speed.processed_2008_2017_mean.tiff")
+    LONG_RUN_AVERAGE_WINDDIR = join(dirname(__file__), "data", "ERA5_100m_wind_direction.processed_2008_2017_mean.tiff")
+    LONG_RUN_AVERAGE_GHI = join(dirname(__file__), "data", "ERA5_surface_solar_radiation_downwards.processed.t_adjusted_1994_2018_mean.tiff")
+    LONG_RUN_AVERAGE_DNI = join(dirname(__file__), "data", "ERA5_DNI_1994_2018_mean.tiff")
 
     MAX_LON_DIFFERENCE = 0.26
     MAX_LAT_DIFFERENCE = 0.26
