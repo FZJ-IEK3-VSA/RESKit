@@ -53,7 +53,9 @@ def test_era5_tiler_ws100_filename(era5_like_tile_input, tmp_path):
     processed_dir, _ = era5_like_tile_input
     tile_out = tmp_path / "tiles"
     era5_tiler(processed_dir=str(processed_dir), tile_output_dir=str(tile_out), zoom_level=ZOOM)
-    expected = tile_out / EXPECTED_TILE_DIR / tile_filename(ZOOM, TILE_X, TILE_Y, TILE_YEAR, "100m_wind_speed.processed")
+    expected = (
+        tile_out / EXPECTED_TILE_DIR / tile_filename(ZOOM, TILE_X, TILE_Y, TILE_YEAR, "100m_wind_speed.processed")
+    )
     assert expected.exists(), f"Expected tile file not found: {expected}"
 
 
@@ -75,7 +77,9 @@ def test_era5_tiler_output_contains_correct_variable(era5_like_tile_input, tmp_p
     processed_dir, _ = era5_like_tile_input
     tile_out = tmp_path / "tiles"
     era5_tiler(processed_dir=str(processed_dir), tile_output_dir=str(tile_out), zoom_level=ZOOM)
-    tile_file = tile_out / EXPECTED_TILE_DIR / tile_filename(ZOOM, TILE_X, TILE_Y, TILE_YEAR, "100m_wind_speed.processed")
+    tile_file = (
+        tile_out / EXPECTED_TILE_DIR / tile_filename(ZOOM, TILE_X, TILE_Y, TILE_YEAR, "100m_wind_speed.processed")
+    )
     with nc4.Dataset(str(tile_file)) as ds:
         assert "ws100" in ds.variables
 
@@ -84,7 +88,9 @@ def test_era5_tiler_skip_existing(era5_like_tile_input, tmp_path):
     processed_dir, _ = era5_like_tile_input
     tile_out = tmp_path / "tiles"
     era5_tiler(processed_dir=str(processed_dir), tile_output_dir=str(tile_out), zoom_level=ZOOM)
-    tile_file = tile_out / EXPECTED_TILE_DIR / tile_filename(ZOOM, TILE_X, TILE_Y, TILE_YEAR, "100m_wind_speed.processed")
+    tile_file = (
+        tile_out / EXPECTED_TILE_DIR / tile_filename(ZOOM, TILE_X, TILE_Y, TILE_YEAR, "100m_wind_speed.processed")
+    )
     mtime_before = tile_file.stat().st_mtime
     era5_tiler(processed_dir=str(processed_dir), tile_output_dir=str(tile_out), zoom_level=ZOOM)
     assert tile_file.stat().st_mtime == mtime_before

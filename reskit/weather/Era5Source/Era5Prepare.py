@@ -18,6 +18,7 @@ def _nc_file_has_vars(cdo, nc_path, required_vars):
     except Exception:
         return False
 
+
 """
 Running this module will automatically download ERA5 data from CDS for the specified date range and boundary box,
 and preprocess the data to adjust solar radiation variables and compute wind speed variables.
@@ -260,10 +261,7 @@ def era5_tiler(
 
     if raw_nc and raw_variables:
         vars_in_raw = set(cdo.showname(input=raw_nc)[0].split())
-        vars_to_tile = [
-            v for v in raw_variables
-            if v in vars_in_raw and v in _ERA5_NC_TO_TILE_LABEL
-        ]
+        vars_to_tile = [v for v in raw_variables if v in vars_in_raw and v in _ERA5_NC_TO_TILE_LABEL]
         if vars_to_tile:
             file_var_pairs.append((raw_nc, vars_to_tile))
 
@@ -285,9 +283,7 @@ def era5_tiler(
                 lon_west, lon_east, lat_south, lat_north = extent.xXyY
 
                 for year in years:
-                    target_dir = os.path.join(
-                        tile_output_dir, str(zoom_level), str(xi), str(yi), str(year)
-                    )
+                    target_dir = os.path.join(tile_output_dir, str(zoom_level), str(xi), str(yi), str(year))
                     os.makedirs(target_dir, exist_ok=True)
 
                     for var in variables:
@@ -345,10 +341,7 @@ def prepare_era5(
         boundary_box["east"],
     )
 
-    bbox_tag = (
-        f"N{boundary_box['north']}_S{boundary_box['south']}"
-        f"_W{boundary_box['west']}_E{boundary_box['east']}"
-    )
+    bbox_tag = f"N{boundary_box['north']}_S{boundary_box['south']}_W{boundary_box['west']}_E{boundary_box['east']}"
     output_file = os.path.join(
         raw_dir,
         f"{era5_dataset}_{dates[0].strftime('%Y%m')}-{dates[-1].strftime('%Y%m')}_{bbox_tag}_raw.nc",

@@ -43,14 +43,19 @@ def _raw_variables_for_workflow(workflow: str) -> list:
     return [
         _era5_cds_to_nc_name[cds_name]
         for cds_name in era5_cds_names
-        if cds_name in _era5_cds_to_nc_name
-        and _era5_cds_to_nc_name[cds_name] not in _era5_preprocessed_nc_names
+        if cds_name in _era5_cds_to_nc_name and _era5_cds_to_nc_name[cds_name] not in _era5_preprocessed_nc_names
     ]
 
 
 def download_and_process(
-    workflow, start_date, end_date, boundary_box, output_dir,
-    tiling=False, zoom_level=4, tile_output_dir=None,
+    workflow,
+    start_date,
+    end_date,
+    boundary_box,
+    output_dir,
+    tiling=False,
+    zoom_level=4,
+    tile_output_dir=None,
 ):
     if workflow == "wind_era5_PenaSanchezDunkelWinklerEtAl2025":
         _tile_out = tile_output_dir or os.path.join(output_dir, "tiles")
