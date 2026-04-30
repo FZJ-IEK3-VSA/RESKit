@@ -1,9 +1,18 @@
 import os
 import shutil
 import netCDF4 as nc4
+import numpy as np
 import pytest
 from reskit import TEST_DATA
-from reskit.weather.Era5Source.Era5Prepare import era5_tiler, _ERA5_NC_TO_TILE_LABEL
+from reskit.weather.Era5Source.Era5Prepare import (
+    _ERA5_NC_TO_TILE_LABEL,
+    _align_longitudes_to_source_convention,
+    _get_source_lon_boxes,
+    _iter_tile_x_indices,
+    _normalize_lon,
+    _split_lon_boxes,
+    era5_tiler,
+)
 
 # era5-like test data: lat=[49,52], lon=[5,7.5], year=2015
 # At zoom 4, this falls entirely within tile (x=8, y=5)
@@ -102,3 +111,44 @@ def test_era5_tiler_no_raw_variables(era5_like_tile_input, tmp_path):
     era5_tiler(processed_dir=str(processed_dir), tile_output_dir=str(tile_out), zoom_level=ZOOM)
     blh_tile = tile_out / EXPECTED_TILE_DIR / tile_filename(ZOOM, TILE_X, TILE_Y, TILE_YEAR, "boundary_layer_height")
     assert not blh_tile.exists()
+
+
+def test_normalize_lon_wraps_out_of_range_values():
+    assert _normalize_lon(-182.0) == pytest.approx(178.0)
+    assert _normalize_lon(181.0) == pytest.approx(-179.0)
+    assert _normalize_lon(180.0) == pytest.approx(180.0)
+
+
+def test_iter_tile_x_indices_wraps_across_antimeridian():
+    assert _iter_tile_x_indices(zoom_level=4, lon_west=-182.0, lon_east=-156.0) == [15, 0, 1]
+
+
+def test_split_lon_boxes_splits_wrapped_interval():
+    assert _split_lon_boxes(lon_west=-181.8, lon_east=-155.5) == pytest.approx([(178.2, 180.0), (-180.0, -155.5)])
+    assert _split_lon_boxes(lon_west=156.0, lon_east=181.0) == pytest.approx([(156.0, 180.0), (-180.0, -179.0)])
+
+
+def test_get_source_lon_boxes_keeps_extended_negative_longitudes():
+    assert _get_source_lon_boxes(
+        lon_west=178.0,
+        lon_east=-155.5,
+        source_lon_min=-181.75,
+        source_lon_max=-155.5,
+    ) == pytest.approx([(-182.0, -155.5)])
+
+
+def test_align_longitudes_to_source_convention_shifts_positive_tile_axis(tmp_path):
+    tile_file = tmp_path / "tile.nc"
+    with nc4.Dataset(tile_file, "w") as ds:
+        ds.createDimension("longitude", 3)
+        lon_var = ds.createVariable("longitude", "f4", ("longitude",))
+        lon_var[:] = np.array([178.0, 191.0, 204.0], dtype=np.float32)
+
+    _align_longitudes_to_source_convention(
+        target_file=str(tile_file),
+        source_lon_min=-182.0,
+        source_lon_max=-156.0,
+    )
+
+    with nc4.Dataset(tile_file) as ds:
+        assert ds.variables["longitude"][:].tolist() == pytest.approx([-182.0, -169.0, -156.0])

@@ -1,4 +1,5 @@
 import os
+import tempfile
 import cdsapi
 import geokit as gk
 import netCDF4 as nc4
@@ -69,6 +70,138 @@ _ERA5_NC_TO_TILE_LABEL = {
     "u100": "100m_u_component_of_wind",
     "v100": "100m_v_component_of_wind",
 }
+
+
+def _normalize_lon(lon: float) -> float:
+    """Wrap a longitude into the [-180, 180] interval."""
+    lon = float(lon)
+    wrapped = ((lon + 180.0) % 360.0) - 180.0
+    # Preserve +180 for positive inputs so padded edge tiles can be represented cleanly.
+    if wrapped == -180.0 and lon > 0:
+        return 180.0
+    return wrapped
+
+
+def _tile_lookup_lon(lon: float) -> float:
+    """Return a normalized longitude safe for slippy-tile index lookup."""
+    wrapped = _normalize_lon(lon)
+    # deg2num-style tile conversion treats exactly +180 as the next tile column.
+    return wrapped if wrapped < 180.0 else 180.0 - 1e-9
+
+
+def _iter_tile_x_indices(zoom_level: int, lon_west: float, lon_east: float) -> list[int]:
+    """Return tile X indices covered by a lon span, including antimeridian wraps."""
+    west = _tile_lookup_lon(lon_west)
+    east = _tile_lookup_lon(lon_east)
+    x_west, _ = get_tile_XY(zoom_level, lon=west, lat=0.0)
+    x_east, _ = get_tile_XY(zoom_level, lon=east, lat=0.0)
+
+    if _normalize_lon(lon_west) <= _normalize_lon(lon_east):
+        return list(range(x_west, x_east + 1))
+
+    n_tiles = 2**zoom_level
+    return list(range(x_west, n_tiles)) + list(range(0, x_east + 1))
+
+
+def _split_lon_boxes(lon_west: float, lon_east: float) -> list[tuple[float, float]]:
+    """Split a lon interval into one or two non-wrapping boxes in [-180, 180]."""
+    lon_west = float(lon_west)
+    lon_east = float(lon_east)
+
+    if lon_east - lon_west >= 360.0:
+        return [(-180.0, 180.0)]
+
+    if -180.0 <= lon_west <= 180.0 and -180.0 <= lon_east <= 180.0 and lon_west <= lon_east:
+        return [(lon_west, lon_east)]
+
+    west = _normalize_lon(lon_west)
+    east = _normalize_lon(lon_east)
+    if west <= east:
+        return [(west, east)]
+
+    return [(west, 180.0), (-180.0, east)]
+
+
+def _shift_lon_to_dataset_window(lon: float, lon_min: float, lon_max: float) -> float:
+    """Shift a longitude by +/-360 to match the source dataset's longitude convention."""
+    candidates = (float(lon) - 360.0, float(lon), float(lon) + 360.0)
+    midpoint = 0.5 * (float(lon_min) + float(lon_max))
+    return min(candidates, key=lambda candidate: abs(candidate - midpoint))
+
+
+def _get_source_lon_boxes(
+    lon_west: float,
+    lon_east: float,
+    source_lon_min: float,
+    source_lon_max: float,
+) -> list[tuple[float, float]]:
+    """Return extraction lon boxes aligned to the source file's longitude convention."""
+    if source_lon_min < -180.0 or source_lon_max > 180.0:
+        west = _shift_lon_to_dataset_window(lon_west, source_lon_min, source_lon_max)
+        east = _shift_lon_to_dataset_window(lon_east, source_lon_min, source_lon_max)
+        if west <= east:
+            return [(west, east)]
+
+    return _split_lon_boxes(lon_west=lon_west, lon_east=lon_east)
+
+
+def _align_longitudes_to_source_convention(target_file: str, source_lon_min: float, source_lon_max: float) -> None:
+    """Shift written tile longitudes by +/-360 so they match the source file convention."""
+    if not (source_lon_min < -180.0 or source_lon_max > 180.0):
+        return
+
+    with nc4.Dataset(target_file, "r+") as ds:
+        lon_var = ds.variables.get("longitude")
+        if lon_var is None:
+            return
+
+        lon_values = lon_var[:]
+        if lon_values.size == 0:
+            return
+
+        source_midpoint = 0.5 * (float(source_lon_min) + float(source_lon_max))
+        lon_midpoint = 0.5 * (float(lon_values[0]) + float(lon_values[-1]))
+        shift = min((-360.0, 0.0, 360.0), key=lambda delta: abs((lon_midpoint + delta) - source_midpoint))
+        if shift != 0.0:
+            lon_var[:] = lon_values + shift
+
+
+def _tile_variable_to_file(
+    cdo: Cdo,
+    source_file: str,
+    var: str,
+    year: str,
+    lat_south: float,
+    lat_north: float,
+    lon_boxes: list[tuple[float, float]],
+    target_file: str,
+    source_lon_min: float,
+    source_lon_max: float,
+) -> None:
+    """Extract one variable/year tile, merging antimeridian-split lon boxes when needed."""
+
+    def _subset_input(lon_west: float, lon_east: float) -> str:
+        return (
+            f"-selname,{var} "
+            f"-selyear,{year} "
+            f"-sellonlatbox,{lon_west},{lon_east},{lat_south},{lat_north} "
+            f"{source_file}"
+        )
+
+    if len(lon_boxes) == 1:
+        lon_west, lon_east = lon_boxes[0]
+        cdo.copy(input=_subset_input(lon_west, lon_east), output=target_file)
+        _align_longitudes_to_source_convention(target_file, source_lon_min, source_lon_max)
+        return
+
+    with tempfile.TemporaryDirectory(dir=os.path.dirname(target_file)) as tmp_dir:
+        tmp_files = []
+        for idx, (lon_west, lon_east) in enumerate(lon_boxes):
+            tmp_file = os.path.join(tmp_dir, f"tile_part_{idx}.nc")
+            cdo.copy(input=_subset_input(lon_west, lon_east), output=tmp_file)
+            tmp_files.append(tmp_file)
+        cdo.mergegrid(input=" ".join(tmp_files), output=target_file)
+    _align_longitudes_to_source_convention(target_file, source_lon_min, source_lon_max)
 
 
 def era5_downloader(
@@ -274,13 +407,20 @@ def era5_tiler(
         years = cdo.showyear(input=source_file)[0].split()
 
         # NW corner → SE corner (tile Y increases southward)
-        xi_nw, yi_nw = get_tile_XY(zoom_level, lon=lon_min, lat=lat_max)
-        xi_se, yi_se = get_tile_XY(zoom_level, lon=lon_max, lat=lat_min)
+        xi_values = _iter_tile_x_indices(zoom_level=zoom_level, lon_west=lon_min, lon_east=lon_max)
+        _, yi_nw = get_tile_XY(zoom_level, lon=_tile_lookup_lon(lon_min), lat=lat_max)
+        _, yi_se = get_tile_XY(zoom_level, lon=_tile_lookup_lon(lon_max), lat=lat_min)
 
-        for xi in range(xi_nw, xi_se + 1):
+        for xi in xi_values:
             for yi in range(yi_nw, yi_se + 1):
                 extent = gk.Extent.fromTile(xi, yi, zoom_level).castTo(gk.srs.EPSG4326).pad(2)
                 lon_west, lon_east, lat_south, lat_north = extent.xXyY
+                lon_boxes = _get_source_lon_boxes(
+                    lon_west=lon_west,
+                    lon_east=lon_east,
+                    source_lon_min=lon_min,
+                    source_lon_max=lon_max,
+                )
 
                 for year in years:
                     target_dir = os.path.join(tile_output_dir, str(zoom_level), str(xi), str(yi), str(year))
@@ -296,14 +436,17 @@ def era5_tiler(
                             print(f"Skipping tile (exists): {target_file}")
                             continue
 
-                        cdo.copy(
-                            input=(
-                                f"-selname,{var} "
-                                f"-selyear,{year} "
-                                f"-sellonlatbox,{lon_west},{lon_east},{lat_south},{lat_north} "
-                                f"{source_file}"
-                            ),
-                            output=target_file,
+                        _tile_variable_to_file(
+                            cdo=cdo,
+                            source_file=source_file,
+                            var=var,
+                            year=year,
+                            lat_south=lat_south,
+                            lat_north=lat_north,
+                            lon_boxes=lon_boxes,
+                            target_file=target_file,
+                            source_lon_min=lon_min,
+                            source_lon_max=lon_max,
                         )
 
     return tile_output_dir

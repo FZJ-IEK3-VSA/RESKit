@@ -12,6 +12,11 @@ depends_on = {
             "boundary_layer_height",
         ],
     },
+    "kacke": {
+        "ERA5": [
+            "2m_temperature",
+        ],
+    },
 }
 
 # Maps CDS API variable names to their short names inside the downloaded NetCDF file.
@@ -83,6 +88,27 @@ def download_and_process(
                 100: "Please download directly from https://globalwindatlas.info/en/download/gis-files",
                 200: "Please download directly from https://globalwindatlas.info/en/download/gis-files",
             },
+        }
+    elif workflow == "kacke":
+        _tile_out = tile_output_dir or os.path.join(output_dir, "tiles")
+        era5_path = rk.prepare_era5(
+            start_date=start_date,
+            end_date=end_date,
+            boundary_box=boundary_box,
+            output_dir=output_dir,
+            variables=depends_on["kacke"]["ERA5"],
+            tiling=tiling,
+            zoom_level=zoom_level,
+            tile_output_dir=_tile_out,
+            raw_variables=_raw_variables_for_workflow(workflow),
+        )
+        if tiling:
+            # return a path template for get_dataframe_with_weather_tilepaths()
+            era5_path = os.path.join(era5_path, "<ZOOM>", "<X-TILE>", "<Y-TILE>")
+
+
+        return {
+            "era5_path": era5_path,
         }
 
     raise ValueError(f"Unknown workflow: {workflow}")
