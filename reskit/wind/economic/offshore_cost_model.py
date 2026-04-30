@@ -670,6 +670,8 @@ def getSpecificOffshoreCableCost(
 
     # scale and add up the cost components, return as array or scalar
     totalSpecCost = (costPerKm * distance * detourFactor * capacity + fixedCost) / capacity
+
+    print(f'totalSpecCableCost: {totalSpecCost}, voltageType: {voltageType},')
     if isScalar:
         totalSpecCost = np.asarray(totalSpecCost).item()
     return totalSpecCost
@@ -827,7 +829,7 @@ def getSpecificOffshorePlatformCost(
         # add up
         totalSpecCost = specECPF + specICPF
         print(ICPF)
-        print(f"totalSpecCost Platfom Substation: {totalSpecCost}, specECPF: {specECPF}, specICPF: {specICPF}")
+        print(f"totalSpecCost Platfom Substation: {totalSpecCost}, specECPF: {specECPF}, specICPF: {specICPF}, voltageType: {applicationType}, foundationType: {foundationType}")
 
     else:
         raise NotImplementedError(f"convention '{convention}' is not implemented.")
@@ -920,7 +922,7 @@ def getSpecificConverterStationCost(
         ECPS = RCPS_coeffs * capacity + UCPS_coeffs * 10**3
         specECPS = ECPS / capacity
 
-        print(f"total Cost Substation: {ECPS}, specific Cost Substation: {specECPS}")
+        print(f"total Cost Substation: {ECPS}, specific Cost Substation: {specECPS}, voltageType: {voltageType}")
 
         if waterDepth is None:
             # an onshore station, no additional platform cost
@@ -938,8 +940,9 @@ def getSpecificConverterStationCost(
             )
         # combine electrical and platform cost components
         
-        print(f'specific Platform Cost Substation: {specECPF}')
+        
         totalSpecCost = specECPS + specECPF
+        print(f"totalSpecCost Converter Station: {totalSpecCost}, specECPS: {specECPS}, specECPF: {specECPF}, voltageType: {voltageType}")
         
     else:
         raise NotImplementedError(f"Unknown convention: '{convention}'")
