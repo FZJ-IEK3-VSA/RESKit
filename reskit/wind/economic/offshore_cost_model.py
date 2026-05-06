@@ -920,7 +920,7 @@ def getSpecificConverterStationCost(
 
         print(f"total Cost Substation: {ECPS}, specific Cost Substation: {specECPS}, voltageType: {voltageType}")
 
-o        if waterDepth is None:
+        if waterDepth is None:
             # an onshore station, no additional platform cost
             specECPF = np.zeros_like(capacity, dtype=float)
         else:
