@@ -62,8 +62,11 @@ def waterDepthFromLocation(
     if not candidates:
         raise ValueError(f"No .tif files found for path or pattern: {waterDepthFilePath}")
 
+    # geokit.raster.interpolateValues expects a single file path, use the first match
+    source_file = candidates[0]
+
     resultDepth = gk.raster.interpolateValues(
-        source=candidates,
+        source=source_file,
         points=(longitude, latitude),
     )
 
