@@ -9,6 +9,8 @@ from importlib.resources import files, as_file
 
 
 def test_calculateSpecificOffshoreCapex():
+
+    #test normal behaviour of the function 
     c1 = calculateSpecificOffshoreCapex(
         baseSpecCapex=1500,
         capacity=10000,
@@ -29,9 +31,9 @@ def test_calculateSpecificOffshoreCapex():
         techYear=2050,
     )
 
-    assert np.isclose(c1, 3393, rtol=0.05), "Error in calculateSpecificOffshoreCapex"
+    assert np.isclose(c1, 2654, rtol=0.05), "Error in calculateSpecificOffshoreCapex"
 
-    # test Missing port distance
+    # test missing port distance
     c2 = calculateSpecificOffshoreCapex(
         baseSpecCapex=1500,
         capacity=10000,
@@ -52,8 +54,9 @@ def test_calculateSpecificOffshoreCapex():
         techYear=2050,
     )
 
-    assert np.isclose(c2, 3520, rtol=0.05), "Error in calculateSpecificOffshoreCapex"
+    assert np.isclose(c2, 2654.89, rtol=0.05), "Error in calculateSpecificOffshoreCapex"
 
+    # test arrays as input 
     c3 = calculateSpecificOffshoreCapex(
         baseSpecCapex=[1500, 1501.5],
         capacity=[10000, 12000.5],
@@ -73,16 +76,19 @@ def test_calculateSpecificOffshoreCapex():
         defaultOffshoreParamsFp=None,
         techYear=2050,
     )
-    expected = np.array([1820, 1765])
+    expected = np.array([2143, 2086.02])
     np.testing.assert_allclose(c3, expected, rtol=0.05), "Error in calculateSpecificOffshoreCapex"
 
 
 def test_getSpecificOffshoreCableCost():
+
+    # test normal behaviour of the function
     c1 = getSpecificOffshoreCableCost(
         distance=1000, capacity=14000, voltageType="dc", variableCostFactor=1.35, fixedCost=0, year=2050
     )
-    assert np.isclose(c1, 1350), "Error in getCableCostfuncion, possibly due to adapted function"
+    assert np.isclose(c1, 1620), "Error in getCableCostfuncion, possibly due to adapted function"
 
+    # test arrays as input
     c2 = getSpecificOffshoreCableCost(
         distance=np.array([10000, 2000, 3000]),
         capacity=np.array([10000, 5, 5000]),
@@ -91,7 +97,7 @@ def test_getSpecificOffshoreCableCost():
         fixedCost=0,
         year=2050,
     )
-    expected = np.array([20000, 800, 60000])
+    expected = np.array([24000, 960, 72000])
 
     (
         np.testing.assert_allclose(c2, expected, rtol=0.05),
@@ -100,6 +106,8 @@ def test_getSpecificOffshoreCableCost():
 
 
 def test_getOffshoreTurbineFoundationCost():
+
+    # test normal behaviour of the function
     c1 = getOffshoreTurbineFoundationCost(
         depth=10.8, maxMonopileDepth=47.9, maxJacketDepth=60, year=2050, returnType=False
     )
@@ -107,6 +115,7 @@ def test_getOffshoreTurbineFoundationCost():
         "Error in getoffshoreTurbineFoundationCostFunction, possibly due to adapted function"
     )
 
+    # test arrays as input
     c2 = getOffshoreTurbineFoundationCost(
         depth=np.array([10, 30, 60]), maxMonopileDepth=25, maxJacketDepth=55, year=2050, returnType=False
     )
@@ -119,32 +128,36 @@ def test_getOffshoreTurbineFoundationCost():
 
 
 def test_getSpecificOffshorePlatformCost():
+
+    # test normal behaviour of the function
     c1 = getSpecificOffshorePlatformCost(
         applicationType="ac",
         capacity=10000,
         waterDepth=55,
         portDistance=100,
         foundationType="jacket",
-        maxJacketDepth=55,
+        maxJacketDepthPlatform=55,
         convention="RogeauEtAl2023",
     )
-    assert np.isclose(c1, 147, rtol=0.05)
+    assert np.isclose(c1, 36.4, rtol=0.05)
 
+    # test DC substation with floating foundation, even though jacket would be possible, but water depth is above max monopile depth
     c2 = getSpecificOffshorePlatformCost(
         capacity=10000,
         applicationType="dc",  # DC substation offshore
         waterDepth=56,  # floating water depth
         foundationType="jacket",  # jacket given but too deep -> warning, no error
-        maxJacketDepth=55,
+        maxJacketDepthPlatform=55,
         portDistance=100,
         convention="RogeauEtAl2023",  # Rogeau et al
     )
-    assert np.isclose(c2, 88, rtol=0.05)
+    assert np.isclose(c2, 61.62, rtol=0.05)
 
+    # test arrays as input
     c3 = getSpecificOffshorePlatformCost(
-        applicationType=np.array(["electrolysis", "ac", "dc"]),  # central offshore electrolysis
+        applicationType=np.array(["electrolysis", "ac", "dc"]), 
         capacity=np.array([10000, 10000, 10000]),
-        waterDepth=np.array([55, 55, 55]),  # jacket water depth
+        waterDepth=np.array([55, 55, 55]), 
         foundationType=np.array(
             [
                 "floating",
@@ -152,60 +165,54 @@ def test_getSpecificOffshorePlatformCost():
                 "floating",
             ]
         ),  # jacket would have been possibel, too, but floating allowed
-        maxJacketDepth=55,
+        maxJacketDepthPlatform=55,
         portDistance=np.array([100, 100, 100]),
-        convention="RogeauEtAl2023",  # Rogeau et al
+        convention="RogeauEtAl2023",  
     )
-    expected = np.array([264.31700901, 155.13950901, 191.53200901])
+    expected = np.array([152, 42.99, 79.4])
 
     np.testing.assert_allclose(c3, expected, rtol=0.05)
 
     # TEST MUST-FAIL CASES
-    with pytest.raises(Exception):
-        getSpecificOffshorePlatformCost(
-            applicationType="ac",
-            capacity=10000,
-            waterDepth=None,
-            portDistance=100,
-            foundationType="jacket",
-            maxJacketDepth=55,
-            convention="RogeauEtAl2023",
-        )
-
+    
+    # test wrong foundation type
     with pytest.raises(Exception):
         getSpecificOffshorePlatformCost(
             capacity=10000,
             applicationType="ac",
             waterDepth=50,
             foundationType="does_not_exist",  # must fail
-            maxJacketDepth=55,
+            maxJacketDepthPlatform=55,
             portDistance=100,
             convention="RogeauEtAl2023",
         )
 
+    # test negative water depth
     with pytest.raises(Exception):
         getSpecificOffshorePlatformCost(
             capacity=10000,
             applicationType="aC",
             waterDepth=-1,  # must fail
             foundationType=None,
-            maxJacketDepth=55,
+            maxJacketDepthPlatform=55,
             portDistance=100,
             convention="RogeauEtAl2023",
         )
 
 
 def test_getSpecificConverterStationCost():
+
+    # test normal behaviour of the function
     c1 = getSpecificConverterStationCost(
         capacity=10000,
         waterDepth=20,
         voltageType="ac",
         portDistance=1000,
-        maxJacketDepth=55,
+        maxJacketDepthPlatform=55,
         convention="RogeauEtAl2023",
     )
 
-    assert np.isclose(c1, 246, rtol=0.05)
+    assert np.isclose(c1, 59.95, rtol=0.05)
 
     # test None as waterdepth
     c2 = getSpecificConverterStationCost(
@@ -213,39 +220,42 @@ def test_getSpecificConverterStationCost():
         waterDepth=None,
         voltageType="ac",
         portDistance=1000,
-        maxJacketDepth=55,
+        maxJacketDepthPlatform=55,
         convention="RogeauEtAl2023",
     )
 
     assert np.isclose(c2, 23.2, rtol=0.05)
-    # array test
+    # test arrays as input
     c3 = getSpecificConverterStationCost(
         capacity=np.array([10000, 20000, 30000]),
         waterDepth=np.array([20, 25, 30]),
         voltageType=np.array(["ac", "ac", "dc"]),
         portDistance=np.array([1000, 3000, 10]),
-        maxJacketDepth=55,
+        maxJacketDepthPlatform=55,
         convention="RogeauEtAl2023",
     )
 
-    expected = np.array([245.92559009, 238.06263514, 193.16463363])
+    expected = np.array([59.95, 70.4, 163.16])
 
     np.testing.assert_allclose(c3, expected, rtol=0.05)
 
     # TEST MUST-FAIL CASES
 
+    # test wrong voltage type
     with pytest.raises(Exception):
         getSpecificConverterStationCost(
             capacity=10000,
             waterDepth=55,  # jacket depth
             voltageType="does_not_exist",
             portDistance=1000,  # must fail
-            maxJacketDepth=55,
+            maxJacketDepthPlatform=55,
             convention="RogeauEtAl2023",
         )
 
 
 def test_getSpecificOffshoreConnectionCost():
+
+    # test normal behaviour of the function and arrays as input
     c1 = getSpecificOffshoreConnectionCost(
         capacity=np.array([10000, 20000, 30000]),
         waterDepth=np.array([20, 25, 30]),
@@ -254,9 +264,9 @@ def test_getSpecificOffshoreConnectionCost():
         voltageType="ac",
         portDistance=np.array([1000, 3000, 10]),
         baseWFSize=20000,
-        maxJacketDepth=55,
+        maxJacketDepthPlatform=55,
     )
-    expected = (np.array([7135.17077252, 21411.09138514, 261.09967568]), "ac")
+    expected = (np.array([8543, 25473, 163.55]), "ac")
     (
         np.testing.assert_allclose(c1[0], expected[0], rtol=0.05),
         "Error in getSpecificOffshoreConnectionCost, possibly due to adapted function",
