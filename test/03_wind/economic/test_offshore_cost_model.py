@@ -9,8 +9,7 @@ from importlib.resources import files, as_file
 
 
 def test_calculateSpecificOffshoreCapex():
-
-    #test normal behaviour of the function 
+    # test normal behaviour of the function
     c1 = calculateSpecificOffshoreCapex(
         baseSpecCapex=1500,
         capacity=10000,
@@ -56,7 +55,7 @@ def test_calculateSpecificOffshoreCapex():
 
     assert np.isclose(c2, 2654.89, rtol=0.05), "Error in calculateSpecificOffshoreCapex"
 
-    # test arrays as input 
+    # test arrays as input
     c3 = calculateSpecificOffshoreCapex(
         baseSpecCapex=[1500, 1501.5],
         capacity=[10000, 12000.5],
@@ -81,7 +80,6 @@ def test_calculateSpecificOffshoreCapex():
 
 
 def test_getSpecificOffshoreCableCost():
-
     # test normal behaviour of the function
     c1 = getSpecificOffshoreCableCost(
         distance=1000, capacity=14000, voltageType="dc", variableCostFactor=1.35, fixedCost=0, year=2050
@@ -106,7 +104,6 @@ def test_getSpecificOffshoreCableCost():
 
 
 def test_getOffshoreTurbineFoundationCost():
-
     # test normal behaviour of the function
     c1 = getOffshoreTurbineFoundationCost(
         depth=10.8, maxMonopileDepth=47.9, maxJacketDepth=60, year=2050, returnType=False
@@ -128,7 +125,6 @@ def test_getOffshoreTurbineFoundationCost():
 
 
 def test_getSpecificOffshorePlatformCost():
-
     # test normal behaviour of the function
     c1 = getSpecificOffshorePlatformCost(
         applicationType="ac",
@@ -155,9 +151,9 @@ def test_getSpecificOffshorePlatformCost():
 
     # test arrays as input
     c3 = getSpecificOffshorePlatformCost(
-        applicationType=np.array(["electrolysis", "ac", "dc"]), 
+        applicationType=np.array(["electrolysis", "ac", "dc"]),
         capacity=np.array([10000, 10000, 10000]),
-        waterDepth=np.array([55, 55, 55]), 
+        waterDepth=np.array([55, 55, 55]),
         foundationType=np.array(
             [
                 "floating",
@@ -167,14 +163,14 @@ def test_getSpecificOffshorePlatformCost():
         ),  # jacket would have been possibel, too, but floating allowed
         maxJacketDepthPlatform=55,
         portDistance=np.array([100, 100, 100]),
-        convention="RogeauEtAl2023",  
+        convention="RogeauEtAl2023",
     )
     expected = np.array([152, 42.99, 79.4])
 
     np.testing.assert_allclose(c3, expected, rtol=0.05)
 
     # TEST MUST-FAIL CASES
-    
+
     # test wrong foundation type
     with pytest.raises(Exception):
         getSpecificOffshorePlatformCost(
@@ -201,7 +197,6 @@ def test_getSpecificOffshorePlatformCost():
 
 
 def test_getSpecificConverterStationCost():
-
     # test normal behaviour of the function
     c1 = getSpecificConverterStationCost(
         capacity=10000,
@@ -254,7 +249,6 @@ def test_getSpecificConverterStationCost():
 
 
 def test_getSpecificOffshoreConnectionCost():
-
     # test normal behaviour of the function and arrays as input
     c1 = getSpecificOffshoreConnectionCost(
         capacity=np.array([10000, 20000, 30000]),

@@ -196,9 +196,9 @@ def calculateSpecificOffshoreCapex(
             D = np.array([[0.0], [90.0]])
             E = np.array([[2.5], [40.0]])
             # then apply the function to each "column" of the params separately and then add up
-            instCost[~isFixed] = (((1 / A) * (2.0 * _portDistance[~isFixed][None, :] / B + C*1) + D) * (E / 24.0)).sum(
-                axis=0
-            )
+            instCost[~isFixed] = (
+                ((1 / A) * (2.0 * _portDistance[~isFixed][None, :] / B + C * 1) + D) * (E / 24.0)
+            ).sum(axis=0)
         # make installation cost specific and convert to EUR/kW, Rogeau et al provide cost in kEUR2022 [1]
         return (instCost * 1000 / capacity).reshape(_depth.shape)
 
@@ -349,7 +349,9 @@ def getSpecificOffshoreConnectionCost(
     """
     # check scalar inputs
     assert isinstance(baseWFSize, (int, float)) and baseWFSize > 0, "baseWFSize must be an integer or float > 0"
-    assert isinstance(maxJacketDepthPlatform, int) and maxJacketDepthPlatform > 0, "maxJacketDepthPlatform must be an integer > 0"
+    assert isinstance(maxJacketDepthPlatform, int) and maxJacketDepthPlatform > 0, (
+        "maxJacketDepthPlatform must be an integer > 0"
+    )
     assert voltageType in ["ac", "dc", "optimal"], f"Unknown voltageType: {voltageType}"
     # check and preprocess vectorized inputs
     isScalar = all([np.isscalar(_arg) for _arg in [portDistance, waterDepth, capacity, coastDistance]])
@@ -583,8 +585,8 @@ def getSpecificOffshoreCableCost(
         voltageType == 'ac' (year is then mandatory, else it has no effect).
         By default None.
     detourFactor: int | float | np.ndarray
-        The detour factor to be applied onto the coast distance of the 
-        windfarms, set to 1.0 for no effect. By default 1.2 in accordance 
+        The detour factor to be applied onto the coast distance of the
+        windfarms, set to 1.0 for no effect. By default 1.2 in accordance
         with assumptions in [1].
 
     Returns
@@ -611,7 +613,9 @@ def getSpecificOffshoreCableCost(
     voltageType = np.asarray(voltageType)
     variableCostFactor = None if variableCostFactor is None else np.asarray(variableCostFactor, dtype=float)
     if variableCostFactor is None:
-        distance, capacity, fixedCost, voltageType, detourFactor = np.broadcast_arrays(distance, capacity, fixedCost, voltageType, detourFactor)
+        distance, capacity, fixedCost, voltageType, detourFactor = np.broadcast_arrays(
+            distance, capacity, fixedCost, voltageType, detourFactor
+        )
     else:
         distance, capacity, fixedCost, voltageType, variableCostFactor, detourFactor = np.broadcast_arrays(
             distance, capacity, fixedCost, voltageType, variableCostFactor, detourFactor
@@ -667,7 +671,7 @@ def getSpecificOffshoreCableCost(
     # scale and add up the cost components, return as array or scalar
     totalSpecCost = (costPerKm * distance * detourFactor * capacity + fixedCost) / capacity
 
-    print(f'totalSpecCableCost: {totalSpecCost}, voltageType: {voltageType},')
+    print(f"totalSpecCableCost: {totalSpecCost}, voltageType: {voltageType},")
     if isScalar:
         totalSpecCost = np.asarray(totalSpecCost).item()
     return totalSpecCost
@@ -810,7 +814,7 @@ def getSpecificOffshorePlatformCost(
         # now calculate the platform installation cost function based on Rogeau et al. section 3.2.2
         ICPF = np.zeros_like(waterDepth, dtype=float)  # initiate Installation Cost container
         # first deal with fixed foundation locations
-        ICPF[isFixed] = ((1.0 / 1) * (2.0 * portDistance[isFixed] / 18.5 + 24.0) + 96*1) * (200.0 / 24.0)
+        ICPF[isFixed] = ((1.0 / 1) * (2.0 * portDistance[isFixed] / 18.5 + 24.0) + 96 * 1) * (200.0 / 24.0)
         # now deal with floating foundations
         # floating has 2 terms, so define params as np.arrays of len 2
         A = np.array([[1], [3]])
@@ -819,13 +823,17 @@ def getSpecificOffshorePlatformCost(
         D = np.array([[0.0], [90.0]])
         E = np.array([[40], [40.0]])
         # then apply the function to each "column" of the params separately and then add up
-        ICPF[~isFixed] = (((1.0 / A) * (2.0 * portDistance[~isFixed][None, :] / B + C) + D*1) * (E / 24.0)).sum(axis=0)
+        ICPF[~isFixed] = (((1.0 / A) * (2.0 * portDistance[~isFixed][None, :] / B + C) + D * 1) * (E / 24.0)).sum(
+            axis=0
+        )
         # make specific - assume cost per ship stay constant but load-carrying capacity grows -> implicit (specific) transport cost (per kW) decrease with larger, future turbines
-        specICPF = (ICPF) / (baseWFSize/1000)  # Rogeau is in k€ x units, here 1 unit, divide by cap. per unit
+        specICPF = (ICPF) / (baseWFSize / 1000)  # Rogeau is in k€ x units, here 1 unit, divide by cap. per unit
         # add up
         totalSpecCost = specECPF + specICPF
         print(ICPF)
-        print(f"totalSpecCost Platfom Substation: {totalSpecCost}, specECPF: {specECPF}, specICPF: {specICPF}, voltageType: {applicationType}, foundationType: {foundationType}")
+        print(
+            f"totalSpecCost Platfom Substation: {totalSpecCost}, specECPF: {specECPF}, specICPF: {specICPF}, voltageType: {applicationType}, foundationType: {foundationType}"
+        )
 
     else:
         raise NotImplementedError(f"convention '{convention}' is not implemented.")
@@ -935,11 +943,12 @@ def getSpecificConverterStationCost(
                 convention=convention,
             )
         # combine electrical and platform cost components
-        
-        
+
         totalSpecCost = specECPS + specECPF
-        print(f"totalSpecCost Converter Station: {totalSpecCost}, specECPS: {specECPS}, specECPF: {specECPF}, voltageType: {voltageType}")
-        
+        print(
+            f"totalSpecCost Converter Station: {totalSpecCost}, specECPS: {specECPS}, specECPF: {specECPF}, voltageType: {voltageType}"
+        )
+
     else:
         raise NotImplementedError(f"Unknown convention: '{convention}'")
 
