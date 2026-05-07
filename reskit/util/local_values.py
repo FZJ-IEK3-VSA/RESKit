@@ -6,10 +6,7 @@ import glob
 import os
 from typing import Optional, Literal
 
-from . import ResError
-
-
-# %%
+from reskit.util.errors import ResError
 
 
 def waterDepthFromLocation(
@@ -30,6 +27,7 @@ def waterDepthFromLocation(
     waterDepthFilePath : str, optional
        Path or pattern to one or more GeoTIFF water depth files.
        Support wildcards such as '*'.
+       Relevant files can be downloaded from https://www.gebco.net/data-products/gridded-bathymetry-data.
     consider_only : {False, "negative", "positive"}, default False
         Controls how to interpret the sign of the source raster values:
             - False: legacy behavior — return abs(resultDepth) if a value is found.
@@ -87,7 +85,7 @@ def waterDepthFromLocation(
         return val  # already positive depth
     else:
         # Legacy behavior for backward compatibility
-        return val
+        return abs(val)
 
 
 # %% function to calculate the distance to the coastline
@@ -106,6 +104,8 @@ def distanceToCoastline(latitude, longitude, distancetoCoastFilePath=None):
         Longitude in decimal degrees.
     distancetoCoastFilePath : str, optional
         File path to the distance-to-coast raster. Loaded from defaults if not specified.
+        Relevant files can be downloaded from https://oceancolor.gsfc.nasa.gov/resources/docs/distfromcoast/
+
 
     Returns
     -------

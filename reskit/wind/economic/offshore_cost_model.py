@@ -62,11 +62,14 @@ def calculateSpecificOffshoreCapex(
         The average wind farm size in [kW], by default 180000 (based on average
         extracted from processed theWindPower.net database v2025/07).
     baseCap : float, optional
-        Reference turbine capacity in [kW]. Loaded from CSV if not provided.
+        Reference turbine capacity in [kW]. Loaded from CSV if not provided. In this case,
+        defaultOffshoreFp is required.
     baseHubHeight : float, optional
-        Reference hub height in [m]. Loaded from CSV if not provided.
+        Reference hub height in [m]. Loaded from CSV if not provided. In this case,
+        defaultOffshoreFp is required.
     baseRotorDiam : float, optional
-        Reference rotor diameter in [m]. Loaded from CSV if not provided.
+        Reference rotor diameter in [m]. Loaded from CSV if not provided. In this case,
+        defaultOffshoreFp is required.
     defaultOffshoreParamsFp : str, optional
         Filepath to offshore turbine parameters CSV.
     techYear : int, optional
@@ -98,7 +101,6 @@ def calculateSpecificOffshoreCapex(
     capacity = np.atleast_1d(capacity)
     hubHeight = np.atleast_1d(hubHeight)
     rotorDiam = np.atleast_1d(rotorDiam)
-    # voltageType = voltageType
 
     # GET TURBINE DEFAULT PARAMETERS IF NEEDED
 
@@ -124,45 +126,7 @@ def calculateSpecificOffshoreCapex(
 
     # PREPARE TURBINE COST FUNCTIONS
 
-    # Note: Rogeau et al. do not differentiate between different turbine sizes/designs, only have avg. spec. capex and avg. capacity per year
-    # therefore use turbine cost scaling developed for onshore (RELATIVE effects depend on mechanics and geometry and can be considered similar enough)
-    # But absolute values need to be corrected to offshore level to be able to add offshore installation cost
-    # calculate a correction factor between Rogeau et al's annual CAPEX (for the turbine = machine only!) and the onshore_tcc value for a turbine with Rogeau's annual capacity
-    RogeauEtAlTurbineData = {
-        2020: (8000, 1500),
-        2030: (15000, 1200),
-        2050: (20000, 1000),
-    }  # (capacity [kW], spec.CAPEX [EUR/kW])
-    assert min(RogeauEtAlTurbineData.keys()) <= techYear <= max(RogeauEtAlTurbineData.keys()), (
-        f"techYear {techYear} is outside of the range considered by Rogeau et al.: 2020-2050"
-    )
-    yearBefore = max((y for y in RogeauEtAlTurbineData.keys() if y <= techYear))
-    yearAfter = min((y for y in RogeauEtAlTurbineData.keys() if y >= techYear))
-    capacityRogeau = RogeauEtAlTurbineData[yearBefore][0]  # use the yearBefore value, is the same as yearAfter
-    capexRogeau = RogeauEtAlTurbineData[yearBefore][1]
-    if yearAfter > yearBefore:
-        capacityRogeau = capacityRogeau + (
-            RogeauEtAlTurbineData[yearAfter][0] - RogeauEtAlTurbineData[yearBefore][0]
-        ) * (techYear - yearBefore) / (yearAfter - yearBefore)
-        capexRogeau = capexRogeau + (RogeauEtAlTurbineData[yearAfter][1] - RogeauEtAlTurbineData[yearBefore][1]) * (
-            techYear - yearBefore
-        ) / (yearAfter - yearBefore)
-    # Rogeau et al provide only capacity per year, rotor diam and hub height need to be estimated for a typical turbine
-    # assume constant spec. power of 350 W/m² (typical offshore) and hub height of 30.5m + rotor radius (see dissertation Winkler)
-    rotordiamRogeau = np.sqrt((capacityRogeau * 1000 / 350) / (np.pi)) * 2  # spec power 350 W/m2
-    hubheightRogeau = 30.5 + rotordiamRogeau / 2  # in mtrs
-    # now calculate the correction factor to align onshore_tcc with Rogeau's value for that year (contains also currency conversion/inflation)
-    offshoreCorrfacRogeau = capexRogeau / (
-        onshore_tcc(
-            cp=capacityRogeau,
-            hh=hubheightRogeau,
-            rd=rotordiamRogeau,
-            gdp_escalator=1,
-            blade_material_escalator=1,
-            blades=3,
-        )
-        / capacityRogeau
-    )
+    offshoreCorrfacRogeau = calculateOffshoreFacRogeau(techYear)
 
     # define a turbine installation cost function based on Rogeau et al. section 3.2.1
     # Define the function inside this function so it cannot be used separately by others, since it is not really related to the other fixed-cost components.
@@ -288,8 +252,60 @@ def calculateSpecificOffshoreCapex(
     return totalPlantCostCustom
 
 
+def calculateOffshoreFacRogeau(techYear):
+    # introdcue docStrings
+    """Rogeau et al. do not differentiate between different turbine sizes/designs, only have avg. spec. capex and avg. capacity per year
+    therefore use turbine cost scaling developed for onshore (RELATIVE effects depend on mechanics and geometry and can be considered similar enough)
+    But absolute values need to be corrected to offshore level to be able to add offshore installation cost
+    calculate a correction factor between Rogeau et al's annual CAPEX (for the turbine = machine only!) and the onshore_tcc value for a turbine with Rogeau's annual capacity
+
+    Args:
+        techYear (int): The technology year for which to calculate the correction factor.
+
+    Returns:
+        _type_: The correction factor for offshore turbine costs.
+    """
+
+    RogeauEtAlTurbineData = {
+        2020: (8000, 1500),
+        2030: (15000, 1200),
+        2050: (20000, 1000),
+    }  # (capacity [kW], spec.CAPEX [EUR/kW])
+    assert min(RogeauEtAlTurbineData.keys()) <= techYear <= max(RogeauEtAlTurbineData.keys()), (
+        f"techYear {techYear} is outside of the range considered by Rogeau et al.: 2020-2050"
+    )
+    yearBefore = max((y for y in RogeauEtAlTurbineData.keys() if y <= techYear))
+    yearAfter = min((y for y in RogeauEtAlTurbineData.keys() if y >= techYear))
+    capacityRogeau = RogeauEtAlTurbineData[yearBefore][0]  # use the yearBefore value, is the same as yearAfter
+    capexRogeau = RogeauEtAlTurbineData[yearBefore][1]
+    if yearAfter > yearBefore:
+        capacityRogeau = capacityRogeau + (
+            RogeauEtAlTurbineData[yearAfter][0] - RogeauEtAlTurbineData[yearBefore][0]
+        ) * (techYear - yearBefore) / (yearAfter - yearBefore)
+        capexRogeau = capexRogeau + (RogeauEtAlTurbineData[yearAfter][1] - RogeauEtAlTurbineData[yearBefore][1]) * (
+            techYear - yearBefore
+        ) / (yearAfter - yearBefore)
+    # Rogeau et al provide only capacity per year, rotor diam and hub height need to be estimated for a typical turbine
+    # assume constant spec. power of 350 W/m² (typical offshore) and hub height of 30.5m + rotor radius (see dissertation Winkler)
+    rotordiamRogeau = np.sqrt((capacityRogeau * 1000 / 350) / (np.pi)) * 2  # spec power 350 W/m2
+    hubheightRogeau = 30.5 + rotordiamRogeau / 2  # in mtrs
+    # now calculate the correction factor to align onshore_tcc with Rogeau's value for that year (contains also currency conversion/inflation)
+    offshoreCorrfacRogeau = capexRogeau / (
+        onshore_tcc(
+            cp=capacityRogeau,
+            hh=hubheightRogeau,
+            rd=rotordiamRogeau,
+            gdp_escalator=1,
+            blade_material_escalator=1,
+            blades=3,
+        )
+        / capacityRogeau
+    )
+
+    return offshoreCorrfacRogeau
+
+
 # %%
-# this function returns the complete connection cost, including cable and all required converters and platforms
 def getSpecificOffshoreConnectionCost(
     capacity: int | float | np.ndarray,
     waterDepth: int | float | np.ndarray,
@@ -303,7 +319,7 @@ def getSpecificOffshoreConnectionCost(
     """
     Get offshore and - if applicable - onshore platform/converter cost plus
     cable cost and return the total cost (including installation) for the given
-    connection and capacity.
+    connection and capacity. Therefore, it can be used to calculate the connection cost for the turbine cost function above, but also separately if one is only interested in the connection cost for a given location and capacity, e.g. for a pre-selection of sites based on connection cost.
 
     capacity : int|float|np.ndarray
         The electrical capacity of the cable connection in [kW].
@@ -914,6 +930,9 @@ def getSpecificConverterStationCost(
 
     if convention == "RogeauEtAl2023":
         # calculate electrical powerstation cost based on equation (10) and table 6
+        # conventiosn is close to Rogeau et al.
+        # RCPS: relative cost per kW, UCPS: fixed cost per station, both depend on voltage type (ac/dc)
+        # ECPS: electrical cost per station, sum of RCPS*capacity and UCPS, then divided by capacity to get specific cost per kW
         RCPS = {"ac": 22.87, "dc": 102.93}  # EUR/kW
         UCPS = {"ac": 3.1750000, "dc": 7.060000}  # EUR
         assert sorted(RCPS.keys()) == sorted(UCPS.keys())  # make sure

@@ -30,7 +30,7 @@ def test_calculateSpecificOffshoreCapex():
         techYear=2050,
     )
 
-    assert np.isclose(c1, 2654, rtol=0.05), "Error in calculateSpecificOffshoreCapex"
+    assert np.isclose(c1, 2654, rtol=0.05), "Error in calculateSpecificOffshoreCapex, possibly due to adapted function"
 
     # test missing port distance
     c2 = calculateSpecificOffshoreCapex(
@@ -53,7 +53,9 @@ def test_calculateSpecificOffshoreCapex():
         techYear=2050,
     )
 
-    assert np.isclose(c2, 2654.89, rtol=0.05), "Error in calculateSpecificOffshoreCapex"
+    assert np.isclose(c2, 2654.89, rtol=0.05), (
+        "Missing port distance should not lead to error in calculateSpecificOffshoreCapex, possibly due to adapted function"
+    )
 
     # test arrays as input
     c3 = calculateSpecificOffshoreCapex(
@@ -76,7 +78,38 @@ def test_calculateSpecificOffshoreCapex():
         techYear=2050,
     )
     expected = np.array([2143, 2086.02])
-    np.testing.assert_allclose(c3, expected, rtol=0.05), "Error in calculateSpecificOffshoreCapex"
+    (
+        np.testing.assert_allclose(c3, expected, rtol=0.05),
+        "Arrays cann not be handled in calculateSpecificOffshoreCapex, possibly due to adapted function",
+    )
+
+    # test no scaling at all (only baseSpecCapex, all other parameters are the same as the base case, so no scaling should occur and the result should be the same as the baseSpecCapex)
+
+    c4 = calculateSpecificOffshoreCapex(
+        baseSpecCapex=5000,
+        capacity=14211.43,
+        rotorDiam=221.73,
+        hubHeight=145.86,
+        waterDepth=17,
+        coastDistance=27,
+        portDistance=None,
+        maxMonopileDepth=25,
+        maxJacketDepth=55,
+        maxJacketDepthPlatform=150,
+        baseDepth=17,
+        baseDistCoast=27,
+        baseWFSize=180000,
+        baseCap=14211.43,
+        baseHubHeight=145.86,
+        baseRotorDiam=221.73,
+        defaultOffshoreParamsFp=None,
+        techYear=2030,
+        voltageType="optimal",
+    )
+
+    assert np.isclose(c4, 5000, rtol=0.0005), (
+        "Scaling occurs in calculateSpecificOffshoreCapex, when no scaling should occur, possibly due to change in function"
+    )
 
 
 def test_getSpecificOffshoreCableCost():
@@ -84,7 +117,7 @@ def test_getSpecificOffshoreCableCost():
     c1 = getSpecificOffshoreCableCost(
         distance=1000, capacity=14000, voltageType="dc", variableCostFactor=1.35, fixedCost=0, year=2050
     )
-    assert np.isclose(c1, 1620), "Error in getCableCostfuncion, possibly due to adapted function"
+    assert np.isclose(c1, 1620), "Error in getSpecificOffshoreCableCost, possibly due to adapted function"
 
     # test arrays as input
     c2 = getSpecificOffshoreCableCost(
@@ -99,7 +132,7 @@ def test_getSpecificOffshoreCableCost():
 
     (
         np.testing.assert_allclose(c2, expected, rtol=0.05),
-        "Error in getCableCostfuncion, possibly due to adapted function",
+        "Error in getSpecificOffshoreCableCost, possibly due to adapted function",
     )
 
 
