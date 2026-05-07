@@ -253,17 +253,18 @@ def calculateSpecificOffshoreCapex(
 
 
 def calculateOffshoreFacRogeau(techYear):
-    # introdcue docStrings
-    """Rogeau et al. do not differentiate between different turbine sizes/designs, only have avg. spec. capex and avg. capacity per year
+    """
+    Rogeau et al. do not differentiate between different turbine sizes/designs, only have avg. spec. capex and avg. capacity per year
     therefore use turbine cost scaling developed for onshore (RELATIVE effects depend on mechanics and geometry and can be considered similar enough)
     But absolute values need to be corrected to offshore level to be able to add offshore installation cost
     calculate a correction factor between Rogeau et al's annual CAPEX (for the turbine = machine only!) and the onshore_tcc value for a turbine with Rogeau's annual capacity
 
-    Args:
-        techYear (int): The technology year for which to calculate the correction factor.
+    techYear: int
+    The technology year for which to calculate the correction factor.
 
-    Returns:
-        _type_: The correction factor for offshore turbine costs.
+    Returns
+    -------
+    float: The correction factor for offshore turbine costs.
     """
 
     RogeauEtAlTurbineData = {
