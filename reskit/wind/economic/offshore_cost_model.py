@@ -273,7 +273,6 @@ def calculateOffshoreFacRogeau(techYear):
     float
         The correction factor for offshore turbine costs.
     """
-
     RogeauEtAlTurbineData = {
         2020: (8000, 1500),
         2030: (15000, 1200),
