@@ -62,11 +62,14 @@ def calculateSpecificOffshoreCapex(
         The average wind farm size in [kW], by default 180000 (based on average
         extracted from processed theWindPower.net database v2025/07).
     baseCap : float, optional
-        Reference turbine capacity in [kW]. Loaded from CSV if not provided.
+        Reference turbine capacity in [kW]. Loaded from CSV if not provided. In this case,
+        defaultOffshoreFp is required.
     baseHubHeight : float, optional
-        Reference hub height in [m]. Loaded from CSV if not provided.
+        Reference hub height in [m]. Loaded from CSV if not provided. In this case,
+        defaultOffshoreFp is required.
     baseRotorDiam : float, optional
-        Reference rotor diameter in [m]. Loaded from CSV if not provided.
+        Reference rotor diameter in [m]. Loaded from CSV if not provided. In this case,
+        defaultOffshoreFp is required.
     defaultOffshoreParamsFp : str, optional
         Filepath to offshore turbine parameters CSV.
     techYear : int, optional
@@ -98,7 +101,6 @@ def calculateSpecificOffshoreCapex(
     capacity = np.atleast_1d(capacity)
     hubHeight = np.atleast_1d(hubHeight)
     rotorDiam = np.atleast_1d(rotorDiam)
-    # voltageType = voltageType
 
     # GET TURBINE DEFAULT PARAMETERS IF NEEDED
 
@@ -124,45 +126,7 @@ def calculateSpecificOffshoreCapex(
 
     # PREPARE TURBINE COST FUNCTIONS
 
-    # Note: Rogeau et al. do not differentiate between different turbine sizes/designs, only have avg. spec. capex and avg. capacity per year
-    # therefore use turbine cost scaling developed for onshore (RELATIVE effects depend on mechanics and geometry and can be considered similar enough)
-    # But absolute values need to be corrected to offshore level to be able to add offshore installation cost
-    # calculate a correction factor between Rogeau et al's annual CAPEX (for the turbine = machine only!) and the onshore_tcc value for a turbine with Rogeau's annual capacity
-    RogeauEtAlTurbineData = {
-        2020: (8000, 1500),
-        2030: (15000, 1200),
-        2050: (20000, 1000),
-    }  # (capacity [kW], spec.CAPEX [EUR/kW])
-    assert min(RogeauEtAlTurbineData.keys()) <= techYear <= max(RogeauEtAlTurbineData.keys()), (
-        f"techYear {techYear} is outside of the range considered by Rogeau et al.: 2020-2050"
-    )
-    yearBefore = max((y for y in RogeauEtAlTurbineData.keys() if y <= techYear))
-    yearAfter = min((y for y in RogeauEtAlTurbineData.keys() if y >= techYear))
-    capacityRogeau = RogeauEtAlTurbineData[yearBefore][0]  # use the yearBefore value, is the same as yearAfter
-    capexRogeau = RogeauEtAlTurbineData[yearBefore][1]
-    if yearAfter > yearBefore:
-        capacityRogeau = capacityRogeau + (
-            RogeauEtAlTurbineData[yearAfter][0] - RogeauEtAlTurbineData[yearBefore][0]
-        ) * (techYear - yearBefore) / (yearAfter - yearBefore)
-        capexRogeau = capexRogeau + (RogeauEtAlTurbineData[yearAfter][1] - RogeauEtAlTurbineData[yearBefore][1]) * (
-            techYear - yearBefore
-        ) / (yearAfter - yearBefore)
-    # Rogeau et al provide only capacity per year, rotor diam and hub height need to be estimated for a typical turbine
-    # assume constant spec. power of 350 W/m² (typical offshore) and hub height of 30.5m + rotor radius (see dissertation Winkler)
-    rotordiamRogeau = np.sqrt((capacityRogeau * 1000 / 350) / (np.pi)) * 2  # spec power 350 W/m2
-    hubheightRogeau = 30.5 + rotordiamRogeau / 2  # in mtrs
-    # now calculate the correction factor to align onshore_tcc with Rogeau's value for that year (contains also currency conversion/inflation)
-    offshoreCorrfacRogeau = capexRogeau / (
-        onshore_tcc(
-            cp=capacityRogeau,
-            hh=hubheightRogeau,
-            rd=rotordiamRogeau,
-            gdp_escalator=1,
-            blade_material_escalator=1,
-            blades=3,
-        )
-        / capacityRogeau
-    )
+    offshoreCorrfacRogeau = calculateOffshoreFacRogeau(techYear)
 
     # define a turbine installation cost function based on Rogeau et al. section 3.2.1
     # Define the function inside this function so it cannot be used separately by others, since it is not really related to the other fixed-cost components.
@@ -196,9 +160,9 @@ def calculateSpecificOffshoreCapex(
             D = np.array([[0.0], [90.0]])
             E = np.array([[2.5], [40.0]])
             # then apply the function to each "column" of the params separately and then add up
-            instCost[~isFixed] = (((1 / A) * (2.0 * _portDistance[~isFixed][None, :] / B + C*1) + D) * (E / 24.0)).sum(
-                axis=0
-            )
+            instCost[~isFixed] = (
+                ((1 / A) * (2.0 * _portDistance[~isFixed][None, :] / B + C * 1) + D) * (E / 24.0)
+            ).sum(axis=0)
         # make installation cost specific and convert to EUR/kW, Rogeau et al provide cost in kEUR2022 [1]
         return (instCost * 1000 / capacity).reshape(_depth.shape)
 
@@ -288,8 +252,67 @@ def calculateSpecificOffshoreCapex(
     return totalPlantCostCustom
 
 
+def calculateOffshoreFacRogeau(techYear):
+    """
+    Calculate the offshore turbine cost correction factor.
+
+    Rogeau et al. do not differentiate between different turbine sizes/designs,
+    only average specific capex and average capacity per year. Therefore, use
+    turbine cost scaling developed for onshore. Relative effects depend on
+    mechanics and geometry and can be considered similar enough, but absolute
+    values need to be corrected to offshore level to add offshore installation
+    cost.
+
+    Parameters
+    ----------
+    techYear : int
+        The technology year for which to calculate the correction factor.
+
+    Returns
+    -------
+    float
+        The correction factor for offshore turbine costs.
+    """
+    RogeauEtAlTurbineData = {
+        2020: (8000, 1500),
+        2030: (15000, 1200),
+        2050: (20000, 1000),
+    }  # (capacity [kW], spec.CAPEX [EUR/kW])
+    assert min(RogeauEtAlTurbineData.keys()) <= techYear <= max(RogeauEtAlTurbineData.keys()), (
+        f"techYear {techYear} is outside of the range considered by Rogeau et al.: 2020-2050"
+    )
+    yearBefore = max((y for y in RogeauEtAlTurbineData.keys() if y <= techYear))
+    yearAfter = min((y for y in RogeauEtAlTurbineData.keys() if y >= techYear))
+    capacityRogeau = RogeauEtAlTurbineData[yearBefore][0]  # use the yearBefore value, is the same as yearAfter
+    capexRogeau = RogeauEtAlTurbineData[yearBefore][1]
+    if yearAfter > yearBefore:
+        capacityRogeau = capacityRogeau + (
+            RogeauEtAlTurbineData[yearAfter][0] - RogeauEtAlTurbineData[yearBefore][0]
+        ) * (techYear - yearBefore) / (yearAfter - yearBefore)
+        capexRogeau = capexRogeau + (RogeauEtAlTurbineData[yearAfter][1] - RogeauEtAlTurbineData[yearBefore][1]) * (
+            techYear - yearBefore
+        ) / (yearAfter - yearBefore)
+    # Rogeau et al provide only capacity per year, rotor diam and hub height need to be estimated for a typical turbine
+    # assume constant spec. power of 350 W/m² (typical offshore) and hub height of 30.5m + rotor radius (see dissertation Winkler)
+    rotordiamRogeau = np.sqrt((capacityRogeau * 1000 / 350) / (np.pi)) * 2  # spec power 350 W/m2
+    hubheightRogeau = 30.5 + rotordiamRogeau / 2  # in mtrs
+    # now calculate the correction factor to align onshore_tcc with Rogeau's value for that year (contains also currency conversion/inflation)
+    offshoreCorrfacRogeau = capexRogeau / (
+        onshore_tcc(
+            cp=capacityRogeau,
+            hh=hubheightRogeau,
+            rd=rotordiamRogeau,
+            gdp_escalator=1,
+            blade_material_escalator=1,
+            blades=3,
+        )
+        / capacityRogeau
+    )
+
+    return offshoreCorrfacRogeau
+
+
 # %%
-# this function returns the complete connection cost, including cable and all required converters and platforms
 def getSpecificOffshoreConnectionCost(
     capacity: int | float | np.ndarray,
     waterDepth: int | float | np.ndarray,
@@ -303,7 +326,7 @@ def getSpecificOffshoreConnectionCost(
     """
     Get offshore and - if applicable - onshore platform/converter cost plus
     cable cost and return the total cost (including installation) for the given
-    connection and capacity.
+    connection and capacity. Therefore, it can be used to calculate the connection cost for the turbine cost function above, but also separately if one is only interested in the connection cost for a given location and capacity, e.g. for a pre-selection of sites based on connection cost.
 
     capacity : int|float|np.ndarray
         The electrical capacity of the cable connection in [kW].
@@ -349,7 +372,9 @@ def getSpecificOffshoreConnectionCost(
     """
     # check scalar inputs
     assert isinstance(baseWFSize, (int, float)) and baseWFSize > 0, "baseWFSize must be an integer or float > 0"
-    assert isinstance(maxJacketDepthPlatform, int) and maxJacketDepthPlatform > 0, "maxJacketDepthPlatform must be an integer > 0"
+    assert isinstance(maxJacketDepthPlatform, int) and maxJacketDepthPlatform > 0, (
+        "maxJacketDepthPlatform must be an integer > 0"
+    )
     assert voltageType in ["ac", "dc", "optimal"], f"Unknown voltageType: {voltageType}"
     # check and preprocess vectorized inputs
     isScalar = all([np.isscalar(_arg) for _arg in [portDistance, waterDepth, capacity, coastDistance]])
@@ -372,27 +397,23 @@ def getSpecificOffshoreConnectionCost(
     def _getTotalSpecificConnectionCost(_voltageType):
         """Connection cost consists of 3 elements: onshore and offshore converter + cable"""
         assert _voltageType in ["ac", "dc"]
-        # get specific onshore converter cost first
-        convertercost_onshore_baseWFSize = getSpecificConverterStationCost(
-            capacity=baseWFSize,
+        # get specific onshore converter cost
+        convertercost_onshore = getSpecificConverterStationCost(
+            capacity=capacity,
             waterDepth=None,
             voltageType=_voltageType,
             portDistance=0,  # onshore
             maxJacketDepthPlatform=maxJacketDepthPlatform,
         )
-        convertercost_onshore = (
-            convertercost_onshore_baseWFSize * capacity / baseWFSize
-        )  # scale linearly to the actual size
 
-        # then specific offshore converter cost
-        convertercost_offshore_baseWFSize = getSpecificConverterStationCost(
-            capacity=baseWFSize,
+        # get specific offshore converter cost
+        convertercost_offshore = getSpecificConverterStationCost(
+            capacity=capacity,
             waterDepth=waterDepth,
             voltageType=_voltageType,
             portDistance=portDistance,
             maxJacketDepthPlatform=maxJacketDepthPlatform,
         )
-        convertercost_offshore = convertercost_offshore_baseWFSize * capacity / baseWFSize  # scale to actual size again
 
         # last specific cable cost
         cableCost = getSpecificOffshoreCableCost(
@@ -587,8 +608,8 @@ def getSpecificOffshoreCableCost(
         voltageType == 'ac' (year is then mandatory, else it has no effect).
         By default None.
     detourFactor: int | float | np.ndarray
-        The detour factor to be applied onto the coast distance of the 
-        windfarms, set to 1.0 for no effect. By default 1.2 in accordance 
+        The detour factor to be applied onto the coast distance of the
+        windfarms, set to 1.0 for no effect. By default 1.2 in accordance
         with assumptions in [1].
 
     Returns
@@ -615,7 +636,9 @@ def getSpecificOffshoreCableCost(
     voltageType = np.asarray(voltageType)
     variableCostFactor = None if variableCostFactor is None else np.asarray(variableCostFactor, dtype=float)
     if variableCostFactor is None:
-        distance, capacity, fixedCost, voltageType, detourFactor = np.broadcast_arrays(distance, capacity, fixedCost, voltageType, detourFactor)
+        distance, capacity, fixedCost, voltageType, detourFactor = np.broadcast_arrays(
+            distance, capacity, fixedCost, voltageType, detourFactor
+        )
     else:
         distance, capacity, fixedCost, voltageType, variableCostFactor, detourFactor = np.broadcast_arrays(
             distance, capacity, fixedCost, voltageType, variableCostFactor, detourFactor
@@ -670,6 +693,8 @@ def getSpecificOffshoreCableCost(
 
     # scale and add up the cost components, return as array or scalar
     totalSpecCost = (costPerKm * distance * detourFactor * capacity + fixedCost) / capacity
+
+    print(f"totalSpecCableCost: {totalSpecCost}, voltageType: {voltageType},")
     if isScalar:
         totalSpecCost = np.asarray(totalSpecCost).item()
     return totalSpecCost
@@ -812,7 +837,7 @@ def getSpecificOffshorePlatformCost(
         # now calculate the platform installation cost function based on Rogeau et al. section 3.2.2
         ICPF = np.zeros_like(waterDepth, dtype=float)  # initiate Installation Cost container
         # first deal with fixed foundation locations
-        ICPF[isFixed] = ((1.0 / 1) * (2.0 * portDistance[isFixed] / 18.5 + 24.0) + 96*1) * (200.0 / 24.0)
+        ICPF[isFixed] = ((1.0 / 1) * (2.0 * portDistance[isFixed] / 18.5 + 24.0) + 96 * 1) * (200.0 / 24.0)
         # now deal with floating foundations
         # floating has 2 terms, so define params as np.arrays of len 2
         A = np.array([[1], [3]])
@@ -821,13 +846,17 @@ def getSpecificOffshorePlatformCost(
         D = np.array([[0.0], [90.0]])
         E = np.array([[40], [40.0]])
         # then apply the function to each "column" of the params separately and then add up
-        ICPF[~isFixed] = (((1.0 / A) * (2.0 * portDistance[~isFixed][None, :] / B + C) + D*1) * (E / 24.0)).sum(axis=0)
+        ICPF[~isFixed] = (((1.0 / A) * (2.0 * portDistance[~isFixed][None, :] / B + C) + D * 1) * (E / 24.0)).sum(
+            axis=0
+        )
         # make specific - assume cost per ship stay constant but load-carrying capacity grows -> implicit (specific) transport cost (per kW) decrease with larger, future turbines
-        specICPF = (ICPF) / (baseWFSize/1000)  # Rogeau is in k€ x units, here 1 unit, divide by cap. per unit
+        specICPF = (ICPF) / (baseWFSize / 1000)  # Rogeau is in k€ x units, here 1 unit, divide by cap. per unit
         # add up
         totalSpecCost = specECPF + specICPF
         print(ICPF)
-        print(f"totalSpecCost Platfom Substation: {totalSpecCost}, specECPF: {specECPF}, specICPF: {specICPF}")
+        print(
+            f"totalSpecCost Platfom Substation: {totalSpecCost}, specECPF: {specECPF}, specICPF: {specICPF}, voltageType: {applicationType}, foundationType: {foundationType}"
+        )
 
     else:
         raise NotImplementedError(f"convention '{convention}' is not implemented.")
@@ -908,6 +937,9 @@ def getSpecificConverterStationCost(
 
     if convention == "RogeauEtAl2023":
         # calculate electrical powerstation cost based on equation (10) and table 6
+        # conventiosn is close to Rogeau et al.
+        # RCPS: relative cost per kW, UCPS: fixed cost per station, both depend on voltage type (ac/dc)
+        # ECPS: electrical cost per station, sum of RCPS*capacity and UCPS, then divided by capacity to get specific cost per kW
         RCPS = {"ac": 22.87, "dc": 102.93}  # EUR/kW
         UCPS = {"ac": 3.1750000, "dc": 7.060000}  # EUR
         assert sorted(RCPS.keys()) == sorted(UCPS.keys())  # make sure
@@ -920,7 +952,7 @@ def getSpecificConverterStationCost(
         ECPS = RCPS_coeffs * capacity + UCPS_coeffs * 10**3
         specECPS = ECPS / capacity
 
-        print(f"total Cost Substation: {ECPS}, specific Cost Substation: {specECPS}")
+        print(f"total Cost Substation: {ECPS}, specific Cost Substation: {specECPS}, voltageType: {voltageType}")
 
         if waterDepth is None:
             # an onshore station, no additional platform cost
@@ -937,10 +969,12 @@ def getSpecificConverterStationCost(
                 convention=convention,
             )
         # combine electrical and platform cost components
-        
-        print(f'specific Platform Cost Substation: {specECPF}')
+
         totalSpecCost = specECPS + specECPF
-        
+        print(
+            f"totalSpecCost Converter Station: {totalSpecCost}, specECPS: {specECPS}, specECPF: {specECPF}, voltageType: {voltageType}"
+        )
+
     else:
         raise NotImplementedError(f"Unknown convention: '{convention}'")
 
