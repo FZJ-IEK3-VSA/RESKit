@@ -1823,14 +1823,20 @@ class SolarWorkflowManager(WorkflowManager):
         for iloc in range(self._sim_shape_[1]):
 
             # helper function to extract and preprocess shape for variables either from sim data or placements or defaults
-            def _extract_var(var, sim_var=None, fallback=None):
+            def _extract_var(var, sim_var=None, fallback=None, time_invariant=False):
                 """First tries to get location- and time-variable sim_data, then location-variable placements column, else default."""
                 if self.sim_data.get(sim_var) is not None:
                     # get only the timeseries for the representative location
                     return self.sim_data.get(sim_var)[:, iloc]
                 elif var is not None and var in self.placements:
-                    # value is not time-variable but in placements df, duplicate for T timesteps
-                    return np.full(self._sim_shape_[0], self.placements.iloc[iloc][var])
+                    # value is not time-variable but in placements df
+                    val = self.placements.iloc[iloc][var]
+                    if time_invariant:
+                        # if parameter is time-invariant, return only the iloc-th value
+                        return val
+                    else:
+                        # if time-variant parameter is expected, duplicate for T timesteps
+                        return np.full(self._sim_shape_[0], val)
                 elif fallback is not None:
                     # set to variable fallback value
                     return np.full(self._sim_shape_[0], fallback)
@@ -1857,8 +1863,8 @@ class SolarWorkflowManager(WorkflowManager):
             pvfts_args["gcr"] = _extract_var("gcr")
             pvfts_args["pvrow_height"] = _extract_var("pvrow_height")
             pvfts_args["albedo"] = _extract_var("grdalbedo", "system_grdalbedo")
-            pvfts_args["n_pvrows"] = _extract_var("n_pvrows")
-            pvfts_args["index_observed_pvrow"] = _extract_var("index_observed_pvrow")
+            pvfts_args["n_pvrows"] = _extract_var("n_pvrows", time_invariant=True)
+            pvfts_args["index_observed_pvrow"] = _extract_var("index_observed_pvrow", time_invariant=True)
             pvfts_args["pvrow_width"] = _extract_var("pvrow_width")
 
             # # CONSIDER IRRADIANCE SHADING BY HORIZON EFFECTS
