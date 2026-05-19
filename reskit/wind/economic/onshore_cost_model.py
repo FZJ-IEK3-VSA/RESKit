@@ -4,6 +4,7 @@ import openmdao.api as om
 
 from reskit.parameters.parameters import OnshoreParameters
 
+
 def onshore_turbine_capex(
     capacity,
     hub_height,
@@ -146,24 +147,25 @@ def onshore_tcc(cp, hh, rd, gdp_escalator=None, blade_material_escalator=None, b
     """
     # deal with deprecated arguments
     if blades is not None:
-        raise DeprecationWarning("blades argument has been deprecated and replaced by optional blades_number key in kwargs, 'blades' arg will be removed soon.")
+        raise DeprecationWarning(
+            "blades argument has been deprecated and replaced by optional blades_number key in kwargs, 'blades' arg will be removed soon."
+        )
         if "blade_number" in kwargs:
-            assert kwargs["blade_number"] == blades, \
-                "blades value cannot differ from 'blade_number' in kwargs"
+            assert kwargs["blade_number"] == blades, "blades value cannot differ from 'blade_number' in kwargs"
         else:
-            kwargs["blade_number"] = blades # write into kwargs as blade_number
+            kwargs["blade_number"] = blades  # write into kwargs as blade_number
     if gdp_escalator is not None:
         raise DeprecationWarning("gdp_escalator has been deprecated and will be removed soon.")
-        assert gdp_escalator == 1 # make sure it has no unexpected non-impact
+        assert gdp_escalator == 1  # make sure it has no unexpected non-impact
     if blade_material_escalator is not None:
         raise DeprecationWarning("blade_material_escalator has been deprecated and will be removed soon.")
-        assert blade_material_escalator == 1 # make sure it has no unexpected non-impact
-    
+        assert blade_material_escalator == 1  # make sure it has no unexpected non-impact
+
     prob = om.Problem(reports=False)
     prob.model = nrel_csm_2015()
     prob.setup()
     # ensure or set all mandatory args
-    # defaults are taken from https://wisdem.readthedocs.io/en/master/examples/01_nrelcsm/tutorial.html 
+    # defaults are taken from https://wisdem.readthedocs.io/en/master/examples/01_nrelcsm/tutorial.html
     params = {
         "machine_rating": cp,
         "rotor_diameter": rd,
@@ -172,11 +174,11 @@ def onshore_tcc(cp, hh, rd, gdp_escalator=None, blade_material_escalator=None, b
         "main_bearing_number": 2,
         "blade_number": 3,
         "max_tip_speed": 80,
-        "max_efficiency": 0.90,  
+        "max_efficiency": 0.90,
     }
-    params.update(kwargs) # update default params with kwargs where parameters are missing
+    params.update(kwargs)  # update default params with kwargs where parameters are missing
     # set all kwarg + default parameters
-    for k,v in params.items():
+    for k, v in params.items():
         prob[k] = v
 
     # run and evaluate the model
