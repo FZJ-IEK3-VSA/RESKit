@@ -685,7 +685,7 @@ def getSpecificOffshoreCableCost(
             if yearAfter > yearBefore:
                 acCostPerKm = (
                     acCostPerKm
-                    * (acCostPerKmDict[yearAfter] - acCostPerKmDict[yearBefore])
+                    + (acCostPerKmDict[yearAfter] - acCostPerKmDict[yearBefore])
                     * (year - yearBefore)
                     / (yearAfter - yearBefore)
                 )
