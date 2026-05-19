@@ -136,7 +136,7 @@ def onshore_tcc_new(cp, hh, rd, gdp_escalator=None, blade_material_escalator=Non
         Blade material cost escalator, by default 1
     blades : int, optional
         Number of blades, by default 3
-        
+
     #TODO: kwargs
 
     Returns
@@ -176,7 +176,7 @@ def onshore_tcc_new(cp, hh, rd, gdp_escalator=None, blade_material_escalator=Non
         assert blade_material_escalator == 1  # make sure it has no unexpected non-impact
 
     cp, hh, rd = np.broadcast_arrays(cp, hh, rd)
-    
+
     spinner_mass_coeff = kwargs.get("spinner_mass_coeff", 15.5)
     spinner_mass_intercept = kwargs.get("spinner_mass_intercept", -980.0)
     spinner_mass = spinner_mass_coeff * rd + spinner_mass_intercept
@@ -190,7 +190,7 @@ def onshore_tcc_new(cp, hh, rd, gdp_escalator=None, blade_material_escalator=Non
             UserWarning,
             stacklevel=2,
         )
-    
+
     if cp.shape == ():
         turbineCapitalCost = _onshore_tcc_scalar(
             cp=cp.item(),
@@ -208,7 +208,7 @@ def onshore_tcc_new(cp, hh, rd, gdp_escalator=None, blade_material_escalator=Non
                 **_select_scalar_kwargs(kwargs, idx),
             )
 
-    return turbineCapitalCost*cp
+    return turbineCapitalCost * cp
 
 
 def _select_scalar_kwargs(kwargs, idx):
@@ -248,6 +248,7 @@ def _onshore_tcc_scalar(cp, hh, rd, **kwargs):
     prob.run_model()
     return prob.get_val("turbine_costs.turbine_c.turbine_cost_kW").item()
 
+
 def onshore_tcc(cp, hh, rd, gdp_escalator=1, blade_material_escalator=1, blades=3):
     """
     A function to determine the turbine capital cost (TCC) of a 3 blade standard onshore wind turbine based capacity, hub height and rotor diameter values according to the cost model by Fingersh et al. [1].
@@ -283,9 +284,6 @@ def onshore_tcc(cp, hh, rd, gdp_escalator=1, blade_material_escalator=1, blades=
     #     blade_material_escalator=blade_material_escalator,
     #     blades=blades,
     # )
-    
-    
-    
 
     rr = rd / 2
     sa = np.pi * rr * rr
@@ -293,8 +291,7 @@ def onshore_tcc(cp, hh, rd, gdp_escalator=1, blade_material_escalator=1, blades=
     # Blade Cost
     singleBladeMass = 0.4948 * np.power(rr, 2.53)
     singleBladeCost = (
-        (0.4019 * np.power(rr, 3) - 21051) * blade_material_escalator
-        + 2.7445 * np.power(rr, 2.5025) * gdp_escalator
+        (0.4019 * np.power(rr, 3) - 21051) * blade_material_escalator + 2.7445 * np.power(rr, 2.5025) * gdp_escalator
     ) * (1 - 0.28)
 
     # Hub
@@ -380,6 +377,7 @@ def onshore_tcc(cp, hh, rd, gdp_escalator=1, blade_material_escalator=1, blades=
     )
 
     return turbineCapitalCost
+
 
 def onshore_bos(cp, hh, rd):
     """
