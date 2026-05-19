@@ -683,12 +683,9 @@ def getSpecificOffshoreCableCost(
             yearAfter = min((y for y in acCostPerKmDict.keys() if y >= year))
             acCostPerKm = acCostPerKmDict[yearBefore]
             if yearAfter > yearBefore:
-                acCostPerKm = (
-                    acCostPerKm
-                    + (acCostPerKmDict[yearAfter] - acCostPerKmDict[yearBefore])
-                    * (year - yearBefore)
-                    / (yearAfter - yearBefore)
-                )
+                acCostPerKm = acCostPerKm + (acCostPerKmDict[yearAfter] - acCostPerKmDict[yearBefore]) * (
+                    year - yearBefore
+                ) / (yearAfter - yearBefore)
             costPerKm[ac_mask] = acCostPerKm
 
     # scale and add up the cost components, return as array or scalar
