@@ -1,3 +1,5 @@
+import warnings
+
 import numpy as np
 from wisdem.nrelcsm.nrel_csm_mass_2015 import nrel_csm_2015
 import openmdao.api as om
@@ -134,6 +136,8 @@ def onshore_tcc(cp, hh, rd, gdp_escalator=None, blade_material_escalator=None, b
         Blade material cost escalator, by default 1
     blades : int, optional
         Number of blades, by default 3
+        
+    #TODO: kwargs
 
     Returns
     -------
@@ -147,18 +151,28 @@ def onshore_tcc(cp, hh, rd, gdp_escalator=None, blade_material_escalator=None, b
     """
     # deal with deprecated arguments
     if blades is not None:
-        raise DeprecationWarning(
-            "blades argument has been deprecated and replaced by optional blades_number key in kwargs, 'blades' arg will be removed soon."
+        warnings.warn(
+            "blades argument has been deprecated and replaced by optional blades_number key in kwargs, 'blades' arg will be removed soon.",
+            DeprecationWarning,
+            stacklevel=2,
         )
         if "blade_number" in kwargs:
             assert kwargs["blade_number"] == blades, "blades value cannot differ from 'blade_number' in kwargs"
         else:
             kwargs["blade_number"] = blades  # write into kwargs as blade_number
     if gdp_escalator is not None:
-        raise DeprecationWarning("gdp_escalator has been deprecated and will be removed soon.")
+        warnings.warn(
+            "gdp_escalator has been deprecated and will be removed soon.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         assert gdp_escalator == 1  # make sure it has no unexpected non-impact
     if blade_material_escalator is not None:
-        raise DeprecationWarning("blade_material_escalator has been deprecated and will be removed soon.")
+        warnings.warn(
+            "blade_material_escalator has been deprecated and will be removed soon.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         assert blade_material_escalator == 1  # make sure it has no unexpected non-impact
 
     prob = om.Problem(reports=False)
