@@ -1,6 +1,8 @@
-from .. import NCSource
-import numpy as np
 from os.path import dirname, join
+
+import numpy as np
+
+from .. import NCSource
 
 
 class Era5Source(NCSource):
@@ -68,8 +70,8 @@ class Era5Source(NCSource):
             * The averaging is performed globally
 
 
-    See Also:
-    ---------
+    See Also
+    --------
     reskit.weather.MerraSource
     reskit.weather.SarahSource
     reskit.weather.Era5Source
@@ -78,34 +80,22 @@ class Era5Source(NCSource):
     ELEVATED_WIND_SPEED_HEIGHT = 100
     SURFACE_WIND_SPEED_HEIGHT = 10
 
-    LONG_RUN_AVERAGE_WINDSPEED = join(
-        dirname(__file__), "data", "ERA5_wind_speed_100m_mean.tiff"
-    )
-    LONG_RUN_AVERAGE_WINDSPEED_2008TO2017 = join(
-        dirname(__file__), "data", "ERA5_wind_speed_100m_mean_2008to2017.tiff"
-    )
-    LONG_RUN_AVERAGE_WINDDIR = join(
-        dirname(__file__), "data", "ERA5_wind_direction_100m_mean.tiff"
-    )
-    LONG_RUN_AVERAGE_GHI = join(
-        dirname(__file__), "data", "ERA5_surface_solar_radiation_downwards_mean.tiff"
-    )
+    LONG_RUN_AVERAGE_WINDSPEED = join(dirname(__file__), "data", "ERA5_wind_speed_100m_mean.tiff")
+    LONG_RUN_AVERAGE_WINDSPEED_2008TO2017 = join(dirname(__file__), "data", "ERA5_wind_speed_100m_mean_2008to2017.tiff")
+    LONG_RUN_AVERAGE_WINDDIR = join(dirname(__file__), "data", "ERA5_wind_direction_100m_mean.tiff")
+    LONG_RUN_AVERAGE_GHI = join(dirname(__file__), "data", "ERA5_surface_solar_radiation_downwards_mean.tiff")
     LONG_RUN_AVERAGE_DNI_archive = join(
         dirname(__file__),
         "data",
         "ERA5_total_sky_direct_solar_radiation_at_surface_mean.tiff",
     )
     LONG_RUN_AVERAGE_DNI = join(dirname(__file__), "data", "ERA5_DNI_mean.tif")
-    DNI_90_PERC_QUANT = join(
-        dirname(__file__), "data", "ERA5_DNI_percentile_90_2000_to_2020.tif"
-    )
+    DNI_90_PERC_QUANT = join(dirname(__file__), "data", "ERA5_DNI_percentile_90_2000_to_2020.tif")
 
     MAX_LON_DIFFERENCE = 0.26
     MAX_LAT_DIFFERENCE = 0.26
 
-    def __init__(
-        self, source, bounds=None, index_pad=5, time_index_from=None, **kwargs
-    ):
+    def __init__(self, source, bounds=None, index_pad=5, time_index_from=None, **kwargs):
         """Initialize a ERA5 style netCDF4 file source
 
         Compared to the generic NCSource object, the following parameters are automatically set:
@@ -118,8 +108,8 @@ class Era5Source(NCSource):
             * time_offset_minutes = -30
 
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
         path : str or list of str
             The path to the main data file(s) to load
 
@@ -129,7 +119,7 @@ class Era5Source(NCSource):
 
         bounds : Anything acceptable to geokit.Extent.load(), optional
             The boundaries of the data which is needed
-              * Usage of this will help with memory mangement
+              * Usage of this will help with memory management
               * If None, the full dataset is loaded in memory
               * The actual extent of the loaded data depends on the source's
                 available data
@@ -147,13 +137,12 @@ class Era5Source(NCSource):
             * Generally, there should be no missing data at all. This option is only intended to
                 catch the rare scenarios where one or two timesteps are missing
 
-        See Also:
-        ---------
+        See Also
+        --------
         MerraSource
         SarahSource
         Era5Source
         """
-
         # translate the mos common lear names for time_index_from
         ERA5_names = {
             "global_horizontal_irradiance_archive": "ssrd",
@@ -167,7 +156,7 @@ class Era5Source(NCSource):
             # if time_index_from is a known clear name use the dict
             time_index_from = ERA5_names[time_index_from]
         else:
-            # hope it is a well known ERA5 string. checkes in super.__init__
+            # hope it is a well known ERA5 string. checks in super.__init__
             pass
 
         super().__init__(
@@ -196,65 +185,68 @@ class Era5Source(NCSource):
         """
         return self.load("blh", "boundary_layer_height")
 
-    def sload_elevated_wind_speed(self):
-        """Standard loader function for the variable 'elevated_wind_speed'
-
-        Automatically reads the variables "ws<X>" from the given ERA5 source and saves
-        it as the variable 'elevated_wind_speed' in the data library
-
-        Where '<X>' is the height specified by `Era5Source.ELEVATED_WIND_SPEED_HEIGHT`
-
-        The "ws<X>" variable also needs to be precomputed from the raw variables "u<X>"
-            and "v<X>"
-
-        TODO: Update function to also be able to handle raw ERA5 inputs for u & v
+    def _sload_wind_speed(self, height, target_name, force_load_uv=False):
         """
-        return self.load(
-            "ws{}".format(self.ELEVATED_WIND_SPEED_HEIGHT), "elevated_wind_speed"
-        )
+        Generic loader for wind speed variables.
+        logic:
+        1) if ws<height> exists, load it directly
+        2) else, compute from u<height> and v<height>
+        3) finally, store in target_name
+        4) raise error if neither ws<height> nor both u and v exist
+
+        Parameters
+        ----------
+        height : int
+            Wind speed height (e.g. 10, 100)
+        target_name : str
+            Name to store in self.data
+
+        """
+        ws_var = f"ws{height}"
+        u_var = f"u{height}"
+        v_var = f"v{height}"
+
+        # --------------------------------------
+        # Case 1: precomputed wind speed exists
+        # --------------------------------------
+        if not force_load_uv and (ws_var in self.variables.index):
+            self.load(variable=ws_var, name=target_name)
+            return
+
+        # --------------------------------------
+        # Case 2: compute from u and v
+        # --------------------------------------
+        # Explicit protection: both components must exist
+        missing_uv = [var for var in (u_var, v_var) if var not in self.variables.index]
+        if missing_uv:
+            raise RuntimeError(
+                f"Cannot load {target_name}: "
+                f"not found precomputed variable '{ws_var}' and "
+                f"missing required variable(s): {', '.join(missing_uv)}"
+            )
+
+        # direct calculate from u and v
+        self.load(variable=v_var, name=v_var)
+        self.load(variable=u_var, name=u_var)
+        self.data[target_name] = np.sqrt(self.data[u_var] ** 2 + self.data[v_var] ** 2)
+        self.data.pop(u_var, None)
+        self.data.pop(v_var, None)
+
+    def sload_elevated_wind_speed(self):
+        """Standard loader function for the variable 'elevated_wind_speed'"""
+        return self._sload_wind_speed(height=self.ELEVATED_WIND_SPEED_HEIGHT, target_name="elevated_wind_speed")
 
     def sload_surface_wind_speed(self):
-        """Standard loader function for the variable 'surface_wind_speed'
-
-        Automatically reads the variables "ws<X>" from the given ERA5 source and saves
-        it as the variable 'surface_wind_speed' in the data library
-
-        Where '<X>' is the height specified by `Era5Source.SURFACE_WIND_SPEED_HEIGHT`
-
-        The "ws<X>" variable also needs to be precomputed from the raw variables "u<X>"
-            and "v<X>"
-
-        TODO: Update function to also be able to handle raw ERA5 inputs for u & v
-        """
-        return self.load(
-            "ws{}".format(self.SURFACE_WIND_SPEED_HEIGHT), "surface_wind_speed"
-        )
+        """Standard loader function for the variable 'surface_wind_speed'"""
+        return self._sload_wind_speed(height=self.SURFACE_WIND_SPEED_HEIGHT, target_name="surface_wind_speed")
 
     def sload_wind_speed_at_100m(self):
-        """Standard loader function for the variable 'wind_speed_at_100m'
-
-        Automatically reads the variables "ws100" from the given ERA5 source and saves
-        it as the variable 'wind_speed_at_100m' in the data library
-
-        The "ws100" variable also needs to be precomputed from the raw variables "u100"
-            and "v100"
-
-        TODO: Update function to also be able to handle raw ERA5 inputs for u & v
-        """
-        return self.load("ws100", "wind_speed_at_100m")
+        """Standard loader function for the variable 'wind_speed_at_100m'"""
+        return self._sload_wind_speed(height=100, target_name="wind_speed_at_100m")
 
     def sload_wind_speed_at_10m(self):
-        """Standard loader function for the variable 'wind_speed_at_10m'
-
-        Automatically reads the variables "ws10" from the given ERA5 source and saves
-        it as the variable 'wind_speed_at_10m' in the data library
-
-        The "ws10" variable also needs to be precomputed from the raw variables "u10"
-            and "v10"
-
-        TODO: Update function to also be able to handle raw ERA5 inputs for u & v
-        """
-        return self.load("ws10", "wind_speed_at_10m")
+        """Standard loader function for the variable 'wind_speed_at_10m'"""
+        return self._sload_wind_speed(height=10, target_name="wind_speed_at_10m")
 
     def sload_elevated_wind_direction(self):
         """Standard loader function for the variable 'elevated_wind_direction'
@@ -287,9 +279,7 @@ class Era5Source(NCSource):
 
         Temperature values are also converted from kelvin to degrees celsius
         """
-        return self.load(
-            "t2m", name="surface_air_temperature", processor=lambda x: x - 273.15
-        )
+        return self.load("t2m", name="surface_air_temperature", processor=lambda x: x - 273.15)
 
     def sload_surface_dew_temperature(self):
         """Standard loader function for the variable 'surface_dew_temperature'
@@ -299,9 +289,7 @@ class Era5Source(NCSource):
 
         Temperature values are also converted from kelvin to degrees celsius
         """
-        return self.load(
-            "d2m", name="surface_dew_temperature", processor=lambda x: x - 273.15
-        )
+        return self.load("d2m", name="surface_dew_temperature", processor=lambda x: x - 273.15)
 
     def sload_direct_horizontal_irradiance_archive(self):
         """Standard loader function for the variable 'direct_horizontal_irradiance'
@@ -329,9 +317,7 @@ class Era5Source(NCSource):
         Automatically reads the variable "ssrd" from the given ERA5 source and saves it as the
         variable 'global_horizontal_irradiance' in the data library
         """
-        print(
-            "WARNING: Non time corrected ERA5-GHI loaded. Only do this, if you understand the implications of this!"
-        )
+        print("WARNING: Non time corrected ERA5-GHI loaded. Only do this, if you understand the implications of this!")
         return self.load("ssrd", name="global_horizontal_irradiance_archive")
 
     def sload_global_horizontal_irradiance(self):

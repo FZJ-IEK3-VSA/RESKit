@@ -65,7 +65,7 @@ def turbine_design_from_avg_wind_speed(
         Either "onshore" or "offshore" to define the turbine scaling functions.
 
     constant_rotor_diam : bool, optional
-        Whether the rotor diameter is mantained constant or not, by default True
+        Whether the rotor diameter is maintained constant or not, by default True
 
     base_capacity : numeric or array_like, optional
         Baseline turbine capacity in kW, by default 4200.
@@ -100,7 +100,7 @@ def turbine_design_from_avg_wind_speed(
         value, by default 200.
 
     tech_year : int, optional
-        The year definining the baseline turbine design that shall be used.
+        The year defining the baseline turbine design that shall be used.
 
     baseline_turbine_fp : str, optional
         A json or csv file that contains baseline turbine parameters. Will
@@ -119,11 +119,11 @@ def turbine_design_from_avg_wind_speed(
         Returns a the suggested values of hub height in m, specific power in W/m2, and capacity in kW as dictionary when numeric values are input or as a pandas DataFrame when array-like objects are input.
 
     Notes
-    -------
+    -----
     The default baseline onshore turbine has 4200 kW capacity, 120m hub height, and 136m rotor diameter [1]
 
     References
-    -------
+    ----------
     [1] David S. Ryberg, Dilara C. Caglayan, Sabrina Schmitt, Jochen Linssen, Detlef Stolten, Martin Robinius - The Future of European Onshore Wind Energy Potential:
     Detailed Distributionand Simulation of Advanced Turbine Designs, Energy, 2019, available at https://www.sciencedirect.com/science/article/abs/pii/S0360544219311818
     """
@@ -267,9 +267,7 @@ def turbine_design_from_avg_wind_speed(
             if baseline_params["constant_rotor_diam"]:
                 hub_height[lowerlt] = rotor_diam / 2 + baseline_params["min_tip_height"]
             else:
-                hub_height[lowerlt] = (
-                    rotor_diam[lowerlt] / 2 + baseline_params["min_tip_height"]
-                )
+                hub_height[lowerlt] = rotor_diam[lowerlt] / 2 + baseline_params["min_tip_height"]
 
         upperlt = hub_height > baseline_params["max_hub_height"]
         if upperlt.any():

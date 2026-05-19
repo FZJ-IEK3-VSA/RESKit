@@ -30,16 +30,10 @@ class gringarten:
             n_Fracs = 1
         else:
             a = (
-                self.x_ED
-                * self.K_rock
-                * self.y
-                * self.z
-                / (self.rho_water * self.cp_water * self.Vdot_total)
+                self.x_ED * self.K_rock * self.y * self.z / (self.rho_water * self.cp_water * self.Vdot_total)
             )  # definition of the dimensionles fracture space frim Augustine eg3
 
-            n_Fracs = np.sqrt(
-                self.x / (2 * a)
-            )  # by geometry as a equals x_E/n and 2x_E*n=x
+            n_Fracs = np.sqrt(self.x / (2 * a))  # by geometry as a equals x_E/n and 2x_E*n=x
 
         self.n_Fracs = n_Fracs
 
@@ -58,9 +52,7 @@ class gringarten:
 
     def getGringartenCurve(self, path=None):
         if path is None:
-            path = os.path.join(
-                os.path.abspath(os.path.dirname(__file__)), "Gringartencurve.xlsx"
-            )
+            path = os.path.join(os.path.abspath(os.path.dirname(__file__)), "Gringartencurve.xlsx")
 
         dict_df = pd.read_excel(path, sheet_name=None)
         if self.x_ED == 2:
@@ -95,44 +87,27 @@ class gringarten:
         dT_Rock_Inj = T_Rock - T_Inj
         dT_Rock_Inj[dT_Rock_Inj < 0] = np.nan
 
-        T_water_outlet = np.expand_dims(T_Rock, 2) - np.einsum(
-            "k,ij", self.T_D, dT_Rock_Inj
-        )
+        T_water_outlet = np.expand_dims(T_Rock, 2) - np.einsum("k,ij", self.T_D, dT_Rock_Inj)
 
         self.T_out = T_water_outlet
 
     def getEGSProps(self, timestep=None):
         dt = self.time[1] - self.time[0]
-        Qdot_water = (
-            self.Vdot_total * self.rho_water * self.cp_water * (self.T_out - self.T_Inj)
-        )
+        Qdot_water = self.Vdot_total * self.rho_water * self.cp_water * (self.T_out - self.T_Inj)
         Q_water = Qdot_water.cumsum(axis=2) * dt
         mdot_water = self.Vdot_total * self.rho_water
 
         # Heat in place
         T_amb = 15  # °C
         Q_Rock_total = (
-            self.x
-            * self.y
-            * self.z
-            * self.rho_rock
-            * self.cp_rock
-            * (self.T_Rock - T_amb)
+            self.x * self.y * self.z * self.rho_rock * self.cp_rock * (self.T_Rock - T_amb)
         )  # * np.ones(Q_water.shape[2])
         Q_Rock_useable = (
-            self.x
-            * self.y
-            * self.z
-            * self.rho_rock
-            * self.cp_rock
-            * (self.T_Rock - self.T_Inj)
+            self.x * self.y * self.z * self.rho_rock * self.cp_rock * (self.T_Rock - self.T_Inj)
         )  # * np.ones(len(Q_water))
 
         Q_Rock_unused = np.expand_dims(Q_Rock_total, 2) - Q_water
-        T_Rock_avrg = (
-            Q_Rock_unused / (self.x * self.y * self.z * self.rho_rock * self.cp_rock)
-            + T_amb
-        )
+        T_Rock_avrg = Q_Rock_unused / (self.x * self.y * self.z * self.rho_rock * self.cp_rock) + T_amb
 
         dT_Rock_avrg = np.expand_dims(self.T_Rock, 2) - T_Rock_avrg
 
@@ -171,7 +146,7 @@ class gringarten:
         return output
 
     def getResourceUseTime(self, T_abandon):
-        """returns the time in years, after which the reservoir is depleted (if enough time steps are given)
+        """Returns the time in years, after which the reservoir is depleted (if enough time steps are given)
 
         Parameters
         ----------
@@ -183,10 +158,9 @@ class gringarten:
         float
             time in years until the abandon temperature is reached
         """
-
         # for 1D: np.where((self.T_out > T_abandon)[9,0])[0].max()
         # for 1d: np.absolute(self.T_out - T_abandon)[9,0].argmin()
-        # select the point in time where the water outlet temperature is closest to min useable temerature (min of abs(T_out - T_abandon))
+        # select the point in time where the water outlet temperature is closest to min usable temperature (min of abs(T_out - T_abandon))
         timestep_abandon = np.absolute(self.T_out - T_abandon).argmin(axis=2)
         # get the time for the time steps in years
         time_abandon = self.time[timestep_abandon] / self.SECONDS_PER_YEAR
@@ -199,9 +173,7 @@ if __name__ == "__main__":
     SECONDS_PER_YEAR = 365 * 24 * 3600
     # unit tests
     grin = gringarten(50e-3, 1000, 1000, 1000, 2)
-    assert np.isclose(
-        grin.n_Fracs, 8.9 / 2, rtol=0.01
-    )  # from augstine with different mass flow
+    assert np.isclose(grin.n_Fracs, 8.9 / 2, rtol=0.01)  # from augstine with different mass flow
     grin.getDimlessTime(
         np.array(
             [
@@ -213,6 +185,4 @@ if __name__ == "__main__":
             ]
         )
     )
-    assert np.allclose(
-        grin.t_D, np.array([0.0103537, 0.05176851, 0.10353702, 0.20707403, 0.31061105])
-    )
+    assert np.allclose(grin.t_D, np.array([0.0103537, 0.05176851, 0.10353702, 0.20707403, 0.31061105]))

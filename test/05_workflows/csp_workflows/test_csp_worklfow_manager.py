@@ -1,8 +1,9 @@
-import pandas as pd
 import numpy as np
-from reskit.csp.workflows.csp_workflow_manager import PTRWorkflowManager
-import reskit as rk
+import pandas as pd
 import pytest
+
+import reskit as rk
+from reskit.csp.workflows.csp_workflow_manager import PTRWorkflowManager
 
 # %% Test Init
 
@@ -59,12 +60,6 @@ def funct():
     # DNI convention: Heat flux per normal (to zenith) plane
     wf.direct_normal_irradiance_from_trigonometry()
 
-    # do long run averaging for DNI
-    if global_solar_atlas_dni_path == "default_cluster":
-        global_solar_atlas_dni_path = r"/storage/internal/data/gears/geography/irradiance/global_solar_atlas_v2.5/World_DNI_GISdata_LTAy_AvgDailyTotals_GlobalSolarAtlas-v2_GEOTIFF/DNI.tif"
-    if global_solar_atlas_dni_path == "default_local":
-        global_solar_atlas_dni_path = r"R:\data\gears\geography\irradiance\global_solar_atlas_v2.5\World_DNI_GISdata_LTAy_AvgDailyTotals_GlobalSolarAtlas-v2_GEOTIFF\DNI.tif"
-
     # TODO: implement if working
     # if global_solar_atlas_dni_path != None:
     #     wf.adjust_variable_to_long_run_average(
@@ -74,20 +69,16 @@ def funct():
     #         real_lra_scaling=1000 / 24,  # cast to hourly average kWh
     # )
 
-    # 6) doing selfmade calulations until Heat to HTF
+    # 6) doing selfmade calculations until Heat to HTF
     # wf.calculateCosineLossesParabolicTrough(orientation=ptr_data['orientation']) shifted
     wf.calculateIAM(a1=ptr_data["a1"], a2=ptr_data["a2"], a3=ptr_data["a3"])
-    wf.calculateShadowLosses(
-        method="wagner2011", SF_density=ptr_data["SF_density_direct"]
-    )
+    wf.calculateShadowLosses(method="wagner2011", SF_density=ptr_data["SF_density_direct"])
     wf.calculateWindspeedLosses(max_windspeed_threshold=ptr_data["maxWindspeed"])
     wf.calculateDegradationLosses(
-        efficencyDropPerYear=ptr_data["efficencyDropPerYear"],
+        efficiencyDropPerYear=ptr_data["efficiencyDropPerYear"],
         lifetime=ptr_data["lifetime"],
     )
-    wf.calculateHeattoHTF(
-        eta_ptr_max=ptr_data["eta_ptr_max"], eta_cleaness=ptr_data["eta_cleaness"]
-    )
+    wf.calculateHeattoHTF(eta_ptr_max=ptr_data["eta_ptr_max"], eta_cleaness=ptr_data["eta_cleaness"])
 
     # wf.apply_capacity()
 
@@ -129,9 +120,7 @@ def funct():
         lifetime=ptr_data["lifetime"],
         calculationmethod="franzmann2021",
         params={
-            "CAPEX_solar_field_USD_per_m^2_aperture": ptr_data[
-                "CAPEX_solar_field_USD_per_m^2_aperture"
-            ],
+            "CAPEX_solar_field_USD_per_m^2_aperture": ptr_data["CAPEX_solar_field_USD_per_m^2_aperture"],
             "CAPEX_land_USD_per_m^2_land": ptr_data["CAPEX_land_USD_per_m^2_land"],
             "CAPEX_indirect_cost_%_CAPEX": ptr_data["CAPEX_indirect_cost_%_CAPEX"],
             "electricity_price_USD_per_kWh": ptr_data["electricity_price_USD_per_kWh"],
@@ -346,7 +335,7 @@ def pt_PTRWorkflowManager_solarpos() -> PTRWorkflowManager:
     return wfm
 
 
-# test calcualte solar position
+# test calculate solar position
 
 
 def test_calculateSolarPosition(pt_PTRWorkflowManager_solarpos):
@@ -365,18 +354,10 @@ def test_calculateSolarPosition(pt_PTRWorkflowManager_solarpos):
     assert np.isclose(wfm.sim_data["solar_zenith_degree"].min(), 73.4811943930343)
     assert np.isclose(wfm.sim_data["solar_zenith_degree"].max(), 152.2150485902235)
 
-    assert np.isclose(
-        wfm.sim_data["solar_altitude_angle_degree"].mean(), -21.28957246057363
-    )
-    assert np.isclose(
-        wfm.sim_data["solar_altitude_angle_degree"].std(), 27.195085020417622
-    )
-    assert np.isclose(
-        wfm.sim_data["solar_altitude_angle_degree"].min(), -62.21504859022348
-    )
-    assert np.isclose(
-        wfm.sim_data["solar_altitude_angle_degree"].max(), 16.518805606965696
-    )
+    assert np.isclose(wfm.sim_data["solar_altitude_angle_degree"].mean(), -21.28957246057363)
+    assert np.isclose(wfm.sim_data["solar_altitude_angle_degree"].std(), 27.195085020417622)
+    assert np.isclose(wfm.sim_data["solar_altitude_angle_degree"].min(), -62.21504859022348)
+    assert np.isclose(wfm.sim_data["solar_altitude_angle_degree"].max(), 16.518805606965696)
 
     assert np.isclose(wfm.sim_data["theta"].mean(), 15.392752844414987)
     assert np.isclose(wfm.sim_data["theta"].std(), 25.06289216984148)
@@ -400,9 +381,7 @@ def test_calculateSolarPositionfaster(pt_PTRWorkflowManager_solarpos):
     stracking_angle_fast = wfm.sim_data["tracking_angle"]
     wfm.calculateSolarPosition()
     assert np.isclose(solar_zenith_degree_fast, wfm.sim_data["solar_zenith_degree"])
-    assert np.isclose(
-        solar_altitude_angle_degree_fast, wfm.sim_data["solar_altitude_angle_degree"]
-    )
+    assert np.isclose(solar_altitude_angle_degree_fast, wfm.sim_data["solar_altitude_angle_degree"])
     assert np.isclose(theta_fast, wfm.sim_data["theta"])
     assert np.isclose(stracking_angle_fast, wfm.sim_data["tracking_angle"])
     assert wfm.sim_data["solar_zenith_degree_fast"].shape == (140, 3)
@@ -445,9 +424,7 @@ def test_direct_normal_irradiance_from_trigonometry(
     assert "direct_normal_irradiance" in wfm.sim_data.keys()
     assert wfm.sim_data["direct_normal_irradiance"].shape == (140, 3)
     print_testresults(wfm.sim_data["direct_normal_irradiance"])
-    assert np.isclose(
-        wfm.sim_data["direct_normal_irradiance"].mean(), 67.92523701209932
-    )
+    assert np.isclose(wfm.sim_data["direct_normal_irradiance"].mean(), 67.92523701209932)
     assert np.isclose(wfm.sim_data["direct_normal_irradiance"].std(), 140.0979306213717)
     assert np.isclose(wfm.sim_data["direct_normal_irradiance"].min(), 0.0)
     assert np.isclose(wfm.sim_data["direct_normal_irradiance"].max(), 583.4938777937742)
@@ -475,16 +452,10 @@ def test_adjust_variable_to_long_run_average(pt_PTRWorkflowManager_solarpos):
     wfm = pt_PTRWorkflowManager_solarpos
 
     print("before LRA")
-    assert np.isclose(
-        wfm.sim_data["direct_horizontal_irradiance"].mean(), 15.151816929634485
-    )
-    assert np.isclose(
-        wfm.sim_data["direct_horizontal_irradiance"].std(), 33.92488851386296
-    )
+    assert np.isclose(wfm.sim_data["direct_horizontal_irradiance"].mean(), 15.151816929634485)
+    assert np.isclose(wfm.sim_data["direct_horizontal_irradiance"].std(), 33.92488851386296)
     assert np.isclose(wfm.sim_data["direct_horizontal_irradiance"].min(), 0.0)
-    assert np.isclose(
-        wfm.sim_data["direct_horizontal_irradiance"].max(), 162.14436231574447
-    )
+    assert np.isclose(wfm.sim_data["direct_horizontal_irradiance"].max(), 162.14436231574447)
 
     wfm.adjust_variable_to_long_run_average(
         variable="direct_horizontal_irradiance",
@@ -499,16 +470,10 @@ def test_adjust_variable_to_long_run_average(pt_PTRWorkflowManager_solarpos):
     print(wfm.sim_data["direct_normal_irradiance"].min())
     print(wfm.sim_data["direct_normal_irradiance"].max())
 
-    assert np.isclose(
-        wfm.sim_data["direct_normal_irradiance"].mean(), 16.06680060520131
-    )
-    assert np.isclose(
-        wfm.sim_data["direct_normal_irradiance"].std(), 45.902557468831624
-    )
+    assert np.isclose(wfm.sim_data["direct_normal_irradiance"].mean(), 16.06680060520131)
+    assert np.isclose(wfm.sim_data["direct_normal_irradiance"].std(), 45.902557468831624)
     assert np.isclose(wfm.sim_data["direct_normal_irradiance"].min(), 0.0)
-    assert np.isclose(
-        wfm.sim_data["direct_normal_irradiance"].max(), 257.65673305845195
-    )
+    assert np.isclose(wfm.sim_data["direct_normal_irradiance"].max(), 257.65673305845195)
 
 
 @pytest.mark.skip(reason="Function not used atm")
@@ -619,11 +584,11 @@ def test_calculateWindspeedLosses(pt_PTRWorkflowManager_loaded):
 def test_calculateDegradationLosses(pt_PTRWorkflowManager_initialized):
     wfm = pt_PTRWorkflowManager_initialized
 
-    wfm.calculateDegradationLosses(efficencyDropPerYear=0.02, lifetime=20)
+    wfm.calculateDegradationLosses(efficiencyDropPerYear=0.02, lifetime=20)
 
     assert np.isclose(wfm.sim_data["eta_degradation"], 0.8643604692000185)
 
-    wfm.calculateDegradationLosses(efficencyDropPerYear=0, lifetime=20)
+    wfm.calculateDegradationLosses(efficiencyDropPerYear=0, lifetime=20)
 
     assert np.isclose(wfm.sim_data["eta_degradation"], 1)
 
@@ -705,12 +670,10 @@ def pt_PTRWorkflowManager_heat_loss() -> PTRWorkflowManager:
     wf.direct_normal_irradiance_from_trigonometry()
 
     wf.calculateIAM(a1=ptr_data["a1"], a2=ptr_data["a2"], a3=ptr_data["a3"])
-    wf.calculateShadowLosses(
-        method="wagner2011", SF_density=ptr_data["SF_density_direct"]
-    )
+    wf.calculateShadowLosses(method="wagner2011", SF_density=ptr_data["SF_density_direct"])
     wf.calculateWindspeedLosses(max_windspeed_threshold=ptr_data["maxWindspeed"])
     wf.calculateDegradationLosses(
-        efficencyDropPerYear=ptr_data["efficencyDropPerYear"],
+        efficiencyDropPerYear=ptr_data["efficiencyDropPerYear"],
         lifetime=ptr_data["lifetime"],
     )
     wf.calculateHeattoHTF(
@@ -885,9 +848,7 @@ def pt_PTRWorkflowManager_economics() -> PTRWorkflowManager:
 
     if not hasattr(wfm, "sim_data_daily"):
         wfm.sim_data_daily = {}
-    wfm.sim_data_daily["P_backup_heating_daily_Wh_el"] = np.array(
-        [[a, a * 2, a], [0, 0, 0]]
-    )
+    wfm.sim_data_daily["P_backup_heating_daily_Wh_el"] = np.array([[a, a * 2, a], [0, 0, 0]])
 
     if not hasattr(wfm, "ptr_data"):
         wfm.ptr_data = {}
@@ -912,7 +873,7 @@ def test_get_totex_from_self(pt_PTRWorkflowManager_economics):
         TOTEX_EUR_per_a.values,
         [18431137.22318471, 36862274.44636942, 18431137.22318471],
     ).all()
-    # assert np.isclose(TOTEX_EUR_per_a.values, [16.01572773E6, 2*16.01572773E6, 16.01572773E6]).all() # use those values, if 'Parasitics_solarfield_W_el' arent bought as varOPEX
+    # assert np.isclose(TOTEX_EUR_per_a.values, [16.01572773E6, 2*16.01572773E6, 16.01572773E6]).all() # use those values, if 'Parasitics_solarfield_W_el' aren't bought as varOPEX
 
     TOTEX_EUR_per_a = wfm._get_totex_from_self(sm_manipulation=1, tes_manipulation=10)
     # use those values, if 'Parasitics_solarfield_W_el' are bought as varOPEX
@@ -920,16 +881,12 @@ def test_get_totex_from_self(pt_PTRWorkflowManager_economics):
         TOTEX_EUR_per_a.values,
         [26681959.73652098, 53363919.47304196, 26681959.73652098],
     ).all()
-    # assert np.isclose(TOTEX_EUR_per_a.values, [24266550.23652098, 48533100.47304196, 24266550.23652098]).all() # use those values, if 'Parasitics_solarfield_W_el' arent bought as varOPEX
+    # assert np.isclose(TOTEX_EUR_per_a.values, [24266550.23652098, 48533100.47304196, 24266550.23652098]).all() # use those values, if 'Parasitics_solarfield_W_el' aren't bought as varOPEX
 
     # Test from Excel sheet. cannot calculate parasitic losses
-    wfm.sim_data_daily["P_backup_heating_daily_Wh_el"] = np.array(
-        [[0, 0, 0], [0, 0, 0]]
-    )
+    wfm.sim_data_daily["P_backup_heating_daily_Wh_el"] = np.array([[0, 0, 0], [0, 0, 0]])
     TOTEX_EUR_per_a = wfm._get_totex_from_self()
-    assert np.isclose(
-        TOTEX_EUR_per_a.values, [16.01572773e6, 2 * 16.01572773e6, 16.01572773e6]
-    ).all()
+    assert np.isclose(TOTEX_EUR_per_a.values, [16.01572773e6, 2 * 16.01572773e6, 16.01572773e6]).all()
 
 
 ####################################
@@ -981,21 +938,13 @@ def test_calculateParasitics(pt_PTRWorkflowManager_parasitics):
     assert np.isclose(wfm.sim_data["Parasitics_W_el"].min(), 0)
     assert np.isclose(wfm.sim_data["Parasitics_W_el"].max(), 1183094.33567266)
 
-    assert np.isclose(
-        wfm.sim_data["Parasitics_solarfield_W_el"].mean(), 70349.0500996118
-    )
-    assert np.isclose(
-        wfm.sim_data["Parasitics_solarfield_W_el"].std(), 127515.52803736902
-    )
+    assert np.isclose(wfm.sim_data["Parasitics_solarfield_W_el"].mean(), 70349.0500996118)
+    assert np.isclose(wfm.sim_data["Parasitics_solarfield_W_el"].std(), 127515.52803736902)
     assert np.isclose(wfm.sim_data["Parasitics_solarfield_W_el"].min(), 0)
-    assert np.isclose(
-        wfm.sim_data["Parasitics_solarfield_W_el"].max(), 560214.6209076601
-    )
+    assert np.isclose(wfm.sim_data["Parasitics_solarfield_W_el"].max(), 560214.6209076601)
 
     a = np.array([9690569.61684967, 10162240.40550065, 9693791.01948664])
-    assert np.isclose(
-        wfm.placements["Parasitics_solarfield_Wh_el_per_a"].values, a
-    ).all()
+    assert np.isclose(wfm.placements["Parasitics_solarfield_Wh_el_per_a"].values, a).all()
 
     b = np.array([10113416.57878985, 10692104.222701, 9648759.21542535])
     assert np.isclose(wfm.placements["Parasitics_plant_Wh_el_per_a"].values, b).all()
@@ -1035,9 +984,7 @@ def test_calculateEconomics_SolarField(pt_PTRWorkflowManager_economicsSF):
         "OPEX_perc_CAPEX": 0.03,
     }
 
-    wfm.calculateEconomics_SolarField(
-        WACC=0.08, lifetime=30, calculationmethod="franzmann2021", params=params
-    )
+    wfm.calculateEconomics_SolarField(WACC=0.08, lifetime=30, calculationmethod="franzmann2021", params=params)
 
     assert "annualHeatfromSF_Wh" in wfm.placements.columns
     assert "CAPEX_SF_EUR" in wfm.placements.columns
@@ -1083,9 +1030,7 @@ def test_optimize_plant_size(pt_PTRWorkflowManager_optplant):
     # case 1:
     onlynightuse = True
     fullvariation = False
-    wfm.optimize_plant_size(
-        onlynightuse=onlynightuse, fullvariation=fullvariation, debug_vars=debug_vars
-    )
+    wfm.optimize_plant_size(onlynightuse=onlynightuse, fullvariation=fullvariation, debug_vars=debug_vars)
 
     a = np.array([3.5, 3.5, 3.5])
     b = np.array([15, 12, 15])
@@ -1095,9 +1040,7 @@ def test_optimize_plant_size(pt_PTRWorkflowManager_optplant):
     # case 2:
     onlynightuse = False
     fullvariation = False
-    wfm.optimize_plant_size(
-        onlynightuse=onlynightuse, fullvariation=fullvariation, debug_vars=debug_vars
-    )
+    wfm.optimize_plant_size(onlynightuse=onlynightuse, fullvariation=fullvariation, debug_vars=debug_vars)
 
     a = np.array([4.5, 4.5, 4.5])
     b = np.array([12, 9, 9])
@@ -1142,16 +1085,10 @@ def test_calculate_electrical_output(pt_PTRWorkflowManager_calcElecOut):
     wfm.calculate_electrical_output(onlynightuse=onlynightuse, debug_vars=debug_vars)
 
     assert wfm.sim_data_daily["Power_net_total_per_day_Wh"].shape == (365, 3)
-    assert np.isclose(
-        wfm.sim_data_daily["Power_net_total_per_day_Wh"].mean(), 26524777.959221434
-    )
-    assert np.isclose(
-        wfm.sim_data_daily["Power_net_total_per_day_Wh"].std(), 12725454.904320534
-    )
+    assert np.isclose(wfm.sim_data_daily["Power_net_total_per_day_Wh"].mean(), 26524777.959221434)
+    assert np.isclose(wfm.sim_data_daily["Power_net_total_per_day_Wh"].std(), 12725454.904320534)
     assert np.isclose(wfm.sim_data_daily["Power_net_total_per_day_Wh"].min(), 0.0)
-    assert np.isclose(
-        wfm.sim_data_daily["Power_net_total_per_day_Wh"].max(), 36665967.17670143
-    )
+    assert np.isclose(wfm.sim_data_daily["Power_net_total_per_day_Wh"].max(), 36665967.17670143)
 
     assert wfm.sim_data_daily["Power_net_bound_per_day_Wh"].shape == (365, 3)
     assert np.isclose(wfm.sim_data_daily["Power_net_bound_per_day_Wh"].mean(), 0)
@@ -1164,28 +1101,16 @@ def test_calculate_electrical_output(pt_PTRWorkflowManager_calcElecOut):
     wfm.calculate_electrical_output(onlynightuse=onlynightuse, debug_vars=debug_vars)
 
     assert wfm.sim_data_daily["Power_net_total_per_day_Wh"].shape == (365, 3)
-    assert np.isclose(
-        wfm.sim_data_daily["Power_net_total_per_day_Wh"].mean(), 35885138.24915207
-    )
-    assert np.isclose(
-        wfm.sim_data_daily["Power_net_total_per_day_Wh"].std(), 23331667.68341452
-    )
+    assert np.isclose(wfm.sim_data_daily["Power_net_total_per_day_Wh"].mean(), 35885138.24915207)
+    assert np.isclose(wfm.sim_data_daily["Power_net_total_per_day_Wh"].std(), 23331667.68341452)
     assert np.isclose(wfm.sim_data_daily["Power_net_total_per_day_Wh"].min(), 0.0)
-    assert np.isclose(
-        wfm.sim_data_daily["Power_net_total_per_day_Wh"].max(), 80307702.4923343
-    )
+    assert np.isclose(wfm.sim_data_daily["Power_net_total_per_day_Wh"].max(), 80307702.4923343)
 
     assert wfm.sim_data_daily["Power_net_bound_per_day_Wh"].shape == (365, 3)
-    assert np.isclose(
-        wfm.sim_data_daily["Power_net_bound_per_day_Wh"].mean(), 9364395.790161656
-    )
-    assert np.isclose(
-        wfm.sim_data_daily["Power_net_bound_per_day_Wh"].std(), 12716518.611837856
-    )
+    assert np.isclose(wfm.sim_data_daily["Power_net_bound_per_day_Wh"].mean(), 9364395.790161656)
+    assert np.isclose(wfm.sim_data_daily["Power_net_bound_per_day_Wh"].std(), 12716518.611837856)
     assert np.isclose(wfm.sim_data_daily["Power_net_bound_per_day_Wh"].min(), 0.0)
-    assert np.isclose(
-        wfm.sim_data_daily["Power_net_bound_per_day_Wh"].max(), 41235946.71834937
-    )
+    assert np.isclose(wfm.sim_data_daily["Power_net_bound_per_day_Wh"].max(), 41235946.71834937)
 
 
 ####################################
@@ -1224,9 +1149,7 @@ def pt_PTRWorkflowManager_calcCFs() -> PTRWorkflowManager:
     wfm.placements["capacity_sf_W_th"] = 58e6
     wfm.sim_data["HeattoPlant_W"] = dni_test * 1e5 * 0.7
     wfm.placements["power_plant_capacity_W_el"] = 58e6 / 2 * 0.4
-    wfm.sim_data_daily["Power_net_total_per_day_Wh"] = (
-        dni_test * 1e5 * 0.7 * 0.99 * 0.4 * 0.9
-    )
+    wfm.sim_data_daily["Power_net_total_per_day_Wh"] = dni_test * 1e5 * 0.7 * 0.99 * 0.4 * 0.9
     wfm.sim_data["P_heating_W"] = dni_test * 1e5 * 0.7 / 10
     # wfm.ptr_data = {}
     # wfm.sim_data['HeattoPlant_W'] = dni_test * 1E5 * 0.7
@@ -1251,25 +1174,15 @@ def test_calculateCapacityFactors(pt_PTRWorkflowManager_calcCFs):
     assert np.isclose(wfm.sim_data["capacity_factor_sf"].max(), 0.7042167493103447)
 
     assert wfm.sim_data["capacity_factor_heat_FP_sf"].shape == (140, 3)
-    assert np.isclose(
-        wfm.sim_data["capacity_factor_heat_FP_sf"].min(), -0.07042167493103447
-    )
+    assert np.isclose(wfm.sim_data["capacity_factor_heat_FP_sf"].min(), -0.07042167493103447)
     assert np.isclose(wfm.sim_data["capacity_factor_heat_FP_sf"].max(), 0)
-    assert np.isclose(
-        wfm.sim_data["capacity_factor_heat_FP_sf"].mean(), -0.008197873433178876
-    )
+    assert np.isclose(wfm.sim_data["capacity_factor_heat_FP_sf"].mean(), -0.008197873433178876)
 
     assert wfm.sim_data_daily["capacity_factor_plant"].shape == (140, 3)
-    assert np.isclose(
-        wfm.sim_data_daily["capacity_factor_plant"].mean(), 0.0060869210241353165
-    )
-    assert np.isclose(
-        wfm.sim_data_daily["capacity_factor_plant"].std(), 0.012554465421365252
-    )
+    assert np.isclose(wfm.sim_data_daily["capacity_factor_plant"].mean(), 0.0060869210241353165)
+    assert np.isclose(wfm.sim_data_daily["capacity_factor_plant"].std(), 0.012554465421365252)
     assert np.isclose(wfm.sim_data_daily["capacity_factor_plant"].min(), 0)
-    assert np.isclose(
-        wfm.sim_data_daily["capacity_factor_plant"].max(), 0.0522880936362931
-    )
+    assert np.isclose(wfm.sim_data_daily["capacity_factor_plant"].max(), 0.0522880936362931)
 
 
 # Code to generate above:

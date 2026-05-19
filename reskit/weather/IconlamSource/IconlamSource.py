@@ -1,6 +1,8 @@
-from .. import NCSource
-import numpy as np
 from os.path import dirname, join
+
+import numpy as np
+
+from .. import NCSource
 
 
 class IconlamSource(NCSource):
@@ -65,8 +67,8 @@ class IconlamSource(NCSource):
             * The averaging is performed globally
 
 
-    See Also:
-    ---------
+    See Also
+    --------
     reskit.weather.MerraSource
     reskit.weather.SarahSource
     reskit.weather.Era5Source
@@ -108,8 +110,8 @@ class IconlamSource(NCSource):
             * time_offset_minutes = +30
 
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
         path : str or list of str
             The path to the main data file(s) to load
 
@@ -119,7 +121,7 @@ class IconlamSource(NCSource):
 
         bounds : Anything acceptable to geokit.Extent.load(), optional
             The boundaries of the data which is needed
-              * Usage of this will help with memory mangement
+              * Usage of this will help with memory management
               * If None, the full dataset is loaded in memory
               * The actual extent of the loaded data depends on the source's
                 available data
@@ -137,13 +139,12 @@ class IconlamSource(NCSource):
             * Generally, there should be no missing data at all. This option is only intended to
                 catch the rare scenarios where one or two timesteps are missing
 
-        See Also:
-        ---------
+        See Also
+        --------
         MerraSource
         SarahSource
         Era5Source
         """
-
         super().__init__(
             source=source,
             bounds=bounds,
@@ -182,9 +183,7 @@ class IconlamSource(NCSource):
 
         TODO: Update function to also be able to handle raw ERA5 inputs for u & v
         """
-        return self.load(
-            "ws{}".format(self.ELEVATED_WIND_SPEED_HEIGHT), "elevated_wind_speed"
-        )
+        return self.load("ws{}".format(self.ELEVATED_WIND_SPEED_HEIGHT), "elevated_wind_speed")
 
     def sload_surface_wind_speed(self):
         """Standard loader function for the variable 'surface_wind_speed'
@@ -199,9 +198,7 @@ class IconlamSource(NCSource):
 
         TODO: Update function to also be able to handle raw ERA5 inputs for u & v
         """
-        return self.load(
-            "ws{}".format(self.SURFACE_WIND_SPEED_HEIGHT), "surface_wind_speed"
-        )
+        return self.load("ws{}".format(self.SURFACE_WIND_SPEED_HEIGHT), "surface_wind_speed")
 
     def sload_wind_speed_at_100m(self):
         """Standard loader function for the variable 'wind_speed_at_100m'
@@ -260,9 +257,7 @@ class IconlamSource(NCSource):
 
         Temperature values are also converted from kelvin to degrees celsius
         """
-        return self.load(
-            "t2m", name="surface_air_temperature", processor=lambda x: x - 273.15
-        )
+        return self.load("t2m", name="surface_air_temperature", processor=lambda x: x - 273.15)
 
     def sload_surface_dew_temperature(self):
         """Standard loader function for the variable 'surface_dew_temperature'
@@ -272,9 +267,7 @@ class IconlamSource(NCSource):
 
         Temperature values are also converted from kelvin to degrees celsius
         """
-        return self.load(
-            "d2m", name="surface_dew_temperature", processor=lambda x: x - 273.15
-        )
+        return self.load("d2m", name="surface_dew_temperature", processor=lambda x: x - 273.15)
 
     def sload_direct_horizontal_irradiance(self):
         """Standard loader function for the variable 'direct_horizontal_irradiance'

@@ -1,4 +1,5 @@
 import numpy as np
+
 from reskit.parameters.parameters import OnshoreParameters
 
 
@@ -40,7 +41,7 @@ def onshore_turbine_capex(
         The baseline turbine's hub height in m, by default 120
 
     base_rotor_diam : int, optional
-        The baseline turbine's rotor diamter in m, by default 136
+        The baseline turbine's rotor diameter in m, by default 136
 
     tcc_share : float, optional
         The baseline turbine's turbine capital cost (TCC) percentage contribution in the total cost, by default 0.673
@@ -49,7 +50,7 @@ def onshore_turbine_capex(
         The baseline turbine's balance of system costs (BOS) percentage contribution in the total cost, by default 0.229
 
     Returns
-    --------
+    -------
     numeric or array-like
         Onshore turbine total cost
 
@@ -58,11 +59,11 @@ def onshore_turbine_capex(
         offshore_turbine_capex(capacity, hub_height, rotor_diam, depth, distance_to_shore, distance_to_bus, foundation, mooring_count, anchor, turbine_count, turbine_spacing, turbine_row_spacing)
 
     Notes
-    -------
+    -----
         The expected turbine cost shares by Stehly et al. [3] are claimed to be derived from real cost data and valid until 10 MW capacity.
 
     Sources
-    ---------
+    -------
     [1] Fingersh, L., Hand, M., & Laxson, A. (2006). Wind Turbine Design Cost and Scaling Model. NREL. https://www.nrel.gov/docs/fy07osti/40566.pdf
     [2] Maples, B., Hand, M., & Musial, W. (2010). Comparative Assessment of Direct Drive High Temperature Superconducting Generators in Multi-Megawatt Class Wind Turbines. Energy. https://doi.org/10.2172/991560
     [3] Stehly, T., Heimiller, D., & Scott, G. (2016). Cost of Wind Energy Review. Technical Report. https://www.nrel.gov/docs/fy18osti/70363.pdf
@@ -70,11 +71,7 @@ def onshore_turbine_capex(
     """
     # initialize OnshoreParameters class and feed with custom param values
     OnshoreParams = OnshoreParameters(
-        **{
-            k: v
-            for k, v in locals().items()
-            if not k in ["capacity", "hub_height", "rotor_diam"]
-        }
+        **{k: v for k, v in locals().items() if not k in ["capacity", "hub_height", "rotor_diam"]}
     )
 
     # PREPROCESS INPUTS
@@ -117,11 +114,9 @@ def onshore_turbine_capex(
     return total_costs
 
 
-def onshore_tcc(
-    cp, hh, rd, gdp_escalator=None, blade_material_escalator=None, blades=None
-):
+def onshore_tcc(cp, hh, rd, gdp_escalator=None, blade_material_escalator=None, blades=None):
     """
-    A function to determine the turbine capital cost (TCC) of a 3 blade standar onshore wind turbine based capacity, hub height and rotor diameter values according to the cost model by Fingersh et al. [1].
+    A function to determine the turbine capital cost (TCC) of a 3 blade standard onshore wind turbine based capacity, hub height and rotor diameter values according to the cost model by Fingersh et al. [1].
 
     Parameters
     ----------
@@ -130,7 +125,7 @@ def onshore_tcc(
     hh : numeric or array-like
         Turbine's hub height in m
     rd : numeric or array-like
-        Turbine's rotor diamter in m
+        Turbine's rotor diameter in m
     gdp_escalator : int, optional
         Labor cost escalator, by default 1
     blade_material_escalator : int, optional
@@ -144,16 +139,22 @@ def onshore_tcc(
         Turbine's turbine capital cost (TCC) in monetary units.
 
     References
-    ---------
+    ----------
     [1] Fingersh, L., Hand, M., & Laxson, A. (2006). Wind Turbine Design Cost and Scaling Model. NREL. https://www.nrel.gov/docs/fy07osti/40566.pdf
 
     """
-    # initialize OnshoreParameters class and feed with custom param values
-    OnshoreParams = OnshoreParameters(
-        gdp_escalator=gdp_escalator,
-        blade_material_escalator=blade_material_escalator,
-        blades=blades,
-    )
+    # use OnshoreParameters default values only if not all args are defined
+    if gdp_escalator is None or blade_material_escalator is None or blades is None:
+        # extract default values from OnshoreParameters...
+        OnshoreParams = OnshoreParameters(
+            gdp_escalator=gdp_escalator,
+            blade_material_escalator=blade_material_escalator,
+            blades=blades,
+        )
+        # ... and overwrite the args with it
+        blade_material_escalator = OnshoreParams.blade_material_escalator
+        gdp_escalator = OnshoreParams.gdp_escalator
+        blades = OnshoreParams.blades
 
     rr = rd / 2
     sa = np.pi * rr * rr
@@ -161,8 +162,7 @@ def onshore_tcc(
     # Blade Cost
     singleBladeMass = 0.4948 * np.power(rr, 2.53)
     singleBladeCost = (
-        (0.4019 * np.power(rr, 3) - 21051) * OnshoreParams.blade_material_escalator
-        + 2.7445 * np.power(rr, 2.5025) * OnshoreParams.gdp_escalator
+        (0.4019 * np.power(rr, 3) - 21051) * blade_material_escalator + 2.7445 * np.power(rr, 2.5025) * gdp_escalator
     ) * (1 - 0.28)
 
     # Hub
@@ -229,7 +229,7 @@ def onshore_tcc(
 
     # Add up the turbine capital cost
     turbineCapitalCost = (
-        singleBladeCost * OnshoreParams.blades
+        singleBladeCost * blades
         + hubCost
         + pitchSystemCost
         + noseConeCost
@@ -253,7 +253,7 @@ def onshore_tcc(
 def onshore_bos(cp, hh, rd):
     """
 
-    A function to determine the balance of the system cost (BOS) of an onshore turbine based on the capacity, hub height and rotor diamter values according to Fingersh et al. [1].
+    A function to determine the balance of the system cost (BOS) of an onshore turbine based on the capacity, hub height and rotor diameter values according to Fingersh et al. [1].
 
     Parameters
     ----------
@@ -262,18 +262,18 @@ def onshore_bos(cp, hh, rd):
     hh : numeric or array-like
         Turbine's hub height in m
     rd : numeric or array-like
-        Turbine's rotor diamter in m
+        Turbine's rotor diameter in m
+
     Returns
     -------
     numeric or array-like
         Turbine's balance of system costs (BOS) in monetary units.
 
     References
-    ---------
+    ----------
     [1] Fingersh, L., Hand, M., & Laxson, A. (2006). Wind Turbine Design Cost and Scaling Model. NREL. https://www.nrel.gov/docs/fy07osti/40566.pdf
 
     """
-
     rr = rd / 2
     sa = np.pi * rr * rr
 
@@ -292,9 +292,7 @@ def onshore_bos(cp, hh, rd):
     assemblyAndInstallationCost = 1.965 * np.power((hh * rd), 1.1736)
 
     # Electrical Interface and connections
-    electricalInterfaceAndConnectionFactor = (
-        (3.49e-6 * np.power(cp, 2)) - (0.0221 * cp) + 109.7
-    )
+    electricalInterfaceAndConnectionFactor = (3.49e-6 * np.power(cp, 2)) - (0.0221 * cp) + 109.7
     electricalInterfaceAndConnectionCost = electricalInterfaceAndConnectionFactor * cp
 
     # Engineering and permit factor

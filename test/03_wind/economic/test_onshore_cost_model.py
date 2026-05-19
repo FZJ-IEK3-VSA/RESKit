@@ -1,5 +1,6 @@
-from reskit.wind.economic.onshore_cost_model import onshore_turbine_capex
 import numpy as np
+
+from reskit.wind.economic.onshore_cost_model import onshore_turbine_capex
 
 
 def test_onshore_turbine_capex():
@@ -29,6 +30,4 @@ def test_onshore_turbine_capex():
         bos_share=0.15,
     )
 
-    assert np.isclose(
-        capex / 4200, [922.08068518, 940.59391215, 969.79729428, 1001.70863224]
-    ).all()
+    assert np.isclose(capex / 4200, [922.08068518, 940.59391215, 969.79729428, 1001.70863224]).all()
