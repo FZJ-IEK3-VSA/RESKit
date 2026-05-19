@@ -9,6 +9,7 @@ from importlib.resources import files, as_file
 
 def test_calculateSpecificOffshoreCapex():
     # test normal behaviour of the function
+    # test normal behaviour of the function
     c1 = calculateSpecificOffshoreCapex(
         baseSpecCapex=1500,
         capacity=10000,
@@ -30,7 +31,9 @@ def test_calculateSpecificOffshoreCapex():
     )
 
     assert np.isclose(c1, 2654, rtol=0.05), "Error in calculateSpecificOffshoreCapex, possibly due to adapted function"
+    assert np.isclose(c1, 2654, rtol=0.05), "Error in calculateSpecificOffshoreCapex, possibly due to adapted function"
 
+    # test missing port distance
     # test missing port distance
     c2 = calculateSpecificOffshoreCapex(
         baseSpecCapex=1500,
@@ -55,7 +58,11 @@ def test_calculateSpecificOffshoreCapex():
     assert np.isclose(c2, 2654.89, rtol=0.05), (
         "Missing port distance should not lead to error in calculateSpecificOffshoreCapex, possibly due to adapted function"
     )
+    assert np.isclose(c2, 2654.89, rtol=0.05), (
+        "Missing port distance should not lead to error in calculateSpecificOffshoreCapex, possibly due to adapted function"
+    )
 
+    # test arrays as input
     # test arrays as input
     c3 = calculateSpecificOffshoreCapex(
         baseSpecCapex=[1500, 1501.5],
@@ -257,7 +264,7 @@ def test_getSpecificConverterStationCost():
         waterDepth=np.array([20, 25, 30]),
         voltageType=np.array(["ac", "ac", "dc"]),
         portDistance=np.array([1000, 3000, 10]),
-        maxJacketDepthPlatform= 55,
+        maxJacketDepthPlatform=55,
         convention="RogeauEtAl2023",
     )
 

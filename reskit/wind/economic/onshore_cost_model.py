@@ -1,4 +1,8 @@
+import warnings
+
 import numpy as np
+from wisdem.nrelcsm.nrel_csm_mass_2015 import nrel_csm_2015
+import openmdao.api as om
 
 from reskit.parameters.parameters import OnshoreParameters
 
@@ -114,7 +118,138 @@ def onshore_turbine_capex(
     return total_costs
 
 
-def onshore_tcc(cp, hh, rd, gdp_escalator=None, blade_material_escalator=None, blades=None):
+def onshore_tcc_new(cp, hh, rd, gdp_escalator=None, blade_material_escalator=None, blades=None, **kwargs):
+    """
+    A function to determine the turbine capital cost (TCC) of a 3 blade standard onshore wind turbine based capacity, hub height and rotor diameter values according to the cost model by Fingersh et al. [1].
+
+    Parameters
+    ----------
+    cp : numeric or array-like
+        Turbine's capacity in kW
+    hh : numeric or array-like
+        Turbine's hub height in m
+    rd : numeric or array-like
+        Turbine's rotor diameter in m
+    gdp_escalator : int, optional
+        Labor cost escalator, by default 1
+    blade_material_escalator : int, optional
+        Blade material cost escalator, by default 1
+    blades : int, optional
+        Number of blades, by default 3
+
+    #TODO: kwargs
+
+    Returns
+    -------
+    numeric or array-like
+        Turbine's turbine capital cost (TCC) in monetary units.
+
+    References
+    ----------
+    [1] Fingersh, L., Hand, M., & Laxson, A. (2006). Wind Turbine Design Cost and Scaling Model. NREL. https://www.nrel.gov/docs/fy07osti/40566.pdf
+
+    """
+    # deal with deprecated arguments
+    if blades is not None:
+        warnings.warn(
+            "blades argument has been deprecated and replaced by optional blades_number key in kwargs, 'blades' arg will be removed soon.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        if "blade_number" in kwargs:
+            assert kwargs["blade_number"] == blades, "blades value cannot differ from 'blade_number' in kwargs"
+        else:
+            kwargs["blade_number"] = blades  # write into kwargs as blade_number
+    if gdp_escalator is not None:
+        warnings.warn(
+            "gdp_escalator has been deprecated and will be removed soon.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        assert gdp_escalator == 1  # make sure it has no unexpected non-impact
+    if blade_material_escalator is not None:
+        warnings.warn(
+            "blade_material_escalator has been deprecated and will be removed soon.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        assert blade_material_escalator == 1  # make sure it has no unexpected non-impact
+
+    cp, hh, rd = np.broadcast_arrays(cp, hh, rd)
+
+    spinner_mass_coeff = kwargs.get("spinner_mass_coeff", 15.5)
+    spinner_mass_intercept = kwargs.get("spinner_mass_intercept", -980.0)
+    spinner_mass = spinner_mass_coeff * rd + spinner_mass_intercept
+    if np.any(spinner_mass < 0.0):
+        warnings.warn(
+            "At least one rotor diameter gives a negative spinner mass in WISDEM's NREL CSM model. "
+            "The default 2015 spinner relation is spinner_mass = 15.5 * rotor_diameter - 980, "
+            "which becomes positive only above about 63.2 m rotor diameter. Negative spinner mass "
+            "will also produce negative spinner cost. Override spinner_mass_coeff/spinner_mass_intercept "
+            "or avoid this regression for small turbines.",
+            UserWarning,
+            stacklevel=2,
+        )
+
+    if cp.shape == ():
+        turbineCapitalCost = _onshore_tcc_scalar(
+            cp=cp.item(),
+            hh=hh.item(),
+            rd=rd.item(),
+            **kwargs,
+        )
+    else:
+        turbineCapitalCost = np.empty(cp.shape, dtype=float)
+        for idx in np.ndindex(cp.shape):
+            turbineCapitalCost[idx] = _onshore_tcc_scalar(
+                cp=cp[idx],
+                hh=hh[idx],
+                rd=rd[idx],
+                **_select_scalar_kwargs(kwargs, idx),
+            )
+
+    return turbineCapitalCost * cp
+
+
+def _select_scalar_kwargs(kwargs, idx):
+    scalar_kwargs = {}
+    for k, v in kwargs.items():
+        value = np.asarray(v)
+        if value.shape == ():
+            scalar_kwargs[k] = value.item()
+        else:
+            scalar_kwargs[k] = value[idx]
+    return scalar_kwargs
+
+
+def _onshore_tcc_scalar(cp, hh, rd, **kwargs):
+    prob = om.Problem(reports=False)
+    prob.model = nrel_csm_2015()
+    prob.setup()
+    prob.model.turbine_costs.options["verbosity"] = False
+    # ensure or set all mandatory args
+    # defaults are taken from https://wisdem.readthedocs.io/en/master/examples/01_nrelcsm/tutorial.html
+    params = {
+        "machine_rating": cp,
+        "rotor_diameter": rd,
+        "tower_length": hh,
+        "turbine_class": 2,
+        "main_bearing_number": 2,
+        "blade_number": 3,
+        "max_tip_speed": 80,
+        "max_efficiency": 0.90,
+    }
+    params.update(kwargs)  # update default params with kwargs where parameters are missing
+    # set all kwarg + default parameters
+    for k, v in params.items():
+        prob[k] = v
+
+    # run and evaluate the model
+    prob.run_model()
+    return prob.get_val("turbine_costs.turbine_c.turbine_cost_kW").item()
+
+
+def onshore_tcc(cp, hh, rd, gdp_escalator=1, blade_material_escalator=1, blades=3):
     """
     A function to determine the turbine capital cost (TCC) of a 3 blade standard onshore wind turbine based capacity, hub height and rotor diameter values according to the cost model by Fingersh et al. [1].
 
@@ -143,18 +278,12 @@ def onshore_tcc(cp, hh, rd, gdp_escalator=None, blade_material_escalator=None, b
     [1] Fingersh, L., Hand, M., & Laxson, A. (2006). Wind Turbine Design Cost and Scaling Model. NREL. https://www.nrel.gov/docs/fy07osti/40566.pdf
 
     """
-    # use OnshoreParameters default values only if not all args are defined
-    if gdp_escalator is None or blade_material_escalator is None or blades is None:
-        # extract default values from OnshoreParameters...
-        OnshoreParams = OnshoreParameters(
-            gdp_escalator=gdp_escalator,
-            blade_material_escalator=blade_material_escalator,
-            blades=blades,
-        )
-        # ... and overwrite the args with it
-        blade_material_escalator = OnshoreParams.blade_material_escalator
-        gdp_escalator = OnshoreParams.gdp_escalator
-        blades = OnshoreParams.blades
+    # initialize OnshoreParameters class and feed with custom param values
+    # OnshoreParams = OnshoreParameters(
+    #     gdp_escalator=gdp_escalator,
+    #     blade_material_escalator=blade_material_escalator,
+    #     blades=blades,
+    # )
 
     rr = rd / 2
     sa = np.pi * rr * rr
