@@ -208,7 +208,7 @@ def onshore_tcc_new(cp, hh, rd, gdp_escalator=None, blade_material_escalator=Non
                 **_select_scalar_kwargs(kwargs, idx),
             )
 
-    return turbineCapitalCost * cp
+    return turbineCapitalCost
 
 
 def _select_scalar_kwargs(kwargs, idx):
@@ -246,7 +246,7 @@ def _onshore_tcc_scalar(cp, hh, rd, **kwargs):
 
     # run and evaluate the model
     prob.run_model()
-    return prob.get_val("turbine_costs.turbine_c.turbine_cost_kW").item()
+    return prob.get_val("turbine_costs.turbine_c.turbine_cost_kW").item() * cp # previous functions expect absolute cost
 
 
 def onshore_tcc(cp, hh, rd, gdp_escalator=1, blade_material_escalator=1, blades=3):
