@@ -12,7 +12,7 @@ depends_on = {
             "boundary_layer_height",
         ],
     },
-    "kacke": {
+    "retile_DEBUG": {
         "ERA5": [
             "2m_temperature",
         ],
@@ -89,14 +89,14 @@ def download_and_process(
                 200: "Please download directly from https://globalwindatlas.info/en/download/gis-files",
             },
         }
-    elif workflow == "kacke":
+    elif workflow == "retile_DEBUG":
         _tile_out = tile_output_dir or os.path.join(output_dir, "tiles")
         era5_path = rk.prepare_era5(
             start_date=start_date,
             end_date=end_date,
             boundary_box=boundary_box,
             output_dir=output_dir,
-            variables=depends_on["kacke"]["ERA5"],
+            variables=depends_on["retile_DEBUG"]["ERA5"],
             tiling=tiling,
             zoom_level=zoom_level,
             tile_output_dir=_tile_out,
