@@ -182,10 +182,7 @@ def _tile_variable_to_file(
 
     def _subset_input(lon_west: float, lon_east: float) -> str:
         return (
-            f"-selname,{var} "
-            f"-selyear,{year} "
-            f"-sellonlatbox,{lon_west},{lon_east},{lat_south},{lat_north} "
-            f"{source_file}"
+            f"-selname,{var} -selyear,{year} -sellonlatbox,{lon_west},{lon_east},{lat_south},{lat_north} {source_file}"
         )
 
     if len(lon_boxes) == 1:

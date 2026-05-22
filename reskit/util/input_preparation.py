@@ -106,7 +106,6 @@ def download_and_process(
             # return a path template for get_dataframe_with_weather_tilepaths()
             era5_path = os.path.join(era5_path, "<ZOOM>", "<X-TILE>", "<Y-TILE>")
 
-
         return {
             "era5_path": era5_path,
         }
