@@ -113,7 +113,7 @@ def distanceToCoastline(latitude, longitude, distancetoCoastFilePath=None):
         Distance in kilometers, or None if the point is out of bounds or an error occurs.
     """
     if distancetoCoastFilePath is None:
-        if not "distancetoCoastFilePath" in DEFAULT_PATHS:
+        if not "distancetoCoastPath" in DEFAULT_PATHS:
             raise KeyError(f"Add 'distancetoCoastFilePath' key with filepath value to default_paths.yaml")
         distancetoCoastFilePath = DEFAULT_PATHS.get("distancetoCoastPath")
         if distancetoCoastFilePath is None:
