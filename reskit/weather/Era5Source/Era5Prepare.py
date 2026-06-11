@@ -300,14 +300,7 @@ def preprocess_era5_data(focus_nc: str, processed_dir: Optional[str] = None):
             attrs = " ".join(f'-setattribute,{v}@units="{unit}"' for v in solar_vars)
             sel = ",".join(solar_vars)
             cdo.copy(
-                input=(
-                    f"-chname,{rename} "
-                    f"{attrs} "
-                    f"-shifttime,+1hour "
-                    f"-divc,3600 "
-                    f"-selname,{sel} "
-                    f"{focus_nc}"
-                ),
+                input=(f"-chname,{rename} {attrs} -shifttime,+1hour -divc,3600 -selname,{sel} {focus_nc}"),
                 output=solar_t_out,
             )
         else:
