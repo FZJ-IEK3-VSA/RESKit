@@ -288,18 +288,24 @@ def preprocess_era5_data(focus_nc: str, processed_dir: Optional[str] = None):
     #         print(f"Skipping solar preprocessing (exists): {solar_out}")
 
     # process for solar radiation variables (time adjusted)
+    # Build the variable list dynamically from whichever of ssrd/fdir is present so that
+    # workflows requesting only one of them (e.g. CSP needs fdir but not ssrd) still work.
     solar_t_out = os.path.join(out_dir, f"{f_name.split('.')[0]}_processed_solar_t_adjusted.nc")
-    if {"ssrd", "fdir"} & varset:
-        if not _nc_file_has_vars(cdo, solar_t_out, ["ssrd_t_adj", "fdir_t_adj"]):
+    solar_vars = [v for v in ("ssrd", "fdir") if v in varset]
+    if solar_vars:
+        out_names = [f"{v}_t_adj" for v in solar_vars]
+        if not _nc_file_has_vars(cdo, solar_t_out, out_names):
             unit = "W m**-2"
+            rename = ",".join(f"{v},{v}_t_adj" for v in solar_vars)
+            attrs = " ".join(f'-setattribute,{v}@units="{unit}"' for v in solar_vars)
+            sel = ",".join(solar_vars)
             cdo.copy(
                 input=(
-                    f"-chname,ssrd,ssrd_t_adj,fdir,fdir_t_adj "
-                    f'-setattribute,ssrd@units="{unit}" '
-                    f'-setattribute,fdir@units="{unit}" '
+                    f"-chname,{rename} "
+                    f"{attrs} "
                     f"-shifttime,+1hour "
                     f"-divc,3600 "
-                    f"-selname,ssrd,fdir "
+                    f"-selname,{sel} "
                     f"{focus_nc}"
                 ),
                 output=solar_t_out,
