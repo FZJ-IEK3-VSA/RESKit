@@ -1,32 +1,110 @@
 import os
-import tempfile
 import cdsapi
 import geokit as gk
 import netCDF4 as nc4
-from cdo import Cdo
+import numpy as np
 import pandas as pd
+import xarray as xr
 from typing import Union, List, Optional
 from reskit.util.weather_tile import get_tile_XY
 
 
-def _nc_file_has_vars(cdo, nc_path, required_vars):
-    """Check whether a NetCDF file exists and contains required variables."""
+# Coordinate names that must not be treated as data variables when listing/tiling.
+_ERA5_COORD_NAMES = {"time", "valid_time", "latitude", "longitude"}
+
+# Encoding keys tied to the source file's on-disk layout. They must be dropped before
+# writing a reshaped/subset dataset, otherwise xarray may fail (e.g. chunk sizes larger
+# than the new dimensions) or carry over a stale shape.
+_LAYOUT_ENCODING_KEYS = {"source", "original_shape", "chunksizes", "preferred_chunks"}
+
+
+def _open_era5_dataset(nc_path: str) -> xr.Dataset:
+    """Open an ERA5 NetCDF file, normalising the time coordinate name to ``time``.
+
+    ERA5 ``netcdf_legacy`` downloads use ``time``; the newer (non-legacy) export uses
+    ``valid_time``. Downstream code (Era5Source/NCSource) expects ``time``.
+    """
+    ds = xr.open_dataset(nc_path)
+    if "valid_time" in ds.coords and "time" not in ds.coords:
+        ds = ds.rename({"valid_time": "time"})
+    return ds
+
+
+def _nc_data_var_names(nc_path: str) -> list[str]:
+    """Return the data (non-coordinate) variable names in a NetCDF file."""
+    with nc4.Dataset(nc_path) as ds:
+        return [v for v in ds.variables if v not in _ERA5_COORD_NAMES]
+
+
+def _nc_years(nc_path: str) -> list[str]:
+    """Return the sorted unique 4-digit years present in the time coordinate."""
+    with nc4.Dataset(nc_path) as ds:
+        tv = ds.variables["time"]
+        dts = nc4.num2date(
+            tv[:],
+            tv.units,
+            getattr(tv, "calendar", "standard"),
+            only_use_cftime_datetimes=False,
+            only_use_python_datetimes=False,
+        )
+    return sorted({f"{d.year}" for d in np.atleast_1d(np.asarray(dts)).ravel()})
+
+
+def _nc_file_has_vars(nc_path: str, required_vars) -> bool:
+    """Check whether a NetCDF file exists and contains required data variables."""
     if not os.path.exists(nc_path):
         return False
     try:
-        vars_in_file = set(cdo.showname(input=nc_path)[0].split())
-        return set(required_vars) <= vars_in_file
+        return set(required_vars) <= set(_nc_data_var_names(nc_path))
     except Exception:
         return False
+
+
+def _spatial_subset(
+    ds: xr.Dataset,
+    lon_west: float,
+    lon_east: float,
+    lat_south: float,
+    lat_north: float,
+) -> xr.Dataset:
+    """Inclusive lat/lon box subset (CDO ``sellonlatbox`` equivalent).
+
+    Uses integer-index selection via boolean masks rather than ``.sel(slice(...))`` so it
+    is robust to the axis ordering: ERA5 latitudes are descending and longitudes may be
+    ascending or shifted, and a wrongly-directed slice would silently return nothing.
+    """
+    lat = ds["latitude"].values
+    lon = ds["longitude"].values
+    lat_idx = np.where((lat >= lat_south) & (lat <= lat_north))[0]
+    lon_idx = np.where((lon >= lon_west) & (lon <= lon_east))[0]
+    return ds.isel(latitude=lat_idx, longitude=lon_idx)
+
+
+def _write_netcdf(ds: xr.Dataset, path: str) -> None:
+    """Write a dataset to NetCDF, preserving CF/time encoding for the netCDF4 consumer.
+
+    Strips on-disk-layout encoding (chunk sizes, original shape) that does not transfer to
+    a reshaped dataset, and disables ``_FillValue`` on the coordinate variables to match
+    the previous CDO output convention.
+    """
+    ds = ds.copy()
+    for name in ds.variables:
+        enc = {k: v for k, v in ds[name].encoding.items() if k not in _LAYOUT_ENCODING_KEYS}
+        if name in _ERA5_COORD_NAMES:
+            enc["_FillValue"] = None
+        ds[name].encoding = enc
+    ds.to_netcdf(path)
 
 
 """
 Running this module will automatically download ERA5 data from CDS for the specified date range and boundary box,
 and preprocess the data to adjust solar radiation variables and compute wind speed variables.
 
-To make it happen, you need to have:
-1. An account at the Copernicus Climate Data Store (CDS) and have your API key set up in the ~/.cdsapirc file. See here for more details: https://cds.climate.copernicus.eu/how-to-api
-2. The CDO (Climate Data Operators) installed on your system. Install cdo and python-cdo from channel conda-forge will do the job, for example: conda install -c conda-forge cdo python-cdo
+Processing is done with xarray/netCDF4 (no external CDO binary required), so it runs on
+Linux, macOS and Windows.
+
+To make it happen, you need an account at the Copernicus Climate Data Store (CDS) with
+your API key set up in the ~/.cdsapirc file. See: https://cds.climate.copernicus.eu/how-to-api
 """
 
 
@@ -167,7 +245,6 @@ def _align_longitudes_to_source_convention(target_file: str, source_lon_min: flo
 
 
 def _tile_variable_to_file(
-    cdo: Cdo,
     source_file: str,
     var: str,
     year: str,
@@ -179,25 +256,24 @@ def _tile_variable_to_file(
     source_lon_max: float,
 ) -> None:
     """Extract one variable/year tile, merging antimeridian-split lon boxes when needed."""
+    with _open_era5_dataset(source_file) as ds:
+        da = ds[[var]]
+        da = da.isel(time=np.where(da["time"].dt.year.values == int(year))[0])
 
-    def _subset_input(lon_west: float, lon_east: float) -> str:
-        return (
-            f"-selname,{var} -selyear,{year} -sellonlatbox,{lon_west},{lon_east},{lat_south},{lat_north} {source_file}"
-        )
+        parts = [_spatial_subset(da, lw, le, lat_south, lat_north) for lw, le in lon_boxes]
+        parts = [p for p in parts if p.sizes["longitude"] > 0]
 
-    if len(lon_boxes) == 1:
-        lon_west, lon_east = lon_boxes[0]
-        cdo.copy(input=_subset_input(lon_west, lon_east), output=target_file)
-        _align_longitudes_to_source_convention(target_file, source_lon_min, source_lon_max)
-        return
+        if len(parts) <= 1:
+            out = parts[0] if parts else _spatial_subset(da, *lon_boxes[0], lat_south, lat_north)
+        else:
+            # Merge antimeridian-split boxes (CDO ``mergegrid`` equivalent): concatenate
+            # along longitude, order, and drop any shared boundary column.
+            out = xr.concat(parts, dim="longitude").sortby("longitude")
+            _, unique_idx = np.unique(out["longitude"].values, return_index=True)
+            out = out.isel(longitude=np.sort(unique_idx))
 
-    with tempfile.TemporaryDirectory(dir=os.path.dirname(target_file)) as tmp_dir:
-        tmp_files = []
-        for idx, (lon_west, lon_east) in enumerate(lon_boxes):
-            tmp_file = os.path.join(tmp_dir, f"tile_part_{idx}.nc")
-            cdo.copy(input=_subset_input(lon_west, lon_east), output=tmp_file)
-            tmp_files.append(tmp_file)
-        cdo.mergegrid(input=" ".join(tmp_files), output=target_file)
+        out = out.load()
+    _write_netcdf(out, target_file)
     _align_longitudes_to_source_convention(target_file, source_lon_min, source_lon_max)
 
 
@@ -258,88 +334,57 @@ def preprocess_era5_data(focus_nc: str, processed_dir: Optional[str] = None):
         Directory to write processed output files. Defaults to the same directory
         as focus_nc.
     """
-    # prepare cdo instance
-    cdo = Cdo()
-
-    # detect variables in the nc file
-    varnames = cdo.showname(input=focus_nc)[0].split()
-    varset = set(varnames)
-
     out_dir = processed_dir or os.path.dirname(focus_nc)
     if processed_dir:
         os.makedirs(processed_dir, exist_ok=True)
     f_name = os.path.basename(focus_nc)
-    # process for solar radiation variables
-    # solar_out = os.path.join(dir, f"{f_name.split('.')[0]}_processed_solar.nc")
-    # if {"ssrd", "fdir"} & varset:
-    #     if not nc_file_has_vars(cdo, solar_out, ["ssrd", "fdir"]):
-    #         unit = "W m**-2"
-    #         cdo.copy(
-    #             input=(
-    #                 f"-setattribute,ssrd@units=\"{unit}\" "
-    #                 f"-setattribute,fdir@units=\"{unit}\" "
-    #                 f"-divc,3600 "
-    #                 f"-selname,ssrd,fdir "
-    #                 f"{focus_nc}"
-    #             ),
-    #             output=solar_out,
-    #         )
-    #     else:
-    #         print(f"Skipping solar preprocessing (exists): {solar_out}")
 
-    # process for solar radiation variables (time adjusted)
-    # Build the variable list dynamically from whichever of ssrd/fdir is present so that
-    # workflows requesting only one of them (e.g. CSP needs fdir but not ssrd) still work.
-    solar_t_out = os.path.join(out_dir, f"{f_name.split('.')[0]}_processed_solar_t_adjusted.nc")
-    solar_vars = [v for v in ("ssrd", "fdir") if v in varset]
-    if solar_vars:
-        out_names = [f"{v}_t_adj" for v in solar_vars]
-        if not _nc_file_has_vars(cdo, solar_t_out, out_names):
-            unit = "W m**-2"
-            rename = ",".join(f"{v},{v}_t_adj" for v in solar_vars)
-            attrs = " ".join(f'-setattribute,{v}@units="{unit}"' for v in solar_vars)
-            sel = ",".join(solar_vars)
-            cdo.copy(
-                input=(f"-chname,{rename} {attrs} -shifttime,+1hour -divc,3600 -selname,{sel} {focus_nc}"),
-                output=solar_t_out,
-            )
-        else:
-            print(f"Skipping process time-adjusted solar (exists): {solar_t_out}")
+    with _open_era5_dataset(focus_nc) as ds:
+        varset = set(ds.data_vars)
 
-    # process for wind speed variables
-    ws100_out = os.path.join(out_dir, f"{f_name.split('.')[0]}_processed_ws100.nc")
-    if {"u100", "v100"} <= varset:
-        if not _nc_file_has_vars(cdo, ws100_out, ["ws100"]):
-            unit = "m s**-1"
-            long_name = "100 metre wind speed"
-            cdo.copy(
-                input=(
-                    f'-setattribute,ws100@long_name="{long_name}" '
-                    f'-setattribute,ws100@units="{unit}" '
-                    f"-expr,'ws100=sqrt(u100*u100+v100*v100)' "
-                    f"{focus_nc}"
-                ),
-                output=ws100_out,
-            )
-        else:
-            print(f"Skipping process ws100 (exists): {ws100_out}")
+        # process for solar radiation variables (time adjusted)
+        # Build the variable list dynamically from whichever of ssrd/fdir is present so that
+        # workflows requesting only one of them (e.g. CSP needs fdir but not ssrd) still work.
+        solar_t_out = os.path.join(out_dir, f"{f_name.split('.')[0]}_processed_solar_t_adjusted.nc")
+        solar_vars = [v for v in ("ssrd", "fdir") if v in varset]
+        if solar_vars:
+            out_names = [f"{v}_t_adj" for v in solar_vars]
+            if not _nc_file_has_vars(solar_t_out, out_names):
+                # 1. accumulated J m**-2 -> mean power flux W m**-2 (divide by 3600s)
+                # 2. shift time axis +1h so each value is the mean over the *next* hour
+                time_encoding = dict(ds["time"].encoding)
+                out = ds[solar_vars] / 3600.0
+                out = out.assign_coords(time=out["time"] + pd.Timedelta(hours=1))
+                out["time"].encoding = time_encoding
+                out = out.rename({v: f"{v}_t_adj" for v in solar_vars})
+                for v in solar_vars:
+                    attrs = dict(ds[v].attrs)
+                    attrs["units"] = "W m**-2"
+                    out[f"{v}_t_adj"].attrs = attrs
+                _write_netcdf(out.load(), solar_t_out)
+            else:
+                print(f"Skipping process time-adjusted solar (exists): {solar_t_out}")
 
-    ws10_out = os.path.join(out_dir, f"{f_name.split('.')[0]}_processed_ws10.nc")
-    if {"u10", "v10"} <= varset:
-        if not _nc_file_has_vars(cdo, ws10_out, ["ws10"]):
-            unit = "m s**-1"
-            long_name = "10 metre wind speed"
-            cdo.copy(
-                input=(
-                    f'-setattribute,ws10@long_name="{long_name}" '
-                    f'-setattribute,ws10@units="{unit}" '
-                    f"-expr,'ws10=sqrt(u10*u10+v10*v10)' "
-                    f"{focus_nc}"
-                ),
-                output=ws10_out,
-            )
-        else:
-            print(f"Skipping process ws10 (exists): {ws10_out}")
+        # process for wind speed variables
+        ws100_out = os.path.join(out_dir, f"{f_name.split('.')[0]}_processed_ws100.nc")
+        if {"u100", "v100"} <= varset:
+            if not _nc_file_has_vars(ws100_out, ["ws100"]):
+                ws100 = np.sqrt(ds["u100"] ** 2 + ds["v100"] ** 2)
+                ws100.name = "ws100"
+                ws100.attrs = {"long_name": "100 metre wind speed", "units": "m s**-1"}
+                _write_netcdf(ws100.to_dataset().load(), ws100_out)
+            else:
+                print(f"Skipping process ws100 (exists): {ws100_out}")
+
+        ws10_out = os.path.join(out_dir, f"{f_name.split('.')[0]}_processed_ws10.nc")
+        if {"u10", "v10"} <= varset:
+            if not _nc_file_has_vars(ws10_out, ["ws10"]):
+                ws10 = np.sqrt(ds["u10"] ** 2 + ds["v10"] ** 2)
+                ws10.name = "ws10"
+                ws10.attrs = {"long_name": "10 metre wind speed", "units": "m s**-1"}
+                _write_netcdf(ws10.to_dataset().load(), ws10_out)
+            else:
+                print(f"Skipping process ws10 (exists): {ws10_out}")
 
 
 def era5_tiler(
@@ -373,7 +418,6 @@ def era5_tiler(
         NC short names to tile from raw_nc (e.g. ['t2m', 'sp', 'blh']).
         Ignored if raw_nc is None.
     """
-    cdo = Cdo()
     source_group = "reanalysis-era5-single-levels"
 
     # (source_file, [nc_var_names_to_tile]) pairs
@@ -383,13 +427,13 @@ def era5_tiler(
         if not f.endswith(".nc") or "_processed_" not in f:
             continue
         path = os.path.join(processed_dir, f)
-        vars_in_file = cdo.showname(input=path)[0].split()
+        vars_in_file = _nc_data_var_names(path)
         vars_to_tile = [v for v in vars_in_file if v in _ERA5_NC_TO_TILE_LABEL]
         if vars_to_tile:
             file_var_pairs.append((path, vars_to_tile))
 
     if raw_nc and raw_variables:
-        vars_in_raw = set(cdo.showname(input=raw_nc)[0].split())
+        vars_in_raw = set(_nc_data_var_names(raw_nc))
         vars_to_tile = [v for v in raw_variables if v in vars_in_raw and v in _ERA5_NC_TO_TILE_LABEL]
         if vars_to_tile:
             file_var_pairs.append((raw_nc, vars_to_tile))
@@ -400,7 +444,7 @@ def era5_tiler(
             lons = ds.variables["longitude"][:]
         lon_min, lon_max = float(lons.min()), float(lons.max())
         lat_min, lat_max = float(lats.min()), float(lats.max())
-        years = cdo.showyear(input=source_file)[0].split()
+        years = _nc_years(source_file)
 
         # NW corner → SE corner (tile Y increases southward)
         xi_values = _iter_tile_x_indices(zoom_level=zoom_level, lon_west=lon_min, lon_east=lon_max)
@@ -433,7 +477,6 @@ def era5_tiler(
                             continue
 
                         _tile_variable_to_file(
-                            cdo=cdo,
                             source_file=source_file,
                             var=var,
                             year=year,
@@ -497,8 +540,7 @@ def prepare_era5(
                 area=area,
             )
         else:
-            # multi-year: download per year into temp files, then merge with CDO
-            cdo = Cdo()
+            # multi-year: download per year into temp files, then merge along time
             yearly_files = []
             for year, months in months_by_year.items():
                 yearly_file = os.path.join(raw_dir, f"_tmp_{era5_dataset}_{year}_{bbox_tag}_raw.nc")
@@ -511,7 +553,16 @@ def prepare_era5(
                         variables=variables,
                         area=area,
                     )
-            cdo.mergetime(input=" ".join(yearly_files), output=output_file)
+            datasets = [_open_era5_dataset(f) for f in yearly_files]
+            try:
+                time_encoding = dict(datasets[0]["time"].encoding)
+                merged = xr.concat(datasets, dim="time").sortby("time")
+                merged["time"].encoding = time_encoding
+                merged = merged.load()
+            finally:
+                for d in datasets:
+                    d.close()
+            _write_netcdf(merged, output_file)
             for f in yearly_files:
                 os.remove(f)
     else:

@@ -2,6 +2,8 @@ import os
 import shutil
 import netCDF4 as nc4
 import numpy as np
+import pandas as pd
+import xarray as xr
 import pytest
 from reskit import TEST_DATA
 from reskit.weather.Era5Source.Era5Prepare import (
@@ -11,7 +13,9 @@ from reskit.weather.Era5Source.Era5Prepare import (
     _iter_tile_x_indices,
     _normalize_lon,
     _split_lon_boxes,
+    _tile_variable_to_file,
     era5_tiler,
+    preprocess_era5_data,
 )
 
 # era5-like test data: lat=[49,52], lon=[5,7.5], year=2015
@@ -136,6 +140,112 @@ def test_get_source_lon_boxes_keeps_extended_negative_longitudes():
         source_lon_min=-181.75,
         source_lon_max=-155.5,
     ) == pytest.approx([(-182.0, -155.5)])
+
+
+def _make_era5_raw(path, *, lat, lon, n_times=4, vars_spec, seed=0):
+    """Write a synthetic ERA5-like raw NetCDF (time, latitude, longitude) for testing.
+
+    vars_spec maps variable name -> attrs dict; values are random floats. Time is encoded
+    as int32 'hours since 1900-01-01' to mirror the real downloads.
+    """
+    time = pd.date_range("2015-01-01", periods=n_times, freq="h")
+    shape = (len(time), len(lat), len(lon))
+    rng = np.random.default_rng(seed)
+    coords = {"time": time, "latitude": np.asarray(lat, "f4"), "longitude": np.asarray(lon, "f4")}
+    data = {}
+    for name, attrs in vars_spec.items():
+        arr = rng.uniform(0.0, 1000.0, shape).astype("f4")
+        data[name] = xr.DataArray(arr, dims=("time", "latitude", "longitude"), coords=coords, attrs=attrs)
+    ds = xr.Dataset(data)
+    ds["time"].encoding = {"units": "hours since 1900-01-01 00:00:00.0", "calendar": "gregorian", "dtype": np.int32}
+    ds.to_netcdf(path)
+    return ds
+
+
+def test_preprocess_wind_speed_matches_sqrt_and_sets_attrs(tmp_path):
+    raw = tmp_path / "raw.nc"
+    ds = _make_era5_raw(
+        raw,
+        lat=[52.0, 51.75, 51.5],
+        lon=[5.0, 5.25, 5.5],
+        vars_spec={
+            "u100": {"units": "m s**-1"},
+            "v100": {"units": "m s**-1"},
+            "u10": {"units": "m s**-1"},
+            "v10": {"units": "m s**-1"},
+        },
+    )
+    proc = tmp_path / "processed"
+    preprocess_era5_data(str(raw), str(proc))
+
+    ws100_file = next(p for p in os.listdir(proc) if "ws100" in p)
+    with nc4.Dataset(os.path.join(proc, ws100_file)) as out:
+        expected = np.sqrt(ds["u100"].values ** 2 + ds["v100"].values ** 2)
+        assert np.allclose(out["ws100"][:], expected, atol=1e-4)
+        assert out["ws100"].units == "m s**-1"
+        assert out["ws100"].long_name == "100 metre wind speed"
+
+
+def test_preprocess_solar_converts_units_shifts_time_and_preserves_encoding(tmp_path):
+    raw = tmp_path / "raw.nc"
+    ds = _make_era5_raw(
+        raw,
+        lat=[52.0, 51.75],
+        lon=[5.0, 5.25],
+        vars_spec={
+            "ssrd": {"units": "J m**-2", "long_name": "Surface solar radiation downwards"},
+            "fdir": {"units": "J m**-2", "long_name": "Direct solar radiation at surface"},
+        },
+    )
+    proc = tmp_path / "processed"
+    preprocess_era5_data(str(raw), str(proc))
+
+    solar_file = next(p for p in os.listdir(proc) if "solar" in p)
+    with nc4.Dataset(os.path.join(proc, solar_file)) as out:
+        assert {"ssrd_t_adj", "fdir_t_adj"} <= set(out.variables)
+        # accumulated J m**-2 -> mean power flux W m**-2
+        assert np.allclose(out["ssrd_t_adj"][:], ds["ssrd"].values / 3600.0, atol=1e-2)
+        assert out["ssrd_t_adj"].units == "W m**-2"
+        # original descriptive attrs carried through the rename
+        assert out["ssrd_t_adj"].long_name == "Surface solar radiation downwards"
+        # time shifted +1h, encoding preserved for the netCDF4 consumer
+        times = nc4.num2date(out["time"][:], out["time"].units, out["time"].calendar)
+        assert times[0].isoformat() == "2015-01-01T01:00:00"
+        # hour granularity + integer dtype preserved (xarray canonicalises the trailing
+        # "00:00:00.0", which num2date parses identically)
+        assert out["time"].units.startswith("hours since 1900-01-01")
+        assert np.issubdtype(out["time"].dtype, np.integer)
+
+
+def test_tile_variable_merges_antimeridian_boxes(tmp_path):
+    # Source straddles the antimeridian: high-positive and low-negative longitudes.
+    lon = [178.0, 178.5, 179.0, 179.5, -179.5, -179.0]
+    raw = tmp_path / "raw.nc"
+    ds = _make_era5_raw(raw, lat=[10.0, 9.75], lon=lon, vars_spec={"ws100": {"units": "m s**-1"}})
+
+    target = tmp_path / "tile.nc"
+    _tile_variable_to_file(
+        source_file=str(raw),
+        var="ws100",
+        year="2015",
+        lat_south=9.0,
+        lat_north=11.0,
+        lon_boxes=[(178.0, 180.0), (-180.0, -179.0)],
+        target_file=str(target),
+        source_lon_min=min(lon),
+        source_lon_max=max(lon),
+    )
+
+    with nc4.Dataset(str(target)) as out:
+        out_lons = out["longitude"][:]
+        # both boxes merged, sorted ascending, no duplicates
+        assert np.allclose(out_lons, sorted(lon))
+        assert len(out_lons) == len(set(out_lons.tolist()))
+        assert "ws100" in out.variables
+        # values preserved from the source for a sampled longitude
+        src_col = ds.isel(longitude=lon.index(179.0))["ws100"].values
+        out_col = out["ws100"][:, :, list(out_lons).index(179.0)]
+        assert np.allclose(out_col, src_col, atol=1e-4)
 
 
 def test_align_longitudes_to_source_convention_shifts_positive_tile_axis(tmp_path):
