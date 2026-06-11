@@ -63,7 +63,8 @@ _era5_preprocessed_nc_names = {"u10", "v10", "u100", "v100", "ssrd", "fdir"}
 
 def _raw_variables_for_workflow(workflow: str) -> list:
     """Return the NC short names that need to be tiled from the raw download file
-    for a given workflow — i.e. the variables that are not replaced by preprocessing."""
+    for a given workflow — i.e. the variables that are not replaced by preprocessing.
+    """
     era5_cds_names = depends_on[workflow].get("ERA5", [])
     return [
         _era5_cds_to_nc_name[cds_name]

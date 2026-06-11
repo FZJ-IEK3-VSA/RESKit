@@ -31,7 +31,8 @@ def tile_filename(zoom, x, y, year, label):
 @pytest.fixture
 def era5_like_tile_input(tmp_path):
     """Temp dir with era5-like files renamed to match era5_tiler's expected naming.
-    Returns (processed_dir, raw_nc_path)."""
+    Returns (processed_dir, raw_nc_path).
+    """
     era5_like = TEST_DATA["era5-like"]
     processed_dir = tmp_path / "processed"
     processed_dir.mkdir()
