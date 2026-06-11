@@ -2,6 +2,8 @@ import pytest
 
 from reskit.weather.Era5Source.Era5Prepare import _ERA5_NC_TO_TILE_LABEL
 from reskit.util.input_preparation import (
+    ALL_ERA5_WORKFLOWS,
+    _NON_WORKFLOW_KEYS,
     _known_reskit_workflows,
     _raw_variables_for_workflow,
     depends_on,
@@ -51,6 +53,48 @@ def test_solar_workflows_registered():
     for workflow in ("openfield_pv_era5", "CSP_PTR_ERA5"):
         assert workflow in depends_on
         assert depends_on[workflow]["ERA5"]
+
+
+def test_dac_workflows_registered():
+    for workflow in ("ht_dac_era5_wenzel2025", "lt_dac_era5_wenzel2025"):
+        assert workflow in depends_on
+        # DAC only needs raw 2m air + dew temperature, no preprocessed variables
+        assert set(_raw_variables_for_workflow(workflow)) == {"t2m", "d2m"}
+
+
+def test_cooling_heating_workflows_registered():
+    expected = {
+        "air_cooling_wenzel2025": {"t2m"},
+        "air_source_heat_pump": {"t2m"},
+        "evaporative_cooling_wortmann2025": {"t2m", "d2m"},
+    }
+    for workflow, raw in expected.items():
+        assert workflow in depends_on
+        assert set(_raw_variables_for_workflow(workflow)) == raw
+
+
+def test_csp_specific_dataset_registered():
+    assert "CSP_PTR_ERA5_specific_dataset" in depends_on
+    assert depends_on["CSP_PTR_ERA5_specific_dataset"] == depends_on["CSP_PTR_ERA5"]
+
+
+def test_all_era5_workflows_is_union():
+    union = set(depends_on[ALL_ERA5_WORKFLOWS]["ERA5"])
+    # the meta-workflow must cover every variable required by every real workflow
+    for workflow, deps in depends_on.items():
+        if workflow in _NON_WORKFLOW_KEYS:
+            continue
+        assert set(deps.get("ERA5", [])) <= union, f"{workflow} not covered by {ALL_ERA5_WORKFLOWS}"
+
+
+def test_all_era5_workflows_has_no_duplicates():
+    era5 = depends_on[ALL_ERA5_WORKFLOWS]["ERA5"]
+    assert len(era5) == len(set(era5))
+
+
+def test_all_era5_workflows_raw_variables_resolve():
+    # every union variable maps cleanly; raw passthroughs are exactly the non-preprocessed ones
+    assert set(_raw_variables_for_workflow(ALL_ERA5_WORKFLOWS)) == {"t2m", "sp", "blh", "d2m"}
 
 
 def test_unsupported_known_workflow_raises_not_implemented():

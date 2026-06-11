@@ -34,11 +34,65 @@ depends_on = {
             "2m_temperature",
         ],
     },
+    # core implementation behind the CSP_PTR_ERA5 wrapper; same weather needs
+    "CSP_PTR_ERA5_specific_dataset": {
+        "ERA5": [
+            "total_sky_direct_solar_radiation_at_surface",
+            "10m_u_component_of_wind",
+            "10m_v_component_of_wind",
+            "2m_temperature",
+        ],
+    },
+    "ht_dac_era5_wenzel2025": {
+        "ERA5": [
+            "2m_temperature",
+            "2m_dewpoint_temperature",
+        ],
+    },
+    "lt_dac_era5_wenzel2025": {
+        "ERA5": [
+            "2m_temperature",
+            "2m_dewpoint_temperature",
+        ],
+    },
+    "air_cooling_wenzel2025": {
+        "ERA5": [
+            "2m_temperature",
+        ],
+    },
+    "air_source_heat_pump": {
+        "ERA5": [
+            "2m_temperature",
+        ],
+    },
+    "evaporative_cooling_wortmann2025": {
+        "ERA5": [
+            "2m_temperature",
+            "2m_dewpoint_temperature",
+        ],
+    },
     "retile_DEBUG": {
         "ERA5": [
             "2m_temperature",
         ],
     },
+}
+
+# Meta-workflow: prepare data for *all* ERA5-based workflows in a single call by
+# downloading/processing the union of every registered workflow's ERA5 variables.
+# Computed dynamically so newly added workflows are included automatically.
+ALL_ERA5_WORKFLOWS = "all_era5_workflows"
+# entries that are not user-facing ERA5 workflows and must not feed the union
+_NON_WORKFLOW_KEYS = {"retile_DEBUG", ALL_ERA5_WORKFLOWS}
+depends_on[ALL_ERA5_WORKFLOWS] = {
+    "ERA5": list(
+        dict.fromkeys(
+            var
+            for workflow, deps in depends_on.items()
+            if workflow not in _NON_WORKFLOW_KEYS
+            for var in deps.get("ERA5", [])
+        )
+    ),
 }
 
 # Maps CDS API variable names to their short names inside the downloaded NetCDF file.
@@ -131,7 +185,8 @@ def download_and_process(
     result = {"era5_path": era5_path}
 
     # the wind workflow additionally needs Global Wind Atlas data for height scaling
-    if workflow == "wind_era5_PenaSanchezDunkelWinklerEtAl2025":
+    # (the meta-workflow includes wind, so it carries the same requirement)
+    if workflow in ("wind_era5_PenaSanchezDunkelWinklerEtAl2025", ALL_ERA5_WORKFLOWS):
         print(
             f"ERA5 data prepared and tiled at: {era5_path}. Please download data for height scaling from the Global Wind Atlas: https://globalwindatlas.info/en/download/gis-files"
         )
