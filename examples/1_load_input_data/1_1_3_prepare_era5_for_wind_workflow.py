@@ -10,7 +10,7 @@
 # **Prerequisites**
 # - CDS account and `~/.cdsapirc` API key configured:
 #   https://cds.climate.copernicus.eu/how-to-api
-# - CDO installed: `conda install -c conda-forge cdo python-cdo`
+#   (processing is done with xarray/netCDF4 — no external CDO binary required)
 
 # %%
 import reskit as rk
