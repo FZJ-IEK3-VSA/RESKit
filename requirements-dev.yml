@@ -2,7 +2,7 @@ name: reskit_env
 channels:
   - conda-forge
 dependencies:
-  - python >=3.10,<=3.12.12
+  - python >=3.10,<=3.14.6
   - papermill <=2.7.0
   - jupyter <=1.1.1
   - pip <=26.1.1
