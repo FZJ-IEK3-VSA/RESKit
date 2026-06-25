@@ -2,7 +2,6 @@ import numpy as np
 import warnings
 
 from reskit.parameters.parameters import OffshoreParameters
-from reskit.util.local_values import *
 from reskit.wind.economic.onshore_cost_model import onshore_tcc
 
 
