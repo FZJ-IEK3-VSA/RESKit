@@ -27,7 +27,9 @@ class dataset_handler:
 
         placements["geom"] = placements[["lon", "lat"]].apply(lambda x: gk.geom.point(x[0], x[1], srs=4326), axis=1)
 
-        placements["dni_gsa"] = gk.raster.interpolateValues(source=gsa_dni_path, points=placements.geom.tolist()) * 1000 / 24
+        placements["dni_gsa"] = (
+            gk.raster.interpolateValues(source=gsa_dni_path, points=placements.geom.tolist()) * 1000 / 24
+        )
 
         placements["tamb_gsa"] = gk.raster.interpolateValues(source=gsa_tamb_path, points=placements.geom.tolist())
 
