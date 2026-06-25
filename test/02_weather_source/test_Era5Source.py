@@ -370,3 +370,79 @@ def test_Era5Source_get(pt_Era5Source, pt_BoundedEra5Source):
     pt = (6.03, 50.81)
     s1 = pt_Era5Source.get(var, pt, interpolation="bilinear")
     assert np.isclose(s1.values.mean(), 15.277533860286267)
+
+
+def test_Era5Source_sload_snow_albedo(pt_Era5Source, pt_BoundedEra5Source):
+    var = "snow_albedo"
+    pt_Era5Source.sload_snow_albedo()
+    assert var in pt_Era5Source.data
+
+    a, b, c = (140, 13, 11), 0.7941267245053446, 0.6624303997529796
+    assert pt_Era5Source.data[var].shape == a
+    assert np.isclose(pt_Era5Source.data[var].mean(), b)
+    assert np.isclose(pt_Era5Source.data[var][33, 1, 2], c)
+
+    pt_BoundedEra5Source.sload_snow_albedo()
+    assert var in pt_BoundedEra5Source.data
+
+    a, b, c = (140, 6, 6), 0.7822069000188031, 0.6775980069172599
+    assert pt_BoundedEra5Source.data[var].shape == a
+    assert np.isclose(pt_BoundedEra5Source.data[var].mean(), b)
+    assert np.isclose(pt_BoundedEra5Source.data[var][33, 1, 2], c)
+
+
+def test_Era5Source_sload_snow_density(pt_Era5Source, pt_BoundedEra5Source):
+    var = "snow_density"
+    pt_Era5Source.sload_snow_density()
+    assert var in pt_Era5Source.data
+
+    a, b, c = (140, 13, 11), 171.71123863464788, 171.71652449980587
+    assert pt_Era5Source.data[var].shape == a
+    assert np.isclose(pt_Era5Source.data[var].mean(), b)
+    assert np.isclose(pt_Era5Source.data[var][33, 1, 2], c)
+
+    pt_BoundedEra5Source.sload_snow_density()
+    assert var in pt_BoundedEra5Source.data
+
+    a, b, c = (140, 6, 6), 189.5077115523002, 176.9238246386672
+    assert pt_BoundedEra5Source.data[var].shape == a
+    assert np.isclose(pt_BoundedEra5Source.data[var].mean(), b)
+    assert np.isclose(pt_BoundedEra5Source.data[var][33, 1, 2], c)
+
+
+def test_Era5Source_sload_snow_depth_water_equivalent(pt_Era5Source, pt_BoundedEra5Source):
+    var = "snow_depth_water_equivalent"
+    pt_Era5Source.sload_snow_depth_water_equivalent()
+    assert var in pt_Era5Source.data
+
+    a, b, c = (140, 13, 11), 0.002338779435814489, 0.005035630903514665
+    assert pt_Era5Source.data[var].shape == a
+    assert np.isclose(pt_Era5Source.data[var].mean(), b)
+    assert np.isclose(pt_Era5Source.data[var][33, 1, 2], c)
+
+    pt_BoundedEra5Source.sload_snow_depth_water_equivalent()
+    assert var in pt_BoundedEra5Source.data
+
+    a, b, c = (140, 6, 6), 0.003410525752322981, 0.010071261807028442
+    assert pt_BoundedEra5Source.data[var].shape == a
+    assert np.isclose(pt_BoundedEra5Source.data[var].mean(), b)
+    assert np.isclose(pt_BoundedEra5Source.data[var][33, 1, 2], c)
+
+
+def test_Era5Source_sload_snowfall_water_equivalent(pt_Era5Source, pt_BoundedEra5Source):
+    var = "snowfall_water_equivalent"
+    pt_Era5Source.sload_snowfall_water_equivalent()
+    assert var in pt_Era5Source.data
+
+    a, b, c = (140, 13, 11), 1.72628057551922e-05, 0.0
+    assert pt_Era5Source.data[var].shape == a
+    assert np.isclose(pt_Era5Source.data[var].mean(), b)
+    assert np.isclose(pt_Era5Source.data[var][33, 1, 2], c)
+
+    pt_BoundedEra5Source.sload_snowfall_water_equivalent()
+    assert var in pt_BoundedEra5Source.data
+
+    a, b, c = (140, 6, 6), 3.066569101542149e-05, 0.0
+    assert pt_BoundedEra5Source.data[var].shape == a
+    assert np.isclose(pt_BoundedEra5Source.data[var].mean(), b)
+    assert np.isclose(pt_BoundedEra5Source.data[var][33, 1, 2], c)
