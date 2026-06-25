@@ -142,7 +142,7 @@ class EGS_workflowmanager:
                     # self.__setattr__(name=value)
 
         set_dims(latsGlobal=ds.lat.values, lonsGlobal=ds.lon.values)
-        points = gk.LocationSet(self.placements[["lon", "lat"]].values)
+        points = [tuple(coords) for coords in self.placements[["lon", "lat"]].values]
 
         for var in vars:
             if "depth" in ds.dims:
@@ -201,8 +201,8 @@ class EGS_workflowmanager:
         # self.latsGlobal =  ds.lat.values
         # self.lonsGlobal =  ds.lon.values
 
-        # convert coordinates to a LocationSet for interpolateValues
-        points = gk.LocationSet(self.placements[["lon", "lat"]].values)
+        # convert coordinates to a list of (lon, lat) tuples for interpolateValues
+        points = [tuple(coords) for coords in self.placements[["lon", "lat"]].values]
 
         # get data
         shape = (
