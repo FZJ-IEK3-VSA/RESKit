@@ -115,6 +115,47 @@ def test_Era5Source_loc_to_index(pt_Era5Source, pt_BoundedEra5Source):
     assert np.isclose(idx[1].xi, 3.7600000000000016)
 
 
+def test_Era5Source__sload_wind_speed(pt_Era5Source, pt_BoundedEra5Source):
+    """
+    This test is to check the internal function _sload_wind_speed, which is used by the standard loader functions for wind speed variables.
+    Since the following 4 functions are testing for pre-calculated wind speed, here this function tests the wind speed calculated from u and v components.
+    The numbers from the following 4 functions are also listed out here in a comment for comparison. The difference is at 4th digit after the decimal point, which is acceptable given the precision of the data and the calculations.
+    """
+    for var in ["elevated_wind_speed", "wind_speed_at_100m"]:
+        pt_Era5Source._sload_wind_speed(height=100, target_name=var, force_load_uv=True)
+        assert var in pt_Era5Source.data
+
+        a, b, c = (140, 13, 11), 6.650547848078094, 11.299326952960216  # 6.650457494103541, 11.29947813348796
+        assert pt_Era5Source.data[var].shape == a
+        assert np.isclose(pt_Era5Source.data[var].mean(), b)
+        assert np.isclose(pt_Era5Source.data[var][33, 1, 2], c)
+
+        pt_BoundedEra5Source._sload_wind_speed(height=100, target_name=var, force_load_uv=True)
+        assert var in pt_BoundedEra5Source.data
+
+        a, b, c = (140, 6, 6), 7.102551347044989, 12.475086200228056  # 7.102461142186705, 12.475203711050753
+        assert pt_BoundedEra5Source.data[var].shape == a
+        assert np.isclose(pt_BoundedEra5Source.data[var].mean(), b)
+        assert np.isclose(pt_BoundedEra5Source.data[var][33, 1, 2], c)
+
+    for var in ["surface_wind_speed", "wind_speed_at_10m"]:
+        pt_Era5Source._sload_wind_speed(height=10, target_name=var, force_load_uv=True)
+        assert var in pt_Era5Source.data
+
+        a, b, c = (140, 13, 11), 3.695453610733474, 6.652907948049286  # 3.69537552660054, 6.653035065767388
+        assert pt_Era5Source.data[var].shape == a
+        assert np.isclose(pt_Era5Source.data[var].mean(), b)
+        assert np.isclose(pt_Era5Source.data[var][33, 1, 2], c)
+
+        pt_BoundedEra5Source._sload_wind_speed(height=10, target_name=var, force_load_uv=True)
+        assert var in pt_BoundedEra5Source.data
+
+        a, b, c = (140, 6, 6), 3.899670648780753, 7.606956995666662  # 3.8995903495628834, 7.6075014496292
+        assert pt_BoundedEra5Source.data[var].shape == a
+        assert np.isclose(pt_BoundedEra5Source.data[var].mean(), b)
+        assert np.isclose(pt_BoundedEra5Source.data[var][33, 1, 2], c)
+
+
 def test_Era5Source_sload_elevated_wind_speed(pt_Era5Source, pt_BoundedEra5Source):
     var = "elevated_wind_speed"
     pt_Era5Source.sload_elevated_wind_speed()
@@ -329,3 +370,79 @@ def test_Era5Source_get(pt_Era5Source, pt_BoundedEra5Source):
     pt = (6.03, 50.81)
     s1 = pt_Era5Source.get(var, pt, interpolation="bilinear")
     assert np.isclose(s1.values.mean(), 15.277533860286267)
+
+
+def test_Era5Source_sload_snow_albedo(pt_Era5Source, pt_BoundedEra5Source):
+    var = "snow_albedo"
+    pt_Era5Source.sload_snow_albedo()
+    assert var in pt_Era5Source.data
+
+    a, b, c = (140, 13, 11), 0.7941267245053446, 0.6624303997529796
+    assert pt_Era5Source.data[var].shape == a
+    assert np.isclose(pt_Era5Source.data[var].mean(), b)
+    assert np.isclose(pt_Era5Source.data[var][33, 1, 2], c)
+
+    pt_BoundedEra5Source.sload_snow_albedo()
+    assert var in pt_BoundedEra5Source.data
+
+    a, b, c = (140, 6, 6), 0.7822069000188031, 0.6775980069172599
+    assert pt_BoundedEra5Source.data[var].shape == a
+    assert np.isclose(pt_BoundedEra5Source.data[var].mean(), b)
+    assert np.isclose(pt_BoundedEra5Source.data[var][33, 1, 2], c)
+
+
+def test_Era5Source_sload_snow_density(pt_Era5Source, pt_BoundedEra5Source):
+    var = "snow_density"
+    pt_Era5Source.sload_snow_density()
+    assert var in pt_Era5Source.data
+
+    a, b, c = (140, 13, 11), 171.71123863464788, 171.71652449980587
+    assert pt_Era5Source.data[var].shape == a
+    assert np.isclose(pt_Era5Source.data[var].mean(), b)
+    assert np.isclose(pt_Era5Source.data[var][33, 1, 2], c)
+
+    pt_BoundedEra5Source.sload_snow_density()
+    assert var in pt_BoundedEra5Source.data
+
+    a, b, c = (140, 6, 6), 189.5077115523002, 176.9238246386672
+    assert pt_BoundedEra5Source.data[var].shape == a
+    assert np.isclose(pt_BoundedEra5Source.data[var].mean(), b)
+    assert np.isclose(pt_BoundedEra5Source.data[var][33, 1, 2], c)
+
+
+def test_Era5Source_sload_snow_depth_water_equivalent(pt_Era5Source, pt_BoundedEra5Source):
+    var = "snow_depth_water_equivalent"
+    pt_Era5Source.sload_snow_depth_water_equivalent()
+    assert var in pt_Era5Source.data
+
+    a, b, c = (140, 13, 11), 0.002338779435814489, 0.005035630903514665
+    assert pt_Era5Source.data[var].shape == a
+    assert np.isclose(pt_Era5Source.data[var].mean(), b)
+    assert np.isclose(pt_Era5Source.data[var][33, 1, 2], c)
+
+    pt_BoundedEra5Source.sload_snow_depth_water_equivalent()
+    assert var in pt_BoundedEra5Source.data
+
+    a, b, c = (140, 6, 6), 0.003410525752322981, 0.010071261807028442
+    assert pt_BoundedEra5Source.data[var].shape == a
+    assert np.isclose(pt_BoundedEra5Source.data[var].mean(), b)
+    assert np.isclose(pt_BoundedEra5Source.data[var][33, 1, 2], c)
+
+
+def test_Era5Source_sload_snowfall_water_equivalent(pt_Era5Source, pt_BoundedEra5Source):
+    var = "snowfall_water_equivalent"
+    pt_Era5Source.sload_snowfall_water_equivalent()
+    assert var in pt_Era5Source.data
+
+    a, b, c = (140, 13, 11), 1.72628057551922e-05, 0.0
+    assert pt_Era5Source.data[var].shape == a
+    assert np.isclose(pt_Era5Source.data[var].mean(), b)
+    assert np.isclose(pt_Era5Source.data[var][33, 1, 2], c)
+
+    pt_BoundedEra5Source.sload_snowfall_water_equivalent()
+    assert var in pt_BoundedEra5Source.data
+
+    a, b, c = (140, 6, 6), 3.066569101542149e-05, 0.0
+    assert pt_BoundedEra5Source.data[var].shape == a
+    assert np.isclose(pt_BoundedEra5Source.data[var].mean(), b)
+    assert np.isclose(pt_BoundedEra5Source.data[var][33, 1, 2], c)

@@ -1,11 +1,14 @@
-| Version                                                                                                             |
-| ------------------------------------------------------------------------------------------------------------------- |
-| [![Conda Version](https://img.shields.io/conda/vn/conda-forge/reskit.svg)](https://anaconda.org/conda-forge/reskit) |
+| Version                                                                                                             | Zenodo Release                                                                                              | Docstring Style                                                                  | Coverage                                                                                                                                             |
+| ------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [![Conda Version](https://img.shields.io/conda/vn/conda-forge/reskit.svg)](https://anaconda.org/conda-forge/reskit) | [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17668775.svg)](https://doi.org/10.5281/zenodo.17668775) | ![Numpy docstring Style](https://img.shields.io/badge/%20style-numpy-459db9.svg) | [![codecov](https://codecov.io/gh/FZJ-IEK3-VSA/RESKit/branch/master/graph/badge.svg)](https://codecov.io/gh/FZJ-IEK3-VSA/RESKit) |
 # RESKit - **R**enewable **E**nergy **S**imulation tool**kit** for Python
 
-<p float="left">
-<a href="https://www.fz-juelich.de/en/ice/ice-2"><img src="https://github.com/FZJ-IEK3-VSA/README_assets/blob/main/JSA-Header.svg?raw=True" alt="Jülich Systems Analysis Logo" width="300px"></a>
-</p>
+<a href="https://www.fz-juelich.de/en/ice/ice-2">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://github.com/FZJ-IEK3-VSA/README_assets/blob/v.1.0.0/ICE2_Logos/JSA-Header-dark.svg?raw=True">
+    <img src="https://github.com/FZJ-IEK3-VSA/README_assets/blob/v.1.0.0/ICE2_Logos/JSA-Header.svg?raw=True" alt="Logo für Forschungszentrum Juelich - Juelich System Analysis" width="300px">
+  </picture>
+</a>
 
 RESKit aids with the broad-scale simulation of renewable energy systems, primarily for the purpose of input generation to Energy System Design Models. Simulation tools currently exist for onshore and offshore wind turbines, as well as for solar photovoltaic (PV) systems and concentrated solar power (CSP), in addition to general weather-data manipulation tools. Simulations are performed in the context of singular units, however high computational performance is nevertheless maintained. As a result, this tool allows for the simulation of millions of individual turbines and PV/CSP systems in a matter of minutes depending on the hardware.
 
@@ -20,34 +23,57 @@ RESKit aids with the broad-scale simulation of renewable energy systems, primari
 
 ## Installation
 
-Please follow these steps for an editable installation:
+#### For Users (Application Only)
 
-1. First clone a local copy of the repository to your computer, and move into the created directory
+1 a) If you do not have an existing conda/mamba environment:
+```
+conda env create -c conda-forge reskit -n <ENVIRONMENT-NAME>
+```
 
+1 b) If you have an existing environment, install RESKit into it:
+```
+conda install -c conda-forge reskit -n <YOUR-ENVIRONMENT-NAME>
+```
+
+2 ) Activate the environment:
+```
+conda activate <YOUR-ENVIRONMENT-NAME>
+```
+
+3 a) Get the RESKit source code (including examples):
 ```
 git clone https://github.com/FZJ-IEK3-VSA/reskit.git
 cd reskit
 ```
 
-1. (Alternative) If you want to use the 'dev' branch (or another branch) then use:
+3 b) If you do not have Git and just want to check the examples, download and extract the source code with this link:
+> https://github.com/FZJ-IEK3-VSA/RESKit/archive/refs/heads/master.zip
+
+
+#### For Developers
+Please follow these steps for an editable installation:
+
+1 ) Clone and checkout dev:
 
 ```
+git clone https://github.com/FZJ-IEK3-VSA/reskit.git
+cd reskit
 git checkout dev
 ```
 
-2. RESkit should be installable to a new environment with:
+2 a) RESkit should be installable to a new environment with:
 
 ```
 conda env create --file requirements-dev.yml
 ```
 
-2. (Alternative) Or into an existing environment with:
+2 b) (Alternative) Or into an existing environment with:
 
 ```
 conda env update --file requirements-dev.yml -n <ENVIRONMENT-NAME>
 ```
 
-3. Install an editable version of reskit (when in the reskit folder) via
+3 ) Install an editable version of reskit (when in the reskit folder) via
 ```
 pip install -e .
 ```
@@ -59,14 +85,18 @@ If you decide to use RESkit anywhere in a published work related to wind energy,
 
 When using the ETHOS.RESKit.Wind workflow please cite: 
 ```bibtex
-@article{PenaSanchezDunkelWinklerEtAl2025,
-      title={Towards high resolution, validated and open global wind power assessments}, 
-      author={Edgar Ubaldo Peña-Sánchez and Philipp Dunkel and Christoph Winkler and Heidi Heinrichs and Florian Prinz and Jann Weinand and Rachel Maier and Sebastian Dickler and Shuying Chen and Katharina Gruber and Theresa Klütz and Jochen Linßen and Detlef Stolten},
-      year={2025},
-      eprint={2501.07937},
-      archivePrefix={arXiv},
-      primaryClass={physics.soc-ph},
-      url={https://arxiv.org/abs/2501.07937}, 
+@article{PenaSanchezDunkelWinklerEtAl2026,
+  title = {Towards High Resolution, Validated and Open Global Wind Power Assessments},
+  author = {{Pe{\~n}a-S{\'a}nchez}, E. U. and Dunkel, P. and Winkler, C. and Heinrichs, H. and Prinz, F. and Weinand, J. M. and Maier, R. and Dickler, S. and Chen, S. and Gruber, K. and Kl{\"u}tz, T. and Lin{\ss}en, J. and Stolten, D.},
+  year = 2026,
+  month = jan,
+  journal = {Nature Communications},
+  volume = {17},
+  number = {1},
+  pages = {539},
+  issn = {2041-1723},
+  doi = {10.1038/s41467-026-68337-z},
+  url = {http://dx.doi.org/10.1038/s41467-026-68337-z},
 }
 ```
 
@@ -96,21 +126,29 @@ The data files [cf_correction_factors_PSDW2025.tif](reskit/wind/core/data/cf_cor
 You should have received a copy of the MIT License along with this program.  
 If not, see <https://opensource.org/licenses/MIT>
 
-## About Us 
-
-We are the <a href="https://www.fz-juelich.de/de/ice/ice-2">Institute of Energy and Climate Research - Jülich Systems Analysis (ICE-2)</a> belonging to the <a href="https://www.fz-juelich.de/en">Forschungszentrum Jülich</a>. Our interdisciplinary department's research is focusing on energy-related process and systems analyses. Data searches and system simulations are used to determine energy and mass balances, as well as to evaluate performance, emissions and costs of energy systems. The results are used for performing comparative assessment studies between the various systems. Our current priorities include the development of energy strategies, in accordance with the German Federal Government’s greenhouse gas reduction targets, by designing new infrastructures for sustainable and secure energy supply chains and by conducting cost analysis studies for integrating new technologies into future energy market frameworks.
-
 ## Contributions and Support
 Every contributions are welcome:
 - If you want to report a bug, please open an [Issue](https://github.com/FZJ-IEK3-VSA/RESKit/issues/new). We will then take care of the issue as soon as possible.
 - If you want to contribute with additional features or code improvements, open a [Pull request](https://github.com/FZJ-IEK3-VSA/RESKit/pulls).
 
+## About Us 
+
+We are the <a href="https://www.fz-juelich.de/en/ice/ice-2">Institute of Climate and Energy Systems – Jülich Systems Analysis (ICE-2)</a> at the <a href="https://www.fz-juelich.de/en"> Forschungszentrum Jülich</a>.
+Our work focuses on independent, interdisciplinary research in energy, bioeconomy, infrastructure, and sustainability. We support a just, greenhouse gas–neutral transformation through open models and policy-relevant science.
+
+
 ## Code of Conduct
-Please respect our [code of conduct](./docs/CODE_OF_CONDUCT.md).
+Please respect our [code of conduct](https://github.com/FZJ-IEK3-VSA/README_assets/blob/main/CODE_CONDUCT.md).
+
+
 
 ## Acknowledgement
 This work was initially supported by the Helmholtz Association under the Joint Initiative ["Energy System 2050   A Contribution of the Research Field Energy"](https://www.helmholtz.de/en/research/energy/energy_system_2050/). 
 
-<p float="left">
-<a href="https://www.helmholtz.de/en/"><img src="https://www.helmholtz.de/fileadmin/user_upload/05_aktuelles/Marke_Design/logos/HG_LOGO_S_ENG_RGB.jpg" alt="Helmholtz Logo" width="200px"></a>
-</p>
+<a href="https://www.helmholtz.de/en/">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/FZJ-IEK3-VSA/README_assets/v.1.0.0/Helmholtz_Logos/Helmholtz-Logo-White-RGB.svg">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/FZJ-IEK3-VSA/README_assets/v.1.0.0/Helmholtz_Logos/Helmholtz-Logo-Dark-Blue-RGB.svg">
+    <img src="https://raw.githubusercontent.com/FZJ-IEK3-VSA/README_assets/v.1.0.0/Helmholtz_Logos/Helmholtz-Logo-Dark-Blue-RGB.svg" alt="Helmholtz Logo" width="200px" style="float:left">
+  </picture>
+</a>
