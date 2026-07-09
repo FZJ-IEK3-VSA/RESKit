@@ -105,14 +105,21 @@ result = rk.download_and_process(
 print(result["era5_path"])
 ```
 
-For ERA5 you can pass `"all_era5_workflows"` as the `workflow` to prepare the union
-of variables for every supported workflow in one call. A CDS account with a
-configured `~/.cdsapirc` API key is required
-(see https://cds.climate.copernicus.eu/how-to-api).
+To prepare data for many workflows in a single call, pass a meta-workflow name as
+`workflow`: `rk.ALL_WORKFLOWS` (`"all_workflows"`) unions the variables of every
+supported workflow across all data sources, while a per-source subset such as
+`"all_era5_workflows"` (built via `rk.source_meta_workflow("ERA5")`) restricts the
+union to one source. A CDS account with a configured `~/.cdsapirc` API key is
+required for ERA5 (see https://cds.climate.copernicus.eu/how-to-api).
+
+Note that some workflows also rely on data whose automated download is not yet
+implemented — solar/CSP workflows on Global Solar Atlas rasters and wind workflows
+on Global Wind Atlas rasters. `download_and_process` prints a notice for these and
+you must supply the rasters manually.
 
 End-to-end examples live in [examples/1_load_input_data/](examples/1_load_input_data/):
-- [1_1_3_prepare_era5_for_wind_workflow.py](examples/1_load_input_data/1_1_3_prepare_era5_for_wind_workflow.py)
-- [1_1_4_prepare_era5_for_solar_workflow.py](examples/1_load_input_data/1_1_4_prepare_era5_for_solar_workflow.py)
+- [1_1_3_prepare_era5_for_wind_workflow.ipynb](examples/1_load_input_data/1_1_3_prepare_era5_for_wind_workflow.ipynb)
+- [1_1_4_prepare_era5_for_solar_workflow.ipynb](examples/1_load_input_data/1_1_4_prepare_era5_for_solar_workflow.ipynb)
 
 For full manual control over the raw ERA5/CDS download (variables, area, and
 timeframe), see the lower-level example notebook
