@@ -269,6 +269,8 @@ class WorkflowManager:
                     "points must be a list of (lon, lat) tuples."
                 )
 
+            # interpolateValues returns a scalar for a single location; ensure a 1-D array
+            # so the nan handling below (and callers) work regardless of the number of points
             _lra = np.atleast_1d(gk.raster.interpolateValues(fp, points, mode=spatial_interpolation))
             # if getting values fails, it could be because of interpolation method.
             # these values will be replaced with the nearest interpolation method

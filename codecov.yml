@@ -3,9 +3,11 @@ coverage:
     project:
       default:
         enabled: true
+        informational: true
     patch:
       default:
         enabled: true
+        informational: true
 
 comment:
   layout: "reach,diff,flags,files"
