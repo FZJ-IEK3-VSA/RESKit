@@ -8,7 +8,7 @@
 # expected by `Era5Source` and `execute_workflow_iteratively()`.
 #
 # **Prerequisites**
-# - CDS account and `~/.cdsapirc` API key configured:
+# - CDS account and `~/.cdsapirc` API key configured (for instructions see link below):
 #   https://cds.climate.copernicus.eu/how-to-api
 #   (processing is done with xarray/netCDF4 — no external CDO binary required)
 
