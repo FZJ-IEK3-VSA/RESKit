@@ -25,6 +25,9 @@ depends_on = {
             "2m_temperature",
             "2m_dewpoint_temperature",
         ],
+        # long-run-average rasters passed via global_solar_atlas_ghi_path /
+        # global_solar_atlas_dni_path (used to bias-correct GHI and DNI)
+        "GSA": ["GHI", "DNI"],
     },
     "CSP_PTR_ERA5": {
         "ERA5": [
@@ -33,8 +36,13 @@ depends_on = {
             "10m_v_component_of_wind",
             "2m_temperature",
         ],
+        # global_solar_atlas_dni_path (DNI long-run-average correction) plus
+        # global_solar_atlas_tamb_path (TEMP), used to pick the optimal HTF per
+        # placement in the multi-dataset case
+        "GSA": ["DNI", "TEMP"],
     },
-    # core implementation behind the CSP_PTR_ERA5 wrapper; same weather needs
+    # core implementation behind the CSP_PTR_ERA5 wrapper; same ERA5 needs but
+    # only the DNI raster (HTF selection happens in the wrapper)
     "CSP_PTR_ERA5_specific_dataset": {
         "ERA5": [
             "total_sky_direct_solar_radiation_at_surface",
@@ -42,6 +50,7 @@ depends_on = {
             "10m_v_component_of_wind",
             "2m_temperature",
         ],
+        "GSA": ["DNI"],
     },
     "ht_dac_era5_wenzel2025": {
         "ERA5": [
@@ -71,29 +80,70 @@ depends_on = {
             "2m_dewpoint_temperature",
         ],
     },
-    "retile_DEBUG": {
-        "ERA5": [
-            "2m_temperature",
-        ],
-    },
 }
 
-# Meta-workflow: prepare data for *all* ERA5-based workflows in a single call by
-# downloading/processing the union of every registered workflow's ERA5 variables.
-# Computed dynamically so newly added workflows are included automatically.
-ALL_ERA5_WORKFLOWS = "all_era5_workflows"
-# entries that are not user-facing ERA5 workflows and must not feed the union
-_NON_WORKFLOW_KEYS = {"retile_DEBUG", ALL_ERA5_WORKFLOWS}
-depends_on[ALL_ERA5_WORKFLOWS] = {
-    "ERA5": list(
-        dict.fromkeys(
-            var
-            for workflow, deps in depends_on.items()
-            if workflow not in _NON_WORKFLOW_KEYS
-            for var in deps.get("ERA5", [])
-        )
-    ),
-}
+# Meta-workflows: prepare data for *many* workflows in a single call by downloading/
+# processing the union of their per-source variable lists. ``all_workflows`` spans every
+# registered source; each source additionally gets an ``all_<source>_workflows`` subset
+# (e.g. ``all_era5_workflows``, ``all_gsa_workflows``), generated dynamically below so
+# newly added workflows *and* newly added weather sources are picked up automatically
+# without touching this block.
+# Name of the everything-meta-workflow (union across all sources).
+ALL_WORKFLOWS = "all_workflows"
+# Populated as meta-workflows are registered below so they are excluded from the union
+# (a meta-workflow must not fold its own aggregated deps back in). Never hardcoded.
+_META_WORKFLOWS = set()
+
+
+def source_meta_workflow(source):
+    """Name of the per-source meta-workflow that unions only ``source``'s variables
+    across every real workflow, e.g. ``"ERA5"`` -> ``"all_era5_workflows"``."""
+    return f"all_{source.lower()}_workflows"
+
+
+def all_workflow_dependencies(sources=None):
+    """Union the weather-data dependencies of every real (non-meta) workflow.
+
+    Merges the ``depends_on`` entries of all registered workflows into a single
+    ``{source: [variables]}`` mapping, de-duplicating variables while preserving order.
+    Because it reads ``depends_on`` at call time, both newly added workflows and newly
+    added weather sources are included automatically.
+
+    Parameters
+    ----------
+    sources : iterable of str, optional
+        Restrict the union to these source keys (e.g. ``{"ERA5"}``). By default all
+        sources found across the workflows are included.
+
+    Returns
+    -------
+    dict
+        ``{source: [variables]}`` — the deduplicated union, suitable as a ``depends_on``
+        entry for ``download_and_process``.
+    """
+    merged = {}
+    for workflow, deps in depends_on.items():
+        if workflow in _META_WORKFLOWS:
+            continue
+        for source, variables in deps.items():
+            if sources is not None and source not in sources:
+                continue
+            bucket = merged.setdefault(source, [])
+            bucket.extend(var for var in variables if var not in bucket)
+    return merged
+
+
+def _register_meta_workflow(name, *, sources=None):
+    """Register a meta-workflow whose deps are the union across the real workflows, and
+    record its name so it is excluded from any subsequent union."""
+    depends_on[name] = all_workflow_dependencies(sources=sources)
+    _META_WORKFLOWS.add(name)
+
+
+# Everything-meta first, then one per-source meta for each source that actually appears.
+_register_meta_workflow(ALL_WORKFLOWS)
+for _source in depends_on[ALL_WORKFLOWS]:
+    _register_meta_workflow(source_meta_workflow(_source), sources={_source})
 
 
 def _known_reskit_workflows() -> set:
@@ -162,6 +212,24 @@ def _prepare_gwa4(variables, **_):
     return None
 
 
+def _prepare_gsa(variables, **_):
+    """Placeholder preparer for the Global Solar Atlas (GSA) source.
+
+    Automated GSA download is not implemented yet. This does not download anything; it only
+    notifies the user that the required long-term-average rasters must be fetched manually and
+    contributes nothing to the result (returns ``None``). The rasters are passed to the solar
+    workflows via ``global_solar_atlas_ghi_path`` / ``global_solar_atlas_dni_path`` (and
+    ``global_solar_atlas_tamb_path`` for CSP HTF selection).
+    """
+    print(
+        "NOTE: Automated Global Solar Atlas (GSA) download is not implemented yet. Download the "
+        f"required long-term-average rasters ({', '.join(variables)}) manually from "
+        "https://globalsolaratlas.info/download and pass them to the workflow (e.g. "
+        "global_solar_atlas_ghi_path / global_solar_atlas_dni_path / global_solar_atlas_tamb_path)."
+    )
+    return None
+
+
 # Registry of per-source preparers. Each callable takes the workflow's variable list for
 # that source plus the shared download context (start/end date, boundary box, output dir,
 # tiling options) and returns a partial result dict, or ``None`` if it contributes nothing
@@ -170,6 +238,7 @@ def _prepare_gwa4(variables, **_):
 _SOURCE_PREPARERS = {
     "ERA5": _prepare_era5,
     "GWA4": _prepare_gwa4,  # manual download only for now — notifies and returns None
+    "GSA": _prepare_gsa,  # manual download only for now — notifies and returns None
 }
 
 
