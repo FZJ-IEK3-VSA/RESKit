@@ -37,7 +37,7 @@ import os
 
 # %%
 output_dir = "tmp" # the data will be saved to a tmp folder in the directory from which you execute this example file
-os.makedirs()(output_dir, exist_ok=True)
+os.makedirs(output_dir, exist_ok=True)
 
 result = rk.download_and_process(
     workflow="wind_era5_PenaSanchezDunkelWinklerEtAl2025",
