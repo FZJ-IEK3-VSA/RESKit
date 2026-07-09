@@ -299,7 +299,6 @@ class WorkflowManager:
         nodata_fallback: str = "nan",
         nodata_fallback_scaling: float = 1,
         allow_nans: bool = True,
-        enable_lra_adjustment: bool = True,
     ):
         """Adjusts the average mean of the specified variable to a known long-run-average
 
@@ -358,20 +357,11 @@ class WorkflowManager:
         allow_nans : boolean, optional
             If True, NaN values may remain after scaling, else an error will raised. By default True.
 
-        enable_lra_adjustment : bool, optional
-            If True, enables the long-run-average adjustment
-            using the provided lra information.
-            Note: If False, the entire function is skipped.
-            By default True.
-
         Returns
         -------
         WorkflowManager
             Returns the invoking WorkflowManager (for chaining)
         """
-        # check if adjustment is enabled, else early exit
-        if not enable_lra_adjustment:
-            return self
         # otherwise proceed as usual with the adjustment
         if not (nodata_fallback is None or callable(nodata_fallback) or isinstance(nodata_fallback, (float, int, str))):
             raise TypeError(f"'nodata_fallback' must be a float or a Callable.")
