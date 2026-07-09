@@ -15,7 +15,8 @@ from reskit.util.input_preparation import (
 
 def _raw_variables_for_workflow(workflow):
     """Test helper: resolve a registered workflow's raw ERA5 tile variables via the
-    Era5Source-owned mapping (mirrors what download_and_process does internally)."""
+    Era5Source-owned mapping (mirrors what download_and_process does internally).
+    """
     return Era5Source.raw_passthrough_variables(depends_on[workflow]["ERA5"])
 
 

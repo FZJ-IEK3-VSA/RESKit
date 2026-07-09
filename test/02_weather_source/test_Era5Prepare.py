@@ -121,7 +121,8 @@ def test_era5_tiler_no_raw_variables(era5_like_tile_input, tmp_path):
 
 def _days_covered(start, end):
     """Reconstruct the set of calendar days a job list actually requests (CDS drops days that
-    don't exist in a month, so we mirror that here)."""
+    don't exist in a month, so we mirror that here).
+    """
     covered = set()
     for year, months, days in _era5_download_jobs(start, end):
         for m in months:
