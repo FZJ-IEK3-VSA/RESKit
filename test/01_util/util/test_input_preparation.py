@@ -96,9 +96,7 @@ def test_merge_dependencies_single_workflow():
 
 
 def test_merge_dependencies_unions_across_workflows():
-    merged = _merge_dependencies(
-        ["openfield_pv_era5", "CSP_PTR_ERA5", "wind_era5_PenaSanchezDunkelWinklerEtAl2025"]
-    )
+    merged = _merge_dependencies(["openfield_pv_era5", "CSP_PTR_ERA5", "wind_era5_PenaSanchezDunkelWinklerEtAl2025"])
     # union spans every source touched by the given workflows
     assert set(merged) == {"ERA5", "GSA", "GWA4"}
     # every variable of each input workflow is present in the union

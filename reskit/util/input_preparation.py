@@ -83,8 +83,10 @@ depends_on = {
     },
 }
 
+
 def _merge_dependencies(workflows):
-    """Union the weather-data dependencies of one or more workflows.
+    """
+    Union the weather-data dependencies of one or more workflows.
 
     Merges the given workflows' ``depends_on`` entries into a single
     ``{source: [variables]}`` mapping, de-duplicating variables while preserving order.
@@ -107,23 +109,23 @@ def _merge_dependencies(workflows):
     merged = {}
     for workflow in workflows:
         if workflow not in depends_on:
-            raise ValueError(
-                f"Unknown RESKit workflow: {workflow!r}. "
-                f"Supported workflows: {sorted(depends_on)}."
-            )
+            raise ValueError(f"Unknown RESKit workflow: {workflow!r}. Supported workflows: {sorted(depends_on)}.")
         for source, variables in depends_on[workflow].items():
             bucket = merged.setdefault(source, [])
             bucket.extend(var for var in variables if var not in bucket)
     return merged
 
+
 #######################################################
 ############### SOURCE PREPARE FUNCTIONS ##############
 #######################################################
 
+
 def _prepare_era5(
     variables, *, start_date, end_date, boundary_box, output_dir, tiling, zoom_level, tile_output_dir, **_
 ):
-    """Preparer for the ERA5 weather source: download, preprocess and (optionally) tile the
+    """
+    Preparer for the ERA5 weather source: download, preprocess and (optionally) tile the
     given ERA5 CDS variables.
 
     Returns
@@ -151,7 +153,8 @@ def _prepare_era5(
 
 
 def _prepare_gwa4(variables, **_):
-    """Placeholder preparer for the Global Wind Atlas (GWA4) source.
+    """
+    Placeholder preparer for the Global Wind Atlas (GWA4) source.
 
     Automated GWA4 download is not implemented yet. This does not download anything; it only
     notifies the user that the required rasters must be fetched manually and contributes
@@ -166,7 +169,8 @@ def _prepare_gwa4(variables, **_):
 
 
 def _prepare_gsa(variables, **_):
-    """Placeholder preparer for the Global Solar Atlas (GSA) source.
+    """
+    Placeholder preparer for the Global Solar Atlas (GSA) source.
 
     Automated GSA download is not implemented yet. This does not download anything; it only
     notifies the user that the required long-term-average rasters must be fetched manually and
@@ -181,6 +185,7 @@ def _prepare_gsa(variables, **_):
         "global_solar_atlas_ghi_path / global_solar_atlas_dni_path / global_solar_atlas_tamb_path)."
     )
     return None
+
 
 # Registry of per-source preparers. Each callable takes the workflow's variable list for
 # that source plus the shared download context (start/end date, boundary box, output dir,
@@ -197,6 +202,7 @@ _SOURCE_PREPARERS = {
 ############### USER FUNCTIONS ########################
 #######################################################
 
+
 def download_and_process(
     workflows,
     start_date,
@@ -207,7 +213,8 @@ def download_and_process(
     zoom_level=4,
     tile_output_dir=None,
 ):
-    """Download and process the weather data one or more RESKit workflows need.
+    """
+    Download and process the weather data one or more RESKit workflows need.
 
     A workflow may depend on several weather sources (see ``depends_on``); each is prepared
     by its own registered preparer (see ``_SOURCE_PREPARERS``) and contributes its outputs to
