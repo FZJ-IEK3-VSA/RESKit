@@ -3,10 +3,8 @@ import pytest
 from reskit.weather import Era5Source
 from reskit.weather.Era5Source.Era5Prepare import _ERA5_NC_TO_TILE_LABEL
 from reskit.util.input_preparation import (
-    ALL_ERA5_WORKFLOWS,
-    _NON_WORKFLOW_KEYS,
     _SOURCE_PREPARERS,
-    _known_reskit_workflows,
+    _merge_dependencies,
     _prepare_gwa4,
     depends_on,
     download_and_process,
@@ -85,33 +83,40 @@ def test_cooling_heating_workflows_registered():
 
 def test_csp_specific_dataset_registered():
     assert "CSP_PTR_ERA5_specific_dataset" in depends_on
-    assert depends_on["CSP_PTR_ERA5_specific_dataset"] == depends_on["CSP_PTR_ERA5"]
+    # same ERA5 needs as the CSP_PTR_ERA5 wrapper ...
+    assert depends_on["CSP_PTR_ERA5_specific_dataset"]["ERA5"] == depends_on["CSP_PTR_ERA5"]["ERA5"]
+    # ... but only the DNI raster (HTF selection, which needs TEMP, happens in the wrapper)
+    assert depends_on["CSP_PTR_ERA5_specific_dataset"]["GSA"] == ["DNI"]
 
 
-def test_all_era5_workflows_is_union():
-    union = set(depends_on[ALL_ERA5_WORKFLOWS]["ERA5"])
-    # the meta-workflow must cover every variable required by every real workflow
-    for workflow, deps in depends_on.items():
-        if workflow in _NON_WORKFLOW_KEYS:
-            continue
-        assert set(deps.get("ERA5", [])) <= union, f"{workflow} not covered by {ALL_ERA5_WORKFLOWS}"
+def test_merge_dependencies_single_workflow():
+    # a single-element list reproduces that workflow's own dependencies
+    merged = _merge_dependencies(["openfield_pv_era5"])
+    assert merged == depends_on["openfield_pv_era5"]
 
 
-def test_all_era5_workflows_has_no_duplicates():
-    era5 = depends_on[ALL_ERA5_WORKFLOWS]["ERA5"]
-    assert len(era5) == len(set(era5))
+def test_merge_dependencies_unions_across_workflows():
+    merged = _merge_dependencies(
+        ["openfield_pv_era5", "CSP_PTR_ERA5", "wind_era5_PenaSanchezDunkelWinklerEtAl2025"]
+    )
+    # union spans every source touched by the given workflows
+    assert set(merged) == {"ERA5", "GSA", "GWA4"}
+    # every variable of each input workflow is present in the union
+    for workflow in ("openfield_pv_era5", "CSP_PTR_ERA5", "wind_era5_PenaSanchezDunkelWinklerEtAl2025"):
+        for source, variables in depends_on[workflow].items():
+            assert set(variables) <= set(merged[source])
 
 
-def test_all_era5_workflows_raw_variables_resolve():
-    # every union variable maps cleanly; raw passthroughs are exactly the non-preprocessed ones
-    assert set(_raw_variables_for_workflow(ALL_ERA5_WORKFLOWS)) == {"t2m", "sp", "blh", "d2m"}
+def test_merge_dependencies_deduplicates_preserving_order():
+    # openfield_pv and CSP share several ERA5 variables; the union must not repeat them
+    merged = _merge_dependencies(["openfield_pv_era5", "CSP_PTR_ERA5"])
+    for variables in merged.values():
+        assert len(variables) == len(set(variables))
 
 
-def test_unsupported_known_workflow_raises_not_implemented():
-    # a real RESKit workflow that is not (yet) registered in depends_on
-    unsupported = next(wf for wf in _known_reskit_workflows() if wf not in depends_on)
-    with pytest.raises(NotImplementedError):
-        download_and_process(unsupported, **_DUMMY_KWARGS)
+def test_merge_dependencies_unknown_workflow_raises_value_error():
+    with pytest.raises(ValueError):
+        _merge_dependencies(["not_a_real_workflow_name"])
 
 
 def test_unknown_workflow_raises_value_error():

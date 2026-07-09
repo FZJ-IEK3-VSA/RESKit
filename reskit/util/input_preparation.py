@@ -1,8 +1,9 @@
-import importlib
-import inspect
 import os
-import pkgutil
 import reskit as rk
+
+#######################################################
+############### DATA DEPENDENCIES #####################
+#######################################################
 
 depends_on = {
     "wind_era5_PenaSanchezDunkelWinklerEtAl2025": {
@@ -82,92 +83,42 @@ depends_on = {
     },
 }
 
-# Meta-workflows: prepare data for *many* workflows in a single call by downloading/
-# processing the union of their per-source variable lists. ``all_workflows`` spans every
-# registered source; each source additionally gets an ``all_<source>_workflows`` subset
-# (e.g. ``all_era5_workflows``, ``all_gsa_workflows``), generated dynamically below so
-# newly added workflows *and* newly added weather sources are picked up automatically
-# without touching this block.
-# Name of the everything-meta-workflow (union across all sources).
-ALL_WORKFLOWS = "all_workflows"
-# Populated as meta-workflows are registered below so they are excluded from the union
-# (a meta-workflow must not fold its own aggregated deps back in). Never hardcoded.
-_META_WORKFLOWS = set()
+def _merge_dependencies(workflows):
+    """Union the weather-data dependencies of one or more workflows.
 
-
-def source_meta_workflow(source):
-    """Name of the per-source meta-workflow that unions only ``source``'s variables
-    across every real workflow, e.g. ``"ERA5"`` -> ``"all_era5_workflows"``.
-    """
-    return f"all_{source.lower()}_workflows"
-
-
-def all_workflow_dependencies(sources=None):
-    """Union the weather-data dependencies of every real (non-meta) workflow.
-
-    Merges the ``depends_on`` entries of all registered workflows into a single
+    Merges the given workflows' ``depends_on`` entries into a single
     ``{source: [variables]}`` mapping, de-duplicating variables while preserving order.
-    Because it reads ``depends_on`` at call time, both newly added workflows and newly
-    added weather sources are included automatically.
 
     Parameters
     ----------
-    sources : iterable of str, optional
-        Restrict the union to these source keys (e.g. ``{"ERA5"}``). By default all
-        sources found across the workflows are included.
+    workflows : iterable of str
+        Names of registered workflows (keys of ``depends_on``).
 
     Returns
     -------
     dict
-        ``{source: [variables]}`` — the deduplicated union, suitable as a ``depends_on``
-        entry for ``download_and_process``.
+        ``{source: [variables]}`` — the deduplicated union.
+
+    Raises
+    ------
+    ValueError
+        If any workflow name is not registered in ``depends_on``.
     """
     merged = {}
-    for workflow, deps in depends_on.items():
-        if workflow in _META_WORKFLOWS:
-            continue
-        for source, variables in deps.items():
-            if sources is not None and source not in sources:
-                continue
+    for workflow in workflows:
+        if workflow not in depends_on:
+            raise ValueError(
+                f"Unknown RESKit workflow: {workflow!r}. "
+                f"Supported workflows: {sorted(depends_on)}."
+            )
+        for source, variables in depends_on[workflow].items():
             bucket = merged.setdefault(source, [])
             bucket.extend(var for var in variables if var not in bucket)
     return merged
 
-
-def _register_meta_workflow(name, *, sources=None):
-    """Register a meta-workflow whose deps are the union across the real workflows, and
-    record its name so it is excluded from any subsequent union.
-    """
-    depends_on[name] = all_workflow_dependencies(sources=sources)
-    _META_WORKFLOWS.add(name)
-
-
-# Everything-meta first, then one per-source meta for each source that actually appears.
-_register_meta_workflow(ALL_WORKFLOWS)
-for _source in depends_on[ALL_WORKFLOWS]:
-    _register_meta_workflow(source_meta_workflow(_source), sources={_source})
-
-
-def _known_reskit_workflows() -> set:
-    """Return the names of all workflow functions defined across RESKit's
-    technology packages (solar, wind, csp, dac, geothermal, ...). Used to tell a
-    real RESKit workflow that download_and_process does not support yet from an
-    unknown/misspelled name. Discovered dynamically so new technologies are
-    picked up without changes here.
-    """
-    names = set()
-    for submodule in pkgutil.iter_modules(rk.__path__):
-        if not submodule.ispkg:
-            continue
-        try:
-            module = importlib.import_module(f"reskit.{submodule.name}.workflows.workflows")
-        except ModuleNotFoundError:
-            continue
-        for name, obj in inspect.getmembers(module, inspect.isfunction):
-            if obj.__module__ == module.__name__:
-                names.add(name)
-    return names
-
+#######################################################
+############### SOURCE PREPARE FUNCTIONS ##############
+#######################################################
 
 def _prepare_era5(
     variables, *, start_date, end_date, boundary_box, output_dir, tiling, zoom_level, tile_output_dir, **_
@@ -231,7 +182,6 @@ def _prepare_gsa(variables, **_):
     )
     return None
 
-
 # Registry of per-source preparers. Each callable takes the workflow's variable list for
 # that source plus the shared download context (start/end date, boundary box, output dir,
 # tiling options) and returns a partial result dict, or ``None`` if it contributes nothing
@@ -243,9 +193,12 @@ _SOURCE_PREPARERS = {
     "GSA": _prepare_gsa,  # manual download only for now — notifies and returns None
 }
 
+#######################################################
+############### USER FUNCTIONS ########################
+#######################################################
 
 def download_and_process(
-    workflow,
+    workflows,
     start_date,
     end_date,
     boundary_box,
@@ -254,7 +207,7 @@ def download_and_process(
     zoom_level=4,
     tile_output_dir=None,
 ):
-    """Download and process the weather data a RESKit workflow needs.
+    """Download and process the weather data one or more RESKit workflows need.
 
     A workflow may depend on several weather sources (see ``depends_on``); each is prepared
     by its own registered preparer (see ``_SOURCE_PREPARERS``) and contributes its outputs to
@@ -264,8 +217,10 @@ def download_and_process(
 
     Parameters
     ----------
-    workflow : str
-        Name of a registered RESKit workflow (a key of ``depends_on``).
+    workflows : str or list of str
+        Name of a registered RESKit workflow (a key of ``depends_on``), or a list of such
+        names. When a list is given, the union of their variable requirements is prepared in
+        a single call.
     start_date, end_date : str
         Inclusive date range to download (``"YYYY-MM-DD"``).
     boundary_box : dict
@@ -282,24 +237,15 @@ def download_and_process(
     Returns
     -------
     dict
-        Merged outputs of the workflow's sources' preparers.
+        Merged outputs of the workflows' sources' preparers.
 
     Raises
     ------
     ValueError
-        If ``workflow`` is unknown.
-    NotImplementedError
-        If ``workflow`` is a real RESKit workflow not registered here.
+        If any given workflow name is unknown.
     """
-    if workflow not in depends_on:
-        if workflow in _known_reskit_workflows():
-            raise NotImplementedError(
-                f"Workflow '{workflow}' is a known RESKit workflow but is not yet implemented in "
-                f"download_and_process. Supported workflows: {sorted(depends_on)}."
-            )
-        raise ValueError(f"Unknown RESKit workflow: {workflow}")
-
-    required_sources = depends_on[workflow]
+    workflows = [workflows] if isinstance(workflows, str) else list(workflows)
+    required_sources = _merge_dependencies(workflows)
     context = dict(
         start_date=start_date,
         end_date=end_date,

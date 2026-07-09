@@ -105,12 +105,11 @@ result = rk.download_and_process(
 print(result["era5_path"])
 ```
 
-To prepare data for many workflows in a single call, pass a meta-workflow name as
-`workflow`: `rk.ALL_WORKFLOWS` (`"all_workflows"`) unions the variables of every
-supported workflow across all data sources, while a per-source subset such as
-`"all_era5_workflows"` (built via `rk.source_meta_workflow("ERA5")`) restricts the
-union to one source. A CDS account with a configured `~/.cdsapirc` API key is
-required for ERA5 (see https://cds.climate.copernicus.eu/how-to-api).
+To prepare data for several workflows in a single call, pass a list of workflow names
+as `workflow`; the union of their variable requirements is downloaded and processed at
+once, e.g. `workflow=["openfield_pv_era5", "CSP_PTR_ERA5"]`. A CDS account with a
+configured `~/.cdsapirc` API key is required for ERA5
+(see https://cds.climate.copernicus.eu/how-to-api).
 
 Note that some workflows also rely on data whose automated download is not yet
 implemented — solar/CSP workflows on Global Solar Atlas rasters and wind workflows
