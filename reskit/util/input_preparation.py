@@ -97,7 +97,8 @@ _META_WORKFLOWS = set()
 
 def source_meta_workflow(source):
     """Name of the per-source meta-workflow that unions only ``source``'s variables
-    across every real workflow, e.g. ``"ERA5"`` -> ``"all_era5_workflows"``."""
+    across every real workflow, e.g. ``"ERA5"`` -> ``"all_era5_workflows"``.
+    """
     return f"all_{source.lower()}_workflows"
 
 
@@ -135,7 +136,8 @@ def all_workflow_dependencies(sources=None):
 
 def _register_meta_workflow(name, *, sources=None):
     """Register a meta-workflow whose deps are the union across the real workflows, and
-    record its name so it is excluded from any subsequent union."""
+    record its name so it is excluded from any subsequent union.
+    """
     depends_on[name] = all_workflow_dependencies(sources=sources)
     _META_WORKFLOWS.add(name)
 
