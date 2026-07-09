@@ -5,7 +5,7 @@ import netCDF4 as nc4
 import numpy as np
 import pandas as pd
 import xarray as xr
-from typing import Union, List, Optional
+from typing import Union, List, Optional, Tuple
 from reskit.util.weather_tile import get_tile_XY
 
 
@@ -283,9 +283,18 @@ def era5_downloader(
     month: Union[str, List[str]],
     variables: list[str],
     area: tuple[float, float, float, float],
+    day: Optional[List[str]] = None,
+    time: Optional[List[str]] = None,
     grid: tuple[float, float] = (0.25, 0.25),
     data_format: str = "netcdf_legacy",
 ):
+    # default to every day / every hour of the requested month(s); CDS ignores days that
+    # do not exist in a given month (e.g. day 31 in February)
+    if day is None:
+        day = [f"{d:02d}" for d in range(1, 32)]
+    if time is None:
+        time = [f"{h:02d}:00" for h in range(24)]
+
     client = cdsapi.Client()
 
     request = {
@@ -294,8 +303,8 @@ def era5_downloader(
         "variable": variables,
         "year": year,
         "month": month,
-        "day": [f"{d:02d}" for d in range(1, 32)],
-        "time": [f"{h:02d}:00" for h in range(24)],
+        "day": day,
+        "time": time,
         "area": area,  # [north, west, south, east]
         "grid": f"{grid[0]}/{grid[1]}",
     }
@@ -491,6 +500,46 @@ def era5_tiler(
     return tile_output_dir
 
 
+def _era5_download_jobs(start_date: str, end_date: str) -> List[Tuple[str, List[str], List[str]]]:
+    """Split the inclusive ``[start_date, end_date]`` range into CDS download jobs.
+
+    A CDS request selects data as the Cartesian product of its ``year`` x ``month`` x ``day``
+    lists, so a job is kept to a single year and a single day-set to describe its dates exactly.
+    Months that are fully covered by the range are batched together per year using the canonical
+    ``01..31`` day list (CDS ignores days that do not exist in a month); the partial first/last
+    month of the range (if any) each become their own job with only the days actually requested.
+
+    Parameters
+    ----------
+    start_date, end_date : str
+        Inclusive date bounds (``"YYYY-MM-DD"``). The whole ``end_date`` day is included.
+
+    Returns
+    -------
+    list of (year, months, days)
+        ``year`` is a 4-digit string, ``months`` and ``days`` are lists of 2-digit strings.
+    """
+    start = pd.Timestamp(start_date)
+    end = pd.Timestamp(end_date)
+    if end < start:
+        raise ValueError(f"end_date ({end_date}) is before start_date ({start_date}).")
+
+    full_days = [f"{d:02d}" for d in range(1, 32)]
+
+    # group (year, day-set) -> months, preserving chronological order
+    grouped: dict = {}
+    for period in pd.period_range(start=start, end=end, freq="M"):
+        month_start = max(start, period.start_time)
+        month_end = min(end, period.end_time)
+        if month_start.day == 1 and month_end.day == period.days_in_month:
+            days = tuple(full_days)  # whole month -> batch with other full months
+        else:
+            days = tuple(f"{d:02d}" for d in range(month_start.day, month_end.day + 1))
+        grouped.setdefault((period.year, days), []).append(f"{period.month:02d}")
+
+    return [(str(year), sorted(months), list(days)) for (year, days), months in grouped.items()]
+
+
 def prepare_era5(
     start_date: str,
     end_date: str,
@@ -509,12 +558,8 @@ def prepare_era5(
     if variables is None:
         variables = era5_variables
 
-    dates = pd.date_range(start=start_date, end=end_date, freq="MS")
-
-    # group months per year to avoid over-downloading on partial multi-year ranges
-    months_by_year: dict[str, list[str]] = {}
-    for d in dates:
-        months_by_year.setdefault(str(d.year), []).append(f"{d.month:02d}")
+    # exact, day-level download jobs covering [start_date, end_date] inclusively
+    jobs = _era5_download_jobs(start_date, end_date)
 
     area = (
         boundary_box["north"],
@@ -524,36 +569,39 @@ def prepare_era5(
     )
 
     bbox_tag = f"N{boundary_box['north']}_S{boundary_box['south']}_W{boundary_box['west']}_E{boundary_box['east']}"
-    output_file = os.path.join(
-        raw_dir,
-        f"{era5_dataset}_{dates[0].strftime('%Y%m')}-{dates[-1].strftime('%Y%m')}_{bbox_tag}_raw.nc",
-    )
+    # name the file after the actual day-level extent it contains
+    date_tag = f"{pd.Timestamp(start_date).strftime('%Y%m%d')}-{pd.Timestamp(end_date).strftime('%Y%m%d')}"
+    output_file = os.path.join(raw_dir, f"{era5_dataset}_{date_tag}_{bbox_tag}_raw.nc")
+
     if not os.path.exists(output_file):
-        if len(months_by_year) == 1:
-            # single year: one request
-            year, months = next(iter(months_by_year.items()))
+        if len(jobs) == 1:
+            # single request
+            year, months, days = jobs[0]
             era5_downloader(
                 target_filename=output_file,
                 year=year,
                 month=months,
+                day=days,
                 variables=variables,
                 area=area,
             )
         else:
-            # multi-year: download per year into temp files, then merge along time
-            yearly_files = []
-            for year, months in months_by_year.items():
-                yearly_file = os.path.join(raw_dir, f"_tmp_{era5_dataset}_{year}_{bbox_tag}_raw.nc")
-                yearly_files.append(yearly_file)
-                if not os.path.exists(yearly_file):
+            # multiple requests (partial months and/or multiple years): download into temp
+            # files, then merge along time
+            tmp_files = []
+            for i, (year, months, days) in enumerate(jobs):
+                tmp_file = os.path.join(raw_dir, f"_tmp_{era5_dataset}_{i:02d}_{bbox_tag}_raw.nc")
+                tmp_files.append(tmp_file)
+                if not os.path.exists(tmp_file):
                     era5_downloader(
-                        target_filename=yearly_file,
+                        target_filename=tmp_file,
                         year=year,
                         month=months,
+                        day=days,
                         variables=variables,
                         area=area,
                     )
-            datasets = [_open_era5_dataset(f) for f in yearly_files]
+            datasets = [_open_era5_dataset(f) for f in tmp_files]
             try:
                 time_encoding = dict(datasets[0]["time"].encoding)
                 merged = xr.concat(datasets, dim="time").sortby("time")
@@ -563,7 +611,7 @@ def prepare_era5(
                 for d in datasets:
                     d.close()
             _write_netcdf(merged, output_file)
-            for f in yearly_files:
+            for f in tmp_files:
                 os.remove(f)
     else:
         print(f"ERA5 data already exists at {output_file}, skipping download.")

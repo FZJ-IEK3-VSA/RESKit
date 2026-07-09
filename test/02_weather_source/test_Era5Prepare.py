@@ -9,6 +9,7 @@ from reskit import TEST_DATA
 from reskit.weather.Era5Source.Era5Prepare import (
     _ERA5_NC_TO_TILE_LABEL,
     _align_longitudes_to_source_convention,
+    _era5_download_jobs,
     _get_source_lon_boxes,
     _iter_tile_x_indices,
     _normalize_lon,
@@ -116,6 +117,73 @@ def test_era5_tiler_no_raw_variables(era5_like_tile_input, tmp_path):
     era5_tiler(processed_dir=str(processed_dir), tile_output_dir=str(tile_out), zoom_level=ZOOM)
     blh_tile = tile_out / EXPECTED_TILE_DIR / tile_filename(ZOOM, TILE_X, TILE_Y, TILE_YEAR, "boundary_layer_height")
     assert not blh_tile.exists()
+
+
+def _days_covered(start, end):
+    """Reconstruct the set of calendar days a job list actually requests (CDS drops days that
+    don't exist in a month, so we mirror that here)."""
+    covered = set()
+    for year, months, days in _era5_download_jobs(start, end):
+        for m in months:
+            for d in days:
+                try:
+                    covered.add(pd.Timestamp(f"{year}-{m}-{d}").normalize())
+                except ValueError:
+                    pass
+    return covered
+
+
+def test_download_jobs_submonth_range_uses_exact_days():
+    jobs = _era5_download_jobs("2000-01-01", "2000-01-03")
+    assert jobs == [("2000", ["01"], ["01", "02", "03"])]
+
+
+def test_download_jobs_full_month_uses_canonical_day_list():
+    # a fully-covered month (even February) uses 01..31 so full months batch together
+    (year, months, days), = _era5_download_jobs("2001-02-01", "2001-02-28")
+    assert (year, months) == ("2001", ["02"])
+    assert days == [f"{d:02d}" for d in range(1, 32)]
+
+
+def test_download_jobs_full_year_is_single_request():
+    jobs = _era5_download_jobs("2000-01-01", "2000-12-31")
+    assert len(jobs) == 1  # one CDS request, not twelve
+    year, months, days = jobs[0]
+    assert year == "2000"
+    assert months == [f"{m:02d}" for m in range(1, 13)]
+    assert days == [f"{d:02d}" for d in range(1, 32)]
+
+
+def test_download_jobs_partial_ends_split_into_three():
+    jobs = _era5_download_jobs("2000-01-15", "2000-03-10")
+    assert [(m, d[0], d[-1]) for _, m, d in jobs] == [
+        (["01"], "15", "31"),
+        (["02"], "01", "31"),  # middle month is full -> canonical days
+        (["03"], "01", "10"),
+    ]
+
+
+def test_download_jobs_multi_year_split_per_year():
+    jobs = _era5_download_jobs("2000-11-01", "2001-02-28")
+    assert [y for y, _, _ in jobs] == ["2000", "2001"]
+
+
+@pytest.mark.parametrize(
+    "start,end",
+    [
+        ("2000-01-01", "2000-01-03"),
+        ("2000-01-15", "2000-03-10"),
+        ("2000-01-01", "2000-12-31"),
+        ("2000-11-01", "2001-02-28"),
+    ],
+)
+def test_download_jobs_cover_exactly_requested_days(start, end):
+    assert _days_covered(start, end) == set(pd.date_range(start, end, freq="D").normalize())
+
+
+def test_download_jobs_end_before_start_raises():
+    with pytest.raises(ValueError):
+        _era5_download_jobs("2000-02-01", "2000-01-01")
 
 
 def test_normalize_lon_wraps_out_of_range_values():

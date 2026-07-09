@@ -1,14 +1,22 @@
 import pytest
 
+from reskit.weather import Era5Source
 from reskit.weather.Era5Source.Era5Prepare import _ERA5_NC_TO_TILE_LABEL
 from reskit.util.input_preparation import (
     ALL_ERA5_WORKFLOWS,
     _NON_WORKFLOW_KEYS,
+    _SOURCE_PREPARERS,
     _known_reskit_workflows,
-    _raw_variables_for_workflow,
+    _prepare_gwa4,
     depends_on,
     download_and_process,
 )
+
+
+def _raw_variables_for_workflow(workflow):
+    """Test helper: resolve a registered workflow's raw ERA5 tile variables via the
+    Era5Source-owned mapping (mirrors what download_and_process does internally)."""
+    return Era5Source.raw_passthrough_variables(depends_on[workflow]["ERA5"])
 
 _DUMMY_KWARGS = dict(
     start_date="2000-01-01",
@@ -107,6 +115,19 @@ def test_unsupported_known_workflow_raises_not_implemented():
 def test_unknown_workflow_raises_value_error():
     with pytest.raises(ValueError):
         download_and_process("not_a_real_workflow_name", **_DUMMY_KWARGS)
+
+
+def test_gwa4_preparer_notifies_and_returns_none(capsys):
+    # GWA4 has no automated download: its preparer must not fail, must return None,
+    # and must tell the user to download the rasters manually
+    assert _prepare_gwa4(depends_on["wind_era5_PenaSanchezDunkelWinklerEtAl2025"]["GWA4"]) is None
+    out = capsys.readouterr().out
+    assert "globalwindatlas" in out.lower()
+
+
+def test_gwa4_source_registered_as_callable():
+    # GWA4 is an explicitly registered (placeholder) preparer, not a missing/None entry
+    assert callable(_SOURCE_PREPARERS["GWA4"])
 
 
 def test_raw_variables_matches_depends_on():
