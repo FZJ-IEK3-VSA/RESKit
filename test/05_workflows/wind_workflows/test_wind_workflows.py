@@ -148,6 +148,7 @@ def test_wind_config(pt_wind_placements: pd.DataFrame):
         placements=pt_wind_placements,
         weather_path=TEST_DATA["era5-like"],
         weather_source_type="ERA5",
+        enable_lra_adjustment=True,
         weather_lra_ws_path=rk_weather.Era5Source.LONG_RUN_AVERAGE_WINDSPEED_2008TO2017,
         real_lra_ws_path=TEST_DATA["gwa100-like.tif"],
         real_lra_ws_scaling=1,
