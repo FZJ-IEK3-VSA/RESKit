@@ -14,6 +14,7 @@
 
 # %%
 import reskit as rk
+import os
 
 # %% [markdown]
 # ## Step 1 – Download, process, and tile in one call
@@ -35,7 +36,8 @@ import reskit as rk
 # and can be used directly with Era5Source.
 
 # %%
-output_dir = "/path/to/your/era5_data"  # <-- adjust this
+output_dir = "tmp" # the data will be saved to a tmp folder in the directory from which you execute this example file
+os.makedirs()(output_dir, exist_ok=True)
 
 result = rk.download_and_process(
     workflow="wind_era5_PenaSanchezDunkelWinklerEtAl2025",
