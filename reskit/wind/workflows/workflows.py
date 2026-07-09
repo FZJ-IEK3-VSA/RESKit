@@ -399,6 +399,7 @@ def wind_config(
     placements,
     weather_path,
     weather_source_type,
+    enable_lra_adjustment,
     weather_lra_ws_path,
     real_lra_ws_path,
     real_lra_ws_scaling,
@@ -432,6 +433,10 @@ def wind_config(
         A Dataframe object with the parameters needed by the simulation.
     weather_path : str
         Path to the temporally resolved weather data, e.g. ERA-5 or MERRA-2 etc.
+    enable_lra_adjustment : bool
+        If True, enables the long-run-average adjustment
+        using the provided lra information.
+        Note: If False, all lra related parameters have no effect.
     weather_lra_ws_path : str
         The path to a raster with the corresponding long-run-average
         windspeeds of the actual weather data (will be corrected to the
@@ -584,6 +589,7 @@ def wind_config(
         nodata_fallback=real_lra_ws_nodata_fallback,
         spatial_interpolation=real_lra_ws_spatial_interpolation,
         real_lra_scaling=real_lra_ws_scaling,
+        enable_lra_adjustment=enable_lra_adjustment,
     )
 
     if height_scaling_method is not None:
