@@ -362,7 +362,6 @@ class WorkflowManager:
         WorkflowManager
             Returns the invoking WorkflowManager (for chaining)
         """
-        # otherwise proceed as usual with the adjustment
         if not (nodata_fallback is None or callable(nodata_fallback) or isinstance(nodata_fallback, (float, int, str))):
             raise TypeError(f"'nodata_fallback' must be a float or a Callable.")
 
