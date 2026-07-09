@@ -28,3 +28,6 @@ _readthedocs/
 # MyST build outputs
 _build/
 conf.py
+
+# Example script scratch output
+examples/**/tmp/

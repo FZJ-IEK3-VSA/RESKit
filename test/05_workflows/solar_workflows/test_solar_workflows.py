@@ -100,7 +100,7 @@ def test_openfield_pv_iconlam(pt_pv_placements_Zimbabwe):
     assert np.isclose(float(gen["poa_ground_diffuse"].fillna(0).mean()), 1.8076044434471568)
     assert np.isclose(float(gen["cell_temperature"].fillna(0).mean()), 25.73411503556805)
     assert np.isclose(float(gen["module_dc_power_at_mpp"].fillna(0).mean()), 94.00160119470556)
-    assert np.isclose(float(gen["module_dc_voltage_at_mpp"].fillna(0).mean()), 18.77611256028308)
+    assert np.isclose(float(gen["module_dc_voltage_at_mpp"].fillna(0).mean()), 18.773821261251605)
     assert np.isclose(float(gen["capacity_factor"].fillna(0).mean()), 0.34919394100831996)
     assert np.isclose(float(gen["total_system_generation"].fillna(0).mean()), 5082.177954576783)
 
@@ -180,7 +180,7 @@ def test_openfield_pv_era5(pt_pv_placements):
     assert np.isclose(float(gen["poa_ground_diffuse"].fillna(0).mean()), 0.7765019796270453)
     assert np.isclose(float(gen["cell_temperature"].fillna(0).mean()), 2.9012114282159733)
     assert np.isclose(float(gen["module_dc_power_at_mpp"].fillna(0).mean()), 21.83819349184495)
-    assert np.isclose(float(gen["module_dc_voltage_at_mpp"].fillna(0).mean()), 14.349977855519542)
+    assert np.isclose(float(gen["module_dc_voltage_at_mpp"].fillna(0).mean()), 14.348350493615033)
     assert np.isclose(float(gen["capacity_factor"].fillna(0).mean()), 0.08039702336301864)
     assert np.isclose(float(gen["total_system_generation"].fillna(0).mean()), 160.79404672603732)
 
@@ -275,8 +275,8 @@ def test_openfield_pv_merra_ryberg2019(pt_pv_placements):
     assert np.isclose(float(gen["poa_sky_diffuse"].fillna(0).mean()), 22.5137080215302)
     assert np.isclose(float(gen["poa_ground_diffuse"].fillna(0).mean()), 0.5765335242423779)
     assert np.isclose(float(gen["cell_temperature"].fillna(0).mean()), 1.757604391183729)
-    assert np.isclose(float(gen["module_dc_power_at_mpp"].fillna(0).mean()), 12.625206716607272)
-    assert np.isclose(float(gen["module_dc_voltage_at_mpp"].fillna(0).mean()), 14.060960010572025)
+    assert np.isclose(float(gen["module_dc_power_at_mpp"].fillna(0).mean()), 12.625213000934778)
+    assert np.isclose(float(gen["module_dc_voltage_at_mpp"].fillna(0).mean()), 14.059241131371758)
     assert np.isclose(float(gen["capacity_factor"].fillna(0).mean()), 0.04201539723986579)
     assert np.isclose(float(gen["total_system_generation"].fillna(0).mean()), 84.0307944797316)
 
@@ -354,6 +354,6 @@ def test_openfield_pv_sarah_unvalidated(pt_pv_placements):
     assert np.isclose(float(gen["poa_ground_diffuse"].fillna(0).mean()), 1.180438286074874)
     assert np.isclose(float(gen["cell_temperature"].fillna(0).mean()), 4.738007290882006)
     assert np.isclose(float(gen["module_dc_power_at_mpp"].fillna(0).mean()), 45.17960123200836)
-    assert np.isclose(float(gen["module_dc_voltage_at_mpp"].fillna(0).mean()), 11.940731512724874)
+    assert np.isclose(float(gen["module_dc_voltage_at_mpp"].fillna(0).mean()), 11.939309430641291)
     assert np.isclose(float(gen["capacity_factor"].fillna(0).mean()), 0.15035309405307454)
     assert np.isclose(float(gen["total_system_generation"].fillna(0).mean()), 300.70618810614906)
