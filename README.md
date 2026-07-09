@@ -79,6 +79,51 @@ pip install -e .
 ```
 
 
+## Preparing Weather Data
+
+RESKit workflows are driven by gridded weather data. RESKit ships a single
+high-level helper, `rk.download_and_process`, that downloads exactly the variables a
+given workflow needs from the relevant data provider, preprocesses them (e.g. wind
+speed from u/v components, solar unit and time-shift corrections), and optionally
+tiles them into the `<zoom>/<x>/<y>/<year>/` directory structure expected by the
+weather sources.
+
+ERA5 reanalysis from the Copernicus Climate Data Store (CDS) is currently the
+supported source; additional weather data sources are planned.
+
+```python
+import reskit as rk
+
+result = rk.download_and_process(
+    workflow="wind_era5_PenaSanchezDunkelWinklerEtAl2025",
+    start_date="2000-01-01",
+    end_date="2000-12-31",
+    boundary_box={"north": 55, "south": 47, "west": 6, "east": 15},  # Germany
+    output_dir="/path/to/your/weather_data",
+    tiling=True,
+)
+print(result["era5_path"])
+```
+
+To prepare data for several workflows in a single call, pass a list of workflow names
+as `workflow`; the union of their variable requirements is downloaded and processed at
+once, e.g. `workflow=["openfield_pv_era5", "CSP_PTR_ERA5"]`. A CDS account with a
+configured `~/.cdsapirc` API key is required for ERA5
+(see https://cds.climate.copernicus.eu/how-to-api).
+
+Note that some workflows also rely on data whose automated download is not yet
+implemented — solar/CSP workflows on Global Solar Atlas rasters and wind workflows
+on Global Wind Atlas rasters. `download_and_process` prints a notice for these and
+you must supply the rasters manually.
+
+End-to-end examples live in [examples/1_load_input_data/](examples/1_load_input_data/):
+- [1_1_3_prepare_era5_for_wind_workflow.ipynb](examples/1_load_input_data/1_1_3_prepare_era5_for_wind_workflow.ipynb)
+- [1_1_4_prepare_era5_for_solar_workflow.ipynb](examples/1_load_input_data/1_1_4_prepare_era5_for_solar_workflow.ipynb)
+
+For full manual control over the raw ERA5/CDS download (variables, area, and
+timeframe), see the lower-level example notebook
+[1_1_1_how_to_download_era5_data.ipynb](examples/1_load_input_data/1_1_1_how_to_download_era5_data.ipynb).
+
 ## Citation
 
 If you decide to use RESkit anywhere in a published work related to wind energy, please kindly cite us using the following publications.
