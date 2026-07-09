@@ -2,14 +2,12 @@ coverage:
   status:
     project:
       default:
-        enabled: true
         informational: true
     patch:
       default:
-        enabled: true
         informational: true
 
 comment:
   layout: "reach,diff,flags,files"
   behavior: default       # only comment once per PR, update in place
-  require_changes: true   # don't comment if nothing changed
+  require_changes: false   # don't comment if nothing changed
