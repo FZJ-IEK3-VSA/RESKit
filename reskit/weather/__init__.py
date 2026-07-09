@@ -8,6 +8,7 @@ from .SarahSource import SarahSource
 from .GSA_mean import GSAmeanSource
 from .GWA_mean import GWAmeanSource
 from .IconlamSource import IconlamSource
+from .FpsconvSource import FpsconvSource
 
 # from .CosmoSource import CosmoSource  # TODO: NEEDS UPDATING!
 # from .CordexSource import CordexSourc  # TODO: NEEDS UPDATING!
