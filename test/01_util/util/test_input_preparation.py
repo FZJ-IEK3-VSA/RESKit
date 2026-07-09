@@ -18,6 +18,7 @@ def _raw_variables_for_workflow(workflow):
     Era5Source-owned mapping (mirrors what download_and_process does internally)."""
     return Era5Source.raw_passthrough_variables(depends_on[workflow]["ERA5"])
 
+
 _DUMMY_KWARGS = dict(
     start_date="2000-01-01",
     end_date="2000-01-31",

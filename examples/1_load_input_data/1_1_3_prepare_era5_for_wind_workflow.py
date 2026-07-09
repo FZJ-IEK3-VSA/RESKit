@@ -53,7 +53,7 @@ result = rk.download_and_process(
     zoom_level=4,  # 16×16 global tile grid, standard for RESKit ERA5 data
 )
 
-# you can check the download status of the raw data at: 
+# you can check the download status of the raw data at:
 # https://cds.climate.copernicus.eu/requests
 
 # NOTE: If you intend to use this outside of example, please make sure to always download a full year.

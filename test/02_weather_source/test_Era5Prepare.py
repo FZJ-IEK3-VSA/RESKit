@@ -140,7 +140,7 @@ def test_download_jobs_submonth_range_uses_exact_days():
 
 def test_download_jobs_full_month_uses_canonical_day_list():
     # a fully-covered month (even February) uses 01..31 so full months batch together
-    (year, months, days), = _era5_download_jobs("2001-02-01", "2001-02-28")
+    ((year, months, days),) = _era5_download_jobs("2001-02-01", "2001-02-28")
     assert (year, months) == ("2001", ["02"])
     assert days == [f"{d:02d}" for d in range(1, 32)]
 

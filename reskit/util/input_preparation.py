@@ -117,7 +117,9 @@ def _known_reskit_workflows() -> set:
     return names
 
 
-def _prepare_era5(variables, *, start_date, end_date, boundary_box, output_dir, tiling, zoom_level, tile_output_dir, **_):
+def _prepare_era5(
+    variables, *, start_date, end_date, boundary_box, output_dir, tiling, zoom_level, tile_output_dir, **_
+):
     """Preparer for the ERA5 weather source: download, preprocess and (optionally) tile the
     given ERA5 CDS variables.
 
