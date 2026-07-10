@@ -19,6 +19,7 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
     era5_path,
     gwa_100m_path,
     height_scaling_data,
+    gwa_nodata_fallback=1.0,
     output_netcdf_path=None,
     cf_correction=True,
     output_variables=None,
@@ -51,6 +52,14 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
         Dict with integer heights as keys and str paths to the Global Wind Atlas
         windspeeds [4] at the respective heights as values. Must contain at
         least one higher and one lower height than 100 [m].
+    gwa_nodata_fallback : str, optional
+        If no GWA data is available, use for simulation:
+        (1) float value for a multiple of the respective ERA-5 value
+            (ERA5 raw), i.e. 1.0 means fall back on unscaled ERA-5 value
+        (2) np.nan for nan output
+        (3) a callable function to be applied to the ERA-5 value in the format:
+            nodata_fallback(locs, ERA5_value)
+        (4) a filepath to a raster file containing the fallback values
     output_netcdf_path : str, optional
         Path to a directory to put the output files, by default None
     cf_correction : bool, optional
@@ -93,7 +102,6 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
     )
     wake_curve = "dena_mean"
     availability_factor = 0.98
-    nodata_fallback = np.nan
     era5_lra_path = rk_weather.Era5Source.LONG_RUN_AVERAGE_WINDSPEED_2008TO2017
 
     # initialize wf manager instance
@@ -119,7 +127,7 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
         variable="elevated_wind_speed",
         source_long_run_average=era5_lra_path,
         real_long_run_average=gwa_100m_path,
-        nodata_fallback=nodata_fallback,
+        nodata_fallback=gwa_nodata_fallback,
         spatial_interpolation="average",
     )
 
@@ -411,6 +419,7 @@ def wind_config(
     weather_path,
     weather_source_type,
     weather_lra_ws_path,
+    enable_lra_adjustment,
     real_lra_ws_path,
     real_lra_ws_scaling,
     real_lra_ws_spatial_interpolation,
@@ -447,6 +456,10 @@ def wind_config(
         The path to a raster with the corresponding long-run-average
         windspeeds of the actual weather data (will be corrected to the
         real lra if given, else weather_lra_path has no effect)
+    enable_lra_adjustment : bool
+        If True, enables the long-run-average adjustment
+        using the provided lra information.
+        Note: If False, all lra related parameters have no effect.
     real_lra_ws_path : str, float
         Either a float/int (1.0 means no scaling) or a path to a raster
         with real long-run-average wind speeds, e.g. the Global Wind Atlas
@@ -572,6 +585,7 @@ def wind_config(
     assert callable(ws_correction_func), (
         f"ws_correction_func must be an executable with a single argument that can be passed as np.array (if not 1)."
     )
+    assert isinstance(enable_lra_adjustment, bool), "enable_lra_adjustment must be boolean."
 
     wf = WindWorkflowManager(placements)
 
@@ -588,14 +602,15 @@ def wind_config(
         verbose=False,
     )
 
-    wf.adjust_variable_to_long_run_average(
-        variable="elevated_wind_speed",
-        source_long_run_average=weather_lra_ws_path,
-        real_long_run_average=real_lra_ws_path,
-        nodata_fallback=real_lra_ws_nodata_fallback,
-        spatial_interpolation=real_lra_ws_spatial_interpolation,
-        real_lra_scaling=real_lra_ws_scaling,
-    )
+    if enable_lra_adjustment:
+        wf.adjust_variable_to_long_run_average(
+            variable="elevated_wind_speed",
+            source_long_run_average=weather_lra_ws_path,
+            real_long_run_average=real_lra_ws_path,
+            nodata_fallback=real_lra_ws_nodata_fallback,
+            spatial_interpolation=real_lra_ws_spatial_interpolation,
+            real_lra_scaling=real_lra_ws_scaling,
+        )
 
     if height_scaling_method is not None:
         if isinstance(height_scaling_method, list):
