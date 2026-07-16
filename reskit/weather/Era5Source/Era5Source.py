@@ -95,6 +95,53 @@ class Era5Source(NCSource):
     MAX_LON_DIFFERENCE = 0.26
     MAX_LAT_DIFFERENCE = 0.26
 
+    # Maps CDS API variable names to the short names they carry inside the
+    # downloaded NetCDF file. This is the single source of truth for the naming
+    # convention that the ``sload_*`` loaders below rely on (e.g. "surface_pressure"
+    # in the CDS request becomes "sp" in the file, which is what ``sload_surface_pressure``
+    # reads). Keep this in sync when adding a loader for a new ERA5 variable.
+    CDS_TO_NC_NAME = {
+        "10m_u_component_of_wind": "u10",
+        "10m_v_component_of_wind": "v10",
+        "100m_u_component_of_wind": "u100",
+        "100m_v_component_of_wind": "v100",
+        "2m_dewpoint_temperature": "d2m",
+        "2m_temperature": "t2m",
+        "surface_pressure": "sp",
+        "boundary_layer_height": "blh",
+        "forecast_surface_roughness": "fsr",
+        "surface_solar_radiation_downwards": "ssrd",
+        "total_sky_direct_solar_radiation_at_surface": "fdir",
+    }
+
+    # NC short names that are consumed by ERA5 preprocessing and replaced by
+    # derived outputs (e.g. u100+v100 -> ws100, ssrd -> ssrd_t_adj). These raw
+    # variables should not be tiled/kept as-is for simulation.
+    PREPROCESSED_NC_NAMES = {"u10", "v10", "u100", "v100", "ssrd", "fdir"}
+
+    @classmethod
+    def raw_passthrough_variables(cls, cds_variables):
+        """Return the NC short names that are used raw from the ERA5 download — i.e. the
+        variables that survive preprocessing unchanged, with the ones that get replaced by
+        a preprocessed/derived output (see ``PREPROCESSED_NC_NAMES``) removed.
+
+        Parameters
+        ----------
+        cds_variables : iterable of str
+            The ERA5 CDS API variable names a workflow requires
+            (e.g. ``["2m_temperature", "surface_pressure", "100m_u_component_of_wind"]``).
+
+        Returns
+        -------
+        list of str
+            The corresponding NC short names that pass through unmodified.
+        """
+        return [
+            cls.CDS_TO_NC_NAME[cds_name]
+            for cds_name in cds_variables
+            if cds_name in cls.CDS_TO_NC_NAME and cls.CDS_TO_NC_NAME[cds_name] not in cls.PREPROCESSED_NC_NAMES
+        ]
+
     def __init__(self, source, bounds=None, index_pad=5, time_index_from=None, **kwargs):
         """Initialize a ERA5 style netCDF4 file source
 
@@ -327,3 +374,43 @@ class Era5Source(NCSource):
         variable 'global_horizontal_irradiance' in the data library
         """
         return self.load("ssrd_t_adj", name="global_horizontal_irradiance")
+
+    def sload_snow_albedo(self):
+        """Standard loader function for the variable 'snow_albedo'
+
+        unit: dimensionless, instantaneous
+
+        Automatically reads the variable "asn" from the given ERA5 source and saves it as the
+        variable 'snow_albedo' in the data library
+        """
+        return self.load("asn", name="snow_albedo")
+
+    def sload_snow_density(self):
+        """Standard loader function for the variable 'snow_density'
+
+        unit: kg/m^3, instantaneous
+
+        Automatically reads the variable "rsn" from the given ERA5 source and saves it as the
+        variable 'snow_density' in the data library
+        """
+        return self.load("rsn", name="snow_density")
+
+    def sload_snow_depth_water_equivalent(self):
+        """Standard loader function for the variable 'snow_depth_water_equivalent'
+
+        unit: meters, instantaneous
+
+        Automatically reads the variable "sd" from the given ERA5 source and saves it as the
+        variable 'snow_depth_water_equivalent' in the data library
+        """
+        return self.load("sd", name="snow_depth_water_equivalent")
+
+    def sload_snowfall_water_equivalent(self):
+        """Standard loader function for the variable 'snowfall_water_equivalent'
+
+        unit: meters per time step, accumulation
+
+        Automatically reads the variable "sf" from the given ERA5 source and saves it as the
+        variable 'snowfall_water_equivalent' in the data library
+        """
+        return self.load("sf", name="snowfall_water_equivalent")
