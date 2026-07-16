@@ -21,6 +21,11 @@ dependencies:
   - windpowerlib =0.2.1
   - cdsapi <=0.7.7
   - wisdem <=4.2.1
+  - openmdao
+  - windio
+  - orbit-nrel
+  - jsonmerge
+  - wombat
   # dev
   - nbval <=0.11.0
   - ruff =0.14.1
