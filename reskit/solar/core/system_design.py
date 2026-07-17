@@ -489,7 +489,7 @@ def calulate_row_pitch_and_gcr(
     if isinstance(module_area_width, pd.Series):
         module_area_width = module_area_width.values
     for var in [lats, module_tilts, north_slopes, solar_hour, module_area_width]:
-        assert isinstance(var, (int, float, np.ndarray)),\
+        assert isinstance(var, (int, float, np.ndarray, np.number)),\
             "All input variables must be int, float or np.ndarray/pd.Series types."
         if isinstance(var, np.ndarray):
             _asarr = True
