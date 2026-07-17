@@ -49,7 +49,28 @@ class WindWorkflowManager(WorkflowManager):
         placements,
         synthetic_power_curve_cut_out=25,
         synthetic_power_curve_rounding=1,
+        max_specific_power = 2000,
     ):
+        """
+        Initializes a WindWorkflowManager instance. 
+
+        Parameters
+        ----------
+        placements : _type_
+            Placements dataframe, incl. "geom" column with osgeo.ogr.Geometry 
+            column objects or "lat" and "lon" column with degree values 
+            in EPSG:4326.
+        synthetic_power_curve_cut_out : int, optional
+            Cut-out wind speed for synthetic power curves, by default 25
+        synthetic_power_curve_rounding : int, optional
+            Rounding digits (positive decimals) for specific power, 
+            by default 1
+        max_specific_power : int, optional
+            The upper allowed limit for specific power inn [W/m²]. 
+            Values range from 190 to 970 W/m2 across all "modern" turbines 
+            in Turbine_Library, but small historic turbines can be 
+            significantly higher. By default 2000.
+        """
         # Do basic workflow construction
         super().__init__(placements)
 
@@ -77,10 +98,9 @@ class WindWorkflowManager(WorkflowManager):
                 placements_wo_PC["capacity"], placements_wo_PC["rotor_diam"]
             ).astype(float)  # returns specific power in W/m2
 
-            assert specificPower.between(0.1 * 1000, 1 * 1000).all(), (
-                "capacity and rotor_diam do not match to give a meaningful specific power. Check if capacity is defined in correct unit (kW)"
-            )  # values 0.19 and 0.97 in kW/m2 from lower/upper bound of all turbines in Turbine_Library. Chose 0.1 and 1 for still meaningful values, but a little more range and to make sure tests work
-
+            assert specificPower.between(100, max_specific_power).all(), (
+                f"capacity and rotor_diam do not match to give a meaningful specific power (max- value is given as {max_specific_power} W/m² here). Check if capacity is defined in correct unit (kW)"
+            )
             if synthetic_power_curve_rounding is not None:
                 specificPower = (
                     np.round(specificPower / synthetic_power_curve_rounding) * synthetic_power_curve_rounding
