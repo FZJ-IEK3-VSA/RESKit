@@ -100,6 +100,209 @@ class WorkflowManager:
         self.sim_data = OrderedDict()
         self.time_index = None
         self.workflow_parameters = OrderedDict()
+        self.plant_parameters_raw = OrderedDict()
+        self.plant_parameters_processed = OrderedDict()
+
+    # STAGE 1: Add and preprocess parameters
+
+    def _is_none(self, var):
+        """Returns a boolean array with Trues for a scalar or iterable consisting only of None, NaN, "null", "", "nan" or "none" (case-insenstive).""" 
+        if np.ndim(var) > 0: 
+            return np.vectorize(self._is_none, otypes=[bool])(var) 
+        if isinstance(var, str): 
+            return np.array(var.strip().lower() in {"", "null", "none", "nan"})
+        return np.array(bool(pd.isna(var)))
+
+
+    def _preprocess_variable(
+        self,
+        varname,
+        value,
+        allow_none = False,
+        allow_str = True,
+        replace_none = None,
+        assert_type = None,
+        force_cols = None,
+        force_dims = None,
+        transpose : bool = False,
+    ):
+        """
+        Checks and processes the formatting of an input variable into the desired 
+        array shape and dataytype and asserts no None (and equivalents) if required.
+        Also enforces that every placement = row is consistently defined, i.e. all
+        numerically defined, or defined via a string (which must then be the same 
+        for all columns) or all None.
+
+        Note that for string entries, always all entries within a row must be identical.
+
+        Parameters
+        ----------
+        varname : str
+            The variable name to process.
+        allow_none : bool, optional
+            If None (or variants thereof) are allowed, by default False.
+        replace_none : int | float | str, optional
+            Optionally replace None entries with a fallback if allow_none.
+            By default None, will only replace alternative None values like np.nan, 
+            "nan", pd.null etc. by None.
+        assert_type : dtype | list, optional
+            Assert one or a list of multiple datatypes optionally, by default None 
+            i.e. no effect.
+        force_cols : integer, optional
+            Will enforce the desired number of columns in the value array. Will 
+            duplicate single columns into the desired number or reduce duplicate 
+            columns to one, else assert the number of required force_cols. Raises 
+            an error if value has multiple columns not equal to force_cols.
+            Note that the value will become a 2d array if "columns" are enforced. If 
+            a 1d array is desired instead, use in combination with force_dims = 1.
+            By default None.
+        force_dims : integer, optional
+            Enforce a 1d or 2d dimension. Enforcing 1d on a 2d array with width > 1
+            will work only if all row entries are duplicates and can be reduced to
+            one column without information loss. By default None.
+        transpose : bool, optional
+            If True, the final array will be returned as transposed. Note that force_cols
+            and force_dims apply to the original array, i.e. force_cols must hence be 
+            understood as "force rows" and force_dims must be inverted when transpose is
+            True. By default False.
+
+        Returns
+        -------
+        tuple
+            The preprocessed value and a 1d array with the unique strings per each row.
+        """
+        # check dimensions
+        value = np.array(value, dtype=object)
+        n_placements = len(self.placements)
+        # every value must always be an array with length = len(self.placements), assert for 1d and 2d and duplicate value into array for scalar value
+        if value.ndim == 0:
+            value = np.full(n_placements, value.item(), dtype=object)
+        assert value.ndim in (1, 2), \
+            f"{varname} must be scalar, 1D or 2D, got shape {value.shape}."
+        assert value.shape[0] == n_placements, \
+            f"{varname} must have {n_placements} rows, got {value.shape[0]}."
+        
+        # if force_cols is not None, we have 4 cases: 1) actual column number matches force_cols, 2) we have only 1 column which can be duplicated 
+        # to force_cols, 3) we have multiple columns but all with the same value per row which could be reduced to 1 column if force_cols is 1 only
+        # or 4) we have multiple columns but their number does not match force_cols - the latter case must raise an error
+        if force_cols is not None and not (isinstance(force_cols, int) and force_cols>=1):
+            raise ValueError(f"force_cols must be None or an integer >= 1, here: {force_cols}")
+        if force_cols is not None:
+            if value.ndim == 1:
+                value = value[:, None]
+            n_cols = value.shape[1]
+            if n_cols == force_cols: 
+                # we have exactly the amount of columns that we need, do nothing
+                pass 
+            elif n_cols == 1: 
+                # only one column, simply duplicate the one column as often as required
+                value = np.repeat(value, force_cols, axis=1)
+            elif force_cols == 1 and np.all(value == value[:, [0]]):
+                # all entries per row are the same, can be reduced to 1 column without information loss
+                value = value[:, [0]]
+            else:
+                raise ValueError(
+                    f"{varname} must have {force_cols} column(s) but has {n_cols}."
+                )
+        
+        # one can also enforce a 1d or 2d array if the data allows for it
+        if force_dims is not None and force_dims not in [1,2]:
+            raise ValueError(f"force_dims must be None or either 1 or 2 (d), here: {force_dims}")
+        if force_dims == 1:
+            if value.ndim == 2:
+                # 2D can only be reduced without information loss if it has one column or every row contains only duplicate entries
+                assert value.shape[1] == 1 or np.all(value == value[:, [0]]), \
+                    f"{varname} cannot be reduced to 1D without information loss."
+                value = value[:, 0]
+        elif force_dims == 2:
+            if value.ndim == 1:
+                # add second dimension to have an (n_placements, 1) shape
+                value = value[:, None]
+
+        # value must then either be 1d or 2d with a single column or 2d with only repetitive values per row, will then be reduced to 1 column
+        assert value.ndim == 1 or (
+            value.ndim == 2 and (
+                value.shape[1] == 1 or
+                np.all(value == value[:, [0]])
+            )
+        ), f"{varname} must be a scalar, 1D or 2D with identical values in each row."
+
+        # now deal with data types and Nones
+
+        # create a mask with all None (or equivalent) entries
+        none_mask = self._is_none(value)
+        str_mask = np.vectorize(lambda x: isinstance(x, str), otypes=[bool])(value)
+        # make sure that every placement is consistent, i.e. either all column entries defined numerically or all strs (must then be the same string for all columns!) or all are None
+        if value.ndim == 2:
+            # only then we can have different entries per placement
+            num_mask = np.vectorize(lambda x: isinstance(x, (int, float, np.number)), otypes=[bool])(value)
+            assert np.all(
+                none_mask.all(axis=1) |
+                str_mask.all(axis=1) |
+                num_mask.all(axis=1)
+            ), f"{varname} contains rows mixing None, strings and numeric values."
+            # also check if all strings per row are identical
+            multistring_rows = str_mask.all(axis=1) & ~np.all(value == value[:, [0]], axis=1)
+            assert not np.any(multistring_rows), \
+                f"{varname} contains rows with differing strings: {[np.unique(row).tolist() for row in value[multistring_rows]]}"
+            # retrieve the unique string per row (NaN for non-string rows)
+            row_strings = np.full(value.shape[0], np.nan, dtype=object)
+            row_strings[str_mask.all(axis=1)] = value[str_mask.all(axis=1), 0]
+        elif value.ndim == 1:
+            # we still need the str per row array
+            row_strings = np.where(str_mask, value, np.nan).astype(object)
+        # enforce no-Nones if required
+        if not allow_none:
+            assert replace_none is None, f"replace_none must be None (default) when allow_none is False, will then not allow any value array with None (or equivalent) at all."
+            if np.any(none_mask):
+                raise ValueError(f"{varname} must not have None values.")
+        # replace None, if None at least all "null", np.nan etc will be replaced
+        value = np.where(none_mask, replace_none, value)
+        # enforce a specific datatype or an iterable thereof if required
+        if assert_type is not None:
+            accepted_types = (
+                assert_type
+                if isinstance(assert_type, tuple)
+                else tuple(assert_type)
+                if isinstance(assert_type, list)
+                else (assert_type,)
+            )
+            if allow_none:
+                accepted_types += (NoneType,)
+            
+            accepted_types_expanded = accepted_types + tuple(
+                equivalent
+                for typ in accepted_types
+                if (equivalent := NUMPY_TYPE_EQUIVALENTS.get(typ)) is not None
+            )
+
+            # deal with bools separately as they are int in numpy types
+            bool_allowed = bool in accepted_types_expanded or np.bool_ in accepted_types_expanded
+            # check validity of each entry and return as boolean
+            def valid_entry(x):
+                if isinstance(x, (bool, np.bool_)) and not bool_allowed:
+                    return False
+                return isinstance(x, accepted_types_expanded)
+            invalid_mask = np.vectorize(lambda x: not valid_entry(x), otypes=[bool])(value)
+            # raise an error if we have invalid value types
+            if np.any(invalid_mask):
+                accepted_type_names = sorted({
+                    typ.__name__ for typ in accepted_types_expanded
+                })
+                invalid_type_names = sorted({
+                    type(x).__name__ for x in value[invalid_mask]
+                })
+                raise TypeError(
+                    f"'{varname}' expects only selected datatypes "
+                    f"({', '.join(accepted_type_names)}) "
+                    f"but contains invalid datatypes: "
+                    f"{', '.join(invalid_type_names)}."
+                )
+        if transpose:
+            value = np.transpose(value)
+            row_strings = np.transpose(row_strings)
+
+        return value, row_strings
 
     # STAGE 2: weather data reading and adjusting
 
