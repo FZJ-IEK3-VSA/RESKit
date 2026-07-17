@@ -1,7 +1,7 @@
 # import primary packages
 import warnings
 
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 import numpy as np
 import pandas as pd
 
@@ -219,13 +219,13 @@ def openfield_pv_era5(
             Default is None.
             See reskit.solar.SolarWorkflowManager.apply_inverter_losses for more usage information.
 
-    DNI_nodata_fallback: str, optional
+    DNI_nodata_fallback: str | float | Callable, optional
             When global_solar_atlas_dni_path has no data, one can decide between different fallback options, by default 1.0:
             - np.nan or None : return np.nan for missing values in global_solar_atlas_dni_path
             - float : Apply this float value as a scaling factor for all no-data locations only: source_long_run_average * DNI_nodata_fallback.
             NOTE: A value of 1.0 will return the source lra value in case of missing global_solar_atlas_dni_path values.
             - str : Will be interpreted as a filepath to a raster with alternative absolute global_solar_atlas_dni_path values
-            - callable : any callable method taking the arguments (all iterables): 'locs' and 'source_long_run_average_value'
+            - Callable : any callable method taking the arguments (all iterables): 'locs' and 'source_long_run_average_value'
             (the locations as gk.geom.point objects and original value from source data). The output values will be considered as
             the new real_long_run_average for missing locations only.
             NOTE: np.nan will also be returned in case that the nodata fallback does not yield values either.
@@ -234,13 +234,13 @@ def openfield_pv_era5(
             The scaling factor that will be applied to the DNI nodata fallback e.g. in case of different units compared to source data.
             By default 1.0, i.e. no effect.
 
-    GHI_nodata_fallback: str, optional
+    GHI_nodata_fallback: str, | float | Callable, optional
             When global_solar_atlas_ghi_path has no data, one can decide between different fallback options, by default 1.0:
             - np.nan or None : return np.nan for missing values in global_solar_atlas_ghi_path
             - float : Apply this float value as a scaling factor for all no-data locations only: source_long_run_average * GHI_nodata_fallback.
                 NOTE: A value of 1.0 will return the source lra value in case of missing global_solar_atlas_ghi_path values.
             - str : Will be interpreted as a filepath to a raster with alternative absolute global_solar_atlas_ghi_path values
-            - callable : any callable method taking the arguments (all iterables): 'locs' and 'source_long_run_average_value'
+            - Callable : any callable method taking the arguments (all iterables): 'locs' and 'source_long_run_average_value'
                 (the locations as gk.geom.point objects and original value from source data). The output values will be considered as
                 the new real_long_run_average for missing locations only.
             NOTE: np.nan will also be returned in case that the nodata fallback does not yield values either
@@ -416,9 +416,9 @@ def pv_era5_WinklerUnpublished(
     ground_albedo : float | str | Iterable = 0.25,
     distant_horizon_profile : np.ndarray | str | None = None,
     consider_snow_effects : bool | Iterable = True,
-    DNI_nodata_fallback : float | str | callable = 1.0,
-    DNI_nodata_fallback_scaling : float | callable = 1.0,
-    GHI_nodata_fallback : float | str = 1.0,
+    DNI_nodata_fallback : float | str | Callable = 1.0,
+    DNI_nodata_fallback_scaling : float = 1.0,
+    GHI_nodata_fallback : float | str | Callable = 1.0,
     GHI_nodata_fallback_scaling : float = 1.0,
     capacity : int | float | Iterable = None,
     module : str = 'Trina Solar Co.Ltd TSM-700NEG21C.20',
@@ -554,7 +554,7 @@ def pv_era5_WinklerUnpublished(
             then affects both ground albedo in times of snow-covered ground as well
             as shadowing of by snow covered modules. Can be provided as a scalar or 
             an iterable per location, by default True.
-    DNI_nodata_fallback: float | str | callable, optional
+    DNI_nodata_fallback: float | str | Callable, optional
             When global_solar_atlas_dni_path has no data, one can decide between different 
             fallback options, by default 1.0:
             * np.nan or None : return np.nan for missing values in global_solar_atlas_dni_path
@@ -564,7 +564,7 @@ def pv_era5_WinklerUnpublished(
                 missing global_solar_atlas_dni_path values.
             * str : Will be interpreted as a filepath to a raster with alternative absolute 
                 global_solar_atlas_dni_path values
-            * callable : any callable method taking the arguments (all iterables): 'locs' and 
+            * Callable : any callable method taking the arguments (all iterables): 'locs' and 
                 'source_long_run_average_value' (the locations as gk.geom.point objects and 
                 original value from source data). The output values will be considered as
                 the new real_long_run_average for missing locations only.
@@ -572,7 +572,7 @@ def pv_era5_WinklerUnpublished(
     DNI_nodata_fallback_scaling: float, optional
             The scaling factor that will be applied to the DNI nodata fallback e.g. in case of 
             different units compared to source data. By default 1.0, i.e. no effect.
-    GHI_nodata_fallback: str | str | callable, optional
+    GHI_nodata_fallback: str | str | Callable, optional
             When global_solar_atlas_ghi_path has no data, one can decide between different 
             fallback options, by default 1.0:
             - np.nan or None : return np.nan for missing values in global_solar_atlas_ghi_path
