@@ -253,11 +253,12 @@ def location_to_cross_axis_tilt(locs, convention:str="flat", fallback:int|float=
 
 def location_to_gcr(
         locs: gk.LocationSet | Iterable, 
-        module_tilt: int | float | Iterable,
         tracking: str, 
         convention: str, 
-        north_slope : str | Iterable = 0,
-        east_slope : str | Iterable = 0,
+        module_tilt: int | float | Iterable = None,
+        north_slope : int | float | str | Iterable = 0,
+        east_slope : int | float | str | Iterable = 0,
+        bifaciality_factor : float = None,
         **kwargs):
     """
     Estimates optimal gcr off latitude based on a given convention and tracking 
@@ -269,18 +270,31 @@ def location_to_gcr(
     ----------
     locs : geokit.LocationSet or iterable of (lon,lat) pairs
         The locations at which to estimate module azimuth angle
-
+    tracking : str
+        If the system is 'fixed' tilt or 'singleaxis' tracking.
     convention : str, optional
         The calculation method used to suggest module surface azimuth angles.
         Available conventions for single-axis tracking:
-        * "EquatorFacingWinkler2026" will assign the gcr based on the latitude 
-          and possiblyNorth-facing slope for fixed tilt pv facing the equator 
+        * "winter_solstice_rule" will assign the gcr based on the latitude 
+          and possibly North-facing slope for fixed tilt pv facing the equator 
           applicable to equator-facing fixed tilt pv parks.
+        * 'tonita_et_al_2023_5perc' will assign the optimal GCR under 5% loss 
+          assumption according to the publication by Tonita et al. [1]
         * A path to a raster file from which the location specific
           azimuth (in clockwise degree starting North) is extracted
-
-    north_slope : str, Iterable
-          
+    module_tilt : int | float | Iterable, optional
+        Module tilt angle from ground, mandatory when tracking = 'fixed'.
+        By default None.
+    north_slope : int | float | str | Iterable, optional
+        The north-facing slope angle in degrees, if given as str, a filepath
+        with slope raster is expected. By default 0.
+    east_slope : int | float | str | Iterable, optional
+        The east-facing slope angle in degrees, if given as str, a filepath
+        with slope raster is expected. By default 0.
+    bifaciality_factor : float | Iterable, optional
+        The bifaciality factor of the module as float from 0.0-1.0.
+        Is mandatory for some conventions such as 'tonita_et_al_2023_5perc'.
+        By default None.
     kwargs: 
         Will be forwarded to geokit.raster.interpolateValues(), only applies 
         when `convention` is a path to a raster file.
@@ -290,9 +304,23 @@ def location_to_gcr(
     np.ndarray
         Suggested axis azimuth at each of the provided `locs`. Has the same 
         length as the number of `locs`.
+    
+    References
+    ----------
+    [1] Tonita et al. (2023): "Optimal ground coverage ratios for tracked, 
+        fixed-tilt, and vertical photovoltaic systems for latitudes up to 75°N"
+        DOI 10.1016/j.solener.2023.04.038
     """
     locs = gk.LocationSet(locs)
 
+    # first check if we have a given raster from which we only need to extract the gcrs
+    if isinstance(convention, str) and isfile(convention):
+        # try to extract data from raster
+        try:
+            return gk.raster.interpolateValues(convention, locs, **kwargs)
+        except Exception:
+            raise OSError(f"File cannot be read by gk.raster.interpolateValues(): {convention}.")
+        
     # first try to extract the slopes
     if isinstance(north_slope, str):
         # assume a slope raster
@@ -314,11 +342,11 @@ def location_to_gcr(
         
     if tracking == "fixed":
         # a different set of conventions applies for fixed and single-axis tracking
-        if convention == "EquatorFacingWinkler2026":
+        if convention == "winter_solstice_rule":
 
-            # east slope is not used in this convention
+            # note that east slope is not used in this convention because it has negligible influence on equator-facing fixed modules
             if east_slope not in [None, 0]:
-                warnings.warn(f"east_slope ({east_slope}) is not None or zero, but will be ignored by tracking='fixed' and convention='{convention}'.")
+                warnings.warn(f"east_slope ({east_slope}) is not None or zero, but will be neglected by tracking='fixed' and convention='{convention}'.")
 
             if isinstance(north_slope, str):
                 # assume a slope raster
@@ -328,7 +356,7 @@ def location_to_gcr(
                     north_slope = gk.raster.interpolateValues(north_slope, locs, **kwargs)
                 except Exception:
                     raise OSError(f"north_slope file cannot be read by gk.raster.interpolateValues(): {north_slope}.")  
-            row_pitches, gcrs = calulate_row_pitch_and_gcr(
+            row_pitches, gcrs = calulate_row_pitch_and_gcr( #add azimuth as arg or reduce function (name) to only equator facing
                 lats = np.array([loc.lat for loc in locs]), 
                 module_tilts=module_tilt, 
                 north_slopes=north_slope, 
@@ -336,22 +364,25 @@ def location_to_gcr(
                 module_area_width=3.3, 
                 min_interrow_distance=2.5,
                 )
-            return row_pitches, gcrs
-
-    if convention == "North":
-        # assign 0° (north-facing) to all locs 
-        axazimuths = np.full((len(locs), ), 0)
-    elif isinstance(convention, str) and isfile(convention):
-        # try to extract data from raster
-        try:
-            axazimuths = gk.raster.interpolateValues(convention, locs, **kwargs)
-        except Exception:
-            raise OSError(f"File cannot be read by gk.raster.interpolateValues(): {convention}.")
-    else:  
-        raise ValueError(f"Unknown gcr convention '{convention}'.")
+            return gcrs
     
-    return axazimuths
+    if tracking == "singleaxis":
+        if convention == "tonita_et_al_2023_5perc":
+            # Based on Tonita et al. (2023): Optimal ground coverage ratios for tracked, fixed-tilt, and vertical photovoltaic systems for latitudes up to 75◦N
+            # separate mono- and bifacial (factor 0.96, see Tonita et al. 2023) lines
+            def _interpolate_gcr(lat, bifac):
+                # get value for bifaciality factors 0 and 0.96 and interpolate (linear is a simplification due to lack of more detailed data)
+                assert 0 <= bifac <= 1.0 # make sure
+                gcrmono = -2.82*0.001 * lat + 0.388
+                gcrbifac = -2.68*0.001 * lat + 0.361
+                return gcrmono + (gcrbifac - gcrmono) * (bifac - 0)/(0.96 - 0)
+            lats = np.array([loc.lat for loc in locs])
+            bifacs = np.ones_like(lats) * bifaciality_factor
+            return _interpolate_gcr(lats, bifacs)
 
+    # None of the above applied, raise error
+    raise ValueError(f"Unknown gcr convention '{convention}' for tracking = '{tracking}'.")
+    
 
 
 ## winter solstice rule: no shade on winter solstice at either solar noon or any morning hour
