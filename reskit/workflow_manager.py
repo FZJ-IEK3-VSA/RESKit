@@ -54,9 +54,9 @@ class WorkflowManager:
         # Check if input file contains a geometry column
         ispoint = False
         if "geom" in placements.columns:
+            _srs = placements.geom.iloc[0].GetSpatialReference()
             if self.placements["geom"].iloc[0].GetGeometryName() == "POINT":
                 ispoint = True
-            _srs = placements.geom.iloc[0].GetSpatialReference()
         else:
             # assume lat/lon values in EPSG:4326
             _srs = gk.srs.loadSRS(4326)
@@ -73,14 +73,14 @@ class WorkflowManager:
             assert "lat" in self.placements.columns, (
                 "if geom are not point geometries, dataframe must contain lat columns"
             )
-
-        if self.locs is None:
-            self.locs = gk.LocationSet(self.placements[["lon", "lat"]].values)
+            self.locs = gk.LocationSet(self.placements[["lon", "lat"]].values)            
 
         # limit the input placements longitude to range of -180...180
         assert self.placements["lon"].between(-180, 180, inclusive="both").any()
         # limit the input placements latitude to range of -90...90
         assert self.placements["lat"].between(-90, 90, inclusive="both").any()
+
+        self.centerpoints = np.array([gk.geom.point(lon, lat, srs=_srs) for lon, lat in zip(self.placements["lon"], self.placements["lat"])])
 
         # get bounds of the extent
         _bounds = list(self.locs.getBounds())
