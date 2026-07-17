@@ -600,7 +600,7 @@ class WorkflowManager:
                 DeprecationWarning,
             )
             nodata_fallback = np.nan
-        if any(np.isnan(real_lra)):  # TODO currently all real_lra are replaced by fallback, is this intentional?
+        if any(np.isnan(real_lra)):
             # we are lacking long-run average values
             if nodata_fallback is None or (isinstance(nodata_fallback, float) and np.isnan(nodata_fallback)):
                 # nans will be returned for missing lra values
