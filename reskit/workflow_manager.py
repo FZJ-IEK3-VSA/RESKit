@@ -2,9 +2,11 @@
 import datetime
 import warnings
 from collections import OrderedDict  # TODO is this needed when
+from collections.abc import Iterable
 from glob import glob
 from os.path import basename, isdir, isfile, join
-from types import FunctionType
+from numbers import Number
+from types import FunctionType, NoneType
 from typing import (
     List,
     OrderedDict,
@@ -22,6 +24,17 @@ from reskit import weather as rk_weather
 # import other modules
 from reskit.util.weather_tile import get_dataframe_with_weather_tilepaths
 
+
+NUMPY_TYPE_EQUIVALENTS = {
+    int: np.integer,
+    float: np.floating,
+    complex: np.complexfloating,
+    bool: np.bool_,
+    np.integer: int,
+    np.floating: float,
+    np.complexfloating: complex,
+    np.bool_: bool,
+}
 
 class WorkflowManager:
     """
@@ -793,10 +806,19 @@ class WorkflowManager:
         xarray.Dataset
             The resulting XArray dataset
         """
-        if isinstance(output_variables, str):
-            output_variables = [output_variables]
-        if isinstance(output_variables, list) and not "RESKit_sim_order" in output_variables:
-            output_variables.append("RESKit_sim_order")
+        # make output variables a list
+        if output_variables is None:
+            selected_variables = None
+        elif isinstance(output_variables, str):
+            selected_variables = [output_variables]
+        elif isinstance(output_variables, Iterable):
+            selected_variables = list(output_variables)
+        else:
+            raise TypeError(
+                "output_variables must be None, a string, or an iterable of strings."
+            )
+        # required variables
+        required_variables  = ["RESKit_sim_order"]
 
         times = self.time_index
         if times[0].tz is not None:
@@ -817,8 +839,8 @@ class WorkflowManager:
         # write placements
         for c in self.placements.columns:
             # check if c in requestet output_variables
-            if output_variables is not None:
-                if c not in output_variables:
+            if selected_variables is not None:
+                if key not in selected_variables and key not in required_variables:
                     continue
             if np.issubdtype(self.placements[c].dtype, np.number):
                 write = True
@@ -835,11 +857,61 @@ class WorkflowManager:
                     coords=dict(location=location_coords),
                 )
 
+        # write preprocessed plant parameters
+        if hasattr(self, "plant_parameters_processed"):
+            for par, val in self.plant_parameters_processed.items():
+                if selected_variables is not None:
+                    if key not in selected_variables and key not in required_variables:
+                        continue
+                # value should be an array and have only datatypes which can be written to NETCDF/Zarr via xarray
+                if not isinstance(val, np.ndarray):
+                    raise TypeError(f"self.plant_parameters_processed['{par}'] data is not a np.array.")
+                if not all(isinstance(x, (Number, str, bytes, bytearray)) for x in val.flat):
+                    # at least one datatype cannot be written, skip this parameter
+                    print(f"Parameter '{par}' contains non-number/string/bytes datatypes and cannot be written to output dataset, skip.")
+                    continue
+                # value may be of different shapes and dimensions
+                if val.ndim == 1:
+                    if not len(val) == self.locs.count: # should then be one per loc
+                        raise ValueError(f"self.plant_parameters_processed['{par}'] is a 1D np.array but its length ({len(val)}) does not match the number of locations ({self.locs.count}).")
+                    # save with locations as sole dimension
+                    xds[par] = xarray.DataArray(
+                        val,
+                        dims=["location"],
+                        coords=dict(location=location_coords),
+                    ) 
+                elif val.ndim == 2:
+                    # could be different coordinate dimensions
+                    if val.shape == self._sim_shape_[::-1]: #TODO the dimensions of plant_parameters_processed are currently inverted compared to sim_data, consider aligning them
+                        # data is time- and location dependent like sim data (N_timesteps, N_locs)
+                        xds[par] = xarray.DataArray(
+                            np.transpose(val), # transposed because of the inverted coordinate dimensions, see #TODO above
+                            dims=["time", "location"],
+                            coords=dict(time=times, location=location_coords),
+                        )
+                    elif val.shape[0] == self.locs.count:
+                        if not val.shape[1] > 1:
+                            raise ValueError(f"self.plant_parameters_processed['{par}'] is a 2D np.array with width = 1, store as 1D array instead.")
+                        # we have a 2D array with the correct number of placements but the width differs from the No. of timesteps
+                        if par in ["horizon_profile", "distant_horizon_profile", "local_horizon_profile"]:
+                            # expected for horizon profiles, width describes the length of the profile (No. of sampling points)
+                            xds[par] = xarray.DataArray(
+                                val,
+                                dims=["location", "azimuth_bins"],
+                                coords=dict(location=location_coords, azimuth_bins=np.arange(0, 360, 360/val.shape[1]))
+                                )
+                        else:
+                            raise ValueError(f"self.plant_parameters_processed['{par}'] is a 2D np.array with unknown width ({val.shape[1]}) which does not match the number of timesteps: {self._sim_shape_[0]} ")
+                    else:
+                        raise ValueError(f"self.plant_parameters_processed['{par}'] has unknown shape: {val.shape} ")
+                else:
+                    raise ValueError(f"self.plant_parameters_processed['{par}'] has unknown dimensionality: {val.ndim}D (shape {val.shape})")
+
         # write sim_data
         for key in self.sim_data.keys():
             # check if key in requestet output_variables
-            if output_variables is not None:
-                if key not in output_variables:
+            if selected_variables is not None:
+                if key not in selected_variables and key not in required_variables:
                     continue
 
             tmp = np.full((len(self.time_index), self.locs.count), 0.0, dtype=float)
@@ -860,7 +932,7 @@ class WorkflowManager:
                     if key not in output_variables:
                         continue
 
-                tmp = np.full((len(times_days), self.locs.count), np.nan)
+                tmp = np.full((len(times_days), self.locs.count), np.nan) #TODO check if non-zero timeseries can be handled differently (e.g. albedo should not be zero at night)
                 tmp[:, :] = self.sim_data_daily[key]
 
                 xds[key] = xarray.DataArray(
