@@ -10,10 +10,7 @@ from types import FunctionType
 import warnings
 from scipy.interpolate import RectBivariateSpline
 import json
-import numbers
-from collections.abc import Iterable, Callable
-
-from ...workflow_manager import WorkflowManager
+from collections.abc import Iterable
 
 from reskit.solar import core as rk_solar_core
 from reskit.workflow_manager import WorkflowManager
