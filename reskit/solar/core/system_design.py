@@ -3,6 +3,7 @@ import geokit as gk
 import pandas as pd
 from os.path import isfile
 from collections.abc import Iterable
+from types import NoneType
 import warnings
 
 from reskit.util import ResError
@@ -259,6 +260,7 @@ def location_to_gcr(
         north_slope : int | float | str | Iterable = 0,
         east_slope : int | float | str | Iterable = 0,
         bifaciality_factor : float = None,
+        min_gcr : float | NoneType = 0.3,
         **kwargs):
     """
     Estimates optimal gcr off latitude based on a given convention and tracking 
@@ -295,6 +297,9 @@ def location_to_gcr(
         The bifaciality factor of the module as float from 0.0-1.0.
         Is mandatory for some conventions such as 'tonita_et_al_2023_5perc'.
         By default None.
+    min_gcr : float | NoneType, optional
+        If given as a float, GCR values will be limited to this minimum value.
+        Has no effect if None, by default 0.3.
     kwargs: 
         Will be forwarded to geokit.raster.interpolateValues(), only applies 
         when `convention` is a path to a raster file.
@@ -313,11 +318,19 @@ def location_to_gcr(
     """
     locs = gk.LocationSet(locs)
 
+    if min_gcr is None:
+        min_gcr = 0.0 # set to zero, has no effect then
+    else:
+        assert isinstance(min_gcr, float), "min_gcr must be a float if not None."
+
     # first check if we have a given raster from which we only need to extract the gcrs
     if isinstance(convention, str) and isfile(convention):
         # try to extract data from raster
         try:
-            return gk.raster.interpolateValues(convention, locs, **kwargs)
+            gcrs = gk.raster.interpolateValues(convention, locs, **kwargs)
+            # apply min gcr
+            gcrs[gcrs < min_gcr] = min_gcr
+            return gcrs
         except Exception:
             raise OSError(f"File cannot be read by gk.raster.interpolateValues(): {convention}.")
         
@@ -364,6 +377,8 @@ def location_to_gcr(
                 module_area_width=3.3, 
                 min_interrow_distance=2.5,
                 )
+            # apply min gcr
+            gcrs[gcrs < min_gcr] = min_gcr
             return gcrs
     
     if tracking == "singleaxis":
@@ -378,7 +393,11 @@ def location_to_gcr(
                 return gcrmono + (gcrbifac - gcrmono) * (bifac - 0)/(0.96 - 0)
             lats = np.array([loc.lat for loc in locs])
             bifacs = np.ones_like(lats) * bifaciality_factor
-            return _interpolate_gcr(lats, bifacs)
+            # apply function to all lats and bifacs tuples
+            gcrs = _interpolate_gcr(lats, bifacs)
+            # apply min gcr
+            gcrs[gcrs < min_gcr] = min_gcr
+            return gcrs
 
     # None of the above applied, raise error
     raise ValueError(f"Unknown gcr convention '{convention}' for tracking = '{tracking}'.")
