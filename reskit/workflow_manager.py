@@ -840,7 +840,7 @@ class WorkflowManager:
         for c in self.placements.columns:
             # check if c in requestet output_variables
             if selected_variables is not None:
-                if key not in selected_variables and key not in required_variables:
+                if c not in selected_variables and c not in required_variables:
                     continue
             if np.issubdtype(self.placements[c].dtype, np.number):
                 write = True
@@ -861,7 +861,7 @@ class WorkflowManager:
         if hasattr(self, "plant_parameters_processed"):
             for par, val in self.plant_parameters_processed.items():
                 if selected_variables is not None:
-                    if key not in selected_variables and key not in required_variables:
+                    if par not in selected_variables and par not in required_variables:
                         continue
                 # value should be an array and have only datatypes which can be written to NETCDF/Zarr via xarray
                 if not isinstance(val, np.ndarray):
