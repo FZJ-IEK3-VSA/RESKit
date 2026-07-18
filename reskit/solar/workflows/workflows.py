@@ -776,7 +776,7 @@ def pv_era5_WinklerUnpublished(
     # SIMULATE MODULE RESPONSE AND ELECTRICAL YIELD
     
     if np.any(np.asarray(consider_snow_effects)):
-        wf.estimate_snow_coverage_loss(consider_snow_effects=consider_snow_effects)
+        wf.estimate_snow_coverage_loss(consider_snow_loss=consider_snow_effects)
     wf.cell_temperature_from_sapm()
     wf.simulate_with_interpolated_single_diode_approximation(consider_snow_cover=consider_snow_effects)
 
