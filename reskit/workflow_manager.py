@@ -131,12 +131,12 @@ class WorkflowManager:
         self,
         varname,
         value,
-        allow_none = False,
-        allow_str = True,
+        allow_none : bool = False,
         replace_none = None,
-        assert_type = None,
-        force_cols = None,
-        force_dims = None,
+        assert_type : type | list[type] | None = None,
+        force_cols : int | None = None,
+        force_dims : int | None = None,
+        as_dtype = None,
         transpose : bool = False,
     ):
         """
@@ -173,6 +173,10 @@ class WorkflowManager:
             Enforce a 1d or 2d dimension. Enforcing 1d on a 2d array with width > 1
             will work only if all row entries are duplicates and can be reduced to
             one column without information loss. By default None.
+        as_dtype : dtype, optional
+            The datatype to be applied to the whole numpy array. Will only be applied
+            if no information loss occurs, i.e. requestion dtype=bool on an array with
+            strings would raise an error. If None, no datatype changes will be applied.
         transpose : bool, optional
             If True, the final array will be returned as transposed. Note that force_cols
             and force_dims apply to the original array, i.e. force_cols must hence be 
@@ -280,13 +284,23 @@ class WorkflowManager:
                 if isinstance(assert_type, list)
                 else (assert_type,)
             )
-            if allow_none:
+            non_types = [typ for typ in accepted_types if not isinstance(typ, type)]
+            if len(non_types) > 0:
+                raise TypeError(
+                    f"assert_type for '{varname}' must contain only types (incl. NoneType for None), got the following non-datatypes: {non_types}"
+                )
+            # add NoneType if None is allowed, but only if it is not already in iterable
+            if allow_none and NoneType not in accepted_types:
                 accepted_types += (NoneType,)
             
+            # expand by equivalent numpy types and remove duplicates
             accepted_types_expanded = accepted_types + tuple(
                 equivalent
                 for typ in accepted_types
                 if (equivalent := NUMPY_TYPE_EQUIVALENTS.get(typ)) is not None
+            )
+            accepted_types_expanded = tuple(
+                dict.fromkeys(accepted_types_expanded)
             )
 
             # deal with bools separately as they are int in numpy types
@@ -311,6 +325,77 @@ class WorkflowManager:
                     f"but contains invalid datatypes: "
                     f"{', '.join(invalid_type_names)}."
                 )
+        
+        # optionally convert the final value array to a requested dtype
+        # while preventing conversions that lose or alter information
+        if as_dtype is not None:
+            # check if we can handle the dtype at all
+            try:
+                target_dtype = np.dtype(as_dtype)
+            except TypeError as exc:
+                raise TypeError(f"as_dtype {as_dtype!r} for '{varname}' cannot be interpreted as a numpy.dtype.") from exc
+            # get a copy of the original values to compare against later
+            original_value = value.copy()
+            # deal with booleans and other dtypes separately
+            if np.issubdtype(target_dtype, np.bool_):
+                # booleans have the problem in numpy of making every string True
+                # that is unwanted therefore define explicit True/False values
+                boolmapper = {True : True, 1: True, "1": True, "true": True, False:False, 0:False, "0":False, "false":False}
+                def parse_bool(x):
+                    if isinstance(x, str): x = x.lower()
+                    try:
+                        return boolmapper[x]
+                    except:
+                        raise ValueError(f"'{varname}' cannot be converted losslessly to bool: invalid value {x!r}. Only the following values are accepted: {boolmapper.keys()}")
+                value = np.vectorize(parse_bool, otypes=[bool])(value)
+            else:
+                try:
+                    converted_value = value.astype(target_dtype)
+                except (TypeError, ValueError, OverflowError) as exc:
+                    raise TypeError(f"'{varname}' cannot be converted to dtype {target_dtype}: {exc}") from exc
+
+                # make sure that we did not lose information, convert back to object values to compare with original data
+                converted_as_object = converted_value.astype(object)
+                # define a comparison function for cell values
+                def values_equivalent(original, converted):
+                    # Treat missing values as equivalent.
+                    if self._is_none(np.asarray([original], dtype=object))[0]:
+                        return self._is_none(
+                            np.asarray([converted], dtype=object)
+                        )[0]
+
+                    # Numeric values need special handling.
+                    if isinstance(original, (int, float, np.number)) and isinstance(
+                        converted, (int, float, np.number)
+                    ):
+                        if np.isnan(original) and np.isnan(converted):
+                            return True
+                        return bool(np.isclose(
+                            original,
+                            converted,
+                            rtol=0,
+                            atol=0,
+                            equal_nan=True,
+                        ))
+
+                    return original == converted
+                # apply to original and converted object array
+                equivalent_mask = np.vectorize(
+                    values_equivalent,
+                    otypes=[bool],
+                )(original_value, converted_as_object)
+                # if check does not succeed, raise error with an example for the user
+                if not np.all(equivalent_mask):
+                    changed_original = original_value[~equivalent_mask]
+                    changed_converted = converted_as_object[~equivalent_mask]
+                    examples = list(zip(
+                        changed_original[:5].tolist(),
+                        changed_converted[:5].tolist(),
+                    ))
+                    raise ValueError(f"Converting '{varname}' to dtype {target_dtype} would change values. Examples of (original, converted): {examples}")
+                # else set the final return value
+                value = converted_value
+
         if transpose:
             value = np.transpose(value)
             row_strings = np.transpose(row_strings)
