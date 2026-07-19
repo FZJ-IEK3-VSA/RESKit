@@ -725,7 +725,7 @@ def pv_era5_WinklerUnpublished(
         # if not provided explitly, define gcr as tracking-specific defaults for this workflow
         gcr = "winter_solstice_rule" if tracking == "fixed" else "tonita_et_al_2023_5perc" #TODO was 0.358
     wf.preprocess_pvrow_height(pvrow_height=pvrow_height)
-    wf.preprocess_ground_coverage_ratio(gcr = gcr)
+    wf.preprocess_ground_coverage_ratio(gcr = gcr, min_gcr = 0.3)
     wf.preprocess_capacity(capacity = capacity)
 
     # PREPROCESS IRRADIATION
