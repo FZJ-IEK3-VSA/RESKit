@@ -63,7 +63,7 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
         ("lra", [vertical method]) : Calculation based on the long-run average
             wind speeds (e.g. GWA) of the 2 nearest available height levels.
             [vertical method] (str) describes the form of interpolation, e.g.
-            "linear".
+            "linear". ("lra", "linear") was used for publication [3].
         ("log", [landcover]) : Logarithmic height scaling based on surface
             roughness defined via a mapping of the land cover category.
             [landcover] (str) defines the landcover data used for roughness
