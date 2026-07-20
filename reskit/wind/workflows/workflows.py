@@ -48,16 +48,16 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
     gwa_100m_path : str
         Path to the Global Wind Atlas v4 (GWA4) at 100m [4] raster file.
     height_scaling_data : dict | str
-        The data required for the height_scaling_method. If height_scaling_method[0] 
-        (below) is "lra" (e.g. ("lra", "linear"), see default), a dict with integer 
-        heights as keys and str paths to the Global Wind Atlas windspeeds [4] at the 
-        respective heights as values is expected. Must contain at least one higher 
-        and one lower height than 100 [m] then. If height_scaling_method[0] (below) 
+        The data required for the height_scaling_method. If height_scaling_method[0]
+        (below) is "lra" (e.g. ("lra", "linear"), see default), a dict with integer
+        heights as keys and str paths to the Global Wind Atlas windspeeds [4] at the
+        respective heights as values is expected. Must contain at least one higher
+        and one lower height than 100 [m] then. If height_scaling_method[0] (below)
         is "log", then a str filepath to the defined landcover raster is expected.
     height_scaling_method : tuple | list | None, optional
         The method to project the windspeeds from the default height (here
         100m in ERA-5/GWA4) to hub height (possibly affected by the planetary
-        boundary layer height). First tuple/list entry (str) describes the 
+        boundary layer height). First tuple/list entry (str) describes the
         general approach (e.g. logarithmic scaling or based on long-run-average
         windspeed interpolation). Options are:
         ("lra", [vertical method]) : Calculation based on the long-run average

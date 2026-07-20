@@ -130,9 +130,9 @@ class WindWorkflowManager(WorkflowManager):
         ----------
         height_scaling_method : tuple | list | None, optional
             The method to project the windspeeds from the default height (eg. 100m)
-            to hub height (possibly affected by the planetary boundary layer height). 
-            First tuple/list entry (str) describes the general approach (e.g. 
-            logarithmic scaling or based on long-run-average windspeed interpolation). 
+            to hub height (possibly affected by the planetary boundary layer height).
+            First tuple/list entry (str) describes the general approach (e.g.
+            logarithmic scaling or based on long-run-average windspeed interpolation).
             Options are:
             ("lra", [vertical method]) : Calculation based on the long-run average
                 wind speeds (e.g. GWA) of the 2 nearest available height levels.
