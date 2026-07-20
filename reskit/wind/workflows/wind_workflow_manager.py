@@ -148,12 +148,12 @@ class WindWorkflowManager(WorkflowManager):
 
         Parameters
         ----------
-        height_scaling_method : tuple
-            The method to project the windspeeds from the default height (here
-            100m in ERA-5/GWA3) to hub height (possibly affected by the planetary
-            boundary layer height). First tuple entry (str) describes the general
-            approach (e.g. logarithmic scaling or based on long-run-average
-            windspeeds). No height scaling will be applied when None. Options are:
+        height_scaling_method : tuple | list | None, optional
+            The method to project the windspeeds from the default height (eg. 100m)
+            to hub height (possibly affected by the planetary boundary layer height).
+            First tuple/list entry (str) describes the general approach (e.g.
+            logarithmic scaling or based on long-run-average windspeed interpolation).
+            Options are:
             ("lra", [vertical method]) : Calculation based on the long-run average
                 wind speeds (e.g. GWA) of the 2 nearest available height levels.
                 [vertical method] (str) describes the form of interpolation, e.g.
@@ -163,7 +163,9 @@ class WindWorkflowManager(WorkflowManager):
                 [landcover] (str) defines the landcover data used for roughness
                 mapping. All landcover types accepted as land_cover_type in
                 logarithmic_profile.roughness_from_land_cover_classification() are
-                allowed, by default "cci" (ESA CCI raster).
+                allowed..
+            None : No height scaling will be applied when None.
+            By default ("lra", "linear").
         height_scaling_data : str, dict
             The data required for the selected height_scaling_method (see above).
             The expected data formats are, depending on height_scaling_method:
