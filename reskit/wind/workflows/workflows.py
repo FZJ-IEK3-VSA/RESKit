@@ -112,15 +112,12 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
     [3] Peña-Sánchez, Dunkel, Winkler et al. (2025): Towards high resolution, validated and open global wind power assessments. https://doi.org/10.48550/arXiv.2501.07937
     [4] DTU Wind Energy. (2025). Global Wind Atlas v4. https://globalwindatlas.info/
     """
-
     # default data used as per [3]
     ws_correction_func = (
         "ws_bins",
         os.path.join(DATAFOLDER, f"ws_correction_factors_PSDW2025.yaml"),
     )
-    cf_correction_factor = os.path.join(
-        DATAFOLDER, f"cf_correction_factors_PSDW2025.tif"
-    )
+    cf_correction_factor = os.path.join(DATAFOLDER, f"cf_correction_factors_PSDW2025.tif")
     wake_curve = "dena_mean"
     availability_factor = 0.98
     era5_lra_path = rk_weather.Era5Source.LONG_RUN_AVERAGE_WINDSPEED_2008TO2017
@@ -164,9 +161,7 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
         type=ws_correction_func[0],
         data_dict=ws_correction_func[1],
     )
-    wf.sim_data["elevated_wind_speed"] = ws_correction_func(
-        wf.sim_data["elevated_wind_speed"]
-    )
+    wf.sim_data["elevated_wind_speed"] = ws_correction_func(wf.sim_data["elevated_wind_speed"])
 
     # apply air density correction
     wf.apply_air_density_correction_to_wind_speeds()
@@ -191,9 +186,7 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
     # apply availability factor
     wf.apply_availability_factor(availability_factor=availability_factor)
 
-    return wf.to_xarray(
-        output_netcdf_path=output_netcdf_path, output_variables=output_variables
-    )
+    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
 
 def onshore_wind_merra_ryberg2019_europe(
@@ -269,13 +262,9 @@ def onshore_wind_merra_ryberg2019_europe(
 
     wf.simulate(max_batch_size=max_batch_size)
 
-    wf.apply_loss_factor(
-        loss=lambda x: rk_util.low_generation_loss(x, base=0.0, sharpness=5.0)
-    )
+    wf.apply_loss_factor(loss=lambda x: rk_util.low_generation_loss(x, base=0.0, sharpness=5.0))
 
-    return wf.to_xarray(
-        output_netcdf_path=output_netcdf_path, output_variables=output_variables
-    )
+    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
 
 def offshore_wind_merra_caglayan2019(
@@ -336,14 +325,10 @@ def offshore_wind_merra_caglayan2019(
     wf.simulate(max_batch_size=max_batch_size)
 
     wf.apply_loss_factor(
-        loss=lambda x: rk_util.low_generation_loss(
-            x, base=0.1, sharpness=3.5
-        )  # TODO: Check values with Dil
+        loss=lambda x: rk_util.low_generation_loss(x, base=0.1, sharpness=3.5)  # TODO: Check values with Dil
     )
 
-    return wf.to_xarray(
-        output_netcdf_path=output_netcdf_path, output_variables=output_variables
-    )
+    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
 
 def onshore_wind_iconlam_2023(
@@ -427,9 +412,7 @@ def onshore_wind_iconlam_2023(
     # simulate wind power
     wf.simulate(max_batch_size=max_batch_size)
 
-    return wf.to_xarray(
-        output_netcdf_path=output_netcdf_path, output_variables=output_variables
-    )
+    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
 
 def wind_config(
@@ -642,9 +625,7 @@ def wind_config(
         )
 
     # correct wind speeds
-    wf.sim_data["elevated_wind_speed"] = ws_correction_func(
-        wf.sim_data["elevated_wind_speed"]
-    )
+    wf.sim_data["elevated_wind_speed"] = ws_correction_func(wf.sim_data["elevated_wind_speed"])
 
     wf.apply_air_density_correction_to_wind_speeds()
 
@@ -663,21 +644,15 @@ def wind_config(
     )
 
     # do simulation
-    wf.simulate(
-        cf_correction_factor=cf_correction_factor, max_batch_size=max_batch_size
-    )
+    wf.simulate(cf_correction_factor=cf_correction_factor, max_batch_size=max_batch_size)
 
     if loss_factor_args != {}:
-        wf.apply_loss_factor(
-            loss=lambda x: rk_util.low_generation_loss(x, **loss_factor_args)
-        )
+        wf.apply_loss_factor(loss=lambda x: rk_util.low_generation_loss(x, **loss_factor_args))
 
     # apply availability factor
     wf.apply_availability_factor(availability_factor=availability_factor)
 
-    return wf.to_xarray(
-        output_netcdf_path=output_netcdf_path, output_variables=output_variables
-    )
+    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
 
 ########################
