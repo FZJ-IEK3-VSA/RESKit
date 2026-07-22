@@ -1,6 +1,5 @@
 from collections import OrderedDict
 from datetime import timedelta
-from time import perf_counter
 from typing import Any
 import warnings
 
@@ -17,6 +16,10 @@ from .Era5Source import Era5Source
 class Era5ZarrSource(Era5Source):
     """ERA5 source backed by a regular lat/lon Zarr dataset."""
 
+    # The ERA5 time convention of RESKit (see Era5Source): the timestamps of the store
+    # are shifted by this amount to obtain the time index.
+    TIME_OFFSET = timedelta(minutes=-30)
+
     def __init__(
         self,
         source,
@@ -31,15 +34,69 @@ class Era5ZarrSource(Era5Source):
         forward_fill=True,
         **kwargs,
     ):
+        """Initialize an ERA5 source from a regular latitude/longitude Zarr store.
+
+        Compared to Era5Source, the data is not read from netCDF4 files but from a local or
+        cloud hosted Zarr store, e.g. the Earth Data Hub ERA5 single-level dataset. Flattened
+        'values' grids as used by some stores are not supported.
+
+        Stores which only provide the raw accumulated solar radiation ('ssrd', 'fdir') are
+        supplemented with the processed variants ('ssrd_t_adj', 'fdir_t_adj') on the fly, see
+        _derive_solar_variables. The RESKit ERA5 time convention (TIME_OFFSET) is applied to
+        the timestamps of the store, so that 'time_slice' and 'time_index' share one convention.
+
+        Parameters
+        ----------
+        source : str or xarray.Dataset
+            The Zarr store to read, either as an already opened dataset or as a path/URL.
+            * Cloud stores are recognized by their protocol, i.e. 'https://' or 'gs://'
+            * 'https://' stores are read with the credentials of '~/.netrc', which is where
+              the credentials of the Earth Data Hub have to be saved
+
+        bounds : Anything acceptable to geokit.Extent.load(), optional
+            The boundaries of the data which is needed
+              * Usage of this will help with memory management
+              * If None, the full spatial extent of the store is used
+
+        index_pad : int, optional
+            The padding to apply to the boundaries
+              * Useful in case of interpolation
+
+        time_index_from : str, optional
+            The variable which has to exist in the store, given either as an ERA5 name or as
+            one of the clear names of Era5Source, e.g. 'elevated_wind_speed'.
+            * Only validates the store, the time convention is independent of this variable
+
+        time_slice : slice, optional
+            Limit the time span which is loaded from the store, given in the time convention of
+            RESKit, i.e. at half hours. Strongly recommended for multi-year cloud stores.
+            * The first requested timestep of derived solar variables still uses the
+              accumulation preceding it in the store
+
+        chunks : dict, optional
+            The chunk sizes to load the store with, e.g. {"valid_time": 48}. Passed on to
+            xarray.open_dataset(), by default the chunking of the store is used.
+
+        consolidated : bool, optional
+            If True, the consolidated metadata of the store is used, by default True
+
+        storage_options : dict, optional
+            Additional options for the storage backend, passed on to xarray.open_dataset().
+            Only needed to overwrite the defaults for the recognized cloud protocols.
+
+        verbose : bool, optional
+            If True, then status outputs are printed when reading weather data
+
+        forward_fill : bool, optional
+            If True, then a single missing time step at the end of the data is forward-filled
+
+        See Also
+        --------
+        Era5Source
+        """
         if kwargs:
             unexpected = ", ".join(sorted(kwargs.keys()))
             raise TypeError(f"Unexpected keyword arguments for Era5ZarrSource: {unexpected}")
-
-        timings = []
-
-        def _mark(label, tic):
-            if verbose:
-                timings.append((label, perf_counter() - tic))
 
         self.fill = forward_fill
         self._flip_lat = True
@@ -47,36 +104,41 @@ class Era5ZarrSource(Era5Source):
         self._maximal_lon_difference = self.MAX_LON_DIFFERENCE
         self._maximal_lat_difference = self.MAX_LAT_DIFFERENCE
         self.dependent_coordinates = False
-        self._source_descriptor = source
         self._verbose = verbose
 
-        tic = perf_counter()
         ds = self._open_dataset(
             source=source,
             chunks=chunks,
             consolidated=consolidated,
             storage_options=storage_options,
         )
-        _mark("open_zarr", tic)
 
-        if "valid_time" in ds.coords:
-            self.time_name = "valid_time"
-        elif "time" in ds.coords:
-            self.time_name = "time"
-        else:
-            raise ResError("ERA5 Zarr store must provide either 'valid_time' or 'time' as a coordinate")
+        self.time_name, ds = self._normalise_time_axis(ds)
+        ds, self._derived_variables = self._derive_solar_variables(ds, self.time_name)
+
+        # Clear names may map onto several store conventions; the first entry is the
+        # canonical name and is used when none of the candidates exist.
+        era5_names = {
+            "global_horizontal_irradiance": ("ssrd_t_adj", "ssrd"),
+            "direct_horizontal_irradiance": ("fdir_t_adj", "fdir"),
+            "surface_wind_speed": ("w10", "ws10", "u10"),
+            "elevated_wind_speed": ("w100", "ws100", "u100"),
+        }
+        if time_index_from in era5_names:
+            candidates = era5_names[time_index_from]
+            time_index_from = next((candidate for candidate in candidates if candidate in ds.data_vars), candidates[0])
+
+        if time_index_from is not None and time_index_from not in ds.data_vars:
+            raise ResError(
+                f"ERA5 key '{time_index_from}' not known. Check variable 'time_index_from' and store {source}"
+            )
 
         if time_slice is not None:
-            tic = perf_counter()
             if isinstance(time_slice, slice):
-                offset = timedelta(minutes=30)
-                raw_start = pd.Timestamp(time_slice.start) + offset if time_slice.start is not None else None
-                raw_stop = pd.Timestamp(time_slice.stop) + offset if time_slice.stop is not None else None
-                raw_time_slice = slice(raw_start, raw_stop)
-            else:
-                raw_time_slice = time_slice
-            ds = ds.sel({self.time_name: raw_time_slice})
-            _mark("apply_time_slice", tic)
+                raw_start = pd.Timestamp(time_slice.start) - self.TIME_OFFSET if time_slice.start is not None else None
+                raw_stop = pd.Timestamp(time_slice.stop) - self.TIME_OFFSET if time_slice.stop is not None else None
+                time_slice = slice(raw_start, raw_stop)
+            ds = ds.sel({self.time_name: time_slice})
 
         if "values" in ds.dims:
             raise ResError(
@@ -84,40 +146,16 @@ class Era5ZarrSource(Era5Source):
             )
 
         self._dataset = ds
+        self.variables = self._build_variable_table(ds, source, self._derived_variables)
 
-        tic = perf_counter()
-        self.variables = self._build_variable_table(ds, source)
-        _mark("build_variable_table", tic)
-
-        era5_names = {
-            "global_horizontal_irradiance": "ssrd_t_adj",
-            "direct_horizontal_irradiance": "fdir_t_adj",
-            "surface_wind_speed": "w10",
-            "elevated_wind_speed": "w100",
-        }
-        if time_index_from in era5_names:
-            time_index_from = era5_names[time_index_from]
-
-        if time_index_from is not None and time_index_from not in self.variables.index:
-            raise ResError(
-                f"ERA5 key '{time_index_from}' not known. Check variable 'time_index_from' and store {source}"
-            )
-
-        tic = perf_counter()
         self._allLats = np.asarray(ds["latitude"].values)
         self._allLons = np.asarray(ds["longitude"].values)
         self._lonN = self._allLons.size
         self._latN = self._allLats.size
         self._longitude_360 = self._allLons.min() >= 0 and self._allLons.max() > 180
-        _mark("load_coordinates", tic)
 
-        tic = perf_counter()
         self._configure_spatial_selection(bounds=bounds, index_pad=index_pad)
-        _mark("configure_spatial_selection", tic)
-
-        tic = perf_counter()
         self._apply_dataset_spatial_subset()
-        _mark("apply_dataset_spatial_subset", tic)
 
         self.extent = gk.Extent(
             self.lons.min(),
@@ -127,17 +165,13 @@ class Era5ZarrSource(Era5Source):
             srs=gk.srs.EPSG4326,
         )
 
-        tic = perf_counter()
-        timeindex = pd.DatetimeIndex(pd.to_datetime(self._dataset[self.time_name].values)) + timedelta(minutes=-30)
+        timeindex = pd.DatetimeIndex(pd.to_datetime(self._dataset[self.time_name].values)) + self.TIME_OFFSET
         self._timeindex_raw = timeindex
         self.time_index = timeindex
-        _mark("build_time_index", tic)
         self.data = OrderedDict()
 
         if verbose:
             print(f"Opened ERA5 Zarr source: {source}")
-            for label, dt in timings:
-                print(f"  {label:<28} {dt:8.2f} s")
 
     @staticmethod
     def _open_dataset(source, chunks, consolidated, storage_options):
@@ -145,10 +179,12 @@ class Era5ZarrSource(Era5Source):
             return source
 
         storage_options_ = dict(storage_options or {})
-        if isinstance(source, str) and source.startswith("https://") and "client_kwargs" not in storage_options_:
-            storage_options_["client_kwargs"] = {"trust_env": True}
-        if isinstance(source, str) and source.startswith("gs://") and "token" not in storage_options_:
-            storage_options_["token"] = "anon"
+        if isinstance(source, str):
+            if source.startswith("https://"):
+                # picks up the credentials of ~/.netrc, e.g. for the Earth Data Hub
+                storage_options_.setdefault("client_kwargs", {"trust_env": True})
+            elif source.startswith("gs://"):
+                storage_options_.setdefault("token", "anon")
 
         return xr.open_dataset(
             source,
@@ -160,18 +196,62 @@ class Era5ZarrSource(Era5Source):
         )
 
     @staticmethod
-    def _build_variable_table(ds: xr.Dataset, source: Any) -> pd.DataFrame:
+    def _normalise_time_axis(ds: xr.Dataset) -> tuple[str, xr.Dataset]:
+        """Return the temporal data dimension and attach its datetime coordinate."""
+        time_names = ("valid_time", "time")
+
+        time_dim = None
+        datetime_coordinate = None
+        for name in time_names:
+            if time_dim is None and name in ds.dims and any(name in data.dims for data in ds.data_vars.values()):
+                time_dim = name
+            if datetime_coordinate is None and name in ds.coords and np.issubdtype(ds[name].dtype, np.datetime64):
+                datetime_coordinate = name
+
+        if time_dim is None:
+            raise ResError("ERA5 Zarr store variables must use either a 'valid_time' or 'time' dimension")
+        if datetime_coordinate is None or ds[datetime_coordinate].size != ds.sizes[time_dim]:
+            raise ResError("ERA5 Zarr store must provide a datetime 'valid_time' or 'time' coordinate")
+
+        # Stores exist where the time dimension carries no (or a non datetime) coordinate,
+        # while a matching datetime coordinate is available under the other name.
+        if datetime_coordinate == time_dim:
+            return time_dim, ds
+        return time_dim, ds.assign_coords({time_dim: np.asarray(ds[datetime_coordinate].values)})
+
+    @classmethod
+    def _derive_solar_variables(cls, ds: xr.Dataset, time_name: str) -> tuple[xr.Dataset, dict]:
+        """Add the processed solar variables to stores that only provide the raw accumulations.
+
+        Mirrors the CDO pipeline ``-divc,3600 -shifttime,+1hour`` which produces the
+        '*_t_adj' variables: adj[i] = raw[i-1] / 3600 (J/m² per hour -> W/m²). This is done
+        lazily on the full dataset before any time slice is applied, so that the first
+        requested timestep can still use the accumulation preceding it in the store.
+
+        Returns the dataset and a mapping of the derived variables onto their raw origin.
+        """
+        derived = {}
+        for raw_name, adjusted_name in (("ssrd", "ssrd_t_adj"), ("fdir", "fdir_t_adj")):
+            if raw_name in ds.data_vars and adjusted_name not in ds.data_vars:
+                ds[adjusted_name] = ds[raw_name].shift({time_name: 1}) / 3600.0
+                ds[adjusted_name].attrs.update(units="W m**-2", long_name=f"Derived on the fly from '{raw_name}'")
+                derived[adjusted_name] = raw_name
+        return ds, derived
+
+    @staticmethod
+    def _build_variable_table(ds: xr.Dataset, source: Any, derived_variables: dict) -> pd.DataFrame:
         index = list(ds.data_vars) + [name for name in ds.coords if name not in ds.data_vars]
-        table = pd.DataFrame(columns=["name", "units", "shape", "path"], index=index)
-
-        for var in index:
-            data = ds[var]
-            table.loc[var, "name"] = data.attrs.get("standard_name", data.attrs.get("long_name", "Unknown"))
-            table.loc[var, "units"] = data.attrs.get("units", "Unknown")
-            table.loc[var, "shape"] = tuple(data.shape)
-            table.loc[var, "path"] = str(source)
-
-        return table
+        rows = [
+            {
+                "name": ds[var].attrs.get("standard_name", ds[var].attrs.get("long_name", "Unknown")),
+                "units": ds[var].attrs.get("units", "Unknown"),
+                "shape": tuple(ds[var].shape),
+                "path": str(source),
+                "derived_from": derived_variables.get(var),
+            }
+            for var in index
+        ]
+        return pd.DataFrame(rows, index=index, columns=["name", "units", "shape", "path", "derived_from"])
 
     def _wrap_longitudes(self, lons):
         if self._longitude_360:
@@ -243,48 +323,30 @@ class Era5ZarrSource(Era5Source):
         if not overwrite and name in self.data:
             return
 
-        timings = []
-
-        def _mark(label, tic):
-            if self._verbose:
-                timings.append((label, perf_counter() - tic))
-
         if variable not in self.variables.index:
             raise ResError(f"Variable '{variable}' not found in ERA5 Zarr store")
 
-        tic = perf_counter()
         data = self._dataset[variable]
-        _mark("select_variable", tic)
 
         if height_idx is not None:
             if len(data.dims) < 4:
                 raise ResError(f"Variable '{variable}' does not have a height dimension")
-            tic = perf_counter()
             height_dim = [dim for dim in data.dims if dim not in {self.time_name, "latitude", "longitude"}][0]
             data = data.isel({height_dim: height_idx})
-            _mark("select_height_index", tic)
 
-        if "latitude" in data.dims or "longitude" in data.dims:
-            tic = perf_counter()
         if "latitude" in data.dims:
             data = data.isel(latitude=slice(self._latStart, self._latStop))
         if "longitude" in data.dims:
             data = data.isel(longitude=slice(self._lonStart, self._lonStop))
-        if "latitude" in data.dims or "longitude" in data.dims:
-            _mark("apply_spatial_subset", tic)
 
         expected_dims = (self.time_name, "latitude", "longitude")
         if data.dims != expected_dims:
             raise ResError(f"Variable '{variable}' is expected to have dimensions {expected_dims}, got {data.dims}")
 
-        tic = perf_counter()
         tmp = np.asarray(data.values)
-        _mark("materialize_values", tic)
 
         if processor is not None:
-            tic = perf_counter()
             tmp = processor(tmp)
-            _mark("processor", tic)
 
         if tmp.shape[0] != self._timeindex_raw.shape[0]:
             if not self.fill:
@@ -296,49 +358,30 @@ class Era5ZarrSource(Era5Source):
                 raise ResError("Filling is only intended to fill the last missing step")
             tmp = np.append(tmp, tmp[np.newaxis, -1, :, :], axis=0)
 
-        if self._flip_lat and not self._flip_lon:
-            self.data[name] = tmp[:, ::-1, :]
-        elif not self._flip_lat and self._flip_lon:
-            self.data[name] = tmp[:, :, ::-1]
-        elif self._flip_lat and self._flip_lon:
-            self.data[name] = tmp[:, ::-1, ::-1]
-        else:
-            self.data[name] = tmp
+        self.data[name] = tmp[:, :: -1 if self._flip_lat else 1, :: -1 if self._flip_lon else 1]
 
         if self._verbose:
             shape = tuple(self.data[name].shape)
             print(f"Loaded ERA5 Zarr variable '{variable}' as '{name}' with shape {shape}")
-            for label, dt in timings:
-                print(f"  {label:<28} {dt:8.2f} s")
 
-    def _load_with_fallback(
-        self, preferred_variable, fallback_variable, target_name, warning_message=None, fallback_processor=None
-    ):
-        if preferred_variable in self.variables.index:
-            return self.load(preferred_variable, name=target_name)
-        if fallback_variable in self.variables.index:
-            if warning_message is not None:
-                warnings.warn(warning_message, stacklevel=2)
-            return self.load(fallback_variable, name=target_name, processor=fallback_processor)
+    def _load_with_fallback(self, preferred_variable, fallback_variable, target_name, derived_warning=None):
+        for variable in (preferred_variable, fallback_variable):
+            if variable not in self.variables.index:
+                continue
+            if variable in self._derived_variables and derived_warning is not None:
+                warnings.warn(derived_warning, stacklevel=2)
+            self.load(variable, name=target_name)
+            if variable in self._derived_variables and np.all(np.isnan(self.data[target_name][0])):
+                warnings.warn(
+                    f"The first timestep of '{target_name}' ({self.time_index[0]}) is NaN because the raw "
+                    f"accumulation preceding the start of the store is not available. Drop or fill this "
+                    f"timestep, or start the requested 'time_slice' one hour later.",
+                    stacklevel=2,
+                )
+            return
         raise RuntimeError(
             f"Cannot load {target_name}: neither '{preferred_variable}' nor '{fallback_variable}' exist in the ERA5 Zarr store"
         )
-
-    @staticmethod
-    def _solar_accumulation_to_mean_power(arr):
-        """Convert ERA5 accumulated solar radiation (J/m²) to mean power (W/m²).
-
-        Mirrors the CDO pipeline ``-divc,3600 -shifttime,+1hour``:
-        - divide by 3600 (J m⁻² per hour → W m⁻²)
-        - shift by one time step so that adj[i] = raw[i-1]  (CDO shifttime +1 h
-          re-labels each record's timestamp one hour later, which in array terms
-          means the adjusted value at position i comes from the raw position i-1)
-        - fill the first step with 0 (no preceding accumulation available)
-        """
-        out = np.empty_like(arr, dtype=np.float64)
-        out[1:] = arr[:-1] / 3600.0
-        out[0] = 0.0
-        return out
 
     def sload_boundary_layer_height(self):
         return self._load_with_fallback(
@@ -352,11 +395,10 @@ class Era5ZarrSource(Era5Source):
             preferred_variable="fdir_t_adj",
             fallback_variable="fdir",
             target_name="direct_horizontal_irradiance",
-            warning_message=(
+            derived_warning=(
                 "Processed ERA5 direct horizontal irradiance ('fdir_t_adj') is not available in this Zarr store; "
                 "computing on the fly from raw 'fdir' (J/m² → W/m², time-shifted +1 h)."
             ),
-            fallback_processor=self._solar_accumulation_to_mean_power,
         )
 
     def sload_global_horizontal_irradiance(self):
@@ -364,11 +406,10 @@ class Era5ZarrSource(Era5Source):
             preferred_variable="ssrd_t_adj",
             fallback_variable="ssrd",
             target_name="global_horizontal_irradiance",
-            warning_message=(
+            derived_warning=(
                 "Processed ERA5 global horizontal irradiance ('ssrd_t_adj') is not available in this Zarr store; "
                 "computing on the fly from raw 'ssrd' (J/m² → W/m², time-shifted +1 h)."
             ),
-            fallback_processor=self._solar_accumulation_to_mean_power,
         )
 
     def get(

@@ -214,7 +214,13 @@ class WorkflowManager:
             if source_type == "ERA5":
                 time_slice = kwargs.pop("time_slice", None)
                 era5_kwargs = dict(kwargs)
-                if is_era5_zarr and time_slice is not None:
+                if time_slice is not None:
+                    if not is_era5_zarr:
+                        raise RuntimeError(
+                            "'time_slice' is only supported for Zarr-backed ERA5 sources; support for "
+                            "netCDF4-backed ERA5 sources is planned. Until then, restrict the time span "
+                            "of netCDF4 ERA5 data by selecting the corresponding files instead."
+                        )
                     era5_kwargs["time_slice"] = time_slice
                 source = source_constructor(source, bounds=self.ext, time_index_from=time_index_from, **era5_kwargs)
             else:

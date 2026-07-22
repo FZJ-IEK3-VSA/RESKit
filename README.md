@@ -82,12 +82,18 @@ pip install -e .
 
 RESKit can read ERA5 directly from regular latitude/longitude Zarr stores while keeping the existing `source_type="ERA5"` workflow API. The current implementation is intended for stores such as the [Earth Data Hub ERA5 single-level dataset](https://earthdatahub.destine.eu/collections/era5/datasets/reanalysis-era5-single-levels):
 
+Earth Data Hub requires authentication. Follow the credential instructions on
+the linked dataset page and save the generated credentials as `~/.netrc`
+(not in a directory on `PATH`). On shared systems, restrict access with
+`chmod 600 ~/.netrc`. The HTTPS backend will use those credentials
+automatically.
+
 ```python
 wf.read(
     variables=["surface_pressure", "surface_air_temperature", "elevated_wind_speed"],
     source_type="ERA5",
     source="https://data.earthdatahub.destine.eu/era5/reanalysis-era5-single-levels-v0.zarr",
-    chunks={"time": 48},
+    chunks={"valid_time": 48},
     time_slice=slice("2020-01-01", "2020-01-31 23:00:00"),
     set_time_index=True,
 )

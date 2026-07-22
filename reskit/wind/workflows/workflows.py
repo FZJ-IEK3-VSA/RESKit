@@ -97,8 +97,11 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
         limiting RAM requirements but may affect runtime. Should be
         adapted to individual computation system (roughly 7GB RAM per
         10k locations), by default 25 000.
-    time_slice : optional
-        Limit to limit the loaded time span from the weather source before reading weather variables.
+    time_slice : slice, optional
+        Limit the time span loaded from the ERA5 source. Only supported for
+        Zarr-backed ERA5 sources, where it is strongly recommended to avoid
+        loading whole multi-year cloud stores. Raises for netCDF4-backed ERA5
+        sources; support for those is planned.
 
     Returns
     -------

@@ -133,15 +133,71 @@ def test_Era5ZarrSource_solar_fallbacks(pt_Era5ZarrSource):
     with pytest.warns(UserWarning, match="computing on the fly from raw 'fdir'"):
         pt_Era5ZarrSource.sload("direct_horizontal_irradiance")
 
-    # On-the-fly processing: adj[i] = raw[i-1] / 3600, adj[0] = 0
-    # At step 0 the first value is filled with 0
-    assert np.allclose(pt_Era5ZarrSource.data["global_horizontal_irradiance"][0, 4, 2], 0.0)
-    assert np.allclose(pt_Era5ZarrSource.data["direct_horizontal_irradiance"][0, 4, 2], 0.0)
+    # On-the-fly processing: adj[i] = raw[i-1] / 3600. At the actual
+    # beginning of a store, no preceding accumulation is available.
+    assert np.isnan(pt_Era5ZarrSource.data["global_horizontal_irradiance"][0, 4, 2])
+    assert np.isnan(pt_Era5ZarrSource.data["direct_horizontal_irradiance"][0, 4, 2])
     # At step 1 the value equals raw step 0 / 3600
     # raw ssrd[0, lat=51.0, lon=6.25] = 500 + 0 + 51.0 + 6.25 = 557.25
     assert np.allclose(pt_Era5ZarrSource.data["global_horizontal_irradiance"][1, 4, 2], 557.25 / 3600)
     # raw fdir[0, lat=51.0, lon=6.25] = 200 + 0 + 51.0 + 6.25 = 257.25
     assert np.allclose(pt_Era5ZarrSource.data["direct_horizontal_irradiance"][1, 4, 2], 257.25 / 3600)
+
+
+def test_Era5ZarrSource_solar_fallback_preserves_slice_boundary(era5_zarr_store):
+    src = Era5ZarrSource(
+        str(era5_zarr_store),
+        time_slice=slice("2020-01-01 00:30:00", "2020-01-01 01:30:00"),
+        verbose=False,
+    )
+
+    with pytest.warns(UserWarning, match="computing on the fly from raw 'ssrd'"):
+        src.sload("global_horizontal_irradiance")
+
+    assert src.time_index.tolist() == [
+        pd.Timestamp("2020-01-01 00:30:00"),
+        pd.Timestamp("2020-01-01 01:30:00"),
+    ]
+    # The first requested value comes from raw step 0, outside the selected
+    # output range, rather than being replaced with zero.
+    assert np.allclose(src.data["global_horizontal_irradiance"][0, 4, 2], 557.25 / 3600)
+
+
+@pytest.mark.parametrize("time_index_from", [None, "direct_horizontal_irradiance", "elevated_wind_speed"])
+def test_Era5ZarrSource_time_index_from_does_not_shift_data(era5_zarr_store, time_index_from):
+    """'time_index_from' selects the reference variable, it must not move the time convention."""
+    src = Era5ZarrSource(str(era5_zarr_store), time_index_from=time_index_from, verbose=False)
+
+    src.sload("surface_pressure")
+    with pytest.warns(UserWarning, match="computing on the fly from raw 'fdir'"):
+        src.sload("direct_horizontal_irradiance")
+
+    # ERA5 time convention of RESKit: store timestamp - 30 minutes, independent of the reference variable
+    assert src.time_index.tolist() == [
+        pd.Timestamp("2019-12-31 23:30:00"),
+        pd.Timestamp("2020-01-01 00:30:00"),
+        pd.Timestamp("2020-01-01 01:30:00"),
+    ]
+    # instantaneous variable: sp[valid_time=1, lat=51.0, lon=6.25] = 100000 + 1 + 51.0 + 12.5
+    assert np.allclose(src.data["surface_pressure"][1, 4, 2], 100064.5)
+    # accumulated variable: adj[i] = raw[i-1] / 3600
+    assert np.allclose(src.data["direct_horizontal_irradiance"][1, 4, 2], 257.25 / 3600)
+
+
+def test_Era5ZarrSource_marks_derived_variables(pt_Era5ZarrSource):
+    variables = pt_Era5ZarrSource.variables
+
+    assert variables.loc["ssrd_t_adj", "derived_from"] == "ssrd"
+    assert variables.loc["fdir_t_adj", "derived_from"] == "fdir"
+    assert variables.loc["ssrd", "derived_from"] is None
+    assert variables.loc["sp", "derived_from"] is None
+
+
+def test_Era5ZarrSource_warns_on_nan_first_timestep(pt_Era5ZarrSource):
+    with pytest.warns(UserWarning, match="first timestep of 'global_horizontal_irradiance'"):
+        pt_Era5ZarrSource.sload("global_horizontal_irradiance")
+
+    assert np.isnan(pt_Era5ZarrSource.data["global_horizontal_irradiance"][0, 4, 2])
 
 
 def test_Era5ZarrSource_missing_variable_raises(era5_zarr_store):
