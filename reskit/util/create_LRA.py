@@ -707,6 +707,24 @@ def create_DNI_LRA(
 # last clip to the bounds of interest
 
 
+def _world_index_range(target_a: float, target_b: float, origin: float, step: float) -> tuple[int, int]:
+    """Index range of the pixel centers that lie within [target_a, target_b].
+
+    Indices are counted from a pixel center at ``origin`` in steps of ``step``, which may
+    be negative (as it is for the north-up row axis). The bracketing is deliberately
+    inclusive-by-truncation rather than nearest: when a target falls exactly halfway
+    between two pixel centers -- which happens whenever the raster's outer edge sits
+    exactly on +/-180 or +/-90 -- rounding to nearest can pick up a phantom index outside
+    the data and leave a column or row of NaNs that no later interpolation can fill.
+    """
+    k_a = (target_a - origin) / step
+    k_b = (target_b - origin) / step
+    lo, hi = min(k_a, k_b), max(k_a, k_b)
+
+    tol = 1e-9  # absorb float noise so an exactly-on-grid target is not pushed outwards
+    return int(np.ceil(lo - tol)), int(np.floor(hi + tol))
+
+
 def world_3x3_wrap(arr_center: np.ndarray, rInfo: object):
     """
     Build a 3x3 tiled array with correct pole-wrap and (optionally) return mosaic bounds.
@@ -740,16 +758,9 @@ def world_3x3_wrap(arr_center: np.ndarray, rInfo: object):
     y0 = ymax - rInfo.pixelHeight / 2.0
     dy = -rInfo.pixelHeight  # north-up (row index increases southward)
 
-    # Choose nearest achievable world pixel-center indices to +/-180 and +/-90
-    i_left = int(np.rint((-180.0 - x0) / rInfo.pixelWidth))
-    i_right = int(np.rint((180.0 - x0) / rInfo.pixelWidth))
-    if i_right < i_left:
-        i_left, i_right = i_right, i_left
-
-    j_top = int(np.rint((90.0 - y0) / dy))
-    j_bottom = int(np.rint((-90.0 - y0) / dy))
-    if j_bottom < j_top:
-        j_top, j_bottom = j_bottom, j_top
+    # Choose the world pixel-center indices bracketed by +/-180 and +/-90
+    i_left, i_right = _world_index_range(-180.0, 180.0, x0, rInfo.pixelWidth)
+    j_top, j_bottom = _world_index_range(90.0, -90.0, y0, dy)
 
     world_cols = i_right - i_left + 1
     world_rows = j_bottom - j_top + 1
