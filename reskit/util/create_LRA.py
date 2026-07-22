@@ -17,7 +17,7 @@ Typical usage (Python):
 It will write:
   - per-year merged NetCDFs (optional cache)
   - a final LRA NetCDF
-  - optionally, a GeoTIFF (requires rioxarray + rasterio)
+  - optionally, a GeoTIFF
 
 
 Input layouts supported:
@@ -31,7 +31,6 @@ from __future__ import annotations
 
 import argparse
 import glob
-import importlib.util
 import logging
 from pathlib import Path
 from typing import Iterable, Literal, Optional
@@ -42,8 +41,6 @@ import pandas as pd
 import geokit as gk
 
 LOG = logging.getLogger(__name__)
-
-_HAVE_RIOXARRAY = importlib.util.find_spec("rioxarray") is not None
 
 
 CombineMode = Literal["auto", "merge", "combine_by_coords"]
@@ -395,37 +392,83 @@ def pick_data_var(ds: xr.Dataset, data_var: Optional[str] = None) -> xr.DataArra
     raise ValueError(f"Dataset contains multiple data variables; specify --data-var. Available: {list(ds.data_vars)}")
 
 
+def _coordinate_name(da: xr.DataArray, candidates: tuple[str, ...], axis: str) -> str:
+    """Return the first of ``candidates`` present on ``da``."""
+    for name in candidates:
+        if name in da.coords:
+            return name
+    raise ValueError(f"Cannot determine the {axis} axis: none of {list(candidates)} found in the coordinates.")
+
+
+def _regular_grid_spacing(values: np.ndarray, axis: str) -> float:
+    """Return the (positive) spacing of an evenly spaced coordinate axis."""
+    if values.size < 2:
+        raise ValueError(f"Cannot determine the {axis} resolution from fewer than two coordinate values.")
+
+    steps = np.diff(values)
+    # a GeoTIFF has a single affine transform, so a non-uniform axis cannot be represented
+    if not np.allclose(steps, steps[0], rtol=0, atol=1e-6):
+        raise ValueError(
+            f"The {axis} coordinate is not evenly spaced and cannot be written to a GeoTIFF. "
+            f"Spacing ranges from {steps.min()} to {steps.max()}."
+        )
+
+    return float(abs(steps[0]))
+
+
 def write_geotiff_file(
     da: xr.DataArray,
     output_tiff_path: str | Path,
     crs: str = "EPSG:4326",
-    sort_lat_ascending: bool = False,
 ) -> None:
-    """Write a DataArray to GeoTIFF using rioxarray.
+    """Write a lat/lon DataArray to a GeoTIFF.
 
-    Requires optional dependencies: rioxarray, rasterio.
+    The raster is always stored north-up (first row at the northern edge), which is the
+    convention the rest of RESKit reads with ``geokit``. Bounds are derived from the
+    coordinates, which are taken to be pixel centers, so the written extent is the outer
+    edge of the corner pixels.
+
+    Parameters
+    ----------
+    da:
+        Data to write. Must carry a latitude (``latitude``/``lat``) and a longitude
+        (``longitude``/``lon``) coordinate, both evenly spaced.
+    output_tiff_path:
+        Destination path. Parent directories are created as needed.
+    crs:
+        Coordinate reference system of ``da``, in any form ``geokit.srs.loadSRS`` accepts.
     """
-    if not _HAVE_RIOXARRAY:  # pragma: no cover
-        raise RuntimeError(
-            "GeoTIFF export requires rioxarray (and rasterio). Install e.g. `pip install rioxarray rasterio`."
-        )
+    lat_name = _coordinate_name(da, ("latitude", "lat"), axis="latitude")
+    lon_name = _coordinate_name(da, ("longitude", "lon"), axis="longitude")
 
-    da_out = da
-    if sort_lat_ascending:
-        if any(coord in da_out.coords for coord in ("lat", "latitude")):
-            da_out = da_out.sortby("latitude", ascending=True)
-        else:
-            raise ValueError("Cannot sort latitude ascending: no 'lat' or 'latitude' coordinate found.")
-    else:
-        if any(coord in da_out.coords for coord in ("lat", "latitude")):
-            da_out = da_out.sortby("latitude", ascending=False)
-        else:
-            raise ValueError("Cannot sort latitude descending: no 'lat' or 'latitude' coordinate found.")
+    # north-up: descending latitude, ascending longitude
+    da_out = da.sortby(lat_name, ascending=False).sortby(lon_name, ascending=True)
 
-    da_out = da_out.rio.write_crs(crs)
+    lats = da_out[lat_name].values
+    lons = da_out[lon_name].values
+    pixel_height = _regular_grid_spacing(lats, axis="latitude")
+    pixel_width = _regular_grid_spacing(lons, axis="longitude")
+
+    # coordinates are pixel centers, bounds are outer edges
+    bounds = (
+        float(lons[0]) - pixel_width / 2.0,
+        float(lats[-1]) - pixel_height / 2.0,
+        float(lons[-1]) + pixel_width / 2.0,
+        float(lats[0]) + pixel_height / 2.0,
+    )
+
     output_tiff_path = Path(output_tiff_path)
     output_tiff_path.parent.mkdir(parents=True, exist_ok=True)
-    da_out.rio.to_raster(output_tiff_path)
+
+    gk.raster.createRaster(
+        bounds=bounds,
+        output=str(output_tiff_path),
+        pixelWidth=pixel_width,
+        pixelHeight=pixel_height,
+        srs=crs,
+        dtype=str(da_out.dtype),
+        data=da_out.values,
+    )
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
@@ -476,7 +519,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "--write-geotiff",
         action="store_true",
         dest="write_geotiff",
-        help="Also write GeoTIFF of the selected data variable (requires rioxarray+rasterio)",
+        help="Also write GeoTIFF of the selected data variable",
     )
     p.add_argument(
         "--log-level",
@@ -569,8 +612,7 @@ def create_LRA(
         If provided, use this name for the variable in the output filenames
         instead of the input ``variable``.
     write_geotiff:
-        If True, also export a GeoTIFF (requires optional dependencies
-        ``rioxarray`` + ``rasterio``).
+        If True, also export a GeoTIFF.
     write_netcdf:
         If True, write the NetCDF output (default: always False).
     log_level:
