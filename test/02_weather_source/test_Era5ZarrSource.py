@@ -90,7 +90,7 @@ def test_Era5ZarrSource_wraps_360_longitudes(tmp_path):
     src.sload("surface_pressure")
 
     out = src.get("surface_pressure", [(-0.1, 50.25)], interpolation="near")
-    expected = pd.Series([4, 13], index=src.time_index, name="(-0.1, 50.25)")
+    expected = pd.Series([4, 13], index=src.time_index, name="(-0.1, 50.25)", dtype=out.dtype)
     pd.testing.assert_series_equal(out, expected)
 
 
