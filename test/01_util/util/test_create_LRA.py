@@ -82,7 +82,9 @@ def test_list_tiled_nc_files_finds_all_tiles_of_a_year(tmp_path):
     hits = _list_tiled_nc_files(tmp_path, year=2000, variable=VARIABLE, zoom_level=4)
 
     assert len(hits) == 2
-    assert all("/2000/" in str(p) for p in hits)
+    # the tiled layout puts each file directly below its year, so compare path components
+    # rather than substrings of the path -- the separator differs between platforms
+    assert all(p.parent.name == "2000" for p in hits)
     # sorted and free of duplicates
     assert hits == sorted(set(hits))
 
@@ -100,7 +102,7 @@ def test_list_tiled_nc_files_ignores_other_variables(tmp_path):
     hits = _list_tiled_nc_files(tmp_path, year=2000, variable=VARIABLE, zoom_level=4)
 
     assert len(hits) == 2
-    assert all(str(p).endswith(f".{VARIABLE}.nc") for p in hits)
+    assert all(p.name.endswith(f".{VARIABLE}.nc") for p in hits)
 
 
 def test_find_single_year_nc_file(tmp_path):
