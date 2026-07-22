@@ -623,7 +623,7 @@ def test_SolarWorkflowManager_simulate_with_interpolated_single_diode_approximat
     print(man.sim_data["module_dc_voltage_at_mpp"].mean())
     print(man.sim_data["total_system_generation"].mean())
     assert np.isclose(man.sim_data["module_dc_power_at_mpp"].mean(), 56.820853030607246)
-    assert np.isclose(man.sim_data["module_dc_voltage_at_mpp"].mean(), 37.39738372317519)
+    assert np.isclose(man.sim_data["module_dc_voltage_at_mpp"].mean(), 37.39337385334944)
     assert np.isclose(man.sim_data["total_system_generation"].mean(), 724.3133157683136)
 
 

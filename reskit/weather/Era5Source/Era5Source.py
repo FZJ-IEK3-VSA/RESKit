@@ -102,6 +102,53 @@ class Era5Source(NCSource):
     MAX_LON_DIFFERENCE = 0.26
     MAX_LAT_DIFFERENCE = 0.26
 
+    # Maps CDS API variable names to the short names they carry inside the
+    # downloaded NetCDF file. This is the single source of truth for the naming
+    # convention that the ``sload_*`` loaders below rely on (e.g. "surface_pressure"
+    # in the CDS request becomes "sp" in the file, which is what ``sload_surface_pressure``
+    # reads). Keep this in sync when adding a loader for a new ERA5 variable.
+    CDS_TO_NC_NAME = {
+        "10m_u_component_of_wind": "u10",
+        "10m_v_component_of_wind": "v10",
+        "100m_u_component_of_wind": "u100",
+        "100m_v_component_of_wind": "v100",
+        "2m_dewpoint_temperature": "d2m",
+        "2m_temperature": "t2m",
+        "surface_pressure": "sp",
+        "boundary_layer_height": "blh",
+        "forecast_surface_roughness": "fsr",
+        "surface_solar_radiation_downwards": "ssrd",
+        "total_sky_direct_solar_radiation_at_surface": "fdir",
+    }
+
+    # NC short names that are consumed by ERA5 preprocessing and replaced by
+    # derived outputs (e.g. u100+v100 -> ws100, ssrd -> ssrd_t_adj). These raw
+    # variables should not be tiled/kept as-is for simulation.
+    PREPROCESSED_NC_NAMES = {"u10", "v10", "u100", "v100", "ssrd", "fdir"}
+
+    @classmethod
+    def raw_passthrough_variables(cls, cds_variables):
+        """Return the NC short names that are used raw from the ERA5 download — i.e. the
+        variables that survive preprocessing unchanged, with the ones that get replaced by
+        a preprocessed/derived output (see ``PREPROCESSED_NC_NAMES``) removed.
+
+        Parameters
+        ----------
+        cds_variables : iterable of str
+            The ERA5 CDS API variable names a workflow requires
+            (e.g. ``["2m_temperature", "surface_pressure", "100m_u_component_of_wind"]``).
+
+        Returns
+        -------
+        list of str
+            The corresponding NC short names that pass through unmodified.
+        """
+        return [
+            cls.CDS_TO_NC_NAME[cds_name]
+            for cds_name in cds_variables
+            if cds_name in cls.CDS_TO_NC_NAME and cls.CDS_TO_NC_NAME[cds_name] not in cls.PREPROCESSED_NC_NAMES
+        ]
+
     def __init__(self, source, bounds=None, index_pad=5, time_index_from=None, **kwargs):
         """Initialize a ERA5 style netCDF4 file source
 
@@ -192,61 +239,68 @@ class Era5Source(NCSource):
         """
         return self.load("blh", "boundary_layer_height")
 
-    def sload_elevated_wind_speed(self):
-        """Standard loader function for the variable 'elevated_wind_speed'
-
-        Automatically reads the variables "ws<X>" from the given ERA5 source and saves
-        it as the variable 'elevated_wind_speed' in the data library
-
-        Where '<X>' is the height specified by `Era5Source.ELEVATED_WIND_SPEED_HEIGHT`
-
-        The "ws<X>" variable also needs to be precomputed from the raw variables "u<X>"
-            and "v<X>"
-
-        TODO: Update function to also be able to handle raw ERA5 inputs for u & v
+    def _sload_wind_speed(self, height, target_name, force_load_uv=False):
         """
-        return self.load("ws{}".format(self.ELEVATED_WIND_SPEED_HEIGHT), "elevated_wind_speed")
+        Generic loader for wind speed variables.
+        logic:
+        1) if ws<height> exists, load it directly
+        2) else, compute from u<height> and v<height>
+        3) finally, store in target_name
+        4) raise error if neither ws<height> nor both u and v exist
+
+        Parameters
+        ----------
+        height : int
+            Wind speed height (e.g. 10, 100)
+        target_name : str
+            Name to store in self.data
+
+        """
+        ws_var = f"ws{height}"
+        u_var = f"u{height}"
+        v_var = f"v{height}"
+
+        # --------------------------------------
+        # Case 1: precomputed wind speed exists
+        # --------------------------------------
+        if not force_load_uv and (ws_var in self.variables.index):
+            self.load(variable=ws_var, name=target_name)
+            return
+
+        # --------------------------------------
+        # Case 2: compute from u and v
+        # --------------------------------------
+        # Explicit protection: both components must exist
+        missing_uv = [var for var in (u_var, v_var) if var not in self.variables.index]
+        if missing_uv:
+            raise RuntimeError(
+                f"Cannot load {target_name}: "
+                f"not found precomputed variable '{ws_var}' and "
+                f"missing required variable(s): {', '.join(missing_uv)}"
+            )
+
+        # direct calculate from u and v
+        self.load(variable=v_var, name=v_var)
+        self.load(variable=u_var, name=u_var)
+        self.data[target_name] = np.sqrt(self.data[u_var] ** 2 + self.data[v_var] ** 2)
+        self.data.pop(u_var, None)
+        self.data.pop(v_var, None)
+
+    def sload_elevated_wind_speed(self):
+        """Standard loader function for the variable 'elevated_wind_speed'"""
+        return self._sload_wind_speed(height=self.ELEVATED_WIND_SPEED_HEIGHT, target_name="elevated_wind_speed")
 
     def sload_surface_wind_speed(self):
-        """Standard loader function for the variable 'surface_wind_speed'
-
-        Automatically reads the variables "ws<X>" from the given ERA5 source and saves
-        it as the variable 'surface_wind_speed' in the data library
-
-        Where '<X>' is the height specified by `Era5Source.SURFACE_WIND_SPEED_HEIGHT`
-
-        The "ws<X>" variable also needs to be precomputed from the raw variables "u<X>"
-            and "v<X>"
-
-        TODO: Update function to also be able to handle raw ERA5 inputs for u & v
-        """
-        return self.load("ws{}".format(self.SURFACE_WIND_SPEED_HEIGHT), "surface_wind_speed")
+        """Standard loader function for the variable 'surface_wind_speed'"""
+        return self._sload_wind_speed(height=self.SURFACE_WIND_SPEED_HEIGHT, target_name="surface_wind_speed")
 
     def sload_wind_speed_at_100m(self):
-        """Standard loader function for the variable 'wind_speed_at_100m'
-
-        Automatically reads the variables "ws100" from the given ERA5 source and saves
-        it as the variable 'wind_speed_at_100m' in the data library
-
-        The "ws100" variable also needs to be precomputed from the raw variables "u100"
-            and "v100"
-
-        TODO: Update function to also be able to handle raw ERA5 inputs for u & v
-        """
-        return self.load("ws100", "wind_speed_at_100m")
+        """Standard loader function for the variable 'wind_speed_at_100m'"""
+        return self._sload_wind_speed(height=100, target_name="wind_speed_at_100m")
 
     def sload_wind_speed_at_10m(self):
-        """Standard loader function for the variable 'wind_speed_at_10m'
-
-        Automatically reads the variables "ws10" from the given ERA5 source and saves
-        it as the variable 'wind_speed_at_10m' in the data library
-
-        The "ws10" variable also needs to be precomputed from the raw variables "u10"
-            and "v10"
-
-        TODO: Update function to also be able to handle raw ERA5 inputs for u & v
-        """
-        return self.load("ws10", "wind_speed_at_10m")
+        """Standard loader function for the variable 'wind_speed_at_10m'"""
+        return self._sload_wind_speed(height=10, target_name="wind_speed_at_10m")
 
     def sload_elevated_wind_direction(self):
         """Standard loader function for the variable 'elevated_wind_direction'
@@ -327,3 +381,43 @@ class Era5Source(NCSource):
         variable 'global_horizontal_irradiance' in the data library
         """
         return self.load("ssrd_t_adj", name="global_horizontal_irradiance")
+
+    def sload_snow_albedo(self):
+        """Standard loader function for the variable 'snow_albedo'
+
+        unit: dimensionless, instantaneous
+
+        Automatically reads the variable "asn" from the given ERA5 source and saves it as the
+        variable 'snow_albedo' in the data library
+        """
+        return self.load("asn", name="snow_albedo")
+
+    def sload_snow_density(self):
+        """Standard loader function for the variable 'snow_density'
+
+        unit: kg/m^3, instantaneous
+
+        Automatically reads the variable "rsn" from the given ERA5 source and saves it as the
+        variable 'snow_density' in the data library
+        """
+        return self.load("rsn", name="snow_density")
+
+    def sload_snow_depth_water_equivalent(self):
+        """Standard loader function for the variable 'snow_depth_water_equivalent'
+
+        unit: meters, instantaneous
+
+        Automatically reads the variable "sd" from the given ERA5 source and saves it as the
+        variable 'snow_depth_water_equivalent' in the data library
+        """
+        return self.load("sd", name="snow_depth_water_equivalent")
+
+    def sload_snowfall_water_equivalent(self):
+        """Standard loader function for the variable 'snowfall_water_equivalent'
+
+        unit: meters per time step, accumulation
+
+        Automatically reads the variable "sf" from the given ERA5 source and saves it as the
+        variable 'snowfall_water_equivalent' in the data library
+        """
+        return self.load("sf", name="snowfall_water_equivalent")

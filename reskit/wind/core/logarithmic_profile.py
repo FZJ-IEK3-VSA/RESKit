@@ -296,6 +296,9 @@ def roughness_from_clc(clc_path, loc, window_range=0):
 
     # Get pixels values from clc
     clcGridValues = gk.raster.interpolateValues(clc_path, loc, winRange=window_range, noDataOkay=True)
+    # interpolateValues returns a scalar for a single location; ensure an array so the
+    # downstream item-assignment/iteration works regardless of the number of locations
+    clcGridValues = np.atleast_1d(clcGridValues)
 
     # make output array
     if window_range > 0:
