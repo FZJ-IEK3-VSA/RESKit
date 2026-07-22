@@ -326,7 +326,7 @@ def openfield_pv_era5(
 
     wf.adjust_variable_to_long_run_average(
         variable="global_horizontal_irradiance",
-        source_long_run_average=rk_weather.Era5Source.LONG_RUN_AVERAGE_GHI_LEGACY,
+        source_long_run_average=rk_weather.Era5Source.LONG_RUN_AVERAGE_GHI_2020_03,
         real_long_run_average=global_solar_atlas_ghi_path,
         real_lra_scaling=1000 / 24,  # cast to hourly average kWh
         nodata_fallback=GHI_nodata_fallback,
@@ -335,7 +335,7 @@ def openfield_pv_era5(
 
     wf.adjust_variable_to_long_run_average(
         variable="direct_normal_irradiance",
-        source_long_run_average=rk_weather.Era5Source.LONG_RUN_AVERAGE_DNI_LEGACY,
+        source_long_run_average=rk_weather.Era5Source.LONG_RUN_AVERAGE_DNI_2020_03,
         real_long_run_average=global_solar_atlas_dni_path,
         real_lra_scaling=1000 / 24,  # cast to hourly average kWh
         nodata_fallback=DNI_nodata_fallback,

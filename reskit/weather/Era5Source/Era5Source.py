@@ -32,42 +32,61 @@ class Era5Source(NCSource):
             The suggested altitude of wind speed data to use for wind-energy simulations
 
         LONG_RUN_AVERAGE_WINDSPEED :
-            <RESKit path>/weather/Era5Source/data/ERA5_wind_speed_100m_mean.tiff
-
             A path to a raster file with the long-time average wind speed in each grid cell
             * Can be used in wind energy simulations
-            * Calculated at the height specified in `WIND_SPEED_HEIGHT_FOR_WIND_ENERGY`
-            * Time range includes 1980 until the end of 2019 (the time of first calculation)
+            * Calculated at the height specified in `ELEVATED_WIND_SPEED_HEIGHT`
+            * Averaged over 2008 until the end of 2017
             * The averaging is performed globally
 
         LONG_RUN_AVERAGE_WINDDIR :
-            <RESKit path>/weather/Era5Source/data/ERA5_wind_direction_100m_mean.tiff
-
             A path to a raster file with the long-time average wind direction in each grid cell
             * Can be used in wind energy simulations
-            * Calculated at the height specified in `WIND_SPEED_HEIGHT_FOR_WIND_ENERGY`
-            * Time range includes 1980 until the end of 2019 (the time of first calculation)
+            * Calculated at the height specified in `ELEVATED_WIND_SPEED_HEIGHT`
+            * Averaged over 2008 until the end of 2017
             * The averaging is performed globally
 
         LONG_RUN_AVERAGE_GHI :
-            <RESKit path>/weather/Era5Source/data/ERA5_surface_solar_radiation_downwards_mean.tiff
-
             A path to a raster file with the long-time average global horizontal irradiance in
                 each grid cell
             * Can be used in solar energy simulations
             * Calculated at the surface
-            * Time range includes 1980 until the end of 2019 (the time of first calculation)
+            * Averaged over 1994 until the end of 2018
             * The averaging is performed globally
 
-        LONG_RUN_AVERAGE_DNI :
-            <RESKit path>/weather/Era5Source/data/ERA5_total_sky_direct_solar_radiation_at_surface_mean.tiff
-
+        LONG_RUN_AVERAGE_DHI :
             A path to a raster file with the long-time average direct horizontal irradiance in
                 each grid cell
             * Can be used in solar energy simulations
             * Calculated at the surface and on a horizontal plane (not DNI!)
-            * Time range includes 1980 until the end of 2019 (the time of first calculation)
+            * Averaged over 1994 until the end of 2018
             * The averaging is performed globally
+
+        LONG_RUN_AVERAGE_DNI :
+            A path to a raster file with the long-time average direct normal irradiance in
+                each grid cell
+            * Can be used in solar energy simulations
+            * Derived from the direct horizontal irradiance and the solar elevation angle
+            * Averaged over 1994 until the end of 2018
+            * The averaging is performed globally
+
+    Versioning of the LRA rasters
+    -----------------------------
+    Each LRA raster carries the year and month it was added to RESKit as a suffix (its
+    "vintage", e.g. ``_2026_07``), on both the file name and the constant. A vintage is
+    never modified after it has been committed, so a simulation that pins a suffixed
+    constant stays reproducible even as newer rasters are added:
+
+        # follows the current recommendation, may change between RESKit versions
+        Era5Source.LONG_RUN_AVERAGE_GHI
+
+        # pinned, will always be this exact raster
+        Era5Source.LONG_RUN_AVERAGE_GHI_2026_07
+
+    The unsuffixed names are aliases for the current vintage. Superseded vintages remain
+    available under their own suffix (e.g. ``LONG_RUN_AVERAGE_GHI_2020_03``).
+
+    Note that the vintage records *when the raster was added*, which is independent of the
+    period it averages over -- the averaging period is part of the file name instead.
 
 
     See Also
@@ -80,24 +99,54 @@ class Era5Source(NCSource):
     ELEVATED_WIND_SPEED_HEIGHT = 100
     SURFACE_WIND_SPEED_HEIGHT = 10
 
-    LONG_RUN_AVERAGE_WINDSPEED_LEGACY = join(dirname(__file__), "data", "ERA5_wind_speed_100m_mean.tiff")
-    LONG_RUN_AVERAGE_GHI_LEGACY = join(dirname(__file__), "data", "ERA5_surface_solar_radiation_downwards_mean.tiff")
-    LONG_RUN_AVERAGE_DNI_LEGACY = join(dirname(__file__), "data", "ERA5_DNI_mean.tif")
+    # ---------------------------------------------------------------------------------------
+    # Long-run average (LRA) rasters.
+    #
+    # LRA rasters are versioned by the year and month in which they were added to RESKit
+    # (the "vintage", e.g. ``_2026_07``), not by the years they average over -- the averaging
+    # period is already part of the file name. A vintage is never modified once committed, so
+    # pinning a suffixed constant keeps results reproducible across RESKit versions.
+    #
+    # The unsuffixed constants below are aliases for the current vintage. Repoint them when a
+    # newer vintage supersedes the old one, and keep the superseded constants (and their
+    # rasters) in place.
+    # ---------------------------------------------------------------------------------------
 
-    DNI_90_PERC_QUANT = join(dirname(__file__), "data", "ERA5_DNI_percentile_90_2000_to_2020.tif")
-
-    # These were created with create_DNI_LRA and create_LRA
-    LONG_RUN_AVERAGE_WINDSPEED_2008TO2017 = join(dirname(__file__), "data", "ERA5_wind_speed_100m_mean_2008to2017.tiff")
-    LONG_RUN_AVERAGE_WINDSPEED = join(dirname(__file__), "data", "ERA5_wind_speed_100m_mean_2008to2017_global.tiff")
-    LONG_RUN_AVERAGE_WINDDIR = join(
-        dirname(__file__), "data", "ERA5_100m_wind_direction.processed_2008_2017_mean_global.tiff"
+    # -- 2026_07: global coverage, reproducible with reskit.util.create_LRA / create_DNI_LRA --
+    LONG_RUN_AVERAGE_WINDSPEED_2026_07 = join(
+        dirname(__file__), "data", "ERA5_100m_wind_speed.processed_2008_2017_mean_global_2026_07.tiff"
     )
-    LONG_RUN_AVERAGE_GHI = join(
+    LONG_RUN_AVERAGE_WINDDIR_2026_07 = join(
+        dirname(__file__), "data", "ERA5_100m_wind_direction.processed_2008_2017_mean_global_2026_07.tiff"
+    )
+    LONG_RUN_AVERAGE_GHI_2026_07 = join(
         dirname(__file__),
         "data",
-        "ERA5_surface_solar_radiation_downwards.processed.t_adjusted_1994_2018_mean_global.tiff",
+        "ERA5_surface_solar_radiation_downwards.processed.t_adjusted_1994_2018_mean_global_2026_07.tiff",
     )
-    LONG_RUN_AVERAGE_DNI = join(dirname(__file__), "data", "ERA5_DNI_1994_2018_mean_global.tiff")
+    LONG_RUN_AVERAGE_DHI_2026_07 = join(
+        dirname(__file__),
+        "data",
+        "ERA5_total_sky_direct_solar_radiation_at_surface.processed.t_adjusted_1994_2018_mean_global_2026_07.tiff",
+    )
+    LONG_RUN_AVERAGE_DNI_2026_07 = join(dirname(__file__), "data", "ERA5_DNI_1994_2018_mean_global_2026_07.tiff")
+
+    # -- 2020_03: original rasters, incomplete coverage towards the antimeridian and the poles --
+    LONG_RUN_AVERAGE_WINDSPEED_2020_03 = join(dirname(__file__), "data", "ERA5_wind_speed_100m_mean.tiff")
+    LONG_RUN_AVERAGE_GHI_2020_03 = join(dirname(__file__), "data", "ERA5_surface_solar_radiation_downwards_mean.tiff")
+    LONG_RUN_AVERAGE_DNI_2020_03 = join(dirname(__file__), "data", "ERA5_DNI_mean.tif")
+
+    # -- Current vintage --
+    LONG_RUN_AVERAGE_WINDSPEED = LONG_RUN_AVERAGE_WINDSPEED_2026_07
+    LONG_RUN_AVERAGE_WINDDIR = LONG_RUN_AVERAGE_WINDDIR_2026_07
+    LONG_RUN_AVERAGE_GHI = LONG_RUN_AVERAGE_GHI_2026_07
+    LONG_RUN_AVERAGE_DHI = LONG_RUN_AVERAGE_DHI_2026_07
+    LONG_RUN_AVERAGE_DNI = LONG_RUN_AVERAGE_DNI_2026_07
+
+    # -- Not vintage-versioned: distinct products rather than successive LRA generations --
+    # Averaged over 2008-2017 only, for comparability with the GWA-corrected wind workflows.
+    LONG_RUN_AVERAGE_WINDSPEED_2008TO2017 = join(dirname(__file__), "data", "ERA5_wind_speed_100m_mean_2008to2017.tiff")
+    DNI_90_PERC_QUANT = join(dirname(__file__), "data", "ERA5_DNI_percentile_90_2000_to_2020.tif")
 
     MAX_LON_DIFFERENCE = 0.26
     MAX_LAT_DIFFERENCE = 0.26

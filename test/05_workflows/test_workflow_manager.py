@@ -174,7 +174,7 @@ def test_WorkflowManager_adjust_variable_to_long_run_average(
     man = pt_WorkflowManager_loaded
     man.adjust_variable_to_long_run_average(
         "elevated_wind_speed",
-        source_long_run_average=rk.weather.Era5Source.LONG_RUN_AVERAGE_WINDSPEED_LEGACY,
+        source_long_run_average=rk.weather.Era5Source.LONG_RUN_AVERAGE_WINDSPEED_2020_03,
         real_long_run_average=TEST_DATA["gwa100-like.tif"],
         real_lra_scaling=1,
         spatial_interpolation="linear-spline",
@@ -204,7 +204,7 @@ def test_WorkflowManager_adjust_variable_to_long_run_average_() -> WorkflowManag
     wf.sim_data["test_nearest"] = np.ones(shape=(1, placements.shape[0]))
     wf.adjust_variable_to_long_run_average(
         variable="test_nearest",
-        source_long_run_average=rk.weather.Era5Source.LONG_RUN_AVERAGE_GHI_LEGACY,
+        source_long_run_average=rk.weather.Era5Source.LONG_RUN_AVERAGE_GHI_2020_03,
         real_long_run_average=TEST_DATA["gsa-ghi-like.tif"],
         real_lra_scaling=1000 / 24,  # cast to hourly average kWh
         nodata_fallback=np.nan,
@@ -218,7 +218,7 @@ def test_WorkflowManager_adjust_variable_to_long_run_average_() -> WorkflowManag
     wf.sim_data["test_source"] = np.ones(shape=(1, placements.shape[0]))
     wf.adjust_variable_to_long_run_average(
         variable="test_source",
-        source_long_run_average=rk.weather.Era5Source.LONG_RUN_AVERAGE_GHI_LEGACY,
+        source_long_run_average=rk.weather.Era5Source.LONG_RUN_AVERAGE_GHI_2020_03,
         real_long_run_average=TEST_DATA["gsa-ghi-like.tif"],
         real_lra_scaling=1000 / 24,  # cast to hourly average kWh
         nodata_fallback=1.0,  # 1.0 means 1.0 x source data (no real_lra_scaling)
@@ -235,7 +235,7 @@ def test_WorkflowManager_adjust_variable_to_long_run_average_() -> WorkflowManag
     wf.sim_data["test_source_deprecated"] = np.ones(shape=(1, placements.shape[0]))
     wf.adjust_variable_to_long_run_average(
         variable="test_source_deprecated",
-        source_long_run_average=rk.weather.Era5Source.LONG_RUN_AVERAGE_GHI_LEGACY,
+        source_long_run_average=rk.weather.Era5Source.LONG_RUN_AVERAGE_GHI_2020_03,
         real_long_run_average=TEST_DATA["gsa-ghi-like.tif"],
         real_lra_scaling=1000 / 24,  # cast to hourly average kWh
         nodata_fallback="source",  # deprecated, but must yield the same result
@@ -253,7 +253,7 @@ def test_WorkflowManager_adjust_variable_to_long_run_average_() -> WorkflowManag
     wf.sim_data["test_callable"] = np.ones(shape=(1, placements.shape[0]))
     wf.adjust_variable_to_long_run_average(
         variable="test_callable",
-        source_long_run_average=rk.weather.Era5Source.LONG_RUN_AVERAGE_GHI_LEGACY,
+        source_long_run_average=rk.weather.Era5Source.LONG_RUN_AVERAGE_GHI_2020_03,
         real_long_run_average=TEST_DATA["gsa-ghi-like.tif"],
         real_lra_scaling=1000 / 24,  # cast to hourly average kWh
         nodata_fallback=my_test_function,  # should yield 2 x source data (no real_lra_scaling)
@@ -280,7 +280,7 @@ def test_WorkflowManager_adjust_variable_to_long_run_average_() -> WorkflowManag
     wf2.sim_data["test_raster"] = np.ones(shape=(1, placements.shape[0]))
     wf2.adjust_variable_to_long_run_average(
         variable="test_raster",
-        source_long_run_average=rk.weather.Era5Source.LONG_RUN_AVERAGE_GHI_LEGACY,
+        source_long_run_average=rk.weather.Era5Source.LONG_RUN_AVERAGE_GHI_2020_03,
         real_long_run_average=TEST_DATA["clc-aachen_clipped.tif"],
         real_lra_scaling=1000 / 24,  # cast to hourly average kWh
         nodata_fallback=TEST_DATA["gsa-ghi-like.tif"],
