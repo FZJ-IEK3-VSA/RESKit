@@ -51,7 +51,6 @@ CombineMode = Literal["auto", "merge", "combine_by_coords"]
 
 def _list_tiled_nc_files(base_path: Path, year: int, variable: str, zoom_level: int) -> list[Path]:
     """List files in the tiled RESKit layout for a given year."""
-
     base_path = Path(base_path)
     zoom_dir = base_path / str(zoom_level)
     if not zoom_dir.exists():
@@ -67,7 +66,6 @@ def _find_single_year_nc_file(base_path: Path, year: int, variable: str) -> Path
 
     In the non-tiled case, the expectation is: one NetCDF per year.
     """
-
     base_path = Path(base_path)
     patterns = [
         f"{base_path}/{year}/*.{variable}.nc",
@@ -124,7 +122,6 @@ def load_era5_year(
       correct operation.
     - If tiles contain distinct data variables (less common), xarray merge is ok.
     """
-
     base_path = Path(base_path)
 
     tiled_files = _list_tiled_nc_files(base_path, year, variable, zoom_level)
@@ -161,7 +158,6 @@ def create_long_run_average(
     weather_source_prefix: Optional[str] = None,
 ) -> xr.Dataset:
     """Create a long-run average dataset across years (inclusive)."""
-
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -356,7 +352,6 @@ def create_long_run_average_DNI(
     weather_source_prefix: Optional[str] = None,
 ) -> xr.Dataset:
     """Create a long-run average dataset across years (inclusive)."""
-
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -410,7 +405,6 @@ def write_geotiff_file(
 
     Requires optional dependencies: rioxarray, rasterio.
     """
-
     if not _HAVE_RIOXARRAY:  # pragma: no cover
         raise RuntimeError(
             "GeoTIFF export requires rioxarray (and rasterio). Install e.g. `pip install rioxarray rasterio`."
@@ -592,7 +586,6 @@ def create_LRA(
     xarray.Dataset
         The computed long-run average dataset.
     """
-
     logging.basicConfig(level=getattr(logging, log_level), format="%(levelname)s %(message)s")
 
     out_dir = Path(out_dir)
