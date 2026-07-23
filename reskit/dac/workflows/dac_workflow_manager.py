@@ -173,7 +173,7 @@ class DACWorkflowManager(WorkflowManager):
         if fillMethod == "offTmin":
             # fill RH values outside range by nearest and force no operation below/above T bounds by setting relProd=0
             Tmin = self.dac_data["T"].min()
-            fill_outputs["relProd"][self.sim_data["surface_air_temperature"] < Tmin] = 0
+            fill_outputs.loc[self.sim_data["surface_air_temperature"] < Tmin, "relProd"] = 0
 
         # combine:
         for prop in properties:
