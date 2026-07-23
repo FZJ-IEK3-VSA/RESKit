@@ -17,6 +17,8 @@ dependencies:
   - geokit >=1.6.0,<=1.9.0
   - netcdf4 >=1.6.4,<=1.7.4
   - xarray >=2023.4.1,!=2025.9.1,<=2026.4.0
+  - zarr >=2.18.3,<3
+  - gcsfs >=2024.10.0
   - pvlib-python >=0.10.0,<=0.15.2
   - windpowerlib =0.2.1
   - cdsapi <=0.7.7

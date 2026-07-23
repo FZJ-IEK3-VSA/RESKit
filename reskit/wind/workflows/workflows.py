@@ -19,11 +19,13 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
     era5_path,
     gwa_100m_path,
     height_scaling_data,
+    height_scaling_method=("lra", "linear"),
     gwa_nodata_fallback=1.0,
     output_netcdf_path=None,
     cf_correction=True,
     output_variables=None,
     max_batch_size=15000,
+    time_slice=None,
     **simulate_kwargs,
 ):
     """
@@ -46,11 +48,31 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
         Path to the ERA5 data.
     gwa_100m_path : str
         Path to the Global Wind Atlas v4 (GWA4) at 100m [4] raster file.
-    height_scaling_data : dict
-        The data required for the height_scaling_method ("lra", "linear").
-        Dict with integer heights as keys and str paths to the Global Wind Atlas
-        windspeeds [4] at the respective heights as values. Must contain at
-        least one higher and one lower height than 100 [m].
+    height_scaling_data : dict | str
+        The data required for the height_scaling_method. If height_scaling_method[0]
+        (below) is "lra" (e.g. ("lra", "linear"), see default), a dict with integer
+        heights as keys and str paths to the Global Wind Atlas windspeeds [4] at the
+        respective heights as values is expected. Must contain at least one higher
+        and one lower height than 100 [m] then. If height_scaling_method[0] (below)
+        is "log", then a str filepath to the defined landcover raster is expected.
+    height_scaling_method : tuple | list | None, optional
+        The method to project the windspeeds from the default height (here
+        100m in ERA-5/GWA4) to hub height (possibly affected by the planetary
+        boundary layer height). First tuple/list entry (str) describes the
+        general approach (e.g. logarithmic scaling or based on long-run-average
+        windspeed interpolation). Options are:
+        ("lra", [vertical method]) : Calculation based on the long-run average
+            wind speeds (e.g. GWA) of the 2 nearest available height levels.
+            [vertical method] (str) describes the form of interpolation, e.g.
+            "linear". ("lra", "linear") was used for publication [3].
+        ("log", [landcover]) : Logarithmic height scaling based on surface
+            roughness defined via a mapping of the land cover category.
+            [landcover] (str) defines the landcover data used for roughness
+            mapping. All landcover types accepted as land_cover_type in
+            logarithmic_profile.roughness_from_land_cover_classification() are
+            allowed..
+        None : No height scaling will be applied when None.
+        By default ("lra", "linear").
     gwa_nodata_fallback : str, optional
         If no GWA data is available, use for simulation:
         (1) float value for a multiple of the respective ERA-5 value
@@ -75,6 +97,11 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
         limiting RAM requirements but may affect runtime. Should be
         adapted to individual computation system (roughly 7GB RAM per
         10k locations), by default 25 000.
+    time_slice : slice, optional
+        Limit the time span loaded from the ERA5 source. Only supported for
+        Zarr-backed ERA5 sources, where it is strongly recommended to avoid
+        loading whole multi-year cloud stores. Raises for netCDF4-backed ERA5
+        sources; support for those is planned.
     simulate_kwargs : optional
         Will be passed on to simulate().
 
@@ -113,6 +140,7 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
         ],
         source_type="ERA5",
         source=era5_path,
+        time_slice=time_slice,
         set_time_index=True,
         verbose=False,
     )
@@ -128,10 +156,7 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
 
     # project the windspeeds to the respective hub heights
     wf.project_windspeeds_to_hub_height(
-        height_scaling_method=(
-            "lra",
-            "linear",
-        ),  # calibration uses the linear interpolation of different GWA
+        height_scaling_method=height_scaling_method,
         height_scaling_data=height_scaling_data,
         consider_boundary_layer_height=True,
     )

@@ -3,7 +3,7 @@ from . import util
 from .NCSource import NCSource
 
 from .MerraSource import MerraSource
-from .Era5Source import Era5Source
+from .Era5Source import Era5Source, Era5ZarrSource
 from .SarahSource import SarahSource
 from .GSA_mean import GSAmeanSource
 from .GWA_mean import GWAmeanSource
