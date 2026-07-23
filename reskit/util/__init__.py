@@ -8,3 +8,6 @@ from reskit.util.leap_day import remove_leap_day
 from reskit.util.loss_factors import low_generation_loss
 from reskit.util.topography import visibility_from_topography
 from reskit.util.weather_tile import get_dataframe_with_weather_tilepaths
+
+# ERA5 long-run averages (LRA)
+from reskit.util.create_LRA import create_LRA, create_DNI_LRA

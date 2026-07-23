@@ -12,7 +12,6 @@ def visibility_from_topography(
     max_degree=0.1,
     degree_step=0.003,
     theta_step=3,
-    _interpolation="cubic",
 ):
     """Determine visibility around a given point based on topography. Also
     gives planar angle, planar elevation, and planar distance of multiple
@@ -107,7 +106,7 @@ def visibility_from_topography(
             sample_lats.flatten(),
         ]
     )
-    elevs = gk.raster.interpolateValues(elevation_raster, locs, interpolate=_interpolation)
+    elevs = gk.raster.interpolateValues(elevation_raster, gk.LocationSet(locs))
     #     elevs = np.full( locs.shape[0], base_elevation-eye_level)
     elevs = elevs.reshape(sample_lons.shape)
 
