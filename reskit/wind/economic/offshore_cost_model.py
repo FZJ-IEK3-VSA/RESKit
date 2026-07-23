@@ -71,7 +71,7 @@ def calculateSpecificOffshoreCapex(
     defaultOffshoreParamsFp : str, optional
         Filepath to offshore turbine parameters CSV.
         as reference look for default csv format at
-        /fast/home/m-stargardt/RESKit/reskit/wind/core/data/baseline_turbine_offshore_CaglayanEtAl2019.csv
+        reskit/wind/core/data/baseline_turbine_offshore_CaglayanEtAl2019.csv
     techYear : int, optional
         Year of the applied technology, by default 2050.
 
