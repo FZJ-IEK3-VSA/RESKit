@@ -197,9 +197,7 @@ class WorkflowManager:
 
         if isinstance(source, str) and source_type != "user":
             storage_format = kwargs.pop("storage_format", None)
-            is_zarr = (
-                storage_format == "zarr" or source.endswith(".zarr") or source.startswith("gs://")
-            )
+            is_zarr = storage_format == "zarr" or source.endswith(".zarr") or source.startswith("gs://")
             if source_type == "ERA5":
                 source_constructor = rk_weather.Era5ZarrSource if is_zarr else rk_weather.Era5Source
             elif source_type == "SARAH":
