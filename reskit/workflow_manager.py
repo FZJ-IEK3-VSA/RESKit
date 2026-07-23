@@ -197,11 +197,11 @@ class WorkflowManager:
 
         if isinstance(source, str) and source_type != "user":
             storage_format = kwargs.pop("storage_format", None)
-            is_era5_zarr = source_type == "ERA5" and (
+            is_zarr = (
                 storage_format == "zarr" or source.endswith(".zarr") or source.startswith("gs://")
             )
             if source_type == "ERA5":
-                source_constructor = rk_weather.Era5ZarrSource if is_era5_zarr else rk_weather.Era5Source
+                source_constructor = rk_weather.Era5ZarrSource if is_zarr else rk_weather.Era5Source
             elif source_type == "SARAH":
                 source_constructor = rk_weather.SarahSource
             elif source_type == "MERRA":
@@ -215,7 +215,7 @@ class WorkflowManager:
                 time_slice = kwargs.pop("time_slice", None)
                 era5_kwargs = dict(kwargs)
                 if time_slice is not None:
-                    if not is_era5_zarr:
+                    if not is_zarr:
                         raise RuntimeError(
                             "'time_slice' is only supported for Zarr-backed ERA5 sources; support for "
                             "netCDF4-backed ERA5 sources is planned. Until then, restrict the time span "

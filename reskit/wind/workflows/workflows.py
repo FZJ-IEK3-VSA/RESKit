@@ -102,6 +102,8 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
         Zarr-backed ERA5 sources, where it is strongly recommended to avoid
         loading whole multi-year cloud stores. Raises for netCDF4-backed ERA5
         sources; support for those is planned.
+    simulate_kwargs : optional
+        Will be passed on to simulate().
 
     Returns
     -------
