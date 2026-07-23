@@ -115,6 +115,145 @@ def test_WorkflowManager_read(
     assert np.isclose(man.sim_data["surface_air_temperature"].mean(), 0.9192180687015453)
 
 
+class SourceWithoutSload:
+    """A minimal NCSource-like object which does not offer an `.sload()` method"""
+
+    def __init__(self, source):
+        self._source = source
+
+    def __getattr__(self, name):
+        if name == "sload":
+            raise AttributeError(name)
+        return getattr(self._source, name)
+
+
+@pytest.fixture
+def pt_era5_source(
+    pt_WorkflowManager_initialized: WorkflowManager,
+) -> rk.weather.Era5Source:
+    source = rk.weather.Era5Source(
+        rk.TEST_DATA["era5-like"],
+        bounds=pt_WorkflowManager_initialized.ext,
+    )
+    source.sload("elevated_wind_speed")
+    return source
+
+
+def test_WorkflowManager_read_preloaded_source(
+    pt_WorkflowManager_initialized: WorkflowManager,
+    pt_era5_source: rk.weather.Era5Source,
+):
+    """A single, already loaded variable can be given as a plain string"""
+    man = pt_WorkflowManager_initialized
+    man.read(
+        variables="elevated_wind_speed",
+        source_type="user",
+        source=pt_era5_source,
+        set_time_index=True,
+    )
+
+    assert man.time_index[0] == pt_era5_source.time_index[0]
+    assert man.sim_data["elevated_wind_speed"].shape == (140, 5)
+    assert np.isclose(man.sim_data["elevated_wind_speed"].mean(), 7.770940192441002)
+
+
+def test_WorkflowManager_read_preloaded_source_loads_missing_variables(
+    pt_WorkflowManager_initialized: WorkflowManager,
+    pt_era5_source: rk.weather.Era5Source,
+):
+    """Variables which are missing in the given source are loaded via its `.sload()`"""
+    man = pt_WorkflowManager_initialized
+    assert "surface_pressure" not in pt_era5_source.data
+
+    man.read(
+        variables=["elevated_wind_speed", "surface_pressure", "surface_air_temperature"],
+        source_type="user",
+        source=pt_era5_source,
+        set_time_index=True,
+    )
+
+    assert "surface_pressure" in pt_era5_source.data
+    assert np.isclose(man.sim_data["elevated_wind_speed"].mean(), 7.770940192441002)
+    assert np.isclose(man.sim_data["surface_pressure"].mean(), 99177.21094376309)
+    assert np.isclose(man.sim_data["surface_air_temperature"].mean(), 0.9192180687015453)
+
+
+def test_WorkflowManager_read_preloaded_source_without_sload(
+    pt_WorkflowManager_initialized: WorkflowManager,
+    pt_era5_source: rk.weather.Era5Source,
+):
+    """Sources without an `.sload()` must bring along all requested variables"""
+    man = pt_WorkflowManager_initialized
+    man.read(
+        variables=["elevated_wind_speed"],
+        source_type="user",
+        source=SourceWithoutSload(pt_era5_source),
+        set_time_index=True,
+    )
+
+    assert np.isclose(man.sim_data["elevated_wind_speed"].mean(), 7.770940192441002)
+
+    with pytest.raises(AssertionError, match="surface_pressure"):
+        man.read(
+            variables=["surface_pressure"],
+            source_type="user",
+            source=SourceWithoutSload(pt_era5_source),
+        )
+
+
+def test_WorkflowManager_read_single_variable_from_path(
+    pt_WorkflowManager_initialized: WorkflowManager,
+):
+    """A single variable can be given as a plain string when reading from a path"""
+    man = pt_WorkflowManager_initialized
+    man.read(
+        variables="elevated_wind_speed",
+        source_type="ERA5",
+        source=rk.TEST_DATA["era5-like"],
+        set_time_index=True,
+    )
+
+    assert man.sim_data["elevated_wind_speed"].shape == (140, 5)
+    assert np.isclose(man.sim_data["elevated_wind_speed"].mean(), 7.770940192441002)
+
+
+def test_WorkflowManager_read_unknown_source_type(
+    pt_WorkflowManager_initialized: WorkflowManager,
+):
+    with pytest.raises(RuntimeError, match="Unknown source_type"):
+        pt_WorkflowManager_initialized.read(
+            variables=["elevated_wind_speed"],
+            source_type="NOT-A-SOURCE",
+            source=rk.TEST_DATA["era5-like"],
+            set_time_index=True,
+        )
+
+
+def test_WorkflowManager_read_without_time_index(
+    pt_WorkflowManager_initialized: WorkflowManager,
+):
+    with pytest.raises(RuntimeError, match="Time index is not available"):
+        pt_WorkflowManager_initialized.read(
+            variables=["elevated_wind_speed"],
+            source_type="ERA5",
+            source=rk.TEST_DATA["era5-like"],
+            set_time_index=False,
+        )
+
+
+def test_WorkflowManager_read_time_slice_requires_zarr(
+    pt_WorkflowManager_initialized: WorkflowManager,
+):
+    with pytest.raises(RuntimeError, match="only supported for Zarr-backed ERA5 sources"):
+        pt_WorkflowManager_initialized.read(
+            variables=["elevated_wind_speed"],
+            source_type="ERA5",
+            source=rk.TEST_DATA["era5-like"],
+            set_time_index=True,
+            time_slice=slice("2015-01-01", "2015-01-02"),
+        )
+
+
 @pytest.fixture
 def pt_WorkflowManager_loaded(
     pt_WorkflowManager_initialized: WorkflowManager,
