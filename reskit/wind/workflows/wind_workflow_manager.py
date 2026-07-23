@@ -464,8 +464,8 @@ class WindWorkflowManager(WorkflowManager):
                     spatial_interpolation="linear-spline",
                     points=list(
                         zip(
-                            self.placements.loc[_sel_points,"lon"],
-                            self.placements.loc[_sel_points,"lat"],
+                            self.placements.loc[_sel_points, "lon"],
+                            self.placements.loc[_sel_points, "lat"],
                         )
                     ),
                 )

@@ -196,21 +196,21 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
             np.full_like(self.sim_data["wet_bulb_temperature"], 1.0),
         )
 
-        specific_enthalpy_inlet = self.evaporationCoolingData.loc[0,"cp_air"] * (
+        specific_enthalpy_inlet = self.evaporationCoolingData.loc[0, "cp_air"] * (
             self.sim_data["surface_air_temperature"] + 273.15
         ) + specific_humidity_inlet * (
-            self.evaporationCoolingData.loc[0,"cp_vapor"] * (self.sim_data["surface_air_temperature"] + 273.15)
-            + self.evaporationCoolingData.loc[0,"evaporationHeat"]
+            self.evaporationCoolingData.loc[0, "cp_vapor"] * (self.sim_data["surface_air_temperature"] + 273.15)
+            + self.evaporationCoolingData.loc[0, "evaporationHeat"]
         )  # J/kg
-        specific_enthalpy_outlet = self.evaporationCoolingData.loc[0,"cp_air"] * (
+        specific_enthalpy_outlet = self.evaporationCoolingData.loc[0, "cp_air"] * (
             (self.sim_data["wet_bulb_temperature"] + 273.15) + self.sim_data["approach_temperature_evaporative_cooling"]
         ) + specific_humidity_outlet * (
-            self.evaporationCoolingData.loc[0,"cp_vapor"]
+            self.evaporationCoolingData.loc[0, "cp_vapor"]
             * (
                 (self.sim_data["wet_bulb_temperature"] + 273.15)
                 + self.sim_data["approach_temperature_evaporative_cooling"]
             )
-            + self.evaporationCoolingData.loc[0,"evaporationHeat"]
+            + self.evaporationCoolingData.loc[0, "evaporationHeat"]
         )  # J/kg
 
         # calculate needed air mass specific for 1 kWh cooling load
@@ -222,7 +222,7 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
 
         # drift losses:
         water_mass = 1 / (
-            self.evaporationCoolingData.loc[0,"cp_water"] * heatTransferDelta / 3600000
+            self.evaporationCoolingData.loc[0, "cp_water"] * heatTransferDelta / 3600000
         )  # calcualte total water mass, enthalpy from J/kg to kWh/kg --> water_mass in kg (per kWh)
         drift_losses = water_mass * factorDriftLosses
         self.sim_data["specific_mass_drift_loss"] = drift_losses
