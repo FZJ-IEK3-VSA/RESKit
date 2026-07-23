@@ -14,7 +14,37 @@ from .Era5Source import Era5Source
 
 
 class Era5ZarrSource(Era5Source):
-    """ERA5 source backed by a regular lat/lon Zarr dataset."""
+    """ERA5 source backed by a regular lat/lon Zarr dataset.
+
+    A drop-in alternative to Era5Source for weather data which is not available as a
+    directory of netCDF4 files, but as a Zarr store -- either on a local disk or in the
+    cloud, e.g. the Earth Data Hub ERA5 single-level dataset. All simulation-facing
+    behaviour (the 'sload_*' loaders, the clear variable names, the constants and the
+    long-run-average rasters) is inherited from Era5Source, so that workflows do not have
+    to know which of the two storage formats they are reading from.
+
+    The differences to Era5Source arise from the storage format:
+        * The dataset is opened with xarray instead of netCDF4 and is kept in
+          '_dataset', therefore 'load' and 'get' are reimplemented here
+        * The store may use either 'valid_time' or 'time' as its temporal dimension,
+          see _normalise_time_axis
+        * A store which only contains the raw accumulated solar radiation is
+          supplemented with the processed variants on the fly, see _derive_solar_variables
+        * Longitudes may be given on a [0, 360) grid, which is handled transparently
+          in 'get' so that placements can always be given on a [-180, 180) grid
+        * The time span to read can be restricted with 'time_slice', which matters for
+          multi-year cloud stores where reading everything is prohibitively slow
+
+    Note
+    ----
+    Only regular latitude/longitude grids are supported. Stores using a flattened
+    'values' dimension (as e.g. published for reduced Gaussian grids) are rejected.
+
+    See Also
+    --------
+    Era5Source
+    reskit.weather.NCSource
+    """
 
     # The ERA5 time convention of RESKit (see Era5Source): the timestamps of the store
     # are shifted by this amount to obtain the time index.
@@ -140,6 +170,13 @@ class Era5ZarrSource(Era5Source):
                 time_slice = slice(raw_start, raw_stop)
             ds = ds.sel({self.time_name: time_slice})
 
+        if verbose:
+            times = pd.DatetimeIndex(pd.to_datetime(ds[self.time_name].values)) + self.TIME_OFFSET
+            if times.size:
+                print(f"ERA5 Zarr time range: {times[0]} to {times[-1]} ({times.size} time steps)")
+            else:
+                print("ERA5 Zarr time range: empty, the requested 'time_slice' selects no time steps")
+
         if "values" in ds.dims:
             raise ResError(
                 "This Era5ZarrSource implementation only supports regular latitude/longitude Zarr stores, not flattened 'values' grids."
@@ -175,6 +212,27 @@ class Era5ZarrSource(Era5Source):
 
     @staticmethod
     def _open_dataset(source, chunks, consolidated, storage_options):
+        """Open the Zarr store, applying the default credentials of the known cloud protocols.
+
+        Parameters
+        ----------
+        source : str or xarray.Dataset
+            The store to open. An already opened dataset is passed through unchanged, which
+            allows callers to control the opening themselves.
+        chunks : dict or None
+            The chunk sizes to load the store with, see xarray.open_dataset()
+        consolidated : bool
+            If True, the consolidated metadata of the store is used
+        storage_options : dict or None
+            Options for the storage backend. Whatever is given here takes precedence over
+            the protocol defaults ('~/.netrc' credentials for 'https://', anonymous access
+            for 'gs://').
+
+        Returns
+        -------
+        xarray.Dataset
+            The opened, not yet time- or space-subset dataset
+        """
         if isinstance(source, xr.Dataset):
             return source
 
@@ -197,7 +255,30 @@ class Era5ZarrSource(Era5Source):
 
     @staticmethod
     def _normalise_time_axis(ds: xr.Dataset) -> tuple[str, xr.Dataset]:
-        """Return the temporal data dimension and attach its datetime coordinate."""
+        """Return the temporal data dimension and attach its datetime coordinate.
+
+        ERA5 Zarr stores name their time axis either 'valid_time' or 'time', and the two are
+        not always used consistently: some stores carry the data on one of them while only
+        the other one holds an actual datetime coordinate. This resolves both names into a
+        single dimension which is guaranteed to have datetime values attached to it.
+
+        Parameters
+        ----------
+        ds : xarray.Dataset
+            The freshly opened store
+
+        Returns
+        -------
+        tuple of (str, xarray.Dataset)
+            The name of the temporal dimension of the data variables, and the dataset with a
+            datetime coordinate assigned to that dimension
+
+        Raises
+        ------
+        ResError
+            If neither 'valid_time' nor 'time' is used as a dimension of the data variables,
+            or if no matching datetime coordinate is available for it
+        """
         time_names = ("valid_time", "time")
 
         time_dim = None
@@ -228,7 +309,23 @@ class Era5ZarrSource(Era5Source):
         lazily on the full dataset before any time slice is applied, so that the first
         requested timestep can still use the accumulation preceding it in the store.
 
-        Returns the dataset and a mapping of the derived variables onto their raw origin.
+        Note that the very first timestep of the store itself is NaN in the derived
+        variables, because the accumulation preceding it does not exist -- users are warned
+        about this in _load_with_fallback.
+
+        Parameters
+        ----------
+        ds : xarray.Dataset
+            The dataset to supplement. Variables which the store already provides in their
+            processed form are never overwritten.
+        time_name : str
+            The name of the temporal dimension, see _normalise_time_axis
+
+        Returns
+        -------
+        tuple of (xarray.Dataset, dict)
+            The supplemented dataset, and a mapping of each derived variable name onto the
+            raw variable it was computed from (empty if the store needed no supplementing)
         """
         derived = {}
         for raw_name, adjusted_name in (("ssrd", "ssrd_t_adj"), ("fdir", "fdir_t_adj")):
@@ -240,6 +337,28 @@ class Era5ZarrSource(Era5Source):
 
     @staticmethod
     def _build_variable_table(ds: xr.Dataset, source: Any, derived_variables: dict) -> pd.DataFrame:
+        """Summarize the contents of the store in the '.variables' table of the source.
+
+        The table mirrors the one which NCSource builds for netCDF4 sources, so that the
+        'sload_*' loaders can check for the availability of a variable in the same way for
+        both storage formats. The 'derived_from' column is specific to this source and
+        marks the variables which do not exist in the store itself.
+
+        Parameters
+        ----------
+        ds : xarray.Dataset
+            The dataset to describe, including its coordinates
+        source : Any
+            The store as it was given by the user, only used to fill the 'path' column
+        derived_variables : dict
+            The mapping returned by _derive_solar_variables
+
+        Returns
+        -------
+        pandas.DataFrame
+            One row per data variable and coordinate, indexed by the ERA5 variable name,
+            with the columns 'name', 'units', 'shape', 'path' and 'derived_from'
+        """
         index = list(ds.data_vars) + [name for name in ds.coords if name not in ds.data_vars]
         rows = [
             {
@@ -254,11 +373,40 @@ class Era5ZarrSource(Era5Source):
         return pd.DataFrame(rows, index=index, columns=["name", "units", "shape", "path", "derived_from"])
 
     def _wrap_longitudes(self, lons):
+        """Convert longitudes onto the grid convention of the store.
+
+        Parameters
+        ----------
+        lons : numpy.ndarray
+            Longitudes on a [-180, 180) grid
+
+        Returns
+        -------
+        numpy.ndarray
+            The longitudes mapped onto [0, 360) if the store uses that convention,
+            otherwise the unchanged input
+        """
         if self._longitude_360:
             return np.mod(lons, 360.0)
         return lons
 
     def _configure_spatial_selection(self, bounds=None, index_pad=0):
+        """Determine the latitude/longitude index window to read, and set '.lats'/'.lons'.
+
+        Sets the index bounds ('_latStart', '_latStop', '_lonStart', '_lonStop') which the
+        rest of the source uses to subset the store, plus the coordinate arrays '.lats' and
+        '.lons' in the orientation the loaded data will have (i.e. already flipped).
+
+        Parameters
+        ----------
+        bounds : Anything acceptable to geokit.Extent.load(), optional
+            The boundaries of the data which is needed. Boundaries which are smaller than a
+            single grid cell are widened, so that the surrounding cells needed for
+            interpolation are always included. If None, the full store is selected.
+        index_pad : int, optional
+            The number of additional grid cells to include on each side, useful in case of
+            interpolation, by default 0
+        """
         if bounds is not None:
             self.bounds = gk.Extent.load(bounds).castTo(4326)
             x_min = self._wrap_longitudes(np.array([self.bounds.xMin]))[0]
@@ -303,6 +451,12 @@ class Era5ZarrSource(Era5Source):
             self.lons = self.lons[::-1]
 
     def _apply_dataset_spatial_subset(self):
+        """Reduce the dataset to the selected index window and rebase the index bounds.
+
+        Applying the subset once and eagerly keeps the amount of data which later reads have
+        to touch small, which is what makes remote stores workable. Afterwards the index
+        bounds refer to the subset dataset and are therefore reset to cover all of it.
+        """
         self._dataset = self._dataset.isel(
             latitude=slice(self._latStart, self._latStop),
             longitude=slice(self._lonStart, self._lonStop),
@@ -313,10 +467,45 @@ class Era5ZarrSource(Era5Source):
         self._lonStop = self._dataset.sizes["longitude"]
 
     def var_info(self, var):
+        """Print the xarray representation of a variable of the store.
+
+        Parameters
+        ----------
+        var : str
+            The ERA5 name of the variable, as listed in '.variables'
+        """
         assert var in self.variables.index
         print(self._dataset[var])
 
     def load(self, variable, name=None, height_idx=None, processor=None, overwrite=False):
+        """Read a variable from the store into the data library '.data'.
+
+        The Zarr counterpart of NCSource.load(). The data is read for the configured spatial
+        subset only, is oriented to match '.lats' and '.lons', and is stored as a plain numpy
+        array of the shape (time, latitude, longitude).
+
+        Parameters
+        ----------
+        variable : str
+            The ERA5 name of the variable to read, as listed in '.variables'
+        name : str, optional
+            The key to store the data under in '.data', by default the variable name itself
+        height_idx : int, optional
+            The index to select along the height dimension, for variables which have one
+        processor : callable, optional
+            A function applied to the raw numpy array before it is stored, e.g. for a unit
+            conversion. Must preserve the shape of the array.
+        overwrite : bool, optional
+            If False, a variable which is already in '.data' under 'name' is not read
+            again, by default False
+
+        Raises
+        ------
+        ResError
+            If the variable does not exist in the store, if it does not have the expected
+            dimensions, or if its length along the time axis does not match the time index
+            (and cannot be repaired by forward-filling a single missing last step)
+        """
         if name is None:
             name = variable
 
@@ -365,6 +554,30 @@ class Era5ZarrSource(Era5Source):
             print(f"Loaded ERA5 Zarr variable '{variable}' as '{name}' with shape {shape}")
 
     def _load_with_fallback(self, preferred_variable, fallback_variable, target_name, derived_warning=None):
+        """Load the first of two candidate variables which the store provides.
+
+        ERA5 Zarr stores differ in the names they use for the same quantity (e.g. 'blh' vs.
+        'boundary_layer_height'), and the processed solar variables may have been derived on
+        the fly rather than being part of the store. This resolves both cases and warns
+        about the caveats of the derived variables.
+
+        Parameters
+        ----------
+        preferred_variable : str
+            The variable to load if the store provides it
+        fallback_variable : str
+            The variable to load if the preferred one is not available
+        target_name : str
+            The clear name to store the data under in '.data'
+        derived_warning : str, optional
+            The warning to emit if the loaded variable was derived on the fly rather than
+            read from the store, by default no such warning is emitted
+
+        Raises
+        ------
+        RuntimeError
+            If the store provides neither of the two candidates
+        """
         for variable in (preferred_variable, fallback_variable):
             if variable not in self.variables.index:
                 continue
@@ -384,6 +597,11 @@ class Era5ZarrSource(Era5Source):
         )
 
     def sload_boundary_layer_height(self):
+        """Standard loader function for the variable 'boundary_layer_height' in meters
+        from the surface
+
+        Reads 'blh', or 'boundary_layer_height' for stores which use the long name.
+        """
         return self._load_with_fallback(
             preferred_variable="blh",
             fallback_variable="boundary_layer_height",
@@ -391,6 +609,11 @@ class Era5ZarrSource(Era5Source):
         )
 
     def sload_direct_horizontal_irradiance(self):
+        """Standard loader function for the variable 'direct_horizontal_irradiance' in W/m²
+
+        Reads the processed 'fdir_t_adj' if the store provides it, and otherwise falls back
+        on the variant derived from the raw accumulated 'fdir', see _derive_solar_variables.
+        """
         return self._load_with_fallback(
             preferred_variable="fdir_t_adj",
             fallback_variable="fdir",
@@ -402,6 +625,11 @@ class Era5ZarrSource(Era5Source):
         )
 
     def sload_global_horizontal_irradiance(self):
+        """Standard loader function for the variable 'global_horizontal_irradiance' in W/m²
+
+        Reads the processed 'ssrd_t_adj' if the store provides it, and otherwise falls back
+        on the variant derived from the raw accumulated 'ssrd', see _derive_solar_variables.
+        """
         return self._load_with_fallback(
             preferred_variable="ssrd_t_adj",
             fallback_variable="ssrd",
@@ -415,6 +643,35 @@ class Era5ZarrSource(Era5Source):
     def get(
         self, variable, locations, interpolation="near", force_as_data_frame=False, outside_okay=False, _indices=None
     ):
+        """Extract the data of a loaded variable at the given locations.
+
+        Behaves like NCSource.get(), except that locations are additionally wrapped onto the
+        longitude convention of the store. Placements can therefore always be given on a
+        [-180, 180) grid, no matter whether the store uses [-180, 180) or [0, 360).
+
+        Parameters
+        ----------
+        variable : str
+            The name of the variable in the data library '.data'
+        locations : Anything acceptable to geokit.LocationSet
+            The locations to extract data for, with longitudes on a [-180, 180) grid
+        interpolation : str, optional
+            The interpolation mode, e.g. 'near', 'bilinear' or 'cubic', by default 'near'
+        force_as_data_frame : bool, optional
+            If True, a pandas DataFrame is returned even for a single location,
+            by default False
+        outside_okay : bool, optional
+            If True, locations outside the extent of the source give NaN instead of raising,
+            by default False
+        _indices : optional
+            Precomputed location indices, see NCSource.get()
+
+        Returns
+        -------
+        pandas.Series or pandas.DataFrame
+            The time series of the variable at each location, labelled with the original
+            (unwrapped) coordinates
+        """
         if self._longitude_360:
             original_locs = gk.LocationSet(locations)
             wrapped_locs = [(lon % 360.0, lat) for lon, lat in zip(original_locs.lons, original_locs.lats)]

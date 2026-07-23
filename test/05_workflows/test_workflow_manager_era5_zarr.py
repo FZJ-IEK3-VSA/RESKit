@@ -1,4 +1,6 @@
+import glob
 import inspect
+from os.path import join
 
 import numpy as np
 import pandas as pd
@@ -6,10 +8,86 @@ import pytest
 
 pytest.importorskip("zarr")
 
-from reskit import WorkflowManager
+from reskit import TEST_DATA, WorkflowManager
 from reskit.csp.workflows.workflows import CSP_PTR_ERA5, CSP_PTR_ERA5_specific_dataset
 from reskit.solar.workflows.workflows import openfield_pv_era5
 from reskit.wind.workflows.workflows import wind_era5_PenaSanchezDunkelWinklerEtAl2025
+
+
+@pytest.fixture(scope="module")
+def era5_like_zarr_store(tmp_path_factory):
+    """The 'era5-like' netCDF4 test data, merged into a single Zarr store.
+
+    Both weather sources therefore see bit-identical data, so any difference in the
+    results has to come from the source implementations themselves.
+    """
+    import xarray as xr
+
+    datasets = [xr.open_dataset(path) for path in sorted(glob.glob(join(TEST_DATA["era5-like"], "*.nc")))]
+    ds = xr.merge(datasets)
+
+    store = tmp_path_factory.mktemp("era5_like_zarr") / "era5-like.zarr"
+    ds.to_zarr(store)
+    for dataset in datasets:
+        dataset.close()
+
+    return store
+
+
+@pytest.fixture
+def pt_placements() -> pd.DataFrame:
+    """The placements used by the netCDF4 ERA5 workflow manager tests."""
+    placements = pd.DataFrame()
+    placements["lon"] = [6.083, 6.183, 6.083, 6.183, 6.083]
+    placements["lat"] = [50.475, 50.575, 50.675, 50.775, 50.875]
+    placements["hub_height"] = [140, 140, 140, 140, 140]
+    placements["capacity"] = [2000, 3000, 4000, 5000, 6000]
+    placements["rotor_diam"] = [136, 136, 136, 136, 136]
+    return placements
+
+
+ERA5_COMPARISON_VARIABLES = [
+    "elevated_wind_speed",
+    "surface_wind_speed",
+    "surface_pressure",
+    "surface_air_temperature",
+    "surface_dew_temperature",
+    "global_horizontal_irradiance",
+    "direct_horizontal_irradiance",
+    "boundary_layer_height",
+]
+
+
+def _read_era5(placements, source, **kwargs):
+    man = WorkflowManager(placements)
+    man.read(
+        variables=ERA5_COMPARISON_VARIABLES,
+        source_type="ERA5",
+        source=str(source),
+        set_time_index=True,
+        verbose=False,
+        spatial_interpolation_mode="bilinear",
+        temporal_reindex_method="nearest",
+        **kwargs,
+    )
+    return man
+
+
+def test_era5_netcdf_and_zarr_read_identically(pt_placements, era5_like_zarr_store):
+    """WorkflowManager.read() must give the same data for both ERA5 source types."""
+    netcdf_man = _read_era5(pt_placements, TEST_DATA["era5-like"])
+    zarr_man = _read_era5(pt_placements, era5_like_zarr_store)
+
+    assert zarr_man.time_index.equals(netcdf_man.time_index)
+
+    for variable in ERA5_COMPARISON_VARIABLES:
+        netcdf_data = netcdf_man.sim_data[variable]
+        zarr_data = zarr_man.sim_data[variable]
+        assert zarr_data.shape == netcdf_data.shape, variable
+        assert np.allclose(zarr_data, netcdf_data, equal_nan=True), variable
+
+    assert zarr_man.elevated_wind_speed_height == netcdf_man.elevated_wind_speed_height
+    assert zarr_man.surface_wind_speed_height == netcdf_man.surface_wind_speed_height
 
 
 @pytest.fixture
