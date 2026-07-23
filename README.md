@@ -64,13 +64,13 @@ git checkout dev
 2 a) RESkit should be installable to a new environment with:
 
 ```
-conda env create --file requirements-dev.yml
+conda env create --file requirements.yml
 ```
 
 2 b) (Alternative) Or into an existing environment with:
 
 ```
-conda env update --file requirements-dev.yml -n <ENVIRONMENT-NAME>
+conda env update --file requirements.yml -n <ENVIRONMENT-NAME>
 ```
 
 3 ) Install an editable version of reskit (when in the reskit folder) via

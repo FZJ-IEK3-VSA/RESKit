@@ -31,7 +31,7 @@ jobs:
     uses: FZJ-IEK3-VSA/.github/.github/workflows/extract_versions.yml@v1
     with:
       libraries: ${{ inputs.library }}
-      env_file: requirements-dev.yml
+      env_file: requirements.yml
 
   query-versions:
     needs: extract-position
@@ -41,7 +41,7 @@ jobs:
       min_version: ${{ inputs.min_version }}
       max_version: ${{ inputs.max_version }}
       dependency_position_env_file: ${{ needs.extract-position.outputs.dependency_position }}
-      requirements_file_name: requirements-dev.yml
+      requirements_file_name: requirements.yml
 
   TestManualVersions:
     name: "Test ${{ matrix.library_name }} ${{ matrix.library_version }}"
