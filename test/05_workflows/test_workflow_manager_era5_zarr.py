@@ -26,15 +26,6 @@ def era5_like_zarr_store(tmp_path_factory):
     datasets = [xr.open_dataset(path) for path in sorted(glob.glob(join(TEST_DATA["era5-like"], "*.nc")))]
     ds = xr.merge(datasets)
 
-    # The netCDF4 files store their data packed into integers ('scale_factor'/'add_offset'),
-    # and xarray carries that encoding over into the Zarr store. Re-packing the decoded values
-    # is only lossless if the xarray version rounds rather than truncates, which would make
-    # the comparison below fail by up to one quantization step. Real ERA5 Zarr stores hold
-    # plain floats anyway, so the packing is dropped here.
-    ds.encoding = {}
-    for variable in ds.variables:
-        ds[variable].encoding = {}
-
     store = tmp_path_factory.mktemp("era5_like_zarr") / "era5-like.zarr"
     ds.to_zarr(store)
     for dataset in datasets:
