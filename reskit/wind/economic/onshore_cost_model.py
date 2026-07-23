@@ -58,9 +58,6 @@ def onshore_turbine_capex(
     numeric or array-like
         Onshore turbine total cost
 
-    See Also
-    --------
-        offshore_turbine_capex(capacity, hub_height, rotor_diam, depth, distance_to_shore, distance_to_bus, foundation, mooring_count, anchor, turbine_count, turbine_spacing, turbine_row_spacing)
 
     Notes
     -----

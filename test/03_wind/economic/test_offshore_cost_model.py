@@ -6,6 +6,10 @@ from reskit.parameters.parameters import OffshoreParameters
 import reskit._test.data as pkg_data
 from pathlib import Path
 from importlib.resources import files, as_file
+from reskit.util.local_values import waterDepthFromLocation
+from unittest.mock import MagicMock
+
+import reskit.util.local_values as local_values
 
 
 def test_calculateSpecificOffshoreCapex():
@@ -78,9 +82,12 @@ def test_calculateSpecificOffshoreCapex():
         techYear=2050,
     )
     expected = np.array([2143, 2086.02])
-    (
-        np.testing.assert_allclose(c3, expected, rtol=0.05),
-        "Arrays cann not be handled in calculateSpecificOffshoreCapex, possibly due to adapted function",
+
+    np.testing.assert_allclose(
+        c3,
+        expected,
+        rtol=0.05,
+        err_msg=("Arrays cann not be handled in calculateSpecificOffshoreCapex, possibly due to adapted function"),
     )
 
     # test no scaling at all (only baseSpecCapex, all other parameters are the same as the base case, so no scaling should occur and the result should be the same as the baseSpecCapex)
@@ -299,3 +306,30 @@ def test_getSpecificOffshoreConnectionCost():
         "Error in getSpecificOffshoreConnectionCost, possibly due to adapted function",
     )
     assert c1[1] == expected[1], "Error in getSpecificOffshoreConnectionCost, possibly due to adapted function"
+
+
+def test_waterDepthFromLocation_checks_all_matching_files(monkeypatch):
+    # test wheterh the function is able to handle multiple tif files and returns only the first valid depth value, ignoring NaN values and continuing to the next file if necessary
+    monkeypatch.setattr(
+        local_values.glob,
+        "glob",
+        lambda _: ["first.tif", "second.tif"],
+    )
+
+    interpolate_mock = MagicMock(side_effect=[float("nan"), -7.3])
+
+    monkeypatch.setattr(
+        local_values.gk.raster,
+        "interpolateValues",
+        interpolate_mock,
+    )
+
+    result = local_values.waterDepthFromLocation(
+        latitude=50.0,
+        longitude=6.0,
+        waterDepthFilePath="*.tif",
+        consider_only="negative",
+    )
+
+    assert result == 7.3
+    assert interpolate_mock.call_count == 2

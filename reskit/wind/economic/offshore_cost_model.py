@@ -5,7 +5,6 @@ from reskit.parameters.parameters import OffshoreParameters
 from reskit.wind.economic.onshore_cost_model import onshore_tcc
 
 
-# %%
 def calculateSpecificOffshoreCapex(
     baseSpecCapex,
     capacity,
@@ -311,7 +310,6 @@ def calculateOffshoreFacRogeau(techYear):
     return offshoreCorrfacRogeau
 
 
-# %%
 def getSpecificOffshoreConnectionCost(
     capacity: int | float | np.ndarray,
     waterDepth: int | float | np.ndarray,
@@ -451,7 +449,6 @@ def getSpecificOffshoreConnectionCost(
     return (minCost, minType)
 
 
-# %%
 def getOffshoreTurbineFoundationCost(
     depth: int | float | np.ndarray,
     maxMonopileDepth: int | float = 25,
@@ -575,7 +572,6 @@ def getOffshoreTurbineFoundationCost(
         return costs
 
 
-# %%
 def getSpecificOffshoreCableCost(
     distance: int | float | np.ndarray,
     capacity: int | float | np.ndarray,
@@ -694,9 +690,6 @@ def getSpecificOffshoreCableCost(
     if isScalar:
         totalSpecCost = np.asarray(totalSpecCost).item()
     return totalSpecCost
-
-
-# %%
 
 
 def getSpecificOffshorePlatformCost(
@@ -862,7 +855,6 @@ def getSpecificOffshorePlatformCost(
     return totalSpecCost
 
 
-# %%
 # This function returns the cost for an on- or offshore converter station, includes platform cost if offshore
 def getSpecificConverterStationCost(
     capacity: int | float | np.ndarray,
