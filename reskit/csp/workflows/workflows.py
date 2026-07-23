@@ -30,6 +30,7 @@ def CSP_PTR_ERA5(
     onlynightuse=True,
     fullvariation=False,
     _validation=False,
+    time_slice=None,
 ):
     """
     This function is the overall workflow for the csp simulation and calls all subfunctions.
@@ -110,6 +111,12 @@ def CSP_PTR_ERA5(
         If True, runs in validation mode (some input data may be replaced).
         Defaults to False.
 
+    time_slice : slice, optional
+        Limit the time span loaded from the ERA5 source. Only supported for
+        Zarr-backed ERA5 sources, where it is strongly recommended to avoid
+        loading whole multi-year cloud stores. Raises for netCDF4-backed ERA5
+        sources; support for those is planned.
+
     Returns
     -------
     if return_self is True, the workflow manager object (PTRWorkflowManager) containing all simulation results and data.
@@ -155,6 +162,7 @@ def CSP_PTR_ERA5(
             onlynightuse=onlynightuse,
             fullvariation=fullvariation,
             _validation=_validation,
+            time_slice=time_slice,
         )
         return output
 
@@ -194,6 +202,7 @@ def CSP_PTR_ERA5(
                 onlynightuse=onlynightuse,
                 fullvariation=fullvariation,
                 _validation=_validation,
+                time_slice=time_slice,
             )
 
             # add dataset to column (force output this!)
@@ -231,6 +240,7 @@ def CSP_PTR_ERA5_specific_dataset(
     onlynightuse=True,
     fullvariation=False,
     _validation=False,
+    time_slice=None,
 ):
     """
     Calculates the heat output from the solar field based on parabolic trough technology (PTC).
@@ -302,6 +312,12 @@ def CSP_PTR_ERA5_specific_dataset(
         If True, runs in validation mode (some input data may be replaced).
         Defaults to False.
 
+    time_slice : slice, optional
+        Limit the time span loaded from the ERA5 source. Only supported for
+        Zarr-backed ERA5 sources, where it is strongly recommended to avoid
+        loading whole multi-year cloud stores. Raises for netCDF4-backed ERA5
+        sources; support for those is planned.
+
     Returns
     -------
     if return_self is True, the workflow manager object (PTRWorkflowManager) containing all simulation results and data.
@@ -335,6 +351,7 @@ def CSP_PTR_ERA5_specific_dataset(
         source=era5_path,
         set_time_index=True,
         time_index_from="direct_horizontal_irradiance",
+        time_slice=time_slice,
         verbose=False,
     )
 

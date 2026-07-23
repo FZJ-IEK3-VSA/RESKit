@@ -25,6 +25,7 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
     cf_correction=True,
     output_variables=None,
     max_batch_size=15000,
+    time_slice=None,
     **simulate_kwargs,
 ):
     """
@@ -96,6 +97,11 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
         limiting RAM requirements but may affect runtime. Should be
         adapted to individual computation system (roughly 7GB RAM per
         10k locations), by default 25 000.
+    time_slice : slice, optional
+        Limit the time span loaded from the ERA5 source. Only supported for
+        Zarr-backed ERA5 sources, where it is strongly recommended to avoid
+        loading whole multi-year cloud stores. Raises for netCDF4-backed ERA5
+        sources; support for those is planned.
     simulate_kwargs : optional
         Will be passed on to simulate().
 
@@ -134,6 +140,7 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
         ],
         source_type="ERA5",
         source=era5_path,
+        time_slice=time_slice,
         set_time_index=True,
         verbose=False,
     )
