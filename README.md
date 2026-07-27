@@ -1,14 +1,16 @@
-| Version                                                                                                             | Zenodo Release                                                                                              | Docstring Style                                                                  | Coverage                                                                                                                                             |
-| ------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [![Conda Version](https://img.shields.io/conda/vn/conda-forge/reskit.svg)](https://anaconda.org/conda-forge/reskit) | [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17668775.svg)](https://doi.org/10.5281/zenodo.17668775) | ![Numpy docstring Style](https://img.shields.io/badge/%20style-numpy-459db9.svg) | [![codecov](https://codecov.io/gh/FZJ-IEK3-VSA/RESKit/branch/master/graph/badge.svg)](https://codecov.io/gh/FZJ-IEK3-VSA/RESKit) |
-# RESKit - **R**enewable **E**nergy **S**imulation tool**kit** for Python
-
 <a href="https://www.fz-juelich.de/en/ice/ice-2">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="https://github.com/FZJ-IEK3-VSA/README_assets/blob/v.1.0.0/ICE2_Logos/JSA-Header-dark.svg?raw=True">
     <img src="https://github.com/FZJ-IEK3-VSA/README_assets/blob/v.1.0.0/ICE2_Logos/JSA-Header.svg?raw=True" alt="Logo für Forschungszentrum Juelich - Juelich System Analysis" height="80px">
   </picture>
 </a>
+
+| Version                                                                                                             | Zenodo Release                                                                                              | Docstring Style                                                                  | Coverage                                                                                                                                             |
+| ------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [![Conda Version](https://img.shields.io/conda/vn/conda-forge/reskit.svg)](https://anaconda.org/conda-forge/reskit) | [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17668775.svg)](https://doi.org/10.5281/zenodo.17668775) | ![Numpy docstring Style](https://img.shields.io/badge/%20style-numpy-459db9.svg) | [![codecov](https://codecov.io/gh/FZJ-IEK3-VSA/RESKit/branch/master/graph/badge.svg)](https://codecov.io/gh/FZJ-IEK3-VSA/RESKit) |
+# RESKit - **R**enewable **E**nergy **S**imulation tool**kit** for Python
+
+
 
 RESKit aids with the broad-scale simulation of renewable energy systems, primarily for the purpose of input generation to Energy System Design Models. Simulation tools currently exist for onshore and offshore wind turbines, as well as for solar photovoltaic (PV) systems and concentrated solar power (CSP), in addition to general weather-data manipulation tools. Simulations are performed in the context of singular units, however high computational performance is nevertheless maintained. As a result, this tool allows for the simulation of millions of individual turbines and PV/CSP systems in a matter of minutes depending on the hardware.
 
