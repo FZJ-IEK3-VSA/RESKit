@@ -459,7 +459,7 @@ def test_adjust_variable_to_long_run_average(pt_PTRWorkflowManager_solarpos):
 
     wfm.adjust_variable_to_long_run_average(
         variable="direct_horizontal_irradiance",
-        source_long_run_average=rk.weather.Era5Source.LONG_RUN_AVERAGE_DNI_LEGACY,
+        source_long_run_average=rk.weather.Era5Source.LONG_RUN_AVERAGE_DNI_2020_03,
         real_long_run_average=rk.TEST_DATA["gsa-dni-like.tif"],
         real_lra_scaling=1000 / 24,  # cast to hourly average kWh
     )

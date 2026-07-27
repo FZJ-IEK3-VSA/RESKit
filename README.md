@@ -1,14 +1,16 @@
+<a href="https://www.fz-juelich.de/en/ice/ice-2">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://github.com/FZJ-IEK3-VSA/README_assets/blob/v.1.0.0/ICE2_Logos/JSA-Header-dark.svg?raw=True">
+    <img src="https://github.com/FZJ-IEK3-VSA/README_assets/blob/v.1.0.0/ICE2_Logos/JSA-Header.svg?raw=True" alt="Logo für Forschungszentrum Juelich - Juelich System Analysis" height="80px">
+  </picture>
+</a>
+
 | Version                                                                                                             | Zenodo Release                                                                                              | Docstring Style                                                                  | Coverage                                                                                                                                             |
 | ------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [![Conda Version](https://img.shields.io/conda/vn/conda-forge/reskit.svg)](https://anaconda.org/conda-forge/reskit) | [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17668775.svg)](https://doi.org/10.5281/zenodo.17668775) | ![Numpy docstring Style](https://img.shields.io/badge/%20style-numpy-459db9.svg) | [![codecov](https://codecov.io/gh/FZJ-IEK3-VSA/RESKit/branch/master/graph/badge.svg)](https://codecov.io/gh/FZJ-IEK3-VSA/RESKit) |
 # RESKit - **R**enewable **E**nergy **S**imulation tool**kit** for Python
 
-<a href="https://www.fz-juelich.de/en/ice/ice-2">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://github.com/FZJ-IEK3-VSA/README_assets/blob/v.1.0.0/ICE2_Logos/JSA-Header-dark.svg?raw=True">
-    <img src="https://github.com/FZJ-IEK3-VSA/README_assets/blob/v.1.0.0/ICE2_Logos/JSA-Header.svg?raw=True" alt="Logo für Forschungszentrum Juelich - Juelich System Analysis" width="300px">
-  </picture>
-</a>
+
 
 RESKit aids with the broad-scale simulation of renewable energy systems, primarily for the purpose of input generation to Energy System Design Models. Simulation tools currently exist for onshore and offshore wind turbines, as well as for solar photovoltaic (PV) systems and concentrated solar power (CSP), in addition to general weather-data manipulation tools. Simulations are performed in the context of singular units, however high computational performance is nevertheless maintained. As a result, this tool allows for the simulation of millions of individual turbines and PV/CSP systems in a matter of minutes depending on the hardware.
 
@@ -64,19 +66,40 @@ git checkout dev
 2 a) RESkit should be installable to a new environment with:
 
 ```
-conda env create --file requirements-dev.yml
+conda env create --file requirements.yml
 ```
 
 2 b) (Alternative) Or into an existing environment with:
 
 ```
-conda env update --file requirements-dev.yml -n <ENVIRONMENT-NAME>
+conda env update --file requirements.yml -n <ENVIRONMENT-NAME>
 ```
 
 3 ) Install an editable version of reskit (when in the reskit folder) via
 ```
 pip install -e .
 ```
+
+## ERA5 Zarr
+
+RESKit can read ERA5 directly from regular latitude/longitude Zarr stores while keeping the existing `source_type="ERA5"` workflow API. The current implementation is intended for stores such as the [Earth Data Hub ERA5 single-level dataset](https://earthdatahub.destine.eu/collections/era5/datasets/reanalysis-era5-single-levels):
+
+Earth Data Hub requires authentication. Follow the credential instructions on the linked dataset page and save the generated credentials as `~/.netrc` (not in a directory on `PATH`). On shared systems, restrict access with `chmod 600 ~/.netrc`. The HTTPS backend will use those credentials automatically.
+
+```python
+wf.read(
+    variables=["surface_pressure", "surface_air_temperature", "elevated_wind_speed"],
+    source_type="ERA5",
+    source="https://data.earthdatahub.destine.eu/era5/reanalysis-era5-single-levels-v0.zarr",
+    chunks={"valid_time": 48},
+    time_slice=slice("2020-01-01", "2020-01-31 23:00:00"),
+    set_time_index=True,
+)
+```
+
+Current limitations:
+- The implementation only supports regular `(time|valid_time, latitude, longitude)` Zarr layouts, not flattened `values`-based ERA5 archives.
+- If the Zarr store does not ship RESKit's processed `ssrd_t_adj` and `fdir_t_adj` fields,  `global_horizontal_irradiance` and `direct_horizontal_irradiance` fall back to processing the raw `ssrd` and `fdir` on the fly.
 
 
 ## Preparing Weather Data

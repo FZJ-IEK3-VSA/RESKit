@@ -9,7 +9,7 @@ jobs:
     uses: FZJ-IEK3-VSA/.github/.github/workflows/extract_versions.yml@v1
     with:
       libraries: "python"
-      env_file: requirements-dev.yml
+      env_file: requirements.yml
 
   TestPullCondaForgeDev:
     name: Test development version on ${{ matrix.runner_tag }}
@@ -24,7 +24,7 @@ jobs:
     secrets: inherit
     with:
       runner_tag: ${{ matrix.runner_tag }}
-      requirements_file_name: requirements-dev.yml
+      requirements_file_name: requirements.yml
       examples_to_execute: "examples/1_load_input_data/1_2_1_reading_merra_weather_data.ipynb examples/1_load_input_data/1_2_2_vertically_project_wind_speed_from_merra.ipynb examples/2_economic/ examples/3_wind examples/4_solar examples/5_geothermal/ examples/6_direct_air_capture/"
       library_name: "python"
       library_version: ${{ matrix.python_version }}
@@ -38,7 +38,7 @@ jobs:
     with:
       libraries: "pandas,numpy,scipy,scikit-learn,geokit,netcdf4,xarray,numba"
       version_type: min
-      env_file: requirements-dev.yml
+      env_file: requirements.yml
 
   TestMinDependencies:
     needs: extract-min-versions
@@ -52,7 +52,7 @@ jobs:
     secrets: inherit
     with:
       runner_tag: ${{ matrix.runner_tag }}
-      requirements_file_name: requirements-dev.yml
+      requirements_file_name: requirements.yml
       examples_to_execute: "examples/1_load_input_data/1_2_1_reading_merra_weather_data.ipynb examples/1_load_input_data/1_2_2_vertically_project_wind_speed_from_merra.ipynb examples/2_economic/ examples/3_wind examples/4_solar examples/5_geothermal/ examples/6_direct_air_capture/"
       library_name: ${{ matrix.dependencies.library_name }}
       library_version: ${{ matrix.dependencies.version }}

@@ -5,6 +5,8 @@ from reskit.default_paths import DEFAULT_PATHS
 import glob
 import os
 from typing import Optional, Literal
+import math
+import warnings
 
 from reskit.util.errors import ResError
 
@@ -61,17 +63,39 @@ def waterDepthFromLocation(
         raise ValueError(f"No .tif files found for path or pattern: {waterDepthFilePath}")
 
     # geokit.raster.interpolateValues expects a single file path, use the first match
-    source_file = candidates[0]
+    resultDepth = None
 
-    resultDepth = gk.raster.interpolateValues(
-        source=source_file,
-        points=(longitude, latitude),
-    )
+    for source_file in candidates:
+        with warnings.catch_warnings():
+            # A point outside a raster tile is expected while searching
+            # through multiple candidate files.
+            warnings.filterwarnings(
+                "ignore",
+                message=r".*exceed/s the source's limits.*",
+                category=UserWarning,
+            )
+
+            candidateDepth = gk.raster.interpolateValues(
+                source=source_file,
+                points=(longitude, latitude),
+                pointSRS=gk.srs.EPSG4326,
+            )
+
+        if candidateDepth is None:
+            continue
+
+        candidateDepth = float(candidateDepth)
+
+        if math.isnan(candidateDepth):
+            continue
+
+        resultDepth = candidateDepth
+        break
 
     if resultDepth is None:
         return None
 
-    val = float(resultDepth)
+    val = resultDepth
 
     if consider_only == "negative":
         # GEBCO-like: sea depths are negative, land elevations positive
@@ -88,7 +112,6 @@ def waterDepthFromLocation(
         return abs(val)
 
 
-# %% function to calculate the distance to the coastline
 # if you want to execute the distance to coastline more often, please separete the loading of the taserband to increase execution time
 
 
@@ -113,7 +136,7 @@ def distanceToCoastline(latitude, longitude, distancetoCoastFilePath=None):
         Distance in kilometers, or None if the point is out of bounds or an error occurs.
     """
     if distancetoCoastFilePath is None:
-        if not "distancetoCoastFilePath" in DEFAULT_PATHS:
+        if not "distancetoCoastPath" in DEFAULT_PATHS:
             raise KeyError(f"Add 'distancetoCoastFilePath' key with filepath value to default_paths.yaml")
         distancetoCoastFilePath = DEFAULT_PATHS.get("distancetoCoastPath")
         if distancetoCoastFilePath is None:

@@ -6,7 +6,8 @@ import numpy as np
 import pandas as pd
 import os
 
-def test_onshore_turbine_from_avg_wind_speed(): #TODO move most tests to test_turbine_design_from_avg_wind_speed and leave only one test for wrapper
+
+def test_onshore_turbine_from_avg_wind_speed():  # TODO move most tests to test_turbine_design_from_avg_wind_speed and leave only one test for wrapper
     output = onshore_turbine_from_avg_wind_speed(wind_speed=11)
     assert isinstance(output, dict)
     assert np.isclose(output["capacity"], 5483.067776983042)
@@ -32,9 +33,7 @@ def test_onshore_turbine_from_avg_wind_speed(): #TODO move most tests to test_tu
     assert np.isclose(output["rotor_diam"], 156.22991526535841)
     assert np.isclose(output["specific_power"], 219.09426750262875)
 
-    output = onshore_turbine_from_avg_wind_speed(wind_speed=
-        [3, 4, 5, 6], constant_rotor_diam=False
-    )
+    output = onshore_turbine_from_avg_wind_speed(wind_speed=[3, 4, 5, 6], constant_rotor_diam=False)
     assert isinstance(output, pd.DataFrame)
     assert np.isclose(output.capacity.mean(), 4200.000000)
     assert np.isclose(output.hub_height.mean(), 177.3043837272176)  # checked
@@ -42,9 +41,7 @@ def test_onshore_turbine_from_avg_wind_speed(): #TODO move most tests to test_tu
     assert np.isclose(output.specific_power.mean(), 231.569929)
 
     # test some custom baseline turbine parameters
-    output = onshore_turbine_from_avg_wind_speed(wind_speed=
-        4.7, base_capacity=4750, base_hub_height=145
-    )
+    output = onshore_turbine_from_avg_wind_speed(wind_speed=4.7, base_capacity=4750, base_hub_height=145)
     assert np.isclose(output["capacity"], 3925.5608093815567)
     assert np.isclose(output["hub_height"], 195.98029637154556)
     assert np.isclose(output["rotor_diam"], 136)
@@ -52,7 +49,6 @@ def test_onshore_turbine_from_avg_wind_speed(): #TODO move most tests to test_tu
 
 
 def test_turbine_design_from_avg_wind_speed():
-
     # replicate the old onshore_turbine_from_avg_wind_speed base test
     output = turbine_design_from_avg_wind_speed(
         wind_speed=11,
@@ -67,7 +63,7 @@ def test_turbine_design_from_avg_wind_speed():
         max_hub_height=None,
         tech_year=2050,
         baseline_turbine_fp=None,
-        convention="RybergEtAl2019",    
+        convention="RybergEtAl2019",
     )
     assert isinstance(output, dict)
     assert np.isclose(output["capacity"], 5483.067776983042)
@@ -91,13 +87,15 @@ def test_turbine_design_from_avg_wind_speed():
         baseline_turbine_fp=os.path.join(
             DATAFOLDER, "Baseline_plant_wind_turbine_offshore_Global_Winkler2025_v20251108.csv"
         ),
-        convention="WinklerEtAl2026",    
+        convention="WinklerEtAl2026",
     )
     assert isinstance(output, dict)
-    assert np.isclose(output["capacity"], 20000) # default
-    assert np.isclose(output["hub_height"], 160.34007765824106) # slightly lower than default since ref ws slightly higher than ref ws for hub height
+    assert np.isclose(output["capacity"], 20000)  # default
+    assert np.isclose(
+        output["hub_height"], 160.34007765824106
+    )  # slightly lower than default since ref ws slightly higher than ref ws for hub height
     assert np.isclose(output["rotor_diam"], 270)
-    assert np.isclose(output["specific_power"], 349.3112605583437) # default
+    assert np.isclose(output["specific_power"], 349.3112605583437)  # default
 
     output = turbine_design_from_avg_wind_speed(
         wind_speed=7.72,
@@ -114,12 +112,16 @@ def test_turbine_design_from_avg_wind_speed():
         baseline_turbine_fp=os.path.join(
             DATAFOLDER, "Baseline_plant_wind_turbine_offshore_Global_Winkler2025_v20251108.csv"
         ),
-        convention="WinklerEtAl2026",    
+        convention="WinklerEtAl2026",
     )
     assert isinstance(output, dict)
-    assert np.isclose(output["capacity"], 19092.081687353104) # slightly lower than default since ref ws slightly lower than ref ws for spec pow
-    assert np.isclose(output["hub_height"], 170) # 
+    assert np.isclose(
+        output["capacity"], 19092.081687353104
+    )  # slightly lower than default since ref ws slightly lower than ref ws for spec pow
+    assert np.isclose(output["hub_height"], 170)  #
     assert np.isclose(output["rotor_diam"], 270)
-    assert np.isclose(output["specific_power"], 333.4539560446091) # slightly lower than default since ref ws slightly lower than ref ws for spec pow
+    assert np.isclose(
+        output["specific_power"], 333.4539560446091
+    )  # slightly lower than default since ref ws slightly lower than ref ws for spec pow
 
-    #TODO add tests: data year out of range, custom params as args, wrong convention, other wind speed, offshore
+    # TODO add tests: data year out of range, custom params as args, wrong convention, other wind speed, offshore

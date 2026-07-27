@@ -17,7 +17,7 @@ Typical usage (Python):
 It will write:
   - per-year merged NetCDFs (optional cache)
   - a final LRA NetCDF
-  - optionally, a GeoTIFF (requires rioxarray + rasterio)
+  - optionally, a GeoTIFF
 
 
 Input layouts supported:
@@ -31,7 +31,6 @@ from __future__ import annotations
 
 import argparse
 import glob
-import importlib.util
 import logging
 from pathlib import Path
 from typing import Iterable, Literal, Optional
@@ -43,15 +42,12 @@ import geokit as gk
 
 LOG = logging.getLogger(__name__)
 
-_HAVE_RIOXARRAY = importlib.util.find_spec("rioxarray") is not None
-
 
 CombineMode = Literal["auto", "merge", "combine_by_coords"]
 
 
 def _list_tiled_nc_files(base_path: Path, year: int, variable: str, zoom_level: int) -> list[Path]:
     """List files in the tiled RESKit layout for a given year."""
-
     base_path = Path(base_path)
     zoom_dir = base_path / str(zoom_level)
     if not zoom_dir.exists():
@@ -67,7 +63,6 @@ def _find_single_year_nc_file(base_path: Path, year: int, variable: str) -> Path
 
     In the non-tiled case, the expectation is: one NetCDF per year.
     """
-
     base_path = Path(base_path)
     patterns = [
         f"{base_path}/{year}/*.{variable}.nc",
@@ -124,7 +119,6 @@ def load_era5_year(
       correct operation.
     - If tiles contain distinct data variables (less common), xarray merge is ok.
     """
-
     base_path = Path(base_path)
 
     tiled_files = _list_tiled_nc_files(base_path, year, variable, zoom_level)
@@ -161,7 +155,6 @@ def create_long_run_average(
     weather_source_prefix: Optional[str] = None,
 ) -> xr.Dataset:
     """Create a long-run average dataset across years (inclusive)."""
-
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -356,7 +349,6 @@ def create_long_run_average_DNI(
     weather_source_prefix: Optional[str] = None,
 ) -> xr.Dataset:
     """Create a long-run average dataset across years (inclusive)."""
-
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -400,38 +392,83 @@ def pick_data_var(ds: xr.Dataset, data_var: Optional[str] = None) -> xr.DataArra
     raise ValueError(f"Dataset contains multiple data variables; specify --data-var. Available: {list(ds.data_vars)}")
 
 
+def _coordinate_name(da: xr.DataArray, candidates: tuple[str, ...], axis: str) -> str:
+    """Return the first of ``candidates`` present on ``da``."""
+    for name in candidates:
+        if name in da.coords:
+            return name
+    raise ValueError(f"Cannot determine the {axis} axis: none of {list(candidates)} found in the coordinates.")
+
+
+def _regular_grid_spacing(values: np.ndarray, axis: str) -> float:
+    """Return the (positive) spacing of an evenly spaced coordinate axis."""
+    if values.size < 2:
+        raise ValueError(f"Cannot determine the {axis} resolution from fewer than two coordinate values.")
+
+    steps = np.diff(values)
+    # a GeoTIFF has a single affine transform, so a non-uniform axis cannot be represented
+    if not np.allclose(steps, steps[0], rtol=0, atol=1e-6):
+        raise ValueError(
+            f"The {axis} coordinate is not evenly spaced and cannot be written to a GeoTIFF. "
+            f"Spacing ranges from {steps.min()} to {steps.max()}."
+        )
+
+    return float(abs(steps[0]))
+
+
 def write_geotiff_file(
     da: xr.DataArray,
     output_tiff_path: str | Path,
     crs: str = "EPSG:4326",
-    sort_lat_ascending: bool = False,
 ) -> None:
-    """Write a DataArray to GeoTIFF using rioxarray.
+    """Write a lat/lon DataArray to a GeoTIFF.
 
-    Requires optional dependencies: rioxarray, rasterio.
+    The raster is always stored north-up (first row at the northern edge), which is the
+    convention the rest of RESKit reads with ``geokit``. Bounds are derived from the
+    coordinates, which are taken to be pixel centers, so the written extent is the outer
+    edge of the corner pixels.
+
+    Parameters
+    ----------
+    da:
+        Data to write. Must carry a latitude (``latitude``/``lat``) and a longitude
+        (``longitude``/``lon``) coordinate, both evenly spaced.
+    output_tiff_path:
+        Destination path. Parent directories are created as needed.
+    crs:
+        Coordinate reference system of ``da``, in any form ``geokit.srs.loadSRS`` accepts.
     """
+    lat_name = _coordinate_name(da, ("latitude", "lat"), axis="latitude")
+    lon_name = _coordinate_name(da, ("longitude", "lon"), axis="longitude")
 
-    if not _HAVE_RIOXARRAY:  # pragma: no cover
-        raise RuntimeError(
-            "GeoTIFF export requires rioxarray (and rasterio). Install e.g. `pip install rioxarray rasterio`."
-        )
+    # north-up: descending latitude, ascending longitude
+    da_out = da.sortby(lat_name, ascending=False).sortby(lon_name, ascending=True)
 
-    da_out = da
-    if sort_lat_ascending:
-        if any(coord in da_out.coords for coord in ("lat", "latitude")):
-            da_out = da_out.sortby("latitude", ascending=True)
-        else:
-            raise ValueError("Cannot sort latitude ascending: no 'lat' or 'latitude' coordinate found.")
-    else:
-        if any(coord in da_out.coords for coord in ("lat", "latitude")):
-            da_out = da_out.sortby("latitude", ascending=False)
-        else:
-            raise ValueError("Cannot sort latitude descending: no 'lat' or 'latitude' coordinate found.")
+    lats = da_out[lat_name].values
+    lons = da_out[lon_name].values
+    pixel_height = _regular_grid_spacing(lats, axis="latitude")
+    pixel_width = _regular_grid_spacing(lons, axis="longitude")
 
-    da_out = da_out.rio.write_crs(crs)
+    # coordinates are pixel centers, bounds are outer edges
+    bounds = (
+        float(lons[0]) - pixel_width / 2.0,
+        float(lats[-1]) - pixel_height / 2.0,
+        float(lons[-1]) + pixel_width / 2.0,
+        float(lats[0]) + pixel_height / 2.0,
+    )
+
     output_tiff_path = Path(output_tiff_path)
     output_tiff_path.parent.mkdir(parents=True, exist_ok=True)
-    da_out.rio.to_raster(output_tiff_path)
+
+    gk.raster.createRaster(
+        bounds=bounds,
+        output=str(output_tiff_path),
+        pixelWidth=pixel_width,
+        pixelHeight=pixel_height,
+        srs=crs,
+        dtype=str(da_out.dtype),
+        data=da_out.values,
+    )
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
@@ -482,7 +519,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "--write-geotiff",
         action="store_true",
         dest="write_geotiff",
-        help="Also write GeoTIFF of the selected data variable (requires rioxarray+rasterio)",
+        help="Also write GeoTIFF of the selected data variable",
     )
     p.add_argument(
         "--log-level",
@@ -575,8 +612,7 @@ def create_LRA(
         If provided, use this name for the variable in the output filenames
         instead of the input ``variable``.
     write_geotiff:
-        If True, also export a GeoTIFF (requires optional dependencies
-        ``rioxarray`` + ``rasterio``).
+        If True, also export a GeoTIFF.
     write_netcdf:
         If True, write the NetCDF output (default: always False).
     log_level:
@@ -592,7 +628,6 @@ def create_LRA(
     xarray.Dataset
         The computed long-run average dataset.
     """
-
     logging.basicConfig(level=getattr(logging, log_level), format="%(levelname)s %(message)s")
 
     out_dir = Path(out_dir)
@@ -714,6 +749,24 @@ def create_DNI_LRA(
 # last clip to the bounds of interest
 
 
+def _world_index_range(target_a: float, target_b: float, origin: float, step: float) -> tuple[int, int]:
+    """Index range of the pixel centers that lie within [target_a, target_b].
+
+    Indices are counted from a pixel center at ``origin`` in steps of ``step``, which may
+    be negative (as it is for the north-up row axis). The bracketing is deliberately
+    inclusive-by-truncation rather than nearest: when a target falls exactly halfway
+    between two pixel centers -- which happens whenever the raster's outer edge sits
+    exactly on +/-180 or +/-90 -- rounding to nearest can pick up a phantom index outside
+    the data and leave a column or row of NaNs that no later interpolation can fill.
+    """
+    k_a = (target_a - origin) / step
+    k_b = (target_b - origin) / step
+    lo, hi = min(k_a, k_b), max(k_a, k_b)
+
+    tol = 1e-9  # absorb float noise so an exactly-on-grid target is not pushed outwards
+    return int(np.ceil(lo - tol)), int(np.floor(hi + tol))
+
+
 def world_3x3_wrap(arr_center: np.ndarray, rInfo: object):
     """
     Build a 3x3 tiled array with correct pole-wrap and (optionally) return mosaic bounds.
@@ -747,16 +800,9 @@ def world_3x3_wrap(arr_center: np.ndarray, rInfo: object):
     y0 = ymax - rInfo.pixelHeight / 2.0
     dy = -rInfo.pixelHeight  # north-up (row index increases southward)
 
-    # Choose nearest achievable world pixel-center indices to +/-180 and +/-90
-    i_left = int(np.rint((-180.0 - x0) / rInfo.pixelWidth))
-    i_right = int(np.rint((180.0 - x0) / rInfo.pixelWidth))
-    if i_right < i_left:
-        i_left, i_right = i_right, i_left
-
-    j_top = int(np.rint((90.0 - y0) / dy))
-    j_bottom = int(np.rint((-90.0 - y0) / dy))
-    if j_bottom < j_top:
-        j_top, j_bottom = j_bottom, j_top
+    # Choose the world pixel-center indices bracketed by +/-180 and +/-90
+    i_left, i_right = _world_index_range(-180.0, 180.0, x0, rInfo.pixelWidth)
+    j_top, j_bottom = _world_index_range(90.0, -90.0, y0, dy)
 
     world_cols = i_right - i_left + 1
     world_rows = j_bottom - j_top + 1
