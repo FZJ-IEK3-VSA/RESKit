@@ -16,11 +16,12 @@ sufficient — the GIL is not the bottleneck. Notebooks run in their own
 directory (``cwd = notebook.parent``) so relative paths inside cells behave
 the same as in Jupyter Lab.
 
-Three notebooks are excluded by default (``DEFAULT_EXCLUDED``): they need CDS
-credentials, a large ERA5 download, or a purchased thewindpower.net dataset, so
-they cannot run in CI. They are rendered from whatever is committed — i.e. as
-source without outputs, which is exactly how the previous Jupyter Book build
-treated them (``_config.yml``'s ``execute.exclude_patterns``).
+Some notebooks are excluded by default (``DEFAULT_EXCLUDED``): they need CDS or
+Earth Data Hub credentials, a large ERA5 download, or a purchased
+thewindpower.net dataset, and one is a recipe whose paths are placeholders — so
+they cannot run in CI. They are rendered from whatever is committed, i.e. mostly
+as source without outputs, which is how the previous Jupyter Book build treated
+them (``_config.yml``'s ``execute.exclude_patterns``).
 
 Usage:
     python docs/scripts/execute_notebooks.py                  # default: CPU-1 workers
@@ -50,12 +51,26 @@ from nbclient.exceptions import CellExecutionError
 # Notebooks that cannot be executed in CI, by filename:
 #   1_1_1  downloads ERA5 from the CDS (needs a ~/.cdsapirc API key)
 #   1_1_2  operates on the full ERA5 wind-vector download from 1_1_1
+#   1_1_3  calls rk.download_and_process() -> CDS download (needs ~/.cdsapirc)
+#   1_1_4  same as 1_1_3, for the ERA5-based solar workflows
 #   1_3_1  processes power curves from a purchased thewindpower.net dataset
-# Mirrors the exclude_patterns of the previous Jupyter Book build.
+#   1_4_1  a recipe notebook: its paths are placeholders ("path_to_ERA5_data",
+#          "some_path"), so it is not runnable anywhere, CI or otherwise
+#   3_8    reads a remote Earth Data Hub Zarr store (needs ~/.netrc). Its
+#          network cells are marked "# NBVAL_SKIP", which the nbval test suite
+#          honours but nbclient does not — hence the exclusion here.
+#
+# This is the same set the GitHub Actions workflows leave out of
+# `examples_to_execute`, plus 3_8, which they run only because nbval skips its
+# network cells. The excluded notebooks are rendered from whatever is committed.
 DEFAULT_EXCLUDED = [
     "1_1_1_how_to_download_era5_data.ipynb",
     "1_1_2_wind_speed_from_vectors_in_era5.ipynb",
+    "1_1_3_prepare_era5_for_wind_workflow.ipynb",
+    "1_1_4_prepare_era5_for_solar_workflow.ipynb",
     "1_3_1_process_power_curves_from_thewindpower_net.ipynb",
+    "1_4_1_how_to_create_LRA_datasets.ipynb",
+    "3_8_use_workflows_with_zarr.ipynb",
 ]
 
 
