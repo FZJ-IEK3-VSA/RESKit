@@ -1,0 +1,194 @@
+# yaml-language-server: $schema=https://squidfunk.github.io/mkdocs-material/schema.json
+
+site_name: ETHOS.RESKit
+site_url: https://ethos-reskit.readthedocs.io/
+site_description: Renewable Energy Simulation toolkit for Python
+site_author: RESKit Development Team
+
+hooks:
+    - docs/hooks.py
+
+repo_url: https://github.com/FZJ-IEK3-VSA/RESKit
+repo_name: FZJ-IEK3-VSA/RESKit
+edit_uri: edit/dev/docs/
+
+docs_dir: docs
+site_dir: site
+use_directory_urls: false
+
+# Files excluded from the documentation build (removed from the mkdocs file set
+# before mkdocs-jupyter sees them). docs/scripts/*.py and docs/hooks.py are
+# build helpers (gen-files / execute_notebooks / the examples staging hook), NOT
+# content; mkdocs-jupyter's default `include` covers *.py, so without this it
+# would render them as notebook pages and copy them into the built site.
+# Excluding hooks.py here does not stop it being loaded — the `hooks:` option
+# above reads it from disk, independently of the docs file set.
+#
+# docs/overrides/ holds the Material theme overrides (see theme.custom_dir); it
+# is template source, not content, so it must not be copied into the site.
+exclude_docs: |
+  scripts/*.py
+  hooks.py
+  overrides/
+
+validation:
+    links:
+        anchors: warn
+        absolute_links: warn
+        unrecognized_links: warn
+
+theme:
+    name: material
+    custom_dir: docs/overrides
+    # NOTE: no `logo:`/`favicon:` keys. RESKit has no product logo of its own —
+    # the only mark in the repo is docs/visualizations/logos/fzj_logo.svg, which
+    # is the institution's logo, not the project's. Material's defaults are used
+    # until RESKit has a brand mark; add both keys together when it does.
+    # (ETHOS.GLAES has the same gap and is configured the same way.)
+    palette:
+        - media: "(prefers-color-scheme: light)"
+          scheme: default
+          primary: custom
+          accent: custom
+          toggle:
+              icon: material/brightness-7
+              name: Switch to dark mode
+        - media: "(prefers-color-scheme: dark)"
+          scheme: slate
+          primary: custom
+          accent: custom
+          toggle:
+              icon: material/brightness-4
+              name: Switch to light mode
+    features:
+        - navigation.tabs
+        - navigation.sections
+        - navigation.expand
+        - navigation.top
+        - navigation.indexes
+        - search.suggest
+        - search.highlight
+        - content.code.copy
+        - content.action.edit
+        - toc.follow
+
+plugins:
+    - search
+
+    - mkdocs-jupyter:
+          # Notebooks are NOT executed by mkdocs-jupyter. They are pre-executed
+          # in parallel by docs/scripts/execute_notebooks.py (a docs pre-build
+          # step; see .readthedocs.yaml) and rendered here from those outputs.
+          # Three notebooks are never executed in CI — they need CDS credentials
+          # or a purchased dataset — and are rendered as-is; see EXCLUDED_NOTEBOOKS
+          # in that script.
+          execute: false
+          include_source: true
+          allow_errors: false
+
+    - mkdocstrings:
+          default_handler: python
+          handlers:
+              python:
+                  paths: [.]
+                  options:
+                      docstring_section_style: list
+                      signature_crossrefs: true
+                      docstring_style: numpy
+                      unwrap_annotated: true
+                      inherited_members: true
+                      summary: true
+                      heading_level: 1
+                      parameter_headings: true
+                      show_root_heading: true
+                      show_root_full_path: false
+                      show_symbol_type_heading: true
+                      show_symbol_type_toc: true
+                      merge_init_into_class: true
+                      separate_signature: true
+                      show_signature_annotations: true
+                      show_bases: true
+                      allow_inspection: true
+
+    - gen-files:
+          scripts:
+              - docs/scripts/gen_index_from_readme.py
+              - docs/scripts/gen_ref_pages.py
+
+    - literate-nav:
+          nav_file: SUMMARY.md
+
+    - section-index
+
+markdown_extensions:
+    - admonition
+    - attr_list
+    - md_in_html
+    - toc:
+          permalink: true
+    - pymdownx.highlight:
+          anchor_linenums: true
+    - pymdownx.superfences
+    - pymdownx.tabbed:
+          alternate_style: true
+    - pymdownx.details
+
+extra:
+    generator: false
+
+extra_css:
+    - stylesheets/extra.css
+
+nav:
+    - Home: index.md
+
+    - Examples:
+          - Overview: example_articles/0_example_overview.md
+
+          - Download and Load Input Data:
+                - Overview: example_articles/1_download_input_data.md
+                - Download ERA5 Data: examples/1_load_input_data/1_1_1_how_to_download_era5_data.ipynb
+                - Wind Speed from ERA5 Vectors: examples/1_load_input_data/1_1_2_wind_speed_from_vectors_in_era5.ipynb
+                - Prepare ERA5 for Wind Workflow: examples/1_load_input_data/1_1_3_prepare_era5_for_wind_workflow.ipynb
+                - Prepare ERA5 for Solar Workflow: examples/1_load_input_data/1_1_4_prepare_era5_for_solar_workflow.ipynb
+                - Reading MERRA Weather Data: examples/1_load_input_data/1_2_1_reading_merra_weather_data.ipynb
+                - Project Wind Speed from MERRA: examples/1_load_input_data/1_2_2_vertically_project_wind_speed_from_merra.ipynb
+                - Power Curves from thewindpower.net: examples/1_load_input_data/1_3_1_process_power_curves_from_thewindpower_net.ipynb
+                - Create LRA Datasets: examples/1_load_input_data/1_4_1_how_to_create_LRA_datasets.ipynb
+
+          - Evaluate Economics:
+                - Overview: example_articles/2_evaluate_economics.md
+                - Levelized Cost of Electricity: examples/2_economic/2_1_economic_compute_levelized_cost_of_electricity.ipynb
+
+          - Wind Power:
+                - Overview: example_articles/3_wind_power.md
+                - Wind Workflows Overview: examples/3_wind/3_1_wind_workflows_overview.ipynb
+                - Load a Power Curve: examples/3_wind/3_2_1_wind_load_power_curve.ipynb
+                - Synthetic Power Curve: examples/3_wind/3_2_2_wind_synthetic_power_curve.ipynb
+                - Convolute a Power Curve: examples/3_wind/3_3_wind_convolute_a_power_curve.ipynb
+                - Design an Onshore Turbine: examples/3_wind/3_4_wind_design_onshore_turbine.ipynb
+                - Design an Offshore Turbine: examples/3_wind/3_4_2_wind_design_offshore_turbine.ipynb
+                - Estimate Turbine Capital Cost: examples/3_wind/3_5_wind_estimate_turbine_capital_cost.ipynb
+                - Basic Turbine Simulation: examples/3_wind/3_6_1_wind_basic_turbine_simulation.ipynb
+                - Turbine Simulation Workflow: examples/3_wind/3_6_2_wind_turbine_simulation_workflow.ipynb
+                - Automated Turbine Simulation Workflow: examples/3_wind/3_6_3_wind_automated_turbine_simulation_workflow.ipynb
+                - ETHOS.RESKit.Wind Workflow: examples/3_wind/3_7_example_ethos_reskit_wind_workflow.ipynb
+                - Use Workflows with Zarr: examples/3_wind/3_8_use_workflows_with_zarr.ipynb
+
+          - Solar:
+                - Overview: example_articles/4_solar.md
+                - Solar Workflows Overview: examples/4_solar/4_1_solar_workflows_overview.ipynb
+                - Check Available PV Modules: examples/4_solar/4_2_check_available_pv_modules.ipynb
+                - Automated Simulation Workflow: examples/4_solar/4_3_solar_automated_simulation_workflow.ipynb
+
+          - Geothermal:
+                - Overview: example_articles/5_geothermal.md
+                - Run Geothermal Simulations: examples/5_geothermal/5_run_geothermal_simulations.ipynb
+
+          - Direct Air Capture:
+                - Overview: example_articles/6_direct_air_capture.md
+                - Direct Air Capture: examples/6_direct_air_capture/6_1_direct_air_capture.ipynb
+                - Cooling and Heating: examples/6_direct_air_capture/6_2_cooling_heating.ipynb
+
+    - API Reference: reference/
+    - Code of Conduct: CODE_OF_CONDUCT.md

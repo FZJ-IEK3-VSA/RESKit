@@ -3,12 +3,16 @@
 | [![Conda Version](https://img.shields.io/conda/vn/conda-forge/reskit.svg)](https://anaconda.org/conda-forge/reskit) | [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17668775.svg)](https://doi.org/10.5281/zenodo.17668775) | ![Numpy docstring Style](https://img.shields.io/badge/%20style-numpy-459db9.svg) | [![codecov](https://codecov.io/gh/FZJ-IEK3-VSA/RESKit/branch/master/graph/badge.svg)](https://codecov.io/gh/FZJ-IEK3-VSA/RESKit) |
 # RESKit - **R**enewable **E**nergy **S**imulation tool**kit** for Python
 
-<a href="https://www.fz-juelich.de/en/ice/ice-2">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://github.com/FZJ-IEK3-VSA/README_assets/blob/v.1.0.0/ICE2_Logos/JSA-Header-dark.svg?raw=True">
-    <img src="https://github.com/FZJ-IEK3-VSA/README_assets/blob/v.1.0.0/ICE2_Logos/JSA-Header.svg?raw=True" alt="Logo für Forschungszentrum Juelich - Juelich System Analysis" width="300px">
-  </picture>
-</a>
+<!-- logo:header:start -->
+<p align="center">
+  <a href="https://www.fz-juelich.de/en/ice/ice-2">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/FZJ-IEK3-VSA/README_assets/v.1.0.0/ICE2_Logos/JSA-Header-dark.svg">
+      <img src="https://raw.githubusercontent.com/FZJ-IEK3-VSA/README_assets/v.1.0.0/ICE2_Logos/JSA-Header.svg" alt="Jülich Systems Analysis" width="300">
+    </picture>
+  </a>
+</p>
+<!-- logo:header:end -->
 
 RESKit aids with the broad-scale simulation of renewable energy systems, primarily for the purpose of input generation to Energy System Design Models. Simulation tools currently exist for onshore and offshore wind turbines, as well as for solar photovoltaic (PV) systems and concentrated solar power (CSP), in addition to general weather-data manipulation tools. Simulations are performed in the context of singular units, however high computational performance is nevertheless maintained. As a result, this tool allows for the simulation of millions of individual turbines and PV/CSP systems in a matter of minutes depending on the hardware.
 
@@ -137,7 +141,7 @@ implemented — solar/CSP workflows on Global Solar Atlas rasters and wind workf
 on Global Wind Atlas rasters. `download_and_process` prints a notice for these and
 you must supply the rasters manually.
 
-End-to-end examples live in [examples/1_load_input_data/](examples/1_load_input_data/):
+End-to-end examples live in [examples/1_load_input_data/](https://github.com/FZJ-IEK3-VSA/RESKit/tree/dev/examples/1_load_input_data):
 - [1_1_3_prepare_era5_for_wind_workflow.ipynb](examples/1_load_input_data/1_1_3_prepare_era5_for_wind_workflow.ipynb)
 - [1_1_4_prepare_era5_for_solar_workflow.ipynb](examples/1_load_input_data/1_1_4_prepare_era5_for_solar_workflow.ipynb)
 
@@ -187,7 +191,7 @@ When using anything else:
 
 The source code in this repository is licensed under: MIT License Copyright (c) 2019-2025 FZJ-ICE-2
 
-The data files [cf_correction_factors_PSDW2025.tif](reskit/wind/core/data/cf_correction_factors_PSDW2025.tif) and [ws_correction_factors_PSDW2025.yaml](reskit/wind/core/data/ws_correction_factors_PSDW2025.yaml) are licensed under CC-BY-4.0
+The data files [cf_correction_factors_PSDW2025.tif](https://github.com/FZJ-IEK3-VSA/RESKit/blob/dev/reskit/wind/core/data/cf_correction_factors_PSDW2025.tif) and [ws_correction_factors_PSDW2025.yaml](https://github.com/FZJ-IEK3-VSA/RESKit/blob/dev/reskit/wind/core/data/ws_correction_factors_PSDW2025.yaml) are licensed under CC-BY-4.0
 
 You should have received a copy of the MIT License along with this program.  
 If not, see <https://opensource.org/licenses/MIT>
@@ -211,10 +215,12 @@ Please respect our [code of conduct](https://github.com/FZJ-IEK3-VSA/README_asse
 ## Acknowledgement
 This work was initially supported by the Helmholtz Association under the Joint Initiative ["Energy System 2050   A Contribution of the Research Field Energy"](https://www.helmholtz.de/en/research/energy/energy_system_2050/). 
 
+<!-- logo:helmholtz:start -->
 <a href="https://www.helmholtz.de/en/">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/FZJ-IEK3-VSA/README_assets/v.1.0.0/Helmholtz_Logos/Helmholtz-Logo-White-RGB.svg">
     <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/FZJ-IEK3-VSA/README_assets/v.1.0.0/Helmholtz_Logos/Helmholtz-Logo-Dark-Blue-RGB.svg">
-    <img src="https://raw.githubusercontent.com/FZJ-IEK3-VSA/README_assets/v.1.0.0/Helmholtz_Logos/Helmholtz-Logo-Dark-Blue-RGB.svg" alt="Helmholtz Logo" width="200px" style="float:left">
+    <img src="https://raw.githubusercontent.com/FZJ-IEK3-VSA/README_assets/v.1.0.0/Helmholtz_Logos/Helmholtz-Logo-Dark-Blue-RGB.svg" alt="Helmholtz Association" width="200">
   </picture>
 </a>
+<!-- logo:helmholtz:end -->
