@@ -17,10 +17,10 @@
 
 [![conda-forge version](https://img.shields.io/conda/vn/conda-forge/reskit.svg)](https://anaconda.org/conda-forge/reskit)
 [![Tests](https://github.com/FZJ-IEK3-VSA/RESKit/actions/workflows/test_push.yml/badge.svg)](https://github.com/FZJ-IEK3-VSA/RESKit/actions/workflows/test_push.yml)
-[![Coverage](https://codecov.io/gh/FZJ-IEK3-VSA/RESKit/branch/master/graph/badge.svg)](https://codecov.io/gh/FZJ-IEK3-VSA/RESKit)
+[![Coverage](https://codecov.io/gh/FZJ-IEK3-VSA/RESKit/branch/dev/graph/badge.svg)](https://codecov.io/gh/FZJ-IEK3-VSA/RESKit)
 [![Documentation](https://readthedocs.org/projects/ethos-reskit/badge/?version=latest)](https://ethos-reskit.readthedocs.io/en/latest/)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17668775.svg)](https://doi.org/10.5281/zenodo.17668775)
-[![License](https://img.shields.io/github/license/FZJ-IEK3-VSA/RESKit)](https://github.com/FZJ-IEK3-VSA/RESKit/blob/master/LICENSE-MIT.txt)
+[![License](https://img.shields.io/github/license/FZJ-IEK3-VSA/RESKit)](https://github.com/FZJ-IEK3-VSA/RESKit/blob/dev/LICENSE-MIT.txt)
 
 <!-- readme-only:start -->
 📖 **Read the full documentation at [ethos-reskit.readthedocs.io](https://ethos-reskit.readthedocs.io/).**
@@ -65,7 +65,7 @@ cd reskit
 ```
 
 3 b) If you do not have Git and just want to check the examples, download and extract the source code with this link:
-> https://github.com/FZJ-IEK3-VSA/RESKit/archive/refs/heads/master.zip
+> https://github.com/FZJ-IEK3-VSA/RESKit/archive/refs/heads/dev.zip
 
 
 ### For Developers

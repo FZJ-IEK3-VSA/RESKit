@@ -20,4 +20,12 @@ RESKit provides a feature-rich wind power simulation, as demonstrated by the fol
    3. To increase spatial resolution of the simulation and allow extrapolation of wind speeds to turbine hub height, the GWAv4 (Global Wind Atlas) is used. This example provides a small test data sample for demonstration purposes. For applications outside the test example, however, the full GWAv4 dataset is required, which can be downloaded here: https://globalwindatlas.info/en/download/gis-files.
    4. (Optional) If you have purchased Power Curves from thewindpower.net, please use the following script to process them: [Process Power Curves](../examples/1_load_input_data/1_3_1_process_power_curves_from_thewindpower_net.ipynb)
 
-Paths to a custom turbine library and baseline turbine definitions can be set in [default_paths.yaml](https://github.com/FZJ-IEK3-VSA/RESKit/blob/dev/reskit/default_paths.yaml).
+<!-- Absolute by necessity, unlike every other link here: default_paths.yaml is a
+package file, not documentation, so it sits outside docs_dir and MkDocs never
+copies it into the site. A relative path resolves above the site root and 404s.
+Repository files are linked on GitHub at the default branch, as the README does
+for the CC-BY data files. -->
+
+Paths to a custom turbine library and baseline turbine definitions can be set in
+[`reskit/default_paths.yaml`](https://github.com/FZJ-IEK3-VSA/RESKit/blob/dev/reskit/default_paths.yaml),
+which ships inside the installed `reskit` package.
