@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=https://squidfunk.github.io/mkdocs-material/schema.json
 
 site_name: ETHOS.RESKit
-site_url: https://ethos-reskit.readthedocs.io/
+site_url: !ENV [READTHEDOCS_CANONICAL_URL, "https://ethos-reskit.readthedocs.io/"]
 site_description: Renewable Energy Simulation toolkit for Python
 site_author: RESKit Development Team
 
@@ -79,9 +79,11 @@ plugins:
           # Notebooks are NOT executed by mkdocs-jupyter. They are pre-executed
           # in parallel by docs/scripts/execute_notebooks.py (a docs pre-build
           # step; see .readthedocs.yaml) and rendered here from those outputs.
-          # Three notebooks are never executed in CI — they need CDS credentials
-          # or a purchased dataset — and are rendered as-is; see EXCLUDED_NOTEBOOKS
-          # in that script.
+          # Some notebooks are never executed in CI — they need CDS or Earth Data
+          # Hub credentials, a large ERA5 download, or a purchased dataset, and one
+          # is a recipe with placeholder paths. Those render from whatever outputs
+          # are committed, which for most of them is none; see DEFAULT_EXCLUDED in
+          # that script for the current list.
           execute: false
           include_source: true
           allow_errors: false

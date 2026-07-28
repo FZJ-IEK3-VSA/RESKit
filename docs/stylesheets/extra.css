@@ -42,6 +42,29 @@
     font-size: 0.85rem;
 }
 
+/* -- Rich notebook outputs (xarray reprs, pandas tables) ------------------
+   mkdocs-jupyter bundles JupyterLab's stylesheet with the `.jp-RenderedHTMLCommon`
+   selector renamed to `.jp-RenderedHTMLCommon-ignore`, so that Jupyter's content
+   typography cannot fight the docs theme. The elements still carry the original
+   class, so this is a rename of the RULE, not of the markup. The casualty is
+   `font-size: var(--jp-content-font-size1)` (14px): nothing then sizes rich HTML
+   outputs, and `.jupyter-wrapper` sits directly inside
+   `article.md-content__inner.md-typeset`, so they inherit `.md-typeset`'s
+   `font-size: .8rem` — 16px, because Material sets `html { font-size: 125% }`.
+   An xarray Dataset repr or a DataFrame therefore renders noticeably larger than
+   the prose around it, and the xarray repr's fixed 150px name column starts
+   wrapping.
+
+   Re-assert the Jupyter content size on the output elements only. Markdown cells
+   are NOT matched (they render as normal Material content) and must stay at the
+   theme's size, so the selector is anchored on `.jp-OutputArea-output` rather
+   than on `.jp-RenderedHTMLCommon` alone. The variable is declared by
+   mkdocs-jupyter on `.jupyter-wrapper` in both colour schemes; the literal is a
+   fallback for the day that changes. */
+.jupyter-wrapper .jp-RenderedHTMLCommon.jp-OutputArea-output {
+    font-size: var(--jp-content-font-size1, 14px);
+}
+
 /* -- Home page logo row ---------------------------------------------------
    The home page is generated from README.md by
    docs/scripts/gen_index_from_readme.py, which sizes its logos with the HTML
