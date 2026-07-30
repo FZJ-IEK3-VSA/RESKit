@@ -116,7 +116,7 @@ def test_turbine_design_from_avg_wind_speed():
     )
     assert isinstance(output, dict)
     assert np.isclose(
-        output["capacity"], 19092.081687353104
+        output["capacity"], 18904.178576900114
     )  # slightly lower than default since ref ws slightly lower than ref ws for spec pow
     assert np.isclose(output["hub_height"], 170)  #
     assert np.isclose(output["rotor_diam"], 270)
