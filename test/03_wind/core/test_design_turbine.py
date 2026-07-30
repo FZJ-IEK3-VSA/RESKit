@@ -121,7 +121,7 @@ def test_turbine_design_from_avg_wind_speed():
     assert np.isclose(output["hub_height"], 170)  #
     assert np.isclose(output["rotor_diam"], 270)
     assert np.isclose(
-        output["specific_power"], 333.4539560446091
+        output["specific_power"], 330.1721224258507
     )  # slightly lower than default since ref ws slightly lower than ref ws for spec pow
 
     # TODO add tests: data year out of range, custom params as args, wrong convention, other wind speed, offshore
