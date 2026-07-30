@@ -140,14 +140,15 @@ def turbine_design_from_avg_wind_speed(
                 * (np.exp(-0.84976623 * np.log(ws) + 6.1879937)),
             },
             "WinklerEtAl2026": {
-                "specific_power": lambda ws, base_sp, ref_ws: 187.993 * (base_sp / 295) * np.log(ws / ref_ws) + base_sp,
-                "hub_height": lambda ws, base_hh, ref_ws: -94.126 * (base_hh / 118) * np.log(ws / ref_ws) + base_hh,
+                "specific_power": lambda ws, base_sp, ref_ws: base_sp
+                + 7.06 * base_sp / 295 * (ws**1.48 - ref_ws**1.48),
+                "hub_height": lambda ws, base_hh, ref_ws: base_hh - 12.9 * base_hh / 124 * (ws - ref_ws),
             },
         },
         "offshore": {
             "WinklerEtAl2026": {
-                "specific_power": lambda ws, base_sp, ref_ws: 287.772 * (base_sp / 320) * np.log(ws / ref_ws) + base_sp,
-                "hub_height": lambda ws, base_hh, ref_ws: 0.742 * (base_hh / 96) * np.log(ws / ref_ws) + base_hh,
+                "specific_power": lambda ws, base_sp, ref_ws: base_sp + 193 * base_sp / 358 * np.log(ws / ref_ws),
+                "hub_height": lambda ws, base_hh, ref_ws: base_hh - 0.669 * (base_hh / 99.3) * (ws - ref_ws),
             },
         },
     }
