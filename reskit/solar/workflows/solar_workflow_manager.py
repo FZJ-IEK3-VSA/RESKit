@@ -113,7 +113,7 @@ class SolarWorkflowManager(WorkflowManager):
         """
         self.placements["azimuth"] = 180
 
-        self.placements["azimuth"].values[self.locs.lats < 0] = 0
+        self.placements["azimuth"].to_numpy(copy=True)[self.locs.lats < 0] = 0
         return self
 
     def apply_elevation(self, elev, fallback_elev=0):
@@ -954,7 +954,7 @@ class SolarWorkflowManager(WorkflowManager):
             db = pvlib.pvsystem.retrieve_sam("CECMod")
             original_module = getattr(db, original_module_name)
             # scale module parameters to tech_year
-            module = pd.Series(index=projected_module.index, dtype="float64")
+            module = pd.Series(index=projected_module.index, dtype="object")
             for param, val_proj in zip(projected_module.index, projected_module):
                 if param == "Date":
                     module[param] = str(tech_year)
