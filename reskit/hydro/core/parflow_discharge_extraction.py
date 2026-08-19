@@ -1,5 +1,6 @@
 import json
 import os
+import time
 from importlib import import_module
 
 import numpy as np
@@ -32,6 +33,8 @@ def retrieve_discharge_data(
     root_dir,
     include_neighbours=False,
     ctrl_file_path=None,
+    max_retries=10,
+    retry_delay_seconds=5,
 ):
     """Extract discharge time series from ParFlow datasource for given coordinates."""
     data_extraction_tool = _import_data_extraction_tool()
@@ -75,8 +78,29 @@ def retrieve_discharge_data(
 
     # The vendored helper accepts only (runctrl_file, output_format).
     # Neighbor handling is performed internally by the extraction tool.
-    data = data_extraction_tool.data_extraction(ctrl_file_path, "var")
-    return np.asarray(data)
+    last_error = None
+    for attempt in range(1, max_retries + 1):
+        try:
+            data = data_extraction_tool.data_extraction(ctrl_file_path, "var")
+            return np.asarray(data)
+        except Exception as exc:
+            last_error = exc
+            message = str(exc)
+            is_transient_dap_error = (
+                "DAP failure" in message
+                or "NetCDF" in message
+                or "HTTP" in message
+                or "timeout" in message.lower()
+                or "tempor" in message.lower()
+                or "connection reset" in message.lower()
+            )
+            if attempt >= max_retries or not is_transient_dap_error:
+                break
+            time.sleep(retry_delay_seconds * attempt)
+
+    raise RuntimeError(
+        f"ParFlow discharge retrieval failed after {max_retries} attempts for {ctrl_file_path}."
+    ) from last_error
 
 
 def get_static_alluvium_indicator_context(
@@ -154,13 +178,22 @@ def build_alluvium_candidate_context(plant_lats, plant_lons, alluvium_mask_file,
     ind_lons_rad = static_context["ind_lons_rad"]
     ind_lats_rad = static_context["ind_lats_rad"]
 
+    def _target_and_neighbour_indices(target_idx, grid_shape):
+        target_y, target_x = target_idx
+        candidate_indices = [(target_y, target_x)]
+        for delta_y in (-1, 0, 1):
+            for delta_x in (-1, 0, 1):
+                if delta_y == 0 and delta_x == 0:
+                    continue
+                cand_y = target_y + delta_y
+                cand_x = target_x + delta_x
+                if 0 <= cand_y < grid_shape[0] and 0 <= cand_x < grid_shape[1]:
+                    candidate_indices.append((cand_y, cand_x))
+        return candidate_indices
+
     per_plant_candidate_indices = []
     per_plant_has_river_candidates = []
     nearest_local_idx_per_plant = []
-
-    def _nearest_grid_candidates(distances, count=10):
-        sorted_indices_2d = np.unravel_index(np.argsort(distances, axis=None), distances.shape)
-        return list(zip(sorted_indices_2d[0][1:count], sorted_indices_2d[1][1:count]))
 
     for i in range(len(plant_lats)):
         plant_lon_rad = np.deg2rad(float(plant_lons[i]))
@@ -168,7 +201,7 @@ def build_alluvium_candidate_context(plant_lats, plant_lons, alluvium_mask_file,
 
         dist_ind = data_extraction_tool.spher_dist(ind_lons_rad, ind_lats_rad, plant_lon_rad, plant_lat_rad)
         mapped_idx = np.unravel_index(np.argmin(dist_ind, axis=None), dist_ind.shape)
-        candidate_indices = _nearest_grid_candidates(dist_ind, count=10)
+        candidate_indices = _target_and_neighbour_indices(mapped_idx, dist_ind.shape)
 
         river_candidates = []
         for cand_y, cand_x in candidate_indices:
@@ -205,8 +238,7 @@ def build_alluvium_candidate_context(plant_lats, plant_lons, alluvium_mask_file,
 
 def extract_selected_discharge_alluvium(
     year,
-    plant_lats,
-    plant_lons,
+    placements,
     root_dir,
     alluvium_mask_file,
     indicator_file,
@@ -221,6 +253,15 @@ def extract_selected_discharge_alluvium(
         and then one can specify in the fallback mode to keep max annual discharge (max_annual) 
         or nearest cell (nearest), default is max_annual
     '''
+    # assure hydropower plant identifiers
+    if "hydro_plant_id" not in placements.columns:
+        placements = placements.copy()
+        placements["hydro_plant_id"] = "plant_" + placements.index.astype(str)
+
+    # extract location lat/lon from placements dataframe
+    plant_lats = placements["lat"].values
+    plant_lons = placements["lon"].values
+    
     # --- Build candidate context ---
     # For each plant, compute a short list of nearby indicator-grid candidate
     # cells and mark whether any candidate maps to an alluvium/river cell.
@@ -268,19 +309,25 @@ def extract_selected_discharge_alluvium(
     selected_candidate_idx = np.zeros(n_plants, dtype=int)
 
     row_start = 0
+    selected_cell_overview = []
     for plant_idx, n_candidates in enumerate(per_plant_counts):
         row_end = row_start + n_candidates
         plant_candidate_data = discharge_info[row_start:row_end, :]
         # --- Select best candidate for this plant ---
         # Priority rules:
         # 1) If any candidate maps to an alluvium/river cell, pick the nearest
-        #    among those (useful when river proximity matters).
+        #    among those (useful when river proximity matters). 
+        #    However, if the nearest discharge is zero or masked, choose the one with the largest total annual discharge instead.
         # 2) Else if fallback_mode == "nearest", pick the geographically
         #    nearest candidate.
         # 3) Otherwise (default "max_annual"), pick the candidate with the
         #    largest total (annual) discharge.
         if selected_from_alluvium[plant_idx]:
             local_best_idx = nearest_local_idx_per_plant[plant_idx]
+            if (plant_candidate_data[local_best_idx, :].sum() == 0) or (plant_candidate_data[local_best_idx, :].sum() is np.ma.masked):
+                # If the nearest alluvium candidate has zero discharge or masked values, choose the one with the largest total annual discharge instead.
+                annual_discharge = np.ma.filled(np.ma.sum(plant_candidate_data, axis=1), fill_value=-np.inf)
+                local_best_idx = int(np.argmax(annual_discharge))
         elif fallback_mode == "nearest":
             local_best_idx = nearest_local_idx_per_plant[plant_idx]
         else:
@@ -292,10 +339,29 @@ def extract_selected_discharge_alluvium(
         # Store selection and advance to next plant's candidate block.
         selected_candidate_idx[plant_idx] = local_best_idx
         selected_discharge[plant_idx, :] = plant_candidate_data[local_best_idx, :]
+
+        # store metadata for selected candidate
+        best_y, best_x = per_plant_candidate_indices[plant_idx][local_best_idx]
+        selected_cell_overview.append(
+            {
+                "plant_id": str(placements.iloc[plant_idx]["hydro_plant_id"]),
+                "plant_lon": float(placements.iloc[plant_idx]["lon"]),
+                "plant_lat": float(placements.iloc[plant_idx]["lat"]),
+                "selected_grid_y": int(best_y),
+                "selected_grid_x": int(best_x),
+                "selected_grid_lon": float(ind_lon[best_y, best_x]),
+                "selected_grid_lat": float(ind_lat[best_y, best_x]),
+                "selected_local_candidate_idx": int(local_best_idx),
+                "n_candidates_considered": int(n_candidates),
+                "selected_from_alluvium_prefilter": bool(selected_from_alluvium[plant_idx]),
+            }
+        )
+
         row_start = row_end
 
     return {
         "selected_discharge_m3_per_day": selected_discharge,
         "selected_candidate_idx": selected_candidate_idx,
         "selected_from_alluvium": selected_from_alluvium,
+        "selected_cell_overview": selected_cell_overview,
     }
