@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import pandas as pd
 
@@ -89,6 +90,7 @@ def run_of_river_parflow_alluvium_workflow(
     efficiency=0.88,
     cap_production_by_capacity=True,
     fallback_mode="max_annual",
+    output_selected_alluvium_candidate_path=None,
     output_netcdf_path=None,
     output_variables=None,
 ):
@@ -100,13 +102,16 @@ def run_of_river_parflow_alluvium_workflow(
 
     extraction_result = extract_selected_discharge_alluvium(
         year=year,
-        plant_lats=placements["lat"].values,
-        plant_lons=placements["lon"].values,
+        placements=placements,
         root_dir=extraction_root_dir,
         alluvium_mask_file=alluvium_mask_file,
         indicator_file=indicator_file,
         fallback_mode=fallback_mode,
     )
+    # output selected alluvium candidate overview if requested
+    if output_selected_alluvium_candidate_path is not None:
+        os.makedirs(os.path.dirname(output_selected_alluvium_candidate_path), exist_ok=True)
+        pd.DataFrame(extraction_result["selected_cell_overview"]).to_csv(output_selected_alluvium_candidate_path, index=False)
 
     ds = run_of_river_daily_discharge_workflow(
         placements=placements,
@@ -121,4 +126,5 @@ def run_of_river_parflow_alluvium_workflow(
 
     ds["selected_candidate_idx"] = ("location", extraction_result["selected_candidate_idx"])  # metadata only
     ds["selected_from_alluvium"] = ("location", extraction_result["selected_from_alluvium"])  # metadata only
+    
     return ds
