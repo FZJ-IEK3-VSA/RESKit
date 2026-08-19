@@ -89,6 +89,17 @@ class HydroWorkflowManager(WorkflowManager):
         if not (0 <= float(efficiency) <= 1):
             raise ValueError("efficiency must be in the interval [0, 1]")
 
+        # formula physics
+        '''
+        rho_water = 1000 # kg/m3
+        g = 9.81 # m/s2
+        # (0) A constant overall efficiency of 0.88 was assumed, representing turbine and generator losses in modern run-of-river hydropower plants.
+        eta = 0.88 # turbine efficiency
+        # Q m3 (daily sum)
+        # head: m
+        # multiply all of them gives energy in J (kg m2/s2), 
+        # since 1 W = 1 J/s, 1 kWh = 3.6e6 J, to get the energy in kWh, we need to divide by 3.6e6
+        '''
         positive_discharge_m3_per_day = np.maximum(discharge_m3_per_day, 0.0)
         potential_system_generation = (
             positive_discharge_m3_per_day
@@ -119,7 +130,7 @@ class HydroWorkflowManager(WorkflowManager):
             "capacity_factor": np.clip(capacity_factor, 0.0, 1.0)
             if cap_production_by_capacity
             else capacity_factor,
-            "total_system_generation": total_system_generation,
+            "total_system_generation_kWh_per_day": total_system_generation,
         }
 
         # Convert to (time, location) for WorkflowManager/xarray conventions.
