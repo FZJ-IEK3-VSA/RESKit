@@ -339,7 +339,9 @@ class SolarWorkflowManager(WorkflowManager):
 
         [2]	M. Reno, C. Hansen, and J. Stein, “Global Horizontal Irradiance Clear Sky Models: Implementation and Analysis”, Sandia National Laboratories, SAND2012-2389, 2012.
 
-        [3]	<http://solardat.uoregon.edu/SolarRadiationBasics.html>, Eqs. SR1 and SR2
+        [3]	<https://web.archive.org/web/20230529210255/http://solardat.uoregon.edu/SolarRadiationBasics.html>, Eqs. SR1 and SR2
+        (the UO SRML moved to solardata.uoregon.edu and dropped this page; the
+        archived copy is cited because it carries the numbered equations)
 
         [4]	Partridge, G. W. and Platt, C. M. R. 1976. Radiative Processes in Meteorology and Climatology.
 

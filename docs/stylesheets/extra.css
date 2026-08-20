@@ -1,0 +1,153 @@
+/* ==========================================================================
+   ETHOS.RESKit — Forschungszentrum Jülich Brand Theme
+   ========================================================================== */
+
+/* -- FZJ Brand Colors ----------------------------------------------------
+   Shared across the ETHOS docs sites (GeoKit, GLAES, TSAM, FINE, RESKit); keep
+   this block identical in each repo's extra.css. */
+:root {
+    --md-primary-fg-color: #023d6b;
+    --md-primary-fg-color--light: #0a5a9e;
+    --md-primary-fg-color--dark: #012845;
+    --md-primary-bg-color: #ffffff;
+    --md-primary-bg-color--light: #ffffffb3;
+    --md-accent-fg-color: #21918c;
+    --md-accent-fg-color--transparent: #21918c1a;
+    --md-accent-bg-color: #ffffff;
+    --md-accent-bg-color--light: #ffffffb3;
+    --md-typeset-a-color: #35b0ab;
+}
+
+.md-typeset a {
+    color: #35b0ab;
+}
+
+.md-typeset a:hover {
+    color: #21918c;
+}
+
+[data-md-color-scheme="slate"] {
+    --md-primary-fg-color: #023d6b;
+    --md-primary-fg-color--light: #0a5a9e;
+    --md-primary-fg-color--dark: #012845;
+    --md-primary-bg-color: #ffffff;
+    --md-primary-bg-color--light: #ffffffb3;
+    --md-accent-fg-color: #35b0ab;
+    --md-accent-fg-color--transparent: #35b0ab1a;
+    --md-typeset-a-color: #35b0ab;
+}
+
+/* Improve table styling */
+.md-typeset table:not([class]) {
+    font-size: 0.85rem;
+}
+
+/* -- Rich notebook outputs (xarray reprs, pandas tables) ------------------
+   mkdocs-jupyter bundles JupyterLab's stylesheet with the `.jp-RenderedHTMLCommon`
+   selector renamed to `.jp-RenderedHTMLCommon-ignore`, so that Jupyter's content
+   typography cannot fight the docs theme. The elements still carry the original
+   class, so this is a rename of the RULE, not of the markup. The casualty is
+   `font-size: var(--jp-content-font-size1)` (14px): nothing then sizes rich HTML
+   outputs, and `.jupyter-wrapper` sits directly inside
+   `article.md-content__inner.md-typeset`, so they inherit `.md-typeset`'s
+   `font-size: .8rem` — 16px, because Material sets `html { font-size: 125% }`.
+   An xarray Dataset repr or a DataFrame therefore renders noticeably larger than
+   the prose around it, and the xarray repr's fixed 150px name column starts
+   wrapping.
+
+   Re-assert the Jupyter content size on the output elements only. Markdown cells
+   are NOT matched (they render as normal Material content) and must stay at the
+   theme's size, so the selector is anchored on `.jp-OutputArea-output` rather
+   than on `.jp-RenderedHTMLCommon` alone. The variable is declared by
+   mkdocs-jupyter on `.jupyter-wrapper` in both colour schemes; the literal is a
+   fallback for the day that changes. */
+.jupyter-wrapper .jp-RenderedHTMLCommon.jp-OutputArea-output {
+    font-size: var(--jp-content-font-size1, 14px);
+}
+
+/* -- Home page logo row ---------------------------------------------------
+   The home page is generated from README.md by
+   docs/scripts/gen_index_from_readme.py, which sizes its logos with the HTML
+   `width` attribute because that is what GitHub honours. Material's
+   ".md-typeset img" rule (specificity 0,1,1) sets `height: auto`, so these
+   rules re-assert a size at specificity 0,2,0. Keep in sync with LOGO_BLOCKS
+   in the generator script.
+
+   Widths are in PERCENT, not pixels. Because every ETHOS docs site uses the
+   same Material grid and sidebars, a given percentage is the same rendered
+   width on all of them, which is what keeps the ICE-2 header the same size
+   across FINE, GeoKit, GLAES, TSAM and RESKit. Keep `.hero-logo--jsa` at 65.8%
+   in each repo's extra.css.
+
+   `height: auto` resolves the logo's height from its own aspect ratio (the
+   ICE-2 header is 568.23x81.38, 6.98:1).
+
+   Dark mode is handled by swapping to JSA-Header-dark.svg via the
+   "#only-light"/"#only-dark" fragments rather than a CSS
+   `filter: brightness(0) invert(1)` on the light logo — README_assets ships a
+   purpose-made dark variant, so inverting the light one is unnecessary. */
+.md-typeset .hero-logo--jsa {
+    width: 65.8%;
+    height: auto;
+}
+
+/* Acknowledgement logo at the foot of the page — sits alone, so a fixed width
+   (matching the README's width="200") rather than a share of the row. */
+.md-typeset .hero-logo--helmholtz {
+    width: 200px;
+    height: auto;
+}
+
+/* -- Institutional footer -------------------------------------------------
+   Shared across the ETHOS docs sites; keep identical in each repo. */
+.footer-institutional {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    padding: 1.5rem 0;
+    width: 100%;
+    flex-wrap: wrap;
+}
+
+.footer-institutional__logos {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    flex-shrink: 0;
+}
+
+/* Material's ".md-typeset img" rule (specificity 0,1,1) forces height:auto on
+   images inside the footer meta. We scope under ".md-footer" (specificity
+   0,2,0) so our sizing wins — otherwise the Helmholtz SVG, which has only a
+   viewBox and no intrinsic width/height, is forced to height:auto, collapses
+   to 0, and disappears. Height-based sizing keeps the two logos aligned and
+   symmetric. The footer is always dark, so the JSA logo is inverted to white. */
+.md-footer .footer-logo--jsa {
+    height: 60px;
+    width: auto;
+    filter: brightness(0) invert(1);
+}
+
+.md-footer .footer-logo--helmholtz {
+    height: 33px;
+    width: auto;
+}
+
+.footer-institutional__text {
+    font-size: 0.7rem;
+    line-height: 1.6;
+}
+
+.footer-institutional__text p {
+    margin: 0.2rem 0;
+}
+
+.footer-institutional__text a {
+    color: inherit;
+    text-decoration: underline;
+    text-decoration-color: rgba(255, 255, 255, 0.4);
+}
+
+.footer-institutional__text a:hover {
+    text-decoration-color: inherit;
+}

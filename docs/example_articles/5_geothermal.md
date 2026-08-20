@@ -1,6 +1,6 @@
 # Geothermal
 
-For Geothermal Energy Supply RESKit provides the simulation workflow presented in this [ xample](../../examples/5_geothermal/5_run_geothermal_simulations.ipynb). The workflow used is based on:
+For Geothermal Energy Supply RESKit provides the simulation workflow presented in this [example](../examples/5_geothermal/5_run_geothermal_simulations.ipynb). The workflow used is based on:
 
 
 Franzmann, David and Heinrichs, Heidi

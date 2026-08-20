@@ -1942,8 +1942,9 @@ class PTRWorkflowManager(SolarWorkflowManager):
 
         Returns
         -------
-            [CSPWorkflowManager]: [Updated CSPWorkflowManager with new value for sim_data['hour_angle'][timeserie_iter, location_iter] and
-            sim_data['declination_angle'][timeserie_iter, location_iter]]
+            CSPWorkflowManager: Updated CSPWorkflowManager with new values for
+            ``sim_data['hour_angle'][timeserie_iter, location_iter]`` and
+            ``sim_data['declination_angle'][timeserie_iter, location_iter]``.
         """
         assert "lat" in self.placements.columns
         assert "lon" in self.placements.columns

@@ -163,6 +163,7 @@ def openfield_pv_era5(
     output_variables=None,
     gsa_nodata_fallback="source",
     tech_year=2050,
+    time_slice=None,
 ):
     """
     Simulation of an openfield  PV openfield system based on ERA5 Data.
@@ -253,6 +254,12 @@ def openfield_pv_era5(
                 Will be ignored when non-projected existing module names or specific parameters
                 are given, can then be None. By default 2050.
 
+    time_slice : slice, optional
+            Limit the time span loaded from the ERA5 source. Only supported for
+            Zarr-backed ERA5 sources, where it is strongly recommended to avoid
+            loading whole multi-year cloud stores. Raises for netCDF4-backed ERA5
+            sources; support for those is planned.
+
     Returns
     -------
     A xarray dataset including all the output variables you defined as your output_variables.
@@ -286,6 +293,7 @@ def openfield_pv_era5(
         source=era5_path,
         set_time_index=True,
         time_index_from="direct_horizontal_irradiance",
+        time_slice=time_slice,
         verbose=False,
     )
     # If there is a need to resimulate old data, this line must be inserted.
@@ -326,7 +334,7 @@ def openfield_pv_era5(
 
     wf.adjust_variable_to_long_run_average(
         variable="global_horizontal_irradiance",
-        source_long_run_average=rk_weather.Era5Source.LONG_RUN_AVERAGE_GHI,
+        source_long_run_average=rk_weather.Era5Source.LONG_RUN_AVERAGE_GHI_2020_03,
         real_long_run_average=global_solar_atlas_ghi_path,
         real_lra_scaling=1000 / 24,  # cast to hourly average kWh
         nodata_fallback=GHI_nodata_fallback,
@@ -335,7 +343,7 @@ def openfield_pv_era5(
 
     wf.adjust_variable_to_long_run_average(
         variable="direct_normal_irradiance",
-        source_long_run_average=rk_weather.Era5Source.LONG_RUN_AVERAGE_DNI,
+        source_long_run_average=rk_weather.Era5Source.LONG_RUN_AVERAGE_DNI_2020_03,
         real_long_run_average=global_solar_atlas_dni_path,
         real_lra_scaling=1000 / 24,  # cast to hourly average kWh
         nodata_fallback=DNI_nodata_fallback,

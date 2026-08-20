@@ -115,6 +115,145 @@ def test_WorkflowManager_read(
     assert np.isclose(man.sim_data["surface_air_temperature"].mean(), 0.9192180687015453)
 
 
+class SourceWithoutSload:
+    """A minimal NCSource-like object which does not offer an `.sload()` method"""
+
+    def __init__(self, source):
+        self._source = source
+
+    def __getattr__(self, name):
+        if name == "sload":
+            raise AttributeError(name)
+        return getattr(self._source, name)
+
+
+@pytest.fixture
+def pt_era5_source(
+    pt_WorkflowManager_initialized: WorkflowManager,
+) -> rk.weather.Era5Source:
+    source = rk.weather.Era5Source(
+        rk.TEST_DATA["era5-like"],
+        bounds=pt_WorkflowManager_initialized.ext,
+    )
+    source.sload("elevated_wind_speed")
+    return source
+
+
+def test_WorkflowManager_read_preloaded_source(
+    pt_WorkflowManager_initialized: WorkflowManager,
+    pt_era5_source: rk.weather.Era5Source,
+):
+    """A single, already loaded variable can be given as a plain string"""
+    man = pt_WorkflowManager_initialized
+    man.read(
+        variables="elevated_wind_speed",
+        source_type="user",
+        source=pt_era5_source,
+        set_time_index=True,
+    )
+
+    assert man.time_index[0] == pt_era5_source.time_index[0]
+    assert man.sim_data["elevated_wind_speed"].shape == (140, 5)
+    assert np.isclose(man.sim_data["elevated_wind_speed"].mean(), 7.770940192441002)
+
+
+def test_WorkflowManager_read_preloaded_source_loads_missing_variables(
+    pt_WorkflowManager_initialized: WorkflowManager,
+    pt_era5_source: rk.weather.Era5Source,
+):
+    """Variables which are missing in the given source are loaded via its `.sload()`"""
+    man = pt_WorkflowManager_initialized
+    assert "surface_pressure" not in pt_era5_source.data
+
+    man.read(
+        variables=["elevated_wind_speed", "surface_pressure", "surface_air_temperature"],
+        source_type="user",
+        source=pt_era5_source,
+        set_time_index=True,
+    )
+
+    assert "surface_pressure" in pt_era5_source.data
+    assert np.isclose(man.sim_data["elevated_wind_speed"].mean(), 7.770940192441002)
+    assert np.isclose(man.sim_data["surface_pressure"].mean(), 99177.21094376309)
+    assert np.isclose(man.sim_data["surface_air_temperature"].mean(), 0.9192180687015453)
+
+
+def test_WorkflowManager_read_preloaded_source_without_sload(
+    pt_WorkflowManager_initialized: WorkflowManager,
+    pt_era5_source: rk.weather.Era5Source,
+):
+    """Sources without an `.sload()` must bring along all requested variables"""
+    man = pt_WorkflowManager_initialized
+    man.read(
+        variables=["elevated_wind_speed"],
+        source_type="user",
+        source=SourceWithoutSload(pt_era5_source),
+        set_time_index=True,
+    )
+
+    assert np.isclose(man.sim_data["elevated_wind_speed"].mean(), 7.770940192441002)
+
+    with pytest.raises(AssertionError, match="surface_pressure"):
+        man.read(
+            variables=["surface_pressure"],
+            source_type="user",
+            source=SourceWithoutSload(pt_era5_source),
+        )
+
+
+def test_WorkflowManager_read_single_variable_from_path(
+    pt_WorkflowManager_initialized: WorkflowManager,
+):
+    """A single variable can be given as a plain string when reading from a path"""
+    man = pt_WorkflowManager_initialized
+    man.read(
+        variables="elevated_wind_speed",
+        source_type="ERA5",
+        source=rk.TEST_DATA["era5-like"],
+        set_time_index=True,
+    )
+
+    assert man.sim_data["elevated_wind_speed"].shape == (140, 5)
+    assert np.isclose(man.sim_data["elevated_wind_speed"].mean(), 7.770940192441002)
+
+
+def test_WorkflowManager_read_unknown_source_type(
+    pt_WorkflowManager_initialized: WorkflowManager,
+):
+    with pytest.raises(RuntimeError, match="Unknown source_type"):
+        pt_WorkflowManager_initialized.read(
+            variables=["elevated_wind_speed"],
+            source_type="NOT-A-SOURCE",
+            source=rk.TEST_DATA["era5-like"],
+            set_time_index=True,
+        )
+
+
+def test_WorkflowManager_read_without_time_index(
+    pt_WorkflowManager_initialized: WorkflowManager,
+):
+    with pytest.raises(RuntimeError, match="Time index is not available"):
+        pt_WorkflowManager_initialized.read(
+            variables=["elevated_wind_speed"],
+            source_type="ERA5",
+            source=rk.TEST_DATA["era5-like"],
+            set_time_index=False,
+        )
+
+
+def test_WorkflowManager_read_time_slice_requires_zarr(
+    pt_WorkflowManager_initialized: WorkflowManager,
+):
+    with pytest.raises(RuntimeError, match="only supported for Zarr-backed ERA5 sources"):
+        pt_WorkflowManager_initialized.read(
+            variables=["elevated_wind_speed"],
+            source_type="ERA5",
+            source=rk.TEST_DATA["era5-like"],
+            set_time_index=True,
+            time_slice=slice("2015-01-01", "2015-01-02"),
+        )
+
+
 @pytest.fixture
 def pt_WorkflowManager_loaded(
     pt_WorkflowManager_initialized: WorkflowManager,
@@ -174,7 +313,7 @@ def test_WorkflowManager_adjust_variable_to_long_run_average(
     man = pt_WorkflowManager_loaded
     man.adjust_variable_to_long_run_average(
         "elevated_wind_speed",
-        source_long_run_average=rk.weather.Era5Source.LONG_RUN_AVERAGE_WINDSPEED,
+        source_long_run_average=rk.weather.Era5Source.LONG_RUN_AVERAGE_WINDSPEED_2020_03,
         real_long_run_average=TEST_DATA["gwa100-like.tif"],
         real_lra_scaling=1,
         spatial_interpolation="linear-spline",
@@ -204,7 +343,7 @@ def test_WorkflowManager_adjust_variable_to_long_run_average_() -> WorkflowManag
     wf.sim_data["test_nearest"] = np.ones(shape=(1, placements.shape[0]))
     wf.adjust_variable_to_long_run_average(
         variable="test_nearest",
-        source_long_run_average=rk.weather.Era5Source.LONG_RUN_AVERAGE_GHI,
+        source_long_run_average=rk.weather.Era5Source.LONG_RUN_AVERAGE_GHI_2020_03,
         real_long_run_average=TEST_DATA["gsa-ghi-like.tif"],
         real_lra_scaling=1000 / 24,  # cast to hourly average kWh
         nodata_fallback=np.nan,
@@ -218,7 +357,7 @@ def test_WorkflowManager_adjust_variable_to_long_run_average_() -> WorkflowManag
     wf.sim_data["test_source"] = np.ones(shape=(1, placements.shape[0]))
     wf.adjust_variable_to_long_run_average(
         variable="test_source",
-        source_long_run_average=rk.weather.Era5Source.LONG_RUN_AVERAGE_GHI,
+        source_long_run_average=rk.weather.Era5Source.LONG_RUN_AVERAGE_GHI_2020_03,
         real_long_run_average=TEST_DATA["gsa-ghi-like.tif"],
         real_lra_scaling=1000 / 24,  # cast to hourly average kWh
         nodata_fallback=1.0,  # 1.0 means 1.0 x source data (no real_lra_scaling)
@@ -235,7 +374,7 @@ def test_WorkflowManager_adjust_variable_to_long_run_average_() -> WorkflowManag
     wf.sim_data["test_source_deprecated"] = np.ones(shape=(1, placements.shape[0]))
     wf.adjust_variable_to_long_run_average(
         variable="test_source_deprecated",
-        source_long_run_average=rk.weather.Era5Source.LONG_RUN_AVERAGE_GHI,
+        source_long_run_average=rk.weather.Era5Source.LONG_RUN_AVERAGE_GHI_2020_03,
         real_long_run_average=TEST_DATA["gsa-ghi-like.tif"],
         real_lra_scaling=1000 / 24,  # cast to hourly average kWh
         nodata_fallback="source",  # deprecated, but must yield the same result
@@ -253,7 +392,7 @@ def test_WorkflowManager_adjust_variable_to_long_run_average_() -> WorkflowManag
     wf.sim_data["test_callable"] = np.ones(shape=(1, placements.shape[0]))
     wf.adjust_variable_to_long_run_average(
         variable="test_callable",
-        source_long_run_average=rk.weather.Era5Source.LONG_RUN_AVERAGE_GHI,
+        source_long_run_average=rk.weather.Era5Source.LONG_RUN_AVERAGE_GHI_2020_03,
         real_long_run_average=TEST_DATA["gsa-ghi-like.tif"],
         real_lra_scaling=1000 / 24,  # cast to hourly average kWh
         nodata_fallback=my_test_function,  # should yield 2 x source data (no real_lra_scaling)
@@ -280,7 +419,7 @@ def test_WorkflowManager_adjust_variable_to_long_run_average_() -> WorkflowManag
     wf2.sim_data["test_raster"] = np.ones(shape=(1, placements.shape[0]))
     wf2.adjust_variable_to_long_run_average(
         variable="test_raster",
-        source_long_run_average=rk.weather.Era5Source.LONG_RUN_AVERAGE_GHI,
+        source_long_run_average=rk.weather.Era5Source.LONG_RUN_AVERAGE_GHI_2020_03,
         real_long_run_average=TEST_DATA["clc-aachen_clipped.tif"],
         real_lra_scaling=1000 / 24,  # cast to hourly average kWh
         nodata_fallback=TEST_DATA["gsa-ghi-like.tif"],

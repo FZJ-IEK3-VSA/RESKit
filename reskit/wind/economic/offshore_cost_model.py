@@ -1,697 +1,974 @@
 import numpy as np
+import warnings
 
 from reskit.parameters.parameters import OffshoreParameters
+from reskit.wind.economic.onshore_cost_model import onshore_tcc
 
-from .onshore_cost_model import onshore_tcc
 
-
-def offshore_turbine_capex(
+def calculateSpecificOffshoreCapex(
+    baseSpecCapex,
     capacity,
-    hub_height,
-    rotor_diam,
-    depth,
-    distance_to_shore,
-    distance_to_bus=None,
-    foundation=None,
-    mooring_count=None,
-    anchor=None,
-    turbine_count=None,
-    turbine_spacing=None,
-    turbine_row_spacing=None,
+    rotorDiam,
+    hubHeight,
+    waterDepth: float | int,
+    coastDistance: float | int,
+    portDistance: float | int = None,
+    maxMonopileDepth=25,
+    maxJacketDepth=55,
+    maxJacketDepthPlatform=150,
+    baseDepth=17,
+    baseDistCoast=27,
+    baseWFSize=180000,
+    baseCap=None,
+    baseHubHeight=None,
+    baseRotorDiam=None,
+    defaultOffshoreParamsFp=None,
+    techYear=2050,
+    voltageType="optimal",
 ):
     """
-    A cost and scaling model (CSM) to calculate the total cost of a 3-bladed, direct drive offshore wind turbine according to the cost model proposed by Fingersh et al. [1] and Maples et al. [2].
-    The CSM distinguishes between seaflor-fixed foundation types; "monopile" and "jacket" and floating foundation types; "semisubmersible" and "spar".
-    The total turbine cost includes the contributions of the turbine capital cost (TCC), amounting 32.9% for fixed or 23.9% for floating structures, the balance of system costs (BOS) contribution, amounting 46.2% and 60.8% respectively, as well as the finantial costs as the complementary percentage contribution (15.9% and 20.9%) in the same manner [3].
-    A CSM normalization is done such that a chosen baseline offshore turbine taken by Caglayan et al. [4] (see notes for details) corresponds to an expected specific cost of 2300 €/kW in a 2050 European context as suggested by the 2016 cost of wind energy review by Stehly [3].
+    Scales a generic offshore CAPEX value based on water depth and distance to shore by taking capacity, hubheight and rotor diameter of a base case. If no base case is given, a default base case is applied.
 
     Parameters
     ----------
-    capacity : numeric or array-like
-        Turbine's nominal capacity in kW.
-
-    hub_height : numeric or array-like
-        Turbine's hub height in m.
-
-    rotor_diam : numeric or array-like
-        Turbine's rotor diameter in m.
-
-    depth : numeric or array-like
-        Water depth in m (absolute value) at the turbine's location.
-
-    distance_to_shore : numeric or array-like
-        Distance from the turbine's location to the nearest shore in km.
-
-    distance_to_bus : numeric or array-like, optional
-        Distance from the wind farm's bus in km from the turbine's location.
-
-    foundation : str or array-like of strings, optional
-        Turbine's foundation type. Accepted  types are: "monopile", "jacket", "semisubmersible" or "spar", by default "monopile"
-
-    mooring_count : numeric, optional
-        Refers to the number of mooring lines are there attaching a turbine only applicable for floating foundation types. By default 3 assuming a triangular attachment to the seafloor.
-
-    anchor : str, optional
-        Turbine's anchor type only applicable for floating foundation types, by default as recommended by [1].
-        Arguments accepted are "dea" (drag embedment anchor) or "spa" (suction pile anchor).
-
-    turbine_count : numeric, optional
-        Number of turbines in the offshore windpark. CSM valid for the range [3-200], by default 80
-
-    turbine_spacing : numeric, optional
-        Spacing distance in a row of turbines (turbines that share the electrical connection) to the bus. The value must be a multiplier of rotor diameter. CSM valid for the range [4-9], by default 5
-
-    turbine_row_spacing : numeric, optional
-        Spacing distance between rows of turbines. The value must be a multiplier of rotor diameter. CSM valid for the range [4-10], by default 9
-
-    Returns
-    -------
-    numeric or array-like
-        Offshore turbine total cost
-
-
-    See Also
-    --------
-        onshore_turbine_capex(capacity, hub_height, rotor_diam, base_capex, base_capacity, base_hub_height, base_rotor_diam, tcc_share, bos_share)
-
-    Notes
-    -----
-        The baseline offshore turbine correspongs to the optimal design for Europe according to Caglayan et al. [4]: capacity = 9400 kW, hub height = 135 m, rotor diameter = 210 m, "monopile" foundation, reference water depth = 40 m, and reference distance to shore = 60 km.
-
-    Sources
-    -------
-    [1] Fingersh, L., Hand, M., & Laxson, A. (2006). Wind Turbine Design Cost and Scaling Model. Nrel. https://www.nrel.gov/docs/fy07osti/40566.pdf
-    [2] Maples, B., Hand, M., & Musial, W. (2010). Comparative Assessment of Direct Drive High Temperature Superconducting Generators in Multi-Megawatt Class Wind Turbines. Energy. https://doi.org/10.2172/991560
-    [3] Stehly, T., Heimiller, D., & Scott, G. (2016). Cost of Wind Energy Review. Technical Report. https://www.nrel.gov/docs/fy18osti/70363.pdf
-    [4] Caglayan, D. G., Ryberg, D. S., Heinrichs, H., Linssen, J., Stolten, D., & Robinius, M. (2019). The techno-economic potential of offshore wind energy with optimized future turbine designs in Europe. Applied Energy. https://doi.org/10.1016/j.apenergy.2019.113794
-    [5] Maness, M., Maples, B., & Smith, A. (2017). NREL Offshore Balance-of- System Model NREL Offshore Balance-of- System Model. https://www.nrel.gov/docs/fy17osti/66874.pdf
-    [6] Myhr, A., Bjerkseter, C., Ågotnes, A., & Nygaard, T. A. (2014). Levelised cost of energy for offshore floating wind turbines in a life cycle perspective. Renewable Energy, 66, 714–728. https://doi.org/10.1016/j.renene.2014.01.017
-    [7] Bjerkseter, C., & Ågotnes, A. (2013). Levelised Costs Of Energy For Offshore Floating Wind Turbine Concepts [Norwegian University of Life Sciences]. https://nmbu.brage.unit.no/nmbu-xmlui/bitstream/handle/11250/189073/Bjerkseter%2C C. %26 Ågotnes%2C A. %282013%29 - Levelised Costs of Energy for Offshore Floating Wind Turbine Concepts.pdf?sequence=1&isAllowed=y
-    [8] Smart, G., Smith, A., Warner, E., Sperstad, I. B., Prinsen, B., & Lacal-Arantegui, R. (2016). IEA Wind Task 26: Offshore Wind Farm Baseline Documentation. https://doi.org/10.2172/1259255
-    [9] RPG CABLES, & KEC International limited. (n.d.). EXTRA HIGH VOLTAGE cables. RPG CABLES. www.rpgcables.com/images/product/EHV-catalogue.pdf
-
-    """
-    # TODO: Generalize this function further(like with the onshore cost model)
-
-    # initialize OffshoreParameters class and feed with custom param values
-    OffshoreParams = OffshoreParameters(
-        **{
-            k: v
-            for k, v in locals().items()
-            if not k in ["capacity", "hub_height", "rotor_diam", "depth", "distance_to_shore"]
-        }
-    )
-
-    # PREPROCESS INPUTS
-    cp = np.array(capacity / 1000)  # in MW
-    # rr = np.array(rotor_diam / 2)
-    rd = np.array(rotor_diam)
-    hh = np.array(hub_height)
-    depth = np.abs(np.array(depth))  # positive values
-
-    # COMPUTE COSTS
-    tcc = onshore_tcc(cp=cp * 1000, hh=hh, rd=rd)
-    tcc *= 0.7719832742256006
-
-    bos = offshore_bos(
-        cp=cp,
-        rd=rd,
-        hh=hh,
-        depth=depth,
-        distance_to_shore=np.array(distance_to_shore),
-        distance_to_bus=np.array(OffshoreParams.distance_to_bus),
-        foundation=OffshoreParams.foundation,
-        mooring_count=OffshoreParams.mooring_count,
-        anchor=OffshoreParams.anchor,
-        turbine_count=OffshoreParams.turbine_count,
-        turbine_spacing=OffshoreParams.turbine_spacing,
-        turbine_row_spacing=OffshoreParams.turbine_row_spacing,
-    )
-
-    bos *= 0.3669156255898912
-
-    if OffshoreParams.foundation in ["monopile", "jacket"]:
-        fin = (tcc + bos) * 20.9 / (32.9 + 46.2)  # Scaled according to tcc [7]
-    else:
-        fin = (tcc + bos) * 15.6 / (60.8 + 23.6)  # Scaled according to tcc [7]
-    return tcc + bos + fin
-    # return np.array([tcc,bos,fin])
-
-
-def offshore_bos(
-    cp,
-    rd,
-    hh,
-    depth,
-    distance_to_shore,
-    distance_to_bus,
-    foundation,
-    mooring_count,
-    anchor,
-    turbine_count,
-    turbine_spacing,
-    turbine_row_spacing,
-):
-    """
-    A function to determine the balance of the system cost (BOS) of an offshore turbine based on the capacity, hub height and rotor diameter values according to Fingersh et al. [1].
-
-    Parameters
-    ----------
-    cp : numeric or array-like
-        Turbine's nominal capacity in kW
-
-    rd : numeric or array-like
-        Turbine's rotor diameter in m
-
-    hh : numeric or array-like
-        Turbine's hub height in m
-
-    depth : numeric or array-like
-        Water depth in m (absolute value) at the turbine's location.
-
-    distance_to_shore : numeric or array-like
-            Distance from the turbine's location to the nearest shore in km.
-
-    distance_to_bus : numeric or array-like, optional
-        Distance from the wind farm's bus in km from the turbine's location.
-
-    foundation : str or array-like of strings, optional
-        Turbine's foundation type. Accepted  types are: "monopile", "jacket", "semisubmersible" or "spar", by default "monopile"
-
-    mooring_count : numeric, optional
-        Refers to the number of mooring lines are there attaching a turbine only applicable for floating foundation types. By default 3 assuming a triangular attachment to the seafloor.
-
-    anchor : str, optional
-        Turbine's anchor type only applicable for floating foundation types, by default as recommended by [1].
-        Arguments accepted are "dea" (drag embedment anchor) or "spa" (suction pile anchor).
-
-    turbine_count : numeric, optional
-        Number of turbines in the offshore windpark. CSM valid for the range [3-200], by default 80
-
-    turbine_spacing : numeric, optional
-        Spacing distance in a row of turbines (turbines that share the electrical connection) to the bus. The value must be a multiplier of rotor diameter. CSM valid for the range [4-9], by default 5
-
-    turbine_row_spacing : numeric, optional
-        Spacing distance between rows of turbines. The value must be a multiplier of rotor diameter. CSM valid for the range [4-10], by default 9
+    baseSpecCapex : float
+        Reference custom CAPEX per kW [cost unit/kW] that should be scaled,
+        incl. overhead.
+    capacity : float
+        Turbine rated capacity in [kW].
+    rotorDiam : float
+        Rotor diameter in [m].
+    hubHeight : float
+        Hub height in [m].
+    waterDepth : float
+        Site-specific water depth in [m].
+    coastDistance : float
+        Distance from site to nearest coast in [km].
+    portDistance : float
+        Distance from site to nearest base port suitable as installation and maintenance base in [km].
+    maxMonopileDepth : float, optional
+        Maximum depth for monopile foundations in  [m], by default 25.
+    maxJacketDepth : float, optional
+        Maximum depth for jacket foundations in [m], by default 55.
+    maxJacketDepthPlatform : float, optional
+        Maximum depth for installing offshore platforms (e.g. for offshore converter stations) in [m], by default 150.
+    baseDepth : float, optional
+        Reference depth in [m], by default 17.
+    baseDistCoast : float, optional
+        Reference coast distance in [km], by default 27.
+    baseWFSize : int, optional
+        The average wind farm size in [kW], by default 180000 (based on average
+        extracted from processed theWindPower.net database v2025/07).
+    baseCap : float, optional
+        Reference turbine capacity in [kW]. Loaded from CSV if not provided. In this case,
+        defaultOffshoreFp is required.
+    baseHubHeight : float, optional
+        Reference hub height in [m]. Loaded from CSV if not provided. In this case,
+        defaultOffshoreFp is required.
+    baseRotorDiam : float, optional
+        Reference rotor diameter in [m]. Loaded from CSV if not provided. In this case,
+        defaultOffshoreFp is required.
+    defaultOffshoreParamsFp : str, optional
+        Filepath to offshore turbine parameters CSV.
+        as reference look for default csv format at
+        reskit/wind/core/data/baseline_turbine_offshore_CaglayanEtAl2019.csv
+    techYear : int, optional
+        Year of the applied technology, by default 2050.
 
     Returns
     -------
-    numeric
-        Offshore turbine's balance of the system cost (BOS) in monetary units.
-
-    Notes
-    -----
-    Assembly and installation costs could not be implemented due to the excessive number of unspecified constants considered by Smart et al. [8]. Therefore empirical equations were derived which fit the sensitivities to the baseline plants shown in [8]. These ended up being linear equations in turbine capacity and sea depth (only for floating turbines).
-
-    Sources
-    -------
-
-    [1] Fingersh, L., Hand, M., & Laxson, A. (2006). Wind Turbine Design Cost and Scaling Model. Nrel. https://www.nrel.gov/docs/fy07osti/40566.pdf
-    [2] Maples, B., Hand, M., & Musial, W. (2010). Comparative Assessment of Direct Drive High Temperature Superconducting Generators in Multi-Megawatt Class Wind Turbines. Energy. https://doi.org/10.2172/991560
-    [3] Stehly, T., Heimiller, D., & Scott, G. (2016). Cost of Wind Energy Review. Technical Report. https://www.nrel.gov/docs/fy18osti/70363.pdf
-    [4] Caglayan, D. G., Ryberg, D. S., Heinrichs, H., Linssen, J., Stolten, D., & Robinius, M. (2019). The techno-economic potential of offshore wind energy with optimized future turbine designs in Europe. Applied Energy. https://doi.org/10.1016/j.apenergy.2019.113794
-    [5] Maness, M., Maples, B., & Smith, A. (2017). NREL Offshore Balance-of- System Model NREL Offshore Balance-of- System Model. https://www.nrel.gov/docs/fy17osti/66874.pdf
-    [6] Myhr, A., Bjerkseter, C., Ågotnes, A., & Nygaard, T. A. (2014). Levelised cost of energy for offshore floating wind turbines in a life cycle perspective. Renewable Energy, 66, 714–728. https://doi.org/10.1016/j.renene.2014.01.017
-    [7] Bjerkseter, C., & Ågotnes, A. (2013). Levelised Costs Of Energy For Offshore Floating Wind Turbine Concepts [Norwegian University of Life Sciences]
-    [8] Smart, G., Smith, A., Warner, E., Sperstad, I. B., Prinsen, B., & Lacal-Arantegui, R. (2016). IEA Wind Task 26: Offshore Wind Farm Baseline Documentation. https://doi.org/10.2172/1259255
-    [9] RPG CABLES, & KEC International limited. (n.d.). EXTRA HIGH VOLTAGE cables. RPG CABLES. www.rpgcables.com/images/product/EHV-catalogue.pdf
-
+    float
+        Adjusted offshore wind CAPEX per kW for the given configuration. The cost unit is the same as the baseSpecCapex.
     """
-    # rr = rd / 2
+    # CHECK AND PREPROCESS INPUTS
 
-    # prevent problems with negative depth values
-    depth = np.abs(depth)
-
-    foundation = foundation.lower()
-    anchor = anchor.lower()
-    if foundation == "monopile" or foundation == "jacket":
-        fixedType = True
-    elif foundation == "spar" or foundation == "semisubmersible":
-        fixedType = False
+    # scalar inputs
+    assert isinstance(maxMonopileDepth, int), "maxMonopileDepth must be an integer value"
+    assert maxMonopileDepth < maxJacketDepth, "Jacket depth must be greater than monopile depth"
+    # vectorized inputs
+    waterDepth = np.atleast_1d(waterDepth)
+    assert (waterDepth >= 0).all(), "waterDepth must be an integer, float or np.ndarray with all values >= 0"
+    coastDistance = np.atleast_1d(coastDistance)
+    assert (coastDistance >= 0).all(), "coastDistance must be an integer, float or np.ndarray with all values >= 0"
+    if portDistance is None:
+        portDistance = coastDistance
     else:
+        portDistance = np.atleast_1d(portDistance)
+    assert (portDistance >= 0).all(), "portDistance must be an integer, float or np.ndarray with all values >= 0"
+    assert (portDistance >= coastDistance).all(), "portDistance cannot be smaller than coastDistance for any location."
+
+    # convert all other location-specific parameters to a np array for vectorized handling in subfunctions
+    capacity = np.atleast_1d(capacity)
+    hubHeight = np.atleast_1d(hubHeight)
+    rotorDiam = np.atleast_1d(rotorDiam)
+
+    # GET TURBINE DEFAULT PARAMETERS IF NEEDED
+
+    if any(_arg is None for _arg in [baseCap, baseHubHeight, baseRotorDiam, baseSpecCapex]):
+        params = OffshoreParameters(fp=defaultOffshoreParamsFp, year=techYear)
+    elif defaultOffshoreParamsFp is not None:
         raise ValueError(
-            f"Please choose one of the four foundation types: monopile, jacket, spar, or semisubmersible. Here: {foundation}"
+            "defaultOffshoreParamsFp is expected to be None if baseCap, "
+            "baseHubHeight, baseRotorDiam and baseSpecCapex are provided explicitly."
         )
+    if baseCap is None:
+        baseCap = params.base_capacity
+        print("baseCap is taken from overall techno-economic file")
+    if baseHubHeight is None:
+        baseHubHeight = params.base_hub_height
+        print("baseHubHeight is taken from overall techno-economic file")
+    if baseRotorDiam is None:
+        baseRotorDiam = params.base_rotor_diam
+        print("baseRotorDiam is taken from overall techno-economic file")
+    if baseSpecCapex is None:
+        baseSpecCapex = params.base_capex_per_capacity
+        print("inputCapex is taken from overall techno-economic file")
 
-    # CONSTANTS AND ASSUMPTIONS (all from [1] except where noted)
-    # Structure are foundation
-    # embedmentDepth = 30  # meters
-    monopileCostRate = 2250  # dollars/tonne
-    monopileTPCostRate = 3230  # dollars/tonne
-    sparSCCostRate = 3120  # dollars/tonne
-    sparTCCostRate = 4222  # dollars/tonne
-    sparBallCostRate = 100  # dollars/tonne
-    jacketMLCostRate = 4680  # dollars/tonne
-    jacketTPCostRate = 4500  # dollars/tonne
-    jacketPileCostRate = 2250  # dollars/tonne
-    semiSubmersibleSCCostRate = 3120  # dollars/tonne
-    semiSubmersibleTCostRate = 6250  # dollars/tonne
-    semiSubmersibleHPCostRate = 6250  # dollars/tonne
-    # dollars/tonne -- 0.12m diameter is chosen since it is the median in [1]
-    mooringCostRate = 721
-    outfittingSteelCost = 7250  # dollars/tonne
+    # PREPARE TURBINE COST FUNCTIONS
 
-    # the values of anchor cost is calculated from Table8 in [2] by assuming a euro to dollar rate of 1.35
-    DEA_anchorCost = 154  # dollars [2]
-    SPA_anchorCost = 692  # dollars [2]
+    offshoreCorrfacRogeau = calculateOffshoreFacRogeau(techYear)
 
-    # Electrical
-    # current rating values are taken from source an approximate number is chosen from tables[4]
-    cable1CurrentRating = 400  # [4]
-    cable2CurrentRating = 600  # [4]
-    # exportCableCurrentRating = 1000  # [4]
-    arrayVoltage = 33
-    # exportCableVoltage = 220
-    powerFactor = 0.95
-    # buriedDepth = 1  # this value is chosen from [5] IF THIS CHANGES FROM ONE "singleStringPower1" needs to be updated
-    catenaryLengthFactor = 0.04
-    excessCableFactor = 0.1
-    numberOfSubStations = 1  # From the example used in [5]
-    arrayCableCost = 281000 * 1.35  # dollars/km (converted from EUR) [3]
-    externalCableCost = 443000 * 1.35  # dollars/km (converted from EUR) [3]
-    singleTurbineInterfaceCost = 0  # Could not find a number...
-    substationInterfaceCost = 0  # Could not find a number...
-    dynamicCableFactor = 2
-    mainPowerTransformerCostRate = 12500  # dollars/MVA
-    highVoltageSwitchgearCost = 950000  # dollars
-    mediumVoltageSwitchgearCost = 500000  # dollars
-    shuntReactorCostRate = 35000  # dollars/MVA
-    dieselGeneratorBackupCost = 1000000  # dollars
-    workspaceCost = 2000000  # dollars
-    otherAncillaryCosts = 3000000  # dollars
-    fabricationCostRate = 14500  # dollars/tonne
-    topsideDesignCost = 4500000  # dollars
-    assemblyFactor = 1  # could not find a number...
-    offshoreSubstationSubstructureCostRate = 6250  # dollars/tonne
-    substationSubstructurePileCostRate = 2250  # dollars/tonne
-    interconnectVoltage = 345  # kV
+    # define a turbine installation cost function based on Rogeau et al. section 3.2.1
+    # Define the function inside this function so it cannot be used separately by others, since it is not really related to the other fixed-cost components.
+    def _getSpecificTurbineInstallCost(_depth):
+        # enforce the same shape for all variables
+        _depth = np.asarray(_depth, dtype=float)
+        if _depth.size == 1:
+            _depth = np.full_like(capacity, _depth.item())
+        elif _depth.shape != capacity.shape:
+            raise ValueError("depth must be scalar or same shape as capacity")
+        _portDistance = np.asarray(portDistance, dtype=float)
+        if _portDistance.size == 1:
+            _portDistance = np.full_like(capacity, _portDistance.item())
+        elif _portDistance.shape != capacity.shape:
+            raise ValueError("portDistance must be scalar or same shape as capacity")
+        # determine fixed vs floating locations
+        _depth = np.broadcast_to(_depth, capacity.shape)
+        isFixed = _depth <= maxJacketDepth
+        # initiate a container for installation cost
+        instCost = np.zeros(_depth.shape, dtype=float)
+        # first deal with fixed foundation locations, calculate normalized per 1 windturbine foundation
+        if np.any(isFixed):
+            a = 40.0 * 1000 / capacity[isFixed]  # parameter will be a location-specific array, first value in MW
+            instCost[isFixed] = ((1 / a) * (2.0 * _portDistance[isFixed] / 18.5 + 24.0) + 144.0 * 1) * (200.0 / 24.0)
+        if np.any(~isFixed):
+            # now deal with floating foundations
+            # floating has 2 terms, so define params as np.arrays of len 2
+            A = np.array([[0.3], [7.0]])
+            B = np.array([[7.5], [18.5]])
+            C = np.array([[5.0], [30.0]])
+            D = np.array([[0.0], [90.0]])
+            E = np.array([[2.5], [40.0]])
+            # then apply the function to each "column" of the params separately and then add up
+            instCost[~isFixed] = (
+                ((1 / A) * (2.0 * _portDistance[~isFixed][None, :] / B + C * 1) + D) * (E / 24.0)
+            ).sum(axis=0)
+        # make installation cost specific and convert to EUR/kW, Rogeau et al provide cost in kEUR2022 [1]
+        return (instCost * 1000 / capacity).reshape(_depth.shape)
 
-    # GENERAL (APPENDIX B in NREL BOS MODEL)
-    # hubDiam = cp / 4 + 2
-    # bladeLength = (rd - hubDiam) / 2
+    # CALCULATE LOCATION-SPECIFIC COST BY SCALING THE INDIVIDUAL TURBINE COMPONENTS
 
-    # nacelleWidth = hubDiam + 1.5
-    # nacelleLength = 2 * nacelleWidth
-
-    # RNAMass is rotor nacelle assembly
-    RNAMass = 2.082 * cp * cp + 44.59 * cp + 22.48
-
-    # towerDiam = cp / 2 + 4
-    # towerMass = (0.4 * np.pi * np.power(rr, 2) * hh - 1500) / 1000
-
-    # STRUCTURE AND FOUNDATION
-    if foundation == "monopile":
-        # monopileLength = depth + embedmentDepth + 5
-
-        monopileMass = (
-            np.power((cp * 1000), 1.5)
-            + (np.power(hh, 3.7) / 10)
-            + 2100 * np.power(depth, 2.25)
-            + np.power((RNAMass * 1000), 1.13)
-        ) / 10000
-        monopileCost = monopileMass * monopileCostRate
-
-        # monopile transition piece mass is called as monopileTPMass
-
-        monopileTPMass = np.exp(2.77 + 1.04 * np.power(cp, 0.5) + 0.00127 * np.power(depth, 1.5))
-        monopileTPCost = monopileTPMass * monopileTPCostRate
-
-        foundationCost = monopileCost + monopileTPCost
-        mooringAndAnchorCost = 0
-
-    elif foundation == "jacket":
-        # jacket main lattice mass is called as jacketMLMass
-        jacketMLMass = np.exp(3.71 + 0.00176 * np.power(cp, 2.5) + 0.645 * np.log(np.power(depth, 1.5)))
-        jacketMLCost = jacketMLMass * jacketMLCostRate
-
-        # jacket transition piece mass is called as jacketTPMass
-        jacketTPMass = 1 / (((-0.0131 + 0.0381) / np.log(cp)) - 0.00000000227 * np.power(depth, 3))
-        jacketTPCost = jacketTPMass * jacketTPCostRate
-
-        # jacket pile mass is called as jacketPileMass
-        jacketPileMass = 8 * np.power(jacketMLMass, 0.5574)
-        jacketPileCost = jacketPileMass * jacketPileCostRate
-
-        foundationCost = jacketMLCost + jacketTPCost + jacketPileCost
-        mooringAndAnchorCost = 0
-
-    elif foundation == "spar":
-        # spar stiffened column mass is called as sparSCMass
-        sparSCMass = 535.93 + 17.664 * np.power(cp, 2) + 0.02328 * depth * np.log(depth)
-        sparSCCost = sparSCMass * sparSCCostRate
-
-        # spar tapered column mass is called as sparTCMass
-        sparTCMass = 125.81 * np.log(cp) + 58.712
-        sparTCCost = sparTCMass * sparTCCostRate
-
-        # spar ballast mass is called as sparBallMass
-        sparBallMass = -16.536 * np.power(cp, 2) + 1261.8 * cp - 1554.6
-        sparBallCost = sparBallMass * sparBallCostRate
-
-        foundationCost = sparSCCost + sparTCCost + sparBallCost
-
-        if anchor == "dea":
-            anchorCost = DEA_anchorCost
-            # the equation is derived from [3]
-            mooringLength = 1.5 * depth + 350
-
-        elif anchor == "spa":
-            anchorCost = SPA_anchorCost
-            # since it is assumed to have an angle of 45 degrees it is multiplied by 1.41 which is squareroot of 2 [3]
-            mooringLength = 1.41 * depth
-
-        else:
-            raise ValueError("Please choose an anchor type!")
-
-        mooringAndAnchorCost = mooringLength * mooringCostRate + anchorCost
-
-    elif foundation == "semisubmersible":
-        # semiSubmersible stiffened column mass is called as semiSubmersibleSCMass
-        semiSubmersibleSCMass = -0.9571 * np.power(cp, 2) + 40.89 * cp + 802.09
-        semiSubmersibleSCCost = semiSubmersibleSCMass * semiSubmersibleSCCostRate
-
-        # semiSubmersible truss mass is called as semiSubmersibleTMass
-        semiSubmersibleTMass = 2.7894 * np.power(cp, 2) + 15.591 * cp + 266.03
-        semiSubmersibleTCost = semiSubmersibleTMass * semiSubmersibleTCostRate
-
-        # semiSubmersible heavy plate mass is called as semiSubmersibleHPMass
-        semiSubmersibleHPMass = -0.4397 * np.power(cp, 2) + 21.145 * cp + 177.42
-        semiSubmersibleHPCost = semiSubmersibleHPMass * semiSubmersibleHPCostRate
-
-        foundationCost = semiSubmersibleSCCost + semiSubmersibleTCost + semiSubmersibleHPCost
-
-        if anchor == "dea":
-            anchorCost = DEA_anchorCost
-            # the equation is derived from [3]
-            mooringLength = 1.5 * depth + 350
-
-        elif anchor == "spa":
-            anchorCost = SPA_anchorCost
-            # since it is assumed to have an angle of 45 degrees it is multiplied by 1.41 which is squareroot of 2 [3]
-            mooringLength = 1.41 * depth
-
-        else:
-            raise ValueError("Please choose an anchor type!")
-
-        mooringAndAnchorCost = mooringLength * mooringCostRate + anchorCost
-
-    if fixedType:
-        if cp > 4:
-            secondarySteelSubstructureMass = 40 + (0.8 * (18 + depth))
-        else:
-            secondarySteelSubstructureMass = 35 + (0.8 * (18 + depth))
-
-    elif foundation == "spar":
-        secondarySteelSubstructureMass = np.exp(
-            3.58 + 0.196 * np.power(cp, 0.5) * np.log(cp) + 0.00001 * depth * np.log(depth)
+    # get the component cost contributions and total default cost as per Rogeau for the given reference (base) turbine
+    # consists of cost for a) turbine, b) foundation, c) cable connection - plus overhead
+    # the turbine cost consist of the turbine (machine with tower with design impacts based on onshore calculations, scaled to offshore Rogeau cost level) and installation
+    turbineBaseCostDefault = (
+        offshoreCorrfacRogeau
+        * onshore_tcc(  # without installation cost
+            cp=baseCap,
+            hh=baseHubHeight,
+            rd=baseRotorDiam,
+            gdp_escalator=1,
+            blade_material_escalator=1,
+            blades=3,
         )
+        / baseCap
+    )
+    foundationBaseCostDefault = getOffshoreTurbineFoundationCost(  # without installation cost
+        depth=baseDepth,
+        maxMonopileDepth=maxMonopileDepth,
+        maxJacketDepth=maxJacketDepth,
+        year=techYear,
+    )
+    turbAndFoundInstallBaseCostDefault = _getSpecificTurbineInstallCost(baseDepth)
+    connectionBaseCostDefault = getSpecificOffshoreConnectionCost(
+        capacity=baseCap,
+        waterDepth=baseDepth,
+        coastDistance=baseDistCoast,
+        voltageType=voltageType,
+        baseWFSize=baseWFSize,
+        maxJacketDepthPlatform=maxJacketDepthPlatform,
+        year=techYear,
+    )[0]  # returns tuple for optimal voltage with min. cost as first and voltage type as second entry
+    # get the sum of the 3 components
+    totalBaseCostDefault = (
+        turbineBaseCostDefault
+        + foundationBaseCostDefault
+        + turbAndFoundInstallBaseCostDefault
+        + connectionBaseCostDefault
+    )
+    # calculate the scaling factor (incl. currency) from Rogeau's base cost to actual given base cost
+    customScalingFactor = (
+        baseSpecCapex / totalBaseCostDefault
+    )  # custom CAPEX / base case CAPEX (default, here Rogeau et al.)
 
-    elif foundation == "semisubmersible":
-        secondarySteelSubstructureMass = -0.153 * np.power(cp, 2) + 6.54 * cp + 128.34
+    # now calculate the plant-specific default values as per Rogeau et al.
+    turbinePlantCostDefault = (
+        offshoreCorrfacRogeau
+        * onshore_tcc(
+            cp=capacity,
+            hh=hubHeight,
+            rd=rotorDiam,
+            gdp_escalator=1,
+            blade_material_escalator=1,
+            blades=3,
+        )
+        / capacity
+    )
+    foundationPlantCostDefault = getOffshoreTurbineFoundationCost(
+        depth=waterDepth,
+        maxMonopileDepth=maxMonopileDepth,
+        maxJacketDepth=maxJacketDepth,
+        year=techYear,
+    )
+    turbAndFoundInstallPlantCostDefault = _getSpecificTurbineInstallCost(_depth=waterDepth)
+    connectionPlantCostDefault = getSpecificOffshoreConnectionCost(
+        capacity=capacity,
+        waterDepth=waterDepth,
+        coastDistance=coastDistance,
+        voltageType=voltageType,
+        baseWFSize=baseWFSize,
+        maxJacketDepthPlatform=maxJacketDepthPlatform,
+        year=techYear,
+    )[0]  # returns tuple for optimal voltage with min. cost as first and voltage type as second entry
+    totalPlantCostDefault = (
+        turbinePlantCostDefault
+        + foundationPlantCostDefault
+        + turbAndFoundInstallPlantCostDefault
+        + connectionPlantCostDefault
+    )
+    # scale the plant specific default (Rogeau) cost to custom reference CAPEX level
+    totalPlantCostCustom = totalPlantCostDefault * customScalingFactor
 
-    secondarySteelSubstructureCost = secondarySteelSubstructureMass * outfittingSteelCost
+    return totalPlantCostCustom
 
-    totalStructureAndFoundationCosts = (
-        foundationCost + mooringAndAnchorCost * mooring_count + secondarySteelSubstructureCost
+
+def calculateOffshoreFacRogeau(techYear):
+    """
+    Calculate the offshore turbine cost correction factor.
+
+    Rogeau et al. do not differentiate between different turbine sizes/designs,
+    only average specific capex and average capacity per year. Therefore, use
+    turbine cost scaling developed for onshore. Relative effects depend on
+    mechanics and geometry and can be considered similar enough, but absolute
+    values need to be corrected to offshore level to add offshore installation
+    cost.
+
+    Parameters
+    ----------
+    techYear : int
+        The technology year for which to calculate the correction factor.
+
+    Returns
+    -------
+    float
+        The correction factor for offshore turbine costs.
+    """
+    RogeauEtAlTurbineData = {
+        2020: (8000, 1500),
+        2030: (15000, 1200),
+        2050: (20000, 1000),
+    }  # (capacity [kW], spec.CAPEX [EUR/kW])
+    assert min(RogeauEtAlTurbineData.keys()) <= techYear <= max(RogeauEtAlTurbineData.keys()), (
+        f"techYear {techYear} is outside of the range considered by Rogeau et al.: 2020-2050"
+    )
+    yearBefore = max((y for y in RogeauEtAlTurbineData.keys() if y <= techYear))
+    yearAfter = min((y for y in RogeauEtAlTurbineData.keys() if y >= techYear))
+    capacityRogeau = RogeauEtAlTurbineData[yearBefore][0]  # use the yearBefore value, is the same as yearAfter
+    capexRogeau = RogeauEtAlTurbineData[yearBefore][1]
+    if yearAfter > yearBefore:
+        capacityRogeau = capacityRogeau + (
+            RogeauEtAlTurbineData[yearAfter][0] - RogeauEtAlTurbineData[yearBefore][0]
+        ) * (techYear - yearBefore) / (yearAfter - yearBefore)
+        capexRogeau = capexRogeau + (RogeauEtAlTurbineData[yearAfter][1] - RogeauEtAlTurbineData[yearBefore][1]) * (
+            techYear - yearBefore
+        ) / (yearAfter - yearBefore)
+    # Rogeau et al provide only capacity per year, rotor diam and hub height need to be estimated for a typical turbine
+    # assume constant spec. power of 350 W/m² (typical offshore) and hub height of 30.5m + rotor radius (see dissertation Winkler)
+    rotordiamRogeau = np.sqrt((capacityRogeau * 1000 / 350) / (np.pi)) * 2  # spec power 350 W/m2
+    hubheightRogeau = 30.5 + rotordiamRogeau / 2  # in mtrs
+    # now calculate the correction factor to align onshore_tcc with Rogeau's value for that year (contains also currency conversion/inflation)
+    offshoreCorrfacRogeau = capexRogeau / (
+        onshore_tcc(
+            cp=capacityRogeau,
+            hh=hubheightRogeau,
+            rd=rotordiamRogeau,
+            gdp_escalator=1,
+            blade_material_escalator=1,
+            blades=3,
+        )
+        / capacityRogeau
     )
 
-    # ELECTRICAL INFRASTRUCTURE
-    # in the calculation of singleStringPower1 and 2, bur depth is assumed to be 1. Because of that the equation is simplified.
-    singleStringPower1 = np.sqrt(3) * cable1CurrentRating * arrayVoltage * powerFactor / 1000
-    singleStringPower2 = np.sqrt(3) * cable2CurrentRating * arrayVoltage * powerFactor / 1000
+    return offshoreCorrfacRogeau
 
-    numberofStrings = np.floor_divide(turbine_count * cp, singleStringPower2)
 
-    # Only no partial string will be implemented
-    # np.round(np.remainder((turbine_count*cp) , singleStringPower2))
-    numberofTurbinesperPartialString = 0
+def getSpecificOffshoreConnectionCost(
+    capacity: int | float | np.ndarray,
+    waterDepth: int | float | np.ndarray,
+    coastDistance: int | float | np.ndarray,
+    year: int,
+    portDistance: int | float | np.ndarray = None,
+    voltageType: str = "optimal",
+    baseWFSize: int | float = 180000,
+    maxJacketDepthPlatform: int = 150,
+):
+    """
+    Get offshore and - if applicable - onshore platform/converter cost plus
+    cable cost and return the total cost (including installation) for the given
+    connection and capacity. Therefore, it can be used to calculate the connection cost for the turbine cost function above, but also separately if one is only interested in the connection cost for a given location and capacity, e.g. for a pre-selection of sites based on connection cost.
 
-    numberofTurbinesperArrayCable1 = np.floor_divide(singleStringPower1, cp)
+    capacity : int|float|np.ndarray
+        The electrical capacity of the cable connection in [kW].
+    waterDepth : int|float|np.ndarray
+        The water depth (positive values) at the location of the offshore
+        converter, in [m].
+    coastDistance : int|float|np.ndarray
+        The distance to coast in [km] (>0).
+    year: int
+        The year for which the reference cost shall be returned.
+    portDistance : int, optional
+        If given in [km], it will be used to calculate the installation cost,
+        else the coast distance [km] will be assumed as proxy.
+    voltageType : str, optional
+        Either "dc" or "ac" to return the cost for the respective connection
+        type, or "optimal" to return the cheaper option. By default "optimal".
+        NOTE: Returns a tuple then with the optimal voltageType as second entry
+        like (cost:float, optimalVoltageType:str).
+    baseWFSize : int, optional
+        The average (base) wind farm size in [kW], by default 106858 (based on
+        global average extracted from processed theWindPower.net database v2025/07).
+    maxJacketDepthPlatform : int, optional
+        The maximum depth up to which jacket foundations can be installed,
+        by default 150 [m].
 
-    numberofTurbinesperArrayCable2 = np.floor_divide(singleStringPower2, cp)
+    Returns
+    -------
+    tuple
+        A tuple of (min. specific cost, respective ac/dc connection type).
+        Will contain scalar entries if all inputs were scalar, else arrays.
 
-    numberofTurbineInterfacesPerArrayCable1 = numberofTurbinesperArrayCable1 * numberofStrings * 2
+    References
+    ----------
+    [1] Rogeau, Antoine; Vieubled, Julien; Coatpont, Matthieu de; Affonso
+    Nobrega, Pedro; Erbs, Guillaume; Girard, Robin (2023): Techno-economic
+    evaluation and resource assessment of hydrogen production through
+    offshore wind farms: A European perspective. In Renewable and
+    Sustainable Energy Reviews 187, p. 113699. DOI: 10.1016/j.rser.2023.113699.
+    [2] Ea Energy Analyses A / S, Energynautics, van Uden, J., Ebersbach, N.,
+    Reijntjes, J., Ayivor, P., & Campagne, A. (2024). Pathway 2.0
+    Techno-economic data (11.0) Pathway Databook_v11 - Public Version.
+    Zenodo. https://doi.org/10.5281/zenodo.13382786
+    """
+    # check scalar inputs
+    assert isinstance(baseWFSize, (int, float)) and baseWFSize > 0, "baseWFSize must be an integer or float > 0"
+    assert isinstance(maxJacketDepthPlatform, int) and maxJacketDepthPlatform > 0, (
+        "maxJacketDepthPlatform must be an integer > 0"
+    )
+    assert voltageType in ["ac", "dc", "optimal"], f"Unknown voltageType: {voltageType}"
+    # check and preprocess vectorized inputs
+    isScalar = all([np.isscalar(_arg) for _arg in [portDistance, waterDepth, capacity, coastDistance]])
+    if not portDistance is None:
+        portDistance = np.atleast_1d(portDistance)
+        if any(portDistance < 0):
+            raise ValueError("If not None, portDistance must be integers or floats >= 0 for all locations.")
+    waterDepth = np.atleast_1d(waterDepth)
+    if any(waterDepth < 0):
+        raise ValueError(f"waterDepth must be >= 0 for all offshore locations.")
+    capacity = np.atleast_1d(capacity)
+    if any(capacity < 0):
+        raise ValueError(f"capacity must be >= 0 for all locations.")
+    coastDistance = np.atleast_1d(coastDistance)
+    if any(coastDistance < 0):
+        raise ValueError(f"coastDistance must be >= 0 for all locations.")
+    if portDistance is None:
+        portDistance = coastDistance
 
-    max1_Cable1 = np.maximum(numberofTurbinesperArrayCable1 - numberofTurbinesperArrayCable2, 0)
-    max2_Cable1 = 0
-    numberofTurbineInterfacesPerArrayCable2 = (max1_Cable1 * numberofStrings + max2_Cable1) * 2
-
-    numberofArrayCableSubstationInterfaces = numberofStrings
-
-    if fixedType:
-        arrayCable1Length = (
-            (turbine_spacing * rd + depth * 2) * (numberofTurbineInterfacesPerArrayCable1 / 2) * (1 + excessCableFactor)
+    def _getTotalSpecificConnectionCost(_voltageType):
+        """Connection cost consists of 3 elements: onshore and offshore converter + cable"""
+        assert _voltageType in ["ac", "dc"]
+        # get specific onshore converter cost
+        convertercost_onshore = getSpecificConverterStationCost(
+            capacity=capacity,
+            waterDepth=None,
+            voltageType=_voltageType,
+            portDistance=0,  # onshore
+            maxJacketDepthPlatform=maxJacketDepthPlatform,
         )
-        arrayCable1Length /= 1000  # convert to km
-        # print("arrayCable1Length:", arrayCable1Length)
+
+        # get specific offshore converter cost
+        convertercost_offshore = getSpecificConverterStationCost(
+            capacity=capacity,
+            waterDepth=waterDepth,
+            voltageType=_voltageType,
+            portDistance=portDistance,
+            maxJacketDepthPlatform=maxJacketDepthPlatform,
+        )
+
+        # last specific cable cost
+        cableCost = getSpecificOffshoreCableCost(
+            distance=coastDistance,
+            capacity=capacity,
+            voltageType=_voltageType,
+            fixedCost=0,
+            variableCostFactor=None,
+            year=year,
+        )
+        return cableCost + convertercost_offshore + convertercost_onshore
+
+    if voltageType == "optimal":
+        # check both AC and DC and return the cheaper option
+        voltageTypes = ["ac", "dc"]
     else:
-        systemAngle = -0.0047 * depth + 18.743
+        # calculate only for the given voltageType
+        voltageTypes = [voltageType]
+    # calculate the cost for all eligible voltageTypes...
+    _totalCostDict = {}
+    for _voltageType in voltageTypes:
+        _totalCostDict[_voltageType] = _getTotalSpecificConnectionCost(_voltageType=_voltageType)
+    _totalCostArray = np.vstack([_totalCostDict[k] for k in _totalCostDict.keys()])  # stack all options
+    # ... and return the lowest cost option (the ONLY option if one specific voltageType was given)
+    minCost = np.min(_totalCostArray, axis=0)
+    minType = (
+        list(_totalCostDict.keys())[0]
+        if _totalCostArray.shape[0] == 1
+        else np.array(list(_totalCostDict.keys()))[np.argmin(_totalCostArray, axis=0)]
+    )
+    # make scalar if all inputs were scalar
+    if isScalar:
+        minCost = minCost[0]
+        minType = minType[0]
+    # return a tuple: (minCost:float|np.array, optimalVoltageType:str|np.array)
+    return (minCost, minType)
 
-        freeHangingCableLength = (depth / np.cos(systemAngle * np.pi / 180) * (catenaryLengthFactor + 1)) + 190
 
-        fixedCableLength = (turbine_spacing * rd) - (2 * np.tan(systemAngle * np.pi / 180) * depth) - 70
+def getOffshoreTurbineFoundationCost(
+    depth: int | float | np.ndarray,
+    maxMonopileDepth: int | float = 25,
+    maxJacketDepth: int | float = 55,
+    year: int = 2030,
+    returnType: bool = False,
+):
+    """
+    Estimates the rated cost (and optionally type) of offshore wind turbine
+    foundations based on water depth and year for one or multiple locations.
+    Does not include the cost for the turbine itself or cable connection cost.
 
-        arrayCable1Length = (
-            (2 * freeHangingCableLength) * (numberofTurbineInterfacesPerArrayCable1 / 2) * (1 + excessCableFactor)
-        )
-        arrayCable1Length /= 1000  # convert to km
+    Note: Excludes installation cost.
 
-    max1_Cable2 = np.maximum(numberofTurbinesperArrayCable2 - 1, 0)
-    max2_Cable2 = np.maximum(numberofTurbinesperPartialString - numberofTurbinesperArrayCable2 - 1, 0)
+    Parameters
+    ----------
+    depth : int | float | np.ndarray
+        Water depth at the installation site in [m], can be provided as an
+        array per location.
+    maxMonopileDepth : int | float, optional
+        Threshold depth for monopile foundations in [m], by default 25.
+    maxJacketDepth : int | float, optional
+        Threshold depth for jacket foundations in [m], by default 55.
+    year : int, optional
+        Determines the scaling factors acc. to Rogeau et al., will interpolate
+        if year is not provided by Rogeau et al., by default 2030.
+    returnType : bool, optional
+        If True, a tuple will be returned of (cost, foundationType), else only
+        cost. By default False.
 
-    strFac = numberofStrings / numberOfSubStations
+    Returns
+    -------
+    float | np.ndarray | tuple
+        Rated cost in in [EUR_2022/kW], or (Rated cost in [€_2022/kW], foundation type)
+        if returnType is True. Both rated cost and foundation type will be
+        scalar or numpy arrays depending on the input data type of "depth".
 
-    if fixedType:
-        arrayCable2Length = (turbine_spacing * rd + 2 * depth) * (
-            max1_Cable2 * numberofStrings + max2_Cable2
-        ) + numberOfSubStations * (
-            strFac * (rd * turbine_row_spacing)
-            + (
-                np.sqrt(np.power((rd * turbine_spacing * (strFac - 1)), 2) + np.power((rd * turbine_row_spacing), 2))
-                / 2
-            )
-            + strFac * depth
-        ) * (excessCableFactor + 1)
-        arrayCable2Length /= 1000  # convert to km
+    References
+    ----------
+    [1] Rogeau et al. (2023), Renewable and Sustainable Energy Reviews.
+    [2] Jonathan Bosch, Iain Staffell, Adam D. Hawkes, Global levelised cost of
+        electricity from offshore wind, Energy, Volume 189, 2019, 116357,
+        ISSN 0360-5442, https://doi.org/10.1016/j.energy.2019.116357.
+    """
+    # check and preprocess inputs
+    isScalar = np.isscalar(depth)  # will be returned as a scalar as well then
+    depth = np.atleast_1d(depth)
+    if any(depth < 0):
+        raise ValueError("depth must be >= 0 for all locations.")
+    assert isinstance(maxMonopileDepth, (int, float)) and maxMonopileDepth > 0, (
+        "maxMonopileDepth must be integer or float and > 0"
+    )
+    assert isinstance(maxJacketDepth, (int, float)) and maxJacketDepth > maxMonopileDepth, (
+        "maxJacketDepth must be integer or float and > maxMonopileDepth"
+    )
+    assert isinstance(year, int), "year must be integer"
+    assert isinstance(returnType, bool), "returnType must be boolean"
 
-        arrayCable1AndAncillaryCost = arrayCable1Length * arrayCableCost + singleTurbineInterfaceCost * (
-            numberofTurbineInterfacesPerArrayCable1 + numberofTurbineInterfacesPerArrayCable2
-        )
+    # set monopile respectively jacket as foundation type whereever it is under the threshold, else set floating
+    foundtypes = np.where(
+        depth <= maxMonopileDepth, "monopile", np.where(depth <= maxJacketDepth, "jacket", "floating")
+    )
+    # map also to integer index for later extraction of parameters (order must match below params order)
+    foundmapper = {"monopile": 0, "jacket": 1, "floating": 2}
+    foundints = np.vectorize(foundmapper.__getitem__, otypes=[int])(foundtypes)
+    # define cost function coefficients per year and foundation type, sorted by above integer index
+    coeffsDict = {
+        2020: np.array(
+            [
+                (201, 613, 812),  # monopile
+                (114, -2270, 932),  # jacket
+                (0, 774, 1481),  # floating
+            ],
+            dtype=float,
+        ),
+        2030: np.array(
+            [
+                (181, 552, 370),
+                (103, -2043, 478),
+                (0, 697, 1223),
+            ],
+            dtype=float,
+        ),
+        2050: np.array(
+            [
+                (171, 521, 170),
+                (97, -1930, 272),
+                (0, 658, 844),
+            ],
+            dtype=float,
+        ),
+    }
 
-        arrayCable2AndAncillaryCost = (
-            arrayCable2Length * arrayCableCost
-            + singleTurbineInterfaceCost
-            * (numberofTurbineInterfacesPerArrayCable1 + numberofTurbineInterfacesPerArrayCable2)
-            + substationInterfaceCost * numberofArrayCableSubstationInterfaces
-        )
+    # now get the nearest data years to the given reference year
+    years = sorted(coeffsDict.keys())
+    assert min(years) <= year <= max(years), (
+        f"year {year} is outside of the cost range defined by Rogeau et al.: 2020-2050"
+    )
+    yearBefore = max((y for y in years if y <= year))
+    yearAfter = min((y for y in years if y >= year))
+    # get coefficients for both bracketing years and interpolate them (all linear)
+    coeffsBefore = coeffsDict[yearBefore]
+    coeffsAfter = coeffsDict[yearAfter]
+    weighing = 0 if yearBefore == yearAfter else (year - yearBefore) / (yearAfter - yearBefore)
+    coeffsInterp = (1.0 - weighing) * coeffsBefore + weighing * coeffsAfter
+    # now extract the actual coefficients per location via foundation code and calculate cost
+    a, b, c = coeffsInterp[foundints, 0], coeffsInterp[foundints, 1], coeffsInterp[foundints, 2]
+    costs = (
+        a * depth**2 + b * depth + c * 1000.0
+    )  # Rogeau et al. do not indicate unit, but secondary source Bosch et al. [2] uses cost per [MW]
+    costs = costs / 1000  # convert to [EUR_2022/kW]
 
+    # prepare outputs and return
+    if isScalar:
+        # get the scalar entry
+        costs = np.asarray(costs).item()
+        foundtypes = np.asarray(foundtypes).item()
+    if returnType:
+        return costs, foundtypes  # tuple
     else:
-        arrayCable2Length = (fixedCableLength + 2 * freeHangingCableLength) * (
-            max1_Cable2 * numberofStrings + max2_Cable2
-        ) + numberOfSubStations * (
-            strFac * (rd * turbine_row_spacing)
-            + np.sqrt(
-                np.power(
-                    (
-                        (2 * freeHangingCableLength) * (strFac - 1)
-                        + (rd * turbine_row_spacing)
-                        - (2 * np.tan(systemAngle * np.pi / 180) * depth)
-                        - 70
-                    ),
-                    2,
+        return costs
+
+
+def getSpecificOffshoreCableCost(
+    distance: int | float | np.ndarray,
+    capacity: int | float | np.ndarray,
+    voltageType: str | np.ndarray,
+    variableCostFactor: int | float | np.ndarray = None,
+    fixedCost: int | float | np.ndarray = 0,
+    year: int = None,
+    detourFactor: int | float | np.ndarray = 1.2,
+):
+    """
+    Calculates the default cost for the cable connecting an offshore wind power
+    plant to the coastline, including installation cost. Does not include cost
+    for converter stations and its offshore platform.
+
+    Parameters
+    ----------
+    distance : int | float | np.ndarray
+        Distance to coastline in [km].
+    capacity : int | float | np.ndarray
+        Power plant's capacity in [kW].
+    voltageType : str | np.ndarray
+        'ac' or 'dc', takes no effect when variableCostFactor is provided.
+    variableCostFactor : int | float | np.ndarray, optional
+        Cost multiplier in [EUR_2022/kW/km], by default None.
+    fixedCost : float, optional
+        Fixed absolute connection cost, must be in [EUR_2022]. Defaults to 0.
+    year : int, optional
+        The year for which the reference cost shall be returned in case of
+        voltageType == 'ac' (year is then mandatory, else it has no effect).
+        By default None.
+    detourFactor: int | float | np.ndarray
+        The detour factor to be applied onto the coast distance of the
+        windfarms, set to 1.0 for no effect. By default 1.2 in accordance
+        with assumptions in [1].
+
+    Returns
+    -------
+    np.ndarray
+        Total cable connection cost in [EUR_2022].
+
+    References
+    ----------
+    [1] Rogeau et al. (2023), "Review and modeling of offshore wind CAPEX",
+    Renewable and Sustainable Energy Reviews, DOI: 10.1016/j.rser.2023.113699
+    [2] Ea Energy Analyses A / S, Energynautics, van Uden, J., Ebersbach, N.,
+    Reijntjes, J., Ayivor, P., & Campagne, A. (2024). Pathway 2.0
+    Techno-economic data (11.0) Pathway Databook_v11 - Public Version.
+    Zenodo. https://doi.org/10.5281/zenodo.13382786
+    """
+    # check if we have only scalar inputs and save as flag
+    isScalar = all([np.isscalar(x) for x in [distance, capacity, fixedCost, voltageType, variableCostFactor]])
+    # convert all inputs to arrays of the same shape
+    distance = np.asarray(distance, dtype=float)
+    capacity = np.asarray(capacity, dtype=float)
+    fixedCost = np.asarray(fixedCost, dtype=float)
+    detourFactor = np.asarray(detourFactor)
+    voltageType = np.asarray(voltageType)
+    variableCostFactor = None if variableCostFactor is None else np.asarray(variableCostFactor, dtype=float)
+    if variableCostFactor is None:
+        distance, capacity, fixedCost, voltageType, detourFactor = np.broadcast_arrays(
+            distance, capacity, fixedCost, voltageType, detourFactor
+        )
+    else:
+        distance, capacity, fixedCost, voltageType, variableCostFactor, detourFactor = np.broadcast_arrays(
+            distance, capacity, fixedCost, voltageType, variableCostFactor, detourFactor
+        )
+
+    # check inputs
+    assert (distance >= 0).all(), "All distances must be larger or equal to 0"
+    assert (capacity >= 0).all() > 0, "All turbine capacities must be larger than 0"
+    assert (fixedCost >= 0).all(), "All fixed cost must be positive or 0."
+    assert (detourFactor > 0).all(), "All detour factors must be positive."
+    assert ((voltageType == "ac") | (voltageType == "dc")).all(), "All voltageType must be 'ac' or 'dc'"
+    assert variableCostFactor is None or (variableCostFactor > 0).all(), (
+        "All variableCostFactor must be larger than 0 if not None"
+    )
+    assert isinstance(year, int) and year > 0, f"Year must be positive integer"
+
+    if variableCostFactor is not None:
+        # use the one that is provided
+        costPerKm = variableCostFactor
+    else:
+        # create a container for the cost per km and fill depending on voltage type
+        costPerKm = np.empty(distance.shape, dtype=float)
+        # for dc, use time-independent DC cable cost per kW and km as in Rogeau et al. (Note unit error, is indicated per W*km but actually kW*km)
+        # cost already include "delivery and installation" as per Rogeau et al.
+        dc_mask = voltageType == "dc"
+        costPerKm[dc_mask] = 1.35 * 1.5  # + 50% for installation acc. to Rogeau et al. [1]
+        # for ac, use AC cost per km and kW from Pathway 2.0 (Ea Energy Analyses A / S et al. [2]) instead of Rogeau (Rogeau is very confusing here)
+        # values include installation and have been corrected to EUR_2022 to align with cost data from Rogeau et al. [1]
+        ac_mask = voltageType == "ac"
+        if ac_mask.sum() > 0:
+            # we DO have ac cases, check year and get bracketing data years first
+            assert year is not None, "year is required for voltageType 'ac' if no variableCostFactor is provided."
+            acCostPerKmDict = {
+                2020: 7.70,
+                2030: 7.47,
+                2050: 7.05,
+            }  # includes installation acc. to [2], converted to EUR_2022
+            years = np.array(sorted(acCostPerKmDict.keys()), dtype=int)
+            if not (years.min() <= year <= years.max()):
+                raise ValueError(f"year {year} is outside range {years.min()}-{years.max()}")
+            yearBefore = max((y for y in acCostPerKmDict.keys() if y <= year))
+            yearAfter = min((y for y in acCostPerKmDict.keys() if y >= year))
+            acCostPerKm = acCostPerKmDict[yearBefore]
+            if yearAfter > yearBefore:
+                acCostPerKm = acCostPerKm + (acCostPerKmDict[yearAfter] - acCostPerKmDict[yearBefore]) * (
+                    year - yearBefore
+                ) / (yearAfter - yearBefore)
+            costPerKm[ac_mask] = acCostPerKm
+
+    # scale and add up the cost components, return as array or scalar
+    totalSpecCost = (costPerKm * distance * detourFactor * capacity + fixedCost) / capacity
+
+    print(f"totalSpecCableCost: {totalSpecCost}, voltageType: {voltageType},")
+    if isScalar:
+        totalSpecCost = np.asarray(totalSpecCost).item()
+    return totalSpecCost
+
+
+def getSpecificOffshorePlatformCost(
+    applicationType: str | np.ndarray,
+    capacity: int | float | np.ndarray,
+    waterDepth: int | float | np.ndarray,
+    portDistance: int | float | np.ndarray,
+    foundationType: str | np.ndarray = None,
+    maxJacketDepthPlatform: int | float = 150,
+    baseWFSize: int | float = 180000,
+    convention: str = "RogeauEtAl2023",
+):
+    """
+    Returns the specific cost of an offshore foundation in one or multiple locations
+    for offshore substations or electrolysis (but not wind turbines!) depending
+    on application type, water depth, port distance and installed capacity.
+    Includes installation cost.
+
+    applicationType : str | np.ndarray
+        The type of application that shall be installed on the platform,
+        e.g. "ac" (substation), "dc" (substation) or (offshore) "electrolysis",
+        or an array thereof with individual values per location.
+    capacity: int | float | np.ndarray
+        The installed electrical capacity in [kW] for the respective application.
+    waterDepth: int | float | np.ndarray
+        The location water depth in [m] per location.
+    portDistance : int | float|np.ndarray
+        The distance from the nearest installation base port in [km].
+    foundationType: str | np.ndarray, optional
+        The type of foundation per location, will be specified automatically
+        based on maxJacketDepth if not provided.
+    maxJacketDepthPlatform : int | float, optional
+        The max. possible jacket foundation depth in [m]. By default 150 m
+        following [1].
+    baseWFSize : int | float, optional
+        The average (base) wind farm size in [kW], by default 180000 (based on
+        global average extracted from processed theWindPower.net database v2025/07 (15 plants and 12000 MW standardsize from Rougeau)).
+    convention : str, optional
+        The convention by which the foundation cost shall be determined,
+        e.g. "RogeauEtAl2023" based on the equations in [1].
+
+    [1] Rogeau, Antoine; Vieubled, Julien; Coatpont, Matthieu de; Affonso
+    Nobrega, Pedro; Erbs, Guillaume; Girard, Robin (2023): Techno-economic
+    evaluation and resource assessment of hydrogen production through
+    offshore wind farms: A European perspective. In Renewable and
+    Sustainable Energy Reviews 187, p. 113699. DOI: 10.1016/j.rser.2023.113699.
+    """
+    # set flag if results should be scalar
+    isScalar = all([np.isscalar(x) for x in [waterDepth, capacity, portDistance, applicationType]])
+    # preprocess vectorized inputs
+    waterDepth = np.atleast_1d(waterDepth)
+    capacity = np.atleast_1d(capacity)
+    portDistance = np.atleast_1d(portDistance)
+    applicationType = np.atleast_1d(applicationType)
+    for name, x in [
+        ("waterDepth", waterDepth),
+        ("capacity", capacity),
+        ("portDistance", portDistance),
+        ("applicationType", applicationType),
+    ]:
+        if x.ndim > 1:
+            raise ValueError(f"{name} must be scalar or 1D (one value per location). Got shape {x.shape}.")
+    if foundationType is None:
+        waterDepth, capacity, portDistance, applicationType = np.broadcast_arrays(
+            waterDepth, capacity, portDistance, applicationType
+        )
+    else:
+        waterDepth, capacity, portDistance, applicationType, foundationType = np.broadcast_arrays(
+            waterDepth, capacity, portDistance, applicationType, foundationType
+        )
+
+    # check inputs
+    if np.any(capacity <= 0):
+        raise ValueError(f"capacity must be an int or float > 0 kW, or an array thereof")
+    if np.any(waterDepth < 0):
+        raise ValueError(f"waterDepth must be an int or float >= 0 m, or an array thereof")
+    if np.any(portDistance < 0):
+        raise ValueError(f"portDistance must be an int or float >= 0 km, or an array thereof")
+
+    if convention == "RogeauEtAl2023":
+        # platform cost factors per type, see table (5)
+        RCPF_factors = {
+            "jacket": {"c2": 233, "c3": 47},
+            "floating": {"c2": 87, "c3": 68},
+        }
+        UCPF_factors = {
+            "jacket": {"c2": 309, "c3": 62},
+            "floating": {"c2": 116, "c3": 91},
+        }
+        assert sorted(RCPF_factors.keys()) == sorted(UCPF_factors.keys())  # make sure
+
+        # get and check foundation type
+        isFixed = waterDepth <= maxJacketDepthPlatform  # fixed foundation if under max jacket depth, else floating
+        if foundationType is None:
+            foundationType = np.where(isFixed, "jacket", "floating")
+        else:
+            # format as array if not done yet
+            foundationType = np.asarray(foundationType)
+            if not np.isin(foundationType, list(RCPF_factors.keys())).all():
+                # unknown foundation type
+                raise ValueError(f"foundationType must be in: {', '.join(RCPF_factors.keys())}")
+            # warn if the foundation type is wrong acc. to given threshold
+            if ((waterDepth > maxJacketDepthPlatform) & (foundationType == "jacket")).any():
+                warnings.warn(
+                    f"waterDepth ({waterDepth} m) exceeds maxJacketDepthPlatform ({maxJacketDepthPlatform} m) but 'jacket' is enforced as foundationType."
                 )
-                + np.power(fixedCableLength + 2 * freeHangingCableLength, 2)
+
+        # get the coefficients for the Rogeau cost equation, depending on foundation type per location
+        c2_R = np.where(foundationType == "jacket", RCPF_factors["jacket"]["c2"], RCPF_factors["floating"]["c2"])
+        c3_R = np.where(foundationType == "jacket", RCPF_factors["jacket"]["c3"], RCPF_factors["floating"]["c3"])
+        c2_U = np.where(foundationType == "jacket", UCPF_factors["jacket"]["c2"], UCPF_factors["floating"]["c2"])
+        c3_U = np.where(foundationType == "jacket", UCPF_factors["jacket"]["c3"], UCPF_factors["floating"]["c3"])
+
+        # get RCPF and UCPF as per Rogeau
+        RCPF = c2_R * waterDepth + c3_R * 10**3
+        UCPF = c2_U * waterDepth + c3_U * 10**3
+
+        # relative theoretical power (vectorized) based on power densities/footprints, eq.(9) [1]
+        powerDensity_factors = np.empty_like(capacity, dtype=float)
+        # write all dc, ac and electrolysis power densities via mask
+        if not np.isin(applicationType, ["dc", "ac", "electrolysis"]).all():
+            raise ValueError(f"applicationType must be one of: {', '.join(['dc', 'ac', 'electrolysis'])}")
+        mask_dc = applicationType == "dc"
+        powerDensity_factors[mask_dc] = baseWFSize / 1000.0
+        mask_ac = applicationType == "ac"
+        powerDensity_factors[mask_ac] = 0.5 * baseWFSize / 1000.0
+        mask_el = applicationType == "electrolysis"
+        powerDensity_factors[mask_el] = 2.0 * baseWFSize / 1000.0
+
+        # calculate total equipment platform cost as the sum of capacity-dependent and fixed cost as per eq. (8)
+        ECPF = RCPF * powerDensity_factors + UCPF
+        specECPF = ECPF / (baseWFSize)  # normalize to specific values per kW
+
+        # now calculate the platform installation cost function based on Rogeau et al. section 3.2.2
+        ICPF = np.zeros_like(waterDepth, dtype=float)  # initiate Installation Cost container
+        # first deal with fixed foundation locations
+        ICPF[isFixed] = ((1.0 / 1) * (2.0 * portDistance[isFixed] / 18.5 + 24.0) + 96 * 1) * (200.0 / 24.0)
+        # now deal with floating foundations
+        # floating has 2 terms, so define params as np.arrays of len 2
+        A = np.array([[1], [3]])
+        B = np.array([[22.5], [18.5]])
+        C = np.array([[10], [30.0]])
+        D = np.array([[0.0], [90.0]])
+        E = np.array([[40], [40.0]])
+        # then apply the function to each "column" of the params separately and then add up
+        ICPF[~isFixed] = (((1.0 / A) * (2.0 * portDistance[~isFixed][None, :] / B + C) + D * 1) * (E / 24.0)).sum(
+            axis=0
+        )
+        # make specific - assume cost per ship stay constant but load-carrying capacity grows -> implicit (specific) transport cost (per kW) decrease with larger, future turbines
+        specICPF = (ICPF) / (baseWFSize / 1000)  # Rogeau is in k€ x units, here 1 unit, divide by cap. per unit
+        # add up
+        totalSpecCost = specECPF + specICPF
+        print(ICPF)
+        print(
+            f"totalSpecCost Platfom Substation: {totalSpecCost}, specECPF: {specECPF}, specICPF: {specICPF}, voltageType: {applicationType}, foundationType: {foundationType}"
+        )
+
+    else:
+        raise NotImplementedError(f"convention '{convention}' is not implemented.")
+
+    if isScalar:
+        totalSpecCost = np.asarray(totalSpecCost).item()
+    return totalSpecCost
+
+
+# This function returns the cost for an on- or offshore converter station, includes platform cost if offshore
+def getSpecificConverterStationCost(
+    capacity: int | float | np.ndarray,
+    waterDepth: int | float | np.ndarray | None,
+    voltageType: str | np.ndarray,
+    portDistance: int | float | np.ndarray,
+    maxJacketDepthPlatform: int | float = 150,
+    convention="RogeauEtAl2023",
+):
+    """
+    Calculates the cost of an onshore or offshore converter station for AC or DC
+    connections of wind farms, including platform cost in the case of offshore
+    locations. Includes installation cost explicitly for offshore platforms,
+    converter electrical installation cost is not treated separately in
+    Rogeau et al. [1].
+
+    capacity : int | float | np.ndarray
+        Converter station power in [kW].
+    waterDepth : int | float | np.ndarray
+        The water depth in [m] in case of an offshore substation, does then
+        include then platform cost of either jacket or floating type depending
+        on depth. If None, an onshore substation without platform will be assumed.
+    voltageType : str | np.ndarray
+        If the substation is for "ac"or "dc" connections, can be defined per
+        location and passed as array.
+    portDistance : int | float|np.ndarray
+        The distance from the nearest installation base port in [km].
+    maxJacketDepthPlatform : int, optional
+        The max. possible jacket foundation depth in [m]. By default 150 m
+        following [1].
+    convention : str, optional
+        The convention by which the foundation cost shall be determined,
+        e.g. "RogeauEtAl2023" based on the equations in [1].
+
+    [1] Rogeau, Antoine; Vieubled, Julien; Coatpont, Matthieu de; Affonso
+    Nobrega, Pedro; Erbs, Guillaume; Girard, Robin (2023): Techno-economic
+    evaluation and resource assessment of hydrogen production through
+    offshore wind farms: A European perspective. In Renewable and
+    Sustainable Energy Reviews 187, p. 113699. DOI: 10.1016/j.rser.2023.113699.
+    """
+
+    # enforce "max 1d" for np arrays and normalize scalars to 1-element arrays
+    def _as1d(x, name: str):
+        if x is None:
+            return None, True  # treat None as scalar-like for isScalar
+        arr = np.asarray(x)
+        if arr.ndim > 1:
+            raise ValueError(f"{name} must be scalar or a max 1d np array, got ndim={arr.ndim}")
+        is_scalar_like = arr.ndim == 0
+        if is_scalar_like:
+            arr = arr.reshape(1)
+        return arr, is_scalar_like
+
+    capacity, _cap_scalar = _as1d(capacity, "capacity")
+    waterDepth, _wd_scalar = _as1d(waterDepth, "waterDepth")
+    voltageType, _vt_scalar = _as1d(voltageType, "voltageType")
+    portDistance, _pd_scalar = _as1d(portDistance, "portDistance")
+    voltageType, _vt_scalar = _as1d(voltageType, "voltageType")
+    # define scalar flag to return scalars if inputs were scalar as well
+    isScalar = _cap_scalar and _wd_scalar and _vt_scalar and _pd_scalar and _vt_scalar  # required by user
+    # broadcast all arrays to the same dimensions
+    if waterDepth is None:
+        capacity, portDistance, voltageType = np.broadcast_arrays(capacity, portDistance, voltageType)
+    else:
+        capacity, waterDepth, portDistance, voltageType = np.broadcast_arrays(
+            capacity, waterDepth, portDistance, voltageType
+        )
+
+    if convention == "RogeauEtAl2023":
+        # calculate electrical powerstation cost based on equation (10) and table 6
+        # conventiosn is close to Rogeau et al.
+        # RCPS: relative cost per kW, UCPS: fixed cost per station, both depend on voltage type (ac/dc)
+        # ECPS: electrical cost per station, sum of RCPS*capacity and UCPS, then divided by capacity to get specific cost per kW
+        RCPS = {"ac": 22.87, "dc": 102.93}  # EUR/kW
+        UCPS = {"ac": 3.1750000, "dc": 7.060000}  # EUR
+        assert sorted(RCPS.keys()) == sorted(UCPS.keys())  # make sure
+        if not np.all(np.isin(voltageType, list(RCPS.keys()))):
+            raise ValueError(f"unknown voltageType, select from: {', '.join(RCPS.keys())}")
+        # get voltage-type specific coefficients per location
+        RCPS_coeffs = np.where(voltageType == "ac", RCPS["ac"], RCPS["dc"])
+        UCPS_coeffs = np.where(voltageType == "ac", UCPS["ac"], UCPS["dc"])
+        # Add up powerstation cost. Note that Rogeau does list separate installation cost for the powerstation itself, only for the platform
+        ECPS = RCPS_coeffs * capacity + UCPS_coeffs * 10**3
+        specECPS = ECPS / capacity
+
+        print(f"total Cost Substation: {ECPS}, specific Cost Substation: {specECPS}, voltageType: {voltageType}")
+
+        if waterDepth is None:
+            # an onshore station, no additional platform cost
+            specECPF = np.zeros_like(capacity, dtype=float)
+        else:
+            # get platform cost (incl. installation cost) from separate function
+            specECPF = getSpecificOffshorePlatformCost(
+                capacity=capacity,
+                applicationType=voltageType,
+                waterDepth=waterDepth,
+                portDistance=portDistance,
+                foundationType=None,
+                maxJacketDepthPlatform=maxJacketDepthPlatform,
+                convention=convention,
             )
-            / 2
-        ) * (excessCableFactor + 1)
-        arrayCable2Length /= 1000  # convert to km
+        # combine electrical and platform cost components
 
-        arrayCable1AndAncillaryCost = dynamicCableFactor * (
-            arrayCable1Length * arrayCableCost
-            + singleTurbineInterfaceCost
-            * (numberofTurbineInterfacesPerArrayCable1 + numberofTurbineInterfacesPerArrayCable2)
+        totalSpecCost = specECPS + specECPF
+        print(
+            f"totalSpecCost Converter Station: {totalSpecCost}, specECPS: {specECPS}, specECPF: {specECPF}, voltageType: {voltageType}"
         )
 
-        arrayCable2AndAncillaryCost = dynamicCableFactor * (
-            arrayCable2Length * arrayCableCost
-            + singleTurbineInterfaceCost
-            * (numberofTurbineInterfacesPerArrayCable1 + numberofTurbineInterfacesPerArrayCable2)
-            + substationInterfaceCost * numberofArrayCableSubstationInterfaces
-        )
-
-    singleExportCablePower = np.sqrt(3) * cable2CurrentRating * arrayVoltage * powerFactor / 1000
-    numberOfExportCables = np.floor_divide(cp * turbine_count, singleExportCablePower) + 1
-
-    if fixedType:
-        exportCableLength = (distance_to_shore * 1000 + depth) * numberOfExportCables * 1.1
-        exportCableLength /= 1000  # convert to km
-
-        exportCableandAncillaryCost = (
-            exportCableLength * externalCableCost + numberOfExportCables * substationInterfaceCost
-        )
     else:
-        exportCableLength = (distance_to_shore * 1000 + freeHangingCableLength + 500) * numberOfExportCables * 1.1
-        exportCableLength /= 1000  # convert to km
+        raise NotImplementedError(f"Unknown convention: '{convention}'")
 
-        exportCableandAncillaryCost = (
-            exportCableLength * externalCableCost
-            + ((exportCableLength - freeHangingCableLength - 500) + dynamicCableFactor * (500 + freeHangingCableLength))
-            + numberOfExportCables * substationInterfaceCost
-        )
+    if isScalar:
+        totalSpecCost = np.asarray(totalSpecCost).item()
 
-    numberOfSubStations = numberOfSubStations
-
-    numberOfMainPowerTransformers = np.floor_divide(turbine_count * cp, 250) + 1
-
-    # equation 72 in [1] is simplified
-    singleMPTRating = np.round(turbine_count * cp * 1.15 / numberOfMainPowerTransformers, -1)
-
-    mainPowerTransformerCost = numberOfMainPowerTransformers * singleMPTRating * mainPowerTransformerCostRate
-
-    switchgearCost = numberOfMainPowerTransformers * (highVoltageSwitchgearCost + mediumVoltageSwitchgearCost)
-
-    shuntReactorCost = singleMPTRating * numberOfMainPowerTransformers * shuntReactorCostRate * 0.5
-
-    ancillarySystemsCost = dieselGeneratorBackupCost + workspaceCost + otherAncillaryCosts
-
-    offshoreSubstationTopsideMass = 3.85 * (singleMPTRating * numberOfMainPowerTransformers) + 285
-    offshoreSubstationTopsideCost = offshoreSubstationTopsideMass * fabricationCostRate + topsideDesignCost
-    assemblyFactor = 1  # could not find a number...
-
-    offshoreSubstationTopsideLandAssemblyCost = (
-        switchgearCost + shuntReactorCost + mainPowerTransformerCost
-    ) * assemblyFactor
-
-    if fixedType:
-        offshoreSubstationSubstructureMass = 0.4 * offshoreSubstationTopsideMass
-
-        substationSubstructurePileMass = 8 * np.power(offshoreSubstationSubstructureMass, 0.5574)
-
-        offshoreSubstationSubstructureCost = (
-            offshoreSubstationSubstructureMass * offshoreSubstationSubstructureCostRate
-            + substationSubstructurePileMass * substationSubstructurePileCostRate
-        )
-    else:
-        # copied from above in case of spar
-        if foundation == "spar":  # WHY WAS IT SPAR BEFORE? WE ARE DOING THINGS WITH SEMISUBMERSIBLE
-            # if foundation == 'semisubmersible':
-            semiSubmersibleSCMass = -0.9571 * np.power(cp, 2) + 40.89 * cp + 802.09
-            semiSubmersibleSCCost = semiSubmersibleSCMass * semiSubmersibleSCCostRate
-
-            # semiSubmersible truss mass is called as semiSubmersibleTMass
-            semiSubmersibleTMass = 2.7894 * np.power(cp, 2) + 15.591 * cp + 266.03
-            semiSubmersibleTCost = semiSubmersibleTMass * semiSubmersibleTCostRate
-
-            # semiSubmersible heavy plate mass is called as semiSubmersibleHPMass
-            semiSubmersibleHPMass = -0.4397 * np.power(cp, 2) + 21.145 * cp + 177.42
-            semiSubmersibleHPCost = semiSubmersibleHPMass * semiSubmersibleHPCostRate
-
-        semiSubmersibleMass = semiSubmersibleSCMass + semiSubmersibleTMass + semiSubmersibleHPMass
-
-        offshoreSubstationSubstructureMass = 2 * (semiSubmersibleMass + secondarySteelSubstructureMass)
-
-        substationSubstructurePileMass = 0
-
-        # semiSubmersibleCost = semiSubmersibleSCCost + semiSubmersibleTCost + semiSubmersibleHPCost
-        offshoreSubstationSubstructureCost = 2 * (semiSubmersibleTCostRate + mooringAndAnchorCost)
-
-    onshoreSubstationCost = 11652 * (interconnectVoltage + cp * turbine_count) + 1200000
-
-    onshoreSubstationMiscCost = 11795 * np.power(cp * turbine_count, 0.3549) + 350000
-
-    overheadTransmissionLineCost = (
-        (1176 * interconnectVoltage + 218257) * np.power(distance_to_bus, -0.1063) * distance_to_bus
-    )
-
-    switchyardCost = 18115 * interconnectVoltage + 165944
-
-    totalElectricalInfrastructureCosts = (
-        arrayCable1AndAncillaryCost
-        + arrayCable2AndAncillaryCost
-        + exportCableandAncillaryCost
-        + mainPowerTransformerCost
-        + switchgearCost
-        + shuntReactorCost
-        + ancillarySystemsCost
-        + offshoreSubstationTopsideCost
-        + offshoreSubstationTopsideLandAssemblyCost
-        + offshoreSubstationSubstructureCost
-        + onshoreSubstationCost
-        + onshoreSubstationMiscCost
-        + overheadTransmissionLineCost
-        + switchyardCost
-    )
-    totalElectricalInfrastructureCosts /= turbine_count
-
-    # ASSEMBLY AND INSTALLATION
-
-    assemblyAndInstallationCost = np.ones(totalElectricalInfrastructureCosts.shape)
-
-    if fixedType:
-        assemblyAndInstallationCost *= 4200000
-    else:
-        assemblyAndInstallationCost *= 5500000
-
-    # depth depedance
-    if fixedType:
-        pass
-    else:
-        # Normalized to 1 at 250m depth
-        assemblyAndInstallationCost *= 0.00041757917648320338 * depth + 0.89560520587919934
-
-    # Capacity dependence
-    # Normalized to 1 at 6 MW
-    assemblyAndInstallationCost *= 0.05947387 * cp + 0.64371944
-
-    # OTHER THINGS
-    # Again, many constants were used in [1] but not defined. Also, many of the costs were given in the
-    # context of the USA. Therefore the other groups were are simply treated as percentages which
-    # fit the examples shown in [1] or [7]
-
-    #########################################
-    # The below corresponds to other costs in [1]
-    # tot = (assemblyAndInstallationCost + totalElectricalInfrastructureCosts + totalStructureAndFoundationCosts)/(1-0.06)
-
-    # commissioning = tot*0.015
-    # portAndStaging = tot*0.005
-    # engineeringManagement = tot*0.02
-    # development = tot*0.02
-
-    #########################################
-    # The below corresponds to cost percentages in [7]
-    if fixedType:
-        tot = (
-            assemblyAndInstallationCost * 19.0
-            + totalElectricalInfrastructureCosts * 9.00
-            + totalStructureAndFoundationCosts * 13.9
-        ) / 46.2
-
-        commissioning = tot * (0.8 / 46.2)
-        portAndStaging = tot * (0.5 / 46.2)
-        engineeringManagement = tot * (1.6 / 46.2)
-        development = tot * (1.4 / 46.2)
-
-    else:
-        tot = (
-            assemblyAndInstallationCost * 11.3
-            + totalElectricalInfrastructureCosts * 10.9
-            + totalStructureAndFoundationCosts * 34.1
-        ) / 60.8
-
-        commissioning = tot * (0.8 / 60.8)
-        portAndStaging = tot * (0.6 / 60.8)
-        engineeringManagement = tot * (2.2 / 60.8)
-        development = tot * (1 / 60.8)
-
-    # TOTAL COST
-    totalCost = (
-        commissioning
-        + assemblyAndInstallationCost
-        + totalElectricalInfrastructureCosts
-        + totalStructureAndFoundationCosts
-        + portAndStaging
-        + engineeringManagement
-        + development
-    )
-
-    return totalCost
+    return totalSpecCost

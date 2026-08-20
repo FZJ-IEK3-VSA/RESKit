@@ -10,7 +10,11 @@ from .core.logarithmic_profile import (
 from .core.power_curve import PowerCurve, compute_specific_power
 from .core.power_profile import alpha_from_levels, apply_power_profile_projection
 from .core.turbine_library import TurbineLibrary
-from .economic.offshore_cost_model import offshore_turbine_capex
+from .core.design_turbine import turbine_design_from_avg_wind_speed, onshore_turbine_from_avg_wind_speed
+
 from .economic.onshore_cost_model import onshore_turbine_capex
+from .economic.offshore_cost_model import calculateSpecificOffshoreCapex
+
+
 from .workflows.wind_workflow_manager import WindWorkflowManager
 from .workflows.workflows import *
