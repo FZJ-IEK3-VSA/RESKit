@@ -788,7 +788,7 @@ class EGS_workflowmanager:
                 # do shapefile
 
                 self.placements["geom"] = [
-                    gk.geom.point(row.lon, row.lat) for row in self.placements[["lon", "lat"]].itertuples
+                    gk.geom.point(row.lon, row.lat) for row in self.placements[["lon", "lat"]].itertuples()
                 ]
 
                 gk.vector.createVector(self.placements, savepath)
