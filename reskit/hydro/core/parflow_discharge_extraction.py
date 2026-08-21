@@ -35,6 +35,7 @@ def retrieve_discharge_data(
     ctrl_file_path=None,
     max_retries=10,
     retry_delay_seconds=5,
+    data_url=None,
 ):
     """Extract discharge time series from ParFlow datasource for given coordinates."""
     data_extraction_tool = _import_data_extraction_tool()
@@ -47,11 +48,11 @@ def retrieve_discharge_data(
     #     f"sfd_DE05_ECMWF-HRES_hindcast_r1i1p2_FZJ-IBG3-ParFlowCLM380_hgfadapter-h00-v03bJuwelsGpuProdClimatologyTl_1day_{year}0101-{year}1231.nc"
     # )
 
-    ### updated URL
-    data_url = (
-        "https://service.tereno.net/thredds/dodsC/forecastnrw/products/ParFlow-DE06-HC_v03/"
-        f"sfd_DE05_ECMWF-HRES_hindcast_r1i1p2_FZJ-IBG3-ParFlowCLM380_hgfadapter-h00-v03bJuwelsGpuProdClimatologyTl_1day_{year}0101-{year}1231.nc"
-    )
+    if data_url is None:
+        data_url = (
+            "https://service.tereno.net/thredds/dodsC/forecastnrw/products/ParFlow-DE06-HC_v03/"
+            f"sfd_DE05_ECMWF-HRES_hindcast_r1i1p2_FZJ-IBG3-ParFlowCLM380_hgfadapter-h00-v03bJuwelsGpuProdClimatologyTl_1day_{year}0101-{year}1231.nc"
+        )
 
     ctrl_file = {
         "indicatorFile": os.path.join(
@@ -243,6 +244,7 @@ def extract_selected_discharge_alluvium(
     alluvium_mask_file,
     indicator_file,
     fallback_mode="max_annual", 
+    data_url=None,
 ):
     """Extract discharge from alluvium-aware candidate cells and select one series per plant."""
     '''
@@ -253,6 +255,9 @@ def extract_selected_discharge_alluvium(
         and then one can specify in the fallback mode to keep max annual discharge (max_annual) 
         or nearest cell (nearest), default is max_annual
     '''
+    if fallback_mode not in {"nearest", "max_annual"}:
+        raise ValueError("fallback_mode must be either 'nearest' or 'max_annual'")
+
     # assure hydropower plant identifiers
     if "hydro_plant_id" not in placements.columns:
         placements = placements.copy()
@@ -299,6 +304,7 @@ def extract_selected_discharge_alluvium(
         longitudes=extraction_lons,
         root_dir=root_dir,
         include_neighbours=False,
+        data_url=data_url,
     )
     # Mask ParFlow missing-value sentinel (large fill value ~= 1e20).
     discharge_info = np.ma.masked_where(np.isclose(discharge_info, 1.0e20), discharge_info)
@@ -360,6 +366,7 @@ def extract_selected_discharge_alluvium(
         row_start = row_end
 
     return {
+        "selected_discharge_m3_per_timestep": selected_discharge,
         "selected_discharge_m3_per_day": selected_discharge,
         "selected_candidate_idx": selected_candidate_idx,
         "selected_from_alluvium": selected_from_alluvium,

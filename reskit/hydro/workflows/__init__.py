@@ -1,4 +1,7 @@
 from .hydro_workflow_manager import HydroWorkflowManager
+from .workflows import extract_discharge
+from .workflows import release_generation
 from .workflows import run_of_river_daily_discharge_workflow
+from .workflows import run_of_river_hydropower
 from .workflows import run_of_river_parflow_alluvium_workflow
 from .workflows import run_of_river_workflow

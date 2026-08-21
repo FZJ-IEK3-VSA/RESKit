@@ -6,6 +6,77 @@ from .hydro_workflow_manager import HydroWorkflowManager
 from ..core import extract_selected_discharge_alluvium
 
 
+def extract_discharge(
+    placements,
+    product,
+    time_index,
+    product_options=None,
+    output_netcdf_path=None,
+    output_variables=None,
+):
+    """Extract discharge for placements and return it on ``time_index``."""
+    wf = HydroWorkflowManager(placements)
+    wf.extract_discharge(
+        product=product,
+        time_index=time_index,
+        product_options=product_options,
+    )
+    return wf.to_xarray(
+        output_netcdf_path=output_netcdf_path,
+        output_variables=output_variables,
+    )
+
+
+def run_of_river_hydropower(
+    placements,
+    product,
+    time_index,
+    efficiency=0.88,
+    cap_production_by_capacity=True,
+    product_options=None,
+    output_netcdf_path=None,
+    output_variables=None,
+):
+    """Extract discharge and calculate run-of-river generation."""
+    wf = HydroWorkflowManager(placements)
+    wf.extract_discharge(
+        product=product,
+        time_index=time_index,
+        product_options=product_options,
+    )
+    wf.calculate_hydropower(
+        efficiency=efficiency,
+        cap_production_by_capacity=cap_production_by_capacity,
+    )
+    return wf.to_xarray(
+        output_netcdf_path=output_netcdf_path,
+        output_variables=output_variables,
+    )
+
+
+def release_generation(
+    placements,
+    discharge_m3s,
+    time_index,
+    efficiency=0.88,
+    cap_production_by_capacity=True,
+    output_netcdf_path=None,
+    output_variables=None,
+):
+    """Calculate generation from a user-supplied turbine release series."""
+    wf = HydroWorkflowManager(placements)
+    wf.calculate_hydropower(
+        discharge_m3s=discharge_m3s,
+        time_index=time_index,
+        efficiency=efficiency,
+        cap_production_by_capacity=cap_production_by_capacity,
+    )
+    return wf.to_xarray(
+        output_netcdf_path=output_netcdf_path,
+        output_variables=output_variables,
+    )
+
+
 def run_of_river_workflow(
     placements,
     inflow_m3s,
