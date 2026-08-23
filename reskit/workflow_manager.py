@@ -1335,29 +1335,49 @@ def execute_workflow_iteratively(
         output_variables = None
 
     # possibly generate dataframe from single locations and add actual weather filepath where needed
-    if not weather_path_varname in placements.columns:
+    if weather_path_varname not in placements.columns:
         weather_path = workflow_args[weather_path_varname]
         placements = get_dataframe_with_weather_tilepaths(placements=placements, weather_path=weather_path, zoom=zoom)
-    if not "RESKit_sim_order" in placements.columns:
+    if "RESKit_sim_order" in placements.columns:
+        # make sure it is a consecutive integer sequence
+        if not np.array_equal(placements["RESKit_sim_order"], np.arange(len(placements))):
+            raise ValueError("If placements dataframe has a 'RESKit_sim_order' column, it must contain a consecutive integer sequence.")                              
+    else:
+        # add, is mandatory for later recombination of placements and results
         with pd.option_context("mode.chained_assignment", None):
             placements.loc[placements.index, "RESKit_sim_order"] = range(len(placements))
 
     # remove output saving for the iterative function execution of sub dfs
     workflow_args.update({"output_netcdf_path": None})
-
     # iterate over weather tiles
     for i, tilepath in enumerate(placements["source"].unique()):
-        # reduce placements to subset within the current tile and update function arguments with subset of placements and current weather path
-        placements_tile = placements[placements["source"] == tilepath]
-        workflow_args.update(
-            {"placements": placements_tile, weather_path_varname: tilepath},
-        )
+        # generate a mask for the placements covered by this tile
+        tilemask = placements["source"].eq(tilepath).to_numpy()
+        # iterate over the workflow args, whenever the data is obviously per tile, reduce to only the selected placements
+        _workflow_args = workflow_args.copy()
+        for _arg, _val in workflow_args.items():
+            if _arg == "placements":
+                # reduce placements to subset within the current tile
+                _workflow_args[_arg] = placements.loc[tilemask]
+            elif _arg == weather_path_varname:
+                # set the current weather path tile path
+                _workflow_args[_arg] = tilepath
+            else:
+                # check if we have an iterable with values per loc which we might have to mask as well
+                try:
+                    _arr  = np.array(_val)
+                    if _arr.ndim > 0 and _arr.shape[0] == len(placements):
+                        # we have an iterable argument with obviously 1 val per loc
+                        # reduce to only the affected location values and update in _workflow_args per tile
+                        _workflow_args[_arg] = _arr[tilemask, ...] # mask only the first dimension, leave all others as is
+                except Exception:
+                    pass # no need to update anything
         # execute workflow with subset and add to list of results
         print(
             datetime.datetime.now(),
-            f"Now processing tile {i + 1}/{len(placements['source'].unique())} with {len(placements_tile)} locations: {tilepath}",
+            f"Now processing tile {i + 1}/{len(placements['source'].unique())} with {len(_workflow_args['placements'])} locations: {tilepath}",
         )
-        xrds = workflow(**workflow_args)
+        xrds = workflow(**_workflow_args)
         xrds = xrds.set_index(location="RESKit_sim_order")
         if i == 0:
             reskit_xr = xrds
