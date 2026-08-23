@@ -190,8 +190,8 @@ class WindWorkflowManager(WorkflowManager):
         # check consider_boundary_layer_height arg
         if not isinstance(consider_boundary_layer_height, bool):
             raise TypeError("consider_boundary_layer_height must be boolean.")
-        if not isinstance(height_scaling_method, tuple) and len(height_scaling_method) == 2:
-            raise TypeError(f"height_scaling_method must be a tuple of length 2.")
+        if not isinstance(height_scaling_method, (tuple, list)) and len(height_scaling_method) == 2:
+            raise TypeError(f"height_scaling_method must be a tuple of length 2. Here: {height_scaling_method} (type: {type(height_scaling_method)})")
 
         if height_scaling_method[0] == "log":
             # we have a logarithmic scaling approach, check landcover raster
