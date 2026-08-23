@@ -100,12 +100,22 @@ class WorkflowManager:
         # if no extension in lon and/or lat direction, create incremental artificial width
         if _bounds[0] == _bounds[2]:
             _x = _bounds[0]
-            _bounds[0] = _x * 0.99999
-            _bounds[2] = _x * 1.00001
+            if _x != 0:
+                _bounds[0] = _x * 0.99999
+                _bounds[2] = _x * 1.00001
+            else:
+                # we have a single zero degree longitude, add a marginal buffer
+                _bounds[0] = _x + 0.00001
+                _bounds[2] = _x - 0.00001
         if _bounds[1] == _bounds[3]:
             _y = _bounds[1]
-            _bounds[1] = _y * 0.99999
-            _bounds[3] = _y * 1.00001
+            if _y != 0:
+                _bounds[1] = _y * 0.99999
+                _bounds[3] = _y * 1.00001
+            else:
+                # we have a single zero degree latitude, add a marginal buffer
+                _bounds[1] = _y + 0.00001
+                _bounds[3] = _y - 0.00001
         # create extent attribute
         self.ext = gk.Extent(_bounds, srs=_srs)
 
