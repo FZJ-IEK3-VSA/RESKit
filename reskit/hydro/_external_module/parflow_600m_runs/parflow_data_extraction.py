@@ -134,7 +134,6 @@ def spher_dist(lon1, lat1, lon2, lat2, Rearth=6371.0):
     SOURCE:
     - https://www.kompf.de/gps/distcalc.html
     """
-
     spherical_distance = Rearth * np.arccos(
         np.sin(lat1) * np.sin(lat2) + np.cos(lat1) * np.cos(lat2) * np.cos(lon2 - lon1)
     )
@@ -164,7 +163,6 @@ def find_depth_index(depth, soil_layer_bnds):
     - depth_idx: integer
       index of the depth layer (either the layer or the lower boundary)
     """
-
     # this is the lower boundaries of the ParFlow depth layers
     # ParFlow vertical coordinate starts with index 0 at the lowermost
     # model level, i.e., level 0 is 60-42m depth, level 14 is 0.02-0.0m
@@ -208,7 +206,6 @@ def data_extraction(runctrl_file, output_format):
     Returns data as specified in JSON file, either as numpy variable or as a
     CSV file.
     """
-
     # extracts information from the control JSON file, loop over records
     # of the JSON file, each record might feature a different variable,
     # i.e., THREDDS server filename, depth, and/or location
