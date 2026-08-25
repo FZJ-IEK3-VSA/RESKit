@@ -225,7 +225,9 @@ def build_alluvium_candidate_context(plant_lats, plant_lons, alluvium_mask_file,
 
         cand_lons = np.array([float(ind_lon[cy, cx]) for cy, cx in use_candidates])
         cand_lats = np.array([float(ind_lat[cy, cx]) for cy, cx in use_candidates])
-        cand_dist = data_extraction_tool.spher_dist(np.deg2rad(cand_lons), np.deg2rad(cand_lats), plant_lon_rad, plant_lat_rad)
+        cand_dist = data_extraction_tool.spher_dist(
+            np.deg2rad(cand_lons), np.deg2rad(cand_lats), plant_lon_rad, plant_lat_rad
+        )
         nearest_local_idx_per_plant.append(int(np.argmin(cand_dist)))
 
     return {
@@ -243,18 +245,18 @@ def extract_selected_discharge_alluvium(
     root_dir,
     alluvium_mask_file,
     indicator_file,
-    fallback_mode="max_annual", 
+    fallback_mode="max_annual",
     data_url=None,
 ):
     """Extract discharge from alluvium-aware candidate cells and select one series per plant."""
-    '''
+    """
     - only consider all the 9 grid cells (nearest + 8 neighbours) closest to the plant location
     - first check which of the 9 grid cells are on the alluvium river mask
     - if river cells exist: only extract those river cells, then keep discharge from the nearest river cell
     - if none are river cells: extract all 9 cells, 
         and then one can specify in the fallback mode to keep max annual discharge (max_annual) 
         or nearest cell (nearest), default is max_annual
-    '''
+    """
     if fallback_mode not in {"nearest", "max_annual"}:
         raise ValueError("fallback_mode must be either 'nearest' or 'max_annual'")
 
@@ -266,7 +268,7 @@ def extract_selected_discharge_alluvium(
     # extract location lat/lon from placements dataframe
     plant_lats = placements["lat"].values
     plant_lons = placements["lon"].values
-    
+
     # --- Build candidate context ---
     # For each plant, compute a short list of nearby indicator-grid candidate
     # cells and mark whether any candidate maps to an alluvium/river cell.
@@ -322,7 +324,7 @@ def extract_selected_discharge_alluvium(
         # --- Select best candidate for this plant ---
         # Priority rules:
         # 1) If any candidate maps to an alluvium/river cell, pick the nearest
-        #    among those (useful when river proximity matters). 
+        #    among those (useful when river proximity matters).
         #    However, if the nearest discharge is zero or masked, choose the one with the largest total annual discharge instead.
         # 2) Else if fallback_mode == "nearest", pick the geographically
         #    nearest candidate.
@@ -330,7 +332,9 @@ def extract_selected_discharge_alluvium(
         #    largest total (annual) discharge.
         if selected_from_alluvium[plant_idx]:
             local_best_idx = nearest_local_idx_per_plant[plant_idx]
-            if (plant_candidate_data[local_best_idx, :].sum() == 0) or (plant_candidate_data[local_best_idx, :].sum() is np.ma.masked):
+            if (plant_candidate_data[local_best_idx, :].sum() == 0) or (
+                plant_candidate_data[local_best_idx, :].sum() is np.ma.masked
+            ):
                 # If the nearest alluvium candidate has zero discharge or masked values, choose the one with the largest total annual discharge instead.
                 annual_discharge = np.ma.filled(np.ma.sum(plant_candidate_data, axis=1), fill_value=-np.inf)
                 local_best_idx = int(np.argmax(annual_discharge))

@@ -79,11 +79,7 @@ class HydroWorkflowManager(WorkflowManager):
 
     def _hydraulic_power_w(self, discharge_m3s, head_m, efficiency):
         return (
-            self.WATER_DENSITY_KG_M3
-            * self.GRAVITY_M_S2
-            * np.maximum(discharge_m3s, 0.0)
-            * head_m[None, :]
-            * efficiency
+            self.WATER_DENSITY_KG_M3 * self.GRAVITY_M_S2 * np.maximum(discharge_m3s, 0.0) * head_m[None, :] * efficiency
         )
 
     @staticmethod
@@ -95,9 +91,7 @@ class HydroWorkflowManager(WorkflowManager):
             # The final native value represents the final native interval. A
             # repeated right edge lets interpolation cover that whole interval.
             right_edge = frame.index[-1] + native_interval
-            extended = pd.concat(
-                [frame, pd.DataFrame([frame.iloc[-1].to_numpy()], index=[right_edge])]
-            )
+            extended = pd.concat([frame, pd.DataFrame([frame.iloc[-1].to_numpy()], index=[right_edge])])
             aligned = extended.reindex(extended.index.union(requested_index)).interpolate(
                 method="time", limit_area="inside"
             )
@@ -146,9 +140,7 @@ class HydroWorkflowManager(WorkflowManager):
                 native_volume = extraction["selected_discharge_m3_per_day"]
             native = np.ma.filled(native_volume, np.nan)
             native = np.asarray(native, dtype=float).T / native_interval.total_seconds()
-            native_index = pd.date_range(
-                f"{year}-01-01", periods=native.shape[0], freq=native_interval
-            )
+            native_index = pd.date_range(f"{year}-01-01", periods=native.shape[0], freq=native_interval)
             self.placements["selected_candidate_idx"] = extraction["selected_candidate_idx"]
             self.placements["selected_from_alluvium"] = extraction["selected_from_alluvium"].astype(int)
             self.selected_cell_overview = extraction["selected_cell_overview"]
@@ -157,10 +149,7 @@ class HydroWorkflowManager(WorkflowManager):
 
         native_interval = self.DISCHARGE_PRODUCTS[product]["native_interval"]
         product_end = native_index[-1] + native_interval
-        if (
-            requested_index[0] < native_index[0]
-            or requested_index[-1] + requested_interval > product_end
-        ):
+        if requested_index[0] < native_index[0] or requested_index[-1] + requested_interval > product_end:
             raise ValueError("Requested time_index extends beyond the discharge product coverage")
         frame = pd.DataFrame(native, index=native_index)
         frame, resampled, resampling_method = self._align_discharge(
@@ -220,9 +209,7 @@ class HydroWorkflowManager(WorkflowManager):
         efficiency = self._validate_efficiency(efficiency)
         potential_power_kw = self._hydraulic_power_w(discharge, head, efficiency) / 1000.0
         power_kw = (
-            np.minimum(potential_power_kw, capacity_kw[None, :])
-            if cap_production_by_capacity
-            else potential_power_kw
+            np.minimum(potential_power_kw, capacity_kw[None, :]) if cap_production_by_capacity else potential_power_kw
         )
         usable = discharge * np.divide(
             power_kw, potential_power_kw, out=np.zeros_like(power_kw), where=potential_power_kw > 0
@@ -273,13 +260,10 @@ class HydroWorkflowManager(WorkflowManager):
         efficiency = self._validate_efficiency(efficiency)
         capacity_kw = self._location_values(self.placements["capacity"], n_locations, "capacity")
         potential = (
-            np.maximum(discharge, 0) * head[:, None] * self.GRAVITY_M_S2
-            * self.WATER_DENSITY_KG_M3 * efficiency / 3.6e6
+            np.maximum(discharge, 0) * head[:, None] * self.GRAVITY_M_S2 * self.WATER_DENSITY_KG_M3 * efficiency / 3.6e6
         )
         generation = np.minimum(potential, capacity_kw[:, None] * 24) if cap_production_by_capacity else potential
-        usable = generation * 3.6e6 / (
-            head[:, None] * self.GRAVITY_M_S2 * self.WATER_DENSITY_KG_M3 * efficiency
-        )
+        usable = generation * 3.6e6 / (head[:, None] * self.GRAVITY_M_S2 * self.WATER_DENSITY_KG_M3 * efficiency)
         capacity_factor = generation / (capacity_kw[:, None] * 24)
         outputs = {
             "discharge_m3_per_day": discharge,

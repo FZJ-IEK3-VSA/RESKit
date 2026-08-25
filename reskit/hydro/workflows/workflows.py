@@ -182,7 +182,9 @@ def run_of_river_parflow_alluvium_workflow(
     # output selected alluvium candidate overview if requested
     if output_selected_alluvium_candidate_path is not None:
         os.makedirs(os.path.dirname(output_selected_alluvium_candidate_path), exist_ok=True)
-        pd.DataFrame(extraction_result["selected_cell_overview"]).to_csv(output_selected_alluvium_candidate_path, index=False)
+        pd.DataFrame(extraction_result["selected_cell_overview"]).to_csv(
+            output_selected_alluvium_candidate_path, index=False
+        )
 
     ds = run_of_river_daily_discharge_workflow(
         placements=placements,
@@ -197,5 +199,5 @@ def run_of_river_parflow_alluvium_workflow(
 
     ds["selected_candidate_idx"] = ("location", extraction_result["selected_candidate_idx"])  # metadata only
     ds["selected_from_alluvium"] = ("location", extraction_result["selected_from_alluvium"])  # metadata only
-    
+
     return ds
