@@ -1,10 +1,23 @@
 import warnings
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
 from ...workflow_manager import WorkflowManager
 from ..core import extract_selected_discharge_alluvium
+
+
+HYDRO_DEPRECATION_REMOVAL_DATE = "2026-09-26"
+
+
+def _warn_deprecated_method(name, replacement):
+    warnings.warn(
+        f"HydroWorkflowManager.{name}() is deprecated and will be removed no earlier than "
+        f"{HYDRO_DEPRECATION_REMOVAL_DATE}. Use HydroWorkflowManager.{replacement}() instead.",
+        FutureWarning,
+        stacklevel=3,
+    )
 
 
 class HydroWorkflowManager(WorkflowManager):
@@ -101,13 +114,25 @@ class HydroWorkflowManager(WorkflowManager):
         aligned = frame.resample(requested_interval, origin=requested_index[0]).mean()
         return aligned.reindex(requested_index), True, "time-averaged"
 
-    def extract_discharge(self, product, time_index, product_options=None):
-        """Extract and align discharge, storing it as m3/s in (time, location)."""
+    def extract_discharge(
+        self,
+        product,
+        time_index,
+        product_options=None,
+        output_selected_alluvium_candidate_path=None,
+    ):
+        """Extract and align discharge, storing it as m3/s in (time, location).
+
+        ``output_selected_alluvium_candidate_path`` writes ParFlow's selected
+        grid-cell metadata to CSV when provided.
+        """
         product = str(product).lower()
         product = self.DISCHARGE_PRODUCT_ALIASES.get(product, product)
         if product not in self.DISCHARGE_PRODUCTS:
             available = ", ".join(sorted(self.DISCHARGE_PRODUCTS))
             raise ValueError(f"Unknown discharge product '{product}'. Available products: {available}")
+        if output_selected_alluvium_candidate_path is not None and not product.startswith("parflow-"):
+            raise ValueError("output_selected_alluvium_candidate_path is only available for ParFlow discharge products")
 
         requested_index = self._validate_time_index(time_index)
         requested_interval = self._time_step(requested_index)
@@ -169,6 +194,10 @@ class HydroWorkflowManager(WorkflowManager):
         self.workflow_parameters["requested_time_interval"] = str(requested_interval)
         self.workflow_parameters["temporal_resampling_applied"] = str(resampled)
         self.workflow_parameters["temporal_resampling_method"] = resampling_method or "none"
+        if output_selected_alluvium_candidate_path is not None:
+            output_path = Path(output_selected_alluvium_candidate_path)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            pd.DataFrame(self.selected_cell_overview).to_csv(output_path, index=False)
         return self
 
     def calculate_hydropower(
@@ -228,6 +257,13 @@ class HydroWorkflowManager(WorkflowManager):
 
     # Legacy interfaces retained for compatibility.
     def simulate_run_of_river(self, inflow_m3s, net_head_m, efficiency=0.9):
+        """Simulate run-of-river power using the legacy output convention.
+
+        .. deprecated:: 0.4.3
+           Use :meth:`calculate_hydropower` instead. Removal is planned no
+           earlier than 2026-09-26.
+        """
+        _warn_deprecated_method("simulate_run_of_river", "calculate_hydropower")
         inflow = np.asarray(inflow_m3s, dtype=float)
         if inflow.ndim != 2:
             raise ValueError("inflow_m3s must have shape (time, locations)")
@@ -250,6 +286,14 @@ class HydroWorkflowManager(WorkflowManager):
     def simulate_run_of_river_from_daily_discharge(
         self, discharge_m3_per_day, net_head_m, efficiency=0.88, cap_production_by_capacity=True
     ):
+        """Simulate daily hydropower using the legacy input convention.
+
+        .. deprecated:: 0.4.3
+           Use :meth:`calculate_hydropower` instead. Convert daily volumes to
+           m3/s before calling it. Removal is planned no earlier than
+           2026-09-26.
+        """
+        _warn_deprecated_method("simulate_run_of_river_from_daily_discharge", "calculate_hydropower")
         discharge = np.asarray(np.ma.filled(discharge_m3_per_day, 0.0), dtype=float)
         if discharge.ndim != 2:
             raise ValueError("discharge_m3_per_day must have shape (locations, time)")

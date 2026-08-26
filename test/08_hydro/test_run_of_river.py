@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import pytest
 
 from reskit.hydro.workflows.hydro_workflow_manager import HydroWorkflowManager
 from reskit.hydro.workflows import run_of_river_workflow, run_of_river_daily_discharge_workflow
@@ -133,3 +134,25 @@ def test_calculate_hydropower_validates_placement_columns():
         assert "head" in str(exc)
     else:
         raise AssertionError("calculate_hydropower should require a head column")
+
+
+def test_legacy_manager_method_emits_future_warning():
+    wf = HydroWorkflowManager(_placements())
+
+    with pytest.warns(FutureWarning, match="removed no earlier than 2026-09-26"):
+        wf.simulate_run_of_river(
+            inflow_m3s=np.ones((2, 2)),
+            net_head_m=np.array([10.0, 10.0]),
+        )
+
+
+def test_legacy_workflow_emits_future_warning():
+    times = pd.date_range("2020-01-01", periods=2, freq="h")
+
+    with pytest.warns(FutureWarning, match="run_of_river_workflow"):
+        run_of_river_workflow(
+            placements=_placements(),
+            inflow_m3s=np.ones((2, 2)),
+            net_head_m=np.array([10.0, 10.0]),
+            time_index=times,
+        )

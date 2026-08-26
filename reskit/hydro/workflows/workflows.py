@@ -1,9 +1,22 @@
 import os
+import warnings
 import numpy as np
 import pandas as pd
 
 from .hydro_workflow_manager import HydroWorkflowManager
 from ..core import extract_selected_discharge_alluvium
+
+
+HYDRO_DEPRECATION_REMOVAL_DATE = "2026-09-26"
+
+
+def _warn_deprecated_workflow(name, replacement):
+    warnings.warn(
+        f"{name}() is deprecated and will be removed no earlier than "
+        f"{HYDRO_DEPRECATION_REMOVAL_DATE}. Use {replacement}() instead.",
+        FutureWarning,
+        stacklevel=3,
+    )
 
 
 def extract_discharge(
@@ -13,6 +26,7 @@ def extract_discharge(
     product_options=None,
     output_netcdf_path=None,
     output_variables=None,
+    output_selected_alluvium_candidate_path=None,
 ):
     """Extract discharge for placements and return it on ``time_index``."""
     wf = HydroWorkflowManager(placements)
@@ -20,6 +34,7 @@ def extract_discharge(
         product=product,
         time_index=time_index,
         product_options=product_options,
+        output_selected_alluvium_candidate_path=output_selected_alluvium_candidate_path,
     )
     return wf.to_xarray(
         output_netcdf_path=output_netcdf_path,
@@ -36,6 +51,7 @@ def run_of_river_hydropower(
     product_options=None,
     output_netcdf_path=None,
     output_variables=None,
+    output_selected_alluvium_candidate_path=None,
 ):
     """Extract discharge and calculate run-of-river generation."""
     wf = HydroWorkflowManager(placements)
@@ -43,6 +59,7 @@ def run_of_river_hydropower(
         product=product,
         time_index=time_index,
         product_options=product_options,
+        output_selected_alluvium_candidate_path=output_selected_alluvium_candidate_path,
     )
     wf.calculate_hydropower(
         efficiency=efficiency,
@@ -86,7 +103,13 @@ def run_of_river_workflow(
     output_netcdf_path=None,
     output_variables=None,
 ):
-    """Run a run-of-river workflow and return xarray output."""
+    """Run a run-of-river workflow using the legacy output convention.
+
+    .. deprecated:: 0.4.3
+       Use :func:`release_generation` instead. Removal is planned no earlier
+       than 2026-09-26.
+    """
+    _warn_deprecated_workflow("run_of_river_workflow", "release_generation")
     wf = HydroWorkflowManager(placements)
 
     if not isinstance(inflow_m3s, np.ndarray):
@@ -100,11 +123,19 @@ def run_of_river_workflow(
     if inflow_m3s.shape[0] != len(wf.time_index):
         raise ValueError("inflow_m3s first dimension must match workflow time_index length")
 
-    wf.simulate_run_of_river(
-        inflow_m3s=inflow_m3s,
-        net_head_m=net_head_m,
-        efficiency=efficiency,
-    )
+    # The public workflow warning above is sufficient; suppress the nested
+    # warning from the deprecated manager method used by this compatibility path.
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore",
+            message=r"HydroWorkflowManager\.simulate_run_of_river\(\) is deprecated.*",
+            category=FutureWarning,
+        )
+        wf.simulate_run_of_river(
+            inflow_m3s=inflow_m3s,
+            net_head_m=net_head_m,
+            efficiency=efficiency,
+        )
 
     return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
@@ -121,11 +152,16 @@ def run_of_river_daily_discharge_workflow(
 ):
     """Run run-of-river workflow from daily discharge volumes.
 
+    .. deprecated:: 0.4.3
+       Use :func:`release_generation` after converting daily volume to m3/s.
+       Removal is planned no earlier than 2026-09-26.
+
     Parameters
     ----------
     discharge_m3_per_day : np.ndarray
         Shape must be (locations, time).
     """
+    _warn_deprecated_workflow("run_of_river_daily_discharge_workflow", "release_generation")
     wf = HydroWorkflowManager(placements)
 
     if not isinstance(discharge_m3_per_day, np.ndarray):
@@ -140,12 +176,18 @@ def run_of_river_daily_discharge_workflow(
     if discharge_m3_per_day.shape[1] != len(wf.time_index):
         raise ValueError("discharge_m3_per_day second dimension must match workflow time_index length")
 
-    wf.simulate_run_of_river_from_daily_discharge(
-        discharge_m3_per_day=discharge_m3_per_day,
-        net_head_m=net_head_m,
-        efficiency=efficiency,
-        cap_production_by_capacity=cap_production_by_capacity,
-    )
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore",
+            message=r"HydroWorkflowManager\.simulate_run_of_river_from_daily_discharge\(\) is deprecated.*",
+            category=FutureWarning,
+        )
+        wf.simulate_run_of_river_from_daily_discharge(
+            discharge_m3_per_day=discharge_m3_per_day,
+            net_head_m=net_head_m,
+            efficiency=efficiency,
+            cap_production_by_capacity=cap_production_by_capacity,
+        )
 
     return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
@@ -165,7 +207,13 @@ def run_of_river_parflow_alluvium_workflow(
     output_netcdf_path=None,
     output_variables=None,
 ):
-    """Run full chain: ParFlow discharge extraction -> alluvium-aware selection -> hydropower calculation."""
+    """Run the legacy ParFlow-to-hydropower calculation chain.
+
+    .. deprecated:: 0.4.3
+       Use :func:`run_of_river_hydropower` instead. Removal is planned no
+       earlier than 2026-09-26.
+    """
+    _warn_deprecated_workflow("run_of_river_parflow_alluvium_workflow", "run_of_river_hydropower")
     required_cols = ["lat", "lon"]
     for col in required_cols:
         if col not in placements.columns:
@@ -186,16 +234,22 @@ def run_of_river_parflow_alluvium_workflow(
             output_selected_alluvium_candidate_path, index=False
         )
 
-    ds = run_of_river_daily_discharge_workflow(
-        placements=placements,
-        discharge_m3_per_day=extraction_result["selected_discharge_m3_per_day"],
-        net_head_m=net_head_m,
-        time_index=time_index,
-        efficiency=efficiency,
-        cap_production_by_capacity=cap_production_by_capacity,
-        output_netcdf_path=output_netcdf_path,
-        output_variables=output_variables,
-    )
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore",
+            message=r"run_of_river_daily_discharge_workflow\(\) is deprecated.*",
+            category=FutureWarning,
+        )
+        ds = run_of_river_daily_discharge_workflow(
+            placements=placements,
+            discharge_m3_per_day=extraction_result["selected_discharge_m3_per_day"],
+            net_head_m=net_head_m,
+            time_index=time_index,
+            efficiency=efficiency,
+            cap_production_by_capacity=cap_production_by_capacity,
+            output_netcdf_path=output_netcdf_path,
+            output_variables=output_variables,
+        )
 
     ds["selected_candidate_idx"] = ("location", extraction_result["selected_candidate_idx"])  # metadata only
     ds["selected_from_alluvium"] = ("location", extraction_result["selected_from_alluvium"])  # metadata only
