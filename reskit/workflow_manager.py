@@ -195,9 +195,16 @@ class WorkflowManager:
         if not set_time_index and self.time_index is None:
             raise RuntimeError("Time index is not available")
 
+        if not isinstance(variables, list):
+            variables = [
+                variables,
+            ]
+
         if isinstance(source, str) and source_type != "user":
+            storage_format = kwargs.pop("storage_format", None)
+            is_zarr = storage_format == "zarr" or source.endswith(".zarr") or source.startswith("gs://")
             if source_type == "ERA5":
-                source_constructor = rk_weather.Era5Source
+                source_constructor = rk_weather.Era5ZarrSource if is_zarr else rk_weather.Era5Source
             elif source_type == "SARAH":
                 source_constructor = rk_weather.SarahSource
             elif source_type == "MERRA":
@@ -208,26 +215,38 @@ class WorkflowManager:
                 raise RuntimeError("Unknown source_type")
 
             if source_type == "ERA5":
-                source = source_constructor(source, bounds=self.ext, time_index_from=time_index_from, **kwargs)
+                time_slice = kwargs.pop("time_slice", None)
+                era5_kwargs = dict(kwargs)
+                if time_slice is not None:
+                    if not is_zarr:
+                        raise RuntimeError(
+                            "'time_slice' is only supported for Zarr-backed ERA5 sources; support for "
+                            "netCDF4-backed ERA5 sources is planned. Until then, restrict the time span "
+                            "of netCDF4 ERA5 data by selecting the corresponding files instead."
+                        )
+                    era5_kwargs["time_slice"] = time_slice
+                source = source_constructor(source, bounds=self.ext, time_index_from=time_index_from, **era5_kwargs)
             else:
                 source = source_constructor(source, bounds=self.ext, **kwargs)
 
             # Load the requested variables
             source.sload(*variables)
 
-        else:  # Assume source is already an initialized NCSource Object
-            for var in variables:
-                assert var in source.data
+        else:  # Assume source is already an initialized NCSource-like object
+            missing_variables = [var for var in variables if var not in source.data]
+            if missing_variables:
+                if hasattr(source, "sload"):
+                    source.sload(*missing_variables)
+                else:
+                    raise AssertionError(
+                        "The given source has no '.sload()' method and is missing the variable(s): "
+                        + ", ".join(missing_variables)
+                    )
 
         if set_time_index:
             self.set_time_index(source.time_index)
 
         # read variables
-        if not isinstance(variables, list):
-            variables = [
-                variables,
-            ]
-
         for var in variables:
             self.sim_data[var] = source.get(
                 var,
@@ -268,11 +287,13 @@ class WorkflowManager:
                     "points must be a list of (lon, lat) tuples."
                 )
 
-            _lra = gk.raster.interpolateValues(fp, points, mode=spatial_interpolation)
+            # interpolateValues returns a scalar for a single location; ensure a 1-D array
+            # so the nan handling below (and callers) work regardless of the number of points
+            _lra = np.atleast_1d(gk.raster.interpolateValues(fp, points, mode=spatial_interpolation))
             # if getting values fails, it could be because of interpolation method.
             # these values will be replaced with the nearest interpolation method
             if np.isnan(_lra).any():
-                _lra_near = gk.raster.interpolateValues(fp, self.locs, mode="near")
+                _lra_near = np.atleast_1d(gk.raster.interpolateValues(fp, self.locs, mode="near"))
                 _lra[np.isnan(_lra)] = _lra_near[np.isnan(_lra)]
             # still nans, i.e. the cell itself is nan, but maybe its neighbors are not
             # try the (nan)median of the surrounding cells
@@ -283,7 +304,7 @@ class WorkflowManager:
                     return np.nanmedian(vals)
 
                 points = [(loc.lon, loc.lat) for loc in self.locs._locations]
-                _lra_near = gk.raster.interpolateValues(fp, points, mode="func", func=_nanmedian)
+                _lra_near = np.atleast_1d(gk.raster.interpolateValues(fp, points, mode="func", func=_nanmedian))
                 _lra[np.isnan(_lra)] = _lra_near[np.isnan(_lra)]
         return _lra
 

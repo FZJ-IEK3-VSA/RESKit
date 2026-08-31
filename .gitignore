@@ -25,6 +25,13 @@ test/*/*.ipynb
 reskit/*/*.ipynb
 _readthedocs/
 
-# MyST build outputs
-_build/
-conf.py
+# MkDocs build output
+site/
+
+# Example notebooks staged into the docs tree by docs/hooks.py at build time.
+# The originals live in examples/ at the repository root; only this staged copy
+# is ignored (the example group directories all start with a digit).
+docs/examples/[0-9]*/
+
+# Example script scratch output
+examples/**/tmp/

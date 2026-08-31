@@ -75,7 +75,11 @@ class WindWorkflowManager(WorkflowManager):
 
             specificPower = rk_wind_core.power_curve.compute_specific_power(
                 placements_wo_PC["capacity"], placements_wo_PC["rotor_diam"]
-            ).astype(float)
+            ).astype(float)  # returns specific power in W/m2
+
+            assert specificPower.between(0.1 * 1000, 1 * 1000).all(), (
+                "capacity and rotor_diam do not match to give a meaningful specific power. Check if capacity is defined in correct unit (kW)"
+            )  # values 0.19 and 0.97 in kW/m2 from lower/upper bound of all turbines in Turbine_Library. Chose 0.1 and 1 for still meaningful values, but a little more range and to make sure tests work
 
             if synthetic_power_curve_rounding is not None:
                 specificPower = (
@@ -124,12 +128,12 @@ class WindWorkflowManager(WorkflowManager):
 
         Parameters
         ----------
-        height_scaling_method : tuple
-            The method to project the windspeeds from the default height (here
-            100m in ERA-5/GWA3) to hub height (possibly affected by the planetary
-            boundary layer height). First tuple entry (str) describes the general
-            approach (e.g. logarithmic scaling or based on long-run-average
-            windspeeds). No height scaling will be applied when None. Options are:
+        height_scaling_method : tuple | list | None, optional
+            The method to project the windspeeds from the default height (eg. 100m)
+            to hub height (possibly affected by the planetary boundary layer height).
+            First tuple/list entry (str) describes the general approach (e.g.
+            logarithmic scaling or based on long-run-average windspeed interpolation).
+            Options are:
             ("lra", [vertical method]) : Calculation based on the long-run average
                 wind speeds (e.g. GWA) of the 2 nearest available height levels.
                 [vertical method] (str) describes the form of interpolation, e.g.
@@ -139,7 +143,9 @@ class WindWorkflowManager(WorkflowManager):
                 [landcover] (str) defines the landcover data used for roughness
                 mapping. All landcover types accepted as land_cover_type in
                 logarithmic_profile.roughness_from_land_cover_classification() are
-                allowed, by default "cci" (ESA CCI raster).
+                allowed..
+            None : No height scaling will be applied when None.
+            By default ("lra", "linear").
         height_scaling_data : str, dict
             The data required for the selected height_scaling_method (see above).
             The expected data formats are, depending on height_scaling_method:
@@ -464,8 +470,8 @@ class WindWorkflowManager(WorkflowManager):
                     spatial_interpolation="linear-spline",
                     points=list(
                         zip(
-                            self.placements[_sel_points]["lon"],
-                            self.placements[_sel_points]["lat"],
+                            self.placements.loc[_sel_points, "lon"],
+                            self.placements.loc[_sel_points, "lat"],
                         )
                     ),
                 )
@@ -908,26 +914,6 @@ class WindWorkflowManager(WorkflowManager):
                 tot_gen = np.concatenate([tot_gen, gen_last], axis=1)
 
         self.sim_data["capacity_factor"] = tot_gen
-
-        return self
-
-    def apply_availability_factor(self, availability_factor):
-        """
-        Applies a relative reduction factor to the energy output (capacity factor) time series
-        to statistically account for non-availabilities.
-
-        Parameters
-        ----------
-        availability_factor : float
-            Factor that will be applied to the output time series.
-
-        Return
-        ------
-            A reference to the invoking WindWorkflowManager
-        """
-        assert availability_factor > 0 and availability_factor <= 1, f"availability_factor must be between 0 and 1.0."
-
-        self.sim_data["capacity_factor"] = self.sim_data["capacity_factor"] * availability_factor
 
         return self
 

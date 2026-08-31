@@ -1,0 +1,32 @@
+on:
+    workflow_dispatch:
+    pull_request:
+        branches: ["master"]
+
+jobs:
+    extract-versions:
+        uses: FZJ-IEK3-VSA/.github/.github/workflows/extract_versions.yml@v1
+        with:
+            libraries: "pandas,numpy,scipy,scikit-learn,geokit,netcdf4,xarray,numba"
+            version_type: both
+            env_file: requirements.yml
+
+    TestDependencyVersions:
+        name: Test ${{ matrix.dependencies.library_name }} ${{ matrix.dependencies.version }} (${{ matrix.dependencies.version_type }})
+        needs: extract-versions
+        strategy:
+            fail-fast: false
+            matrix:
+                runner_tag: ["self-hosted"]
+                dependencies: ${{ fromJSON(needs.extract-versions.outputs.matrix) }}
+        uses: FZJ-IEK3-VSA/.github/.github/workflows/run_conda_forge_test.yml@v1
+        secrets: inherit
+        with:
+            runner_tag: ${{ matrix.runner_tag }}
+            requirements_file_name: requirements.yml
+            examples_to_execute: "examples/1_load_input_data/1_2_1_reading_merra_weather_data.ipynb examples/1_load_input_data/1_2_2_vertically_project_wind_speed_from_merra.ipynb examples/2_economic/ examples/3_wind examples/4_solar examples/5_geothermal/ examples/6_direct_air_capture/"
+            library_version: ${{ matrix.dependencies.version }}
+            dependency_position_env_file: ${{ matrix.dependencies.yaml_position }}
+            library_name: ${{ matrix.dependencies.library_name }}
+            multiprocessing_pytest_string: "-n auto"
+            multiprocessing_example_string: "-n 2"
