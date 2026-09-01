@@ -221,6 +221,32 @@ def _PTRWorkflowManager_with_areas(**area_columns) -> PTRWorkflowManager:
     return wfm
 
 
+@pytest.mark.parametrize("column_name", ["area", "area_m2"])
+def test_determine_area_removes_the_legacy_area_column(column_name):
+    """determine_area() must remove the legacy area column from the placements (BUG-15)."""
+    land_area_m2 = np.array([1e6, 3e6, 6e6])
+    wfm = _PTRWorkflowManager_with_areas(**{column_name: land_area_m2})
+
+    wfm.determine_area()
+
+    assert column_name not in wfm.placements.columns
+    assert "land_area_m2" in wfm.placements.columns
+    assert "aperture_area_m2" in wfm.placements.columns
+
+
+@pytest.mark.parametrize("column_name", ["area", "area_m2", "aperture_area_m2", "land_area_m2"])
+def test_determine_area_is_idempotent(column_name):
+    """A second determine_area() call must not change the areas (BUG-15, BUG-16)."""
+    wfm = _PTRWorkflowManager_with_areas(**{column_name: np.array([1e6, 3e6, 6e6])})
+
+    wfm.determine_area()
+    after_first_call = wfm.placements.copy()
+
+    wfm.determine_area()
+
+    pd.testing.assert_frame_equal(wfm.placements, after_first_call)
+
+
 @pytest.mark.parametrize("column_name", ["area", "area_m2", "land_area_m2"])
 def test_determine_area_from_a_land_area_column(column_name):
     """Every documented land area column gives the same land and aperture area (BUG-16)."""

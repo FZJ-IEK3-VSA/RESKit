@@ -45,6 +45,11 @@ def test_CSP_PTR_ERA5(pt_pv_placements):
 
     print("Simulation done")
 
+    # the legacy area column is replaced by the land and aperture areas (BUG-15)
+    assert "area_m2" not in out.variables
+    assert "land_area_m2" in out.variables
+    assert "aperture_area_m2" in out.variables
+
     # datasets
     a = np.array(["Dataset_SolarSalt_2030", "Dataset_Therminol_2030", "Dataset_SolarSalt_2030"])
     assert (out["datasetname"].values == a).all()

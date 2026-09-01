@@ -94,13 +94,13 @@ class PTRWorkflowManager(SolarWorkflowManager):
         if "area" in columns and not "aperture_area_m2" in columns and not "land_area_m2" in columns:
             warn('Key "area" is assumed to be the land area. Abort if wrong!')
             self.placements["land_area_m2"] = self.placements["area"]
-            self.placements.drop("area", axis=1)
+            self.placements = self.placements.drop("area", axis=1)
             self.placements["aperture_area_m2"] = self.placements["land_area_m2"] * self.ptr_data["SF_density_total"]
 
         elif "area_m2" in columns and not "aperture_area_m2" in columns and not "land_area_m2" in columns:
             warn('Key "area" is assumed to be the land area. Abort if wrong!')
             self.placements["land_area_m2"] = self.placements["area_m2"]
-            self.placements.drop("area_m2", axis=1)
+            self.placements = self.placements.drop("area_m2", axis=1)
             self.placements["aperture_area_m2"] = self.placements["land_area_m2"] * self.ptr_data["SF_density_total"]
 
         # only aperture_area_m2 in placements
