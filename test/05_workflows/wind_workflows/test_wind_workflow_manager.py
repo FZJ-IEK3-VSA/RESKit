@@ -323,3 +323,28 @@ def test_WindWorkflowManager_mixed_values___init___():
     assert (man.placements["powerCurve"] == ["SPC:138,25", "SPC:207,25", "SPC:275,25", "V117-3300", "SPC:413,25"]).all()
 
     return man
+
+
+@pytest.mark.parametrize("max_batch_size", [0, -1, -10])
+def test_WindWorkflowManager_simulate_rejects_a_non_positive_batch_size(
+    pt_WindWorkflowManager_loaded, max_batch_size
+):
+    # an integer zero passed the old check and later caused a division by zero
+    with pytest.raises(ValueError):
+        pt_WindWorkflowManager_loaded.simulate(max_batch_size=max_batch_size)
+
+
+@pytest.mark.parametrize("max_batch_size", [1.5, "3", True, False, [3]])
+def test_WindWorkflowManager_simulate_rejects_a_wrong_batch_size_type(pt_WindWorkflowManager_loaded, max_batch_size):
+    with pytest.raises(TypeError):
+        pt_WindWorkflowManager_loaded.simulate(max_batch_size=max_batch_size)
+
+
+def test_WindWorkflowManager_simulate_accepts_a_batch_size_above_the_placement_count(
+    pt_WindWorkflowManager_loaded,
+):
+    # a batch size above the placement count is limited to the placement count
+    man = pt_WindWorkflowManager_loaded
+    man.simulate(max_batch_size=1000)
+
+    assert np.isclose(man.sim_data["capacity_factor"].mean(), 0.4845642857142858)
