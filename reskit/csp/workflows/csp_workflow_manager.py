@@ -81,6 +81,10 @@ class PTRWorkflowManager(SolarWorkflowManager):
     def determine_area(self):
         """Determines the land area, aperture area from given placement dataframe.
         If only 'area' is given, it will be assumed as land area.
+
+        The area columns are used in this order: 'area', 'area_m2', 'aperture_area_m2',
+        'land_area_m2'. The first column which is present gives the missing area. The
+        solar field density 'SF_density_total' is the ratio aperture area / land area.
         """
         assert hasattr(self, "ptr_data")
         assert "SF_density_total" in self.ptr_data.index
@@ -93,7 +97,7 @@ class PTRWorkflowManager(SolarWorkflowManager):
             self.placements.drop("area", axis=1)
             self.placements["aperture_area_m2"] = self.placements["land_area_m2"] * self.ptr_data["SF_density_total"]
 
-        if "area_m2" in columns and not "aperture_area_m2" in columns and not "land_area_m2" in columns:
+        elif "area_m2" in columns and not "aperture_area_m2" in columns and not "land_area_m2" in columns:
             warn('Key "area" is assumed to be the land area. Abort if wrong!')
             self.placements["land_area_m2"] = self.placements["area_m2"]
             self.placements.drop("area_m2", axis=1)
@@ -101,11 +105,11 @@ class PTRWorkflowManager(SolarWorkflowManager):
 
         # only aperture_area_m2 in placements
         elif "aperture_area_m2" in columns and not "land_area_m2" in columns:
-            self.placements["aperture_area_m2"] = self.placements["land_area_m2"] * self.ptr_data["SF_density_total"]
+            self.placements["land_area_m2"] = self.placements["aperture_area_m2"] / self.ptr_data["SF_density_total"]
 
         # only land_area_m2 in placements
         elif "land_area_m2" in columns and not "aperture_area_m2" in columns:
-            self.placements["land_area_m2"] = self.placements["aperture_area_m2"] / self.ptr_data["SF_density_total"]
+            self.placements["aperture_area_m2"] = self.placements["land_area_m2"] * self.ptr_data["SF_density_total"]
 
     def get_timesteps(self):
         self._numtimesteps = self.time_index.shape[0]
