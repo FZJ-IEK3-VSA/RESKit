@@ -966,8 +966,10 @@ def load_workflow_result(datasets, loader=xarray.load_dataset, sortby="location"
         else:
             datasets = glob(datasets)
 
-    if len(datasets) == 1:
-        ds = xarray.load_dataset(datasets[0]).sortby("locations")
+    if len(datasets) == 0:
+        raise ValueError("No workflow result files were found to load.")
+    elif len(datasets) == 1:
+        ds = loader(datasets[0])
     else:
         ds = xarray.concat(map(loader, datasets), dim="location")
 
