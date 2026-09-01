@@ -905,6 +905,9 @@ def distribute_workflow(
     assert isinstance(placements, pd.DataFrame)
     assert ("lon" in placements.columns and "lat" in placements.columns) or ("geom" in placements.columns)
 
+    # work on a copy, the caller's placements table must not be changed by this function
+    placements = placements.copy()
+
     # Split placements into groups
     if "geom" in placements.columns:
         locs = gk.LocationSet(placements)
