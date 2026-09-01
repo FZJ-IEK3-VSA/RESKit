@@ -75,3 +75,24 @@ def test_ht_dac_era5_wenzel2025(dac_placements: pd.DataFrame):
             [0.02720932, 0.02935947, 0.03245553, 0.02854373],
         )
     )
+
+
+def test_lt_dac_rejects_an_unknown_fill_method(dac_placements: pd.DataFrame):
+    # the docstring documents a NotImplementedError, the code used an assert
+    with pytest.raises(NotImplementedError, match="bogus"):
+        lt_dac_era5_wenzel2025(
+            placements=dac_placements,
+            era5_path=TEST_DATA["era5-like"],
+            model="LT_jajjawi",
+            fillMethod="bogus",
+        )
+
+
+
+def test_ht_dac_rejects_an_unknown_model(dac_placements: pd.DataFrame):
+    with pytest.raises(NotImplementedError, match="bogus"):
+        ht_dac_era5_wenzel2025(
+            placements=dac_placements,
+            era5_path=TEST_DATA["era5-like"],
+            model="bogus",
+        )
