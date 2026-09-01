@@ -392,7 +392,7 @@ class PTRWorkflowManager(SolarWorkflowManager):
             )
 
             self.sim_data["solar_zenith_degree"][:, location_iter] = np.nan_to_num(
-                _solarpos["apparent_zenith"].values, 0
+                _solarpos["apparent_zenith"].to_numpy(copy=True), nan=0
             )
 
             # calculate aoi
@@ -407,9 +407,11 @@ class PTRWorkflowManager(SolarWorkflowManager):
                 gcr=self.ptr_data["SF_density_direct"],
             )  # irrelevant for true-tracking
 
-            self.sim_data["theta"][:, location_iter] = np.nan_to_num(truetracking_angles["aoi"].values, 0)
+            self.sim_data["theta"][:, location_iter] = np.nan_to_num(
+                truetracking_angles["aoi"].to_numpy(copy=True), nan=0
+            )
             self.sim_data["tracking_angle"][:, location_iter] = np.nan_to_num(
-                truetracking_angles["tracker_theta"].values, 0
+                truetracking_angles["tracker_theta"].to_numpy(copy=True), nan=0
             )
 
             # from [1]	KALOGIROU, Soteris A. Environmental Characteristics. In: Soteris Kalogirou, ed. Solar energy engineering. Processes and systems. Waltham, Mass: Academic Press, 2014, pp. 51-123.

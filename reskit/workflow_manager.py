@@ -16,6 +16,7 @@ import geokit as gk
 import numpy as np
 import pandas as pd
 import xarray
+from pandas.api.types import is_numeric_dtype
 
 from reskit import weather as rk_weather
 
@@ -685,23 +686,20 @@ class WorkflowManager:
         # write placements
         for c in placements.columns:
             # check if c in requestet output_variables
-            if output_variables is not None:
-                if c not in output_variables:
+            if output_variables is not None and c not in output_variables:
+                continue
+
+            column = placements[c]
+
+            if not is_numeric_dtype(column):
+                if not all(isinstance(x, (str, bytearray)) for x in column):
                     continue
-            if np.issubdtype(placements[c].dtype, np.number):
-                write = True
-            else:
-                write = True
-                for element in placements[c]:
-                    if not isinstance(element, (str, bytearray)):
-                        write = False
-                        break
-            if write:
-                xds[c] = xarray.DataArray(
-                    placements[c],
-                    dims=["location"],
-                    coords=dict(location=location_coords),
-                )
+
+            xds[c] = xarray.DataArray(
+                column.to_numpy(),
+                dims=["location"],
+                coords=dict(location=location_coords),
+            )
 
         # write sim_data
         for key in self.sim_data.keys():

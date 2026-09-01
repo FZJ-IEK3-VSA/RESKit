@@ -112,8 +112,8 @@ class SolarWorkflowManager(WorkflowManager):
 
         """
         self.placements["azimuth"] = 180
+        self.placements.loc[self.locs.lats < 0, "azimuth"] = 0
 
-        self.placements["azimuth"].values[self.locs.lats < 0] = 0
         return self
 
     def apply_elevation(self, elev, fallback_elev=0):

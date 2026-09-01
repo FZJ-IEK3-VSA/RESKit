@@ -203,8 +203,8 @@ def test_Era5ZarrSource_marks_derived_variables(pt_Era5ZarrSource):
 
     assert variables.loc["ssrd_t_adj", "derived_from"] == "ssrd"
     assert variables.loc["fdir_t_adj", "derived_from"] == "fdir"
-    assert variables.loc["ssrd", "derived_from"] is None
-    assert variables.loc["sp", "derived_from"] is None
+    assert pd.isna(variables.loc["ssrd", "derived_from"])
+    assert pd.isna(variables.loc["sp", "derived_from"])
 
 
 def test_Era5ZarrSource_warns_on_nan_first_timestep(pt_Era5ZarrSource):

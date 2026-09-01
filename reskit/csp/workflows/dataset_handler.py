@@ -25,9 +25,9 @@ class dataset_handler:
         assert "lat" in placements.columns
         assert "lon" in placements.columns
 
-        placements["geom"] = placements[["lon", "lat"]].apply(
-            lambda x: gk.geom.point(x.iloc[0], x.iloc[1], srs=4326), axis=1
-        )
+        placements["geom"] = [
+            gk.geom.point(row.lon, row.lat, srs=4326) for row in placements[["lon", "lat"]].itertuples()
+        ]
 
         placements["dni_gsa"] = (
             gk.raster.interpolateValues(source=gsa_dni_path, points=placements.geom.tolist()) * 1000 / 24
@@ -37,9 +37,10 @@ class dataset_handler:
 
         mat_HTF_opt = self._get_opt_HTF_matrix()
 
-        placements["Dataset_opt"] = placements[["dni_gsa", "tamb_gsa"]].apply(
-            lambda x: self._lookup(x.iloc[0], x.iloc[1], mat_HTF_opt), axis=1
-        )
+        placements["Dataset_opt"] = [
+            self._lookup(dni, tamb, mat_HTF_opt) for dni, tamb in zip(placements["dni_gsa"], placements["tamb_gsa"])
+        ]
+
         placements = placements.drop(["geom", "dni_gsa", "tamb_gsa"], axis=1)
 
         return placements
