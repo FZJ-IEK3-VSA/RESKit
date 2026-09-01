@@ -88,7 +88,6 @@ def test_lt_dac_rejects_an_unknown_fill_method(dac_placements: pd.DataFrame):
         )
 
 
-
 @pytest.mark.parametrize("fill_method", ["nearest", "offTmin"])
 def test_lt_dac_accepts_the_supported_fill_methods(dac_placements: pd.DataFrame, fill_method):
     gen = lt_dac_era5_wenzel2025(
@@ -99,6 +98,7 @@ def test_lt_dac_accepts_the_supported_fill_methods(dac_placements: pd.DataFrame,
     )
 
     assert "capacity_factor" in gen.variables
+
 
 def test_ht_dac_rejects_an_unknown_model(dac_placements: pd.DataFrame):
     with pytest.raises(NotImplementedError, match="bogus"):

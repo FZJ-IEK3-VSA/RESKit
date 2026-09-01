@@ -326,9 +326,7 @@ def test_WindWorkflowManager_mixed_values___init___():
 
 
 @pytest.mark.parametrize("max_batch_size", [0, -1, -10])
-def test_WindWorkflowManager_simulate_rejects_a_non_positive_batch_size(
-    pt_WindWorkflowManager_loaded, max_batch_size
-):
+def test_WindWorkflowManager_simulate_rejects_a_non_positive_batch_size(pt_WindWorkflowManager_loaded, max_batch_size):
     # an integer zero passed the old check and later caused a division by zero
     with pytest.raises(ValueError):
         pt_WindWorkflowManager_loaded.simulate(max_batch_size=max_batch_size)
