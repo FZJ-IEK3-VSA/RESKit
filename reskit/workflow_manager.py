@@ -671,9 +671,6 @@ class WorkflowManager:
         if times[0].tz is not None:
             times = [np.datetime64(dt.tz_convert("UTC").tz_convert(None)) for dt in times]
         times_days = np.unique(pd.DatetimeIndex(times).date).astype("datetime64")
-        if times_days[0].astype("datetime64[Y]") != times_days[-1].astype("datetime64[Y]"):
-            # old tiles where shifted by 1 hour, so the last day of the previous year also appears. catch this problem whti this if clause
-            times_days = times_days[1:]
         xds = OrderedDict()
         encoding = dict()
 
