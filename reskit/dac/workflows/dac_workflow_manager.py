@@ -129,9 +129,7 @@ class DACWorkflowManager(WorkflowManager):
             If a filling method other than "nearest" or "offTmin" is requested.
         """
         if fillMethod not in ["offTmin", "nearest"]:
-            raise NotImplementedError(
-                f"Filling method '{fillMethod}' is not implemented. Use 'nearest' or 'offTmin'."
-            )
+            raise NotImplementedError(f"Filling method '{fillMethod}' is not implemented. Use 'nearest' or 'offTmin'.")
 
         # create unique grid as well as interpolators and evaluate for each property:
         properties = ["totalElectricity", "totalThermal", "waterDesorption", "relProd"]
