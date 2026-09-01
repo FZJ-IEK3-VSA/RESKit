@@ -661,7 +661,10 @@ class WorkflowManager:
         """
         if isinstance(output_variables, str):
             output_variables = [output_variables]
-        if isinstance(output_variables, list) and not "RESKit_sim_order" in output_variables:
+        elif isinstance(output_variables, list):
+            # copy the list, the caller's list must not get "RESKit_sim_order" appended
+            output_variables = list(output_variables)
+        if isinstance(output_variables, list) and "RESKit_sim_order" not in output_variables:
             output_variables.append("RESKit_sim_order")
 
         times = self.time_index
@@ -674,29 +677,31 @@ class WorkflowManager:
         xds = OrderedDict()
         encoding = dict()
 
-        if "location_id" in self.placements.columns:
-            location_coords = self.placements["location_id"].copy()
-            del self.placements["location_id"]
+        # work on a copy, exporting must not change the state of the WorkflowManager
+        placements = self.placements
+        if "location_id" in placements.columns:
+            location_coords = placements["location_id"].copy()
+            placements = placements.drop(columns=["location_id"])
         else:
-            location_coords = np.arange(self.placements.shape[0])
+            location_coords = np.arange(placements.shape[0])
 
         # write placements
-        for c in self.placements.columns:
+        for c in placements.columns:
             # check if c in requestet output_variables
             if output_variables is not None:
                 if c not in output_variables:
                     continue
-            if np.issubdtype(self.placements[c].dtype, np.number):
+            if np.issubdtype(placements[c].dtype, np.number):
                 write = True
             else:
                 write = True
-                for element in self.placements[c]:
+                for element in placements[c]:
                     if not isinstance(element, (str, bytearray)):
                         write = False
                         break
             if write:
                 xds[c] = xarray.DataArray(
-                    self.placements[c],
+                    placements[c],
                     dims=["location"],
                     coords=dict(location=location_coords),
                 )
