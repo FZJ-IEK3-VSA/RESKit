@@ -1,4 +1,6 @@
 import os
+import warnings
+
 import reskit as rk
 
 #######################################################
@@ -203,15 +205,54 @@ _SOURCE_PREPARERS = {
 #######################################################
 
 
+def _resolve_workflows_argument(workflows, workflow):
+    """Return the requested workflow names as a list.
+
+    ``download_and_process()`` takes ``workflows``. Older documentation used the singular
+    ``workflow``. That spelling still works, but it gives a ``DeprecationWarning`` and it
+    will be removed.
+
+    Parameters
+    ----------
+    workflows : str or list of str or None
+        The value of the ``workflows`` argument.
+    workflow : str or list of str or None
+        The value of the deprecated ``workflow`` argument.
+
+    Returns
+    -------
+    list of str
+        The workflow names.
+
+    Raises
+    ------
+    ValueError
+        If both spellings are given, or if neither is given.
+    """
+    if workflow is not None:
+        if workflows is not None:
+            raise ValueError("Give either 'workflows' or the deprecated 'workflow', but not both.")
+        warnings.warn(
+            "The 'workflow' argument of download_and_process() is deprecated. Use 'workflows' instead.",
+            DeprecationWarning,
+            stacklevel=3,
+        )
+        workflows = workflow
+    if workflows is None:
+        raise ValueError("'workflows' is a mandatory argument of download_and_process().")
+    return [workflows] if isinstance(workflows, str) else list(workflows)
+
+
 def download_and_process(
-    workflows,
-    start_date,
-    end_date,
-    boundary_box,
-    output_dir,
+    workflows=None,
+    start_date=None,
+    end_date=None,
+    boundary_box=None,
+    output_dir=None,
     tiling=False,
     zoom_level=4,
     tile_output_dir=None,
+    workflow=None,
 ):
     """
     Download and process the weather data one or more RESKit workflows need.
@@ -240,6 +281,9 @@ def download_and_process(
         Web-Mercator tiling zoom level, by default 4.
     tile_output_dir : str, optional
         Override for the tile output directory (defaults to ``<output_dir>/tiles``).
+    workflow : str or list of str, optional
+        Deprecated alias of ``workflows``. It gives a ``DeprecationWarning`` and it will be
+        removed. Do not give both spellings.
 
     Returns
     -------
@@ -249,9 +293,18 @@ def download_and_process(
     Raises
     ------
     ValueError
-        If any given workflow name is unknown.
+        If a mandatory argument is missing, if both ``workflows`` and ``workflow`` are
+        given, or if any given workflow name is unknown.
     """
-    workflows = [workflows] if isinstance(workflows, str) else list(workflows)
+    workflows = _resolve_workflows_argument(workflows, workflow)
+    for _name, _value in (
+        ("start_date", start_date),
+        ("end_date", end_date),
+        ("boundary_box", boundary_box),
+        ("output_dir", output_dir),
+    ):
+        if _value is None:
+            raise ValueError(f"'{_name}' is a mandatory argument of download_and_process().")
     required_sources = _merge_dependencies(workflows)
     context = dict(
         start_date=start_date,
