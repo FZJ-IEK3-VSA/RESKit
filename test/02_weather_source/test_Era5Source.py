@@ -446,3 +446,40 @@ def test_Era5Source_sload_snowfall_water_equivalent(pt_Era5Source, pt_BoundedEra
     assert pt_BoundedEra5Source.data[var].shape == a
     assert np.isclose(pt_BoundedEra5Source.data[var].mean(), b)
     assert np.isclose(pt_BoundedEra5Source.data[var][33, 1, 2], c)
+
+
+# --- BUG-19: a CF compliant ERA5 download names its time axis 'valid_time' ---------------
+
+
+def _write_cf_era5_file(path, *, n_times=4):
+    """Write a small ERA5 file which uses the CF compliant 'valid_time' axis.
+
+    Returns the time stamps which the file holds.
+    """
+    import xarray as xr
+
+    times = pd.date_range("2015-01-01", periods=n_times, freq="h")
+    lat = np.array([52.0, 51.75, 51.5], dtype="f4")  # descending, as in a real download
+    lon = np.array([5.0, 5.25, 5.5], dtype="f4")
+    values = np.arange(n_times * lat.size * lon.size, dtype="f4").reshape(n_times, lat.size, lon.size)
+    ds = xr.Dataset(
+        {"sp": (("valid_time", "latitude", "longitude"), values, {"units": "Pa"})},
+        coords={"valid_time": times, "latitude": lat, "longitude": lon},
+    )
+    ds["valid_time"].encoding = {"units": "hours since 1900-01-01 00:00:00.0", "calendar": "gregorian"}
+    ds.to_netcdf(path)
+    return times
+
+
+def test_Era5Source_reads_a_cf_compliant_file(tmp_path):
+    """Era5Source must accept both ERA5 download formats, 'time' and 'valid_time' (BUG-19)."""
+    path = tmp_path / "reanalysis-era5-single-levels.z4.x8.y5.y2015.surface_pressure.nc"
+    times = _write_cf_era5_file(path)
+
+    source = Era5Source(str(path), verbose=False)
+
+    assert source.time_name == "valid_time"
+    assert source.time_index.equals(pd.DatetimeIndex(times) - pd.Timedelta(minutes=30))
+
+    source.load("sp", "surface_pressure")
+    assert source.data["surface_pressure"].shape == (len(times), 3, 3)

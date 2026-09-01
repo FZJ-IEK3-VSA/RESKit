@@ -203,7 +203,7 @@ class Era5Source(NCSource):
 
         Compared to the generic NCSource object, the following parameters are automatically set:
             * tz = None
-            * time_name = "time"
+            * time_name = "time", or "valid_time" for a CF compliant download
             * lat_name = "latitude"
             * lon_name = "longitude"
             * flip_lat = True
@@ -265,7 +265,9 @@ class Era5Source(NCSource):
         super().__init__(
             source=source,
             bounds=bounds,
-            time_name="time",
+            # the legacy ERA5 download names the time axis "time", the CF compliant one
+            # "valid_time"; accept whichever the given files use
+            time_name=("time", "valid_time"),
             lat_name="latitude",
             lon_name="longitude",
             index_pad=index_pad,

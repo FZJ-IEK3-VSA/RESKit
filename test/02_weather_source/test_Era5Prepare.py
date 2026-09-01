@@ -1,5 +1,9 @@
+import filecmp
 import os
 import shutil
+import warnings
+import zipfile
+import cdsapi
 import netCDF4 as nc4
 import numpy as np
 import pandas as pd
@@ -13,8 +17,10 @@ from reskit.weather.Era5Source.Era5Prepare import (
     _get_source_lon_boxes,
     _iter_tile_x_indices,
     _normalize_lon,
+    _nc_years,
     _split_lon_boxes,
     _tile_variable_to_file,
+    era5_downloader,
     era5_tiler,
     preprocess_era5_data,
 )
@@ -211,22 +217,25 @@ def test_get_source_lon_boxes_keeps_extended_negative_longitudes():
     ) == pytest.approx([(-182.0, -155.5)])
 
 
-def _make_era5_raw(path, *, lat, lon, n_times=4, vars_spec, seed=0):
+def _make_era5_raw(path, *, lat, lon, n_times=4, vars_spec, seed=0, time_name="time", scalar_coords=None):
     """Write a synthetic ERA5-like raw NetCDF (time, latitude, longitude) for testing.
 
     vars_spec maps variable name -> attrs dict; values are random floats. Time is encoded
-    as int32 'hours since 1900-01-01' to mirror the real downloads.
+    as int32 'hours since 1900-01-01' to mirror the real downloads. Give
+    time_name="valid_time" and scalar_coords={"number": 0, "expver": "0001"} to mirror a
+    CF compliant ('netcdf') download.
     """
     time = pd.date_range("2015-01-01", periods=n_times, freq="h")
     shape = (len(time), len(lat), len(lon))
     rng = np.random.default_rng(seed)
-    coords = {"time": time, "latitude": np.asarray(lat, "f4"), "longitude": np.asarray(lon, "f4")}
+    coords = {time_name: time, "latitude": np.asarray(lat, "f4"), "longitude": np.asarray(lon, "f4")}
+    coords.update(scalar_coords or {})
     data = {}
     for name, attrs in vars_spec.items():
         arr = rng.uniform(0.0, 1000.0, shape).astype("f4")
-        data[name] = xr.DataArray(arr, dims=("time", "latitude", "longitude"), coords=coords, attrs=attrs)
+        data[name] = xr.DataArray(arr, dims=(time_name, "latitude", "longitude"), coords=coords, attrs=attrs)
     ds = xr.Dataset(data)
-    ds["time"].encoding = {"units": "hours since 1900-01-01 00:00:00.0", "calendar": "gregorian", "dtype": np.int32}
+    ds[time_name].encoding = {"units": "hours since 1900-01-01 00:00:00.0", "calendar": "gregorian", "dtype": np.int32}
     ds.to_netcdf(path)
     return ds
 
@@ -332,3 +341,209 @@ def test_align_longitudes_to_source_convention_shifts_positive_tile_axis(tmp_pat
 
     with nc4.Dataset(tile_file) as ds:
         assert ds.variables["longitude"][:].tolist() == pytest.approx([-182.0, -169.0, -156.0])
+
+
+# --- BUG-19: the CDS no longer supports the 'netcdf_legacy' download format -------------
+
+TILE_LAT = [52.0, 51.75, 51.5]
+TILE_LON = [5.0, 5.25, 5.5]
+
+
+def _patch_cds_client(monkeypatch, answer_writer):
+    """Replace cdsapi.Client by a fake which records the requests and writes an answer.
+
+    answer_writer takes the target path and writes the file which the CDS would return.
+    Returns the list of (dataset, request, target) tuples which the downloader sent.
+    """
+    requests = []
+
+    class FakeClient:
+        def retrieve(self, dataset, request, target):
+            requests.append((dataset, request, target))
+            answer_writer(target)
+
+    monkeypatch.setattr(cdsapi, "Client", FakeClient)
+    return requests
+
+
+def _download(target, **kwargs):
+    """Call era5_downloader with the fixed arguments of these tests."""
+    era5_downloader(
+        target_filename=str(target),
+        year="2015",
+        month=["01"],
+        day=["01"],
+        variables=["2m_temperature"],
+        area=(52.0, 5.0, 51.5, 5.5),
+        **kwargs,
+    )
+
+
+def test_era5_downloader_does_not_ask_for_the_unsupported_legacy_format(tmp_path, monkeypatch):
+    """The CDS rejects 'netcdf_legacy', so the request must ask for 'netcdf' (BUG-19)."""
+    requests = _patch_cds_client(
+        monkeypatch,
+        lambda target: _make_era5_raw(
+            target, lat=TILE_LAT, lon=TILE_LON, vars_spec={"t2m": {}}, time_name="valid_time"
+        ),
+    )
+
+    _download(tmp_path / "raw.nc")
+
+    _, request, _ = requests[0]
+    assert request["data_format"] == "netcdf"
+    assert "netcdf_legacy" not in request.values()
+    assert "format" not in request
+
+
+def test_era5_downloader_sends_the_download_format(tmp_path, monkeypatch):
+    """The current CDS API expects a 'download_format' next to the 'data_format' (BUG-19)."""
+    requests = _patch_cds_client(
+        monkeypatch,
+        lambda target: _make_era5_raw(
+            target, lat=TILE_LAT, lon=TILE_LON, vars_spec={"t2m": {}}, time_name="valid_time"
+        ),
+    )
+
+    _download(tmp_path / "raw.nc")
+
+    _, request, _ = requests[0]
+    assert request["download_format"] == "unarchived"
+
+
+def test_era5_downloader_renames_valid_time_to_time(tmp_path, monkeypatch):
+    """A CF compliant answer names its time axis 'valid_time'. Downstream code needs 'time' (BUG-19)."""
+    target = tmp_path / "raw.nc"
+    source = _make_era5_raw(
+        target.with_name("expected.nc"),
+        lat=TILE_LAT,
+        lon=TILE_LON,
+        vars_spec={"t2m": {"units": "K"}},
+        time_name="valid_time",
+    )
+    _patch_cds_client(
+        monkeypatch,
+        lambda path: _make_era5_raw(
+            path, lat=TILE_LAT, lon=TILE_LON, vars_spec={"t2m": {"units": "K"}}, time_name="valid_time"
+        ),
+    )
+
+    _download(target)
+
+    with nc4.Dataset(target) as out:
+        assert "time" in out.variables
+        assert "valid_time" not in out.variables
+        assert out["t2m"].dimensions == ("time", "latitude", "longitude")
+        assert np.allclose(out["t2m"][:], source["t2m"].values, atol=1e-4)
+        times = nc4.num2date(out["time"][:], out["time"].units, only_use_cftime_datetimes=False)
+        assert pd.DatetimeIndex(times).equals(pd.DatetimeIndex(source["valid_time"].values))
+
+
+def test_era5_downloader_merges_a_zipped_answer(tmp_path, monkeypatch):
+    """The CF format splits accumulated and instantaneous variables into a ZIP archive (BUG-19)."""
+    target = tmp_path / "raw.nc"
+    parts = {"instant": {"t2m": {"units": "K"}}, "accum": {"ssrd": {"units": "J m**-2"}}}
+
+    def write_zip_answer(path):
+        members = []
+        for step_type, vars_spec in parts.items():
+            member = tmp_path / f"data_stream-oper_stepType-{step_type}.nc"
+            _make_era5_raw(
+                member,
+                lat=TILE_LAT,
+                lon=TILE_LON,
+                vars_spec=vars_spec,
+                time_name="valid_time",
+                # both members carry these scalar coordinates, as a real answer does
+                scalar_coords={"number": 0, "expver": "0001"},
+            )
+            members.append(member)
+        with zipfile.ZipFile(path, "w") as archive:
+            for member in members:
+                archive.write(member, arcname=member.name)
+                os.remove(member)
+
+    _patch_cds_client(monkeypatch, write_zip_answer)
+
+    # the merge must not depend on a default which xarray is about to change
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", FutureWarning)
+        _download(target)
+
+    assert not zipfile.is_zipfile(target)
+    with nc4.Dataset(target) as out:
+        assert set(out.variables) >= {"t2m", "ssrd", "time", "latitude", "longitude"}
+        assert "valid_time" not in out.variables
+        assert out["t2m"].shape == (4, len(TILE_LAT), len(TILE_LON))
+        assert out["ssrd"].shape == (4, len(TILE_LAT), len(TILE_LON))
+
+
+def test_era5_downloader_leaves_a_legacy_answer_untouched(tmp_path, monkeypatch):
+    """A file which already uses 'time' must not be rewritten (BUG-19)."""
+    target = tmp_path / "raw.nc"
+    reference = tmp_path / "reference.nc"
+
+    def write_legacy_answer(path):
+        _make_era5_raw(path, lat=TILE_LAT, lon=TILE_LON, vars_spec={"t2m": {"units": "K"}})
+        shutil.copy(path, reference)
+
+    _patch_cds_client(monkeypatch, write_legacy_answer)
+
+    _download(target)
+
+    assert filecmp.cmp(target, reference, shallow=False)
+
+
+def test_nc_years_reads_a_cf_compliant_file(tmp_path):
+    """era5_tiler must find the years of a 'valid_time' file, not only of a 'time' file (BUG-19)."""
+    raw = tmp_path / "raw.nc"
+    _make_era5_raw(raw, lat=TILE_LAT, lon=TILE_LON, vars_spec={"blh": {}}, time_name="valid_time")
+
+    assert _nc_years(str(raw)) == ["2015"]
+
+
+def test_era5_tiler_accepts_a_cf_compliant_raw_file(tmp_path):
+    """The tiler must accept a raw file of the CF compliant download format (BUG-19)."""
+    raw = tmp_path / "raw" / "era5_test_raw.nc"
+    raw.parent.mkdir()
+    _make_era5_raw(raw, lat=TILE_LAT, lon=TILE_LON, vars_spec={"blh": {"units": "m"}}, time_name="valid_time")
+    processed_dir = tmp_path / "processed"
+    processed_dir.mkdir()
+    tile_out = tmp_path / "tiles"
+
+    era5_tiler(
+        processed_dir=str(processed_dir),
+        tile_output_dir=str(tile_out),
+        zoom_level=ZOOM,
+        raw_nc=str(raw),
+        raw_variables=["blh"],
+    )
+
+    tile = tile_out / EXPECTED_TILE_DIR / tile_filename(ZOOM, TILE_X, TILE_Y, TILE_YEAR, "boundary_layer_height")
+    assert tile.exists()
+    with nc4.Dataset(tile) as out:
+        assert "blh" in out.variables
+        assert "time" in out.variables
+
+
+def test_preprocess_era5_data_accepts_a_cf_compliant_file(tmp_path):
+    """preprocess_era5_data must read a 'valid_time' file and write a 'time' file (BUG-19)."""
+    raw = tmp_path / "era5_test.nc"
+    source = _make_era5_raw(
+        raw,
+        lat=TILE_LAT,
+        lon=TILE_LON,
+        vars_spec={"u100": {"units": "m s**-1"}, "v100": {"units": "m s**-1"}},
+        time_name="valid_time",
+    )
+    processed_dir = tmp_path / "processed"
+
+    preprocess_era5_data(focus_nc=str(raw), processed_dir=str(processed_dir))
+
+    ws100_file = processed_dir / "era5_test_processed_ws100.nc"
+    assert ws100_file.exists()
+    with nc4.Dataset(ws100_file) as out:
+        assert "time" in out.variables
+        assert "valid_time" not in out.variables
+        expected = np.sqrt(source["u100"].values ** 2 + source["v100"].values ** 2)
+        assert np.allclose(out["ws100"][:], expected, atol=1e-4)
