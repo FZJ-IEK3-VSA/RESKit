@@ -255,7 +255,7 @@ class NCSource(object):
             assert time_index_from in self.variables.index, (
                 f'ERA_5-key {time_index_from} not known. Check variable "time_index_from" and folder {source}'
             )
-            self.variables["path"][time_name] = self.variables["path"][time_index_from]
+            self.variables.loc[time_name, "path"] = self.variables.loc[time_index_from, "path"]
 
         # set basic variables
         ds = nc.Dataset(self.variables["path"][lat_name], keepweakref=True)

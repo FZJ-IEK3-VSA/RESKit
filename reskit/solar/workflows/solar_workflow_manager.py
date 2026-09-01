@@ -640,11 +640,12 @@ class SolarWorkflowManager(WorkflowManager):
                 placement = self.placements.iloc[i]
 
                 tmp = pvlib.tracking.singleaxis(
-                    apparent_zenith=pd.Series(
+                    # positional: pvlib renamed the azimuth argument of singleaxis() in 0.13.1
+                    pd.Series(
                         self.sim_data["apparent_solar_zenith"][:, i],
                         index=self._time_index_,
                     ),
-                    apparent_azimuth=pd.Series(self.sim_data["solar_azimuth"][:, i], index=self._time_index_),
+                    pd.Series(self.sim_data["solar_azimuth"][:, i], index=self._time_index_),
                     # self.placements['tilt'].values,
                     axis_tilt=placement.tilt,
                     # self.placements['azimuth'].values,
@@ -954,7 +955,8 @@ class SolarWorkflowManager(WorkflowManager):
             db = pvlib.pvsystem.retrieve_sam("CECMod")
             original_module = getattr(db, original_module_name)
             # scale module parameters to tech_year
-            module = pd.Series(index=projected_module.index, dtype="float64")
+            # object dtype: the module parameters also hold strings, e.g. BIPV="N"
+            module = pd.Series(index=projected_module.index, dtype="object")
             for param, val_proj in zip(projected_module.index, projected_module):
                 if param == "Date":
                     module[param] = str(tech_year)

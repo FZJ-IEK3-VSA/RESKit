@@ -138,7 +138,8 @@ def load_era5_year(
             all_datasets.append(ds.load())
 
     all_datasets = [ds.sortby(["latitude", "longitude"]) for ds in all_datasets]
-    ds_merged = xr.merge(all_datasets, compat="no_conflicts")
+    # join="outer" keeps the current behaviour, the xarray default will become "exact"
+    ds_merged = xr.merge(all_datasets, compat="no_conflicts", join="outer")
 
     return ds_merged
 
@@ -331,7 +332,7 @@ def compute_dni_year(
             with xr.open_dataset(fp) as ds:
                 all_datasets.append(_tile_to_dni(ds, surface_temperature_year, surface_pressure_year))
 
-    return xr.merge(all_datasets)
+    return xr.merge(all_datasets, join="outer")
 
 
 def create_long_run_average_DNI(

@@ -328,7 +328,7 @@ def pt_PTRWorkflowManager_solarpos() -> PTRWorkflowManager:
     wfm = test_PTRWorkflowManager__init__()
     wfm.placements["azimuth"] = [90, 180, 180]
     wfm.placements["elev"] = [90, 180, 180]
-    wfm.time_index = pd.date_range("2014-12-31 23:30:00", periods=100, freq="H")
+    wfm.time_index = pd.date_range("2014-12-31 23:30:00", periods=100, freq="h")
     wfm.get_timesteps()
     wfm.ptr_data = pd.Series()
     wfm.ptr_data["SF_density_direct"] = 0.383
@@ -516,7 +516,7 @@ def pt_PTRWorkflowManager_IAM() -> PTRWorkflowManager:
     wfm = test_PTRWorkflowManager__init__()
     wfm.placements["azimuth"] = [90, 180, 180]
     wfm.placements["elev"] = [90, 180, 180]
-    wfm.time_index = pd.date_range("2014-12-31 23:30:00", periods=100, freq="H")
+    wfm.time_index = pd.date_range("2014-12-31 23:30:00", periods=100, freq="h")
     wfm.get_timesteps()
     wfm.sim_data["ptr_data"] = pd.Series()
     wfm.sim_data["ptr_data"]["SF_density_direct"] = 0.383
@@ -968,7 +968,7 @@ def pt_PTRWorkflowManager_economicsSF() -> PTRWorkflowManager:
     wfm.placements["aperture_area_m2"] = 1e5
     wfm.placements["land_area_m2"] = 1e5 / 0.3
 
-    wfm._time_index_ = pd.date_range("2014-12-31 23:30:00", periods=100, freq="H")
+    wfm._time_index_ = pd.date_range("2014-12-31 23:30:00", periods=100, freq="h")
 
     return wfm
 
@@ -1017,7 +1017,7 @@ def pt_PTRWorkflowManager_optplant(
     # wfm.placements['aperture_area_m2'] = 1E5
     # wfm.placements['land_area_m2'] = 1E5 / 0.3
 
-    wfm.time_index = pd.date_range("2015-01-01 00:30:00", periods=8760, freq="H")
+    wfm.time_index = pd.date_range("2015-01-01 00:30:00", periods=8760, freq="h")
 
     return wfm
 
@@ -1070,7 +1070,7 @@ def pt_PTRWorkflowManager_calcElecOut() -> PTRWorkflowManager:
     wfm.ptr_data["storage_efficiency_1"] = 0.99
     wfm.ptr_data["eta_powerplant_1"] = 0.4
 
-    wfm._time_index_ = pd.date_range("2014-12-31 23:30:00", periods=8760, freq="H")
+    wfm._time_index_ = pd.date_range("2014-12-31 23:30:00", periods=8760, freq="h")
 
     return wfm
 
@@ -1157,7 +1157,7 @@ def pt_PTRWorkflowManager_calcCFs() -> PTRWorkflowManager:
     # wfm.placements['aperture_area_m2'] = 1E5
     # wfm.placements['land_area_m2'] = 1E5 / 0.3
 
-    # wfm._time_index_ = pd.date_range("2014-12-31 23:30:00", periods=100, freq="H")
+    # wfm._time_index_ = pd.date_range("2014-12-31 23:30:00", periods=100, freq="h")
 
     return wfm
 

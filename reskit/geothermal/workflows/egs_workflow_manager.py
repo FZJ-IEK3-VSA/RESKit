@@ -787,7 +787,7 @@ class EGS_workflowmanager:
             if filetype.lower() == ".shp":
                 # do shapefile
                 self.placements["geom"] = self.placements[["lon", "lat"]].apply(
-                    lambda x: gk.geom.point(x[0], x[1]), axis=1
+                    lambda x: gk.geom.point(x.iloc[0], x.iloc[1]), axis=1
                 )
                 gk.vector.createVector(self.placements, savepath)
             elif filetype.lower() == ".nc4":
