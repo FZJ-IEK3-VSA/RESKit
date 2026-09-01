@@ -23,6 +23,61 @@ from reskit import weather as rk_weather
 from reskit.util.weather_tile import get_dataframe_with_weather_tilepaths
 
 
+# The smallest half width, in SRS units, which is added to a zero-width extent.
+_MIN_EXTENT_HALF_WIDTH = 1e-5
+
+
+def _check_coordinate_range(placements, column, minimum, maximum):
+    """Check that every coordinate of a placements column is finite and in range.
+
+    Parameters
+    ----------
+    placements : pandas.DataFrame
+        The placements table to check.
+
+    column : str
+        The name of the coordinate column, i.e. 'lon' or 'lat'.
+
+    minimum, maximum : float
+        The inclusive limits of the valid range.
+
+    Raises
+    ------
+    ValueError
+        If one or more values are outside the range, or are NaN, or are infinite.
+    """
+    values = pd.to_numeric(placements[column], errors="coerce")
+    invalid = ~values.between(minimum, maximum, inclusive="both")
+    if invalid.any():
+        offenders = ", ".join(f"{index}: {value}" for index, value in values[invalid].head(10).items())
+        raise ValueError(
+            f"All '{column}' values must be finite and between {minimum} and {maximum}. "
+            f"{int(invalid.sum())} of {len(values)} placements are invalid "
+            f"(index: value): {offenders}"
+        )
+
+
+def _expand_degenerate_bound(value):
+    """Expand a zero-width extent bound around one coordinate value.
+
+    The expansion is additive. A multiplicative expansion keeps a zero coordinate at zero.
+    This gives a degenerate extent which GeoKit rejects, e.g. for a single placement at
+    (0, 0). A multiplicative expansion also inverts the bounds of a negative coordinate.
+
+    Parameters
+    ----------
+    value : float
+        The coordinate value which is both the lower and the upper bound.
+
+    Returns
+    -------
+    tuple of float
+        The new lower bound and the new upper bound.
+    """
+    half_width = max(abs(value) * 1e-5, _MIN_EXTENT_HALF_WIDTH)
+    return value - half_width, value + half_width
+
+
 class WorkflowManager:
     """
     The WorkflowManager class assists with the construction of more specialized WorkflowManagers,
@@ -78,21 +133,17 @@ class WorkflowManager:
             self.locs = gk.LocationSet(self.placements[["lon", "lat"]].values)
 
         # limit the input placements longitude to range of -180...180
-        assert self.placements["lon"].between(-180, 180, inclusive="both").any()
+        _check_coordinate_range(self.placements, "lon", -180, 180)
         # limit the input placements latitude to range of -90...90
-        assert self.placements["lat"].between(-90, 90, inclusive="both").any()
+        _check_coordinate_range(self.placements, "lat", -90, 90)
 
         # get bounds of the extent
         _bounds = list(self.locs.getBounds())
         # if no extension in lon and/or lat direction, create incremental artificial width
         if _bounds[0] == _bounds[2]:
-            _x = _bounds[0]
-            _bounds[0] = _x * 0.99999
-            _bounds[2] = _x * 1.00001
+            _bounds[0], _bounds[2] = _expand_degenerate_bound(_bounds[0])
         if _bounds[1] == _bounds[3]:
-            _y = _bounds[1]
-            _bounds[1] = _y * 0.99999
-            _bounds[3] = _y * 1.00001
+            _bounds[1], _bounds[3] = _expand_degenerate_bound(_bounds[1])
         # create extent attribute
         self.ext = gk.Extent(_bounds, srs=_srs)
 
