@@ -83,8 +83,11 @@ def visibility_from_topography(
     # TODO: construct the sample points in a way that ensure equal distances!
     sample_lats_r, sample_lons_r = [], []
     for acetr in approx_center_earth_thetas_r:
+        # An east-west arc of a given angular length spans a longitude difference of
+        # that length divided by cos(latitude). The factor grows towards the poles,
+        # where a degree of longitude covers the smallest distance.
         sample_lats_r.append(np.sin(thetas_r) * acetr + lat_r)
-        sample_lons_r.append(np.cos(thetas_r) * acetr / np.sin(lat_r) + lon_r)
+        sample_lons_r.append(np.cos(thetas_r) * acetr / np.cos(lat_r) + lon_r)
 
     sample_lons_r = np.array(sample_lons_r)
     sample_lons = np.degrees(sample_lons_r)
