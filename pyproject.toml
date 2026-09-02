@@ -38,6 +38,24 @@ markers = [
   "notebooks: executes an example notebook with papermill. Deselected by default, run with `pytest -m notebooks`.",
 ]
 addopts = "-m 'not notebooks'" # The notebook tests need several minutes
+# Selective warning gate.
+# A deprecation which RESKit code triggers must fail the suite. An upstream
+# removal is then repaired before it reaches a release. Every other warning stays
+# a warning: third-party noise which RESKit does not cause, and the deprecations
+# which RESKit raises for its own users.
+# Add one entry for each upstream removal and name the upstream version.
+# test/08_dependencies/test_no_deprecated_apis.py covers the RESKit lines which no
+# test executes, because a filter only sees a line which runs.
+filterwarnings = [
+  # pvlib 0.13.1 renamed singleaxis(apparent_azimuth=) to solar_azimuth.
+  "error::pvlib._deprecation.pvlibDeprecationWarning",
+  # xarray deprecates Dataset.drop() for Dataset.drop_vars().
+  "error:dropping variables using `drop` is deprecated:FutureWarning",
+  # xarray changes the merge default from join="outer" to join="exact".
+  "error:In a future version of xarray the default value for join will change:FutureWarning",
+  # Python 3.13 removes logging.warn.
+  "error:The 'warn' function is deprecated:DeprecationWarning",
+]
 
 [tool.codespell]
 ignore-words-list = [
