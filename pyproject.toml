@@ -55,6 +55,8 @@ filterwarnings = [
   "error:In a future version of xarray the default value for join will change:FutureWarning",
   # Python 3.13 removes logging.warn.
   "error:The 'warn' function is deprecated:DeprecationWarning",
+  # pytest makes a test which returns a value an error. A test must assert instead.
+  "error::pytest.PytestReturnNotNoneWarning",
 ]
 
 [tool.codespell]
