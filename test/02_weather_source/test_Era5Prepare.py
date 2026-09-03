@@ -346,8 +346,6 @@ def test_align_longitudes_to_source_convention_shifts_positive_tile_axis(tmp_pat
         assert ds.variables["longitude"][:].tolist() == pytest.approx([-182.0, -169.0, -156.0])
 
 
-# --- BUG-19: the CDS no longer supports the 'netcdf_legacy' download format -------------
-
 TILE_LAT = [52.0, 51.75, 51.5]
 TILE_LON = [5.0, 5.25, 5.5]
 
@@ -383,7 +381,7 @@ def _download(target, **kwargs):
 
 
 def test_era5_downloader_does_not_ask_for_the_unsupported_legacy_format(tmp_path, monkeypatch):
-    """The CDS rejects 'netcdf_legacy', so the request must ask for 'netcdf' (BUG-19)."""
+    """The CDS rejects 'netcdf_legacy', so the request must ask for 'netcdf'."""
     requests = _patch_cds_client(
         monkeypatch,
         lambda target: _make_era5_raw(
@@ -400,7 +398,7 @@ def test_era5_downloader_does_not_ask_for_the_unsupported_legacy_format(tmp_path
 
 
 def test_era5_downloader_sends_the_download_format(tmp_path, monkeypatch):
-    """The current CDS API expects a 'download_format' next to the 'data_format' (BUG-19)."""
+    """The current CDS API expects a 'download_format' next to the 'data_format'."""
     requests = _patch_cds_client(
         monkeypatch,
         lambda target: _make_era5_raw(
@@ -415,7 +413,7 @@ def test_era5_downloader_sends_the_download_format(tmp_path, monkeypatch):
 
 
 def test_era5_downloader_renames_valid_time_to_time(tmp_path, monkeypatch):
-    """A CF compliant answer names its time axis 'valid_time'. Downstream code needs 'time' (BUG-19)."""
+    """A CF compliant answer names its time axis 'valid_time'. Downstream code needs 'time'."""
     target = tmp_path / "raw.nc"
     source = _make_era5_raw(
         target.with_name("expected.nc"),
@@ -481,7 +479,7 @@ def _open_nc_paths():
 
 
 def test_era5_downloader_merges_a_zipped_answer(tmp_path, monkeypatch):
-    """The CF format splits accumulated and instantaneous variables into a ZIP archive (BUG-19)."""
+    """The CF format splits accumulated and instantaneous variables into a ZIP archive."""
     target = tmp_path / "raw.nc"
 
     _patch_cds_client(monkeypatch, _zip_answer_writer(tmp_path))
@@ -500,7 +498,7 @@ def test_era5_downloader_merges_a_zipped_answer(tmp_path, monkeypatch):
 
 
 def test_open_era5_dataset_closes_the_file(tmp_path):
-    """close() must release the file after the time rename, else Windows locks it (BUG-19).
+    """close() must release the file after the time rename, else Windows locks it.
 
     Dataset.rename() gives a new object without the closer of the source object.
     """
@@ -514,7 +512,7 @@ def test_open_era5_dataset_closes_the_file(tmp_path):
 
 
 def test_era5_downloader_closes_the_members_of_a_zipped_answer(tmp_path, monkeypatch):
-    """The merge must close each member before it removes the temp dir (BUG-19).
+    """The merge must close each member before it removes the temp dir.
 
     Windows refuses to remove a file which the process holds open, so the merge failed
     there with a PermissionError. The recorder makes the same condition visible on each
@@ -539,7 +537,7 @@ def test_era5_downloader_closes_the_members_of_a_zipped_answer(tmp_path, monkeyp
 
 
 def test_era5_downloader_leaves_a_legacy_answer_untouched(tmp_path, monkeypatch):
-    """A file which already uses 'time' must not be rewritten (BUG-19)."""
+    """A file which already uses 'time' must not be rewritten."""
     target = tmp_path / "raw.nc"
     reference = tmp_path / "reference.nc"
 
@@ -555,7 +553,7 @@ def test_era5_downloader_leaves_a_legacy_answer_untouched(tmp_path, monkeypatch)
 
 
 def test_nc_years_reads_a_cf_compliant_file(tmp_path):
-    """era5_tiler must find the years of a 'valid_time' file, not only of a 'time' file (BUG-19)."""
+    """era5_tiler must find the years of a 'valid_time' file, not only of a 'time' file."""
     raw = tmp_path / "raw.nc"
     _make_era5_raw(raw, lat=TILE_LAT, lon=TILE_LON, vars_spec={"blh": {}}, time_name="valid_time")
 
@@ -563,7 +561,7 @@ def test_nc_years_reads_a_cf_compliant_file(tmp_path):
 
 
 def test_era5_tiler_accepts_a_cf_compliant_raw_file(tmp_path):
-    """The tiler must accept a raw file of the CF compliant download format (BUG-19)."""
+    """The tiler must accept a raw file of the CF compliant download format."""
     raw = tmp_path / "raw" / "era5_test_raw.nc"
     raw.parent.mkdir()
     _make_era5_raw(raw, lat=TILE_LAT, lon=TILE_LON, vars_spec={"blh": {"units": "m"}}, time_name="valid_time")
@@ -587,7 +585,7 @@ def test_era5_tiler_accepts_a_cf_compliant_raw_file(tmp_path):
 
 
 def test_preprocess_era5_data_accepts_a_cf_compliant_file(tmp_path):
-    """preprocess_era5_data must read a 'valid_time' file and write a 'time' file (BUG-19)."""
+    """preprocess_era5_data must read a 'valid_time' file and write a 'time' file."""
     raw = tmp_path / "era5_test.nc"
     source = _make_era5_raw(
         raw,

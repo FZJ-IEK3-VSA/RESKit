@@ -448,8 +448,6 @@ def test_Era5Source_sload_snowfall_water_equivalent(pt_Era5Source, pt_BoundedEra
     assert np.isclose(pt_BoundedEra5Source.data[var][33, 1, 2], c)
 
 
-# --- BUG-19: a CF compliant ERA5 download names its time axis 'valid_time' ---------------
-
 
 def _write_cf_era5_file(path, *, n_times=4):
     """Write a small ERA5 file which uses the CF compliant 'valid_time' axis.
@@ -472,7 +470,7 @@ def _write_cf_era5_file(path, *, n_times=4):
 
 
 def test_Era5Source_reads_a_cf_compliant_file(tmp_path):
-    """Era5Source must accept both ERA5 download formats, 'time' and 'valid_time' (BUG-19)."""
+    """Era5Source must accept both ERA5 download formats, 'time' and 'valid_time'."""
     path = tmp_path / "reanalysis-era5-single-levels.z4.x8.y5.y2015.surface_pressure.nc"
     times = _write_cf_era5_file(path)
 
