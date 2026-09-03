@@ -41,7 +41,12 @@ def CSP_PTR_ERA5(
     ----------
     placements: Pandas DataFrame
         Locations where to perform simulations at.
-        Required columns: longitude, latitude, and one area column ("area_m2", "area", "aperture_area_m2", or "land_area_m2").
+        Required columns: longitude, latitude, and at least one of the two area columns
+        "land_area_m2" and "aperture_area_m2". If you give one column, the workflow computes
+        the other one with the solar field density of the dataset. If you give both columns,
+        the workflow keeps both values and does not use the solar field density.
+        The columns "area" and "area_m2" are deprecated aliases of "land_area_m2". They give a
+        DeprecationWarning, and RESKit 0.6.0 removes them.
 
     era5_path: str or rk_weather.NCSource
         Path to ERA5 weather data or an NCSource object.
@@ -254,7 +259,12 @@ def CSP_PTR_ERA5_specific_dataset(
     ----------
     placements: Pandas DataFrame
         Locations where to perform simulations at.
-        Required columns: longitude, latitude, and one area column ("area_m2", "area", "aperture_area_m2", or "land_area_m2").
+        Required columns: longitude, latitude, and at least one of the two area columns
+        "land_area_m2" and "aperture_area_m2". If you give one column, the workflow computes
+        the other one with the solar field density of the dataset. If you give both columns,
+        the workflow keeps both values and does not use the solar field density.
+        The columns "area" and "area_m2" are deprecated aliases of "land_area_m2". They give a
+        DeprecationWarning, and RESKit 0.6.0 removes them.
 
     era5_path: str or rk_weather.NCSource
         Path to ERA5 weather data or an NCSource object.

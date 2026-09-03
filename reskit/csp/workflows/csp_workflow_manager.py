@@ -1,4 +1,5 @@
-from logging import warn, warning
+import warnings
+from logging import warning
 
 from reskit.csp.data.database_loader import load_dataset
 from reskit.solar.workflows.solar_workflow_manager import SolarWorkflowManager
@@ -14,6 +15,23 @@ except Exception as e:
 import time
 import geokit as gk
 from typing import Union
+
+
+def _warn_deprecated_area_column(column_name: str):
+    """Warn that a deprecated area column is used.
+
+    Parameters
+    ----------
+    column_name : str
+        The name of the deprecated area column in the placements.
+    """
+    warnings.warn(
+        f'The placements column "{column_name}" is deprecated and will be removed in RESKit 0.6.0. '
+        f'It is assumed to be the land area. Give the land area as "land_area_m2", '
+        f'or the aperture area as "aperture_area_m2".',
+        DeprecationWarning,
+        stacklevel=3,
+    )
 
 
 class PTRWorkflowManager(SolarWorkflowManager):
@@ -52,6 +70,7 @@ class PTRWorkflowManager(SolarWorkflowManager):
         assert (
             "land_area_m2" in self.placements.columns
             or "aperture_area_m2" in self.placements.columns
+            # "area" and "area_m2" are deprecated. determine_area() gives the warning.
             or "area" in self.placements.columns
             or "area_m2" in self.placements.columns
         )
@@ -80,11 +99,17 @@ class PTRWorkflowManager(SolarWorkflowManager):
 
     def determine_area(self):
         """Determines the land area, aperture area from given placement dataframe.
-        If only 'area' is given, it will be assumed as land area.
 
-        The area columns are used in this order: 'area', 'area_m2', 'aperture_area_m2',
-        'land_area_m2'. The first column which is present gives the missing area. The
-        solar field density 'SF_density_total' is the ratio aperture area / land area.
+        Give the land area as 'land_area_m2', the aperture area as 'aperture_area_m2', or
+        both. If one column is present, this function computes the other one with the solar
+        field density 'SF_density_total', which is the ratio aperture area / land area. If
+        both columns are present, this function keeps both values. Give both columns to use
+        a solar field density which is different from the value of the dataset.
+
+        The columns 'area' and 'area_m2' are deprecated aliases of 'land_area_m2'. They
+        give a DeprecationWarning, and RESKit 0.6.0 removes them. The area columns are
+        used in this order: 'area', 'area_m2', 'aperture_area_m2', 'land_area_m2'. The
+        first column which is present gives the missing area.
         """
         assert hasattr(self, "ptr_data")
         assert "SF_density_total" in self.ptr_data.index
@@ -92,13 +117,13 @@ class PTRWorkflowManager(SolarWorkflowManager):
 
         # if only area in placements:
         if "area" in columns and not "aperture_area_m2" in columns and not "land_area_m2" in columns:
-            warn('Key "area" is assumed to be the land area. Abort if wrong!')
+            _warn_deprecated_area_column("area")
             self.placements["land_area_m2"] = self.placements["area"]
             self.placements = self.placements.drop("area", axis=1)
             self.placements["aperture_area_m2"] = self.placements["land_area_m2"] * self.ptr_data["SF_density_total"]
 
         elif "area_m2" in columns and not "aperture_area_m2" in columns and not "land_area_m2" in columns:
-            warn('Key "area" is assumed to be the land area. Abort if wrong!')
+            _warn_deprecated_area_column("area_m2")
             self.placements["land_area_m2"] = self.placements["area_m2"]
             self.placements = self.placements.drop("area_m2", axis=1)
             self.placements["aperture_area_m2"] = self.placements["land_area_m2"] * self.ptr_data["SF_density_total"]
@@ -947,7 +972,7 @@ class PTRWorkflowManager(SolarWorkflowManager):
                 assert (self.sim_data["HeattoPlant_W"].mean(axis=0) / self.sim_data["HeattoHTF_W"].mean(axis=0)) < 1
 
         else:
-            warn("Wrong calculation for heat losses of heat transfer fluid selected. Losses will be set to zero.")
+            warning("Wrong calculation for heat losses of heat transfer fluid selected. Losses will be set to zero.")
             _losses = np.zeros_like(self.sim_data["HeattoHTF_W"], dtype=float)
             self.sim_data["HeattoPlant_W"] = self.sim_data["HeattoHTF_W"] - _losses
             self.sim_data["Heat_Losses_W"] = _losses

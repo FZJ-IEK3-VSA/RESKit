@@ -1,3 +1,5 @@
+import warnings
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -16,7 +18,7 @@ def funct():
         51.475,
         50.775,
     ]  # Latitude
-    placements["area"] = [1e6, 3e6, 6e6]
+    placements["land_area_m2"] = [1e6, 3e6, 6e6]
 
     datasetname = "Initial"
     verbose = False
@@ -147,7 +149,7 @@ def test_PTRWorkflowManager__init__() -> PTRWorkflowManager:
         51.475,
         50.775,
     ]  # Latitude
-    placements["area"] = [1e6, 3e6, 6e6]
+    placements["land_area_m2"] = [1e6, 3e6, 6e6]
 
     wfm = PTRWorkflowManager(placements=placements)
 
@@ -297,6 +299,25 @@ def test_determine_area_uses_area_before_area_m2():
     density = wfm.ptr_data["SF_density_total"]
     assert np.allclose(wfm.placements["land_area_m2"], area)
     assert np.allclose(wfm.placements["aperture_area_m2"], area * density)
+
+
+@pytest.mark.parametrize("column_name", ["area", "area_m2"])
+def test_determine_area_warns_for_a_deprecated_area_column(column_name):
+    """The deprecated area columns must give a DeprecationWarning."""
+    wfm = _PTRWorkflowManager_with_areas(**{column_name: np.array([1e6, 3e6, 6e6])})
+
+    with pytest.warns(DeprecationWarning, match=f'"{column_name}" is deprecated'):
+        wfm.determine_area()
+
+
+@pytest.mark.parametrize("column_name", ["land_area_m2", "aperture_area_m2"])
+def test_determine_area_does_not_warn_for_a_supported_area_column(column_name):
+    """The supported area columns must not give a DeprecationWarning."""
+    wfm = _PTRWorkflowManager_with_areas(**{column_name: np.array([1e6, 3e6, 6e6])})
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", DeprecationWarning)
+        wfm.determine_area()
 
 
 # @pytest.fixture
@@ -733,7 +754,7 @@ def pt_PTRWorkflowManager_heat_loss() -> PTRWorkflowManager:
         51.475,
         50.775,
     ]  # Latitude
-    placements["area"] = [1e6, 3e6, 6e6]
+    placements["land_area_m2"] = [1e6, 3e6, 6e6]
 
     datasetname = "Initial"
     verbose = False
