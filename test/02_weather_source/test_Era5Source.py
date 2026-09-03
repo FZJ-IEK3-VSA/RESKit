@@ -448,7 +448,6 @@ def test_Era5Source_sload_snowfall_water_equivalent(pt_Era5Source, pt_BoundedEra
     assert np.isclose(pt_BoundedEra5Source.data[var][33, 1, 2], c)
 
 
-
 def _write_cf_era5_file(path, *, n_times=4):
     """Write a small ERA5 file which uses the CF compliant 'valid_time' axis.
 
