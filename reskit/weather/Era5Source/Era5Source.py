@@ -168,6 +168,10 @@ class Era5Source(NCSource):
         "forecast_surface_roughness": "fsr",
         "surface_solar_radiation_downwards": "ssrd",
         "total_sky_direct_solar_radiation_at_surface": "fdir",
+        "snow_albedo": "asn",
+        "snow_density": "rsn",
+        "snow_depth": "sd",
+        "snowfall": "sf",
     }
 
     # NC short names that are consumed by ERA5 preprocessing and replaced by
