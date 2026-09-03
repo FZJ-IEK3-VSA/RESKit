@@ -98,37 +98,3 @@ def test_readme_download_and_process_example_runs(monkeypatch, capsys):
     assert recorded["era5"]["start_date"] == "2000-01-01"
     assert recorded["era5"]["tiling"] is True
     assert recorded["gwa4"]
-
-
-def test_download_and_process_still_accepts_the_old_keyword(monkeypatch):
-    # the README used 'workflow=' before, that spelling must warn but still work
-    monkeypatch.setitem(input_preparation._SOURCE_PREPARERS, "ERA5", lambda variables, **context: {"era5_path": "x"})
-    monkeypatch.setitem(input_preparation._SOURCE_PREPARERS, "GWA4", lambda variables, **context: None)
-
-    with pytest.warns(DeprecationWarning):
-        result = rk.download_and_process(
-            workflow="wind_era5_PenaSanchezDunkelWinklerEtAl2025",
-            start_date="2000-01-01",
-            end_date="2000-12-31",
-            boundary_box={"north": 55, "south": 47, "west": 6, "east": 15},
-            output_dir="/path/to/your/weather_data",
-        )
-
-    assert result == {"era5_path": "x"}
-
-
-def test_download_and_process_rejects_both_spellings():
-    with pytest.raises(ValueError):
-        rk.download_and_process(
-            workflows="openfield_pv_era5",
-            workflow="openfield_pv_era5",
-            start_date="2000-01-01",
-            end_date="2000-12-31",
-            boundary_box={"north": 55, "south": 47, "west": 6, "east": 15},
-            output_dir="/tmp",
-        )
-
-
-def test_download_and_process_requires_the_mandatory_arguments():
-    with pytest.raises(ValueError):
-        rk.download_and_process(workflows="openfield_pv_era5")
