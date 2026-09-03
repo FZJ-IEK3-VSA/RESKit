@@ -31,10 +31,16 @@ def _open_era5_dataset(nc_path: str) -> xr.Dataset:
 
     ERA5 ``netcdf_legacy`` downloads use ``time``; the newer (non-legacy) export uses
     ``valid_time``. Downstream code (Era5Source/NCSource) expects ``time``.
+
+    ``Dataset.rename()`` gives a new object without the closer of the source object, so
+    ``close()`` on the renamed object leaves the file open. Windows then refuses to remove
+    or to overwrite that file. The closer is therefore attached to the renamed object.
     """
     ds = xr.open_dataset(nc_path)
     if "valid_time" in ds.coords and "time" not in ds.coords:
-        ds = ds.rename({"valid_time": "time"})
+        renamed = ds.rename({"valid_time": "time"})
+        renamed.set_close(ds.close)
+        ds = renamed
     return ds
 
 

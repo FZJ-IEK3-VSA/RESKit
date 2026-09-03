@@ -1,6 +1,8 @@
 import filecmp
+import gc
 import os
 import shutil
+import tempfile
 import warnings
 import zipfile
 import cdsapi
@@ -18,6 +20,7 @@ from reskit.weather.Era5Source.Era5Prepare import (
     _iter_tile_x_indices,
     _normalize_lon,
     _nc_years,
+    _open_era5_dataset,
     _split_lon_boxes,
     _tile_variable_to_file,
     era5_downloader,
@@ -439,15 +442,14 @@ def test_era5_downloader_renames_valid_time_to_time(tmp_path, monkeypatch):
         assert pd.DatetimeIndex(times).equals(pd.DatetimeIndex(source["valid_time"].values))
 
 
-def test_era5_downloader_merges_a_zipped_answer(tmp_path, monkeypatch):
-    """The CF format splits accumulated and instantaneous variables into a ZIP archive (BUG-19)."""
-    target = tmp_path / "raw.nc"
+def _zip_answer_writer(member_dir):
+    """Return a writer which answers with a ZIP archive of one instant and one accum member."""
     parts = {"instant": {"t2m": {"units": "K"}}, "accum": {"ssrd": {"units": "J m**-2"}}}
 
     def write_zip_answer(path):
         members = []
         for step_type, vars_spec in parts.items():
-            member = tmp_path / f"data_stream-oper_stepType-{step_type}.nc"
+            member = member_dir / f"data_stream-oper_stepType-{step_type}.nc"
             _make_era5_raw(
                 member,
                 lat=TILE_LAT,
@@ -463,7 +465,26 @@ def test_era5_downloader_merges_a_zipped_answer(tmp_path, monkeypatch):
                 archive.write(member, arcname=member.name)
                 os.remove(member)
 
-    _patch_cds_client(monkeypatch, write_zip_answer)
+    return write_zip_answer
+
+
+def _open_nc_paths():
+    """Return the paths of the NetCDF files which this process holds open."""
+    paths = set()
+    for obj in gc.get_objects():
+        if isinstance(obj, nc4.Dataset) and obj.isopen():
+            try:
+                paths.add(os.path.realpath(obj.filepath()))
+            except (ValueError, RuntimeError):
+                pass
+    return paths
+
+
+def test_era5_downloader_merges_a_zipped_answer(tmp_path, monkeypatch):
+    """The CF format splits accumulated and instantaneous variables into a ZIP archive (BUG-19)."""
+    target = tmp_path / "raw.nc"
+
+    _patch_cds_client(monkeypatch, _zip_answer_writer(tmp_path))
 
     # the merge must not depend on a default which xarray is about to change
     with warnings.catch_warnings():
@@ -476,6 +497,45 @@ def test_era5_downloader_merges_a_zipped_answer(tmp_path, monkeypatch):
         assert "valid_time" not in out.variables
         assert out["t2m"].shape == (4, len(TILE_LAT), len(TILE_LON))
         assert out["ssrd"].shape == (4, len(TILE_LAT), len(TILE_LON))
+
+
+def test_open_era5_dataset_closes_the_file(tmp_path):
+    """close() must release the file after the time rename, else Windows locks it (BUG-19).
+
+    Dataset.rename() gives a new object without the closer of the source object.
+    """
+    raw = tmp_path / "raw.nc"
+    _make_era5_raw(raw, lat=TILE_LAT, lon=TILE_LON, vars_spec={"t2m": {}}, time_name="valid_time")
+
+    with _open_era5_dataset(str(raw)) as ds:
+        assert "time" in ds.coords
+
+    assert os.path.realpath(str(raw)) not in _open_nc_paths()
+
+
+def test_era5_downloader_closes_the_members_of_a_zipped_answer(tmp_path, monkeypatch):
+    """The merge must close each member before it removes the temp dir (BUG-19).
+
+    Windows refuses to remove a file which the process holds open, so the merge failed
+    there with a PermissionError. The recorder makes the same condition visible on each
+    platform, because Linux removes an open file without an error.
+    """
+    still_open = []
+
+    class RecordingTemporaryDirectory(tempfile.TemporaryDirectory):
+        def cleanup(self):
+            root = os.path.realpath(self.name)
+            still_open.extend(path for path in _open_nc_paths() if path.startswith(root))
+            super().cleanup()
+
+    monkeypatch.setattr(tempfile, "TemporaryDirectory", RecordingTemporaryDirectory)
+    _patch_cds_client(monkeypatch, _zip_answer_writer(tmp_path))
+
+    _download(tmp_path / "raw.nc")
+
+    assert still_open == []
+    # the temp dir of the merge is removed, so only the answer stays
+    assert [p.name for p in tmp_path.iterdir()] == ["raw.nc"]
 
 
 def test_era5_downloader_leaves_a_legacy_answer_untouched(tmp_path, monkeypatch):
