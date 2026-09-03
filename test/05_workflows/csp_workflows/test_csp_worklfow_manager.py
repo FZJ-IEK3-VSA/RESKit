@@ -225,7 +225,7 @@ def _PTRWorkflowManager_with_areas(**area_columns) -> PTRWorkflowManager:
 
 @pytest.mark.parametrize("column_name", ["area", "area_m2"])
 def test_determine_area_removes_the_legacy_area_column(column_name):
-    """determine_area() must remove the legacy area column from the placements (BUG-15)."""
+    """determine_area() must remove the legacy area column from the placements."""
     land_area_m2 = np.array([1e6, 3e6, 6e6])
     wfm = _PTRWorkflowManager_with_areas(**{column_name: land_area_m2})
 
@@ -238,7 +238,7 @@ def test_determine_area_removes_the_legacy_area_column(column_name):
 
 @pytest.mark.parametrize("column_name", ["area", "area_m2", "aperture_area_m2", "land_area_m2"])
 def test_determine_area_is_idempotent(column_name):
-    """A second determine_area() call must not change the areas (BUG-15, BUG-16)."""
+    """A second determine_area() call must not change the areas."""
     wfm = _PTRWorkflowManager_with_areas(**{column_name: np.array([1e6, 3e6, 6e6])})
 
     wfm.determine_area()
@@ -251,7 +251,7 @@ def test_determine_area_is_idempotent(column_name):
 
 @pytest.mark.parametrize("column_name", ["area", "area_m2", "land_area_m2"])
 def test_determine_area_from_a_land_area_column(column_name):
-    """Every documented land area column gives the same land and aperture area (BUG-16)."""
+    """Every documented land area column gives the same land and aperture area."""
     land_area_m2 = np.array([1e6, 3e6, 6e6])
     wfm = _PTRWorkflowManager_with_areas(**{column_name: land_area_m2})
 
@@ -263,7 +263,7 @@ def test_determine_area_from_a_land_area_column(column_name):
 
 
 def test_determine_area_from_the_aperture_area_column():
-    """Only aperture_area_m2 given: the land area follows from the solar field density (BUG-16)."""
+    """Only aperture_area_m2 given: the land area follows from the solar field density."""
     aperture_area_m2 = np.array([1e6, 3e6, 6e6])
     wfm = _PTRWorkflowManager_with_areas(aperture_area_m2=aperture_area_m2)
 
@@ -275,7 +275,7 @@ def test_determine_area_from_the_aperture_area_column():
 
 
 def test_determine_area_keeps_both_given_areas():
-    """Both area columns given: determine_area() must not change them (BUG-16)."""
+    """Both area columns given: determine_area() must not change them."""
     land_area_m2 = np.array([1e6, 3e6, 6e6])
     aperture_area_m2 = np.array([1e5, 2e5, 3e5])
     wfm = _PTRWorkflowManager_with_areas(
@@ -290,7 +290,7 @@ def test_determine_area_keeps_both_given_areas():
 
 
 def test_determine_area_uses_area_before_area_m2():
-    """'area' and 'area_m2' given: the first documented column wins (BUG-16)."""
+    """'area' and 'area_m2' given: the first documented column wins."""
     area = np.array([1e6, 3e6, 6e6])
     wfm = _PTRWorkflowManager_with_areas(area=area, area_m2=np.array([1.0, 2.0, 3.0]))
 

@@ -21,8 +21,6 @@ def _loaded_manager(lons=(6.0, 6.1), lats=(50.0, 50.1), periods=4, freq="h", sta
     return man
 
 
-# ---------------------------------------------------------------- BUG-02
-
 
 def test_init_rejects_a_batch_with_one_invalid_longitude():
     # one valid coordinate must not make the whole batch valid
@@ -77,7 +75,6 @@ def test_init_accepts_a_valid_batch():
     assert man.placements.shape[0] == 3
 
 
-# ---------------------------------------------------------------- BUG-03
 
 
 def test_to_xarray_keeps_the_location_id_column():
@@ -103,7 +100,6 @@ def test_to_xarray_does_not_change_the_given_output_variables():
     assert output_variables == ["lon", "capacity_factor"]
 
 
-# ---------------------------------------------------------------- BUG-06
 
 
 def test_to_xarray_keeps_the_first_day_of_a_cross_year_simulation():
@@ -128,7 +124,6 @@ def test_to_xarray_keeps_all_days_within_one_year():
     assert xds["time_days"].shape == (len(days),)
 
 
-# ---------------------------------------------------------------- BUG-04
 
 
 def _write_result(path, location_ids):
@@ -173,8 +168,6 @@ def test_load_workflow_result_without_any_file(tmp_path):
     with pytest.raises(ValueError):
         load_workflow_result(str(tmp_path))
 
-
-# ---------------------------------------------------------------- BUG-08
 
 
 def tiny_workflow(placements, factor=1.0):

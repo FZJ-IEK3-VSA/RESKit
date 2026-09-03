@@ -45,7 +45,7 @@ def test_CSP_PTR_ERA5(pt_pv_placements):
 
     print("Simulation done")
 
-    # the workflow gives both areas in the output (BUG-15, BUG-16)
+    # the workflow gives both areas in the output
     assert "land_area_m2" in out.variables
     assert "aperture_area_m2" in out.variables
 
