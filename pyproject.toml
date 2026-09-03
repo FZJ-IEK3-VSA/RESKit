@@ -34,6 +34,10 @@ pythonpath = [
   "test",
 ] # Sets the path which should be prepended to pythonpath relative to the root folder
 console_output_style = "count"
+markers = [
+  "notebooks: executes an example notebook with papermill. Deselected by default, run with `pytest -m notebooks`.",
+]
+addopts = "-m 'not notebooks'" # The notebook tests need several minutes
 
 [tool.codespell]
 ignore-words-list = [
