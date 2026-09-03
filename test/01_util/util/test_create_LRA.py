@@ -14,6 +14,7 @@ import geokit as gk
 
 from reskit.util.create_LRA import (
     _calculate_DNI,
+    _combine_tiles,
     _find_single_year_nc_file,
     _list_tiled_nc_files,
     _mean_over_time,
@@ -53,8 +54,12 @@ def _make_dataset(lats, lons, value, n_times=3, var_name="ws100"):
 
 
 def _write_tiled(base_path, year, value, variable=VARIABLE, zoom_level=4):
-    """Write two tiles that are disjoint in longitude, in the tiled RESKit layout."""
-    for tile_index, lons in enumerate([[0.0, 1.0], [2.0, 3.0]]):
+    """Write two tiles in the tiled RESKit layout.
+
+    ``era5_tiler`` pads every tile by 2 degrees, so the tiles overlap. The two tiles
+    here share the longitudes 1.0 and 2.0.
+    """
+    for tile_index, lons in enumerate([[0.0, 1.0, 2.0], [1.0, 2.0, 3.0]]):
         tile_dir = base_path / str(zoom_level) / str(tile_index) / "0" / str(year)
         tile_dir.mkdir(parents=True, exist_ok=True)
         ds = _make_dataset(lats=[50.0, 51.0], lons=lons, value=value)
@@ -150,15 +155,24 @@ def test_mean_over_time_is_a_no_op_without_a_time_dimension():
     assert _mean_over_time(ds).equals(ds)
 
 
-def test_load_era5_year_merges_tiles_into_one_grid(tmp_path):
+def test_load_era5_year_merges_overlapping_tiles_into_one_grid(tmp_path):
     _write_tiled(tmp_path, year=2000, value=7.0)
 
     ds = load_era5_year(tmp_path, year=2000, variable=VARIABLE, zoom_level=4)
 
-    # the two tiles cover disjoint longitudes and are merged onto a common grid
+    # the two tiles overlap in longitude and are merged onto a common grid
     assert list(ds["longitude"].values) == [0.0, 1.0, 2.0, 3.0]
     assert "time" not in ds.dims
     assert np.allclose(ds["ws100"].values, 7.0)
+
+
+def test_combine_tiles_rejects_tiles_which_disagree_on_the_overlap():
+    # both tiles hold longitude 1.0 and 2.0, but with different values there
+    tile_a = _make_dataset(lats=[50.0], lons=[0.0, 1.0, 2.0], value=1.0)
+    tile_b = _make_dataset(lats=[50.0], lons=[1.0, 2.0, 3.0], value=2.0)
+
+    with pytest.raises(xr.MergeError):
+        _combine_tiles([tile_a, tile_b])
 
 
 def test_load_era5_year_reads_non_tiled_layout(tmp_path):

@@ -99,22 +99,21 @@ def _mean_over_time(ds: xr.Dataset) -> xr.Dataset:
 def _combine_tiles(tiles: list[xr.Dataset] | list[xr.DataArray]) -> xr.Dataset:
     """Combine the tiles of one year into a single dataset.
 
-    RESKit writes tiles with identical variable names on disjoint lat/lon coordinates,
-    so combining by coords is the correct operation: it concatenates the tiles along
-    their coordinates. :func:`xarray.merge` returns the same result for such tiles, but
-    it also accepts tiles which overlap, and then silently unions the overlap.
-    :func:`xarray.combine_by_coords` rejects that input, which is what an overlap
-    deserves.
+    RESKit tiles always overlap: :func:`reskit.weather.Era5Source.Era5Prepare.era5_tiler`
+    pads the extent of each tile by 2 degrees, so neighbour tiles share a band of
+    lat/lon coordinates. :func:`xarray.merge` is therefore the correct operation. It
+    unions the overlap, and ``compat="no_conflicts"`` still rejects tiles which
+    disagree on a shared coordinate. :func:`xarray.combine_by_coords` cannot be used:
+    it concatenates the tiles along their coordinates and raises on the overlap.
     """
-    # combine_by_coords returns a DataArray for DataArray input, so normalize first and
-    # always return a Dataset.
+    # merge needs named objects, and returns a Dataset for Dataset input only, so
+    # normalize first and always return a Dataset.
     datasets = [tile if isinstance(tile, xr.Dataset) else tile.to_dataset() for tile in tiles]
 
     # The keyword defaults of xarray are scheduled to change; state them here.
-    return xr.combine_by_coords(
+    return xr.merge(
         datasets,
         compat="no_conflicts",
-        data_vars="all",
         join="outer",
         combine_attrs="override",
     )
@@ -130,8 +129,8 @@ def load_era5_year(
     """Load a year of processed ERA5 data.
 
     Logic:
-    - If the input is tiled (zoom directory exists and contains matching tiles): combine the
-      tiles by their coordinates, see :func:`_combine_tiles`.
+    - If the input is tiled (zoom directory exists and contains matching tiles): merge the
+      overlapping tiles onto one grid, see :func:`_combine_tiles`.
     - If not tiled: expect exactly one NetCDF for the year; nothing is combined.
     """
     base_path = Path(base_path)
