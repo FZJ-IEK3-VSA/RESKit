@@ -77,10 +77,7 @@ class SolarWorkflowManager(WorkflowManager):
         ----------
         convention : str, optional
                      The calculation method used to suggest system tilts.
-                     Option 1 of convention is "Ryberg2020".
-                     Option 2 of convention is a string consumable by 'eval'. This string can use the variable latitude.
-                     For example "latitude*0.76".
-                     Option 3 of convention is a path to a rasterfile.
+                     Only "Ryberg2020" is accepted.
                      To get more information check out reskit.solar.location_to_tilt for more information.
 
 
@@ -640,11 +637,12 @@ class SolarWorkflowManager(WorkflowManager):
                 placement = self.placements.iloc[i]
 
                 tmp = pvlib.tracking.singleaxis(
-                    apparent_zenith=pd.Series(
+                    # positional: pvlib renamed the azimuth argument of singleaxis() in 0.13.1
+                    pd.Series(
                         self.sim_data["apparent_solar_zenith"][:, i],
                         index=self._time_index_,
                     ),
-                    apparent_azimuth=pd.Series(self.sim_data["solar_azimuth"][:, i], index=self._time_index_),
+                    pd.Series(self.sim_data["solar_azimuth"][:, i], index=self._time_index_),
                     # self.placements['tilt'].values,
                     axis_tilt=placement.tilt,
                     # self.placements['azimuth'].values,
@@ -954,6 +952,7 @@ class SolarWorkflowManager(WorkflowManager):
             db = pvlib.pvsystem.retrieve_sam("CECMod")
             original_module = getattr(db, original_module_name)
             # scale module parameters to tech_year
+            # object dtype: the module parameters also hold strings, e.g. BIPV="N"
             module = pd.Series(index=projected_module.index, dtype="object")
             for param, val_proj in zip(projected_module.index, projected_module):
                 if param == "Date":

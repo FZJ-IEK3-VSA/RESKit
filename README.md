@@ -114,7 +114,7 @@ supported source; additional weather data sources are planned.
 import reskit as rk
 
 result = rk.download_and_process(
-    workflow="wind_era5_PenaSanchezDunkelWinklerEtAl2025",
+    workflows="wind_era5_PenaSanchezDunkelWinklerEtAl2025",
     start_date="2000-01-01",
     end_date="2000-12-31",
     boundary_box={"north": 55, "south": 47, "west": 6, "east": 15},  # Germany
@@ -125,8 +125,8 @@ print(result["era5_path"])
 ```
 
 To prepare data for several workflows in a single call, pass a list of workflow names
-as `workflow`; the union of their variable requirements is downloaded and processed at
-once, e.g. `workflow=["openfield_pv_era5", "CSP_PTR_ERA5"]`. A CDS account with a
+as `workflows`; the union of their variable requirements is downloaded and processed at
+once, e.g. `workflows=["openfield_pv_era5", "CSP_PTR_ERA5"]`. A CDS account with a
 configured `~/.cdsapirc` API key is required for ERA5
 (see https://cds.climate.copernicus.eu/how-to-api).
 

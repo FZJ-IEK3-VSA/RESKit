@@ -139,7 +139,7 @@ def print_testresults(variable):
 ####################################
 #####       TEST Init         ######
 ####################################
-def test_PTRWorkflowManager__init__() -> PTRWorkflowManager:
+def _make_PTRWorkflowManager() -> PTRWorkflowManager:
     placements = pd.DataFrame()
     placements["lon"] = [6.083, 6.083, 5.583]  # Longitude
     placements["lat"] = [
@@ -162,12 +162,17 @@ def test_PTRWorkflowManager__init__() -> PTRWorkflowManager:
     return wfm
 
 
+def test_PTRWorkflowManager__init__():
+    """Run _make_PTRWorkflowManager(), which other tests use as a factory."""
+    _make_PTRWorkflowManager()
+
+
 ####################################
 #####  TEST data loading      ######
 ####################################
 @pytest.fixture
 def pt_PTRWorkflowManager_initialized() -> PTRWorkflowManager:
-    return test_PTRWorkflowManager__init__()
+    return _make_PTRWorkflowManager()
 
 
 # load ptr data
@@ -325,7 +330,7 @@ def test_get_timesteps(pt_PTRWorkflowManager_loaded):
 
 @pytest.fixture
 def pt_PTRWorkflowManager_solarpos() -> PTRWorkflowManager:
-    wfm = test_PTRWorkflowManager__init__()
+    wfm = _make_PTRWorkflowManager()
     wfm.placements["azimuth"] = [90, 180, 180]
     wfm.placements["elev"] = [90, 180, 180]
     wfm.time_index = pd.date_range("2014-12-31 23:30:00", periods=100, freq="h")
@@ -513,7 +518,7 @@ def test_calculateCosineLossesParabolicTrough(pt_PTRWorkflowManager_DNI):
 
 @pytest.fixture
 def pt_PTRWorkflowManager_IAM() -> PTRWorkflowManager:
-    wfm = test_PTRWorkflowManager__init__()
+    wfm = _make_PTRWorkflowManager()
     wfm.placements["azimuth"] = [90, 180, 180]
     wfm.placements["elev"] = [90, 180, 180]
     wfm.time_index = pd.date_range("2014-12-31 23:30:00", periods=100, freq="h")
@@ -542,7 +547,7 @@ def test_calculateIAM(pt_PTRWorkflowManager_IAM):
 
 @pytest.fixture
 def pt_PTRWorkflowManager_Shadow() -> PTRWorkflowManager:
-    wfm = test_PTRWorkflowManager__init__()
+    wfm = _make_PTRWorkflowManager()
     wfm.sim_data["tracking_angle"] = tracking_angle_test
     wfm.sim_data["solar_zenith_degree"] = zenith_test
     return wfm
@@ -828,7 +833,7 @@ def test_get_totex(pt_PTRWorkflowManager_initialized):
 
 @pytest.fixture
 def pt_PTRWorkflowManager_economics() -> PTRWorkflowManager:
-    wfm = test_PTRWorkflowManager__init__()
+    wfm = _make_PTRWorkflowManager()
 
     wfm.placements["aperture_area_m2"] = [3e5, 6e5, 3e5]
     wfm.placements["land_area_m2"] = [1e6, 2e6, 1e6]
@@ -896,7 +901,7 @@ def test_get_totex_from_self(pt_PTRWorkflowManager_economics):
 
 @pytest.fixture
 def pt_PTRWorkflowManager_parasitics() -> PTRWorkflowManager:
-    wfm = test_PTRWorkflowManager__init__()
+    wfm = _make_PTRWorkflowManager()
     wfm.ptr_data = {}
     wfm.ptr_data["eta_powerplant_1"] = 0.5
     wfm.placements["capacity_sf_W_th"] = 58e6
@@ -961,7 +966,7 @@ def test_calculateParasitics(pt_PTRWorkflowManager_parasitics):
 
 @pytest.fixture
 def pt_PTRWorkflowManager_economicsSF() -> PTRWorkflowManager:
-    wfm = test_PTRWorkflowManager__init__()
+    wfm = _make_PTRWorkflowManager()
     wfm.ptr_data = {}
     wfm.sim_data["HeattoPlant_W"] = dni_test * 1e5 * 0.7
     wfm.sim_data["Parasitics_solarfield_W_el"] = dni_test * 1e5 * 0.76 * 0.1
@@ -1055,7 +1060,7 @@ def test_optimize_plant_size(pt_PTRWorkflowManager_optplant):
 
 @pytest.fixture
 def pt_PTRWorkflowManager_calcElecOut() -> PTRWorkflowManager:
-    wfm = test_PTRWorkflowManager__init__()
+    wfm = _make_PTRWorkflowManager()
 
     dni = np.tile(dni_test, [63, 1])[0:8760, :]
     wfm.sim_data["HeattoPlant_W"] = dni * 1e5 * 0.7
@@ -1145,7 +1150,7 @@ def test_calculate_LCOE(pt_PTRWorkflowManager_calcLCOE):
 
 @pytest.fixture
 def pt_PTRWorkflowManager_calcCFs() -> PTRWorkflowManager:
-    wfm = test_PTRWorkflowManager__init__()
+    wfm = _make_PTRWorkflowManager()
     wfm.placements["capacity_sf_W_th"] = 58e6
     wfm.sim_data["HeattoPlant_W"] = dni_test * 1e5 * 0.7
     wfm.placements["power_plant_capacity_W_el"] = 58e6 / 2 * 0.4
@@ -1157,7 +1162,7 @@ def pt_PTRWorkflowManager_calcCFs() -> PTRWorkflowManager:
     # wfm.placements['aperture_area_m2'] = 1E5
     # wfm.placements['land_area_m2'] = 1E5 / 0.3
 
-    # wfm._time_index_ = pd.date_range("2014-12-31 23:30:00", periods=100, freq="H")
+    # wfm._time_index_ = pd.date_range("2014-12-31 23:30:00", periods=100, freq="h")
 
     return wfm
 

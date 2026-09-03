@@ -24,6 +24,61 @@ from reskit import weather as rk_weather
 from reskit.util.weather_tile import get_dataframe_with_weather_tilepaths
 
 
+# The smallest half width, in SRS units, which is added to a zero-width extent.
+_MIN_EXTENT_HALF_WIDTH = 1e-5
+
+
+def _check_coordinate_range(placements, column, minimum, maximum):
+    """Check that every coordinate of a placements column is finite and in range.
+
+    Parameters
+    ----------
+    placements : pandas.DataFrame
+        The placements table to check.
+
+    column : str
+        The name of the coordinate column, i.e. 'lon' or 'lat'.
+
+    minimum, maximum : float
+        The inclusive limits of the valid range.
+
+    Raises
+    ------
+    ValueError
+        If one or more values are outside the range, or are NaN, or are infinite.
+    """
+    values = pd.to_numeric(placements[column], errors="coerce")
+    invalid = ~values.between(minimum, maximum, inclusive="both")
+    if invalid.any():
+        offenders = ", ".join(f"{index}: {value}" for index, value in values[invalid].head(10).items())
+        raise ValueError(
+            f"All '{column}' values must be finite and between {minimum} and {maximum}. "
+            f"{int(invalid.sum())} of {len(values)} placements are invalid "
+            f"(index: value): {offenders}"
+        )
+
+
+def _expand_degenerate_bound(value):
+    """Expand a zero-width extent bound around one coordinate value.
+
+    The expansion is additive. A multiplicative expansion keeps a zero coordinate at zero.
+    This gives a degenerate extent which GeoKit rejects, e.g. for a single placement at
+    (0, 0). A multiplicative expansion also inverts the bounds of a negative coordinate.
+
+    Parameters
+    ----------
+    value : float
+        The coordinate value which is both the lower and the upper bound.
+
+    Returns
+    -------
+    tuple of float
+        The new lower bound and the new upper bound.
+    """
+    half_width = max(abs(value) * 1e-5, _MIN_EXTENT_HALF_WIDTH)
+    return value - half_width, value + half_width
+
+
 class WorkflowManager:
     """
     The WorkflowManager class assists with the construction of more specialized WorkflowManagers,
@@ -79,21 +134,17 @@ class WorkflowManager:
             self.locs = gk.LocationSet(self.placements[["lon", "lat"]].values)
 
         # limit the input placements longitude to range of -180...180
-        assert self.placements["lon"].between(-180, 180, inclusive="both").any()
+        _check_coordinate_range(self.placements, "lon", -180, 180)
         # limit the input placements latitude to range of -90...90
-        assert self.placements["lat"].between(-90, 90, inclusive="both").any()
+        _check_coordinate_range(self.placements, "lat", -90, 90)
 
         # get bounds of the extent
         _bounds = list(self.locs.getBounds())
         # if no extension in lon and/or lat direction, create incremental artificial width
         if _bounds[0] == _bounds[2]:
-            _x = _bounds[0]
-            _bounds[0] = _x * 0.99999
-            _bounds[2] = _x * 1.00001
+            _bounds[0], _bounds[2] = _expand_degenerate_bound(_bounds[0])
         if _bounds[1] == _bounds[3]:
-            _y = _bounds[1]
-            _bounds[1] = _y * 0.99999
-            _bounds[3] = _y * 1.00001
+            _bounds[1], _bounds[3] = _expand_degenerate_bound(_bounds[1])
         # create extent attribute
         self.ext = gk.Extent(_bounds, srs=_srs)
 
@@ -611,32 +662,34 @@ class WorkflowManager:
         """
         if isinstance(output_variables, str):
             output_variables = [output_variables]
-        if isinstance(output_variables, list) and not "RESKit_sim_order" in output_variables:
+        elif isinstance(output_variables, list):
+            # copy the list, the caller's list must not get "RESKit_sim_order" appended
+            output_variables = list(output_variables)
+        if isinstance(output_variables, list) and "RESKit_sim_order" not in output_variables:
             output_variables.append("RESKit_sim_order")
 
         times = self.time_index
         if times[0].tz is not None:
             times = [np.datetime64(dt.tz_convert("UTC").tz_convert(None)) for dt in times]
         times_days = np.unique(pd.DatetimeIndex(times).date).astype("datetime64")
-        if times_days[0].astype("datetime64[Y]") != times_days[-1].astype("datetime64[Y]"):
-            # old tiles where shifted by 1 hour, so the last day of the previous year also appears. catch this problem whti this if clause
-            times_days = times_days[1:]
         xds = OrderedDict()
         encoding = dict()
 
-        if "location_id" in self.placements.columns:
-            location_coords = self.placements["location_id"].copy()
-            del self.placements["location_id"]
+        # work on a copy, exporting must not change the state of the WorkflowManager
+        placements = self.placements
+        if "location_id" in placements.columns:
+            location_coords = placements["location_id"].copy()
+            placements = placements.drop(columns=["location_id"])
         else:
-            location_coords = np.arange(self.placements.shape[0])
+            location_coords = np.arange(placements.shape[0])
 
         # write placements
-        for c in self.placements.columns:
+        for c in placements.columns:
             # check if c in requestet output_variables
             if output_variables is not None and c not in output_variables:
                 continue
 
-            column = self.placements[c]
+            column = placements[c]
 
             if not is_numeric_dtype(column):
                 if not all(isinstance(x, (str, bytearray)) for x in column):
@@ -850,6 +903,9 @@ def distribute_workflow(
     assert isinstance(placements, pd.DataFrame)
     assert ("lon" in placements.columns and "lat" in placements.columns) or ("geom" in placements.columns)
 
+    # work on a copy, the caller's placements table must not be changed by this function
+    placements = placements.copy()
+
     # Split placements into groups
     if "geom" in placements.columns:
         locs = gk.LocationSet(placements)
@@ -908,8 +964,10 @@ def load_workflow_result(datasets, loader=xarray.load_dataset, sortby="location"
         else:
             datasets = glob(datasets)
 
-    if len(datasets) == 1:
-        ds = xarray.load_dataset(datasets[0]).sortby("locations")
+    if len(datasets) == 0:
+        raise ValueError("No workflow result files were found to load.")
+    elif len(datasets) == 1:
+        ds = loader(datasets[0])
     else:
         ds = xarray.concat(map(loader, datasets), dim="location")
 
