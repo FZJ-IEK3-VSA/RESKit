@@ -7,6 +7,7 @@ import pandas as pd
 import pytest
 
 from reskit import TEST_DATA
+from reskit.util import ResError
 from reskit.weather import Era5Source
 
 
@@ -19,6 +20,14 @@ def pt_Era5Source():
 def pt_BoundedEra5Source():
     aachenExt = gk.Extent.fromVector(gk._test_data_["aachenShapefile.shp"])
     return Era5Source(TEST_DATA["era5-like"], bounds=aachenExt, index_pad=1, verbose=False)
+
+
+def test_load_an_absent_variable_raises(pt_Era5Source):
+    """An absent variable must give an error which names it, not a bare assert."""
+    with pytest.raises(ResError) as error:
+        pt_Era5Source.load("not_a_variable")
+
+    assert "not_a_variable" in str(error.value)
 
 
 def test_Era5Source___init__():

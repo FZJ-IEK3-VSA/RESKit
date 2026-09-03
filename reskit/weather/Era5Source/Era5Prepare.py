@@ -145,6 +145,10 @@ era5_variables = [
     "total_sky_direct_solar_radiation_at_surface",
     "boundary_layer_height",
     "forecast_surface_roughness",
+    "snow_albedo",
+    "snow_density",
+    "snow_depth",
+    "snowfall",
 ]
 era5_dataset = "reanalysis-era5-single-levels"
 
@@ -172,6 +176,10 @@ _ERA5_NC_TO_TILE_LABEL = {
     "v10": "10m_v_component_of_wind",
     "u100": "100m_u_component_of_wind",
     "v100": "100m_v_component_of_wind",
+    "asn": "snow_albedo",
+    "rsn": "snow_density",
+    "sd": "snow_depth",
+    "sf": "snowfall",
 }
 
 

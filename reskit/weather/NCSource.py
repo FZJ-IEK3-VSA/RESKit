@@ -586,7 +586,11 @@ class NCSource(object):
             return
 
         # read the data
-        assert variable in self.variables.index
+        if variable not in self.variables.index:
+            raise ResError(
+                f"The variable '{variable}' is not in this weather source. "
+                f"The source contains: {', '.join(sorted(str(v) for v in self.variables.index))}"
+            )
         ds = nc.Dataset(self.variables["path"][variable], keepweakref=True)
         var = ds[variable]
 

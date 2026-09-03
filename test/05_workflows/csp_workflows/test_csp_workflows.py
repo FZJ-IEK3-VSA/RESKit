@@ -18,7 +18,7 @@ def pt_pv_placements() -> pd.DataFrame:
         31.4,
         31.0,
     ]
-    placements["area_m2"] = [1e6, 5e6, 6e6]
+    placements["land_area_m2"] = [1e6, 5e6, 6e6]
     repeats = int(3 / 3)
     placements = placements.loc[placements.index.repeat(repeats)].reset_index(drop=True)
     return placements
@@ -44,6 +44,10 @@ def test_CSP_PTR_ERA5(pt_pv_placements):
     )
 
     print("Simulation done")
+
+    # the workflow gives both areas in the output
+    assert "land_area_m2" in out.variables
+    assert "aperture_area_m2" in out.variables
 
     # datasets
     a = np.array(["Dataset_SolarSalt_2030", "Dataset_Therminol_2030", "Dataset_SolarSalt_2030"])

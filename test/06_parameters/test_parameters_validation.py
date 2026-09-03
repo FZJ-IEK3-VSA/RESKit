@@ -1,4 +1,4 @@
-"""Regression tests for the parameter csv schema validation (BUG-05)."""
+"""Regression tests for the parameter csv schema validation."""
 
 import pandas as pd
 import pytest
