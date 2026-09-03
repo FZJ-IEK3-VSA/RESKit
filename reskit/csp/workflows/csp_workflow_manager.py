@@ -1,4 +1,4 @@
-from logging import warn, warning
+from logging import warning
 
 from reskit.csp.data.database_loader import load_dataset
 from reskit.solar.workflows.solar_workflow_manager import SolarWorkflowManager
@@ -88,13 +88,13 @@ class PTRWorkflowManager(SolarWorkflowManager):
 
         # if only area in placements:
         if "area" in columns and not "aperture_area_m2" in columns and not "land_area_m2" in columns:
-            warn('Key "area" is assumed to be the land area. Abort if wrong!')
+            warning('Key "area" is assumed to be the land area. Abort if wrong!')
             self.placements["land_area_m2"] = self.placements["area"]
             self.placements.drop("area", axis=1)
             self.placements["aperture_area_m2"] = self.placements["land_area_m2"] * self.ptr_data["SF_density_total"]
 
         if "area_m2" in columns and not "aperture_area_m2" in columns and not "land_area_m2" in columns:
-            warn('Key "area" is assumed to be the land area. Abort if wrong!')
+            warning('Key "area" is assumed to be the land area. Abort if wrong!')
             self.placements["land_area_m2"] = self.placements["area_m2"]
             self.placements.drop("area_m2", axis=1)
             self.placements["aperture_area_m2"] = self.placements["land_area_m2"] * self.ptr_data["SF_density_total"]
@@ -397,8 +397,9 @@ class PTRWorkflowManager(SolarWorkflowManager):
 
             # calculate aoi
             truetracking_angles = pvlib.tracking.singleaxis(
-                apparent_zenith=_solarpos["apparent_zenith"],
-                apparent_azimuth=_solarpos["azimuth"],
+                # positional: pvlib renamed the azimuth argument of singleaxis() in 0.13.1
+                _solarpos["apparent_zenith"],
+                _solarpos["azimuth"],
                 axis_tilt=0,
                 axis_azimuth=row.azimuth,
                 max_angle=90,
@@ -943,7 +944,7 @@ class PTRWorkflowManager(SolarWorkflowManager):
                 assert (self.sim_data["HeattoPlant_W"].mean(axis=0) / self.sim_data["HeattoHTF_W"].mean(axis=0)) < 1
 
         else:
-            warn("Wrong calculation for heat losses of heat transfer fluid selected. Losses will be set to zero.")
+            warning("Wrong calculation for heat losses of heat transfer fluid selected. Losses will be set to zero.")
             _losses = np.zeros_like(self.sim_data["HeattoHTF_W"], dtype=float)
             self.sim_data["HeattoPlant_W"] = self.sim_data["HeattoHTF_W"] - _losses
             self.sim_data["Heat_Losses_W"] = _losses
@@ -1973,8 +1974,9 @@ class PTRWorkflowManager(SolarWorkflowManager):
 
         # calculate aoi
         truetracking_angles = pvlib.tracking.singleaxis(
-            apparent_zenith=_solarpos["apparent_zenith"],
-            apparent_azimuth=_solarpos["azimuth"],
+            # positional: pvlib renamed the azimuth argument of singleaxis() in 0.13.1
+            _solarpos["apparent_zenith"],
+            _solarpos["azimuth"],
             axis_tilt=0,
             axis_azimuth=180,
             max_angle=90,
@@ -1989,8 +1991,9 @@ class PTRWorkflowManager(SolarWorkflowManager):
 
         # calculate aoi
         truetracking_angles = pvlib.tracking.singleaxis(
-            apparent_zenith=_solarpos["apparent_zenith"],
-            apparent_azimuth=_solarpos["azimuth"],
+            # positional: pvlib renamed the azimuth argument of singleaxis() in 0.13.1
+            _solarpos["apparent_zenith"],
+            _solarpos["azimuth"],
             axis_tilt=0,
             axis_azimuth=90,
             max_angle=180,

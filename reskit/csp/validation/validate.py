@@ -72,7 +72,7 @@ def main(datasetname, validation_output_folder):
         print("Reskit done!")
 
     out_reskit = xr.concat(results_list, dim="location")
-    out_reskit.drop("tile x / y").to_netcdf(
+    out_reskit.drop_vars("tile x / y").to_netcdf(
         os.path.join(validation_output_folder, f"sim_results_reskit_{htf_greenius}.nc4")
     )
     # %% Load Greenius Data
