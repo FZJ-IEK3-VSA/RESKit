@@ -7,7 +7,7 @@ from reskit.util.topography import visibility_from_topography
 
 def test_visibility_from_topography():
     output = visibility_from_topography(lon=6.0, lat=51, elevation_raster=TEST_DATA["DEM-like.tif"])
-    assert np.isclose(output["visibility"].values.mean(), 0.27595238095238095)
+    assert np.isclose(output["visibility"].values.mean(), 0.27595238095238095) # Changed due to bug in visibility_from_topography
 
     output = visibility_from_topography(lon=6.0, lat=51, elevation_raster=TEST_DATA["DEM-like.tif"], eye_level=20)
     assert np.isclose(output["visibility"].values.mean(), 0.5376190476190477)
