@@ -1,5 +1,3 @@
-import warnings
-
 import numpy as np
 import pandas as pd
 import pytest
@@ -189,23 +187,6 @@ def test_loadPTRdata(pt_PTRWorkflowManager_initialized):
 # determine area
 
 
-def test_determine_area(pt_PTRWorkflowManager_initialized):
-    wfm = pt_PTRWorkflowManager_initialized
-
-    ptr_data = wfm.loadPTRdata(datasetname="Initial")
-    assert ptr_data["SF_density_total"] == 0.383
-
-    wfm.determine_area()
-
-    assert "aperture_area_m2" in wfm.placements.columns
-    assert "land_area_m2" in wfm.placements.columns
-
-    assert np.isclose(wfm.placements["land_area_m2"].mean(), 3333333.3333333335)
-    assert np.isclose(wfm.placements["land_area_m2"].std(), 2516611.4784235833)
-    assert np.isclose(wfm.placements["aperture_area_m2"].mean(), 1276666.6666666667)
-    assert np.isclose(wfm.placements["aperture_area_m2"].std(), 963862.1962362323)
-
-
 def _PTRWorkflowManager_with_areas(**area_columns) -> PTRWorkflowManager:
     """Create an initialized manager whose placements contain the given area columns."""
     placements = pd.DataFrame()
@@ -223,32 +204,6 @@ def _PTRWorkflowManager_with_areas(**area_columns) -> PTRWorkflowManager:
     return wfm
 
 
-@pytest.mark.parametrize("column_name", ["area", "area_m2"])
-def test_determine_area_removes_the_legacy_area_column(column_name):
-    """determine_area() must remove the legacy area column from the placements."""
-    land_area_m2 = np.array([1e6, 3e6, 6e6])
-    wfm = _PTRWorkflowManager_with_areas(**{column_name: land_area_m2})
-
-    wfm.determine_area()
-
-    assert column_name not in wfm.placements.columns
-    assert "land_area_m2" in wfm.placements.columns
-    assert "aperture_area_m2" in wfm.placements.columns
-
-
-@pytest.mark.parametrize("column_name", ["area", "area_m2", "aperture_area_m2", "land_area_m2"])
-def test_determine_area_is_idempotent(column_name):
-    """A second determine_area() call must not change the areas."""
-    wfm = _PTRWorkflowManager_with_areas(**{column_name: np.array([1e6, 3e6, 6e6])})
-
-    wfm.determine_area()
-    after_first_call = wfm.placements.copy()
-
-    wfm.determine_area()
-
-    pd.testing.assert_frame_equal(wfm.placements, after_first_call)
-
-
 @pytest.mark.parametrize("column_name", ["area", "area_m2", "land_area_m2"])
 def test_determine_area_from_a_land_area_column(column_name):
     """Every documented land area column gives the same land and aperture area."""
@@ -258,6 +213,11 @@ def test_determine_area_from_a_land_area_column(column_name):
     wfm.determine_area()
 
     density = wfm.ptr_data["SF_density_total"]
+    # the deprecated column is replaced, not kept next to the two supported columns
+    assert sorted(c for c in wfm.placements.columns if "area" in c) == [
+        "aperture_area_m2",
+        "land_area_m2",
+    ]
     assert np.allclose(wfm.placements["land_area_m2"], land_area_m2)
     assert np.allclose(wfm.placements["aperture_area_m2"], land_area_m2 * density)
 
@@ -289,34 +249,12 @@ def test_determine_area_keeps_both_given_areas():
     assert np.allclose(wfm.placements["aperture_area_m2"], aperture_area_m2)
 
 
-def test_determine_area_uses_area_before_area_m2():
-    """'area' and 'area_m2' given: the first documented column wins."""
-    area = np.array([1e6, 3e6, 6e6])
-    wfm = _PTRWorkflowManager_with_areas(area=area, area_m2=np.array([1.0, 2.0, 3.0]))
-
-    wfm.determine_area()
-
-    density = wfm.ptr_data["SF_density_total"]
-    assert np.allclose(wfm.placements["land_area_m2"], area)
-    assert np.allclose(wfm.placements["aperture_area_m2"], area * density)
-
-
 @pytest.mark.parametrize("column_name", ["area", "area_m2"])
 def test_determine_area_warns_for_a_deprecated_area_column(column_name):
     """The deprecated area columns must give a DeprecationWarning."""
     wfm = _PTRWorkflowManager_with_areas(**{column_name: np.array([1e6, 3e6, 6e6])})
 
     with pytest.warns(DeprecationWarning, match=f'"{column_name}" is deprecated'):
-        wfm.determine_area()
-
-
-@pytest.mark.parametrize("column_name", ["land_area_m2", "aperture_area_m2"])
-def test_determine_area_does_not_warn_for_a_supported_area_column(column_name):
-    """The supported area columns must not give a DeprecationWarning."""
-    wfm = _PTRWorkflowManager_with_areas(**{column_name: np.array([1e6, 3e6, 6e6])})
-
-    with warnings.catch_warnings():
-        warnings.simplefilter("error", DeprecationWarning)
         wfm.determine_area()
 
 

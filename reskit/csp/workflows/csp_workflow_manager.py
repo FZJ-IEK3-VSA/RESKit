@@ -113,19 +113,20 @@ class PTRWorkflowManager(SolarWorkflowManager):
         """
         assert hasattr(self, "ptr_data")
         assert "SF_density_total" in self.ptr_data.index
+
+        # "area" and "area_m2" are deprecated aliases of "land_area_m2".
+        for deprecated_column in ["area", "area_m2"]:
+            if deprecated_column not in self.placements.columns:
+                continue
+            _warn_deprecated_area_column(deprecated_column)
+            if "land_area_m2" not in self.placements.columns:
+                self.placements["land_area_m2"] = self.placements[deprecated_column]
+            self.placements = self.placements.drop(deprecated_column, axis=1)
+
         columns = self.placements.columns
 
-        # if only area in placements:
-        if "area" in columns and not "aperture_area_m2" in columns and not "land_area_m2" in columns:
-            _warn_deprecated_area_column("area")
-            self.placements["land_area_m2"] = self.placements["area"]
-            self.placements = self.placements.drop("area", axis=1)
-            self.placements["aperture_area_m2"] = self.placements["land_area_m2"] * self.ptr_data["SF_density_total"]
-
-        elif "area_m2" in columns and not "aperture_area_m2" in columns and not "land_area_m2" in columns:
-            _warn_deprecated_area_column("area_m2")
         # only aperture_area_m2 in placements
-        elif "aperture_area_m2" in columns and not "land_area_m2" in columns:
+        if "aperture_area_m2" in columns and not "land_area_m2" in columns:
             self.placements["land_area_m2"] = self.placements["aperture_area_m2"] / self.ptr_data["SF_density_total"]
 
         # only land_area_m2 in placements
