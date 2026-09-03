@@ -68,7 +68,7 @@ def _reskit_object(parts: list):
 
 @pytest.mark.parametrize("notebook", NOTEBOOKS, ids=_notebook_id)
 def test_the_notebook_uses_existing_reskit_attributes(notebook):
-    """Every "rk.<name>" of a notebook must exist in the reskit package (BUG-17)."""
+    """Every "rk.<name>" of a notebook must exist in the reskit package."""
     for code in _code_cells(notebook):
         for node in ast.walk(ast.parse(code)):
             if not isinstance(node, ast.Attribute):
@@ -81,7 +81,7 @@ def test_the_notebook_uses_existing_reskit_attributes(notebook):
 
 @pytest.mark.parametrize("notebook", NOTEBOOKS, ids=_notebook_id)
 def test_the_notebook_uses_existing_keyword_arguments(notebook):
-    """Every keyword of a RESKit call in a notebook must exist in the signature (BUG-17)."""
+    """Every keyword of a RESKit call in a notebook must exist in the signature."""
     for code in _code_cells(notebook):
         for node in ast.walk(ast.parse(code)):
             if not isinstance(node, ast.Call) or not node.keywords:

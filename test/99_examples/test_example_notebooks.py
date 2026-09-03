@@ -78,7 +78,7 @@ def test_the_skip_list_agrees_with_the_documentation_build():
 
 
 def test_the_example_notebooks_are_collected():
-    """The notebook tests must not silently collect zero notebooks (BUG-14)."""
+    """The notebook tests must not silently collect zero notebooks."""
     assert EXAMPLES_DIR.is_dir(), f"{EXAMPLES_DIR} is not a directory"
     assert NOTEBOOKS, f"no example notebook found below {EXAMPLES_DIR}"
 
