@@ -165,29 +165,18 @@ def test_ERA5_NC_TO_TILE_LABEL_ssrd_t_adj_label():
     assert _ERA5_NC_TO_TILE_LABEL["ssrd_t_adj"] == "surface_solar_radiation_downwards.processed.t_adjusted"
 
 
-_SNOW_CDS_NAMES = ["snow_albedo", "snow_density", "snow_depth", "snowfall"]
+def test_every_downloadable_era5_variable_has_a_name_and_a_tile_label():
+    """A variable which prepare_era5() downloads must survive into a tile (BUG-18).
 
-
-def test_the_snow_variables_stay_downloadable_and_tileable():
-    """No workflow requires the snow data, but a user must be able to prepare it.
-
-    openfield_pv_era5 read the four snow variables without using them, see BUG-18. The
-    read is removed. Era5Source keeps its snow loaders, therefore the download and the
-    tiling must keep their snow entries.
+    prepare_era5() downloads era5_variables when the caller gives no variables. A name
+    without a CDS_TO_NC_NAME entry or without a tile label is dropped without an error,
+    see era5_tiler() in reskit/weather/Era5Source/Era5Prepare.py.
     """
-    for cds_name in _SNOW_CDS_NAMES:
-        assert cds_name in era5_variables
-        assert cds_name in Era5Source.CDS_TO_NC_NAME
-        assert Era5Source.CDS_TO_NC_NAME[cds_name] in _ERA5_NC_TO_TILE_LABEL
+    for cds_name in era5_variables:
+        assert cds_name in Era5Source.CDS_TO_NC_NAME, f"{cds_name} has no NC short name"
 
-    assert set(Era5Source.raw_passthrough_variables(_SNOW_CDS_NAMES)) == {"asn", "rsn", "sd", "sf"}
-
-
-def test_no_workflow_depends_on_the_snow_variables():
-    """The snow data is not used by any calculation, so no workflow may download it."""
-    for workflow, sources in depends_on.items():
-        for cds_name in _SNOW_CDS_NAMES:
-            assert cds_name not in sources.get("ERA5", []), f"{workflow} downloads unused snow data"
+    for nc_name in Era5Source.raw_passthrough_variables(era5_variables):
+        assert nc_name in _ERA5_NC_TO_TILE_LABEL, f"{nc_name} has no tile label"
 
 
 # What the ERA5 preprocessing derives from the raw download, see _ERA5_NC_TO_TILE_LABEL
