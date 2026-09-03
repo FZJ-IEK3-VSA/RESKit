@@ -1,4 +1,6 @@
 import os
+import tempfile
+import zipfile
 import cdsapi
 import geokit as gk
 import netCDF4 as nc4
@@ -6,11 +8,17 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 from typing import Union, List, Optional, Tuple
+from reskit.util import ResError
 from reskit.util.weather_tile import get_tile_XY
 
 
-# Coordinate names that must not be treated as data variables when listing/tiling.
-_ERA5_COORD_NAMES = {"time", "valid_time", "latitude", "longitude"}
+# Time coordinate names which an ERA5 file can use, in order of preference. The legacy
+# download format names the axis "time", the CF compliant one names it "valid_time".
+_ERA5_TIME_NAMES = ("time", "valid_time")
+
+# Coordinate names that must not be treated as data variables when listing/tiling. The CF
+# compliant download adds the "number" (ensemble member) and "expver" (ERA5/ERA5T) axes.
+_ERA5_COORD_NAMES = {"time", "valid_time", "latitude", "longitude", "number", "expver"}
 
 # Encoding keys tied to the source file's on-disk layout. They must be dropped before
 # writing a reshaped/subset dataset, otherwise xarray may fail (e.g. chunk sizes larger
@@ -23,10 +31,16 @@ def _open_era5_dataset(nc_path: str) -> xr.Dataset:
 
     ERA5 ``netcdf_legacy`` downloads use ``time``; the newer (non-legacy) export uses
     ``valid_time``. Downstream code (Era5Source/NCSource) expects ``time``.
+
+    ``Dataset.rename()`` gives a new object without the closer of the source object, so
+    ``close()`` on the renamed object leaves the file open. Windows then refuses to remove
+    or to overwrite that file. The closer is therefore attached to the renamed object.
     """
     ds = xr.open_dataset(nc_path)
     if "valid_time" in ds.coords and "time" not in ds.coords:
-        ds = ds.rename({"valid_time": "time"})
+        renamed = ds.rename({"valid_time": "time"})
+        renamed.set_close(ds.close)
+        ds = renamed
     return ds
 
 
@@ -36,10 +50,21 @@ def _nc_data_var_names(nc_path: str) -> list[str]:
         return [v for v in ds.variables if v not in _ERA5_COORD_NAMES]
 
 
+def _time_var_name(ds: nc4.Dataset) -> str:
+    """Return the time variable name of an open NetCDF dataset.
+
+    Accepts both ERA5 download formats: ``time`` (legacy) and ``valid_time`` (CF compliant).
+    """
+    for name in _ERA5_TIME_NAMES:
+        if name in ds.variables:
+            return name
+    raise ResError(f"No ERA5 time variable found. Expected one of {list(_ERA5_TIME_NAMES)}.")
+
+
 def _nc_years(nc_path: str) -> list[str]:
     """Return the sorted unique 4-digit years present in the time coordinate."""
     with nc4.Dataset(nc_path) as ds:
-        tv = ds.variables["time"]
+        tv = ds.variables[_time_var_name(ds)]
         dts = nc4.num2date(
             tv[:],
             tv.units,
@@ -285,6 +310,71 @@ def _tile_variable_to_file(
     _align_longitudes_to_source_convention(target_file, source_lon_min, source_lon_max)
 
 
+def _merge_era5_archive(archive_path: str) -> None:
+    """Replace a zipped CDS answer by one NetCDF file which holds all of its members.
+
+    The CDS groups the fields of a request by GRIB ``stepType`` and writes one NetCDF file
+    for each group. Instantaneous fields such as ``t2m`` are valid at their time stamp.
+    Accumulated fields such as ``ssrd`` are valid over the hour before it. A CF compliant
+    file must mark that difference on the time axis, and one time axis cannot carry both
+    marks. The old ``netcdf_legacy`` format put every field on one axis and lost the
+    difference. That is why the CDS calls the new format the CF compliant one.
+
+    A request therefore answers with a ZIP archive only if it mixes the groups. Measured
+    against the CDS on 2026-09-01: two instantaneous variables give one file, two
+    accumulated variables give one file, and one of each gives an archive with the members
+    ``data_stream-oper_stepType-instant.nc`` and ``data_stream-oper_stepType-accum.nc``.
+    """
+    work_dir = os.path.dirname(os.path.abspath(archive_path))
+    with tempfile.TemporaryDirectory(dir=work_dir) as tmp_dir:
+        with zipfile.ZipFile(archive_path) as archive:
+            members = sorted(m for m in archive.namelist() if m.endswith((".nc", ".nc4")))
+            if not members:
+                raise ResError(f"The CDS answer '{archive_path}' is a ZIP archive without a NetCDF file.")
+            archive.extractall(tmp_dir)
+
+        datasets = [_open_era5_dataset(os.path.join(tmp_dir, m)) for m in members]
+        try:
+            time_encoding = dict(datasets[0]["time"].encoding)
+            # compat is given explicitly: the members share scalar coordinates such as
+            # "number" and "expver", and xarray is about to change the default from
+            # "no_conflicts" (check that they agree) to "override" (take the first).
+            merged = xr.merge(datasets, compat="no_conflicts", combine_attrs="override").load()
+        finally:
+            for dataset in datasets:
+                dataset.close()
+
+        merged["time"].encoding = time_encoding
+        os.remove(archive_path)
+        _write_netcdf(merged, archive_path)
+
+
+def _normalize_era5_download(target_filename: str) -> None:
+    """Rewrite a CDS answer into one NetCDF file whose time coordinate is named ``time``.
+
+    The CF compliant ``netcdf`` format names the time axis ``valid_time`` and can answer
+    with a ZIP archive of several files. A ``netcdf_legacy`` answer needs neither step and
+    is left untouched, so no file is rewritten without a reason.
+
+    Parameters
+    ----------
+    target_filename : str
+        Path of the file which the CDS client wrote.
+    """
+    if zipfile.is_zipfile(target_filename):
+        _merge_era5_archive(target_filename)
+        return
+
+    with nc4.Dataset(target_filename) as dataset:
+        needs_rename = "valid_time" in dataset.variables and "time" not in dataset.variables
+    if not needs_rename:
+        return
+
+    with _open_era5_dataset(target_filename) as dataset:
+        renamed = dataset.load()
+    _write_netcdf(renamed, target_filename)
+
+
 def era5_downloader(
     target_filename: str,
     year: Union[str, List[str]],
@@ -294,8 +384,46 @@ def era5_downloader(
     day: Optional[List[str]] = None,
     time: Optional[List[str]] = None,
     grid: tuple[float, float] = (0.25, 0.25),
-    data_format: str = "netcdf_legacy",
+    data_format: str = "netcdf",
+    download_format: str = "unarchived",
 ):
+    """Download one ERA5 request from the Copernicus Climate Data Store.
+
+    The CDS no longer supports the ``netcdf_legacy`` format, so the default is the CF
+    compliant ``netcdf`` format. That format names the time axis ``valid_time`` and can
+    answer with a ZIP archive of several files. Both are normalised to a single NetCDF
+    file with a ``time`` axis, which is what ``preprocess_era5_data()``, ``era5_tiler()``
+    and ``Era5Source`` read.
+
+    Parameters
+    ----------
+    target_filename : str
+        Path of the NetCDF file to write.
+    year : str or list of str
+        The 4-digit year(s) to request.
+    month : str or list of str
+        The 2-digit month(s) to request.
+    variables : list of str
+        The CDS variable names to request, e.g. ``"2m_temperature"``.
+    area : tuple of float
+        The bounding box as ``(north, west, south, east)``.
+    day : list of str, optional
+        The 2-digit day(s) to request. Defaults to every day of the month.
+    time : list of str, optional
+        The hours to request, e.g. ``"13:00"``. Defaults to every hour of the day.
+    grid : tuple of float, optional
+        The longitude and latitude step in degrees. Defaults to ``(0.25, 0.25)``.
+    data_format : str, optional
+        The CDS data format. Defaults to ``"netcdf"``. Give ``"netcdf_legacy"`` only to
+        reach an archive which still holds that format.
+    download_format : str, optional
+        The CDS download format, ``"unarchived"`` or ``"zip"``. The CDS still answers with
+        a ZIP archive if the request needs more than one file.
+
+    Returns
+    -------
+    None
+    """
     # default to every day / every hour of the requested month(s); CDS ignores days that
     # do not exist in a given month (e.g. day 31 in February)
     if day is None:
@@ -307,7 +435,8 @@ def era5_downloader(
 
     request = {
         "product_type": "reanalysis",
-        "format": data_format,
+        "data_format": data_format,
+        "download_format": download_format,
         "variable": variables,
         "year": year,
         "month": month,
@@ -322,6 +451,9 @@ def era5_downloader(
         request,
         target_filename,
     )
+
+    if data_format.startswith("netcdf"):
+        _normalize_era5_download(target_filename)
 
 
 def preprocess_era5_data(focus_nc: str, processed_dir: Optional[str] = None):

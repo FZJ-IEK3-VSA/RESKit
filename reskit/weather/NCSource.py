@@ -131,8 +131,11 @@ class NCSource(object):
               * Useful in case of interpolation
               * Units are in longitudinal degrees
 
-        time_name : str, optional
+        time_name : str or sequence of str, optional
             The name of the time parameter in the netCDF4 dataset
+            * Give a sequence of names if the same source can use more than one name.
+              The first name which the files contain is used. For example, an ERA5
+              download names its time axis either "time" or "valid_time".
 
         lat_name : str, optional
             The name of the latitude parameter in the netCDF4 dataset
@@ -249,6 +252,13 @@ class NCSource(object):
         tmp["shape"] = [expectedShape[v] for v in tmp.index]
         tmp["path"] = [self.variables[v] for v in tmp.index]
         self.variables = tmp
+
+        # resolve the time variable name: a source can offer more than one spelling, e.g.
+        # an ERA5 download names its time axis "time" (legacy) or "valid_time" (CF).
+        # Keep the first candidate if none is present, so the error stays where it was.
+        if isinstance(time_name, str):
+            time_name = (time_name,)
+        time_name = next((name for name in time_name if name in self.variables.index), time_name[0])
 
         # choose source for the time step extraction
         if not time_index_from == None:
