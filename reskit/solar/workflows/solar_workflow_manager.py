@@ -77,10 +77,7 @@ class SolarWorkflowManager(WorkflowManager):
         ----------
         convention : str, optional
                      The calculation method used to suggest system tilts.
-                     Option 1 of convention is "Ryberg2020".
-                     Option 2 of convention is a string consumable by 'eval'. This string can use the variable latitude.
-                     For example "latitude*0.76".
-                     Option 3 of convention is a path to a rasterfile.
+                     Only "Ryberg2020" is accepted.
                      To get more information check out reskit.solar.location_to_tilt for more information.
 
 
