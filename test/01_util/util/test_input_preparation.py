@@ -166,7 +166,7 @@ def test_ERA5_NC_TO_TILE_LABEL_ssrd_t_adj_label():
 
 
 def test_every_downloadable_era5_variable_has_a_name_and_a_tile_label():
-    """A variable which prepare_era5() downloads must survive into a tile (BUG-18).
+    """A variable which prepare_era5() downloads must survive into a tile.
 
     prepare_era5() downloads era5_variables when the caller gives no variables. A name
     without a CDS_TO_NC_NAME entry or without a tile label is dropped without an error,
@@ -251,7 +251,7 @@ def _nc_name_of(variable):
 
 @pytest.mark.parametrize("workflow", _ERA5_WORKFLOWS)
 def test_era5_dependencies_cover_the_variables_the_workflow_reads(workflow):
-    """A prepared ERA5 dataset must contain every variable which the workflow reads (BUG-18)."""
+    """A prepared ERA5 dataset must contain every variable which the workflow reads."""
     available = _prepared_nc_names(workflow)
 
     for variable in _era5_variables_read_by(_workflow_function(workflow)):
@@ -266,6 +266,6 @@ def test_era5_dependencies_cover_the_variables_the_workflow_reads(workflow):
 
 @pytest.mark.parametrize("workflow", _ERA5_WORKFLOWS)
 def test_every_era5_dependency_has_a_tile_label(workflow):
-    """Every raw ERA5 variable of a workflow must have a tile label (BUG-18)."""
+    """Every raw ERA5 variable of a workflow must have a tile label."""
     for nc_name in Era5Source.raw_passthrough_variables(depends_on[workflow]["ERA5"]):
         assert nc_name in _ERA5_NC_TO_TILE_LABEL

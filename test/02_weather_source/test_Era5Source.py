@@ -23,7 +23,7 @@ def pt_BoundedEra5Source():
 
 
 def test_load_an_absent_variable_raises(pt_Era5Source):
-    """An absent variable must give an error which names it, not a bare assert (BUG-18)."""
+    """An absent variable must give an error which names it, not a bare assert."""
     with pytest.raises(ResError) as error:
         pt_Era5Source.load("not_a_variable")
 
