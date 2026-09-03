@@ -33,7 +33,7 @@ import argparse
 import glob
 import logging
 from pathlib import Path
-from typing import Iterable, Literal, Optional
+from typing import Iterable, Optional
 import xarray as xr
 from tqdm.auto import tqdm
 import numpy as np
@@ -41,9 +41,6 @@ import pandas as pd
 import geokit as gk
 
 LOG = logging.getLogger(__name__)
-
-
-CombineMode = Literal["auto", "merge", "combine_by_coords"]
 
 
 def _list_tiled_nc_files(base_path: Path, year: int, variable: str, zoom_level: int) -> list[Path]:
@@ -99,25 +96,43 @@ def _mean_over_time(ds: xr.Dataset) -> xr.Dataset:
     return ds.mean(dim="time", keep_attrs=True)
 
 
+def _combine_tiles(tiles: list[xr.Dataset] | list[xr.DataArray]) -> xr.Dataset:
+    """Combine the tiles of one year into a single dataset.
+
+    RESKit writes tiles with identical variable names on disjoint lat/lon coordinates,
+    so combining by coords is the correct operation: it concatenates the tiles along
+    their coordinates. :func:`xarray.merge` returns the same result for such tiles, but
+    it also accepts tiles which overlap, and then silently unions the overlap.
+    :func:`xarray.combine_by_coords` rejects that input, which is what an overlap
+    deserves.
+    """
+    # combine_by_coords returns a DataArray for DataArray input, so normalize first and
+    # always return a Dataset.
+    datasets = [tile if isinstance(tile, xr.Dataset) else tile.to_dataset() for tile in tiles]
+
+    # The keyword defaults of xarray are scheduled to change; state them here.
+    return xr.combine_by_coords(
+        datasets,
+        compat="no_conflicts",
+        data_vars="all",
+        join="outer",
+        combine_attrs="override",
+    )
+
+
 def load_era5_year(
     base_path: str | Path,
     year: int,
     variable: str,
     zoom_level: int = 4,
-    combine_mode: CombineMode = "auto",
     mean_over_time: bool = True,
 ) -> xr.Dataset:
     """Load a year of processed ERA5 data.
 
     Logic:
-    - If the input is tiled (zoom directory exists and contains matching tiles): merge tiles.
-    - If not tiled: expect exactly one NetCDF for the year; nothing is merged.
-
-    Notes on combining:
-    - Some RESKit processing pipelines write tiles with identical variable names,
-      but disjoint lat/lon coordinates. In that case, combining by coords is the
-      correct operation.
-    - If tiles contain distinct data variables (less common), xarray merge is ok.
+    - If the input is tiled (zoom directory exists and contains matching tiles): combine the
+      tiles by their coordinates, see :func:`_combine_tiles`.
+    - If not tiled: expect exactly one NetCDF for the year; nothing is combined.
     """
     base_path = Path(base_path)
 
@@ -138,10 +153,8 @@ def load_era5_year(
             all_datasets.append(ds.load())
 
     all_datasets = [ds.sortby(["latitude", "longitude"]) for ds in all_datasets]
-    # join="outer" keeps the current behaviour, the xarray default will become "exact"
-    ds_merged = xr.merge(all_datasets, compat="no_conflicts", join="outer")
 
-    return ds_merged
+    return _combine_tiles(all_datasets)
 
 
 def create_long_run_average(
@@ -152,7 +165,6 @@ def create_long_run_average(
     out_dir: str | Path,
     zoom_level: int = 4,
     cache_yearly: bool = True,
-    combine_mode: CombineMode = "auto",
     weather_source_prefix: Optional[str] = None,
 ) -> xr.Dataset:
     """Create a long-run average dataset across years (inclusive)."""
@@ -174,7 +186,6 @@ def create_long_run_average(
                 year=year,
                 variable=variable,
                 zoom_level=zoom_level,
-                combine_mode=combine_mode,
             )
             if cache_yearly:
                 ds_year.to_netcdf(yearly_fp)
@@ -254,7 +265,6 @@ def compute_dni_year(
     surface_temperature_variable: str,
     surface_pressure_variable: str,
     zoom_level: int = 4,
-    combine_mode: CombineMode = "auto",
 ) -> xr.Dataset:
     """Compute time-averaged DNI for a single year, tile by tile.
 
@@ -270,7 +280,6 @@ def compute_dni_year(
         year=year,
         variable=surface_temperature_variable,
         zoom_level=zoom_level,
-        combine_mode=combine_mode,
         mean_over_time=True,
     )
     data_var_temp = list(surface_temperature_year.data_vars)[0]
@@ -281,7 +290,6 @@ def compute_dni_year(
         year=year,
         variable=surface_pressure_variable,
         zoom_level=zoom_level,
-        combine_mode=combine_mode,
         mean_over_time=True,
     )
     data_var_pres = list(surface_pressure_year.data_vars)[0]
@@ -332,7 +340,7 @@ def compute_dni_year(
             with xr.open_dataset(fp) as ds:
                 all_datasets.append(_tile_to_dni(ds, surface_temperature_year, surface_pressure_year))
 
-    return xr.merge(all_datasets, join="outer")
+    return _combine_tiles(all_datasets)
 
 
 def create_long_run_average_DNI(
@@ -346,7 +354,6 @@ def create_long_run_average_DNI(
     out_dir: str | Path,
     zoom_level: int = 4,
     cache_yearly: bool = True,
-    combine_mode: CombineMode = "auto",
     weather_source_prefix: Optional[str] = None,
 ) -> xr.Dataset:
     """Create a long-run average dataset across years (inclusive)."""
@@ -370,7 +377,6 @@ def create_long_run_average_DNI(
                 surface_temperature_variable=surface_temperature_variable,
                 surface_pressure_variable=surface_pressure_variable,
                 zoom_level=zoom_level,
-                combine_mode=combine_mode,
             )
             if cache_yearly:
                 direct_normal_irradiance.to_netcdf(yearly_fp)
@@ -505,12 +511,6 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help="Disable caching per-year merged NetCDFs (default: caching is enabled)",
     )
     p.add_argument(
-        "--combine-mode",
-        choices=("auto", "merge", "combine_by_coords"),
-        default="auto",
-        help="How to combine tile datasets",
-    )
-    p.add_argument(
         "--data-var",
         type=str,
         default=None,
@@ -552,7 +552,6 @@ def create_LRA(
     zoom_level: int = 4,
     out_dir: str | Path = Path("output"),
     cache_yearly: bool = True,
-    combine_mode: CombineMode = "auto",
     data_var: Optional[str] = None,
     variable_name_output: Optional[str] = None,
     write_geotiff: bool = True,
@@ -603,9 +602,6 @@ def create_LRA(
         intermediate files are cached.
     cache_yearly:
         If True, cache per-year merged/loaded datasets to NetCDF.
-    combine_mode:
-        How to combine tiled datasets. Use ``"auto"`` (default) unless you have
-        a specific reason.
     data_var:
         If the resulting LRA dataset contains multiple data variables, specify
         which one to export when writing a GeoTIFF.
@@ -654,7 +650,6 @@ def create_LRA(
         out_dir=var_out_dir,
         zoom_level=zoom_level,
         cache_yearly=cache_yearly,
-        combine_mode=combine_mode,
         weather_source_prefix=weather_source_prefix,
     )
     if variable_name_output is not None:
@@ -689,7 +684,6 @@ def create_DNI_LRA(
     zoom_level: int = 4,
     out_dir: str | Path = Path("output"),
     cache_yearly: bool = True,
-    combine_mode: CombineMode = "auto",
     variable_name_output: Optional[str] = None,
     write_geotiff: bool = True,
     write_netcdf: bool = False,
@@ -726,7 +720,6 @@ def create_DNI_LRA(
         out_dir=var_out_dir,
         zoom_level=zoom_level,
         cache_yearly=cache_yearly,
-        combine_mode=combine_mode,
         weather_source_prefix=weather_source_prefix,
     )
 
@@ -1087,7 +1080,6 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
         zoom_level=args.zoom_level,
         out_dir=args.out_dir,
         cache_yearly=args.cache_yearly,
-        combine_mode=args.combine_mode,
         data_var=args.data_var,
         write_geotiff=args.write_geotiff,
         log_level=args.log_level,

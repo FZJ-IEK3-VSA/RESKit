@@ -612,7 +612,6 @@ def test_arg_parser_defaults():
 
     assert args.zoom_level == 4
     assert args.cache_yearly is True
-    assert args.combine_mode == "auto"
     assert args.write_geotiff is False
     assert args.start_year == 2000
 
