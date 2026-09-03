@@ -25,7 +25,7 @@ def pt_wind_placements() -> pd.DataFrame:
     return df
 
 
-def test_WorkflowManager___init__():
+def _make_WorkflowManager():
     placements = pd.DataFrame()
     placements["lon"] = [
         6.083,
@@ -72,9 +72,14 @@ def test_WorkflowManager___init__():
     return man
 
 
+def test_WorkflowManager___init__():
+    """Run _make_WorkflowManager(), which other tests use as a factory."""
+    _make_WorkflowManager()
+
+
 @pytest.fixture
 def pt_WorkflowManager_initialized() -> WorkflowManager:
-    return test_WorkflowManager___init__()
+    return _make_WorkflowManager()
 
 
 def test_WorkflowManager_set_time_index(
