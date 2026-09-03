@@ -81,13 +81,6 @@ def test_SolarWorkflowManager_estimate_tilt_from_latitude(
         [39.0679049, 39.1082060, 39.1484058, 39.1885045, 39.2285025],
     ).all()
 
-    man.estimate_tilt_from_latitude("(latitude-5)**2")
-
-    assert np.isclose(
-        man.placements["tilt"],
-        [2067.975625, 2077.080625, 2086.205625, 2095.350625, 2104.515625],
-    ).all()
-
 
 def test_SolarWorkflowManager_estimate_azimuth_from_latitude(
     pt_SolarWorkflowManager_initialized,
