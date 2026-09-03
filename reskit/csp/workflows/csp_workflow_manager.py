@@ -124,10 +124,6 @@ class PTRWorkflowManager(SolarWorkflowManager):
 
         elif "area_m2" in columns and not "aperture_area_m2" in columns and not "land_area_m2" in columns:
             _warn_deprecated_area_column("area_m2")
-            self.placements["land_area_m2"] = self.placements["area_m2"]
-            self.placements = self.placements.drop("area_m2", axis=1)
-            self.placements["aperture_area_m2"] = self.placements["land_area_m2"] * self.ptr_data["SF_density_total"]
-
         # only aperture_area_m2 in placements
         elif "aperture_area_m2" in columns and not "land_area_m2" in columns:
             self.placements["land_area_m2"] = self.placements["aperture_area_m2"] / self.ptr_data["SF_density_total"]
@@ -426,8 +422,9 @@ class PTRWorkflowManager(SolarWorkflowManager):
 
             # calculate aoi
             truetracking_angles = pvlib.tracking.singleaxis(
-                apparent_zenith=_solarpos["apparent_zenith"],
-                apparent_azimuth=_solarpos["azimuth"],
+                # positional: pvlib renamed the azimuth argument of singleaxis() in 0.13.1
+                _solarpos["apparent_zenith"],
+                _solarpos["azimuth"],
                 axis_tilt=0,
                 axis_azimuth=row.azimuth,
                 max_angle=90,
@@ -2002,8 +1999,9 @@ class PTRWorkflowManager(SolarWorkflowManager):
 
         # calculate aoi
         truetracking_angles = pvlib.tracking.singleaxis(
-            apparent_zenith=_solarpos["apparent_zenith"],
-            apparent_azimuth=_solarpos["azimuth"],
+            # positional: pvlib renamed the azimuth argument of singleaxis() in 0.13.1
+            _solarpos["apparent_zenith"],
+            _solarpos["azimuth"],
             axis_tilt=0,
             axis_azimuth=180,
             max_angle=90,
@@ -2018,8 +2016,9 @@ class PTRWorkflowManager(SolarWorkflowManager):
 
         # calculate aoi
         truetracking_angles = pvlib.tracking.singleaxis(
-            apparent_zenith=_solarpos["apparent_zenith"],
-            apparent_azimuth=_solarpos["azimuth"],
+            # positional: pvlib renamed the azimuth argument of singleaxis() in 0.13.1
+            _solarpos["apparent_zenith"],
+            _solarpos["azimuth"],
             axis_tilt=0,
             axis_azimuth=90,
             max_angle=180,

@@ -215,7 +215,7 @@ def CSP_PTR_ERA5(
                 output_dataset["datasetname"] = (output_dataset["lon"] * 0).astype(str)
                 output_dataset["datasetname"][:] = dataset
             if "Dataset_opt" in output_dataset.variables:
-                output_dataset = output_dataset.drop("Dataset_opt")
+                output_dataset = output_dataset.drop_vars("Dataset_opt")
 
             # set index from placements
             output_dataset["location"] = placements_dataset.index

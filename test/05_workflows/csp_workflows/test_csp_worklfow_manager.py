@@ -1273,7 +1273,7 @@ def pt_PTRWorkflowManager_calcCFs() -> PTRWorkflowManager:
     # wfm.placements['aperture_area_m2'] = 1E5
     # wfm.placements['land_area_m2'] = 1E5 / 0.3
 
-    # wfm._time_index_ = pd.date_range("2014-12-31 23:30:00", periods=100, freq="H")
+    # wfm._time_index_ = pd.date_range("2014-12-31 23:30:00", periods=100, freq="h")
 
     return wfm
 
