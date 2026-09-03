@@ -14,7 +14,7 @@ def print_testresults(variable):
     print("max: ", variable[0:140, :].max())
 
 
-def test_SolarWorkflowManager___init__() -> SolarWorkflowManager:
+def _make_SolarWorkflowManager() -> SolarWorkflowManager:
     # (self, placements):
     placements = pd.DataFrame()
     placements["lon"] = [
@@ -63,9 +63,14 @@ def test_SolarWorkflowManager___init__() -> SolarWorkflowManager:
     return man
 
 
+def test_SolarWorkflowManager___init__():
+    """Run _make_SolarWorkflowManager(), which other tests use as a factory."""
+    _make_SolarWorkflowManager()
+
+
 @pytest.fixture
 def pt_SolarWorkflowManager_initialized() -> SolarWorkflowManager:
-    return test_SolarWorkflowManager___init__()
+    return _make_SolarWorkflowManager()
 
 
 def test_SolarWorkflowManager_estimate_tilt_from_latitude(
@@ -195,8 +200,6 @@ def test_SolarWorkflowManager_apply_elevation(pt_SolarWorkflowManager_initialize
         ],  # the last must be equal to fallback since outside raster
     ).all()
 
-    return man
-
 
 @pytest.fixture
 def pt_SolarWorkflowManager_loaded(
@@ -247,8 +250,6 @@ def test_SolarWorkflowManager_determine_solar_position(
     assert np.isclose(man.sim_data["apparent_solar_zenith"].min(), 72.98977919840057)
     assert np.isclose(man.sim_data["apparent_solar_zenith"].max(), 152.49005970814673)
 
-    return man
-
 
 @pytest.fixture
 def pt_SolarWorkflowManager_solpos(
@@ -287,8 +288,6 @@ def test_SolarWorkflowManager_filter_positive_solar_elevation(
     assert np.isclose(man.sim_data["apparent_solar_zenith"].min(), 72.98977919840057)
     assert np.isclose(man.sim_data["apparent_solar_zenith"].max(), 91.89378124249767)
 
-    return man
-
 
 def test_SolarWorkflowManager_determine_extra_terrestrial_irradiance(
     pt_SolarWorkflowManager_solpos: SolarWorkflowManager,
@@ -304,8 +303,6 @@ def test_SolarWorkflowManager_determine_extra_terrestrial_irradiance(
     assert np.isclose(man.sim_data["extra_terrestrial_irradiance"].min(), 1413.940576307916)
     assert np.isclose(man.sim_data["extra_terrestrial_irradiance"].max(), 1414.0192010311885)
 
-    return man
-
 
 def test_SolarWorkflowManager_determine_air_mass(
     pt_SolarWorkflowManager_solpos: SolarWorkflowManager,
@@ -320,8 +317,6 @@ def test_SolarWorkflowManager_determine_air_mass(
     assert np.isclose(man.sim_data["air_mass"].std(), 10.849130623014739)
     assert np.isclose(man.sim_data["air_mass"].min(), 3.383950740640421)
     assert np.isclose(man.sim_data["air_mass"].max(), 29.0)
-
-    return man
 
 
 @pytest.fixture
@@ -706,5 +701,3 @@ def test_SolarWorkflowManager_nan_values_tilt_azimuth_elev___init__() -> SolarWo
     assert ~man.placements["tilt"].isna().any()
     assert ~man.placements["azimuth"].isna().any()
     assert ~man.placements["elev"].isna().any()
-
-    return man
