@@ -3,6 +3,7 @@ from os.path import dirname, join
 import numpy as np
 
 from .. import NCSource
+from ._names import ERA5_TIME_NAMES
 
 
 class Era5Source(NCSource):
@@ -267,7 +268,7 @@ class Era5Source(NCSource):
             bounds=bounds,
             # the legacy ERA5 download names the time axis "time", the CF compliant one
             # "valid_time"; accept whichever the given files use
-            time_name=("time", "valid_time"),
+            time_name=ERA5_TIME_NAMES,
             lat_name="latitude",
             lon_name="longitude",
             index_pad=index_pad,

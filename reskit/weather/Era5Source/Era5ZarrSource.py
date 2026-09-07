@@ -11,6 +11,7 @@ import xarray as xr
 from ...util import ResError
 from ..NCSource import NCSource
 from .Era5Source import Era5Source
+from ._names import ERA5_TIME_NAMES
 
 
 class Era5ZarrSource(Era5Source):
@@ -279,7 +280,7 @@ class Era5ZarrSource(Era5Source):
             If neither 'valid_time' nor 'time' is used as a dimension of the data variables,
             or if no matching datetime coordinate is available for it
         """
-        time_names = ("valid_time", "time")
+        time_names = ERA5_TIME_NAMES
 
         time_dim = None
         datetime_coordinate = None

@@ -1,6 +1,7 @@
 import filecmp
 import gc
 import os
+import pathlib
 import shutil
 import tempfile
 import warnings
@@ -12,6 +13,7 @@ import pandas as pd
 import xarray as xr
 import pytest
 from reskit import TEST_DATA
+from reskit.util import ResError
 from reskit.weather.Era5Source.Era5Prepare import (
     _ERA5_NC_TO_TILE_LABEL,
     _align_longitudes_to_source_convention,
@@ -19,7 +21,7 @@ from reskit.weather.Era5Source.Era5Prepare import (
     _get_source_lon_boxes,
     _iter_tile_x_indices,
     _normalize_lon,
-    _nc_years,
+    _nc_data_var_names,
     _open_era5_dataset,
     _split_lon_boxes,
     _tile_variable_to_file,
@@ -220,15 +222,17 @@ def test_get_source_lon_boxes_keeps_extended_negative_longitudes():
     ) == pytest.approx([(-182.0, -155.5)])
 
 
-def _make_era5_raw(path, *, lat, lon, n_times=4, vars_spec, seed=0, time_name="time", scalar_coords=None):
+def _make_era5_raw(
+    path, *, lat, lon, n_times=4, vars_spec, seed=0, time_name="time", scalar_coords=None, start="2015-01-01"
+):
     """Write a synthetic ERA5-like raw NetCDF (time, latitude, longitude) for testing.
 
     vars_spec maps variable name -> attrs dict; values are random floats. Time is encoded
     as int32 'hours since 1900-01-01' to mirror the real downloads. Give
     time_name="valid_time" and scalar_coords={"number": 0, "expver": "0001"} to mirror a
-    CF compliant ('netcdf') download.
+    CF compliant ('netcdf') download. Give 'start' to move the time axis.
     """
-    time = pd.date_range("2015-01-01", periods=n_times, freq="h")
+    time = pd.date_range(start, periods=n_times, freq="h")
     shape = (len(time), len(lat), len(lon))
     rng = np.random.default_rng(seed)
     coords = {time_name: time, "latitude": np.asarray(lat, "f4"), "longitude": np.asarray(lon, "f4")}
@@ -380,57 +384,49 @@ def _download(target, **kwargs):
     )
 
 
-def test_era5_downloader_does_not_ask_for_the_unsupported_legacy_format(tmp_path, monkeypatch):
-    """The CDS rejects 'netcdf_legacy', so the request must ask for 'netcdf'."""
-    requests = _patch_cds_client(
-        monkeypatch,
-        lambda target: _make_era5_raw(
-            target, lat=TILE_LAT, lon=TILE_LON, vars_spec={"t2m": {}}, time_name="valid_time"
-        ),
-    )
+def _cf_answer_writer(recorder=None, **kwargs):
+    """Return a writer which answers with one CF compliant ('valid_time') NetCDF file.
+
+    Give a dict as 'recorder' to receive the written dataset under the key "ds".
+    """
+
+    def write_cf_answer(path):
+        ds = _make_era5_raw(
+            path,
+            lat=TILE_LAT,
+            lon=TILE_LON,
+            vars_spec={"t2m": {"units": "K"}},
+            time_name="valid_time",
+            **kwargs,
+        )
+        if recorder is not None:
+            recorder["ds"] = ds
+
+    return write_cf_answer
+
+
+def test_era5_downloader_asks_for_the_current_request_keys(tmp_path, monkeypatch):
+    """The CDS rejects 'netcdf_legacy' and expects 'data_format'/'download_format'."""
+    requests = _patch_cds_client(monkeypatch, _cf_answer_writer())
 
     _download(tmp_path / "raw.nc")
 
     _, request, _ = requests[0]
     assert request["data_format"] == "netcdf"
+    assert request["download_format"] == "unarchived"
     assert "netcdf_legacy" not in request.values()
     assert "format" not in request
-
-
-def test_era5_downloader_sends_the_download_format(tmp_path, monkeypatch):
-    """The current CDS API expects a 'download_format' next to the 'data_format'."""
-    requests = _patch_cds_client(
-        monkeypatch,
-        lambda target: _make_era5_raw(
-            target, lat=TILE_LAT, lon=TILE_LON, vars_spec={"t2m": {}}, time_name="valid_time"
-        ),
-    )
-
-    _download(tmp_path / "raw.nc")
-
-    _, request, _ = requests[0]
-    assert request["download_format"] == "unarchived"
 
 
 def test_era5_downloader_renames_valid_time_to_time(tmp_path, monkeypatch):
     """A CF compliant answer names its time axis 'valid_time'. Downstream code needs 'time'."""
     target = tmp_path / "raw.nc"
-    source = _make_era5_raw(
-        target.with_name("expected.nc"),
-        lat=TILE_LAT,
-        lon=TILE_LON,
-        vars_spec={"t2m": {"units": "K"}},
-        time_name="valid_time",
-    )
-    _patch_cds_client(
-        monkeypatch,
-        lambda path: _make_era5_raw(
-            path, lat=TILE_LAT, lon=TILE_LON, vars_spec={"t2m": {"units": "K"}}, time_name="valid_time"
-        ),
-    )
+    answer = {}
+    _patch_cds_client(monkeypatch, _cf_answer_writer(recorder=answer))
 
     _download(target)
 
+    source = answer["ds"]
     with nc4.Dataset(target) as out:
         assert "time" in out.variables
         assert "valid_time" not in out.variables
@@ -440,13 +436,20 @@ def test_era5_downloader_renames_valid_time_to_time(tmp_path, monkeypatch):
         assert pd.DatetimeIndex(times).equals(pd.DatetimeIndex(source["valid_time"].values))
 
 
-def _zip_answer_writer(member_dir):
-    """Return a writer which answers with a ZIP archive of one instant and one accum member."""
-    parts = {"instant": {"t2m": {"units": "K"}}, "accum": {"ssrd": {"units": "J m**-2"}}}
+def _zip_answer_writer(member_dir, accum_start="2015-01-01"):
+    """Return a writer which answers with a ZIP archive of one instant and one accum member.
+
+    Give 'accum_start' to move the time axis of the accumulated member away from the
+    instantaneous one.
+    """
+    parts = {
+        "instant": ({"t2m": {"units": "K"}}, "2015-01-01"),
+        "accum": ({"ssrd": {"units": "J m**-2"}}, accum_start),
+    }
 
     def write_zip_answer(path):
         members = []
-        for step_type, vars_spec in parts.items():
+        for step_type, (vars_spec, start) in parts.items():
             member = member_dir / f"data_stream-oper_stepType-{step_type}.nc"
             _make_era5_raw(
                 member,
@@ -454,6 +457,7 @@ def _zip_answer_writer(member_dir):
                 lon=TILE_LON,
                 vars_spec=vars_spec,
                 time_name="valid_time",
+                start=start,
                 # both members carry these scalar coordinates, as a real answer does
                 scalar_coords={"number": 0, "expver": "0001"},
             )
@@ -484,9 +488,11 @@ def test_era5_downloader_merges_a_zipped_answer(tmp_path, monkeypatch):
 
     _patch_cds_client(monkeypatch, _zip_answer_writer(tmp_path))
 
-    # the merge must not depend on a default which xarray is about to change
+    # The merge must pin the xarray defaults which are about to change. An unpinned
+    # 'compat' or 'join' raises the deprecation message of xarray here. The filter names
+    # that message, so that an unrelated FutureWarning does not fail this test.
     with warnings.catch_warnings():
-        warnings.simplefilter("error", FutureWarning)
+        warnings.filterwarnings("error", category=FutureWarning, message=".*default value for.*")
         _download(target)
 
     assert not zipfile.is_zipfile(target)
@@ -495,6 +501,32 @@ def test_era5_downloader_merges_a_zipped_answer(tmp_path, monkeypatch):
         assert "valid_time" not in out.variables
         assert out["t2m"].shape == (4, len(TILE_LAT), len(TILE_LON))
         assert out["ssrd"].shape == (4, len(TILE_LAT), len(TILE_LON))
+
+
+def test_era5_downloader_rejects_zip_members_with_different_time_axes(tmp_path, monkeypatch):
+    """A time mismatch must raise. The merge must not pad the members with NaN.
+
+    xarray merges on the union of the two axes if 'join' stays at its old default. Every
+    variable then gets NaN over the steps which its own member does not hold, and those
+    NaN values reach the raw file without a message.
+    """
+    target = tmp_path / "raw.nc"
+    _patch_cds_client(monkeypatch, _zip_answer_writer(tmp_path, accum_start="2015-01-01 01:00"))
+
+    with pytest.raises(ValueError, match="exact"):
+        _download(target)
+
+    # the answer is still the archive: a failed merge must not lose the download
+    assert zipfile.is_zipfile(target)
+
+
+def test_era5_downloader_rejects_an_answer_which_is_neither_netcdf_nor_zip(tmp_path, monkeypatch):
+    """A GRIB file or an error page must give a clear message, not a ZIP error."""
+    target = tmp_path / "raw.nc"
+    _patch_cds_client(monkeypatch, lambda path: pathlib.Path(path).write_bytes(b"GRIB\x00\x00\x00\x02"))
+
+    with pytest.raises(ResError, match="neither a NetCDF file nor a ZIP archive"):
+        _download(target)
 
 
 def test_open_era5_dataset_closes_the_file(tmp_path):
@@ -533,7 +565,7 @@ def test_era5_downloader_closes_the_members_of_a_zipped_answer(tmp_path, monkeyp
 
     assert still_open == []
     # the temp dir of the merge is removed, so only the answer stays
-    assert [p.name for p in tmp_path.iterdir()] == ["raw.nc"]
+    assert {p.name for p in tmp_path.iterdir()} == {"raw.nc"}
 
 
 def test_era5_downloader_leaves_a_legacy_answer_untouched(tmp_path, monkeypatch):
@@ -552,19 +584,41 @@ def test_era5_downloader_leaves_a_legacy_answer_untouched(tmp_path, monkeypatch)
     assert filecmp.cmp(target, reference, shallow=False)
 
 
-def test_nc_years_reads_a_cf_compliant_file(tmp_path):
-    """era5_tiler must find the years of a 'valid_time' file, not only of a 'time' file."""
-    raw = tmp_path / "raw.nc"
-    _make_era5_raw(raw, lat=TILE_LAT, lon=TILE_LON, vars_spec={"blh": {}}, time_name="valid_time")
+def test_nc_data_var_names_skips_the_cf_compliant_coordinates(tmp_path):
+    """'number' and 'expver' are coordinates of a CF compliant answer, not data.
 
-    assert _nc_years(str(raw)) == ["2015"]
+    The tiler names one output file for each data variable, so a coordinate which counts
+    as data gives a tile which no workflow asks for.
+    """
+    raw = tmp_path / "raw.nc"
+    _make_era5_raw(
+        raw,
+        lat=TILE_LAT,
+        lon=TILE_LON,
+        vars_spec={"blh": {}},
+        time_name="valid_time",
+        scalar_coords={"number": 0, "expver": "0001"},
+    )
+
+    assert _nc_data_var_names(str(raw)) == ["blh"]
 
 
 def test_era5_tiler_accepts_a_cf_compliant_raw_file(tmp_path):
-    """The tiler must accept a raw file of the CF compliant download format."""
+    """The tiler must accept a raw file of the CF compliant download format.
+
+    This also covers _nc_years() on a 'valid_time' file: the tile is named after the year
+    which the tiler read from the time axis.
+    """
     raw = tmp_path / "raw" / "era5_test_raw.nc"
     raw.parent.mkdir()
-    _make_era5_raw(raw, lat=TILE_LAT, lon=TILE_LON, vars_spec={"blh": {"units": "m"}}, time_name="valid_time")
+    _make_era5_raw(
+        raw,
+        lat=TILE_LAT,
+        lon=TILE_LON,
+        vars_spec={"blh": {"units": "m"}},
+        time_name="valid_time",
+        scalar_coords={"number": 0, "expver": "0001"},
+    )
     processed_dir = tmp_path / "processed"
     processed_dir.mkdir()
     tile_out = tmp_path / "tiles"
@@ -579,6 +633,8 @@ def test_era5_tiler_accepts_a_cf_compliant_raw_file(tmp_path):
 
     tile = tile_out / EXPECTED_TILE_DIR / tile_filename(ZOOM, TILE_X, TILE_Y, TILE_YEAR, "boundary_layer_height")
     assert tile.exists()
+    # 'blh' is the only data variable, so the tiler writes exactly one tile
+    assert [p.name for p in tile_out.rglob("*.nc")] == [tile.name]
     with nc4.Dataset(tile) as out:
         assert "blh" in out.variables
         assert "time" in out.variables

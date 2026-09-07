@@ -258,6 +258,7 @@ class NCSource(object):
         # Keep the first candidate if none is present, so the error stays where it was.
         if isinstance(time_name, str):
             time_name = (time_name,)
+        self._time_name_candidates = tuple(time_name)
         time_name = next((name for name in time_name if name in self.variables.index), time_name[0])
 
         # choose source for the time step extraction
@@ -411,6 +412,30 @@ class NCSource(object):
 
         # initialize the data container
         self.data = OrderedDict()
+
+    def _time_var_of(self, ds):
+        """Return the name which one open netCDF4 dataset gives to its time variable.
+
+        A source can spell its time axis in more than one way, e.g. an ERA5 download names
+        it "time" (legacy) or "valid_time" (CF compliant). A source built from a directory
+        of files can therefore hold a file which does not use 'self.time_name'.
+
+        Parameters
+        ----------
+        ds : netCDF4.Dataset
+            An open dataset of one of the files of this source
+
+        Returns
+        -------
+        str
+            The time variable name which this dataset uses
+        """
+        for name in (self.time_name, *self._time_name_candidates):
+            if name in ds.variables:
+                return name
+        raise ResError(
+            "No time variable found in %s. Expected one of %s." % (ds.filepath(), list(self._time_name_candidates))
+        )
 
     def var_info(self, var):
         """Prints more information about the given variable
@@ -612,7 +637,8 @@ class NCSource(object):
                     % (variable, self.time_index.shape[0], tmp.shape[0])
                 )
 
-            lastTimeIndex = nc.num2date(ds[self.time_name][-1], ds[self.time_name].units)
+            time_var = self._time_var_of(ds)
+            lastTimeIndex = nc.num2date(ds[time_var][-1], ds[time_var].units)
 
             if not lastTimeIndex in self._timeindex_raw:
                 raise ResError("Filling is only intended to fill the last missing step")
