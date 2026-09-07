@@ -480,3 +480,50 @@ def test_Era5ZarrSource_get_data_frame_on_360_grid(tmp_path):
     assert list(out.columns) == ["(-0.1, 50.25)", "(-0.15, 50.0)"]
     assert np.allclose(out["(-0.1, 50.25)"].values, [4, 13])
     assert np.allclose(out["(-0.15, 50.0)"].values, [6, 15])
+
+
+def test_Era5ZarrSource_slices_time_before_deriving_solar(era5_zarr_store, monkeypatch):
+    """The solar derivation must not touch the full time axis of the store.
+
+    Deriving first forces xarray to shift the whole time axis, which for a multi-year
+    cloud store does not fit into memory.
+    """
+    seen = {}
+    original = Era5ZarrSource._derive_solar_variables.__func__
+
+    def spy(cls, ds, time_name):
+        seen["steps"] = ds.sizes[time_name]
+        return original(cls, ds, time_name)
+
+    monkeypatch.setattr(Era5ZarrSource, "_derive_solar_variables", classmethod(spy))
+
+    src = Era5ZarrSource(
+        str(era5_zarr_store),
+        time_slice=slice("2020-01-01 00:30:00", "2020-01-01 01:30:00"),
+        verbose=False,
+    )
+
+    # Two requested steps, plus the one leading step the derivation needs
+    assert seen["steps"] == 3
+    assert src.time_index.size == 2
+
+
+def test_Era5ZarrSource_slice_time_with_lead(era5_zarr_store):
+    src = Era5ZarrSource(str(era5_zarr_store), verbose=False)
+    ds = xr.open_zarr(str(era5_zarr_store))
+    times = pd.to_datetime(ds["valid_time"].values)
+
+    # A span which starts inside the store keeps one leading step
+    sliced, lead = src._slice_time_with_lead(ds, "valid_time", slice(times[1], times[2]))
+    assert lead == 1
+    assert pd.to_datetime(sliced["valid_time"].values).tolist() == times[0:3].tolist()
+
+    # A span which starts at the first step of the store has nothing to lead with
+    sliced, lead = src._slice_time_with_lead(ds, "valid_time", slice(times[0], times[1]))
+    assert lead == 0
+    assert pd.to_datetime(sliced["valid_time"].values).tolist() == times[0:2].tolist()
+
+    # Open bounds select everything
+    sliced, lead = src._slice_time_with_lead(ds, "valid_time", slice(None, None))
+    assert lead == 0
+    assert sliced.sizes["valid_time"] == times.size

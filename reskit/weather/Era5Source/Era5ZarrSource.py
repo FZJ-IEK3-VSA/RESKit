@@ -145,7 +145,29 @@ class Era5ZarrSource(Era5Source):
         )
 
         self.time_name, ds = self._normalise_time_axis(ds)
+
+        # The derivation below must never touch the full time axis of the store, which for
+        # a multi-year cloud store does not fit into memory. One extra step is kept in front
+        # of the requested span, because the derived variables read the accumulation
+        # preceding their own timestep, see _derive_solar_variables.
+        lead_steps = 0
+        label_selection = None
+        if time_slice is not None:
+            if isinstance(time_slice, slice):
+                raw_start = pd.Timestamp(time_slice.start) - self.TIME_OFFSET if time_slice.start is not None else None
+                raw_stop = pd.Timestamp(time_slice.stop) - self.TIME_OFFSET if time_slice.stop is not None else None
+                ds, lead_steps = self._slice_time_with_lead(ds, self.time_name, slice(raw_start, raw_stop))
+            else:
+                # Anything but a slice is passed on to xarray as is. Such a selection may be
+                # non contiguous, therefore the derivation still needs the full time axis.
+                label_selection = time_slice
+
         ds, self._derived_variables = self._derive_solar_variables(ds, self.time_name)
+
+        if lead_steps:
+            ds = ds.isel({self.time_name: slice(lead_steps, None)})
+        elif label_selection is not None:
+            ds = ds.sel({self.time_name: label_selection})
 
         # Clear names may map onto several store conventions; the first entry is the
         # canonical name and is used when none of the candidates exist.
@@ -163,13 +185,6 @@ class Era5ZarrSource(Era5Source):
             raise ResError(
                 f"ERA5 key '{time_index_from}' not known. Check variable 'time_index_from' and store {source}"
             )
-
-        if time_slice is not None:
-            if isinstance(time_slice, slice):
-                raw_start = pd.Timestamp(time_slice.start) - self.TIME_OFFSET if time_slice.start is not None else None
-                raw_stop = pd.Timestamp(time_slice.stop) - self.TIME_OFFSET if time_slice.stop is not None else None
-                time_slice = slice(raw_start, raw_stop)
-            ds = ds.sel({self.time_name: time_slice})
 
         if verbose:
             times = pd.DatetimeIndex(pd.to_datetime(ds[self.time_name].values)) + self.TIME_OFFSET
@@ -301,14 +316,48 @@ class Era5ZarrSource(Era5Source):
             return time_dim, ds
         return time_dim, ds.assign_coords({time_dim: np.asarray(ds[datetime_coordinate].values)})
 
+    @staticmethod
+    def _slice_time_with_lead(ds: xr.Dataset, time_name: str, time_slice: slice) -> tuple[xr.Dataset, int]:
+        """Select a time span, plus the one step which precedes it in the store.
+
+        The extra leading step is what _derive_solar_variables needs to compute the first
+        requested timestep of the derived solar variables. Selecting here, instead of after
+        the derivation, keeps the derivation off the full time axis of the store, which for
+        a multi-year cloud store does not fit into memory.
+
+        Parameters
+        ----------
+        ds : xarray.Dataset
+            The dataset to select from
+        time_name : str
+            The name of the temporal dimension, see _normalise_time_axis
+        time_slice : slice
+            The requested time span, given in the convention of the store, i.e. the offset
+            of TIME_OFFSET is already removed. Both bounds are inclusive, as in xarray, and
+            either of them may be None.
+
+        Returns
+        -------
+        tuple of (xarray.Dataset, int)
+            The selected dataset, and the number of leading steps it holds in front of the
+            requested span (either 0 or 1). The caller has to drop them again.
+        """
+        times = pd.DatetimeIndex(pd.to_datetime(ds[time_name].values))
+        first = 0 if time_slice.start is None else int(times.searchsorted(time_slice.start, side="left"))
+        last = times.size if time_slice.stop is None else int(times.searchsorted(time_slice.stop, side="right"))
+
+        lead_steps = 1 if first > 0 else 0
+        return ds.isel({time_name: slice(first - lead_steps, last)}), lead_steps
+
     @classmethod
     def _derive_solar_variables(cls, ds: xr.Dataset, time_name: str) -> tuple[xr.Dataset, dict]:
         """Add the processed solar variables to stores that only provide the raw accumulations.
 
         Mirrors the CDO pipeline ``-divc,3600 -shifttime,+1hour`` which produces the
-        '*_t_adj' variables: adj[i] = raw[i-1] / 3600 (J/m² per hour -> W/m²). This is done
-        lazily on the full dataset before any time slice is applied, so that the first
-        requested timestep can still use the accumulation preceding it in the store.
+        '*_t_adj' variables: adj[i] = raw[i-1] / 3600 (J/m² per hour -> W/m²). The dataset
+        given here still holds the one step preceding a requested time slice, see
+        _slice_time_with_lead, so that the first requested timestep can use the
+        accumulation preceding it in the store.
 
         Note that the very first timestep of the store itself is NaN in the derived
         variables, because the accumulation preceding it does not exist -- users are warned
