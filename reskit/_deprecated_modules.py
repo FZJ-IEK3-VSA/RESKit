@@ -3,7 +3,9 @@
 RESKit used CamelCase module and package names, which PEP 8 reserves for classes.
 Renaming them to ``lower_case`` changes import paths such as::
 
-    from reskit.weather.NCSource import NCSource
+    from reskit.weather.NCSource import (
+        NCSource,
+    )
 
 Those paths keep working, and warn, until they are removed in RESKit 1.0.0.
 
@@ -98,8 +100,7 @@ class DeprecatedModuleAlias(ModuleType):
             return getattr(target, "__all__", [n for n in vars(target) if not n.startswith("_")])
 
         warnings.warn(
-            f"{self.__old_name} is deprecated and will be removed in RESKit 1.0.0. "
-            f"Use {self.__new_name} instead.",
+            f"{self.__old_name} is deprecated and will be removed in RESKit 1.0.0. Use {self.__new_name} instead.",
             DeprecationWarning,
             stacklevel=2,
         )
