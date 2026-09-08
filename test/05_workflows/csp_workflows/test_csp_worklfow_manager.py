@@ -16,7 +16,7 @@ def funct():
         51.475,
         50.775,
     ]  # Latitude
-    placements["area"] = [1e6, 3e6, 6e6]
+    placements["land_area_m2"] = [1e6, 3e6, 6e6]
 
     datasetname = "Initial"
     verbose = False
@@ -147,7 +147,7 @@ def _make_PTRWorkflowManager() -> PTRWorkflowManager:
         51.475,
         50.775,
     ]  # Latitude
-    placements["area"] = [1e6, 3e6, 6e6]
+    placements["land_area_m2"] = [1e6, 3e6, 6e6]
 
     wfm = PTRWorkflowManager(placements=placements)
 
@@ -192,21 +192,75 @@ def test_loadPTRdata(pt_PTRWorkflowManager_initialized):
 # determine area
 
 
-def test_determine_area(pt_PTRWorkflowManager_initialized):
-    wfm = pt_PTRWorkflowManager_initialized
+def _PTRWorkflowManager_with_areas(**area_columns) -> PTRWorkflowManager:
+    """Create an initialized manager whose placements contain the given area columns."""
+    placements = pd.DataFrame()
+    placements["lon"] = [6.083, 6.083, 5.583]  # Longitude
+    placements["lat"] = [
+        50.775,
+        51.475,
+        50.775,
+    ]  # Latitude
+    for column_name, values in area_columns.items():
+        placements[column_name] = values
 
-    ptr_data = wfm.loadPTRdata(datasetname="Initial")
-    assert ptr_data["SF_density_total"] == 0.383
+    wfm = PTRWorkflowManager(placements=placements)
+    wfm.loadPTRdata(datasetname="Initial")
+    return wfm
+
+
+@pytest.mark.parametrize("column_name", ["area", "area_m2", "land_area_m2"])
+def test_determine_area_from_a_land_area_column(column_name):
+    """Every documented land area column gives the same land and aperture area."""
+    land_area_m2 = np.array([1e6, 3e6, 6e6])
+    wfm = _PTRWorkflowManager_with_areas(**{column_name: land_area_m2})
 
     wfm.determine_area()
 
-    assert "aperture_area_m2" in wfm.placements.columns
-    assert "land_area_m2" in wfm.placements.columns
+    density = wfm.ptr_data["SF_density_total"]
+    # the deprecated column is replaced, not kept next to the two supported columns
+    assert sorted(c for c in wfm.placements.columns if "area" in c) == [
+        "aperture_area_m2",
+        "land_area_m2",
+    ]
+    assert np.allclose(wfm.placements["land_area_m2"], land_area_m2)
+    assert np.allclose(wfm.placements["aperture_area_m2"], land_area_m2 * density)
 
-    assert np.isclose(wfm.placements["land_area_m2"].mean(), 3333333.3333333335)
-    assert np.isclose(wfm.placements["land_area_m2"].std(), 2516611.4784235833)
-    assert np.isclose(wfm.placements["aperture_area_m2"].mean(), 1276666.6666666667)
-    assert np.isclose(wfm.placements["aperture_area_m2"].std(), 963862.1962362323)
+
+def test_determine_area_from_the_aperture_area_column():
+    """Only aperture_area_m2 given: the land area follows from the solar field density."""
+    aperture_area_m2 = np.array([1e6, 3e6, 6e6])
+    wfm = _PTRWorkflowManager_with_areas(aperture_area_m2=aperture_area_m2)
+
+    wfm.determine_area()
+
+    density = wfm.ptr_data["SF_density_total"]
+    assert np.allclose(wfm.placements["aperture_area_m2"], aperture_area_m2)
+    assert np.allclose(wfm.placements["land_area_m2"], aperture_area_m2 / density)
+
+
+def test_determine_area_keeps_both_given_areas():
+    """Both area columns given: determine_area() must not change them."""
+    land_area_m2 = np.array([1e6, 3e6, 6e6])
+    aperture_area_m2 = np.array([1e5, 2e5, 3e5])
+    wfm = _PTRWorkflowManager_with_areas(
+        land_area_m2=land_area_m2,
+        aperture_area_m2=aperture_area_m2,
+    )
+
+    wfm.determine_area()
+
+    assert np.allclose(wfm.placements["land_area_m2"], land_area_m2)
+    assert np.allclose(wfm.placements["aperture_area_m2"], aperture_area_m2)
+
+
+@pytest.mark.parametrize("column_name", ["area", "area_m2"])
+def test_determine_area_warns_for_a_deprecated_area_column(column_name):
+    """The deprecated area columns must give a DeprecationWarning."""
+    wfm = _PTRWorkflowManager_with_areas(**{column_name: np.array([1e6, 3e6, 6e6])})
+
+    with pytest.warns(DeprecationWarning, match=f'"{column_name}" is deprecated'):
+        wfm.determine_area()
 
 
 # @pytest.fixture
@@ -643,7 +697,7 @@ def pt_PTRWorkflowManager_heat_loss() -> PTRWorkflowManager:
         51.475,
         50.775,
     ]  # Latitude
-    placements["area"] = [1e6, 3e6, 6e6]
+    placements["land_area_m2"] = [1e6, 3e6, 6e6]
 
     datasetname = "Initial"
     verbose = False
