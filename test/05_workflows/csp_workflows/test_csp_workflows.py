@@ -30,7 +30,7 @@ def pt_pv_placements() -> pd.DataFrame:
 
 
 def test_CSP_PTR_ERA5(pt_pv_placements):
-    out = rk.csp.CSP_PTR_ERA5(
+    out = rk.csp.csp_ptr_era5(
         placements=pt_pv_placements,
         era5_path=rk.TEST_DATA["csp-era5-like"],
         global_solar_atlas_dni_path=rk.TEST_DATA["csp-gsa-dni-like.tif"],

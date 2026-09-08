@@ -197,7 +197,7 @@ def create_long_run_average(
     return ds_lra
 
 
-def _calculate_DNI(solar_elevation_angle: xr.DataArray, direct_horizontal_irradiance: xr.DataArray):
+def _calculate_dni(solar_elevation_angle: xr.DataArray, direct_horizontal_irradiance: xr.DataArray):
     """Calculate Direct Normal Irradiance (DNI) from Direct Horizontal Irradiance and SZA."""
     # Convert SZA from degrees to radians
 
@@ -320,7 +320,7 @@ def compute_dni_year(
         )
 
         data_var = list(tile_ds.data_vars)[0]
-        dni = _calculate_DNI(
+        dni = _calculate_dni(
             solar_elevation_angle=sea_da,
             direct_horizontal_irradiance=tile_ds[data_var],
         )

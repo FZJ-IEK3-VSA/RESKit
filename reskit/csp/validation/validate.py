@@ -55,7 +55,7 @@ def main(datasetname, validation_output_folder):
         y = placement["tiley"].iloc[0]
 
         # run reskit
-        out = rk.csp.CSP_PTR_ERA5(
+        out = rk.csp.csp_ptr_era5(
             placements=placement,
             era5_path=era5_path.format(x=x, y=y),
             global_solar_atlas_dni_path="default_cluster",
@@ -104,15 +104,15 @@ def main(datasetname, validation_output_folder):
     )
     vars_greenius = "Q abs|T HTFmean|Q out|Q losses|QFP Aux|W parField".split("|")
     metrics = [
-        RMSE,
-        absError,
-        relabsError,
-        meanDev,
-        relmeanDev,
-        stdDifference,
-        corrCoefficient,
-        Nash_Sutcliffe,
-    ]  # , DCCA]
+        rmse,
+        abs_error,
+        rel_abs_error,
+        mean_dev,
+        rel_mean_dev,
+        std_difference,
+        corr_coefficient,
+        nash_sutcliffe,
+    ]  # , dcca]
     fs_greenius = [1e-6, 1, 1e-6, 1e-6, 1e-6, 1e-6]
 
     full_metric_report_list = []
@@ -256,8 +256,8 @@ def plot_time_series(
     )
 
 
-# RMSE
-def RMSE(ser1, ser2):
+# rmse
+def rmse(ser1, ser2):
     diff = ser1 - ser2
     return np.sqrt((diff**2).mean())
 
@@ -265,7 +265,7 @@ def RMSE(ser1, ser2):
 # absolute Error
 
 
-def absError(ser1, ser2):
+def abs_error(ser1, ser2):
     diff = ser1 - ser2
     return np.abs(diff).mean()
 
@@ -273,7 +273,7 @@ def absError(ser1, ser2):
 # mean deviation
 
 
-def meanDev(ser1, ser2):
+def mean_dev(ser1, ser2):
     diff = ser1 - ser2
     return diff.mean()
 
@@ -281,7 +281,7 @@ def meanDev(ser1, ser2):
 # relative absolute error
 
 
-def relabsError(ser1, ser2):
+def rel_abs_error(ser1, ser2):
     diff = ser1 - ser2
     return np.abs(diff).mean() / max(0.01, ser2.mean())
 
@@ -289,7 +289,7 @@ def relabsError(ser1, ser2):
 # relative mean deviation
 
 
-def relmeanDev(ser1, ser2):
+def rel_mean_dev(ser1, ser2):
     diff = ser1 - ser2
     return diff.mean() / max(0.01, ser2.mean())
 
@@ -297,14 +297,14 @@ def relmeanDev(ser1, ser2):
 # peak load
 
 
-def peakLoad(ser1, ser2):
+def peak_load(ser1, ser2):
     return ser1.max(), max(0.01, ser2.mean())
 
 
 # std of diff
 
 
-def stdDifference(ser1, ser2):
+def std_difference(ser1, ser2):
     diff = ser1 - ser2
     return diff.std()
 
@@ -312,30 +312,30 @@ def stdDifference(ser1, ser2):
 # correlation coefficient
 
 
-def corrCoefficient(ser1, ser2):
+def corr_coefficient(ser1, ser2):
     return np.corrcoef(ser1, ser2)[0, 1]
 
 
 # time series
 
 
-def timeSeries(ser1, ser2):
+def time_series(ser1, ser2):
     return ser1 - ser2
 
 
-# meanCF
+# mean_cf
 
 
-def meanCF(ser1, ser2):
+def mean_cf(ser1, ser2):
     return ser1.mean()
 
 
-def Nash_Sutcliffe(ser1, ser2):
+def nash_sutcliffe(ser1, ser2):
     # 1 - (ser1-ser2)^2 / (ser2-avg_ser2)^2
     return 1 - ((ser1 - ser2) ** 2).sum() / (((ser2 - ser2.mean()) ** 2).sum())
 
 
-def DCCA(ser1, ser2):
+def dcca(ser1, ser2):
     try:
         # zero-mean cumulative sum
         ser1 = fu.toAggregated(ser1.to_numpy())

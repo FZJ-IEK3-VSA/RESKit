@@ -9,7 +9,7 @@ import pytest
 pytest.importorskip("zarr")
 
 from reskit import TEST_DATA, WorkflowManager
-from reskit.csp.workflows.workflows import CSP_PTR_ERA5, CSP_PTR_ERA5_specific_dataset
+from reskit.csp.workflows.workflows import csp_ptr_era5, csp_ptr_era5_specific_dataset
 from reskit.solar.workflows.workflows import openfield_pv_era5
 from reskit.wind.workflows.workflows import wind_era5_PenaSanchezDunkelWinklerEtAl2025
 
@@ -151,7 +151,7 @@ def test_WorkflowManager_read_era5_zarr(era5_zarr_workflow_store):
 
 @pytest.mark.parametrize(
     "workflow",
-    [openfield_pv_era5, CSP_PTR_ERA5, CSP_PTR_ERA5_specific_dataset, wind_era5_PenaSanchezDunkelWinklerEtAl2025],
+    [openfield_pv_era5, csp_ptr_era5, csp_ptr_era5_specific_dataset, wind_era5_PenaSanchezDunkelWinklerEtAl2025],
 )
 def test_era5_workflows_expose_time_slice(workflow):
     assert "time_slice" in inspect.signature(workflow).parameters

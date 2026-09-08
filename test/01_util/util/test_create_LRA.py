@@ -13,7 +13,7 @@ import xarray as xr
 import geokit as gk
 
 from reskit.util.create_LRA import (
-    _calculate_DNI,
+    _calculate_dni,
     _combine_tiles,
     _find_single_year_nc_file,
     _list_tiled_nc_files,
@@ -401,7 +401,7 @@ def test_calculate_DNI_divides_by_the_sine_of_the_elevation_angle():
     sea = xr.DataArray([30.0, 90.0])
     dhi = xr.DataArray([100.0, 100.0])
 
-    dni = _calculate_DNI(sea, dhi)
+    dni = _calculate_dni(sea, dhi)
 
     # DNI = DHI / sin(elevation): sin(30) = 0.5, sin(90) = 1
     assert np.allclose(dni.values, [200.0, 100.0])
@@ -411,7 +411,7 @@ def test_calculate_DNI_is_zero_for_the_sun_at_or_below_the_horizon():
     sea = xr.DataArray([-10.0, 0.0, 1.0])
     dhi = xr.DataArray([100.0, 100.0, 100.0])
 
-    dni = _calculate_DNI(sea, dhi)
+    dni = _calculate_dni(sea, dhi)
 
     # elevations <= 1 degree are masked out and filled with 0 rather than blowing up
     assert np.allclose(dni.values, 0.0)

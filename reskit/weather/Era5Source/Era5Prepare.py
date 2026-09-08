@@ -9,7 +9,7 @@ import pandas as pd
 import xarray as xr
 from typing import Union, List, Optional, Tuple
 from reskit.util import ResError
-from reskit.util.weather_tile import get_tile_XY
+from reskit.util.weather_tile import get_tile_xy
 
 
 # Time coordinate names which an ERA5 file can use, in order of preference. The legacy
@@ -204,8 +204,8 @@ def _iter_tile_x_indices(zoom_level: int, lon_west: float, lon_east: float) -> l
     """Return tile X indices covered by a lon span, including antimeridian wraps."""
     west = _tile_lookup_lon(lon_west)
     east = _tile_lookup_lon(lon_east)
-    x_west, _ = get_tile_XY(zoom_level, lon=west, lat=0.0)
-    x_east, _ = get_tile_XY(zoom_level, lon=east, lat=0.0)
+    x_west, _ = get_tile_xy(zoom_level, lon=west, lat=0.0)
+    x_east, _ = get_tile_xy(zoom_level, lon=east, lat=0.0)
 
     if _normalize_lon(lon_west) <= _normalize_lon(lon_east):
         return list(range(x_west, x_east + 1))
@@ -597,8 +597,8 @@ def era5_tiler(
 
         # NW corner → SE corner (tile Y increases southward)
         xi_values = _iter_tile_x_indices(zoom_level=zoom_level, lon_west=lon_min, lon_east=lon_max)
-        _, yi_nw = get_tile_XY(zoom_level, lon=_tile_lookup_lon(lon_min), lat=lat_max)
-        _, yi_se = get_tile_XY(zoom_level, lon=_tile_lookup_lon(lon_max), lat=lat_min)
+        _, yi_nw = get_tile_xy(zoom_level, lon=_tile_lookup_lon(lon_min), lat=lat_max)
+        _, yi_se = get_tile_xy(zoom_level, lon=_tile_lookup_lon(lon_max), lat=lat_min)
 
         for xi in xi_values:
             for yi in range(yi_nw, yi_se + 1):
