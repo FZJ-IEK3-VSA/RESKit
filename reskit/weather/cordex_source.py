@@ -1,6 +1,6 @@
 """TODO: NEEDS UPDATING!!!"""
 
-from ..NCSource import *
+from ..nc_source import *
 
 # Define constants
 

@@ -2,7 +2,7 @@ from os.path import dirname, join
 
 import numpy as np
 
-from ..NCSource import NCSource
+from ..nc_source import NCSource
 
 
 class IconlamSource(NCSource):
