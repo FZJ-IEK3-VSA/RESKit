@@ -114,7 +114,7 @@ class WindWorkflowManager(WorkflowManager):
                     specific_power=float(sppow), cutout=float(cutout)
                 )
             else:
-                self.powerCurveLibrary[pc] = rk_wind_core.turbine_library.TurbineLibrary().loc[pc].PowerCurve
+                self.powerCurveLibrary[pc] = rk_wind_core.turbine_library.turbine_library().loc[pc].PowerCurve
 
     def project_windspeeds_to_hub_height(
         self,

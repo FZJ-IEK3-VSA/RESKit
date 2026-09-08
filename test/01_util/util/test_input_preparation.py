@@ -45,20 +45,20 @@ def test_raw_variables_for_workflow_pv():
 
 
 def test_raw_variables_for_workflow_csp():
-    result = _raw_variables_for_workflow("CSP_PTR_ERA5")
+    result = _raw_variables_for_workflow("csp_ptr_era5")
     # CSP only passes 2m_temperature through raw; fdir and u10/v10 are preprocessed
     assert set(result) == {"t2m"}
 
 
 def test_raw_variables_solar_excludes_preprocessed():
-    for workflow in ("openfield_pv_era5", "CSP_PTR_ERA5"):
+    for workflow in ("openfield_pv_era5", "csp_ptr_era5"):
         result = _raw_variables_for_workflow(workflow)
         for preprocessed in ("ssrd", "fdir", "u10", "v10"):
             assert preprocessed not in result
 
 
 def test_solar_workflows_registered():
-    for workflow in ("openfield_pv_era5", "CSP_PTR_ERA5"):
+    for workflow in ("openfield_pv_era5", "csp_ptr_era5"):
         assert workflow in depends_on
         assert depends_on[workflow]["ERA5"]
 
@@ -82,11 +82,11 @@ def test_cooling_heating_workflows_registered():
 
 
 def test_csp_specific_dataset_registered():
-    assert "CSP_PTR_ERA5_specific_dataset" in depends_on
-    # same ERA5 needs as the CSP_PTR_ERA5 wrapper ...
-    assert depends_on["CSP_PTR_ERA5_specific_dataset"]["ERA5"] == depends_on["CSP_PTR_ERA5"]["ERA5"]
+    assert "csp_ptr_era5_specific_dataset" in depends_on
+    # same ERA5 needs as the csp_ptr_era5 wrapper ...
+    assert depends_on["csp_ptr_era5_specific_dataset"]["ERA5"] == depends_on["csp_ptr_era5"]["ERA5"]
     # ... but only the DNI raster (HTF selection, which needs TEMP, happens in the wrapper)
-    assert depends_on["CSP_PTR_ERA5_specific_dataset"]["GSA"] == ["DNI"]
+    assert depends_on["csp_ptr_era5_specific_dataset"]["GSA"] == ["DNI"]
 
 
 def test_merge_dependencies_single_workflow():
@@ -96,18 +96,18 @@ def test_merge_dependencies_single_workflow():
 
 
 def test_merge_dependencies_unions_across_workflows():
-    merged = _merge_dependencies(["openfield_pv_era5", "CSP_PTR_ERA5", "wind_era5_PenaSanchezDunkelWinklerEtAl2025"])
+    merged = _merge_dependencies(["openfield_pv_era5", "csp_ptr_era5", "wind_era5_PenaSanchezDunkelWinklerEtAl2025"])
     # union spans every source touched by the given workflows
     assert set(merged) == {"ERA5", "GSA", "GWA4"}
     # every variable of each input workflow is present in the union
-    for workflow in ("openfield_pv_era5", "CSP_PTR_ERA5", "wind_era5_PenaSanchezDunkelWinklerEtAl2025"):
+    for workflow in ("openfield_pv_era5", "csp_ptr_era5", "wind_era5_PenaSanchezDunkelWinklerEtAl2025"):
         for source, variables in depends_on[workflow].items():
             assert set(variables) <= set(merged[source])
 
 
 def test_merge_dependencies_deduplicates_preserving_order():
     # openfield_pv and CSP share several ERA5 variables; the union must not repeat them
-    merged = _merge_dependencies(["openfield_pv_era5", "CSP_PTR_ERA5"])
+    merged = _merge_dependencies(["openfield_pv_era5", "csp_ptr_era5"])
     for variables in merged.values():
         assert len(variables) == len(set(variables))
 

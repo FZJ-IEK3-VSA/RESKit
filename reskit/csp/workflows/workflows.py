@@ -1,4 +1,5 @@
 import time
+import warnings
 from logging import warning
 
 import numpy as np
@@ -9,10 +10,10 @@ from reskit import workflow_manager
 
 from ... import weather as rk_weather
 from .csp_workflow_manager import PTRWorkflowManager
-from .dataset_handler import dataset_handler
+from .dataset_handler import DatasetHandler
 
 
-def CSP_PTR_ERA5(
+def csp_ptr_era5(
     placements,
     era5_path,
     global_solar_atlas_dni_path,
@@ -34,7 +35,7 @@ def CSP_PTR_ERA5(
 ):
     """
     This function is the overall workflow for the csp simulation and calls all subfunctions.
-    It is a wrapper around the function "CSP_PTR_ERA5_specific_dataset" below, to include the case of multiple datasets.
+    It is a wrapper around the function "csp_ptr_era5_specific_dataset" below, to include the case of multiple datasets.
     Multiple datasets are refering to multiple heat transfer fluids and therefore also different power plants. In that case, for each placement the optimal HTF is selected.
 
     Parameters
@@ -122,7 +123,7 @@ def CSP_PTR_ERA5(
     if return_self is True, the workflow manager object (PTRWorkflowManager) containing all simulation results and data.
     if return_self is False, a xarray dataset containing the final simulation results. This dataset is optionally written to disk if output_netcdf_path was specified.
 
-        rest: see CSP_PTR_ERA5_specific_dataset
+        rest: see csp_ptr_era5_specific_dataset
     """
     # handle inputs for datasets
     single_dataset = False
@@ -147,7 +148,7 @@ def CSP_PTR_ERA5(
         assert isinstance(global_solar_atlas_tamb_path, str)
 
     if single_dataset:  # only one dataset given
-        output = CSP_PTR_ERA5_specific_dataset(
+        output = csp_ptr_era5_specific_dataset(
             placements=placements,
             era5_path=era5_path,
             global_solar_atlas_dni_path=global_solar_atlas_dni_path,
@@ -168,7 +169,7 @@ def CSP_PTR_ERA5(
 
     else:  # multiple datasets found
         # 1) split up placements for each htf (e.g. solar salt or heliosol)
-        d = dataset_handler(datasets)
+        d = DatasetHandler(datasets)
         placements = d.split_placements(
             placements=placements,
             gsa_dni_path=global_solar_atlas_dni_path,
@@ -187,7 +188,7 @@ def CSP_PTR_ERA5(
                 continue
 
             # starting core simulation
-            output_dataset = CSP_PTR_ERA5_specific_dataset(
+            output_dataset = csp_ptr_era5_specific_dataset(
                 placements=placements_dataset,
                 era5_path=era5_path,
                 global_solar_atlas_dni_path=global_solar_atlas_dni_path,
@@ -225,7 +226,7 @@ def CSP_PTR_ERA5(
         return output
 
 
-def CSP_PTR_ERA5_specific_dataset(
+def csp_ptr_era5_specific_dataset(
     placements,
     era5_path,
     global_solar_atlas_dni_path,
@@ -518,3 +519,40 @@ def CSP_PTR_ERA5_specific_dataset(
         return wf
     else:
         return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
+
+
+##########################
+# DEPRECATED NAMES (#226) #
+##########################
+# The names below were renamed for PEP 8 in RESKit v0.6.0. Each old name stays
+# available as a warning wrapper until v1.0.0. Do not add new code here.
+
+
+def CSP_PTR_ERA5(*args, **kwargs):
+    """
+    Deprecated alias of :func:`csp_ptr_era5`.
+
+    Kept for backward compatibility and scheduled for removal in RESKit v1.0.0.
+    Use :func:`csp_ptr_era5` instead. All arguments are passed through unchanged.
+    """
+    warnings.warn(
+        "CSP_PTR_ERA5() is deprecated and will be removed in RESKit v1.0.0. Use csp_ptr_era5() instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return csp_ptr_era5(*args, **kwargs)
+
+
+def CSP_PTR_ERA5_specific_dataset(*args, **kwargs):
+    """
+    Deprecated alias of :func:`csp_ptr_era5_specific_dataset`.
+
+    Kept for backward compatibility and scheduled for removal in RESKit v1.0.0.
+    Use :func:`csp_ptr_era5_specific_dataset` instead. All arguments are passed through unchanged.
+    """
+    warnings.warn(
+        "CSP_PTR_ERA5_specific_dataset() is deprecated and will be removed in RESKit v1.0.0. Use csp_ptr_era5_specific_dataset() instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return csp_ptr_era5_specific_dataset(*args, **kwargs)

@@ -1,4 +1,5 @@
 import re
+import warnings
 from collections import OrderedDict, namedtuple
 from glob import glob
 from os.path import dirname, join
@@ -23,7 +24,7 @@ def parse_turbine(path):
 
     Parses over a turbine's data file to get hub height, capacity, rotor diameter and powercurve.
 
-    Used for loading into the TurbineLibrary table
+    Used for loading into the turbine_library table
     """
     meta = OrderedDict()
     with open(path) as fin:
@@ -75,7 +76,7 @@ def parse_turbine(path):
 _Turbine_Library = None
 
 
-def TurbineLibrary():
+def turbine_library():
     """
     A dataframe of internally configured wind turbines accessible to later simulations
     """
@@ -106,3 +107,25 @@ def TurbineLibrary():
         _Turbine_Library["PowerCurve"] = [x.profile for x in tmp]
 
     return _Turbine_Library
+
+
+##########################
+# DEPRECATED NAMES (#226) #
+##########################
+# The names below were renamed for PEP 8 in RESKit v0.6.0. Each old name stays
+# available as a warning wrapper until v1.0.0. Do not add new code here.
+
+
+def TurbineLibrary(*args, **kwargs):
+    """
+    Deprecated alias of :func:`turbine_library`.
+
+    Kept for backward compatibility and scheduled for removal in RESKit v1.0.0.
+    Use :func:`turbine_library` instead. All arguments are passed through unchanged.
+    """
+    warnings.warn(
+        "TurbineLibrary() is deprecated and will be removed in RESKit v1.0.0. Use turbine_library() instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return turbine_library(*args, **kwargs)
