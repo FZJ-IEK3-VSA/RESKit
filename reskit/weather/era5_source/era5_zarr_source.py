@@ -9,8 +9,8 @@ import pandas as pd
 import xarray as xr
 
 from ...util import ResError
-from ..NCSource import NCSource
-from .Era5Source import Era5Source
+from ..nc_source import NCSource
+from .era5_source import Era5Source
 
 
 class Era5ZarrSource(Era5Source):

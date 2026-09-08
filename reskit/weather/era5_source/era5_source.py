@@ -2,7 +2,7 @@ from os.path import dirname, join
 
 import numpy as np
 
-from ..NCSource import NCSource
+from ..nc_source import NCSource
 
 
 class Era5Source(NCSource):
@@ -112,7 +112,7 @@ class Era5Source(NCSource):
     # rasters) in place.
     # ---------------------------------------------------------------------------------------
 
-    # -- 2026_07: global coverage, reproducible with reskit.util.create_LRA / create_DNI_LRA --
+    # -- 2026_07: global coverage, reproducible with reskit.util.long_run_average --
     LONG_RUN_AVERAGE_WINDSPEED_2026_07 = join(
         dirname(__file__), "data", "ERA5_100m_wind_speed.processed_2008_2017_mean_global_2026_07.tiff"
     )

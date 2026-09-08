@@ -1,4 +1,4 @@
-"""Tests for the LRA (long-run average) preprocessing functions in ``reskit.util.create_LRA``.
+"""Tests for the LRA (long-run average) preprocessing functions in ``reskit.util.long_run_average``.
 
 The heavy lifting in that module is a chain of small, deterministic steps: find the
 input NetCDFs, average them over time and over years, and -- for the global rasters --
@@ -12,7 +12,7 @@ import xarray as xr
 
 import geokit as gk
 
-from reskit.util.create_LRA import (
+from reskit.util.long_run_average import (
     _calculate_dni,
     _combine_tiles,
     _find_single_year_nc_file,

@@ -99,7 +99,7 @@ def _mean_over_time(ds: xr.Dataset) -> xr.Dataset:
 def _combine_tiles(tiles: list[xr.Dataset] | list[xr.DataArray]) -> xr.Dataset:
     """Combine the tiles of one year into a single dataset.
 
-    RESKit tiles always overlap: :func:`reskit.weather.Era5Source.Era5Prepare.era5_tiler`
+    RESKit tiles always overlap: :func:`reskit.weather.era5_source.era5_prepare.era5_tiler`
     pads the extent of each tile by 2 degrees, so neighbour tiles share a band of
     lat/lon coordinates. :func:`xarray.merge` is therefore the correct operation. It
     unions the overlap, and ``compat="no_conflicts"`` still rejects tiles which
