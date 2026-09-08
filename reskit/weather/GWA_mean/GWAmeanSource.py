@@ -1,6 +1,6 @@
 from os.path import dirname, join
 
-from .. import NCSource
+from ..NCSource import NCSource
 
 
 class GWAmeanSource:

@@ -2,7 +2,7 @@ from os.path import dirname, join
 
 import numpy as np
 
-from .. import NCSource
+from ..NCSource import NCSource
 
 
 class Era5Source(NCSource):
