@@ -28,7 +28,7 @@ class HydroWorkflowManager(WorkflowManager):
     PARFLOW_1DAY_URL = (
         "https://service.tereno.net/thredds/dodsC/forecastnrw/products/ParFlow-DE06-HC_v03/"
         "sfd_DE05_ECMWF-HRES_hindcast_r1i1p2_FZJ-IBG3-ParFlowCLM380_"
-        "hgfadapter-h00-v03bJuwelsGpuProdClimatologyTl_1day_{year}0101-{year}1231.nc"
+        "hgfadapter-v03_h00_1day_{year}0101-{year}1231.nc"
     )
     PARFLOW_3HOUR_URL = (
         "https://service.tereno.net/thredds/dodsC/forecastnrw/products/tmp_ice2/"
@@ -124,7 +124,8 @@ class HydroWorkflowManager(WorkflowManager):
         """Extract and align discharge, storing it as m3/s in (time, location).
 
         ``output_selected_alluvium_candidate_path`` writes ParFlow's selected
-        grid-cell metadata to CSV when provided.
+        grid-cell metadata and relative non-selected candidate locations to CSV
+        when provided.
         """
         product = str(product).lower()
         product = self.DISCHARGE_PRODUCT_ALIASES.get(product, product)
@@ -169,6 +170,8 @@ class HydroWorkflowManager(WorkflowManager):
             self.placements["selected_candidate_idx"] = extraction["selected_candidate_idx"]
             self.placements["selected_from_alluvium"] = extraction["selected_from_alluvium"].astype(int)
             self.selected_cell_overview = extraction["selected_cell_overview"]
+            for overview_row in self.selected_cell_overview:
+                overview_row.setdefault("other_candidate_loc_index", "[]")
         else:  # pragma: no cover
             raise NotImplementedError(product)
 
