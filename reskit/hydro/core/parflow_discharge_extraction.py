@@ -33,8 +33,8 @@ def retrieve_discharge_data(
     root_dir,
     include_neighbours=False,
     ctrl_file_path=None,
-    max_retries=10,
-    retry_delay_seconds=5,
+    max_retries=20,
+    retry_delay_seconds=10,
     data_url=None,
 ):
     """Extract discharge time series from ParFlow datasource for given coordinates."""
@@ -352,6 +352,11 @@ def extract_selected_discharge_alluvium(
 
         # store metadata for selected candidate
         best_y, best_x = per_plant_candidate_indices[plant_idx][local_best_idx]
+        other_candidate_loc_index = [
+            [int(candidate_x - best_x), int(candidate_y - best_y)]
+            for candidate_y, candidate_x in per_plant_candidate_indices[plant_idx]
+            if (candidate_y, candidate_x) != (best_y, best_x)
+        ]
         selected_cell_overview.append(
             {
                 "plant_id": str(placements.iloc[plant_idx]["hydro_plant_id"]),
@@ -364,6 +369,7 @@ def extract_selected_discharge_alluvium(
                 "selected_local_candidate_idx": int(local_best_idx),
                 "n_candidates_considered": int(n_candidates),
                 "selected_from_alluvium_prefilter": bool(selected_from_alluvium[plant_idx]),
+                "other_candidate_loc_index": json.dumps(other_candidate_loc_index, default=int),
             }
         )
 
