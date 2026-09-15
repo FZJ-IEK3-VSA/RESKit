@@ -1,12 +1,13 @@
-from os.path import isfile
-
 import geokit as gk
 import numpy as np
 
 from ...util import ResError
 
+# The tilt conventions which `location_to_tilt` accepts
+_TILT_CONVENTIONS = ("Ryberg2020",)
 
-def location_to_tilt(locs, convention="Ryberg2020", **kwargs):
+
+def location_to_tilt(locs, convention="Ryberg2020"):
     """
     Simple system tilt estimator based off latitude and longitude coordinates
 
@@ -17,16 +18,8 @@ def location_to_tilt(locs, convention="Ryberg2020", **kwargs):
            The locations at which to estimate system tilt angle
 
     convention : str, optional
-                 The calculation method used to suggest system tilts
-                 Options are:
-                     * "Ryberg2020"
-                     * A string consumable by 'eval'
-                     - Can use the variable 'latitude'
-                     - Ex. "latitude*0.76"
-                     * A path to a raster file
-
-    kwargs: Optional keyword arguments to use in geokit.raster.interpolateValues(...).
-            Only applies when `convention` is a path to a raster file
+                 The calculation method used to suggest system tilts.
+                 Only "Ryberg2020" is accepted.
 
 
     Returns
@@ -34,6 +27,11 @@ def location_to_tilt(locs, convention="Ryberg2020", **kwargs):
     np.ndarray
         Suggested tilt angle at each of the provided `locs`.
         Has the same length as the number of `locs`.
+
+    Raises
+    ------
+    ResError
+        If `convention` is not a string, or if it is not a known convention.
 
     Notes
     -----
@@ -45,18 +43,12 @@ def location_to_tilt(locs, convention="Ryberg2020", **kwargs):
     .. [1] TODO: Cite future Ryberg2020 publication
 
     """
+    if not isinstance(convention, str):
+        raise ResError(f"Tilt convention must be a string, but is: {type(convention)}")
+
+    if convention not in _TILT_CONVENTIONS:
+        raise ResError(f"Tilt convention must be one of {', '.join(_TILT_CONVENTIONS)}, but is: {convention}")
+
     locs = gk.LocationSet(locs)
 
-    if convention == "Ryberg2020":
-        tilt = 42.327719357601396 * np.arctan(1.5 * np.radians(np.abs(locs.lats)))
-
-    elif isfile(convention):
-        tilt = gk.raster.interpolateValues(convention, locs, **kwargs)
-
-    else:
-        try:
-            tilt = eval(convention, {}, {"latitude": locs.lats})
-        except:
-            raise ResError("Failed to apply tilt convention")
-
-    return tilt
+    return 42.327719357601396 * np.arctan(1.5 * np.radians(np.abs(locs.lats)))

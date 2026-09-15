@@ -7,7 +7,7 @@ from smopy import deg2num
 import numpy as np
 
 
-def get_tile_XY(zoom, lon=None, lat=None, geom=None):
+def get_tile_xy(zoom, lon=None, lat=None, geom=None):
     """
     Returns the X/Y id of the respective tile for a given
     latitude and longitude and tile No.
@@ -130,7 +130,7 @@ def get_dataframe_with_weather_tilepaths(placements, weather_path, zoom):
             assert isinstance(zoom, int), (
                 f"zoom must be a positive integer tiling level if weather_path contains X/Y spacers"
             )
-            _X, _Y = get_tile_XY(zoom=zoom, lon=lon, lat=lat, geom=None)
+            _X, _Y = get_tile_xy(zoom=zoom, lon=lon, lat=lat, geom=None)
             return weather_path.replace("<X-TILE>", str(_X)).replace("<Y-TILE>", str(_Y)).replace("<ZOOM>", str(zoom))
         else:
             return weather_path

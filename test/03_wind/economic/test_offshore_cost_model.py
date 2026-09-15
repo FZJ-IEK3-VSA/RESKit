@@ -6,7 +6,7 @@ from reskit.parameters.parameters import OffshoreParameters
 import reskit._test.data as pkg_data
 from pathlib import Path
 from importlib.resources import files, as_file
-from reskit.util.local_values import waterDepthFromLocation
+from reskit.util.local_values import water_depth_from_location
 from unittest.mock import MagicMock
 
 import reskit.util.local_values as local_values
@@ -14,7 +14,7 @@ import reskit.util.local_values as local_values
 
 def test_calculateSpecificOffshoreCapex():
     # test normal behaviour of the function
-    c1 = calculateSpecificOffshoreCapex(
+    c1 = calculate_specific_offshore_capex(
         baseSpecCapex=1500,
         capacity=10000,
         rotorDiam=250,
@@ -34,10 +34,12 @@ def test_calculateSpecificOffshoreCapex():
         techYear=2050,
     )
 
-    assert np.isclose(c1, 2654, rtol=0.05), "Error in calculateSpecificOffshoreCapex, possibly due to adapted function"
+    assert np.isclose(c1, 2654, rtol=0.05), (
+        "Error in calculate_specific_offshore_capex, possibly due to adapted function"
+    )
 
     # test missing port distance
-    c2 = calculateSpecificOffshoreCapex(
+    c2 = calculate_specific_offshore_capex(
         baseSpecCapex=1500,
         capacity=10000,
         rotorDiam=250,
@@ -58,11 +60,11 @@ def test_calculateSpecificOffshoreCapex():
     )
 
     assert np.isclose(c2, 2654.89, rtol=0.05), (
-        "Missing port distance should not lead to error in calculateSpecificOffshoreCapex, possibly due to adapted function"
+        "Missing port distance should not lead to error in calculate_specific_offshore_capex, possibly due to adapted function"
     )
 
     # test arrays as input
-    c3 = calculateSpecificOffshoreCapex(
+    c3 = calculate_specific_offshore_capex(
         baseSpecCapex=[1500, 1501.5],
         capacity=[10000, 12000.5],
         rotorDiam=[250, 260.5],
@@ -87,12 +89,12 @@ def test_calculateSpecificOffshoreCapex():
         c3,
         expected,
         rtol=0.05,
-        err_msg=("Arrays cann not be handled in calculateSpecificOffshoreCapex, possibly due to adapted function"),
+        err_msg=("Arrays cann not be handled in calculate_specific_offshore_capex, possibly due to adapted function"),
     )
 
     # test no scaling at all (only baseSpecCapex, all other parameters are the same as the base case, so no scaling should occur and the result should be the same as the baseSpecCapex)
 
-    c4 = calculateSpecificOffshoreCapex(
+    c4 = calculate_specific_offshore_capex(
         baseSpecCapex=5000,
         capacity=14211.43,
         rotorDiam=221.73,
@@ -115,19 +117,19 @@ def test_calculateSpecificOffshoreCapex():
     )
 
     assert np.isclose(c4, 5000, rtol=0.0005), (
-        "Scaling occurs in calculateSpecificOffshoreCapex, when no scaling should occur, possibly due to change in function"
+        "Scaling occurs in calculate_specific_offshore_capex, when no scaling should occur, possibly due to change in function"
     )
 
 
 def test_getSpecificOffshoreCableCost():
     # test normal behaviour of the function
-    c1 = getSpecificOffshoreCableCost(
+    c1 = get_specific_offshore_cable_cost(
         distance=1000, capacity=14000, voltageType="dc", variableCostFactor=1.35, fixedCost=0, year=2050
     )
-    assert np.isclose(c1, 1620), "Error in getSpecificOffshoreCableCost, possibly due to adapted function"
+    assert np.isclose(c1, 1620), "Error in get_specific_offshore_cable_cost, possibly due to adapted function"
 
     # test arrays as input
-    c2 = getSpecificOffshoreCableCost(
+    c2 = get_specific_offshore_cable_cost(
         distance=np.array([10000, 2000, 3000]),
         capacity=np.array([10000, 5, 5000]),
         voltageType=np.array(["dc", "ac", "dc"]),
@@ -139,13 +141,13 @@ def test_getSpecificOffshoreCableCost():
 
     (
         np.testing.assert_allclose(c2, expected, rtol=0.05),
-        "Error in getSpecificOffshoreCableCost, possibly due to adapted function",
+        "Error in get_specific_offshore_cable_cost, possibly due to adapted function",
     )
 
 
 def test_getOffshoreTurbineFoundationCost():
     # test normal behaviour of the function
-    c1 = getOffshoreTurbineFoundationCost(
+    c1 = get_offshore_turbine_foundation_cost(
         depth=10.8, maxMonopileDepth=47.9, maxJacketDepth=60, year=2050, returnType=False
     )
     assert np.isclose(c1, 195.57, rtol=0.05), (
@@ -153,7 +155,7 @@ def test_getOffshoreTurbineFoundationCost():
     )
 
     # test arrays as input
-    c2 = getOffshoreTurbineFoundationCost(
+    c2 = get_offshore_turbine_foundation_cost(
         depth=np.array([10, 30, 60]), maxMonopileDepth=25, maxJacketDepth=55, year=2050, returnType=False
     )
 
@@ -166,7 +168,7 @@ def test_getOffshoreTurbineFoundationCost():
 
 def test_getSpecificOffshorePlatformCost():
     # test normal behaviour of the function
-    c1 = getSpecificOffshorePlatformCost(
+    c1 = get_specific_offshore_platform_cost(
         applicationType="ac",
         capacity=10000,
         waterDepth=55,
@@ -178,7 +180,7 @@ def test_getSpecificOffshorePlatformCost():
     assert np.isclose(c1, 36.4, rtol=0.05)
 
     # test DC substation with floating foundation, even though jacket would be possible, but water depth is above max monopile depth
-    c2 = getSpecificOffshorePlatformCost(
+    c2 = get_specific_offshore_platform_cost(
         capacity=10000,
         applicationType="dc",  # DC substation offshore
         waterDepth=56,  # floating water depth
@@ -190,7 +192,7 @@ def test_getSpecificOffshorePlatformCost():
     assert np.isclose(c2, 61.62, rtol=0.05)
 
     # test arrays as input
-    c3 = getSpecificOffshorePlatformCost(
+    c3 = get_specific_offshore_platform_cost(
         applicationType=np.array(["electrolysis", "ac", "dc"]),
         capacity=np.array([10000, 10000, 10000]),
         waterDepth=np.array([55, 55, 55]),
@@ -213,7 +215,7 @@ def test_getSpecificOffshorePlatformCost():
 
     # test wrong foundation type
     with pytest.raises(Exception):
-        getSpecificOffshorePlatformCost(
+        get_specific_offshore_platform_cost(
             capacity=10000,
             applicationType="ac",
             waterDepth=50,
@@ -225,7 +227,7 @@ def test_getSpecificOffshorePlatformCost():
 
     # test negative water depth
     with pytest.raises(Exception):
-        getSpecificOffshorePlatformCost(
+        get_specific_offshore_platform_cost(
             capacity=10000,
             applicationType="aC",
             waterDepth=-1,  # must fail
@@ -238,7 +240,7 @@ def test_getSpecificOffshorePlatformCost():
 
 def test_getSpecificConverterStationCost():
     # test normal behaviour of the function
-    c1 = getSpecificConverterStationCost(
+    c1 = get_specific_converter_station_cost(
         capacity=10000,
         waterDepth=20,
         voltageType="ac",
@@ -250,7 +252,7 @@ def test_getSpecificConverterStationCost():
     assert np.isclose(c1, 59.95, rtol=0.05)
 
     # test None as waterdepth
-    c2 = getSpecificConverterStationCost(
+    c2 = get_specific_converter_station_cost(
         capacity=10000,
         waterDepth=None,
         voltageType="ac",
@@ -261,7 +263,7 @@ def test_getSpecificConverterStationCost():
 
     assert np.isclose(c2, 23.2, rtol=0.05)
     # test arrays as input
-    c3 = getSpecificConverterStationCost(
+    c3 = get_specific_converter_station_cost(
         capacity=np.array([10000, 20000, 30000]),
         waterDepth=np.array([20, 25, 30]),
         voltageType=np.array(["ac", "ac", "dc"]),
@@ -278,7 +280,7 @@ def test_getSpecificConverterStationCost():
 
     # test wrong voltage type
     with pytest.raises(Exception):
-        getSpecificConverterStationCost(
+        get_specific_converter_station_cost(
             capacity=10000,
             waterDepth=55,  # jacket depth
             voltageType="does_not_exist",
@@ -290,7 +292,7 @@ def test_getSpecificConverterStationCost():
 
 def test_getSpecificOffshoreConnectionCost():
     # test normal behaviour of the function and arrays as input
-    c1 = getSpecificOffshoreConnectionCost(
+    c1 = get_specific_offshore_connection_cost(
         capacity=np.array([10000, 20000, 30000]),
         waterDepth=np.array([20, 25, 30]),
         coastDistance=np.array([1000, 3000, 10]),
@@ -303,9 +305,9 @@ def test_getSpecificOffshoreConnectionCost():
     expected = (np.array([8543, 25473, 163.55]), "ac")
     (
         np.testing.assert_allclose(c1[0], expected[0], rtol=0.05),
-        "Error in getSpecificOffshoreConnectionCost, possibly due to adapted function",
+        "Error in get_specific_offshore_connection_cost, possibly due to adapted function",
     )
-    assert c1[1] == expected[1], "Error in getSpecificOffshoreConnectionCost, possibly due to adapted function"
+    assert c1[1] == expected[1], "Error in get_specific_offshore_connection_cost, possibly due to adapted function"
 
 
 def test_waterDepthFromLocation_checks_all_matching_files(monkeypatch):
@@ -324,7 +326,7 @@ def test_waterDepthFromLocation_checks_all_matching_files(monkeypatch):
         interpolate_mock,
     )
 
-    result = local_values.waterDepthFromLocation(
+    result = local_values.water_depth_from_location(
         latitude=50.0,
         longitude=6.0,
         waterDepthFilePath="*.tif",

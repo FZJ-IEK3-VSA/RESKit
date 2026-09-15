@@ -5,7 +5,7 @@ from reskit.parameters.parameters import OffshoreParameters
 from reskit.wind.economic.onshore_cost_model import onshore_tcc
 
 
-def calculateSpecificOffshoreCapex(
+def calculate_specific_offshore_capex(
     baseSpecCapex,
     capacity,
     rotorDiam,
@@ -126,11 +126,11 @@ def calculateSpecificOffshoreCapex(
 
     # PREPARE TURBINE COST FUNCTIONS
 
-    offshoreCorrfacRogeau = calculateOffshoreFacRogeau(techYear)
+    offshoreCorrfacRogeau = calculate_offshore_fac_rogeau(techYear)
 
     # define a turbine installation cost function based on Rogeau et al. section 3.2.1
     # Define the function inside this function so it cannot be used separately by others, since it is not really related to the other fixed-cost components.
-    def _getSpecificTurbineInstallCost(_depth):
+    def _get_specific_turbine_install_cost(_depth):
         # enforce the same shape for all variables
         _depth = np.asarray(_depth, dtype=float)
         if _depth.size == 1:
@@ -183,14 +183,14 @@ def calculateSpecificOffshoreCapex(
         )
         / baseCap
     )
-    foundationBaseCostDefault = getOffshoreTurbineFoundationCost(  # without installation cost
+    foundationBaseCostDefault = get_offshore_turbine_foundation_cost(  # without installation cost
         depth=baseDepth,
         maxMonopileDepth=maxMonopileDepth,
         maxJacketDepth=maxJacketDepth,
         year=techYear,
     )
-    turbAndFoundInstallBaseCostDefault = _getSpecificTurbineInstallCost(baseDepth)
-    connectionBaseCostDefault = getSpecificOffshoreConnectionCost(
+    turbAndFoundInstallBaseCostDefault = _get_specific_turbine_install_cost(baseDepth)
+    connectionBaseCostDefault = get_specific_offshore_connection_cost(
         capacity=baseCap,
         waterDepth=baseDepth,
         coastDistance=baseDistCoast,
@@ -224,14 +224,14 @@ def calculateSpecificOffshoreCapex(
         )
         / capacity
     )
-    foundationPlantCostDefault = getOffshoreTurbineFoundationCost(
+    foundationPlantCostDefault = get_offshore_turbine_foundation_cost(
         depth=waterDepth,
         maxMonopileDepth=maxMonopileDepth,
         maxJacketDepth=maxJacketDepth,
         year=techYear,
     )
-    turbAndFoundInstallPlantCostDefault = _getSpecificTurbineInstallCost(_depth=waterDepth)
-    connectionPlantCostDefault = getSpecificOffshoreConnectionCost(
+    turbAndFoundInstallPlantCostDefault = _get_specific_turbine_install_cost(_depth=waterDepth)
+    connectionPlantCostDefault = get_specific_offshore_connection_cost(
         capacity=capacity,
         waterDepth=waterDepth,
         coastDistance=coastDistance,
@@ -252,7 +252,7 @@ def calculateSpecificOffshoreCapex(
     return totalPlantCostCustom
 
 
-def calculateOffshoreFacRogeau(techYear):
+def calculate_offshore_fac_rogeau(techYear):
     """
     Calculate the offshore turbine cost correction factor.
 
@@ -312,7 +312,7 @@ def calculateOffshoreFacRogeau(techYear):
     return offshoreCorrfacRogeau
 
 
-def getSpecificOffshoreConnectionCost(
+def get_specific_offshore_connection_cost(
     capacity: int | float | np.ndarray,
     waterDepth: int | float | np.ndarray,
     coastDistance: int | float | np.ndarray,
@@ -393,11 +393,11 @@ def getSpecificOffshoreConnectionCost(
     if portDistance is None:
         portDistance = coastDistance
 
-    def _getTotalSpecificConnectionCost(_voltageType):
+    def _get_total_specific_connection_cost(_voltageType):
         """Connection cost consists of 3 elements: onshore and offshore converter + cable"""
         assert _voltageType in ["ac", "dc"]
         # get specific onshore converter cost
-        convertercost_onshore = getSpecificConverterStationCost(
+        convertercost_onshore = get_specific_converter_station_cost(
             capacity=capacity,
             waterDepth=None,
             voltageType=_voltageType,
@@ -406,7 +406,7 @@ def getSpecificOffshoreConnectionCost(
         )
 
         # get specific offshore converter cost
-        convertercost_offshore = getSpecificConverterStationCost(
+        convertercost_offshore = get_specific_converter_station_cost(
             capacity=capacity,
             waterDepth=waterDepth,
             voltageType=_voltageType,
@@ -415,7 +415,7 @@ def getSpecificOffshoreConnectionCost(
         )
 
         # last specific cable cost
-        cableCost = getSpecificOffshoreCableCost(
+        cableCost = get_specific_offshore_cable_cost(
             distance=coastDistance,
             capacity=capacity,
             voltageType=_voltageType,
@@ -434,7 +434,7 @@ def getSpecificOffshoreConnectionCost(
     # calculate the cost for all eligible voltageTypes...
     _totalCostDict = {}
     for _voltageType in voltageTypes:
-        _totalCostDict[_voltageType] = _getTotalSpecificConnectionCost(_voltageType=_voltageType)
+        _totalCostDict[_voltageType] = _get_total_specific_connection_cost(_voltageType=_voltageType)
     _totalCostArray = np.vstack([_totalCostDict[k] for k in _totalCostDict.keys()])  # stack all options
     # ... and return the lowest cost option (the ONLY option if one specific voltageType was given)
     minCost = np.min(_totalCostArray, axis=0)
@@ -451,7 +451,7 @@ def getSpecificOffshoreConnectionCost(
     return (minCost, minType)
 
 
-def getOffshoreTurbineFoundationCost(
+def get_offshore_turbine_foundation_cost(
     depth: int | float | np.ndarray,
     maxMonopileDepth: int | float = 25,
     maxJacketDepth: int | float = 55,
@@ -574,7 +574,7 @@ def getOffshoreTurbineFoundationCost(
         return costs
 
 
-def getSpecificOffshoreCableCost(
+def get_specific_offshore_cable_cost(
     distance: int | float | np.ndarray,
     capacity: int | float | np.ndarray,
     voltageType: str | np.ndarray,
@@ -694,7 +694,7 @@ def getSpecificOffshoreCableCost(
     return totalSpecCost
 
 
-def getSpecificOffshorePlatformCost(
+def get_specific_offshore_platform_cost(
     applicationType: str | np.ndarray,
     capacity: int | float | np.ndarray,
     waterDepth: int | float | np.ndarray,
@@ -858,7 +858,7 @@ def getSpecificOffshorePlatformCost(
 
 
 # This function returns the cost for an on- or offshore converter station, includes platform cost if offshore
-def getSpecificConverterStationCost(
+def get_specific_converter_station_cost(
     capacity: int | float | np.ndarray,
     waterDepth: int | float | np.ndarray | None,
     voltageType: str | np.ndarray,
@@ -949,7 +949,7 @@ def getSpecificConverterStationCost(
             specECPF = np.zeros_like(capacity, dtype=float)
         else:
             # get platform cost (incl. installation cost) from separate function
-            specECPF = getSpecificOffshorePlatformCost(
+            specECPF = get_specific_offshore_platform_cost(
                 capacity=capacity,
                 applicationType=voltageType,
                 waterDepth=waterDepth,
@@ -972,3 +972,25 @@ def getSpecificConverterStationCost(
         totalSpecCost = np.asarray(totalSpecCost).item()
 
     return totalSpecCost
+
+
+##########################
+# DEPRECATED NAMES (#226) #
+##########################
+# The names below were renamed for PEP 8 in RESKit v0.6.0. Each old name stays
+# available as a warning wrapper until v1.0.0. Do not add new code here.
+
+
+def calculateSpecificOffshoreCapex(*args, **kwargs):
+    """
+    Deprecated alias of :func:`calculate_specific_offshore_capex`.
+
+    Kept for backward compatibility and scheduled for removal in RESKit v1.0.0.
+    Use :func:`calculate_specific_offshore_capex` instead. All arguments are passed through unchanged.
+    """
+    warnings.warn(
+        "calculateSpecificOffshoreCapex() is deprecated and will be removed in RESKit v1.0.0. Use calculate_specific_offshore_capex() instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return calculate_specific_offshore_capex(*args, **kwargs)

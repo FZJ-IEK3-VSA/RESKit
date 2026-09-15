@@ -16,7 +16,7 @@ def funct():
         51.475,
         50.775,
     ]  # Latitude
-    placements["area"] = [1e6, 3e6, 6e6]
+    placements["land_area_m2"] = [1e6, 3e6, 6e6]
 
     datasetname = "Initial"
     verbose = False
@@ -139,7 +139,7 @@ def print_testresults(variable):
 ####################################
 #####       TEST Init         ######
 ####################################
-def test_PTRWorkflowManager__init__() -> PTRWorkflowManager:
+def _make_PTRWorkflowManager() -> PTRWorkflowManager:
     placements = pd.DataFrame()
     placements["lon"] = [6.083, 6.083, 5.583]  # Longitude
     placements["lat"] = [
@@ -147,7 +147,7 @@ def test_PTRWorkflowManager__init__() -> PTRWorkflowManager:
         51.475,
         50.775,
     ]  # Latitude
-    placements["area"] = [1e6, 3e6, 6e6]
+    placements["land_area_m2"] = [1e6, 3e6, 6e6]
 
     wfm = PTRWorkflowManager(placements=placements)
 
@@ -162,12 +162,17 @@ def test_PTRWorkflowManager__init__() -> PTRWorkflowManager:
     return wfm
 
 
+def test_PTRWorkflowManager__init__():
+    """Run _make_PTRWorkflowManager(), which other tests use as a factory."""
+    _make_PTRWorkflowManager()
+
+
 ####################################
 #####  TEST data loading      ######
 ####################################
 @pytest.fixture
 def pt_PTRWorkflowManager_initialized() -> PTRWorkflowManager:
-    return test_PTRWorkflowManager__init__()
+    return _make_PTRWorkflowManager()
 
 
 # load ptr data
@@ -187,21 +192,75 @@ def test_loadPTRdata(pt_PTRWorkflowManager_initialized):
 # determine area
 
 
-def test_determine_area(pt_PTRWorkflowManager_initialized):
-    wfm = pt_PTRWorkflowManager_initialized
+def _PTRWorkflowManager_with_areas(**area_columns) -> PTRWorkflowManager:
+    """Create an initialized manager whose placements contain the given area columns."""
+    placements = pd.DataFrame()
+    placements["lon"] = [6.083, 6.083, 5.583]  # Longitude
+    placements["lat"] = [
+        50.775,
+        51.475,
+        50.775,
+    ]  # Latitude
+    for column_name, values in area_columns.items():
+        placements[column_name] = values
 
-    ptr_data = wfm.loadPTRdata(datasetname="Initial")
-    assert ptr_data["SF_density_total"] == 0.383
+    wfm = PTRWorkflowManager(placements=placements)
+    wfm.loadPTRdata(datasetname="Initial")
+    return wfm
+
+
+@pytest.mark.parametrize("column_name", ["area", "area_m2", "land_area_m2"])
+def test_determine_area_from_a_land_area_column(column_name):
+    """Every documented land area column gives the same land and aperture area."""
+    land_area_m2 = np.array([1e6, 3e6, 6e6])
+    wfm = _PTRWorkflowManager_with_areas(**{column_name: land_area_m2})
 
     wfm.determine_area()
 
-    assert "aperture_area_m2" in wfm.placements.columns
-    assert "land_area_m2" in wfm.placements.columns
+    density = wfm.ptr_data["SF_density_total"]
+    # the deprecated column is replaced, not kept next to the two supported columns
+    assert sorted(c for c in wfm.placements.columns if "area" in c) == [
+        "aperture_area_m2",
+        "land_area_m2",
+    ]
+    assert np.allclose(wfm.placements["land_area_m2"], land_area_m2)
+    assert np.allclose(wfm.placements["aperture_area_m2"], land_area_m2 * density)
 
-    assert np.isclose(wfm.placements["land_area_m2"].mean(), 3333333.3333333335)
-    assert np.isclose(wfm.placements["land_area_m2"].std(), 2516611.4784235833)
-    assert np.isclose(wfm.placements["aperture_area_m2"].mean(), 1276666.6666666667)
-    assert np.isclose(wfm.placements["aperture_area_m2"].std(), 963862.1962362323)
+
+def test_determine_area_from_the_aperture_area_column():
+    """Only aperture_area_m2 given: the land area follows from the solar field density."""
+    aperture_area_m2 = np.array([1e6, 3e6, 6e6])
+    wfm = _PTRWorkflowManager_with_areas(aperture_area_m2=aperture_area_m2)
+
+    wfm.determine_area()
+
+    density = wfm.ptr_data["SF_density_total"]
+    assert np.allclose(wfm.placements["aperture_area_m2"], aperture_area_m2)
+    assert np.allclose(wfm.placements["land_area_m2"], aperture_area_m2 / density)
+
+
+def test_determine_area_keeps_both_given_areas():
+    """Both area columns given: determine_area() must not change them."""
+    land_area_m2 = np.array([1e6, 3e6, 6e6])
+    aperture_area_m2 = np.array([1e5, 2e5, 3e5])
+    wfm = _PTRWorkflowManager_with_areas(
+        land_area_m2=land_area_m2,
+        aperture_area_m2=aperture_area_m2,
+    )
+
+    wfm.determine_area()
+
+    assert np.allclose(wfm.placements["land_area_m2"], land_area_m2)
+    assert np.allclose(wfm.placements["aperture_area_m2"], aperture_area_m2)
+
+
+@pytest.mark.parametrize("column_name", ["area", "area_m2"])
+def test_determine_area_warns_for_a_deprecated_area_column(column_name):
+    """The deprecated area columns must give a DeprecationWarning."""
+    wfm = _PTRWorkflowManager_with_areas(**{column_name: np.array([1e6, 3e6, 6e6])})
+
+    with pytest.warns(DeprecationWarning, match=f'"{column_name}" is deprecated'):
+        wfm.determine_area()
 
 
 # @pytest.fixture
@@ -325,10 +384,10 @@ def test_get_timesteps(pt_PTRWorkflowManager_loaded):
 
 @pytest.fixture
 def pt_PTRWorkflowManager_solarpos() -> PTRWorkflowManager:
-    wfm = test_PTRWorkflowManager__init__()
+    wfm = _make_PTRWorkflowManager()
     wfm.placements["azimuth"] = [90, 180, 180]
     wfm.placements["elev"] = [90, 180, 180]
-    wfm.time_index = pd.date_range("2014-12-31 23:30:00", periods=100, freq="H")
+    wfm.time_index = pd.date_range("2014-12-31 23:30:00", periods=100, freq="h")
     wfm.get_timesteps()
     wfm.ptr_data = pd.Series()
     wfm.ptr_data["SF_density_direct"] = 0.383
@@ -513,10 +572,10 @@ def test_calculateCosineLossesParabolicTrough(pt_PTRWorkflowManager_DNI):
 
 @pytest.fixture
 def pt_PTRWorkflowManager_IAM() -> PTRWorkflowManager:
-    wfm = test_PTRWorkflowManager__init__()
+    wfm = _make_PTRWorkflowManager()
     wfm.placements["azimuth"] = [90, 180, 180]
     wfm.placements["elev"] = [90, 180, 180]
-    wfm.time_index = pd.date_range("2014-12-31 23:30:00", periods=100, freq="H")
+    wfm.time_index = pd.date_range("2014-12-31 23:30:00", periods=100, freq="h")
     wfm.get_timesteps()
     wfm.sim_data["ptr_data"] = pd.Series()
     wfm.sim_data["ptr_data"]["SF_density_direct"] = 0.383
@@ -542,7 +601,7 @@ def test_calculateIAM(pt_PTRWorkflowManager_IAM):
 
 @pytest.fixture
 def pt_PTRWorkflowManager_Shadow() -> PTRWorkflowManager:
-    wfm = test_PTRWorkflowManager__init__()
+    wfm = _make_PTRWorkflowManager()
     wfm.sim_data["tracking_angle"] = tracking_angle_test
     wfm.sim_data["solar_zenith_degree"] = zenith_test
     return wfm
@@ -638,7 +697,7 @@ def pt_PTRWorkflowManager_heat_loss() -> PTRWorkflowManager:
         51.475,
         50.775,
     ]  # Latitude
-    placements["area"] = [1e6, 3e6, 6e6]
+    placements["land_area_m2"] = [1e6, 3e6, 6e6]
 
     datasetname = "Initial"
     verbose = False
@@ -828,7 +887,7 @@ def test_get_totex(pt_PTRWorkflowManager_initialized):
 
 @pytest.fixture
 def pt_PTRWorkflowManager_economics() -> PTRWorkflowManager:
-    wfm = test_PTRWorkflowManager__init__()
+    wfm = _make_PTRWorkflowManager()
 
     wfm.placements["aperture_area_m2"] = [3e5, 6e5, 3e5]
     wfm.placements["land_area_m2"] = [1e6, 2e6, 1e6]
@@ -896,7 +955,7 @@ def test_get_totex_from_self(pt_PTRWorkflowManager_economics):
 
 @pytest.fixture
 def pt_PTRWorkflowManager_parasitics() -> PTRWorkflowManager:
-    wfm = test_PTRWorkflowManager__init__()
+    wfm = _make_PTRWorkflowManager()
     wfm.ptr_data = {}
     wfm.ptr_data["eta_powerplant_1"] = 0.5
     wfm.placements["capacity_sf_W_th"] = 58e6
@@ -961,14 +1020,14 @@ def test_calculateParasitics(pt_PTRWorkflowManager_parasitics):
 
 @pytest.fixture
 def pt_PTRWorkflowManager_economicsSF() -> PTRWorkflowManager:
-    wfm = test_PTRWorkflowManager__init__()
+    wfm = _make_PTRWorkflowManager()
     wfm.ptr_data = {}
     wfm.sim_data["HeattoPlant_W"] = dni_test * 1e5 * 0.7
     wfm.sim_data["Parasitics_solarfield_W_el"] = dni_test * 1e5 * 0.76 * 0.1
     wfm.placements["aperture_area_m2"] = 1e5
     wfm.placements["land_area_m2"] = 1e5 / 0.3
 
-    wfm._time_index_ = pd.date_range("2014-12-31 23:30:00", periods=100, freq="H")
+    wfm._time_index_ = pd.date_range("2014-12-31 23:30:00", periods=100, freq="h")
 
     return wfm
 
@@ -1017,7 +1076,7 @@ def pt_PTRWorkflowManager_optplant(
     # wfm.placements['aperture_area_m2'] = 1E5
     # wfm.placements['land_area_m2'] = 1E5 / 0.3
 
-    wfm.time_index = pd.date_range("2015-01-01 00:30:00", periods=8760, freq="H")
+    wfm.time_index = pd.date_range("2015-01-01 00:30:00", periods=8760, freq="h")
 
     return wfm
 
@@ -1055,7 +1114,7 @@ def test_optimize_plant_size(pt_PTRWorkflowManager_optplant):
 
 @pytest.fixture
 def pt_PTRWorkflowManager_calcElecOut() -> PTRWorkflowManager:
-    wfm = test_PTRWorkflowManager__init__()
+    wfm = _make_PTRWorkflowManager()
 
     dni = np.tile(dni_test, [63, 1])[0:8760, :]
     wfm.sim_data["HeattoPlant_W"] = dni * 1e5 * 0.7
@@ -1070,7 +1129,7 @@ def pt_PTRWorkflowManager_calcElecOut() -> PTRWorkflowManager:
     wfm.ptr_data["storage_efficiency_1"] = 0.99
     wfm.ptr_data["eta_powerplant_1"] = 0.4
 
-    wfm._time_index_ = pd.date_range("2014-12-31 23:30:00", periods=8760, freq="H")
+    wfm._time_index_ = pd.date_range("2014-12-31 23:30:00", periods=8760, freq="h")
 
     return wfm
 
@@ -1145,7 +1204,7 @@ def test_calculate_LCOE(pt_PTRWorkflowManager_calcLCOE):
 
 @pytest.fixture
 def pt_PTRWorkflowManager_calcCFs() -> PTRWorkflowManager:
-    wfm = test_PTRWorkflowManager__init__()
+    wfm = _make_PTRWorkflowManager()
     wfm.placements["capacity_sf_W_th"] = 58e6
     wfm.sim_data["HeattoPlant_W"] = dni_test * 1e5 * 0.7
     wfm.placements["power_plant_capacity_W_el"] = 58e6 / 2 * 0.4
@@ -1157,7 +1216,7 @@ def pt_PTRWorkflowManager_calcCFs() -> PTRWorkflowManager:
     # wfm.placements['aperture_area_m2'] = 1E5
     # wfm.placements['land_area_m2'] = 1E5 / 0.3
 
-    # wfm._time_index_ = pd.date_range("2014-12-31 23:30:00", periods=100, freq="H")
+    # wfm._time_index_ = pd.date_range("2014-12-31 23:30:00", periods=100, freq="h")
 
     return wfm
 

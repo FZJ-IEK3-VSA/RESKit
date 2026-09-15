@@ -128,10 +128,8 @@ class DACWorkflowManager(WorkflowManager):
         NotImplementedError
             If a filling method other than "nearest" or "offTmin" is requested.
         """
-        assert fillMethod in [
-            "offTmin",
-            "nearest",
-        ], f"Filling Method: {fillMethod} not implemented."
+        if fillMethod not in ["offTmin", "nearest"]:
+            raise NotImplementedError(f"Filling method '{fillMethod}' is not implemented. Use 'nearest' or 'offTmin'.")
 
         # create unique grid as well as interpolators and evaluate for each property:
         properties = ["totalElectricity", "totalThermal", "waterDesorption", "relProd"]
@@ -173,7 +171,10 @@ class DACWorkflowManager(WorkflowManager):
         if fillMethod == "offTmin":
             # fill RH values outside range by nearest and force no operation below/above T bounds by setting relProd=0
             Tmin = self.dac_data["T"].min()
-            fill_outputs.loc[self.sim_data["surface_air_temperature"] < Tmin, "relProd"] = 0
+            # fill_outputs holds numpy arrays, not a DataFrame
+            fill_outputs["relProd"] = np.where(
+                self.sim_data["surface_air_temperature"] < Tmin, 0, fill_outputs["relProd"]
+            )
 
         # combine:
         for prop in properties:

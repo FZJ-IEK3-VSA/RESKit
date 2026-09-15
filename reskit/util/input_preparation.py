@@ -1,4 +1,5 @@
 import os
+import warnings
 import reskit as rk
 
 #######################################################
@@ -30,7 +31,7 @@ depends_on = {
         # global_solar_atlas_dni_path (used to bias-correct GHI and DNI)
         "GSA": ["GHI", "DNI"],
     },
-    "CSP_PTR_ERA5": {
+    "csp_ptr_era5": {
         "ERA5": [
             "total_sky_direct_solar_radiation_at_surface",
             "10m_u_component_of_wind",
@@ -42,9 +43,9 @@ depends_on = {
         # placement in the multi-dataset case
         "GSA": ["DNI", "TEMP"],
     },
-    # core implementation behind the CSP_PTR_ERA5 wrapper; same ERA5 needs but
+    # core implementation behind the csp_ptr_era5 wrapper; same ERA5 needs but
     # only the DNI raster (HTF selection happens in the wrapper)
-    "CSP_PTR_ERA5_specific_dataset": {
+    "csp_ptr_era5_specific_dataset": {
         "ERA5": [
             "total_sky_direct_solar_radiation_at_surface",
             "10m_u_component_of_wind",
@@ -84,6 +85,20 @@ depends_on = {
 }
 
 
+# Workflow names renamed for PEP 8 in v0.6.0 (#226). A wrapper function cannot cover
+# a name that is passed as a string, so the old keys stay resolvable here until v1.0.0.
+DEPRECATED_WORKFLOW_NAMES = {
+    "CSP_PTR_ERA5": "csp_ptr_era5",
+    "CSP_PTR_ERA5_specific_dataset": "csp_ptr_era5_specific_dataset",
+    # EGSworkflow is not a key of depends_on; its old name is covered by the
+    # deprecated wrapper in reskit/geothermal/workflows/workflows.py instead.
+}
+
+for _deprecated_name, _current_name in DEPRECATED_WORKFLOW_NAMES.items():
+    if _current_name in depends_on:
+        depends_on[_deprecated_name] = depends_on[_current_name]
+
+
 def _merge_dependencies(workflows):
     """
     Union the weather-data dependencies of one or more workflows.
@@ -108,6 +123,13 @@ def _merge_dependencies(workflows):
     """
     merged = {}
     for workflow in workflows:
+        if workflow in DEPRECATED_WORKFLOW_NAMES:
+            warnings.warn(
+                f"Workflow name {workflow!r} is deprecated and will be removed in RESKit v1.0.0. "
+                f"Use {DEPRECATED_WORKFLOW_NAMES[workflow]!r} instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
         if workflow not in depends_on:
             raise ValueError(f"Unknown RESKit workflow: {workflow!r}. Supported workflows: {sorted(depends_on)}.")
         for source, variables in depends_on[workflow].items():

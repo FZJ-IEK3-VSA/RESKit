@@ -11,7 +11,7 @@ import warnings
 from reskit.util.errors import ResError
 
 
-def waterDepthFromLocation(
+def water_depth_from_location(
     latitude: int | float,
     longitude: int | float,
     waterDepthFilePath: Optional[str] = None,
@@ -115,7 +115,7 @@ def waterDepthFromLocation(
 # if you want to execute the distance to coastline more often, please separete the loading of the taserband to increase execution time
 
 
-def distanceToCoastline(latitude, longitude, distancetoCoastFilePath=None):
+def distance_to_coastline(latitude, longitude, distancetoCoastFilePath=None):
     """
     Computes the distance to the coastline from a given geographic point.
 

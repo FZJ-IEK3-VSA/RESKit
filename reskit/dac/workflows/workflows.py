@@ -113,7 +113,7 @@ def ht_dac_era5_wenzel2025(
 
     Raises
     ------
-    AssertionError
+    NotImplementedError
         If `model` is not "HT_okosun".
 
     Notes
@@ -126,7 +126,8 @@ def ht_dac_era5_wenzel2025(
 
     The simulation relies on the `DACWorkflowManager` and the specified HT-DAC model.
     """
-    assert model in ["HT_okosun"], f"Invalid model: {model}. You can chose 'HT_okosun'"
+    if model not in ["HT_okosun"]:
+        raise NotImplementedError(f"HT-DAC model of type '{model}' is not implemented. Use 'HT_okosun'.")
 
     wf = DACWorkflowManager(placements)
 

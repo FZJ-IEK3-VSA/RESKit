@@ -114,7 +114,7 @@ class WindWorkflowManager(WorkflowManager):
                     specific_power=float(sppow), cutout=float(cutout)
                 )
             else:
-                self.powerCurveLibrary[pc] = rk_wind_core.turbine_library.TurbineLibrary().loc[pc].PowerCurve
+                self.powerCurveLibrary[pc] = rk_wind_core.turbine_library.turbine_library().loc[pc].PowerCurve
 
     def project_windspeeds_to_hub_height(
         self,
@@ -699,8 +699,11 @@ class WindWorkflowManager(WorkflowManager):
             return _gen
 
         if max_batch_size is not None:
-            if not isinstance(max_batch_size, int) and max_batch_size > 0:
-                raise TypeError(f"max_batch_size must be an integer > 0")
+            # a bool is an int subclass, exclude it explicitly
+            if not isinstance(max_batch_size, (int, np.integer)) or isinstance(max_batch_size, bool):
+                raise TypeError(f"max_batch_size must be an integer > 0, but is of type {type(max_batch_size)}.")
+            if max_batch_size <= 0:
+                raise ValueError(f"max_batch_size must be an integer > 0, but is {max_batch_size}.")
             if max_batch_size > len(self.locs):
                 max_batch_size = len(self.locs)
         else:

@@ -2,7 +2,7 @@ from os.path import dirname, join
 
 import numpy as np
 
-from .. import NCSource
+from ..nc_source import NCSource
 
 
 class Era5Source(NCSource):
@@ -112,7 +112,7 @@ class Era5Source(NCSource):
     # rasters) in place.
     # ---------------------------------------------------------------------------------------
 
-    # -- 2026_07: global coverage, reproducible with reskit.util.create_LRA / create_DNI_LRA --
+    # -- 2026_07: global coverage, reproducible with reskit.util.long_run_average --
     LONG_RUN_AVERAGE_WINDSPEED_2026_07 = join(
         dirname(__file__), "data", "ERA5_100m_wind_speed.processed_2008_2017_mean_global_2026_07.tiff"
     )
@@ -168,6 +168,10 @@ class Era5Source(NCSource):
         "forecast_surface_roughness": "fsr",
         "surface_solar_radiation_downwards": "ssrd",
         "total_sky_direct_solar_radiation_at_surface": "fdir",
+        "snow_albedo": "asn",
+        "snow_density": "rsn",
+        "snow_depth": "sd",
+        "snowfall": "sf",
     }
 
     # NC short names that are consumed by ERA5 preprocessing and replaced by
@@ -203,7 +207,7 @@ class Era5Source(NCSource):
 
         Compared to the generic NCSource object, the following parameters are automatically set:
             * tz = None
-            * time_name = "time"
+            * time_name = "time", or "valid_time" for a CF compliant download
             * lat_name = "latitude"
             * lon_name = "longitude"
             * flip_lat = True
@@ -265,7 +269,9 @@ class Era5Source(NCSource):
         super().__init__(
             source=source,
             bounds=bounds,
-            time_name="time",
+            # the legacy ERA5 download names the time axis "time", the CF compliant one
+            # "valid_time"; accept whichever the given files use
+            time_name=("time", "valid_time"),
             lat_name="latitude",
             lon_name="longitude",
             index_pad=index_pad,
