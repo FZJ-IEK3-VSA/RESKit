@@ -42,17 +42,16 @@ def egs_workflow(
         None or xarray object: Workflow results, optionally saved to `savepath`.
 
     Citation:
-         Franzmann, David and Heinrichs, Heidi and Stolten, Detlef, Global Electricity Potentials
-         from Geothermal Power Under Technical, Economic, Sustainable Evaluation. Available at SSRN:
-         https://ssrn.com/abstract=5029989 or http://dx.doi.org/10.2139/ssrn.5029989
+         Franzmann, D., Heinrichs, H. and Stolten, D. (2025), Global geothermal electricity
+         potentials: A technical, economic, and thermal renewability assessment.
+         Renewable Energy 250, 123199. https://doi.org/10.1016/j.renene.2025.123199
     """
     citation = """
     This workflow can be cited as:
-    Franzmann, David and Heinrichs, Heidi
-    and Stolten, Detlef, Global Electricity Potentials from Geothermal Power
-    Under Technical, Economic, Sustainable Evaluation.
-    Available at SSRN: https://ssrn.com/abstract=5029989
-    or http://dx.doi.org/10.2139/ssrn.5029989
+    Franzmann, D., Heinrichs, H. and Stolten, D. (2025), Global geothermal
+    electricity potentials: A technical, economic, and thermal renewability
+    assessment. Renewable Energy 250, 123199.
+    https://doi.org/10.1016/j.renene.2025.123199
     """
 
     print(citation)

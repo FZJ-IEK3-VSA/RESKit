@@ -21,6 +21,7 @@ from pandas.api.types import is_numeric_dtype
 from reskit import weather as rk_weather
 
 # import other modules
+from reskit.util.paths import as_path_string, is_path_like
 from reskit.util.weather_tile import get_dataframe_with_weather_tilepaths
 
 
@@ -252,7 +253,8 @@ class WorkflowManager:
                 variables,
             ]
 
-        if isinstance(source, str) and source_type != "user":
+        if is_path_like(source) and source_type != "user":
+            source = as_path_string(source)
             storage_format = kwargs.pop("storage_format", None)
             is_zarr = storage_format == "zarr" or source.endswith(".zarr") or source.startswith("gs://")
             if source_type == "ERA5":
@@ -433,11 +435,16 @@ class WorkflowManager:
         WorkflowManager
             Returns the invoking WorkflowManager (for chaining)
         """
-        if not (nodata_fallback is None or callable(nodata_fallback) or isinstance(nodata_fallback, (float, int, str))):
+        if not (
+            nodata_fallback is None
+            or callable(nodata_fallback)
+            or isinstance(nodata_fallback, (float, int))
+            or is_path_like(nodata_fallback)
+        ):
             raise TypeError(f"'nodata_fallback' must be a float or a Callable.")
 
         # first get source values
-        if isinstance(source_long_run_average, str):
+        if is_path_like(source_long_run_average):
             # assume raster fp
             source_lra = self.get_scalar_values_from_raster(
                 fp=source_long_run_average, spatial_interpolation="linear-spline"
@@ -446,7 +453,7 @@ class WorkflowManager:
             source_lra = source_long_run_average
 
         # then get lng-run average values for scaling
-        if isinstance(real_long_run_average, str):
+        if is_path_like(real_long_run_average):
             # assume a raster path
             real_lra = self.get_scalar_values_from_raster(
                 fp=real_long_run_average, spatial_interpolation=spatial_interpolation
@@ -480,7 +487,7 @@ class WorkflowManager:
                 fallback_lra = nodata_fallback(
                     locs=self.locs, source_long_run_average_value=source_lra
                 )  # no additional scaling
-            elif isinstance(nodata_fallback, str):
+            elif is_path_like(nodata_fallback):
                 # assume this is yet another raster path as fallback and extract missing values
                 fallback_lra = (
                     self.get_scalar_values_from_raster(fp=nodata_fallback, spatial_interpolation=spatial_interpolation)
@@ -538,7 +545,7 @@ class WorkflowManager:
             [description], by default "linear-spline"
         """
         # Get values from high resolution tiff file
-        if isinstance(source_high_resolution, str):
+        if is_path_like(source_high_resolution):
             points = [(loc.lon, loc.lat) for loc in self.locs._locations]
             correction_values_high_res = gk.raster.interpolateValues(  # TODO change here
                 source_high_resolution, points, mode=spatial_interpolation
@@ -548,7 +555,7 @@ class WorkflowManager:
             correction_values_high_res = source_high_resolution
 
         # Get values from low resolution tiff file (meant over eg. ERA5)
-        if isinstance(source_low_resolution, str):
+        if is_path_like(source_low_resolution):
             points = [(loc.lon, loc.lat) for loc in self.locs._locations]
             correction_values_low_res = gk.raster.interpolateValues(  # TODO change here
                 source_low_resolution, points, mode=spatial_interpolation

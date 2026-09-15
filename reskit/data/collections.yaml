@@ -1,0 +1,98 @@
+# RESKit data collections.
+#
+# This file selects slices of the shared ETHOS.Data catalogue. It deliberately holds
+# no file paths, sizes, checksums or URLs -- those live once, in the catalogue.
+# Adding a dataset here never means copying its inventory.
+
+# Pin a released tag so a given RESKit version always resolves to the same bytes.
+# Override with $RESKIT_DATA_CATALOG (e.g. to point at the internal catalogue).
+#
+# NOTE: the test fixtures were regrouped by provenance and are now described as a
+# family -- `reskit-test-data` names the set, and one member per upstream sits
+# under it. The tag pinned here predates that, so these collections resolve
+# against the internal catalogue today and need a new public tag cut before they
+# resolve against the public one.
+catalog: https://raw.githubusercontent.com/FZJ-IEK3-VSA/ethos-data-catalog/v2026.09/datacatalog.json
+
+# THE FIXTURE FAMILY. `reskit-test-data` is a namespace: naming it selects every
+# member beneath it, and a member can be named directly as `reskit-test-data/era5`.
+# The members exist because access is a per-dataset property -- one file that may
+# not be redistributed would otherwise make the whole set unpublishable. Thirteen
+# of the fifteen members are public; two are held back:
+#
+#   reskit-test-data/esa-cci-landcover   C3S land cover, licence unresolved
+#   reskit-test-data/icon-lam            FZJ model output, release not yet agreed
+
+collections:
+
+  test_suite:
+    title: Data required by the RESKit pytest suite
+    include:
+      - dataset: reskit-test-data
+
+  # The subset an external contributor can actually download: everything in the
+  # family whose licence permits redistribution.
+  test_suite_public:
+    title: The publishable part of the test fixtures
+    include:
+      - dataset: reskit-test-data/boundaries
+      - dataset: reskit-test-data/corine
+      - dataset: reskit-test-data/dist2coast
+      - dataset: reskit-test-data/era5
+      - dataset: reskit-test-data/era5-csp
+      - dataset: reskit-test-data/gebco
+      - dataset: reskit-test-data/global-solar-atlas
+      - dataset: reskit-test-data/global-wind-atlas
+      - dataset: reskit-test-data/merra2
+      - dataset: reskit-test-data/placements
+      - dataset: reskit-test-data/sarah
+      - dataset: reskit-test-data/srtm
+      - dataset: reskit-test-data/synthetic
+
+  landcover:
+    title: Copernicus C3S land cover (300 m)
+    include:
+      - dataset: landcover
+        files: ["*.tif"]
+
+  onshore_wind:
+    title: Data for onshore wind workflows
+    extends: [landcover]
+    include:
+      - dataset: reskit-test-data/era5
+        files:
+          - "100m_*_component_of_wind.nc"
+          - "forecast_surface_roughness.nc"
+      - dataset: reskit-test-data/global-wind-atlas
+        files: ["gwa*-like.tif"]
+      # Selecting the .shp pulls .shx/.dbf/.prj in automatically.
+      - dataset: reskit-test-data/placements
+        files: ["turbinePlacements.shp"]
+
+  solar:
+    title: Data for PV and CSP workflows
+    include:
+      - dataset: reskit-test-data/sarah
+      - dataset: reskit-test-data/global-solar-atlas
+      - dataset: reskit-test-data/era5-csp
+
+  # RECONSTRUCTED 2026-09-09, and worth checking. This collection was an
+  # uncommitted local edit that got overwritten while the fixture family was
+  # being restructured. It was rebuilt from the only surviving evidence -- it
+  # resolved to 5 files -- which matches these four datasets exactly: the inputs
+  # the geothermal resource is computed *from*, with the computed
+  # `geothermal-resource` itself deliberately not among them. If that is not what
+  # it said, this is the line to fix.
+  geothermal_preprocessing:
+    title: Inputs for computing the geothermal resource
+    include:
+      - dataset: geothermal-conductivity-assumptions
+      - dataset: global-lithological-map-glim-v1
+      - dataset: goutorbe-global-heat-flow-2011
+      - dataset: nasa-power-geothermal-climatology
+
+  all:
+    title: Every dataset RESKit can use
+    include:
+      - dataset: reskit-test-data
+      - dataset: landcover

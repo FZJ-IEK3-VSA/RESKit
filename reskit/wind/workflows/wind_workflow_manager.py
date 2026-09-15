@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 import windpowerlib
 
+from ...util.paths import is_path_like
 from ...workflow_manager import WorkflowManager
 from .. import core as rk_wind_core
 
@@ -175,10 +176,8 @@ class WindWorkflowManager(WorkflowManager):
 
         if height_scaling_method[0] == "log":
             # we have a logarithmic scaling approach, check landcover raster
-            if not isinstance(height_scaling_data, str) and isfile(height_scaling_method):
-                raise TypeError(
-                    "height_scaling_method must be str formatted path if height_scaling_method==('log', [landcover])"
-                )
+            if not is_path_like(height_scaling_data):
+                raise TypeError("height_scaling_data must be a path if height_scaling_method==('log', [landcover])")
             # first get surface roughness per location, then project
             self.estimate_roughness_from_land_cover(path=height_scaling_data, source_type=height_scaling_method[1])
             self.logarithmic_projection_of_wind_speeds_to_hub_height(
@@ -458,9 +457,9 @@ class WindWorkflowManager(WorkflowManager):
 
                 # get and check filepath from alternative LRA ws height rasters
                 fp = alternative_wind_speed_rasters[_height]
-                if not (isinstance(fp, str) and isfile(fp)):
+                if not (is_path_like(fp) and isfile(fp)):
                     raise FileNotFoundError(
-                        f"value of alternative_wind_speed_rasters[{_height}] must be a str-formatted path to an existing file: {fp}"
+                        f"value of alternative_wind_speed_rasters[{_height}] must be a path to an existing file: {fp}"
                     )
 
                 # extract ws only for points (rows) with this height

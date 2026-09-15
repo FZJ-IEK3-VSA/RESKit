@@ -28,6 +28,11 @@ dependencies:
   - orbit-nrel
   - jsonmerge
   - wombat
+  - pooch
+  - pyyaml
+  - platformdirs
+  - tqdm
+  - rclone
   # dev
   - nbval <=0.11.0
   - ruff =0.14.1

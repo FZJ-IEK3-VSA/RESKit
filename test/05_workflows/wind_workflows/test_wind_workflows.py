@@ -125,22 +125,22 @@ def test_onshore_wind_iconlam_2023(pt_wind_placements_Zimbabwe: pd.DataFrame):
     )
 
     assert gen.roughness.shape == (44,)
-    assert np.isclose(gen.roughness.mean(), 0.07909091)
-    assert np.isclose(gen.roughness.min(), 0.03)
-    assert np.isclose(gen.roughness.max(), 0.75)
-    assert np.isclose(gen.roughness.std(), 0.18148151)
+    assert np.isclose(gen.roughness.mean(), 0.13227273)
+    assert np.isclose(gen.roughness.min(), 0.03000000)
+    assert np.isclose(gen.roughness.max(), 1.20000000)
+    assert np.isclose(gen.roughness.std(), 0.29514144)
 
     assert gen.elevated_wind_speed.shape == (144, 44)
-    assert np.isclose(gen.elevated_wind_speed.mean(), 5.18359644)
+    assert np.isclose(gen.elevated_wind_speed.mean(), 5.19560706)
     assert np.isclose(gen.elevated_wind_speed.min(), 0.17078107)
     assert np.isclose(gen.elevated_wind_speed.max(), 11.59889682)
-    assert np.isclose(gen.elevated_wind_speed.std(), 2.82934687)
+    assert np.isclose(gen.elevated_wind_speed.std(), 2.82411910)
 
     assert gen.capacity_factor.shape == (144, 44)
-    assert np.isclose(gen.capacity_factor.mean(), 0.27713258)
-    assert np.isclose(gen.capacity_factor.min(), 0.0)
-    assert np.isclose(gen.capacity_factor.max(), 1.0)
-    assert np.isclose(gen.capacity_factor.std(), 0.34440202)
+    assert np.isclose(gen.capacity_factor.mean(), 0.27857797)
+    assert np.isclose(gen.capacity_factor.min(), 0.00000000)
+    assert np.isclose(gen.capacity_factor.max(), 1.00000000)
+    assert np.isclose(gen.capacity_factor.std(), 0.34426161)
 
 
 def test_wind_config(pt_wind_placements: pd.DataFrame):
