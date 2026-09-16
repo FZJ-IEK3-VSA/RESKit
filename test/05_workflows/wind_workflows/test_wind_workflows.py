@@ -119,7 +119,7 @@ def test_onshore_wind_iconlam_2023(pt_wind_placements_Zimbabwe: pd.DataFrame):
     gen = onshore_wind_iconlam_2023(
         placements=pt_wind_placements_Zimbabwe,
         icon_lam_path=TEST_DATA["iconlam-like"],
-        esa_cci_path=TEST_DATA["ESA_CCI_2018_clip_cityBulawayoInZimbabwa.tif"],
+        esa_cci_path=TEST_DATA["ESA_CCI_2015_clip_cityBulawayoInZimbabwa.tif"],
         output_netcdf_path=None,
         output_variables=None,
     )
@@ -154,7 +154,7 @@ def test_wind_config(pt_wind_placements: pd.DataFrame):
         real_lra_ws_scaling=1,
         real_lra_ws_spatial_interpolation="average",
         real_lra_ws_nodata_fallback=np.nan,
-        height_scaling_data=TEST_DATA["ESA_CCI_2018_clip.tif"],
+        height_scaling_data=TEST_DATA["ESA_CCI_2015_clip.tif"],
         height_scaling_method=("log", "cci"),
         ws_correction_func=(
             "ws_bins",

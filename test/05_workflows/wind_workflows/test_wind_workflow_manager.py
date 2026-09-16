@@ -187,7 +187,7 @@ def test_WindWorkflowManager_project_windspeeds_to_hub_height(
 
     man.project_windspeeds_to_hub_height(
         height_scaling_method=("log", "cci"),
-        height_scaling_data=TEST_DATA["ESA_CCI_2018_clip.tif"],
+        height_scaling_data=TEST_DATA["ESA_CCI_2015_clip.tif"],
         consider_boundary_layer_height=False,
     )
 

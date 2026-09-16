@@ -36,11 +36,18 @@ catalog: https://raw.githubusercontent.com/FZJ-IEK3-VSA/ethos-data-catalog/v2026
 # THE FIXTURE FAMILY. `reskit-test-data` is a namespace: naming it selects every
 # member beneath it, and a member can be named directly as `reskit-test-data/era5`.
 # The members exist because access is a per-dataset property -- one file that may
-# not be redistributed would otherwise make the whole set unpublishable. Thirteen
-# of the fifteen members are public; two are held back:
+# not be redistributed would otherwise make the whole set unpublishable.
 #
-#   reskit-test-data/esa-cci-landcover   C3S land cover, licence unresolved
+# esa-cci-landcover was the last member held back: it was cut from the C3S 2018
+# layer, which the CDS ships under a licence granting use only for educational
+# and scientific purposes and no redistribution at all. On 2026-09-16 it was
+# re-cut from the CEDA-distributed ESA CCI v2.0.7 series (2015 layer, same grid
+# and same extents) whose terms grant use to any user for any purpose, and it is
+# in test_suite_public below.
+#
 #   reskit-test-data/icon-lam            FZJ model output, release not yet agreed
+#     -- but the catalogue now marks this member public with no licence note.
+#        Confirm which is right before adding it to test_suite_public.
 
 collections:
 
@@ -59,6 +66,7 @@ collections:
       - dataset: reskit-test-data/dist2coast
       - dataset: reskit-test-data/era5
       - dataset: reskit-test-data/era5-csp
+      - dataset: reskit-test-data/esa-cci-landcover
       - dataset: reskit-test-data/gebco
       - dataset: reskit-test-data/global-solar-atlas
       - dataset: reskit-test-data/global-wind-atlas
