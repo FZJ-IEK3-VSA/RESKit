@@ -331,13 +331,32 @@ class NCSource(object):
                 self._latStop = self._latN - np.argmax((left | top | right).all(1)[::-1]) + 1 + index_pad
 
             else:
-                tmp = np.logical_and(self._allLons >= self.bounds.xMin, self._allLons <= self.bounds.xMax)
-                self._lonStart = np.argmax(tmp) - 1
-                self._lonStop = self._lonStart + 1 + np.argmin(tmp[self._lonStart + 1 :]) + 1
+                # Take the first and last cell inside the bounds directly. Looking for
+                # the first cell outside them instead misses when every cell is inside,
+                # which is what asking for the whole extent of a dataset does.
+                inside = np.flatnonzero(
+                    np.logical_and(self._allLons >= self.bounds.xMin, self._allLons <= self.bounds.xMax)
+                )
+                if inside.size == 0:
+                    raise ResError(
+                        "The given bounds do not overlap the data in longitude: bounds are "
+                        f"{self.bounds.xMin} to {self.bounds.xMax}, the data covers "
+                        f"{self._allLons.min()} to {self._allLons.max()}"
+                    )
+                self._lonStart = inside[0] - 1
+                self._lonStop = inside[-1] + 2
 
-                tmp = np.logical_and(self._allLats >= self.bounds.yMin, self._allLats <= self.bounds.yMax)
-                self._latStart = np.argmax(tmp) - 1
-                self._latStop = self._latStart + 1 + np.argmin(tmp[self._latStart + 1 :]) + 1
+                inside = np.flatnonzero(
+                    np.logical_and(self._allLats >= self.bounds.yMin, self._allLats <= self.bounds.yMax)
+                )
+                if inside.size == 0:
+                    raise ResError(
+                        "The given bounds do not overlap the data in latitude: bounds are "
+                        f"{self.bounds.yMin} to {self.bounds.yMax}, the data covers "
+                        f"{self._allLats.min()} to {self._allLats.max()}"
+                    )
+                self._latStart = inside[0] - 1
+                self._latStop = inside[-1] + 2
 
                 self._lonStart = max(0, self._lonStart - index_pad)
                 self._lonStop = min(self._allLons.size, self._lonStop + index_pad)
