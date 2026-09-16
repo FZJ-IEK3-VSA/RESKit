@@ -380,6 +380,9 @@ def test_Era5Source_get(pt_Era5Source, pt_BoundedEra5Source):
     s1 = pt_Era5Source.get(var, pt, interpolation="bilinear")
     assert np.isclose(s1.values.mean(), 15.277533860286267)
 
+    s1 = pt_Era5Source.get(var, pt, interpolation="cubic")
+    assert np.isclose(s1.values.mean(), 15.298774201244854)
+
 
 def test_Era5Source_sload_snow_albedo(pt_Era5Source, pt_BoundedEra5Source):
     var = "snow_albedo"

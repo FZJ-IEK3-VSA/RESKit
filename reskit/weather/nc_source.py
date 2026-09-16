@@ -18,20 +18,23 @@ def _bilinear_interpolation(window, gridYVals, gridXVals, yInterp, xInterp):
     """Bilinearly interpolate a (time, y, x) window onto scattered points, for all times at once.
 
     Returns a (time, location) array, matching what a ``kx=ky=1`` RectBivariateSpline
-    evaluated per time step gives, including its linear extrapolation for points which
-    fall outside the window.
+    evaluated per time step gives, including its treatment of points outside the
+    window: FITPACK clamps those to the window's edge rather than extrapolating.
+    `get` relies on that for locations beyond the highest latitude the window covers,
+    which it shifts when choosing the window but not when evaluating.
     """
     gridYVals = np.asarray(gridYVals, dtype=float)
     gridXVals = np.asarray(gridXVals, dtype=float)
-    yInterp = np.asarray(yInterp, dtype=float)
-    xInterp = np.asarray(xInterp, dtype=float)
 
-    # the cell each point falls in, clipped so that points outside the window are
-    # extrapolated from the edge cell rather than indexing out of bounds
+    # clamped to the window, which is what the spline being replaced did
+    yInterp = np.clip(np.asarray(yInterp, dtype=float), gridYVals[0], gridYVals[-1])
+    xInterp = np.clip(np.asarray(xInterp, dtype=float), gridXVals[0], gridXVals[-1])
+
+    # the cell each point falls in
     yi = np.clip(np.searchsorted(gridYVals, yInterp) - 1, 0, gridYVals.size - 2)
     xi = np.clip(np.searchsorted(gridXVals, xInterp) - 1, 0, gridXVals.size - 2)
 
-    # position within that cell, in [0, 1] for points inside the window
+    # position within that cell, in [0, 1]
     ty = (yInterp - gridYVals[yi]) / (gridYVals[yi + 1] - gridYVals[yi])
     tx = (xInterp - gridXVals[xi]) / (gridXVals[xi + 1] - gridXVals[xi])
 
