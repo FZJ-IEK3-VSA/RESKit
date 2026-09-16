@@ -489,3 +489,30 @@ def test_Era5Source_reads_a_cf_compliant_file(tmp_path):
 
     source.load("sp", "surface_pressure")
     assert source.data["surface_pressure"].shape == (len(times), 3, 3)
+
+
+@pytest.mark.parametrize(
+    "bounds",
+    [
+        pytest.param((5.0, 49.0, 7.5, 52.0), id="exactly_the_data_extent"),
+        pytest.param((2.0, 46.0, 10.0, 55.0), id="larger_than_the_data_extent"),
+    ],
+)
+def test_bounds_covering_the_whole_extent_keep_the_whole_grid(bounds):
+    """Bounds with every cell inside them must not be cut down to a corner of the grid."""
+    unbounded = Era5Source(TEST_DATA["era5-like"], verbose=False)
+    source = Era5Source(TEST_DATA["era5-like"], bounds=gk.Extent(*bounds, srs=gk.srs.EPSG4326), verbose=False)
+
+    assert (source.lats == unbounded.lats).all()
+    assert (source.lons == unbounded.lons).all()
+
+    source.sload_surface_pressure()
+    assert source.data["surface_pressure"].shape[1:] == (unbounded.lats.size, unbounded.lons.size)
+
+
+def test_bounds_which_miss_the_data_raise():
+    """Bounds that do not overlap the data at all are a mistake, not an empty selection."""
+    with pytest.raises(ResError) as error:
+        Era5Source(TEST_DATA["era5-like"], bounds=gk.Extent(20.0, 49.0, 22.0, 52.0, srs=gk.srs.EPSG4326), verbose=False)
+
+    assert "do not overlap" in str(error.value)
