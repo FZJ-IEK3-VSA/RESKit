@@ -3,9 +3,28 @@
 # This file selects slices of the shared ETHOS.Data catalogue. It deliberately holds
 # no file paths, sizes, checksums or URLs -- those live once, in the catalogue.
 # Adding a dataset here never means copying its inventory.
+#
+# Two things a collection may carry beyond its selection:
+#
+#   paths:          handle -> catalogue key ("<dataset>/<file>", "<dataset>/<folder>",
+#                   "<dataset>" or a family). Names a workflow's inputs once, here, so
+#                   `reskit.data.paths("onshore_wind")` hands the caller
+#                   {handle: local path} and nobody else has to know a resource key.
+#   test: / full:   two variants of one collection, each with its own include/extends/
+#                   paths instead of top-level ones. `test` is the small selection that
+#                   lets an example run in seconds, `full` the real inputs; both MUST offer
+#                   the same handles so the same code runs on either. Full is the default:
+#                   silently running a real calculation on fixtures is worse than a large
+#                   but visible download, so test=True / --test is opt-in.
 
 # Pin a released tag so a given RESKit version always resolves to the same bytes.
-# Override with $RESKIT_DATA_CATALOG (e.g. to point at the internal catalogue).
+# To read another catalogue (the institute's internal one, say) set ETHOS_DATA_CATALOG
+# or run `reskit-data config set-catalog <path-or-url>` -- that is the ETHOS.Data-wide
+# switch, honoured by every tool. $RESKIT_DATA_CATALOG is a RESKit-only override that
+# wins over both when set.
+#
+# NOTE: the public catalogue repository is now called ETHOS.Data-Catalogue. The URL
+# below still names the old repository and may need updating together with the tag.
 #
 # NOTE: the test fixtures were regrouped by provenance and are now described as a
 # family -- `reskit-test-data` names the set, and one member per upstream sits
@@ -55,19 +74,60 @@ collections:
       - dataset: landcover
         files: ["*.tif"]
 
+  # The inputs of wind_era5_PenaSanchezDunkelWinklerEtAl2025, in two sizes. The
+  # handles match its arguments: era5 -> era5_path, gwa_100m -> gwa_100m_path,
+  # gwa_50m / gwa_200m -> height_scaling_data. Neither variant extends `landcover`:
+  # the workflow does not take land cover, it is 7.9 GB, and a handle present in
+  # one variant only would make the variants unequal.
   onshore_wind:
     title: Data for onshore wind workflows
-    extends: [landcover]
-    include:
-      - dataset: reskit-test-data/era5
-        files:
-          - "100m_*_component_of_wind.nc"
-          - "forecast_surface_roughness.nc"
-      - dataset: reskit-test-data/global-wind-atlas
-        files: ["gwa*-like.tif"]
-      # Selecting the .shp pulls .shx/.dbf/.prj in automatically.
-      - dataset: reskit-test-data/placements
-        files: ["turbinePlacements.shp"]
+    test:
+      include:
+        # Exactly what the workflow reads from ERA5: the 100 m wind (the precomputed
+        # speed, or the u/v components it is computed from when that is absent),
+        # surface pressure, 2 m temperature and boundary layer height.
+        - dataset: reskit-test-data/era5
+          files:
+            - "100m_*_component_of_wind.nc"
+            - "100m_wind_speed.processed.nc"
+            - "surface_pressure.nc"
+            - "2m_temperature.nc"
+            - "boundary_layer_height.nc"
+        - dataset: reskit-test-data/global-wind-atlas
+          files: ["gwa*-like.tif"]
+      paths:
+        era5: reskit-test-data/era5
+        gwa_100m: reskit-test-data/global-wind-atlas/gwa100-like.tif
+        gwa_50m: reskit-test-data/global-wind-atlas/gwa50-like.tif
+        gwa_200m: reskit-test-data/global-wind-atlas/gwa200-like.tif
+    full:
+      include:
+        # TODO(maintainer): no ERA5 dataset is catalogued yet, so this variant does
+        # not resolve today. Replace `era5` with the catalogued ERA5 dataset name
+        # (and narrow `files:` to the variables the workflow reads) once it exists;
+        # keep `paths.era5` below pointing at the same dataset.
+        #
+        # The consequence, until `era5` exists in the selected catalogue:
+        #   - `reskit-data list` marks `onshore_wind [full]` [unresolvable]
+        #     and exits 1, while `onshore_wind [test]` resolves;
+        #   - `reskit.data.paths("onshore_wind")` -- without
+        #     test=True, i.e. the default full variant -- raises UnknownDataset,
+        #     while the same call with test=True works;
+        #   - `reskit-data verify --all` skips `onshore_wind [full]`, says so,
+        #     and exits 1 even when every checked file matches.
+        # The variant is kept on purpose so both flags can be exercised and the two
+        # variants' handles are checked against each other from day one.
+        - dataset: era5
+        - dataset: global-wind-atlas-v3
+          files:
+            - "gwa3_250_wind-speed_50m.tif"
+            - "gwa3_250_wind-speed_100m.tif"
+            - "gwa3_250_wind-speed_200m.tif"
+      paths:
+        era5: era5
+        gwa_100m: global-wind-atlas-v3/gwa3_250_wind-speed_100m.tif
+        gwa_50m: global-wind-atlas-v3/gwa3_250_wind-speed_50m.tif
+        gwa_200m: global-wind-atlas-v3/gwa3_250_wind-speed_200m.tif
 
   solar:
     title: Data for PV and CSP workflows
@@ -75,6 +135,11 @@ collections:
       - dataset: reskit-test-data/sarah
       - dataset: reskit-test-data/global-solar-atlas
       - dataset: reskit-test-data/era5-csp
+    paths:
+      sarah: reskit-test-data/sarah
+      gsa_ghi: reskit-test-data/global-solar-atlas/gsa-ghi-like.tif
+      gsa_dni: reskit-test-data/global-solar-atlas/gsa-dni-like.tif
+      era5_csp: reskit-test-data/era5-csp
 
   # RECONSTRUCTED 2026-09-09, and worth checking. This collection was an
   # uncommitted local edit that got overwritten while the fixture family was

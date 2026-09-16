@@ -135,6 +135,37 @@ implemented — solar/CSP workflows on Global Solar Atlas rasters and wind workf
 on Global Wind Atlas rasters. `download_and_process` prints a notice for these and
 you must supply the rasters manually.
 
+### Input data from the ETHOS.Data catalogue
+
+RESKit names the inputs its workflows take in `reskit/data/collections.yaml`, a selection
+of the shared ETHOS.Data catalogue. `reskit.data.paths()` fetches a collection and returns
+`{handle: local path}`; `test=True` selects the small test fixtures, so an example runs in
+seconds, and dropping the flag runs the identical code on the full data:
+
+```python
+from reskit import data
+
+inputs = data.paths("onshore_wind", test=True)
+result = rk.wind.wind_era5_PenaSanchezDunkelWinklerEtAl2025(
+    placements=placements,
+    era5_path=inputs["era5"],
+    gwa_100m_path=inputs["gwa_100m"],
+    height_scaling_data={50: inputs["gwa_50m"], 200: inputs["gwa_200m"]},
+)
+```
+
+The same from the shell: `reskit-data paths onshore_wind --test` prints one
+`handle<TAB>path` line per input, `reskit-data list` shows every collection, and
+`reskit-data --help` every command.
+
+`reskit-data` is a console script, so reinstall once after checking out this branch:
+`pip install -e . --no-deps`. The catalogue RESKit pins must contain the `reskit-test-data`
+family; until a public release does, point ETHOS.Data at the institute's internal catalogue
+once with `reskit-data config set-catalog <path-or-url to datacatalog.json>` (or set
+`ETHOS_DATA_CATALOG`), and check with `reskit-data list`. The how-to
+[Get input data from the ETHOS.Data catalogue](docs/how_to/get_input_data.md) covers the
+cache location, single files by key and checking the files.
+
 ### Reading ERA5 from Zarr
 
 ETHOS.RESKit can read ERA5 directly from regular latitude/longitude Zarr stores while keeping the existing `source_type="ERA5"` workflow API. The current implementation is intended for stores such as the [Earth Data Hub ERA5 single-level dataset](https://earthdatahub.destine.eu/collections/era5/datasets/reanalysis-era5-single-levels):
