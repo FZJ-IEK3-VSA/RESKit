@@ -18,7 +18,7 @@
 [![conda-forge version](https://img.shields.io/conda/vn/conda-forge/reskit.svg)](https://anaconda.org/conda-forge/reskit)
 [![Tests](https://github.com/FZJ-IEK3-VSA/RESKit/actions/workflows/test_push.yml/badge.svg)](https://github.com/FZJ-IEK3-VSA/RESKit/actions/workflows/test_push.yml)
 [![Coverage](https://codecov.io/gh/FZJ-IEK3-VSA/RESKit/branch/dev/graph/badge.svg)](https://codecov.io/gh/FZJ-IEK3-VSA/RESKit)
-[![Documentation](https://readthedocs.org/projects/ethos-reskit/badge/?version=latest)](https://ethos-reskit.readthedocs.io/en/latest/)
+[![Documentation](https://readthedocs.org/projects/ethos-reskit/badge/`version=latest)](https://ethos-reskit.readthedocs.io/en/latest/)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17668775.svg)](https://doi.org/10.5281/zenodo.17668775)
 [![License](https://img.shields.io/github/license/FZJ-IEK3-VSA/RESKit)](https://github.com/FZJ-IEK3-VSA/RESKit/blob/dev/LICENSE-MIT.txt)
 
@@ -158,13 +158,16 @@ The same from the shell: `reskit-data paths onshore_wind --test` prints one
 `handle<TAB>path` line per input, `reskit-data list` shows every collection, and
 `reskit-data --help` every command.
 
-`reskit-data` is a console script, so reinstall once after checking out this branch:
-`pip install -e . --no-deps`. The catalogue RESKit pins must contain the `reskit-test-data`
-family; until a public release does, point ETHOS.Data at the institute's internal catalogue
-once with `reskit-data config set-catalog <path-or-url to datacatalog.json>` (or set
-`ETHOS_DATA_CATALOG`), and check with `reskit-data list`. The how-to
-[Get input data from the ETHOS.Data catalogue](docs/how_to/get_input_data.md) covers the
-cache location, single files by key and checking the files.
+Install ETHOS.Data in the same environment. In a development checkout, reinstall
+RESKit with `pip install -e . --no-deps` to register its console script.
+`reskit-data list` prints the actual catalogue selection; `RESKIT_DATA_CATALOG`
+overrides it for RESKit, while shared ETHOS settings apply to all packages.
+
+Use `reskit-data staging add/list/remove` for unpublished development inputs.
+The [input-data guide](docs/how_to/get_input_data.md) covers catalogue selection,
+workflow arguments, staging and verification, with links to the shared
+configuration and bundle procedures. Cache and catalogue administration use
+`ethos-data`.
 
 ### Reading ERA5 from Zarr
 

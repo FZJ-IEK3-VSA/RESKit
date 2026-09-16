@@ -1,8 +1,12 @@
-# Downloading and Read RESKit Input Data
+# Obtain and prepare RESKit input data
 
-RESKit requires input data sources to simulate the respective technologies. To download, inspect and preprocess some of the data some examples are provided in the following 
+For catalogued workflow inputs, start with
+[Get input data from the ETHOS.Data catalogue](../how_to/get_input_data.md).
+It uses `reskit.data` and `reskit-data` to select, fetch and verify RESKit's inputs.
 
-Examples are provided for 
+The examples below cover obtaining upstream weather data and preparing it for
+RESKit. Use [development staging](../how_to/get_input_data.md#develop-against-unpublished-data)
+when testing a prepared dataset before catalogue acceptance.
 
 ## Time resolved Weather data
 

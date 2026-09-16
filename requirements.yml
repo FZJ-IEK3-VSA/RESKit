@@ -28,11 +28,7 @@ dependencies:
   - orbit-nrel
   - jsonmerge
   - wombat
-  - pooch
-  - pyyaml
-  - platformdirs
-  - tqdm
-  - rclone
+  - ethos-data >=0.2.0
   # dev
   - nbval <=0.11.0
   - ruff =0.14.1
