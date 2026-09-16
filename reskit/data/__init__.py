@@ -18,6 +18,7 @@ The same from the shell, with the ``reskit-data`` command this module provides:
     reskit-data list                         # the collections and their size
     reskit-data paths onshore_wind --test    # fetch one, print handle<TAB>path
     reskit-data config show                  # where the cache is, which catalogue
+    reskit-data staging add trial /path/to/data  # use unpublished development data
 
 ``paths`` is what a workflow wants. The collection names each input the workflow
 takes (``era5``, ``gwa_100m``, ...) under ``paths:`` in ``collections.yaml``, so
@@ -222,12 +223,13 @@ def cache_dir() -> Path:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """The ``reskit-data`` command: ETHOS.Data's collection commands on RESKit's file.
+    """RESKit's collections, catalogue access, test bundles and development staging.
 
     ``list``, ``info``, ``plan``, ``fetch``, ``paths``, ``verify``, ``path``,
-    ``ls``, ``bundle`` and ``config``; ``reskit-data --help`` lists them. The
+    ``ls``, ``bundle``, ``staging`` and ``config``; ``reskit-data --help`` lists them. The
     catalogue is loaded only for the commands that need it, so ``--help`` and
-    ``config show`` work offline.
+    ``config show`` and ``staging`` work offline. Shared cache maintenance
+    (``link``, ``unlink``, ``materialize``) and catalogue publishing use ``ethos-data``.
     """
     return _ethos_data().tool_main(
         COLLECTIONS_FILE, tool=TOOL, prog=COMMAND, catalog=_catalog_override(), argv=argv
