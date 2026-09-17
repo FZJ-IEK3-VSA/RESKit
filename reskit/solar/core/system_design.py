@@ -365,8 +365,8 @@ def location_to_gcr(
         if convention == "winter_solstice_rule":
 
             # note that east slope is not used in this convention because it has negligible influence on equator-facing fixed modules
-            if east_slope not in [None, 0]:
-                warnings.warn(f"east_slope ({east_slope}) is not None or zero, but will be neglected by tracking='fixed' and convention='{convention}'.")
+            if east_slope is not None and np.any(np.asarray(east_slope) != 0):
+                warnings.warn(f"east_slope ({east_slope}) is not None/zero, but will be neglected by tracking='fixed' and convention='{convention}'.")
 
             if isinstance(north_slope, str):
                 # assume a slope raster
