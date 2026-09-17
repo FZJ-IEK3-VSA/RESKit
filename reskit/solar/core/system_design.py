@@ -391,9 +391,10 @@ def location_to_gcr(
             # separate mono- and bifacial (factor 0.96, see Tonita et al. 2023) lines
             def _interpolate_gcr(lat, bifac):
                 # get value for bifaciality factors 0 and 0.96 and interpolate (linear is a simplification due to lack of more detailed data)
-                assert 0 <= bifac <= 1.0 # make sure
-                gcrmono = -2.82*0.001 * lat + 0.388
-                gcrbifac = -2.68*0.001 * lat + 0.361
+                assert np.all((0 <= bifac) & (bifac <= 1.0)) # make sure
+                # get mono- and bifacial gcr based on absolute lat to account for Southern hemisphere
+                gcrmono = -2.82*0.001 * np.abs(lat) + 0.388
+                gcrbifac = -2.68*0.001 * np.abs(lat) + 0.361
                 return gcrmono + (gcrbifac - gcrmono) * (bifac - 0)/(0.96 - 0)
             lats = np.array([loc.lat for loc in locs])
             bifacs = np.ones_like(lats) * bifaciality_factor
