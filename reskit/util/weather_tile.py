@@ -150,7 +150,7 @@ def get_location_specific_weather_paths(weather_paths, locs, zoom=None):
             assert loc.GetGeometryName() == "POINT", (
                 f"loc must be a POINT geometry if provided as osgeo.ogr.Geometry, here: {loc.GetGeometryName()}"
             )
-            loc = gk.srs.transform(loc, toSRS=4326)
+            loc = gk.geom.transform(loc, toSRS=4326)
             lon = loc.GetX()
             lat = loc.GetY()
         elif isinstance(loc, gk.Location):
