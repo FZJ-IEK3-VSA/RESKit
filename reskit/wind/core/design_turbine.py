@@ -218,12 +218,6 @@ def turbine_design_from_avg_wind_speed(
     multi = wind_speed.size > 1
 
     # Design Specific Power
-    #TODO delete when confirmed via comparison with elder branch
-    # scaling = compute_specific_power( 
-    #     baseline_params["base_capacity"], baseline_params["base_rotor_diam"]
-    # ) / scaling_funcs["specific_power"](ws=baseline_params["reference_wind_speed"])
-    # specific_power = scaling * scaling_funcs["specific_power"](ws=wind_speed)
-
     # get reference wind speed, can be general (e.g. RybergEtAl2019) or parameter-specific (e.g. WinklerEtAl2026)
     reference_wind_speed_specpow = baseline_params["reference_wind_speed_specpow"]
     assert not pd.isnull(reference_wind_speed_specpow), "reference_wind_speed_specpow must be given."
@@ -247,13 +241,19 @@ def turbine_design_from_avg_wind_speed(
     else:
         capacity = baseline_params["base_capacity"]
         rotor_diam = 2 * np.sqrt(capacity * 1000 / specific_power / np.pi)
+    # NaN windspeeds would currently not lead to NaN values for all parameters
+    # also set windspeed independent params to NaN for a consistent parameter set
+    ws_nan = pd.isnull(wind_speed)
+    if multi:
+        specific_power = np.where(ws_nan, np.nan, specific_power)
+        capacity = np.where(ws_nan, np.nan, capacity)
+        rotor_diam = np.where(ws_nan, np.nan, rotor_diam)
+    elif ws_nan:
+        specific_power = np.nan
+        capacity = np.nan
+        rotor_diam = np.nan
 
     # Design Hub Height
-    #TODO delete when confirmed 
-    # scaling = baseline_params["base_hub_height"] / (
-    #     scaling_funcs["hub_height"](ws=baseline_params["reference_wind_speed"])
-    # )
-    # hub_height = scaling * scaling_funcs["hub_height"](ws=wind_speed)
     # get reference wind speed, can be general (e.g. RybergEtAl2019) or parameter-specific (e.g. WinklerEtAl2026)
     reference_wind_speed_hubheight = baseline_params["reference_wind_speed_hubheight"]
     assert not pd.isnull(reference_wind_speed_hubheight), "reference_wind_speed_hubheight must be given."
