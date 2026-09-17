@@ -1043,6 +1043,8 @@ def execute_workflow_iteratively(
         tilepaths = np.asarray(placements["source"])
     else:
         tilepaths = np.asarray(placements[weather_path_varname])
+        # align with the output format of get_dataframe_with_weather_tilepaths
+        placements["source"] = placements[weather_path_varname]
     if "RESKit_sim_order" in placements.columns:
         # make sure it is a consecutive integer sequence
         if not np.array_equal(placements["RESKit_sim_order"], np.arange(len(placements))):
