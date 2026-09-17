@@ -1055,8 +1055,9 @@ def execute_workflow_iteratively(
         save_args[k] = workflow_args.pop(k, None)
 
     # preprocess the weather tile paths
-    assert weather_path_varname in workflow_keys + location_specific_keys + placement_keys,\
+    assert weather_path_varname in workflow_keys + location_specific_keys + placement_keys, (
         f"weather_path_varname '{weather_path_varname}' must be either a key in workflow_args or location_specific_workflow_args, or a placements df column."
+    )
     # get the weather path data
     for cont in [location_specific_workflow_args, workflow_args, placements]:
         if weather_path_varname in cont:

@@ -81,9 +81,9 @@ def get_tilepath(weather_path, lat=None, lon=None, zoom=None):
         The longitude in degrees, takes effect only if weather_path
         contains spacers. By default None.
     zoom : int | None, optional
-        The zoom level at which the tiling was done, takes effect 
+        The zoom level at which the tiling was done, takes effect
         only if weather_path contains spacers. By default None.
-    
+
     Returns
     -------
         str : weather_path with all spacers replaced by the respective
@@ -93,18 +93,18 @@ def get_tilepath(weather_path, lat=None, lon=None, zoom=None):
         assert isinstance(zoom, int), (
             f"zoom must be a positive integer tiling level if weather_path contains X/Y spacers"
         )
-        assert isinstance(lat, int), (
-            f"lat must be a float or integer degree if weather_path contains X/Y spacers"
-        )
-        assert isinstance(lon, int), (
-            f"lon must be a float or integer degree if weather_path contains X/Y spacers"
-        )
+        assert isinstance(lat, int), f"lat must be a float or integer degree if weather_path contains X/Y spacers"
+        assert isinstance(lon, int), f"lon must be a float or integer degree if weather_path contains X/Y spacers"
         _X, _Y = get_tile_xy(zoom=zoom, lon=lon, lat=lat, geom=None)
-        weather_path = weather_path.replace("<X-TILE>", str(_X)).replace("<Y-TILE>", str(_Y)).replace("<ZOOM>", str(zoom))
+        weather_path = (
+            weather_path.replace("<X-TILE>", str(_X)).replace("<Y-TILE>", str(_Y)).replace("<ZOOM>", str(zoom))
+        )
     # make sure we got all spacers
     spacers = re.findall(r"<[^>]*>", weather_path)
     if len(spacers) > 0:
-        raise ValueError(f"weather_path still contains spacer after replacing '<X-TILE>', '<Y-TILE>' and '<ZOOM>': {', '.join(spacers)}")
+        raise ValueError(
+            f"weather_path still contains spacer after replacing '<X-TILE>', '<Y-TILE>' and '<ZOOM>': {', '.join(spacers)}"
+        )
     return weather_path
 
 
@@ -114,21 +114,21 @@ def get_location_specific_weather_paths(weather_paths, locs, zoom=None):
     spacers with location-specific data.#
 
     weather_paths : str | list[str]
-        A str filepath or a list thereof, with spacers '<X-TILE>', 
-        '<Y-TILE>' and '<ZOOM> allowed. Length must match the length 
+        A str filepath or a list thereof, with spacers '<X-TILE>',
+        '<Y-TILE>' and '<ZOOM> allowed. Length must match the length
         of locs if provided as a list.
     locs : list[tuple] | geokit.LocationSet
 
     Returns
     -------
-        list[str] : List of completed weather paths, specific for and in 
+        list[str] : List of completed weather paths, specific for and in
         the same order as the locations
     """
     # check inputs
     if isinstance(locs, tuple) or isinstance(locs, str) or not hasattr(locs, "__iter__"):
         raise TypeError(f"weather_paths must be an iterable but not a str or tuple.")
     if isinstance(weather_paths, str):
-        weather_paths = [weather_paths]*len(locs)
+        weather_paths = [weather_paths] * len(locs)
     elif not isinstance(weather_paths, list):
         raise TypeError("weather_paths must be a list of str if not a str.")
     if not all([isinstance(x, str) for x in weather_paths]):
@@ -143,7 +143,9 @@ def get_location_specific_weather_paths(weather_paths, locs, zoom=None):
             # assume we have a (lon, lat) tuple in EPSG:4326
             lon, lat = loc
         elif isinstance(loc, osgeo.ogr.Geometry):
-            assert loc.GetGeometryName() == "POINT", f"loc must be a POINT geometry if provided as osgeo.ogr.Geometry, here: {loc.GetGeometryName()}"
+            assert loc.GetGeometryName() == "POINT", (
+                f"loc must be a POINT geometry if provided as osgeo.ogr.Geometry, here: {loc.GetGeometryName()}"
+            )
             loc = gk.srs.transform(loc, toSRS=4326)
             lon = loc.GetX()
             lat = loc.GetY()
@@ -216,7 +218,6 @@ def get_dataframe_with_weather_tilepaths(placements, weather_path, zoom):
             placements["lon"] = placements.geom.apply(lambda x: x.GetX())
         if not "lat" in placements.columns:
             placements["lat"] = placements.geom.apply(lambda x: x.GetY())
-
 
     if weather_path is None:
         # the info must already be in the dataframe then
