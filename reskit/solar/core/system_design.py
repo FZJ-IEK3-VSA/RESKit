@@ -324,19 +324,18 @@ def location_to_gcr(
         DOI 10.1016/j.solener.2023.04.038
     """
     locs = gk.LocationSet(locs)
-
-    if min_gcr is None:
-        min_gcr = 0.0 # set to zero, has no effect then
-    else:
-        assert isinstance(min_gcr, float), "min_gcr must be a float if not None."
-
+    if min_gcr is not None:
+        assert isinstance(min_gcr, float) and 0 <= min_gcr <= 1.0, \
+            f"min_gcr must be a float >= 0 and <= 1.0 if not None, here: {min_gcr}."
+    
     # first check if we have a given raster from which we only need to extract the gcrs
     if isinstance(convention, str) and isfile(convention):
         # try to extract data from raster
         try:
             gcrs = gk.raster.interpolateValues(convention, locs, **kwargs)
             # apply min gcr
-            gcrs[gcrs < min_gcr] = min_gcr
+            if min_gcr is not None:
+                gcrs[gcrs < min_gcr] = min_gcr
             return gcrs
         except Exception:
             raise OSError(f"File cannot be read by gk.raster.interpolateValues(): {convention}.")
@@ -384,9 +383,6 @@ def location_to_gcr(
                 module_area_width=3.3, 
                 min_interrow_distance=2.5,
                 )
-            # apply min gcr
-            gcrs[gcrs < min_gcr] = min_gcr
-            return gcrs
     
     if tracking == "singleaxis":
         if convention == "tonita_et_al_2023_5perc":
@@ -402,13 +398,18 @@ def location_to_gcr(
             bifacs = np.ones_like(lats) * bifaciality_factor
             # apply function to all lats and bifacs tuples
             gcrs = _interpolate_gcr(lats, bifacs)
-            # apply min gcr
-            gcrs[gcrs < min_gcr] = min_gcr
-            return gcrs
 
     # None of the above applied, raise error
     raise ValueError(f"Unknown gcr convention '{convention}' for tracking = '{tracking}'.")
     
+
+    # if requested, apply min gcr to locs with NaN or lower gcr then required
+    if min_gcr is not None:
+        assert isinstance(min_gcr, float) and 0 <= min_gcr <= 1.0, \
+            f"min_gcr must be a float >= 0 and <= 1.0 if not None, here: {min_gcr}."
+        gcrs[(gcrs < min_gcr) | np.isnan(gcrs)] = min_gcr
+
+    return gcrs
 
 
 ## winter solstice rule: no shade on winter solstice at either solar noon or any morning hour
