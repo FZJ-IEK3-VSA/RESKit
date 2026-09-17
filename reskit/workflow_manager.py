@@ -1,16 +1,12 @@
 # import base packages
 import datetime
 import warnings
-from collections import OrderedDict  # TODO is this needed when
+from collections import OrderedDict 
 from glob import glob
 from itertools import compress
 from os.path import basename, isdir, isfile, join
 from types import FunctionType
-from typing import (
-    List,
-    OrderedDict,
-    Union,
-)  # TODO remove OrderedDict here (duplicated with collections above?)
+from typing import List, Union
 
 # import third party packages
 import geokit as gk
