@@ -10,7 +10,7 @@ tool is fetched once. Apart from the small test fixtures in ``test_cache`` (see
     inputs = data.paths("onshore_wind", test=True)   # {handle: Path}, small fixtures
     inputs = data.paths("onshore_wind")              # the same handles, full data
     files  = data.fetch("onshore_wind")              # a whole collection, by key
-    clc    = data.path("landcover/C3S-LC-L4-LCCS-Map-300m-P1Y-2018-v2.1.1.tif")
+    clc    = data.path("corine-land-cover/CLC2018_CLC2018_V2018_20.tif")
     era5   = data.directory("reskit-test-data/era5")
 
 The same from the shell, with the ``reskit-data`` command this module provides:
@@ -225,7 +225,7 @@ def directory(key_prefix: str, progressbar: bool = False) -> Path:
 
     For readers that want a folder rather than a file list -- RESKit's weather
     sources, for instance, are pointed at a directory of netCDF files.
-    ``key_prefix`` is a dataset (``"landcover"``), a member of a family
+    ``key_prefix`` is a dataset (``"corine-land-cover"``), a member of a family
     (``"reskit-test-data/era5"``), a folder inside a dataset
     (``"reskit-test-data/merra2/merged"``) or a whole family. Dataset names may
     themselves contain "/", so the split is by the longest catalogued name, not

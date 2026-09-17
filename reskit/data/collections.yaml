@@ -25,8 +25,8 @@
 #
 # The public catalogue is generated from the institute's internal one by
 # `ethos-data catalog publish`, so a dataset appears below only once it has been
-# published. Two collections name datasets that have not been yet -- see
-# `landcover` and `onshore_wind [full]`.
+# published. One collection still names a dataset that has not been -- see
+# `onshore_wind [full]`.
 catalog: https://raw.githubusercontent.com/FZJ-IEK3-VSA/ETHOS.Data-Catalogue/v2026.09/datacatalog.json
 
 # THE FIXTURE FAMILY. `reskit-test-data` is a namespace: naming it selects every
@@ -72,25 +72,13 @@ collections:
       - dataset: reskit-test-data/srtm
       - dataset: reskit-test-data/synthetic
 
-  # TODO(maintainer): `landcover` -- the Copernicus C3S 300 m product -- is not in
-  # the published catalogue yet, so this collection does not resolve against it and
-  # `reskit-data show` marks it [unresolvable]. The name is right, not a typo: the
-  # published `esa-cci-landcover` and `corine-land-cover` entries both describe
-  # themselves by reference to `landcover`, so the internal catalogue has it and it
-  # simply has not been through `ethos-data catalog publish`. Publish it and re-pin
-  # the tag above; do not rename it to one of those two, which are a different
-  # product (1992-2015 historical) and a different grid (100 m, Europe only).
-  landcover:
-    title: Copernicus C3S land cover (300 m)
-    include:
-      - dataset: landcover
-        files: ["*.tif"]
-
   # The inputs of wind_era5_PenaSanchezDunkelWinklerEtAl2025, in two sizes. The
   # handles match its arguments: era5 -> era5_path, gwa_100m -> gwa_100m_path,
-  # gwa_50m / gwa_200m -> height_scaling_data. Neither variant extends `landcover`:
-  # the workflow does not take land cover, it is 7.9 GB, and a handle present in
-  # one variant only would make the variants unequal.
+  # gwa_50m / gwa_200m -> height_scaling_data. Neither variant offers a land cover
+  # handle: this workflow scales heights from long-run-average wind speeds, not
+  # logarithmically, so it never reads one. The workflows that do take
+  # `height_scaling_method=("log", ...)` expect the raster as a caller-supplied
+  # path, which is why no collection carries it.
   onshore_wind:
     title: Data for onshore wind workflows
     test:
@@ -168,10 +156,13 @@ collections:
       - dataset: goutorbe-global-heat-flow-2011
       - dataset: nasa-power-geothermal-climatology
 
-  # Does not resolve against the published catalogue either, for the one reason
-  # given above `landcover`.
+  # NOTE: `landcover` (Copernicus C3S, 300 m) was removed from this file -- the CDS
+  # ships it under terms that forbid redistribution, so it cannot go in the public
+  # catalogue, and no RESKit workflow selected it. Workflows that scale wind speeds
+  # logarithmically still take a land cover raster, but as a caller-supplied path
+  # (`esa_cci_path`, `height_scaling_data`), never from a collection. That leaves
+  # nothing here beyond the fixtures, so this is `test_suite` by another name.
   all:
     title: Every dataset RESKit can use
     include:
       - dataset: reskit-test-data
-      - dataset: landcover
