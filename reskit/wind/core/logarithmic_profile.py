@@ -63,6 +63,10 @@ def apply_logarithmic_profile_projection(
     --------
         apply_power_profile_projection( <wind speeds, <measured height>, <target height>, <alpha> )
     """
+    target_height = np.asarray(target_height, dtype=float)
+    displacement = np.asarray(displacement, dtype=float)
+    roughness = np.asarray(roughness, dtype=float)
+    stability = np.asarray(stability, dtype=float)
     return (
         measured_wind_speed
         * (np.log((target_height - displacement) / roughness) + stability)
