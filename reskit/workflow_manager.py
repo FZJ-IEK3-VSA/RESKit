@@ -1,7 +1,8 @@
 # import base packages
 import datetime
 import warnings
-from collections import OrderedDict 
+from collections import OrderedDict
+from collections.abc import Iterable
 from glob import glob
 from itertools import compress
 from os.path import basename, isdir, isfile, join
@@ -1008,13 +1009,37 @@ def execute_workflow_iteratively(
     """
     # check key inputs
     assert callable(workflow), "workflow must be a callable RESkit workflow function."
-    assert "placements" in workflow_args, "'placements' is a mandatory argument/key in workflow_args."
     assert isinstance(location_specific_workflow_args, dict), "location_specific_workflow_args must be a dict."
     assert isinstance(weather_path_varname, str), f"weather_path_varname ({weather_path_varname}) must be str."
 
+    assert "placements" in workflow_args, "'placements' is a mandatory argument/key in workflow_args."
     placements = workflow_args["placements"]
     assert isinstance(placements, pd.DataFrame), f"placements must be a pd.DataFrame, here: {type(placements)}"
+    # generate and write copy back into argy to not manipulate the original
+    placements = placements.copy()
+    workflow_args["placements"] = placements
 
+    # make sure that the location specific args are ordered iterables and match the locations in shape
+    location_specific_workflow_args = location_specific_workflow_args.copy()  # may be manipulated later
+    for _arg, _val in location_specific_workflow_args.items():
+        if isinstance(_val, set):
+            raise TypeError("A set cannot be a positional argument because it is unordered.")
+        if isinstance(_val, str) or not isinstance(_val, Iterable):
+            raise TypeError(
+                f"Location-specific workflow arg '{_arg}' must be an iterable with length equal to placements, pass scalar values as workflow arg."
+            )
+        try:
+            n = len(_val)
+        except TypeError:
+            raise TypeError(
+                f"Location-specific workflow arg '{_arg}' must be an iterable with a defined first dimension."
+            )
+        if n != len(placements):
+            raise ValueError(
+                f"Location-specific workflow arg '{_arg}' has first-dimension length {n}, expected {len(placements)}."
+            )
+
+    # avoid duplicate argument values
     workflow_keys = set(workflow_args)
     location_specific_keys = set(location_specific_workflow_args)
     placement_keys = set(placements.columns)
@@ -1030,6 +1055,7 @@ def execute_workflow_iteratively(
             f"Duplicates: {', '.join(sorted(dups))}"
         )
 
+    # add an iterable with the current order so it can be restored afterwards
     if "RESKit_sim_order" in placements.columns:
         # make sure it is a consecutive integer sequence
         if not np.array_equal(placements["RESKit_sim_order"], np.arange(len(placements))):
@@ -1043,7 +1069,7 @@ def execute_workflow_iteratively(
 
     # extract the overall save_args of to_netcdf() before iteration over tiles
     save_args = {}
-    for k in ["output_netcdf_path", "output_variables"]:
+    for k in ["output_netcdf_path", "output_variables", "custom_attributes"]:
         assert k not in location_specific_keys and k not in placement_keys, (
             f"'{k}' must be a workflow arg if defined, cannot be a location-specific arg or a placements column name."
         )
@@ -1055,19 +1081,29 @@ def execute_workflow_iteratively(
         f"weather_path_varname '{weather_path_varname}' must be either a key in workflow_args or location_specific_workflow_args, or a placements df column."
     )
     # get the weather path data
-    for cont in [location_specific_workflow_args, workflow_args, placements]:
+    containers = {
+        "location_specific_workflow_args": location_specific_workflow_args,
+        "workflow_args": workflow_args,
+        "placements": placements,
+    }
+    for weather_path_source, cont in containers.items():
         if weather_path_varname in cont:
-            weather_path = np.asarray(cont[weather_path_varname])
-    for cont in [location_specific_workflow_args, workflow_args, placements]:
-        if weather_path_varname in cont:
-            weather_path = cont[weather_path_varname]
+            weather_path = cont.pop(weather_path_varname)
             break
+    if weather_path is None:
+        assert "source" in placements, (
+            f"'source' column is expected in placements when '{weather_path_varname}' weather_path value is None."
+        )
+        weather_path = placements["source"]
+    assert isinstance(weather_path, str) or (
+        isinstance(weather_path, (list, tuple, np.ndarray, pd.Series)) and all(isinstance(x, str) for x in weather_path)
+    ), "weather_path must be a str or an ordered iterable of str."
     # broadcast it to one value per location if not provided as such
     try:
         weather_paths = np.broadcast_to(
             weather_path,
             (len(placements),),
-        )
+        ).tolist()
     except ValueError:
         raise ValueError(f"'{weather_path_varname}' must be scalar or have length {len(placements)}.")
     # get a locations iterable
@@ -1078,47 +1114,35 @@ def execute_workflow_iteratively(
     else:
         raise AttributeError(f"placements is expected to have a 'geom' column or both 'lat' and 'lon'columns.")
     # now complete the paths by replacing potential spacers based on the respective locations and zoom value
-    tilepaths = get_location_specific_weather_paths(weather_paths=weather_paths, locs=locs)
+    tilepaths = np.asarray(get_location_specific_weather_paths(weather_paths=weather_paths, locs=locs, zoom=zoom))
 
     # iterate over weather tiles
-    for i, tilepath in enumerate(np.unique(tilepaths)):
+    unique_tilepaths = sorted(np.unique(tilepaths))
+    for i, tilepath in enumerate(unique_tilepaths):
         # generate a mask for the placements covered by this tile
         tilemask = tilepaths == tilepath
+        # mask the placements dataframe to filter affected rows
+        _placements = placements.loc[tilemask].copy()
         # create a copy of the workflow args for this tilepath only
         _workflow_args = workflow_args.copy()
+        # add the tilepath for the current iteration, either to workflow args or to _placements df
+        if weather_path_source == "placements":
+            # some workflows may still expect a "source" column with the weather data
+            _placements[weather_path_varname] = tilepath
+        else:
+            # else write into workflow args
+            _workflow_args[weather_path_varname] = tilepath
         # iterate over the global workflow args and change only the "special cases"
         for _arg, _val in workflow_args.items():
             if _arg == "placements":
                 # reduce placements to subset within the current tile
-                _workflow_args[_arg] = placements.loc[tilemask]
-            elif _arg == weather_path_varname:
-                # set the current weather path tile path - NOTE that this arg can be either here or in location-specific args, hence again below
-                _workflow_args[_arg] = tilepath
+                _workflow_args[_arg] = _placements
             else:
                 # we can use it as it is, it is a standard "global" arg across all locs
                 pass
         # now iterate over the location-specific args and select only those values that apply to the tile subset of the placements df
         for _arg, _val in location_specific_workflow_args.items():
-            if _arg == weather_path_varname:
-                # must be passed to actual workflow as a scalar str, set the current weather path tile path
-                # note that we write everything into the final "workflow args" (if not passed as global arg anyways, see above)
-                _workflow_args[_arg] = tilepath
-                continue
-            # make sure we have an order-stable iterable with values per loc which we have to mask as well
-            if isinstance(_val, set):
-                raise TypeError("A set cannot be a positional argument because it is unordered.")
-            try:
-                n = len(_val)  # gets length of FIRST dimension only, allows timeseries etc. per loc
-            except TypeError:
-                raise TypeError(
-                    f"Location-specific workflow arg '{_arg}' must be an iterable with a defined first dimension."
-                )
-            if n != len(placements):
-                raise ValueError(
-                    f"Location-specific workflow arg '{_arg}' has first-dimension length {n}, expected {len(placements)}."
-                )
-
-            # we have a suitable iterable, mask it
+            # mask the iterable just like the placements
             if isinstance(_val, np.ndarray):
                 _val = _val[tilemask]  # apply mask on first dimension
             elif isinstance(_val, list):
@@ -1139,7 +1163,7 @@ def execute_workflow_iteratively(
         # execute workflow with subset and add to list of results
         print(
             datetime.datetime.now(),
-            f"Now processing tile {i + 1}/{len(placements['source'].unique())} with {len(_workflow_args['placements'])} locations: {tilepath}",
+            f"Now processing tile {i + 1}/{len(unique_tilepaths)} with {len(_placements)} locations: {tilepath}",
         )
         xrds = workflow(**_workflow_args)
         xrds = xrds.set_index(location="RESKit_sim_order")
@@ -1149,8 +1173,9 @@ def execute_workflow_iteratively(
             reskit_xr = xarray.concat([reskit_xr, xrds], dim="location")
 
     # create a dummy wfm instance for saving
+    reskit_xr = reskit_xr.sortby("location")
     wfm = WorkflowManager(placements=placements.drop(columns="RESKit_sim_order"))
-    wfm.to_netcdf(
+    reskit_xr = wfm.to_netcdf(
         xds=reskit_xr,
         **save_args,  # pass output path and variables if given
     )
