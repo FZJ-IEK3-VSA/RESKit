@@ -55,9 +55,13 @@ def location_to_module_azimuth(
     return modazimuths
 
 
-def location_to_module_tilt(locs, convention: str = "Ryberg2020", **kwargs):
+def location_to_module_tilt(
+        locs, 
+        convention: str = "Ryberg2020", 
+        **kwargs
+        ):
     """
-    Simple system tilt estimator based off latitude and longitude coordinates
+    Estimates module tilt off location-specific arguments for selected "convention options.
 
 
     Parameters
@@ -66,16 +70,16 @@ def location_to_module_tilt(locs, convention: str = "Ryberg2020", **kwargs):
            The locations at which to estimate system tilt angle
 
     convention : str, optional
-                 The calculation method used to suggest system tilts
-                 Options are:
-                     * "Ryberg2020"
-                     * A string consumable by 'eval'
-                     - Can use the variable 'latitude'
-                     - Ex. "latitude*0.76"
-                     * A path to a raster file
+        The calculation method used to suggest system tilts. Options are:
+        * "Ryberg2020"
+            Calculates tilt based on latitude, developed for Europe by Ryberg et al. [1]
+            Equation: 42.327719357601396 * arctan( 1.5 * abs(latitude) ), accepts no kwargs.
+        * A path to a raster file
+            Must be an existing file readable by geokit.raster.interpolateValues(),
+            will then geospatiallyextract the tilt directly from a raster file.
+            kwargs will be passed on to geokit.raster.interpolateValues().
 
-    kwargs: Optional keyword arguments to use in geokit.raster.interpolateValues(...).
-            Only applies when `convention` is a path to a raster file
+    kwargs: Optional keyword arguments for the respective convention core function.
 
 
     Returns
@@ -96,17 +100,20 @@ def location_to_module_tilt(locs, convention: str = "Ryberg2020", **kwargs):
     """
     locs = gk.LocationSet(locs)
 
+    if not isinstance(convention, str):
+        raise TypeError(f"convention is expected to be a str: {convention}")
+
     if convention == "Ryberg2020":
+        assert not kwargs, f"No keyword arguments accepted for convention 'Ryberg2020': {kwargs}"
         tilt = 42.327719357601396 * np.arctan(1.5 * np.radians(np.abs(locs.lats)))
 
     elif isfile(convention):
-        tilt = gk.raster.interpolateValues(convention, locs, **kwargs)
-
-    else:
         try:
-            tilt = eval(convention, {}, {"latitude": locs.lats})
-        except Exception:
-            raise ResError("Failed to apply tilt convention")
+            tilt = gk.raster.interpolateValues(convention, locs, **kwargs)
+        except Exception as e:
+            raise ResError(f"convention must be readable by geokit.raster.interpolateValues() if an existing filepath is given, here: '{convention}'.\n{e}")
+    else:
+        raise ResError(f"Unknown convention (or non-existing file) for location_to_module_tilt(): '{convention}'")
 
     return tilt
 
