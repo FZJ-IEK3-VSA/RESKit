@@ -27,7 +27,7 @@ class HydroWorkflowManager(WorkflowManager):
     GRAVITY_M_S2 = 9.81
     PARFLOW_1DAY_URL = (
         "https://service.tereno.net/thredds/dodsC/forecastnrw/products/ParFlow-DE06-HC_v03/"
-        "sfd_DE05_ECMWF-HRES_hindcast_r1i1p2_FZJ-IBG3-ParFlowCLM380_"
+        "sfd_DE06_ECMWF-HRES_hindcast_r1i1p1_FZJ-IBG3-ParFlowCLM380_"
         "hgfadapter-v03_h00_1day_{year}0101-{year}1231.nc"
     )
     PARFLOW_3HOUR_URL = (
