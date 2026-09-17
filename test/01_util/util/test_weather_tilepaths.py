@@ -3,7 +3,7 @@ import numpy as np
 import pytest
 
 from reskit import TEST_DATA
-from reskit.util.weather_tile import get_dataframe_with_weather_tilepaths, get_tile_xy
+from reskit.util.weather_tile import get_dataframe_with_weather_tilepaths, get_tile_xy, get_location_specific_weather_paths
 
 
 def test_weather_tilepaths():
@@ -75,3 +75,18 @@ def test_get_tile_XY():
     # test lat/lon
     X, Y = get_tile_xy(zoom=4, lon=df.geom[0].GetX(), lat=df.geom[0].GetY(), geom=None)
     assert (X, Y) == (8, 5)
+
+
+def test_get_location_specific_weather_paths():
+    fps = get_location_specific_weather_paths(
+        weather_paths="my/path/<ZOOM>/X<X-TILE>/Y<Y-TILE>/myfile.nc",
+        locs=gk.LocationSet([
+            gk.geom.point(7.0, 51.0, srs=4326),
+            gk.geom.point(121.0, 58.0, srs=4326),
+        ]),
+        zoom=17,
+    )
+    assert fps == [
+        "my/path/17/X68084/Y43879/myfile.nc",
+        "my/path/17/X109590/Y39477/myfile.nc",
+    ]
