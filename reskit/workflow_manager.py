@@ -1011,18 +1011,13 @@ def execute_workflow_iteratively(
         weather_path_varname as keys.
     """
     # check key inputs
-    assert callable(workflow), \
-        "workflow must be a callable RESkit workflow function."
-    assert "placements" in workflow_args, \
-        "'placements' is a mandatory argument/key in workflow_args."
-    assert isinstance(location_specific_workflow_args, dict), \
-        "location_specific_workflow_args must be a dict."
-    assert isinstance(weather_path_varname, str),\
-        f"weather_path_varname ({weather_path_varname}) must be str."
+    assert callable(workflow), "workflow must be a callable RESkit workflow function."
+    assert "placements" in workflow_args, "'placements' is a mandatory argument/key in workflow_args."
+    assert isinstance(location_specific_workflow_args, dict), "location_specific_workflow_args must be a dict."
+    assert isinstance(weather_path_varname, str), f"weather_path_varname ({weather_path_varname}) must be str."
 
     placements = workflow_args["placements"]
-    assert isinstance(placements, pd.DataFrame), \
-        f"placements must be a pd.DataFrame, here: {type(placements)}"
+    assert isinstance(placements, pd.DataFrame), f"placements must be a pd.DataFrame, here: {type(placements)}"
 
     workflow_keys = set(workflow_args)
     location_specific_keys = set(location_specific_workflow_args)
@@ -1062,8 +1057,9 @@ def execute_workflow_iteratively(
     # extract the overall save_args of to_netcdf() before iteration over tiles
     save_args = {}
     for k in ["output_netcdf_path", "output_variables"]:
-        assert k not in location_specific_keys and k not in placement_keys,\
+        assert k not in location_specific_keys and k not in placement_keys, (
             f"'{k}' must be a workflow arg if defined, cannot be a location-specific arg or a placements column name."
+        )
         # remove the saving-related args (which should not be passed to individual iterations over tiles) and store them in save args instead
         save_args[k] = workflow_args.pop(k, None)
 
@@ -1142,7 +1138,7 @@ def execute_workflow_iteratively(
     wfm = WorkflowManager(placements=placements.drop(columns="RESKit_sim_order"))
     wfm.to_netcdf(
         xds=reskit_xr,
-        **save_args, # pass output path and variables if given
+        **save_args,  # pass output path and variables if given
     )
 
     return reskit_xr
