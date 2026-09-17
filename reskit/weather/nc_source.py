@@ -14,6 +14,37 @@ from ..util import ResError
 Index = namedtuple("Index", "yi xi")
 
 
+def _bilinear_interpolation(window, gridYVals, gridXVals, yInterp, xInterp):
+    """Bilinearly interpolate a (time, y, x) window onto scattered points, for all times at once.
+
+    Returns a (time, location) array, matching what a ``kx=ky=1`` RectBivariateSpline
+    evaluated per time step gives, including its treatment of points outside the
+    window: FITPACK clamps those to the window's edge rather than extrapolating.
+    `get` relies on that for locations beyond the highest latitude the window covers,
+    which it shifts when choosing the window but not when evaluating.
+    """
+    gridYVals = np.asarray(gridYVals, dtype=float)
+    gridXVals = np.asarray(gridXVals, dtype=float)
+
+    # clamped to the window, which is what the spline being replaced did
+    yInterp = np.clip(np.asarray(yInterp, dtype=float), gridYVals[0], gridYVals[-1])
+    xInterp = np.clip(np.asarray(xInterp, dtype=float), gridXVals[0], gridXVals[-1])
+
+    # the cell each point falls in
+    yi = np.clip(np.searchsorted(gridYVals, yInterp) - 1, 0, gridYVals.size - 2)
+    xi = np.clip(np.searchsorted(gridXVals, xInterp) - 1, 0, gridXVals.size - 2)
+
+    # position within that cell, in [0, 1]
+    ty = (yInterp - gridYVals[yi]) / (gridYVals[yi + 1] - gridYVals[yi])
+    tx = (xInterp - gridXVals[xi]) / (gridXVals[xi + 1] - gridXVals[xi])
+
+    output = window[:, yi, xi] * ((1 - ty) * (1 - tx))
+    output += window[:, yi, xi + 1] * ((1 - ty) * tx)
+    output += window[:, yi + 1, xi] * (ty * (1 - tx))
+    output += window[:, yi + 1, xi + 1] * (ty * tx)
+    return output
+
+
 class NCSource(object):
     """The NCSource object manages weather data from a generic set of netCDF4 file sources
 
@@ -991,21 +1022,30 @@ class NCSource(object):
                 xInterp = [loc.lon for loc in locations]
 
             # Do interpolation
-            output = []
-            for ts in range(self.data[variable].shape[0]):
-                # set up interpolation
-                rbs = RectBivariateSpline(
-                    gridYVals,
-                    gridXVals,
-                    self.data[variable][ts, yiMin : yiMax + 1, xiMin : xiMax + 1],
-                    **rbsArgs,
-                )
+            window = np.asarray(self.data[variable][:, yiMin : yiMax + 1, xiMin : xiMax + 1])
 
-                # interpolate for each location
-                # lat/lon order switched to match index order
-                output.append(rbs(yInterp, xInterp, grid=False))
+            if interpolation == "bilinear":
+                # A degree-one RectBivariateSpline is plain bilinear interpolation, whose
+                # weights depend only on the grid and the locations -- not on the values.
+                # So they are computed once here and applied to every time step at once,
+                # instead of fitting and evaluating one spline per time step.
+                output = _bilinear_interpolation(window, gridYVals, gridXVals, yInterp, xInterp)
+            else:
+                output = []
+                for ts in range(window.shape[0]):
+                    # set up interpolation
+                    rbs = RectBivariateSpline(
+                        gridYVals,
+                        gridXVals,
+                        window[ts],
+                        **rbsArgs,
+                    )
 
-            output = np.stack(output)
+                    # interpolate for each location
+                    # lat/lon order switched to match index order
+                    output.append(rbs(yInterp, xInterp, grid=False))
+
+                output = np.stack(output)
 
         else:
             raise ResError("Interpolation scheme not one of: 'near', 'cubic', or 'bilinear'")
