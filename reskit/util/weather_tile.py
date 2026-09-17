@@ -129,6 +129,8 @@ def get_location_specific_weather_paths(weather_paths, locs, zoom=None):
         the same order as the locations
     """
     # check inputs
+    if isinstance(locs, gk.LocationSet):
+        locs = locs._locations
     if isinstance(locs, tuple) or isinstance(locs, str) or not hasattr(locs, "__iter__"):
         raise TypeError(f"weather_paths must be an iterable but not a str or tuple.")
     if isinstance(weather_paths, str):
