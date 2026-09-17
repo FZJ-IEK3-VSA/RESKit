@@ -23,15 +23,11 @@
 # switch, honoured by every tool. $RESKIT_DATA_CATALOG is a RESKit-only override that
 # wins over both when set.
 #
-# NOTE: the public catalogue repository is now called ETHOS.Data-Catalogue. The URL
-# below still names the old repository and may need updating together with the tag.
-#
-# NOTE: the test fixtures were regrouped by provenance and are now described as a
-# family -- `reskit-test-data` names the set, and one member per upstream sits
-# under it. The tag pinned here predates that, so these collections resolve
-# against the internal catalogue today and need a new public tag cut before they
-# resolve against the public one.
-catalog: https://raw.githubusercontent.com/FZJ-IEK3-VSA/ethos-data-catalog/v2026.09/datacatalog.json
+# The public catalogue is generated from the institute's internal one by
+# `ethos-data catalog publish`, so a dataset appears below only once it has been
+# published. Two collections name datasets that have not been yet -- see
+# `landcover` and `onshore_wind [full]`.
+catalog: https://raw.githubusercontent.com/FZJ-IEK3-VSA/ETHOS.Data-Catalogue/v2026.09/datacatalog.json
 
 # THE FIXTURE FAMILY. `reskit-test-data` is a namespace: naming it selects every
 # member beneath it, and a member can be named directly as `reskit-test-data/era5`.
@@ -76,6 +72,14 @@ collections:
       - dataset: reskit-test-data/srtm
       - dataset: reskit-test-data/synthetic
 
+  # TODO(maintainer): `landcover` -- the Copernicus C3S 300 m product -- is not in
+  # the published catalogue yet, so this collection does not resolve against it and
+  # `reskit-data show` marks it [unresolvable]. The name is right, not a typo: the
+  # published `esa-cci-landcover` and `corine-land-cover` entries both describe
+  # themselves by reference to `landcover`, so the internal catalogue has it and it
+  # simply has not been through `ethos-data catalog publish`. Publish it and re-pin
+  # the tag above; do not rename it to one of those two, which are a different
+  # product (1992-2015 historical) and a different grid (100 m, Europe only).
   landcover:
     title: Copernicus C3S land cover (300 m)
     include:
@@ -164,6 +168,8 @@ collections:
       - dataset: goutorbe-global-heat-flow-2011
       - dataset: nasa-power-geothermal-climatology
 
+  # Does not resolve against the published catalogue either, for the one reason
+  # given above `landcover`.
   all:
     title: Every dataset RESKit can use
     include:
