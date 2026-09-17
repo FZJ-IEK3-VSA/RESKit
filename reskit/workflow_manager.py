@@ -1015,8 +1015,10 @@ def execute_workflow_iteratively(
     assert "placements" in workflow_args.keys(), "'placements' is a mandatory argument/key in workflow_args"
     assert isinstance(location_specific_workflow_args, dict), "location_specific_workflow_args must be a dict"
     _dups = [k for k in location_specific_workflow_args.keys() if k in workflow_args]
-    assert weather_path_varname in workflow_args.keys(), (
-        f"weather_path_varname ('{weather_path_varname}')  must be a key in workflow_args."
+    assert (
+        weather_path_varname in workflow_args.keys() or weather_path_varname in location_specific_workflow_args.keys()
+    ), (
+        f"weather_path_varname ('{weather_path_varname}')  must be a key in workflow_args or location_specific_workflow_args."
     )
     if len(_dups) > 0:
         raise KeyError(
