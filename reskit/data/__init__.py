@@ -164,9 +164,7 @@ def fetch(
     cannot reach: ``True`` leaves it out with a warning, ``False`` raises,
     ``None`` takes the ``ethos-data`` configuration.
     """
-    return handle().fetch(
-        collection, progressbar=progressbar, test=test, skip_unavailable=skip_unavailable
-    )
+    return handle().fetch(collection, progressbar=progressbar, test=test, skip_unavailable=skip_unavailable)
 
 
 def paths(
@@ -181,10 +179,26 @@ def paths(
     the collection -- ``era5``, ``gwa_100m`` -- resolved to where the data is on
     this machine::
 
-        inputs = data.paths("onshore_wind", test=True)
+        inputs = data.paths(
+            "onshore_wind",
+            test=True,
+        )
         rk.wind.wind_era5_PenaSanchezDunkelWinklerEtAl2025(
-            placements, era5_path=inputs["era5"], gwa_100m_path=inputs["gwa_100m"],
-            height_scaling_data={50: inputs["gwa_50m"], 200: inputs["gwa_200m"]},
+            placements,
+            era5_path=inputs[
+                "era5"
+            ],
+            gwa_100m_path=inputs[
+                "gwa_100m"
+            ],
+            height_scaling_data={
+                50: inputs[
+                    "gwa_50m"
+                ],
+                200: inputs[
+                    "gwa_200m"
+                ],
+            },
         )
 
     ``test=True`` selects the small ``test`` variant; drop it to run the same
@@ -193,9 +207,7 @@ def paths(
     data this machine cannot reach is left out of the mapping, with a warning
     naming it (see :func:`fetch`).
     """
-    return handle().paths(
-        collection, test=test, progressbar=progressbar, skip_unavailable=skip_unavailable
-    )
+    return handle().paths(collection, test=test, progressbar=progressbar, skip_unavailable=skip_unavailable)
 
 
 def path(key: str, progressbar: bool = False) -> Path:
@@ -237,6 +249,4 @@ def main(argv: list[str] | None = None) -> int:
     shared cache maintenance (``link``, ``unlink``, ``materialize``) and
     catalogue publishing are ``ethos-data``'s.
     """
-    return _ethos_data().tool_main(
-        COLLECTIONS_FILE, tool=TOOL, prog=COMMAND, catalog=_catalog_override(), argv=argv
-    )
+    return _ethos_data().tool_main(COLLECTIONS_FILE, tool=TOOL, prog=COMMAND, catalog=_catalog_override(), argv=argv)
