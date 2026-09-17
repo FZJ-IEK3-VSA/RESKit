@@ -1007,7 +1007,8 @@ def execute_workflow_iteratively(
         Passed on to the workflow specified above. Must contain ''placements'' and the above
         weather_path_varname as keys.
     """
-    # check key inputs
+    # CHECK INPUTS
+
     assert callable(workflow), "workflow must be a callable RESkit workflow function."
     assert isinstance(location_specific_workflow_args, dict), "location_specific_workflow_args must be a dict."
     assert isinstance(weather_path_varname, str), f"weather_path_varname ({weather_path_varname}) must be str."
@@ -1055,6 +1056,8 @@ def execute_workflow_iteratively(
             f"Duplicates: {', '.join(sorted(dups))}"
         )
 
+    # ADD INDEX TO PRESERVE/RESTORE ORDER AFTER BATCHWISE ITERATION
+
     # add an iterable with the current order so it can be restored afterwards
     if "RESKit_sim_order" in placements.columns:
         # make sure it is a consecutive integer sequence
@@ -1067,6 +1070,8 @@ def execute_workflow_iteratively(
         with pd.option_context("mode.chained_assignment", None):
             placements.loc[placements.index, "RESKit_sim_order"] = range(len(placements))
 
+    # REMOVE ARGS WHICH ARE NOT MEANT FOR THE ITERATIVE WORKFLOW EXECUTION
+
     # extract the overall save_args of to_netcdf() before iteration over tiles
     save_args = {}
     for k in ["output_netcdf_path", "output_variables", "custom_attributes"]:
@@ -1076,7 +1081,8 @@ def execute_workflow_iteratively(
         # remove the saving-related args (which should not be passed to individual iterations over tiles) and store them in save args instead
         save_args[k] = workflow_args.pop(k, None)
 
-    # preprocess the weather tile paths
+    # PREPROCESS THE WEATHER TILE PATHS
+
     assert weather_path_varname in workflow_keys | location_specific_keys | placement_keys, (
         f"weather_path_varname '{weather_path_varname}' must be either a key in workflow_args or location_specific_workflow_args, or a placements df column."
     )
@@ -1116,7 +1122,9 @@ def execute_workflow_iteratively(
     # now complete the paths by replacing potential spacers based on the respective locations and zoom value
     tilepaths = np.asarray(get_location_specific_weather_paths(weather_paths=weather_paths, locs=locs, zoom=zoom))
 
-    # iterate over weather tiles
+    # ITERATIVELY SIMULATE FOR EVERY WEATHER TILEPATH
+
+    # extract unique weather tiles and iterate over them
     unique_tilepaths = sorted(np.unique(tilepaths))
     for i, tilepath in enumerate(unique_tilepaths):
         # generate a mask for the placements covered by this tile
@@ -1128,7 +1136,7 @@ def execute_workflow_iteratively(
         # add the tilepath for the current iteration, either to workflow args or to _placements df
         if weather_path_source == "placements":
             # some workflows may still expect a "source" column with the weather data
-            _placements[weather_path_varname] = tilepath
+            _placements["source"] = tilepath
         else:
             # else write into workflow args
             _workflow_args[weather_path_varname] = tilepath
@@ -1152,11 +1160,7 @@ def execute_workflow_iteratively(
             elif isinstance(_val, (pd.Series, pd.DataFrame)):
                 _val = _val.iloc[tilemask]
             else:
-                try:
-                    # one last try to do it with a generic type() init
-                    _val = type(_val)(compress(_val, tilemask))
-                except TypeError:
-                    raise TypeError(f"Unknown iterable type for location-specific workflow arg '{_arg}': {type(_val)}")
+                raise TypeError(f"Unknown iterable type for location-specific workflow arg '{_arg}': {type(_val)}")
             # add the reduced iterable to the final workflow args
             _workflow_args[_arg] = _val
 
@@ -1171,6 +1175,8 @@ def execute_workflow_iteratively(
             reskit_xr = xrds
         else:
             reskit_xr = xarray.concat([reskit_xr, xrds], dim="location")
+
+    # SAVE OR COMPLETE XARRAY
 
     # create a dummy wfm instance for saving
     reskit_xr = reskit_xr.sortby("location")
