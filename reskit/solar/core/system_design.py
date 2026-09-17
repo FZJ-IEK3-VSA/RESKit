@@ -628,3 +628,62 @@ def get_park_capacity_density(
        cap_dens_park[cap_dens_park<np.atleast_1d(min_cap_dens_park)] = min_cap_dens_park
 
     return cap_dens_park if _asarr else cap_dens_park[0]
+
+
+def get_gcr_from_capacity_density(
+        capacity_density_park : int | float | np.ndarray | pd.Series,
+        capacity_density_module : int |float | np.ndarray | pd.Series,
+        packing_factor : float | np.ndarray | pd.Series = 0.74,
+):
+    """
+    Calculates the Ground Coverage Ratio (GCR) based on a given
+    park and module capacity density and a packing factor.
+
+    Parameters
+    ----------
+    capacity_density_park : int |float | np.ndarray
+        Capacity density of the whole park, relative to the total
+        project area (unless packing_factor is 1.0) in MW/km².
+    capacity_density_module : int |float | np.ndarray
+        Capacity density of the used modules in W/m². 
+    packing_factor : float| np.ndarray, optional
+        The array (incl. interrow spacing) area over total project 
+        ("fenceline") area to account for unused space, space for 
+        roads, transformers, inverters etc. By default 0.74 [1]
+    
+    Returns
+    -------
+        np.ndarray
+        Ground Coverage Ratio of the array field of the PV park 
+        (excluding the un- or otherwise used areas of the plot)
+
+    References
+    ----------
+    [1] Hu, S., Sun, Y., Hernandez, R.R. et al. Quantifying 
+        land-use metrics for solar photovoltaic projects in 
+        the western United States. Commun Earth Environ 6, 
+        1006 (2025). https://doi.org/10.1038/s43247-025-02862-5
+    """
+    assert isinstance(capacity_density_park, (int, float, np.ndarray, pd.Series)), \
+        "capacity_density_park must be int, float, np.ndarray or pd.Series"
+    assert isinstance(capacity_density_module, (int, float, np.ndarray, pd.Series)), \
+        "capacity_density_module must be int, float, np.ndarray or pd.Series"
+    assert isinstance(packing_factor, (float, np.ndarray, pd.Series)), \
+        "packing_factor must be float, np.ndarray or pd.Series"
+    
+    # set a flag if we need to return a scalar result
+    if all([isinstance(v, (int, float)) for v in [capacity_density_park, capacity_density_module, packing_factor]]):
+        as_scalar = True
+    else:
+        as_scalar = False
+
+    packing_factor = np.atleast_1d(packing_factor)
+    assert all([0<x<=1.0 for x in packing_factor]), f"All packing_factor values must be floats >0 and <= 1.0"
+    
+    # calculate the GCR for this constellation
+    gcr = np.atleast_1d(capacity_density_park)/np.atleast_1d(capacity_density_module) / packing_factor
+
+    if as_scalar:
+        return gcr[0]
+    else:
+        return gcr
