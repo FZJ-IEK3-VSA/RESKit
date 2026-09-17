@@ -384,7 +384,7 @@ def location_to_gcr(
                 min_interrow_distance=2.5,
                 )
     
-    if tracking == "singleaxis":
+    elif tracking == "singleaxis":
         if convention == "tonita_et_al_2023_5perc":
             # Based on Tonita et al. (2023): Optimal ground coverage ratios for tracked, fixed-tilt, and vertical photovoltaic systems for latitudes up to 75◦N
             # separate mono- and bifacial (factor 0.96, see Tonita et al. 2023) lines
@@ -399,9 +399,9 @@ def location_to_gcr(
             # apply function to all lats and bifacs tuples
             gcrs = _interpolate_gcr(lats, bifacs)
 
-    # None of the above applied, raise error
-    raise ValueError(f"Unknown gcr convention '{convention}' for tracking = '{tracking}'.")
-    
+    else:
+        # None of the above applied, raise error
+        raise ValueError(f"Unknown gcr convention '{convention}' for tracking = '{tracking}'.")
 
     # if requested, apply min gcr to locs with NaN or lower gcr then required
     if min_gcr is not None:
