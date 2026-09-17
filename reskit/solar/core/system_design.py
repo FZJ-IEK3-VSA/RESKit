@@ -376,7 +376,7 @@ def location_to_gcr(
                     north_slope = gk.raster.interpolateValues(north_slope, locs, **kwargs)
                 except Exception:
                     raise OSError(f"north_slope file cannot be read by gk.raster.interpolateValues(): {north_slope}.")  
-            row_pitches, gcrs = calulate_row_pitch_and_gcr( #add azimuth as arg or reduce function (name) to only equator facing
+            row_pitches, gcrs = calculate_row_pitch_and_gcr_from_winter_solstice_rule(
                 lats = np.array([loc.lat for loc in locs]), 
                 module_tilts=module_tilt, 
                 north_slopes=north_slope, 
@@ -468,91 +468,114 @@ def _get_winter_solstice_solar_elevation(
     return solar_elevation
 
 
-def calulate_row_pitch_and_gcr(
+def calculate_row_pitch_and_gcr_from_winter_solstice_rule(
         lats: int | float | np.ndarray | pd.Series, 
         module_tilts: int | float | np.ndarray | pd.Series, 
         north_slopes: int | float | np.ndarray | pd.Series = 0, 
         solar_hour: int | float | np.ndarray | pd.Series = 12, 
-        module_area_width: int | float | np.ndarray | pd.Series = 3.3, 
-        min_interrow_distance: int | float = 2.5
+        module_area_width: int | float | np.ndarray | pd.Series = 3.3,
+        min_interrow_distance: int | float | np.ndarray | pd.Series = 2.5
         ):
     """
-    Calculates the required row pitches/spacing for one or multiple South-facing
+    Calculates the required row pitches/spacing for one or multiple equator-facing
     PV parks with fixed tilts based on the winter solstice rule such that no 
     shading occurs at a given variable solar hour. Also calculate the resulting 
     ground coverage ratios (gcr).
 
     Parameters
     ----------
-    lats : int | float | np.ndarray
+    lats : int | float | np.ndarray | pd.Series
         The latitude(s) in degrees, positive = North.
-    module_tilts : int | float | np.ndarray
-        The module tilt in Southern direction relative to flat ground.
-    north_slopes : int | float | np.ndarray, optional
-        The ground slope facing North when positive, by default 0
-    solar_hour : int | float | np.ndarray, optional
+    module_tilts : int | float | np.ndarray | pd.Series
+        The module tilt in equator direction relative to flat ground.
+        Negative values are allowed and describe module front facing away
+        from the equator.
+    north_slopes : int | float | np.ndarray | pd.Series, optional
+        The ground slope facing North (i.e. the normal on the slope plane is tilted 
+        towards North) when positive, negative values are South slopes, by default 0
+    solar_hour : int | float | np.ndarray | pd.Series, optional
         The solar hour relative to true solar noon = 12, 10h30 would become 10.5.
         By default 12 (solar noon).
-    module_area_width : int | float | np.ndarray, optional
+    module_area_width : int | float | np.ndarray | pd.Series, optional
         The width of the module area per each row in [m], measured along the 
         tilted edge. When a panel is e.g. 2m x 1m and mounted crosswise (1P), or 
         when 2 panels are mounted side by side laterally (2H), the value would 
         be 2 [m] in both cases, by default 3.3 [m] (2x 1.65m).
-    min_interrow_distance : int, float, optional
+    min_interrow_distance : int | float | np.ndarray | pd.Series, optional
         The minimum distance to be kept between rows in [m] e.g. to allow for 
-        maintanance trucks to pass. Set to None to ignore, by default 2.5 [m].
+        maintenance trucks to pass. Set to 0.0 to ignore, by default 2.5 [m].
 
     Returns
     -------
-    np.ndarray
-        _description_ #TODO
+    tuple[float, float] | tuple[np.ndarray, np.ndarray]
+        A tuple of floats (all scalar inputs) or np.ndarrays (row pitches, ground coverage ratios)
     """
     # adapt/check types and set as array flag
     _asarr = False
-    if isinstance(module_tilts, pd.Series):
-        module_tilts = module_tilts.values
-    if isinstance(north_slopes, pd.Series):
-        north_slopes = north_slopes.values
-    if isinstance(solar_hour, pd.Series):
-        solar_hour = solar_hour.values
-    if isinstance(module_area_width, pd.Series):
-        module_area_width = module_area_width.values
-    for var in [lats, module_tilts, north_slopes, solar_hour, module_area_width]:
-        assert isinstance(var, (int, float, np.ndarray, np.number)),\
+    for var in [lats, module_tilts, north_slopes, solar_hour, module_area_width, min_interrow_distance]:
+        assert isinstance(var, (int, float, np.ndarray, np.number, pd.Series)),\
             "All input variables must be int, float or np.ndarray/pd.Series types."
-        if isinstance(var, np.ndarray):
+        if isinstance(var, (np.ndarray, pd.Series)):
             _asarr = True
-    assert min_interrow_distance is None or isinstance(min_interrow_distance, (int, float)),\
-        "min_interrow_distance must be int if not None."
+    lats = np.atleast_1d(lats)
+    module_tilts = np.atleast_1d(module_tilts)
+    solar_hour = np.atleast_1d(solar_hour)
+    module_area_width = np.atleast_1d(module_area_width)
+    north_slopes = np.atleast_1d(north_slopes)
+    min_interrow_distance = np.atleast_1d(min_interrow_distance)
+    # make sure iterable shapes match and then align them
+    arrays = [lats, module_tilts, north_slopes, solar_hour, module_area_width, min_interrow_distance]
+    for arr in arrays:
+        assert arr.ndim == 1, "Array-like inputs must be one-dimensional."
+    lengths = [arr.size for arr in arrays if arr.size > 1]
+    assert len(set(lengths)) <= 1, "All non-scalar inputs must have the same length."
+    lats, module_tilts, north_slopes, solar_hour, module_area_width, min_interrow_distance = np.broadcast_arrays(
+        lats,
+        module_tilts,
+        north_slopes,
+        solar_hour,
+        module_area_width,
+        min_interrow_distance,
+    )
+    assert np.all((north_slopes > -90) & (north_slopes < 90)), "north_slopes must be >-90° and <90°"
+    assert np.all((lats >= -90) & (lats <= 90)), "lats must be >=-90° and <=90°"
+    assert np.all((module_tilts >= -90) & (module_tilts <= 90)), "module_tilts must be >=-90° and <=90°"
+    assert np.all((solar_hour >= 0) & (solar_hour <= 24)), "solar_hour must be between 0 and 24"
+    assert np.all(module_area_width > 0), "module_area_width must be >0"
+    assert np.all(min_interrow_distance >= 0), "min_interrow_distance must be >= 0"
+
     
     # first get solar elevation
-    solelevs = _get_winter_solstice_solar_elevation(lats=np.atleast_1d(lats), solar_hour=solar_hour)
+    solelevs = _get_winter_solstice_solar_elevation(lats=lats, solar_hour=solar_hour)
     
     # prep the degree values as rads
-    module_tilts_rad = np.atleast_1d(module_tilts) * np.pi/180
-    north_slopes_rad = np.atleast_1d(north_slopes) * np.pi/180
-    solelevs_rad = solelevs * np.pi/180
+    module_tilts_rad = np.deg2rad(module_tilts)
+    north_slopes_rad = np.deg2rad(north_slopes)
+    solelevs_rad = np.deg2rad(solelevs)
     
-    # then calculate the row picth geometrically
+    # then calculate the row pitch geometrically
 
-    # start with basic module area width and height
-    B = module_area_width * np.cos(module_tilts_rad) # horizontal projection of module
-    H = module_area_width * np.sin(module_tilts_rad) # vertical module height
-
+    # start with basic module area width and height, only absolute slope matters so use abs()
+    H = module_area_width * np.abs(np.sin(module_tilts_rad)) # vertical module height
+    B = module_area_width * np.abs(np.cos(module_tilts_rad)) # horizontal projection length of module
 
     # geometrically required row spacing/pitches to avoid shading at given solar elevation
-    RP = (B * np.tan(solelevs_rad) + H) / (np.tan(solelevs_rad) + np.tan(-north_slopes_rad))
+    tan_solelev = np.tan(solelevs_rad)
+    hemisphere_sign = np.where(lats >= 0, 1.0, -1.0)
+    numerator = B * tan_solelev + H
+    denom = tan_solelev - hemisphere_sign * np.tan(north_slopes_rad)
+    RP = np.full_like(denom, np.inf, dtype=float)
+    valid = denom > 0
+    RP[valid] = numerator[valid] / denom[valid]
 
-    # set geometrically infeasible locations to inf row pitch
-    RP[(np.tan(solelevs_rad) + np.tan(-north_slopes_rad))<=0]=np.inf
-    # set minimum interow spacing where needed
-    if min_interrow_distance is not None:
-        _min_pitch = min_interrow_distance + np.full(RP.shape, B)
-        sel = RP<_min_pitch
-        RP[sel]=_min_pitch[sel]
+    # enforce minimum inter-row spacing where needed
+    _min_pitch = min_interrow_distance + B
+    RP = np.maximum(RP, _min_pitch)
 
-    # calculate gcr as covered area from bird's perspective over row pitch
-    GCR = np.cos(module_tilts_rad) * module_area_width / RP
+    # calculate gcr as module width over row pitch
+    GCR = module_area_width / RP
+    # set locations which cannot be resolved by winter solstice rule to NaN instead of zero
+    GCR[~valid] = np.nan
 
     if not _asarr:
         RP = RP[0]
