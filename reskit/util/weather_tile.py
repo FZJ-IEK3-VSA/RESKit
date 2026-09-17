@@ -108,6 +108,56 @@ def get_tilepath(weather_path, lat=None, lon=None, zoom=None):
     return weather_path
 
 
+def get_location_specific_weather_paths(weather_paths, locs, zoom=None):
+    """
+    Generate an iterable with one path per location, replacing potential
+    spacers with location-specific data.#
+
+    weather_paths : str | list[str]
+        A str filepath or a list thereof, with spacers '<X-TILE>', 
+        '<Y-TILE>' and '<ZOOM> allowed. Length must match the length 
+        of locs if provided as a list.
+    locs : list[tuple] | geokit.LocationSet
+
+    Returns
+    -------
+        list[str] : List of completed weather paths, specific for and in 
+        the same order as the locations
+    """
+    # check inputs
+    if isinstance(locs, tuple) or isinstance(locs, str) or not hasattr(locs, "__iter__"):
+        raise TypeError(f"weather_paths must be an iterable but not a str or tuple.")
+    if isinstance(weather_paths, str):
+        weather_paths = [weather_paths]*len(locs)
+    elif not isinstance(weather_paths, list):
+        raise TypeError("weather_paths must be a list of str if not a str.")
+    if not all([isinstance(x, str) for x in weather_paths]):
+        raise TypeError("All values in weather_paths must be str.")
+    if not len(weather_paths) == len(locs):
+        raise ValueError(f"weather_paths and locs must have the same length if weather_paths is given as a list.")
+
+    # define a container for completed weather paths and fill iteratively
+    out = []
+    for wp, loc in zip(weather_paths, locs):
+        if isinstance(loc, tuple):
+            # assume we have a (lon, lat) tuple in EPSG:4326
+            lon, lat = loc
+        elif isinstance(loc, osgeo.ogr.Geometry):
+            assert loc.GetGeometryName() == "POINT", f"loc must be a POINT geometry if provided as osgeo.ogr.Geometry, here: {loc.GetGeometryName()}"
+            loc = gk.srs.transform(loc, toSRS=4326)
+            lon = loc.GetX()
+            lat = loc.GetY()
+        elif isinstance(loc, gk.Location):
+            # is always in EPSG:4326
+            lon = loc.lon
+            lat = loc.lat
+        else:
+            raise TypeError(f"Unknown loc type: {type(loc)}")
+        # now complete the weather path with location data
+        out.append(get_tilepath(weather_path=wp, lat=lat, lon=lon, zoom=zoom))
+
+    return out
+
 
 def get_dataframe_with_weather_tilepaths(placements, weather_path, zoom):
     """
