@@ -22,7 +22,7 @@ from pandas.api.types import is_numeric_dtype
 from reskit import weather as rk_weather
 
 # import other modules
-from reskit.util.weather_tile import get_dataframe_with_weather_tilepaths
+from reskit.util.weather_tile import get_location_specific_weather_paths
 
 
 # The smallest half width, in SRS units, which is added to a zero-width extent.
@@ -1034,15 +1034,6 @@ def execute_workflow_iteratively(
             f"Duplicates: {', '.join(sorted(dups))}"
         )
 
-    # possibly generate dataframe from single locations and add actual weather filepath where needed
-    if weather_path_varname not in placements.columns:
-        weather_path = workflow_args[weather_path_varname]
-        placements = get_dataframe_with_weather_tilepaths(placements=placements, weather_path=weather_path, zoom=zoom)
-        tilepaths = np.asarray(placements["source"])
-    else:
-        tilepaths = np.asarray(placements[weather_path_varname])
-        # align with the output format of get_dataframe_with_weather_tilepaths
-        placements["source"] = placements[weather_path_varname]
     if "RESKit_sim_order" in placements.columns:
         # make sure it is a consecutive integer sequence
         if not np.array_equal(placements["RESKit_sim_order"], np.arange(len(placements))):
@@ -1063,6 +1054,35 @@ def execute_workflow_iteratively(
         # remove the saving-related args (which should not be passed to individual iterations over tiles) and store them in save args instead
         save_args[k] = workflow_args.pop(k, None)
 
+    # preprocess the weather tile paths
+    assert weather_path_varname in workflow_keys + location_specific_keys + placement_keys,\
+        f"weather_path_varname '{weather_path_varname}' must be either a key in workflow_args or location_specific_workflow_args, or a placements df column."
+    # get the weather path data
+    for cont in [location_specific_workflow_args, workflow_args, placements]:
+        if weather_path_varname in cont:
+            weather_path = np.asarray(cont[weather_path_varname])
+    for cont in [location_specific_workflow_args, workflow_args, placements]:
+        if weather_path_varname in cont:
+            weather_path = cont[weather_path_varname]
+            break
+    # broadcast it to one value per location if not provided as such
+    try:
+        weather_paths = np.broadcast_to(
+            weather_path,
+            (len(placements),),
+        )
+    except ValueError:
+        raise ValueError(f"'{weather_path_varname}' must be scalar or have length {len(placements)}.")
+    # get a locations iterable
+    if "geom" in placements:
+        locs = placements["geom"].to_list()
+    elif "lon" in placements and "lat" in placements:
+        locs = list(zip(placements.lon, placements.lat))
+    else:
+        raise AttributeError(f"placements is expected to have a 'geom' column or both 'lat' and 'lon'columns.")
+    # now complete the paths by replacing potential spacers based on the respective locations and zoom value
+    tilepaths = get_location_specific_weather_paths(weather_paths=weather_paths, locs=locs)
+
     # iterate over weather tiles
     for i, tilepath in enumerate(np.unique(tilepaths)):
         # generate a mask for the placements covered by this tile
@@ -1074,9 +1094,6 @@ def execute_workflow_iteratively(
             if _arg == "placements":
                 # reduce placements to subset within the current tile
                 _workflow_args[_arg] = placements.loc[tilemask]
-            elif _arg == "output_netcdf_path":
-                # do not save anything in this sub iteration
-                _workflow_args[_arg] = None
             elif _arg == weather_path_varname:
                 # set the current weather path tile path - NOTE that this arg can be either here or in location-specific args, hence again below
                 _workflow_args[_arg] = tilepath
@@ -1087,7 +1104,7 @@ def execute_workflow_iteratively(
         for _arg, _val in location_specific_workflow_args.items():
             if _arg == weather_path_varname:
                 # must be passed to actual workflow as a scalar str, set the current weather path tile path
-                # NOTE that we write everything into the final "workflow args" (if not passed as global arg anyways, see above)
+                # note that we write everything into the final "workflow args" (if not passed as global arg anyways, see above)
                 _workflow_args[_arg] = tilepath
                 continue
             # make sure we have an order-stable iterable with values per loc which we have to mask as well
