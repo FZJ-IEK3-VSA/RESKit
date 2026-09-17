@@ -1011,30 +1011,33 @@ def execute_workflow_iteratively(
         weather_path_varname as keys.
     """
     # check key inputs
-    assert callable(workflow), "workflow must be a callable RESkit workflow function."
-    assert "placements" in workflow_args.keys(), "'placements' is a mandatory argument/key in workflow_args"
-    assert isinstance(location_specific_workflow_args, dict), "location_specific_workflow_args must be a dict"
-    _dups = [k for k in location_specific_workflow_args.keys() if k in workflow_args]
-    assert (
-        weather_path_varname in workflow_args.keys() or weather_path_varname in location_specific_workflow_args.keys()
-    ), (
-        f"weather_path_varname ('{weather_path_varname}')  must be a key in workflow_args or location_specific_workflow_args."
-    )
-    if len(_dups) > 0:
-        raise KeyError(
-            f"Duplicate workflow args in location_specific_workflow_args have been passed as workflow_args already: {', '.join(_dups)}"
-        )
+    assert callable(workflow), \
+        "workflow must be a callable RESkit workflow function."
+    assert "placements" in workflow_args, \
+        "'placements' is a mandatory argument/key in workflow_args."
+    assert isinstance(location_specific_workflow_args, dict), \
+        "location_specific_workflow_args must be a dict."
+    assert isinstance(weather_path_varname, str),\
+        f"weather_path_varname ({weather_path_varname}) must be str."
 
-    # extract data needed for placement preparation
     placements = workflow_args["placements"]
-    if "output_netcdf_path" in workflow_args.keys():
-        output_netcdf_path = workflow_args["output_netcdf_path"]
-    else:
-        output_netcdf_path = None
-    if "output_variables" in workflow_args.keys():
-        output_variables = workflow_args["output_variables"]
-    else:
-        output_variables = None
+    assert isinstance(placements, pd.DataFrame), \
+        f"placements must be a pd.DataFrame, here: {type(placements)}"
+
+    workflow_keys = set(workflow_args)
+    location_specific_keys = set(location_specific_workflow_args)
+    placement_keys = set(placements.columns)
+    dups = (
+        (workflow_keys & location_specific_keys)
+        | (workflow_keys & placement_keys)
+        | (location_specific_keys & placement_keys)
+    )
+    if dups:
+        raise KeyError(
+            "Workflow arguments must be defined only once across workflow_args, "
+            "location_specific_workflow_args, and placements.columns. "
+            f"Duplicates: {', '.join(sorted(dups))}"
+        )
 
     # possibly generate dataframe from single locations and add actual weather filepath where needed
     if weather_path_varname not in placements.columns:
@@ -1055,6 +1058,14 @@ def execute_workflow_iteratively(
         # add, is mandatory for later recombination of placements and results
         with pd.option_context("mode.chained_assignment", None):
             placements.loc[placements.index, "RESKit_sim_order"] = range(len(placements))
+
+    # extract the overall save_args of to_netcdf() before iteration over tiles
+    save_args = {}
+    for k in ["output_netcdf_path", "output_variables"]:
+        assert k not in location_specific_keys and k not in placement_keys,\
+            f"'{k}' must be a workflow arg if defined, cannot be a location-specific arg or a placements column name."
+        # remove the saving-related args (which should not be passed to individual iterations over tiles) and store them in save args instead
+        save_args[k] = workflow_args.pop(k, None)
 
     # iterate over weather tiles
     for i, tilepath in enumerate(np.unique(tilepaths)):
@@ -1131,8 +1142,7 @@ def execute_workflow_iteratively(
     wfm = WorkflowManager(placements=placements.drop(columns="RESKit_sim_order"))
     wfm.to_netcdf(
         xds=reskit_xr,
-        output_netcdf_path=output_netcdf_path,
-        output_variables=output_variables,
+        **save_args, # pass output path and variables if given
     )
 
     return reskit_xr
