@@ -154,13 +154,13 @@ result = rk.wind.wind_era5_PenaSanchezDunkelWinklerEtAl2025(
 )
 ```
 
-The same from the shell: `reskit-data paths onshore_wind --test` prints one
-`handle<TAB>path` line per input, `reskit-data list` shows every collection, and
-`reskit-data --help` every command.
+The same from the shell: `reskit-data fetch onshore_wind --test --paths` prints
+one `handle<TAB>path` line per input, `reskit-data show` lists every collection,
+and `reskit-data --help` every command.
 
 Install ETHOS.Data in the same environment. In a development checkout, reinstall
 RESKit with `pip install -e . --no-deps` to register its console script.
-`reskit-data list` prints the actual catalogue selection; `RESKIT_DATA_CATALOG`
+`reskit-data show` prints the actual catalogue selection; `RESKIT_DATA_CATALOG`
 overrides it for RESKit, while shared ETHOS settings apply to all packages.
 
 Use `reskit-data staging add/list/remove` for unpublished development inputs.

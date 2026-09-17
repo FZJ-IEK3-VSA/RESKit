@@ -15,10 +15,10 @@ network access unless local copies are selected.
 
 ```bash
 reskit-data config show
-reskit-data list
+reskit-data show
 ```
 
-`config show` reports shared configuration and origins offline. `list` prints
+`config show` reports shared configuration and origins offline. `show` prints
 the actual catalogue selected by RESKit and its collections. RESKit uses, in order:
 `--catalog`, `RESKIT_DATA_CATALOG`, shared environment/configuration, then the pin
 in `reskit/data/collections.yaml`.
@@ -46,13 +46,16 @@ provided by the maintainer.
 ## Get the inputs a workflow needs
 
 ```bash
-reskit-data info onshore_wind --test
-reskit-data plan onshore_wind --test
-reskit-data paths onshore_wind --test
+reskit-data show onshore_wind --test
+reskit-data fetch onshore_wind --test --plan
+reskit-data fetch onshore_wind --test --paths
 ```
 
-`info` lists the selected files and named inputs; `plan` previews transfers;
-`paths` fetches them and prints one `handle<TAB>absolute path` line per input.
+`show` describes the collection and its named inputs and downloads nothing;
+`fetch` is the command that transfers data. `--plan` previews the transfer
+instead of running it, and `--paths` prints one `handle<TAB>absolute path`
+line per input once the files are there. Add `--files` to `show` for the
+full file list.
 
 In Python, pass those named inputs to the workflow:
 
@@ -73,33 +76,36 @@ Both variants offer the same input names. Preview the full selection before
 dropping `--test` or `test=True`:
 
 ```bash
-reskit-data plan onshore_wind
+reskit-data fetch onshore_wind --plan
 reskit-data fetch onshore_wind
-reskit-data paths onshore_wind
+reskit-data fetch onshore_wind --paths
 ```
 
-`fetch` makes the whole collection available; `paths` also returns its named
-inputs. Full data is the default. An `[unresolvable]` row means the selected
+A plain `fetch` makes the whole collection available; `--paths` also returns
+its named inputs. Full data is the default. An `[unresolvable]` row means the selected
 catalogue or collection definition needs attention before that variant can run.
 
 ## Access a catalogue key
 
+`reskit-data` works in collections. A single dataset, folder or file is
+`ethos-data`'s to hand out:
+
 ```bash
-reskit-data ls reskit-test-data/era5
-reskit-data path reskit-test-data/era5
+ethos-data ls reskit-test-data/era5
+ethos-data fetch reskit-test-data/era5
 ```
 
-`ls` reads metadata only. `path` fetches a file, folder, dataset or family and
-prints its local path; shapefiles include sidecars. In Python:
+`ls` reads metadata only. `fetch` retrieves a file, folder, dataset or family
+and prints its local path; shapefiles include sidecars. In Python, through
+RESKit's own catalogue selection:
 
 ```python
 era5_dir = data.directory("reskit-test-data/era5")
 gwa_100m = data.path("reskit-test-data/global-wind-atlas/gwa100-like.tif")
 ```
 
-These use RESKit's selected catalogue. For direct access through `ethos-data`,
-the corresponding retrieval command is `ethos-data fetch KEY`; explicitly
-choose the same catalogue when comparing results.
+The Python calls use RESKit's selected catalogue; `ethos-data` uses the shared
+settings, so pass the same `--catalog` when comparing results.
 
 ## Develop against unpublished data
 
@@ -125,7 +131,7 @@ Add a collection such as `trial_weather` to RESKit's shipped
 Place that entry under the existing `collections:` mapping, then use:
 
 ```bash
-reskit-data paths trial_weather
+reskit-data fetch trial_weather --paths
 ```
 
 The staged directory supplies the files and produces a warning. A copied staging

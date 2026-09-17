@@ -15,10 +15,15 @@ tool is fetched once. Apart from the small test fixtures in ``test_cache`` (see
 
 The same from the shell, with the ``reskit-data`` command this module provides:
 
-    reskit-data list                         # the collections and their size
-    reskit-data paths onshore_wind --test    # fetch one, print handle<TAB>path
-    reskit-data config show                  # where the cache is, which catalogue
-    reskit-data staging add trial /path/to/data  # use unpublished development data
+    reskit-data show                              # the collections and their size
+    reskit-data show onshore_wind --test          # one of them, and its inputs
+    reskit-data fetch onshore_wind --test --paths # fetch one, print handle<TAB>path
+    reskit-data config show                       # where the cache is, which catalogue
+    reskit-data staging add trial /path/to/data   # use unpublished development data
+
+``show`` never downloads and ``fetch`` is the only command that does. Both work
+in collections; a single catalogue key -- one dataset, folder or file -- is
+``ethos-data ls`` and ``ethos-data fetch``, which read the same catalogue.
 
 ``paths`` is what a workflow wants. The collection names each input the workflow
 takes (``era5``, ``gwa_100m``, ...) under ``paths:`` in ``collections.yaml``, so
@@ -223,13 +228,14 @@ def cache_dir() -> Path:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """RESKit's collections, catalogue access, test bundles and development staging.
+    """RESKit's collections, test bundles and development staging.
 
-    ``list``, ``info``, ``plan``, ``fetch``, ``paths``, ``verify``, ``path``,
-    ``ls``, ``bundle``, ``staging`` and ``config``; ``reskit-data --help`` lists them. The
-    catalogue is loaded only for the commands that need it, so ``--help`` and
-    ``config show`` and ``staging`` work offline. Shared cache maintenance
-    (``link``, ``unlink``, ``materialize``) and catalogue publishing use ``ethos-data``.
+    ``show``, ``fetch``, ``verify``, ``bundle``, ``staging`` and ``config``;
+    ``reskit-data --help`` lists them. The catalogue is loaded only for the
+    commands that need it, so ``--help``, ``config show`` and ``staging`` work
+    offline. Access by catalogue key (``ethos-data ls``, ``ethos-data fetch``),
+    shared cache maintenance (``link``, ``unlink``, ``materialize``) and
+    catalogue publishing are ``ethos-data``'s.
     """
     return _ethos_data().tool_main(
         COLLECTIONS_FILE, tool=TOOL, prog=COMMAND, catalog=_catalog_override(), argv=argv

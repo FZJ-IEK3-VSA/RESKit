@@ -28,7 +28,11 @@ def test_is_path_like_rejects_plain_values(value):
 
 @pytest.mark.parametrize("value", ["a/raster.tif", Path("a/raster.tif")])
 def test_as_path_string_gives_a_string(value):
-    assert as_path_string(value) == "a/raster.tif"
+    """Both spellings give the same string, written with the platform separator."""
+    as_string = as_path_string(value)
+
+    assert isinstance(as_string, str)
+    assert Path(as_string) == Path("a/raster.tif")
 
 
 def test_weather_source_reads_a_path_directory():

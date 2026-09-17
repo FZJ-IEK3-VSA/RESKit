@@ -116,7 +116,7 @@ collections:
         # keep `paths.era5` below pointing at the same dataset.
         #
         # The consequence, until `era5` exists in the selected catalogue:
-        #   - `reskit-data list` marks `onshore_wind [full]` [unresolvable]
+        #   - `reskit-data show` marks `onshore_wind [full]` [unresolvable]
         #     and exits 1, while `onshore_wind [test]` resolves;
         #   - `reskit.data.paths("onshore_wind")` -- without
         #     test=True, i.e. the default full variant -- raises UnknownDataset,
