@@ -4,11 +4,15 @@ from os.path import dirname, join
 import numpy as np
 import pandas as pd
 from scipy.interpolate import PchipInterpolator, splev, splrep
-from scipy.stats import norm
 
 from ...util import ResError
 
 _P = namedtuple("PowerCurve", "ws cf")
+_INV_SQRT_2PI = 1.0 / np.sqrt(2 * np.pi)
+# Truncation width of the Gaussian convolution kernel, in standard deviations.
+# Beyond 8 the kernel is below 1e-14 of its peak, so dropping the tails does not
+# change the result at double precision.
+_KERNEL_SIGMAS = 8.0
 _synthetic_power_curve_data = None
 
 
@@ -387,9 +391,25 @@ class PowerCurve:
         # cf[cf>self[:,1].max()] = self[:,1].max() # force a ceiling of the max capacity
 
         # Begin convolution
+        # The Gaussian is evaluated directly rather than through
+        # scipy.stats.norm.pdf, which re-validates its arguments and goes
+        # through the rv_continuous machinery on every one of the _steps calls,
+        # and only over the window in which it is numerically non-zero: the
+        # kernel is narrow (a std of 0.4 m/s at the top of the range with
+        # scaling=0.01, base=0.0) against a sweep of _max_speed m/s, so almost
+        # all of the full _steps x _steps evaluations contribute nothing.
+        std = scaling * ws + base
+        half_width = np.ceil(_KERNEL_SIGMAS * std / dws).astype(int)
+        indices = np.arange(_steps)
+        lower = np.maximum(indices - half_width, 0)
+        upper = np.minimum(indices + half_width + 1, _steps)
+
         convolutedCF = np.zeros(_steps)
         for i, ws_ in enumerate(ws):
-            convolutedCF[i] = (norm.pdf(ws, loc=ws_, scale=scaling * ws_ + base) * cf).sum() * dws
+            window = slice(lower[i], upper[i])
+            z = (ws[window] - ws_) / std[i]
+            pdf = np.exp(-0.5 * z * z) * (_INV_SQRT_2PI / std[i])
+            convolutedCF[i] = (pdf * cf[window]).sum() * dws
 
         # Correct cutoff, maybe
         if not extend_beyond_cut_out:

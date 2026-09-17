@@ -6,7 +6,7 @@ import textwrap
 import pytest
 
 from reskit.weather import Era5Source
-from reskit.weather.Era5Source.Era5Prepare import _ERA5_NC_TO_TILE_LABEL, era5_variables
+from reskit.weather.era5_source.era5_prepare import _ERA5_NC_TO_TILE_LABEL, era5_variables
 from reskit.util.input_preparation import (
     _SOURCE_PREPARERS,
     _merge_dependencies,

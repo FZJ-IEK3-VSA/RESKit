@@ -12,7 +12,7 @@ import pandas as pd
 import xarray as xr
 import pytest
 from reskit import TEST_DATA
-from reskit.weather.Era5Source.Era5Prepare import (
+from reskit.weather.era5_source.era5_prepare import (
     _ERA5_NC_TO_TILE_LABEL,
     _align_longitudes_to_source_convention,
     _era5_download_jobs,
