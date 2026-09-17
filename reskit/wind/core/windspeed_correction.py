@@ -83,6 +83,16 @@ def build_ws_correction_function(type, data_dict):
             np.copyto(scale, 1.0, where=(values < _lefts[index]) | (values >= _rights[index]))
             return x * scale.astype(values.dtype, copy=False)
 
+            # the bin each wind speed falls in, clipped so that speeds below the first
+            # left edge index a real bin; the where() below leaves those uncorrected,
+            # along with any speed falling in a gap between bins or past the last one
+            values = np.asarray(x)
+            index = np.searchsorted(_lefts, values, side="right") - 1
+            np.clip(index, 0, _lefts.size - 1, out=index)
+            scale = 1.0 - _factors[index]
+            np.copyto(scale, 1.0, where=(values < _lefts[index]) | (values >= _rights[index]))
+            return x * scale.astype(values.dtype, copy=False)
+
         return correction_function
 
     elif type == "ws_double_bins":
