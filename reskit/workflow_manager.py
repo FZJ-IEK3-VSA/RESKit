@@ -1000,10 +1000,10 @@ def execute_workflow_iteratively(
         The zoom level of the weather tiles, required only if <X-TILE> or <Y-TILE> in weather path.
 
     location_workflow_args : dict, optional
-        Dict with location-specific arguments of the "workflow" as keys, and the respective arg 
-        value as values. The values are expected to be at least 1d iterables, with the first 
-        dimension matching the number of locations in length. The values of this iterable will 
-        then be applied per location along this axis. 
+        Dict with location-specific arguments of the "workflow" as keys, and the respective arg
+        value as values. The values are expected to be at least 1d iterables, with the first
+        dimension matching the number of locations in length. The values of this iterable will
+        then be applied per location along this axis.
         # NOTE: This does not apply to a "placements" dataframe; pass as "workflow_arg" below if required
 
     **workflow_args
@@ -1021,8 +1021,8 @@ def execute_workflow_iteratively(
     if len(_dups) > 0:
         raise KeyError(
             f"Duplicate workflow args in location_specific_workflow_args have been passed as workflow_args already: {', '.join(_dups)}"
-            )
- 
+        )
+
     # extract data needed for placement preparation
     placements = workflow_args["placements"]
     if "output_netcdf_path" in workflow_args.keys():
@@ -1044,7 +1044,9 @@ def execute_workflow_iteratively(
     if "RESKit_sim_order" in placements.columns:
         # make sure it is a consecutive integer sequence
         if not np.array_equal(placements["RESKit_sim_order"], np.arange(len(placements))):
-            raise ValueError("If placements dataframe has a 'RESKit_sim_order' column, it must contain a consecutive integer sequence.")                              
+            raise ValueError(
+                "If placements dataframe has a 'RESKit_sim_order' column, it must contain a consecutive integer sequence."
+            )
     else:
         # add, is mandatory for later recombination of placements and results
         with pd.option_context("mode.chained_assignment", None):
@@ -1073,17 +1075,15 @@ def execute_workflow_iteratively(
         # now iterate over the location-specific args and select only those values that apply to the tile subset of the placements df
         for _arg, _val in location_specific_workflow_args.items():
             if _arg == weather_path_varname:
-                # must be passed to actual workflow as a scalar str, set the current weather path tile path 
+                # must be passed to actual workflow as a scalar str, set the current weather path tile path
                 # NOTE that we write everything into the final "workflow args" (if not passed as global arg anyways, see above)
                 _workflow_args[_arg] = tilepath
                 continue
             # make sure we have an order-stable iterable with values per loc which we have to mask as well
             if isinstance(_val, set):
-                raise TypeError(
-                    "A set cannot be a positional argument because it is unordered."
-                )
+                raise TypeError("A set cannot be a positional argument because it is unordered.")
             try:
-                n = len(_val) # gets length of FIRST dimension only, allows timeseries etc. per loc
+                n = len(_val)  # gets length of FIRST dimension only, allows timeseries etc. per loc
             except TypeError:
                 raise TypeError(
                     f"Location-specific workflow arg '{_arg}' must be an iterable with a defined first dimension."
@@ -1095,7 +1095,7 @@ def execute_workflow_iteratively(
 
             # we have a suitable iterable, mask it
             if isinstance(_val, np.ndarray):
-                _val = _val[tilemask] # apply mask on first dimension
+                _val = _val[tilemask]  # apply mask on first dimension
             elif isinstance(_val, list):
                 _val = list(compress(_val, tilemask))
             elif isinstance(_val, tuple):
