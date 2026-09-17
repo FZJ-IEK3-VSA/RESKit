@@ -49,7 +49,8 @@ def test_MerraSource___init__():
     # Initialize a MerraSource with Aachen boundaries
     aachenExt = gk.Extent.fromVector(gk._test_data_["aachenShapefile.shp"]).pad(0.5).fit(0.01)
     aachenLats = np.array([50.0, 50.5, 51.0, 51.5])
-    aachenLons = np.array([5.625, 6.250])
+    # every longitude of this file is inside the Aachen extent, which spans 5.47 to 6.92
+    aachenLons = np.array([5.625, 6.250, 6.875])
 
     ms = MerraSource(TEST_DATA["merra-like.nc4"], bounds=aachenExt, index_pad=1, verbose=False)
 

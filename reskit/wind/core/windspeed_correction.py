@@ -57,13 +57,41 @@ def build_ws_correction_function(type, data_dict):
         assert all(isinstance(ws_bin, Interval) for ws_bin in data_dict["ws_bins"].keys())
         ws_bins_correction = data_dict["ws_bins"]
 
+        # The bins are looked up rather than looped over: one pass of the wind speeds per
+        # bin costs a full sweep of the (time x location) array each, and these tables run
+        # to several hundred bins. Sorting them by left edge lets a single searchsorted
+        # place every wind speed in its bin at once.
+        _bins = sorted(ws_bins_correction.items(), key=lambda item: item[0].left)
+        _lefts = np.array([ws_bin.left for ws_bin, _ in _bins], dtype=float)
+        _rights = np.array([ws_bin.right for ws_bin, _ in _bins], dtype=float)
+        _factors = np.array([factor for _, factor in _bins], dtype=float)
+        # A wind speed covered by two bins has no single correction factor, so such a table
+        # is rejected rather than resolved by the order the bins happen to be written in.
+        _overlapping = [(_bins[i][0], _bins[i + 1][0]) for i in np.flatnonzero(_rights[:-1] > _lefts[1:])]
+        assert not _overlapping, f"ws_bins must not overlap, but these do: {_overlapping}"
+
         def correction_function(x):
             # x is numpy array. modify x based on ws_bins
-            corrected_x = x.copy()
-            for ws_bin, factor in ws_bins_correction.items():
-                mask = (x >= ws_bin.left) & (x < ws_bin.right)
-                corrected_x[mask] = x[mask] * (1 - factor)
-            return corrected_x
+
+            # the bin each wind speed falls in, clipped so that speeds below the first
+            # left edge index a real bin; the where() below leaves those uncorrected,
+            # along with any speed falling in a gap between bins or past the last one
+            values = np.asarray(x)
+            index = np.searchsorted(_lefts, values, side="right") - 1
+            np.clip(index, 0, _lefts.size - 1, out=index)
+            scale = 1.0 - _factors[index]
+            np.copyto(scale, 1.0, where=(values < _lefts[index]) | (values >= _rights[index]))
+            return x * scale.astype(values.dtype, copy=False)
+
+            # the bin each wind speed falls in, clipped so that speeds below the first
+            # left edge index a real bin; the where() below leaves those uncorrected,
+            # along with any speed falling in a gap between bins or past the last one
+            values = np.asarray(x)
+            index = np.searchsorted(_lefts, values, side="right") - 1
+            np.clip(index, 0, _lefts.size - 1, out=index)
+            scale = 1.0 - _factors[index]
+            np.copyto(scale, 1.0, where=(values < _lefts[index]) | (values >= _rights[index]))
+            return x * scale.astype(values.dtype, copy=False)
 
         return correction_function
 
