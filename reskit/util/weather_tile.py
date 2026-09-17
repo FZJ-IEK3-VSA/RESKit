@@ -90,11 +90,15 @@ def get_tilepath(weather_path, lat=None, lon=None, zoom=None):
               values
     """
     if "<X-TILE>" in weather_path or "<Y-TILE>" in weather_path or "<ZOOM>" in weather_path:
-        assert isinstance(zoom, int), (
+        assert isinstance(zoom, int) and zoom > 0, (
             f"zoom must be a positive integer tiling level if weather_path contains X/Y spacers"
         )
-        assert isinstance(lat, int), f"lat must be a float or integer degree if weather_path contains X/Y spacers"
-        assert isinstance(lon, int), f"lon must be a float or integer degree if weather_path contains X/Y spacers"
+        assert isinstance(lat, (int, float, np.number)), (
+            f"lat must be a float or integer degree if weather_path contains X/Y spacers"
+        )
+        assert isinstance(lon, (int, float, np.number)), (
+            f"lon must be a float or integer degree if weather_path contains X/Y spacers"
+        )
         _X, _Y = get_tile_xy(zoom=zoom, lon=lon, lat=lat, geom=None)
         weather_path = (
             weather_path.replace("<X-TILE>", str(_X)).replace("<Y-TILE>", str(_Y)).replace("<ZOOM>", str(zoom))
