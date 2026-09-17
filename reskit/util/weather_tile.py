@@ -3,6 +3,7 @@ from copy import copy
 import geokit as gk
 import osgeo
 import pandas as pd
+import re
 from smopy import deg2num
 import numpy as np
 
@@ -66,6 +67,48 @@ def get_tile_xy(zoom, lon=None, lat=None, geom=None):
     return (X, Y)
 
 
+def get_tilepath(weather_path, lat=None, lon=None, zoom=None):
+    """
+    Returns a
+
+    weather_path : str
+        The base path, may contain '<X-TILE>', '<Y-TILE>' and '<ZOOM>
+        spacers which will be replaced.
+    lat : int | float | None, optional
+        The latitude in degrees, takes effect only if weather_path
+        contains spacers. By default None.
+    lon : int | float | None, optional
+        The longitude in degrees, takes effect only if weather_path
+        contains spacers. By default None.
+    zoom : int | None, optional
+        The zoom level at which the tiling was done, takes effect 
+        only if weather_path contains spacers. By default None.
+    
+    Returns
+    -------
+        str : weather_path with all spacers replaced by the respective
+              values
+    """
+    if "<X-TILE>" in weather_path or "<Y-TILE>" in weather_path or "<ZOOM>" in weather_path:
+        assert isinstance(zoom, int), (
+            f"zoom must be a positive integer tiling level if weather_path contains X/Y spacers"
+        )
+        assert isinstance(lat, int), (
+            f"lat must be a float or integer degree if weather_path contains X/Y spacers"
+        )
+        assert isinstance(lon, int), (
+            f"lon must be a float or integer degree if weather_path contains X/Y spacers"
+        )
+        _X, _Y = get_tile_xy(zoom=zoom, lon=lon, lat=lat, geom=None)
+        weather_path = weather_path.replace("<X-TILE>", str(_X)).replace("<Y-TILE>", str(_Y)).replace("<ZOOM>", str(zoom))
+    # make sure we got all spacers
+    spacers = re.findall(r"<[^>]*>", weather_path)
+    if len(spacers) > 0:
+        raise ValueError(f"weather_path still contains spacer after replacing '<X-TILE>', '<Y-TILE>' and '<ZOOM>': {', '.join(spacers)}")
+    return weather_path
+
+
+
 def get_dataframe_with_weather_tilepaths(placements, weather_path, zoom):
     """
     This method will generate a dataframe from a list of input placements
@@ -124,16 +167,6 @@ def get_dataframe_with_weather_tilepaths(placements, weather_path, zoom):
         if not "lat" in placements.columns:
             placements["lat"] = placements.geom.apply(lambda x: x.GetY())
 
-    # get the actual weather tilepath
-    def _get_tilepath(weather_path, zoom, lat, lon):
-        if "<X-TILE>" in weather_path or "<Y-TILE>" in weather_path:
-            assert isinstance(zoom, int), (
-                f"zoom must be a positive integer tiling level if weather_path contains X/Y spacers"
-            )
-            _X, _Y = get_tile_xy(zoom=zoom, lon=lon, lat=lat, geom=None)
-            return weather_path.replace("<X-TILE>", str(_X)).replace("<Y-TILE>", str(_Y)).replace("<ZOOM>", str(zoom))
-        else:
-            return weather_path
 
     if weather_path is None:
         # the info must already be in the dataframe then
@@ -144,7 +177,7 @@ def get_dataframe_with_weather_tilepaths(placements, weather_path, zoom):
             # overwrite source attributes with specific tilepaths
             print(f"NOTE: 'source' attributes will be overwritten with specific filepath!")
             placements["source"] = placements.apply(
-                lambda x: _get_tilepath(weather_path=x.source, zoom=zoom, lon=x.lon, lat=x.lat).replace(
+                lambda x: get_tilepath(weather_path=x.source, zoom=zoom, lon=x.lon, lat=x.lat).replace(
                     "<ZOOM>", str(zoom)
                 ),
                 axis=1,
@@ -152,7 +185,7 @@ def get_dataframe_with_weather_tilepaths(placements, weather_path, zoom):
     else:
         # make sure we have either no source column to avoid overwriting data, or it is the correct one already
         source = placements.apply(
-            lambda x: _get_tilepath(weather_path=weather_path, zoom=zoom, lon=x.lon, lat=x.lat),
+            lambda x: get_tilepath(weather_path=weather_path, zoom=zoom, lon=x.lon, lat=x.lat),
             axis=1,
         )
         if "source" in placements.columns:
