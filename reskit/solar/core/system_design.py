@@ -357,7 +357,8 @@ def location_to_gcr(
             east_slope = gk.raster.interpolateValues(east_slope, locs, **kwargs)
         except Exception:
             raise OSError(f"east_slope file cannot be read by gk.raster.interpolateValues(): {east_slope}.")
-        assert not any()
+        assert not pd.isnull(east_slope).any(), \
+            "east_slope raster contains NaN values for at least one location."
         
     if tracking == "fixed":
         # a different set of conventions applies for fixed and single-axis tracking
