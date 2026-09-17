@@ -563,24 +563,28 @@ def calulate_row_pitch_and_gcr(
 
 def get_park_capacity_density(
       cap_dens_module: float | int, 
-      module_tilts : int | float | np.ndarray | pd.Series, 
       gcrs: int | float | np.ndarray | pd.Series, 
       min_cap_dens_park: float | None = None,
       shape_factor: float | np.ndarray = 1.0,
       ):
     """
-    Calculate the solar park capacity density based on   
+    Calculate the solar park capacity density based on module capacity density, 
+    Ground Coverage Ratio and area efficiency of plot. Enforce minimum capacity 
+    density where required.
+    
     Parameters
     ----------
     cap_dens_module : float | int
         Capacity density of the module type in [W/m²]
-    module_tilts : int | float | np.ndarray | pd.Series
-        Module tilts between ground and module plane facing the equator, in deg.
     gcrs : int | float | np.ndarray | pd.Series
         Ground coverage ratios per location in positive floats <= 1.0.
-    min_cap_dens_park : float | None, optional
+    min_cap_dens_park : float | int | None, optional
         The minimum allowed capacity density in [MW/ha], will be set if value is 
         below this threshold. Will be ignored if None, by default None
+        NOTE: This minimum will be applied to the array area, not to the 
+        fenced area. The shape_factor can hence afterwards reduce the effective 
+        capacity density across the whole fenced plot when it is not completely 
+        covered with solar arrays.
     shape_factor : float | np.ndarray, optional
         The share of the property/plot that is actually built upon, usually not 
         100% due to local shading, inconvenient property shape or crossing roads,
@@ -595,37 +599,33 @@ def get_park_capacity_density(
        or as array for multiple locations.
     """
     # check types and set as array flag
-    if isinstance(module_tilts, pd.Series):
-       module_tilts = module_tilts.values
-    if isinstance(gcrs, pd.Series):
-       gcrs = gcrs.values
     _asarr = False
-    for var in [module_tilts, gcrs, shape_factor]:
-        assert isinstance(var, (int, float, np.ndarray)),\
-            "All input variables must be int, float or np.ndarray types."
-        if isinstance(var, np.ndarray):
+    for var in [gcrs, shape_factor]:
+        if not isinstance(var, (int, float, np.ndarray)):
+            raise TypeError("gcrs and shape_factor inputs must be int, float, pd.Series or np.ndarray types.")
+        if isinstance(var, (np.ndarray. pd.Series)):
             _asarr = True
-    assert isinstance(cap_dens_module, (float, int)),\
-        "cap_dens_module must be float or int if not None."
-    assert min_cap_dens_park is None or isinstance(min_cap_dens_park, (float)),\
-        "min_cap_dens_park must be float if not None."
+    if not isinstance(cap_dens_module, (float, int, np.number)):
+        raise TypeError("cap_dens_module must be float or int if not None.")
+    if not min_cap_dens_park is None or isinstance(min_cap_dens_park, (float, int, np.number)):
+        raise TypeError("min_cap_dens_park must be float or int if not None.")
     
-    # project module density to flat ground
-    cap_dens_module_grd = np.atleast_1d(cap_dens_module) / np.cos(np.atleast_1d(module_tilts)*np.pi/180) # W/m2
-
     # scale to park density via gcr
-    cap_dens_park = cap_dens_module_grd * np.atleast_1d(gcrs) *10000/1E6 # MW/ha
-
-    # apply the shape factor reduction 
-    shape_factor = np.atleast_1d(shape_factor)
-    if len(shape_factor) > 1:
-        assert len(shape_factor) == len(cap_dens_park), \
-            f"shape_factor must have the same length as module_tilts, or gcrs if the latter is an iterable."
-    cap_dens_park = shape_factor * cap_dens_park
+    cap_dens_park = np.atleast_1d(cap_dens_module) * np.atleast_1d(gcrs) *10000/1E6 # MW/ha
 
     # set min density if applicable
     if min_cap_dens_park is not None:
        cap_dens_park[cap_dens_park<np.atleast_1d(min_cap_dens_park)] = min_cap_dens_park
+
+    # apply the shape factor reduction 
+    shape_factor = np.atleast_1d(shape_factor)
+    if shape_factor.size not in (1, gcrs.size):
+        raise ValueError(f"shape_factor must either be scalar or have the same length as gcrs. Here: {shape_factor}")
+    if np.any((gcrs <= 0) | (gcrs > 1)):
+        raise ValueError("gcrs must contain values > 0 and <= 1.")
+    if np.any((shape_factor <= 0) | (shape_factor > 1)):
+        raise ValueError("shape_factor must contain values > 0 and <= 1.")
+    cap_dens_park = shape_factor * cap_dens_park
 
     return cap_dens_park if _asarr else cap_dens_park[0]
 
