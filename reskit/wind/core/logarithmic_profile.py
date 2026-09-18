@@ -4,6 +4,7 @@ import geokit as gk
 import numpy as np
 
 from ...util import ResError
+from ...util.paths import as_path_string, is_path_like
 
 
 def apply_logarithmic_profile_projection(
@@ -209,8 +210,8 @@ def roughness_from_clc(clc_path, loc, window_range=0):
 
     Parameters
     ----------
-    clc_path : str
-        The path to the Corine Land Cover (CLC) raster file on the disk.
+    clc_path : str, pathlib.Path or osgeo.gdal.Dataset
+        The path to the Corine Land Cover (CLC) raster file on the disk, or an open raster dataset.
         This function currently only works for CLC versions before 2018.
 
     loc : Anything acceptable to geokit.LocationSet
@@ -295,6 +296,8 @@ def roughness_from_clc(clc_path, loc, window_range=0):
     loc = gk.LocationSet(loc)
 
     # Get pixels values from clc
+    if is_path_like(clc_path):
+        clc_path = as_path_string(clc_path)
     clcGridValues = gk.raster.interpolateValues(clc_path, loc, winRange=window_range, noDataOkay=True)
     # interpolateValues returns a scalar for a single location; ensure an array so the
     # downstream item-assignment/iteration works regardless of the number of locations
@@ -519,8 +522,8 @@ def roughness_from_land_cover_source(source, loc, land_cover_type="clc"):
 
     Parameters
     ----------
-    source : str
-        The path to the Corine Land Cover raster file on the disk.
+    source : str, pathlib.Path or osgeo.gdal.Dataset
+        The path to the land cover raster file on the disk, or an open raster dataset.
 
     loc : Anything acceptable to geokit.LocationSet
         Arguments accepted include: str, OGR point object (must have an SRS within the object, default = 4326 (for Europe)), lat and lon coordinates (tuple (lat,lon)).
@@ -548,6 +551,8 @@ def roughness_from_land_cover_source(source, loc, land_cover_type="clc"):
         roughness_from_land_cover_classification(classification, land_cover_type)
     """
     loc = gk.LocationSet(loc)
+    if is_path_like(source):
+        source = as_path_string(source)
     classifications = gk.raster.interpolateValues(source, loc, noDataOkay=False)
 
     return roughness_from_land_cover_classification(classifications, land_cover_type=land_cover_type)

@@ -147,13 +147,48 @@ collections:
       gsa_dni: reskit-test-data/global-solar-atlas/gsa-dni-like.tif
       era5_csp: reskit-test-data/era5-csp
 
-  # RECONSTRUCTED 2026-09-09, and worth checking. This collection was an
-  # uncommitted local edit that got overwritten while the fixture family was
-  # being restructured. It was rebuilt from the only surviving evidence -- it
-  # resolved to 5 files -- which matches these four datasets exactly: the inputs
-  # the geothermal resource is computed *from*, with the computed
-  # `geothermal-resource` itself deliberately not among them. If that is not what
-  # it said, this is the line to fix.
+  # The two rasters the offshore cost model reads per location, water depth and
+  # distance to the nearest coast (reskit.util.local_values). The handles are the
+  # functions' defaults: water_depth_from_location reads `water_depth` and
+  # distance_to_coastline reads `coast_distance` whenever they are called without a
+  # raster path, resolving this collection's full variant once per process. The
+  # test variant is the 24 x 24 cell German Bight box the fixtures cover.
+  # Before RESKit 0.6 these two paths were the `waterDepthFilePath` and
+  # `distancetoCoastPath` keys of reskit/default_paths.yaml.
+  offshore_siting:
+    title: Water depth and distance to coast for offshore siting
+    test:
+      include:
+        - dataset: reskit-test-data/gebco
+        - dataset: reskit-test-data/dist2coast
+      paths:
+        water_depth: reskit-test-data/gebco/water_depth_northsea.tif
+        coast_distance: reskit-test-data/dist2coast/coast_distance_northsea.tif
+    full:
+      include:
+        - dataset: gebco-2024
+          files: ["*.tif"]
+        - dataset: dist2coast
+          files: ["GMT_intermediate_coast_distance_01d.tif"]
+      paths:
+        water_depth: gebco-2024
+        coast_distance: dist2coast/GMT_intermediate_coast_distance_01d.tif
+
+  # RESKit ships a 124-turbine library (reskit/wind/core/data/turbines) that
+  # rk.wind.turbine_library() reads by default. This is the 880-turbine superset
+  # built inside ICE-2 from thewindpower.net -- licensed, so it is restricted: read
+  # from the restricted cache where it lies and never downloaded. Select it for the
+  # process with
+  #   rk.wind.turbine_library(reskit.data.paths("turbine_library")["turbines"])
+  # Before RESKit 0.6 this was the `turbine_library_path` key of
+  # reskit/default_paths.yaml.
+  turbine_library:
+    title: The 880-turbine library derived from thewindpower.net (licensed)
+    include:
+      - dataset: reskit-turbine-library
+    paths:
+      turbines: reskit-turbine-library
+
   geothermal_preprocessing:
     title: Inputs for computing the geothermal resource
     include:
@@ -162,12 +197,6 @@ collections:
       - dataset: goutorbe-global-heat-flow-2011
       - dataset: nasa-power-geothermal-climatology
 
-  # NOTE: `landcover` (Copernicus C3S, 300 m) was removed from this file -- the CDS
-  # ships it under terms that forbid redistribution, so it cannot go in the public
-  # catalogue, and no RESKit workflow selected it. Workflows that scale wind speeds
-  # logarithmically still take a land cover raster, but as a caller-supplied path
-  # (`esa_cci_path`, `height_scaling_data`), never from a collection. That leaves
-  # nothing here beyond the fixtures, so this is `test_suite` by another name.
   all:
     title: Every dataset RESKit can use
     include:

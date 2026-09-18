@@ -195,6 +195,55 @@ gwa_100m = data.path("reskit-test-data/global-wind-atlas/gwa100-like.tif")
 The Python calls use RESKit's selected catalogue; `ethos-data` uses the shared
 settings, so pass the same `--catalog` when comparing results.
 
+## Location rasters and the turbine library
+
+Three inputs used to be configured in `reskit/default_paths.yaml`, a file inside
+the installed package. They are now arguments, with defaults that come from the
+catalogue:
+
+| Input | Function | Default | Collection |
+| --- | --- | --- | --- |
+| Water depth raster (GEBCO) | `water_depth_from_location(..., waterDepthFilePath=)` | the `water_depth` handle of `offshore_siting`, fetched on first use | `offshore_siting` |
+| Distance-to-coast raster | `distance_to_coastline(..., distancetoCoastFilePath=)` | the `coast_distance` handle of `offshore_siting`, fetched on first use | `offshore_siting` |
+| Turbine library | `rk.wind.turbine_library(path=)` | the 124 turbines RESKit ships | `turbine_library` (licensed) |
+
+Baseline turbine definitions are `OnshoreParameters(fp=...)` and
+`OffshoreParameters(fp=...)`; RESKit ships the defaults and no dataset is involved.
+
+```python
+import reskit as rk
+from reskit import data
+from reskit.util.local_values import distance_to_coastline, water_depth_from_location
+
+inputs = data.paths("offshore_siting", test=True)  # the German Bight fixtures
+depth = water_depth_from_location(54.4, 6.9, waterDepthFilePath=inputs["water_depth"])
+distance = distance_to_coastline(54.4, 6.9, distancetoCoastFilePath=inputs["coast_distance"])
+
+water_depth_from_location(54.4, 6.9)  # no path: the full grids, from the catalogue
+
+rk.wind.turbine_library(data.paths("turbine_library")["turbines"])  # the licensed library
+rk.wind.turbine_library("/path/to/my/turbines")  # or any directory of turbine CSVs
+```
+
+A directory given to `turbine_library` becomes the library for the rest of the
+process, so workflows that name a power curve resolve it there too. The
+`turbine_library` collection is restricted data, read from the restricted cache
+and never downloaded; outside the institute the call raises an access error and
+the shipped library stays in use.
+
+To read a private copy of a catalogued dataset, for instance GEBCO tiles already
+on your disk, tell ETHOS.Data where it lies instead of passing the path to every
+call:
+
+```bash
+ethos-data config set-root gebco-2024 /data/gebco
+```
+
+Until the maintainers catalogue GEBCO and publish `dist2coast`, the full variant
+of `offshore_siting` is `[unresolvable]` and the two functions need an explicit
+path; `reskit-data show offshore_siting` reports the state, and the
+`TODO(maintainer)` note in `collections.yaml` says what to change.
+
 ## Develop against unpublished data
 
 In a development checkout, put a candidate in its own directory and register it:

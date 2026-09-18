@@ -1,7 +1,6 @@
 from reskit.wind.economic.offshore_cost_model import *
 import numpy as np
 import pytest
-from reskit.default_paths import DEFAULT_PATHS
 from reskit.parameters.parameters import OffshoreParameters
 from pathlib import Path
 from reskit.util.local_values import water_depth_from_location

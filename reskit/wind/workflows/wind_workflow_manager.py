@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 import windpowerlib
 
-from ...util.paths import is_path_like
+from ...util.paths import as_path_string, is_path_like
 from ...workflow_manager import WorkflowManager
 from .. import core as rk_wind_core
 
@@ -249,8 +249,8 @@ class WindWorkflowManager(WorkflowManager):
 
         Parameters
         ----------
-        path : str
-            path to the raster file
+        path : str, pathlib.Path or osgeo.gdal.Dataset
+            Path to the raster file, or an open raster dataset.
         source_type : str
             string value to get the corresponding key-value pairs. Accepted types 'clc', 'clc-code', 'globCover', 'modis', or 'cci', by default 'clc'
 
@@ -262,6 +262,8 @@ class WindWorkflowManager(WorkflowManager):
         --------
             A reference to the invoking WindWorkflowManager
         """
+        if is_path_like(path):
+            path = as_path_string(path)
         num = gk.raster.interpolateValues(path, self.locs, mode="near")
         self.placements["roughness"] = rk_wind_core.logarithmic_profile.roughness_from_land_cover_classification(
             num, source_type
