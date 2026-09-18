@@ -1431,6 +1431,196 @@ class SolarWorkflowManager(WorkflowManager):
         Parameters
         ----------
 
+    def preprocess_singleaxis_and_crossaxis(
+            self,
+            singleaxis_azimuth : float | str | Iterable,
+            singleaxis_tilt : float | str | Iterable | None = None,
+            crossaxis_tilt : float | str | Iterable | None = None,
+        ):
+        """
+        Preprocesses the input for singleaxis_azimuth and defines singleaxis and crossaxis 
+        tilts either based on singleaxis_tilt and crossaxis_tilt inputs, or calculates it 
+        from general (hill) slope and downhill azimuth, assuming constant distance of the 
+        axis to the ground. If hill slope and orientation is not defined either, flat ground
+        is assumed and singleaxis tilt and crossaxis tilt will be zero. 
+
+        Parameters
+        ----------
+        singleaxis_azimuth : float | str | Iterable,
+            The orientation of the single-axis PV tracker axis in degrees, clockwise from
+            0° North. Can be provided as a scalar or an iterable of one value per location.
+            Must be a known convention to reskit.core.system_design.location_to_tracker_axis_azimuth()
+            if provided as a str or iterable of strings. 
+        singleaxis_tilt : float | str | Iterable | None, optional
+            The tilt of the single-axis PV tracker axis in degrees tilted towards singleaxis_azimuth. 
+            Can be provided as a scalar or an iterable of one value per location. Must be a known 
+            convention to reskit.core.system_design.location_to_tracker_axis_tilt() if provided as a 
+            str or iterable of strings. If None is provided, the tilt will be derived from general 
+            (hill) slope and downhill azimuth if given, else flat terrain will be assumed. By default 
+            None.
+        crossaxis_tilt : float | str | Iterable | None, optional
+            The tilt of the plant surface perpendicular to the single-axis PV tracker axis in degrees 
+            tilted upwards on the right-hand side looking in singleaxis_azimuth direction. 
+            Can be provided as a scalar or an iterable of one value per location. Must be a known 
+            convention to reskit.core.system_design.location_to_tracker_crossaxis_tilt() if provided 
+            as a str or iterable of strings. If None is provided, the cross axis tilt will be derived 
+            from general (hill) slope and downhill azimuth if given, else flat terrain will be assumed. 
+            By default None.
+
+        Returns
+        -------
+        obj
+            a reference to the invoking SolarWorkflowManager object.
+        """
+        # first save the inputs to raw data
+        self.plant_parameters_raw["singleaxis_azimuth"] = singleaxis_azimuth
+        self.plant_parameters_raw["singleaxis_tilt"] = singleaxis_tilt
+        self.plant_parameters_raw["crossaxis_tilt"] = crossaxis_tilt
+
+        # singleaxis_azimuth is mandatory in any case
+        # process in a try-except to be able to explain the need for not-None values here (can and should be None when fixed tilt)
+        try:
+            singleaxis_azimuth, saa_conventions = self._preprocess_variable(
+                varname = "singleaxis_azimuth",
+                value = singleaxis_azimuth,
+                allow_none = False,
+                replace_none = None,
+                assert_type = [float, int],
+                force_cols = 1,
+                force_dims = 1, # one scalar value per placement -> 1d
+                as_dtype = float,
+            )
+        except ValueError as e:
+            if "must not have None values" in str(e):
+                raise ValueError(
+                    f"{e} This is required when tracking='singleaxis'."
+                ) from e
+            raise
+        
+        # fill potential str conventions with numbers
+        for conv in np.unique(saa_conventions[~pd.isna(saa_conventions)]):
+            # generate a mask that applies also to the locations
+            mask = (saa_conventions == conv)
+            # get numeric values based on convention
+            iter_vals = rk_solar_core.system_design.location_to_tracker_axis_azimuth(
+                locs=self.locs[mask], 
+                convention=conv,
+                )
+            if np.isnan(iter_vals).any():
+                # we still have nans and no fallback possible
+                raise ValueError("NaN values extracted for 'singleaxis_azimuth' and no fallback possible.")
+            # last set the extracted values from this iteration in the main value array
+            singleaxis_azimuth[mask] = iter_vals
+
+        # now singleaxis tilt and crossaxis tilt
+        # both can either be given explicitly or calculated from hill slope and azimuth, else they will be set to zero
+        if (not self._is_none(singleaxis_tilt).all()) and (not self._is_none(crossaxis_tilt).all()):
+            # we do have at least some data for both, preprocess it analog to above, start with singleaxis_tilt
+            singleaxis_tilt, sat_conventions = self._preprocess_variable(
+                varname = "singleaxis_tilt",
+                value = singleaxis_tilt,
+                allow_none = False,
+                replace_none = None,
+                assert_type = [float, int],
+                force_cols = 1,
+                force_dims = 1, # one scalar value per placement -> 1d
+                as_dtype = float,
+            )
+            # fill potential str conventions with numbers
+            for conv in np.unique(sat_conventions[~pd.isna(sat_conventions)]):
+                # generate a mask that applies also to the locations
+                mask = (sat_conventions == conv)
+                # get numeric values based on convention
+                iter_vals = rk_solar_core.system_design.location_to_tracker_axis_tilt(
+                    locs=self.locs[mask], 
+                    convention=conv,
+                    )
+                if np.isnan(iter_vals).any():
+                    # we still have nans and no fallback possible
+                    raise ValueError("NaN values extracted for 'singleaxis_tilt' and no fallback possible.")
+                # last set the extracted values from this iteration in the main value array
+                singleaxis_tilt[mask] = iter_vals
+            
+            # the same for crossaxis_tilt
+            crossaxis_tilt, cat_conventions = self._preprocess_variable(
+                varname = "crossaxis_tilt",
+                value = crossaxis_tilt,
+                allow_none = False,
+                replace_none = None,
+                assert_type = [float, int],
+                force_cols = 1,
+                force_dims = 1, # one scalar value per placement -> 1d
+                as_dtype = float,
+            )
+            # fill potential str conventions with numbers
+            for conv in np.unique(cat_conventions[~pd.isna(cat_conventions)]):
+                # generate a mask that applies also to the locations
+                mask = (cat_conventions == conv)
+                # get numeric values based on convention
+                iter_vals = rk_solar_core.system_design.location_to_cross_axis_tilt(
+                    locs=self.locs[mask], 
+                    convention=conv,
+                    )
+                if np.isnan(iter_vals).any():
+                    # we still have nans and no fallback possible
+                    raise ValueError("NaN values extracted for 'crossaxis_tilt' and no fallback possible.")
+                # last set the extracted values from this iteration in the main value array
+                crossaxis_tilt[mask] = iter_vals
+        else:
+            # at least one of singleaxis_tilt or crossaxis_tilt is all None or equivalent, make sure both are then
+            assert self._is_none(singleaxis_tilt).all() and self._is_none(crossaxis_tilt).all(), \
+                "Either none or both of 'singleaxis_tilt' and 'crossaxis_tilt' inputs must be provided."
+            # we have no explicit information and need to calculate it
+            if self._is_none(self.plant_parameters_processed["general_slope"]).all() or self._is_none(self.plant_parameters_processed["downhill_azimuth"]).all():
+                # we do not have any information sufficient to calculate the axis tilts, this means tilts are not being set explicitly -> assume horizontal
+                print("NOTE: No singleaxis_tilt/crossaxis_tilt information nor hill orientation (general_slope, downhill_azimuth) provided, flat terrain/axes will be assumed.", flush=True)
+                singleaxis_tilt = np.zeros_like(singleaxis_azimuth, dtype=np.float16)
+                crossaxis_tilt = np.zeros_like(singleaxis_azimuth, dtype=np.float16)
+            else:
+                # we have the hill slope and orientation, assume constant axis distance to ground and CALCULATE the required axes tilts geometrically
+                hill_slopes_rad = np.radians(self.plant_parameters_processed["general_slope"])
+                slope_azimuths_rad = np.radians(self.plant_parameters_processed["downhill_azimuth"])
+                singleaxis_azimuths_rad = np.radians(singleaxis_azimuth)
+                # get then angular delta between downhill and axis orientation and derive resulting axis tilt across the hillface
+                delta = singleaxis_azimuths_rad - slope_azimuths_rad
+                singleaxis_tilt = np.degrees(
+                    np.arctan(np.tan(hill_slopes_rad) * np.cos(delta))
+                )
+                # get the normal on the hillface
+                tan_slope = np.tan(hill_slopes_rad)
+                normal = np.stack([
+                    tan_slope * np.sin(slope_azimuths_rad),
+                    tan_slope * np.cos(slope_azimuths_rad),
+                    np.ones_like(tan_slope),
+                ], axis=-1)
+
+                # Axis vector pointing toward singleaxis_azimuth
+                # Its vertical component is negative when that direction is downhill
+                axis = np.stack([
+                    np.sin(singleaxis_azimuths_rad),
+                    np.cos(singleaxis_azimuths_rad),
+                    -tan_slope * np.cos(delta),
+                ], axis=-1)
+
+                # Points to the right when looking toward axis_azimuth, positive angles mean "going up towards the right-hand side"
+                cross_axis = np.cross(normal, axis)
+
+                # Positive means rising toward the right-hand side
+                crossaxis_tilt = np.degrees(
+                    np.arctan2(
+                        cross_axis[..., 2],
+                        np.hypot(cross_axis[..., 0], cross_axis[..., 1]),
+                    )
+                )
+        
+        # write all parameters into the storage container
+        self.plant_parameters_processed["singleaxis_azimuth"] = singleaxis_azimuth
+        self.plant_parameters_processed["singleaxis_tilt"] = singleaxis_tilt
+        self.plant_parameters_processed["crossaxis_tilt"] = crossaxis_tilt
+
+        return self
+
+
     def permit_single_axis_tracking(self):
         """
         Permits single axis tracking in the simulation using the 
