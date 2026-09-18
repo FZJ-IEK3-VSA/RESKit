@@ -2524,16 +2524,20 @@ class SolarWorkflowManager(WorkflowManager):
         Allows to revert the effect of shading on the long-run average 
         irradiance values that are used for spatial disaggregation, e.g. Global 
         Solar Atlas. The hourly values of DNI and GHI are then scaled by the 
-        factor of all over unshaded cumulative irradiance for the current year,
-        following this equation: real_lra = real_lra / v_shaded.sum()/v_all.sum()
+        factor of unshaded cumulative irradiance over shaded for the current year,
+        following this equation: real_lra = real_lra * (v_all.sum() / v_shaded.sum())
         This allows later reapplication of shading on the affected timesteps 
         without duplicating the terrain shading effects.
+
+        NOTE: The scaling considers only distant horizon shading to avoid potential shading overestimation.
 
         Assumptions based on horizon shading approach in pvlib-python:
         https://pvlib-python.readthedocs.io/en/stable/gallery/shading/plot_simple_irradiance_adjustment_for_horizon_shading.html 
 
-        min_scaling_factor : float, optional
-            Limits the ratio between shaded and unshaded real lra to a minimum 
+        Parameters
+        ----------
+        max_scaling_factor : float, optional
+            Limits the ratio between shaded and unshaded real lra to a maximum 
             factor if given, else no effect. By default None.
 
         Returns
@@ -2548,37 +2552,52 @@ class SolarWorkflowManager(WorkflowManager):
         assert "direct_normal_irradiance" in self.sim_data, "'direct_normal_irradiance' attribute is expected in self.sim_data"
         assert "global_horizontal_irradiance" in self.sim_data, "'global_horizontal_irradiance' attribute is expected in self.sim_data"
 
-        # first calculate the shaded timesteps based on the horizon profile
-        
-        # interpolate the horizon profile angles for the solar azimuths covered by our irradiance data, iteratively for every location
-        horizon_angles = np.vstack([
-            np.interp(self.sim_data["solar_azimuth"][:, i], np.linspace(0, 360, len(self.horizon_angles), endpoint=False), self.horizon_angles[:, i])
-            for i in range(len(self.placements))
-        ]).T 
+        # first check if horizon has any effect at all, if not return immediately
+        if not "distant_horizon_profile" in self.plant_parameters_processed:
+            raise AttributeError(f"'distant_horizon_profile' is a mandatory attribute, run self.preprocess_distant_horizon_profile() or self.preprocess_horizon_profile() first.")
 
+        # save time if all horizons are flat and have therefore no impact anyways
+        if np.all(self.plant_parameters_processed["distant_horizon_profile"] == 0):
+            return self
+
+        # else calculate the shaded timesteps based on the horizon profile
+        # interpolate the horizon profile angles for the solar azimuths covered by our irradiance data, iteratively for every location
+        horizon_profile = np.vstack([
+            np.interp(
+                self.sim_data["solar_azimuth"][:, i],
+                np.linspace(
+                    0,
+                    360,
+                    self.plant_parameters_processed["distant_horizon_profile"].shape[1],
+                    endpoint=False,
+                ),
+                self.plant_parameters_processed["distant_horizon_profile"][i, :],
+            )
+            for i in range(self.sim_data["solar_azimuth"].shape[1])
+        ]).T
         # calculate the timesteps when the plant is shaded by the horizon
-        _unshaded_ts = (90-self.sim_data["apparent_solar_zenith"]) > horizon_angles
+        _unshaded_ts = (90-self.sim_data["apparent_solar_zenith"]) > horizon_profile
         
-        # first caculate the DNI rescaling factor as 1 / (sum of all unshaded DNI values over all DNI values)
-        # assume 100% DNI shading based on pvlib
+        # then calculate the DNI rescaling factor as (sum of all DNI values) / (sum of all unshaded DNI values)
+        # assume 100% DNI shading when sun behind horizon based on pvlib
         _dni_unshaded_agg = (self.sim_data["direct_normal_irradiance"] * _unshaded_ts).sum(axis=0)
         _dni_total_agg = self.sim_data["direct_normal_irradiance"].sum(axis=0)
-        _dni_scaling = 1 / (_dni_unshaded_agg / _dni_total_agg)
+        _dni_scaling = _dni_total_agg / _dni_unshaded_agg
         assert (_dni_scaling >= 1).all() # make sure
-        if min_scaling_factor is not None:
+        if max_scaling_factor is not None:
             # limit the scaling factors per location to a maximum value
-            assert isinstance(min_scaling_factor, float) and min_scaling_factor >=1, "min_scaling_factor must be float >= 1.0 if given"
-            _dni_scaling = np.minimum(_dni_scaling, min_scaling_factor)
+            assert isinstance(max_scaling_factor, float) and max_scaling_factor >=1, "max_scaling_factor must be float >= 1.0 if given"
+            _dni_scaling = np.minimum(_dni_scaling, max_scaling_factor)
         
         # calculate corrected DNI without shading losses, store in temp variable for now
-        _dni_new = self.sim_data["direct_normal_irradiance"] * _dni_scaling
+        _dni_flathorizon = self.sim_data["direct_normal_irradiance"] * _dni_scaling
 
         # correct GHI based on equation GHI = DNI + cos(teta) * DHI, with teta as solar zenith angle
         # GHI increases simply by the DNI delta since DHI is unaffected by horizon shading by pvlib assumption
-        self.sim_data["global_horizontal_irradiance"] = self.sim_data["global_horizontal_irradiance"] + (_dni_new - self.sim_data["direct_normal_irradiance"])
+        self.sim_data["global_horizontal_irradiance"] = self.sim_data["global_horizontal_irradiance"] + (_dni_flathorizon - self.sim_data["direct_normal_irradiance"])
 
         # now overwrite DNI as well with corrected value
-        self.sim_data["direct_normal_irradiance"] = _dni_new
+        self.sim_data["direct_normal_irradiance"] = _dni_flathorizon
 
         return self
 
