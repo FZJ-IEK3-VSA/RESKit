@@ -329,6 +329,9 @@ class WorkflowManager:
         """
         Auxiliary function to extract raster values with NaN fallback options.
         """
+        # geokit before 1.7 opens only string paths; a pathlib.Path (what reskit.data
+        # returns) would be handed back unopened and fail inside rasterInfo().
+        fp = as_path_string(fp)
         assert isfile(fp), f"File '{fp}' in adjust_variable_to_long_run_average() does not exist."
         # execute with warnings filter since values outside of source data would trigger geokit UserWarning every time
         with warnings.catch_warnings():
