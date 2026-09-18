@@ -6,7 +6,7 @@ import rasterio
 
 from os.path import isfile, splitext
 from collections import OrderedDict
-from types import FunctionType
+from types import NoneType
 import warnings
 from scipy.interpolate import RectBivariateSpline
 import json
@@ -1196,8 +1196,10 @@ class SolarWorkflowManager(WorkflowManager):
 
         """
         # TODO: This can also cover the case when we know GHI & DiffHI
-        assert "direct_horizontal_irradiance" in self.sim_data
-        assert "apparent_solar_zenith" in self.sim_data
+        if "direct_horizontal_irradiance" not in self.sim_data:
+            raise AttributeError("'direct_horizontal_irradiance' must be read in first via wfm.read()")
+        if "apparent_solar_zenith" not in self.sim_data:
+            raise AttributeError("'apparent_solar_zenith' must be processed first e.g. via wfm.determine_solar_position()")
 
         dni_flat = self.sim_data["direct_horizontal_irradiance"]
         zen = np.radians(self.sim_data["apparent_solar_zenith"])
@@ -1428,20 +1430,14 @@ class SolarWorkflowManager(WorkflowManager):
 
         Parameters
         ----------
-        max_angle: float, optional
-            A value denoting the maximum rotation angle, in decimal degrees, of the one-axis tracker from its horizontal position
-            (horizontal if axis_tilt = 0). A max_angle of 90 degrees allows the tracker to rotate to a vertical position to point the
-            panel towards a horizon. max_angle of 180 degrees allows for full rotation [1]. By default 90.
 
-        backtrack: bool, optional
-            Controls whether the tracker has the capability to “backtrack” to avoid row-to-row shading.
-            False denotes no backtrack capability. True denotes backtrack capability [1]. By default True.
+    def permit_single_axis_tracking(self):
+        """
+        Permits single axis tracking in the simulation using the 
+        pvlib.tracking.singleaxis() function [1].
 
-        gcr: float, optional
-            A value denoting the ground coverage ratio of a tracker system which utilizes backtracking; i.e. the ratio between the
-            PV array surface area to total ground area. A tracker system with modules 2 meters wide, centered on the tracking axis,
-            with 6 meters between the tracking axes has a gcr of 2/6=0.333. If gcr is not provided, a gcr of 2/7 is default. gcr 
-            must be <=1 [1]. By default 2.0/7.0
+        NOTE: permit_single_axis_tracking() may update/invert the values in
+        self.plant_parameters_processed['singleaxis_azimuth'] if negative.
 
         Returns
         -------
@@ -1466,25 +1462,43 @@ class SolarWorkflowManager(WorkflowManager):
         
         assert "apparent_solar_zenith" in self.sim_data
         assert "solar_azimuth" in self.sim_data
-        assert "axtilt" in self.placements.columns
-        assert "axazimuth" in self.placements.columns
-        assert "gcr" in self.placements.columns
-        assert "backtrack" in self.placements.columns
-        assert "btmaxangle" in self.placements.columns
 
+        assert "singleaxis_azimuth" in self.plant_parameters_processed, \
+            "singleaxis_azimuth not in self.plant_parameters_processed, run preprocess_singleaxis_and_crossaxis() first."
+        assert "singleaxis_tilt" in self.plant_parameters_processed, \
+            "singleaxis_tilt not in self.plant_parameters_processed, run preprocess_singleaxis_and_crossaxis() first."
+        assert "crossaxis_tilt" in self.plant_parameters_processed, \
+            "crossaxis_tilt not in self.plant_parameters_processed, run preprocess_singleaxis_and_crossaxis() first."
+        assert "gcr" in self.plant_parameters_processed, \
+            "gcr not in self.plant_parameters_processed, run preprocess_ground_coverage_ratio() first."
+        assert "backtracking" in self.plant_parameters_processed, \
+            "backtracking not in self.plant_parameters_processed, run preprocess_backtracking() first."
+        assert "max_tracking_angle" in self.plant_parameters_processed, \
+            "max_tracking_angle not in self.plant_parameters_processed, run preprocess_tracking_angle() first."
+        
+        # create a container for hourly module tilts and azimuths
         system_modtilt = np.empty(self._sim_shape_)
         system_modazimuth = np.empty(self._sim_shape_)
+        system_axazimuth = np.empty(self._sim_shape_[1]) # expected as 1d by pvfactors_timeseries
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
 
-            for i in range(self.locs.count):
-                placement = self.placements.iloc[i]
+            for i, (_axazimuth, _axtilt, _caxtilt, _gcr, _backtrack, _max_angle) in enumerate(zip(
+                self.plant_parameters_processed["singleaxis_azimuth"], 
+                self.plant_parameters_processed["singleaxis_tilt"], 
+                self.plant_parameters_processed["crossaxis_tilt"],
+                self.plant_parameters_processed["gcr"],
+                self.plant_parameters_processed["backtracking"],
+                self.plant_parameters_processed["max_tracking_angle"],
+                )):
+            # for i in range(self.locs.count):
+                # placement = self.placements.iloc[i] #TODO remove
 
                 # invert the axis azimuth (and hence axis and cross axis tilt) when axis tilt is negative, pvlib.tracking.singleaxis cannot deal with it
-                axtilt = placement.axtilt if placement.axtilt >= 0 else -placement.axtilt
-                axazimuth = placement.axazimuth if placement.axtilt >= 0 else (placement.axazimuth + 180) % 360
-                caxtilt = placement.caxtilt if placement.axtilt >= 0 else -placement.caxtilt
+                _axazimuth = _axazimuth if _axtilt >= 0 else (_axazimuth + 180) % 360
+                _caxtilt = _caxtilt if _axtilt >= 0 else -_caxtilt
+                _axtilt = _axtilt if _axtilt >= 0 else -_axtilt
                 # calculate the optimal tracking orientations
                 tmp = pvlib.tracking.singleaxis(
                     # zenith is defined as angle from vertical and >90° is impossible, set maximum of 90° to avoid nans
@@ -1495,42 +1509,36 @@ class SolarWorkflowManager(WorkflowManager):
                     apparent_azimuth=pd.Series(
                         self.sim_data["solar_azimuth"][:, i], index=self._time_index_
                     ),
-                    axis_tilt=axtilt,
-                    axis_azimuth=axazimuth,
-                    max_angle=placement.btmaxangle,
-                    backtrack=placement.backtrack,
-                    gcr=placement.gcr,
-                    cross_axis_tilt=caxtilt,
+                    axis_tilt=_axtilt,
+                    axis_azimuth=_axazimuth,
+                    max_angle=_max_angle,
+                    backtrack=_backtrack,
+                    gcr=_gcr,
+                    cross_axis_tilt=_caxtilt,
                 )
 
                 # later simulation yields errors when fed with negative tilts, make sure that everything went as expected
-                if (tmp["surface_tilt"] < -1e9).any(): # with numeric tolerance
-                    raise ValueError(
-                        "pvlib.tracking.singleaxis returned negative surface_tilt."
-                    )
-
-                # later simulation yields errors when fed with negative tilts, make sure that everything went as expected
-                if (tmp["surface_tilt"] < -1e9).any(): # with numeric tolerance
+                if (tmp["surface_tilt"] < -1e-9).any(): # with numeric tolerance
                     raise ValueError(
                         "pvlib.tracking.singleaxis returned negative surface_tilt."
                     )
 
                 system_modtilt[:, i] = tmp["surface_tilt"].values
                 system_modazimuth[:, i] = tmp["surface_azimuth"].values
+                system_axazimuth[i] = _axazimuth # the axis azimuth has possibly been inverted above, store it as well
 
                 assert not np.isnan(system_modtilt[:, i]).any()
                 assert not np.isnan(system_modazimuth[:, i]).any()
-                # fix nan values. Why are they there???
-                s = np.isnan(system_modtilt[:, i])
-                system_modtilt[s, i] = placement.axtilt
+                assert not np.isnan(system_axazimuth[i])
 
-                s = np.isnan(system_modazimuth[:, i])
-                system_modazimuth[s, i] = placement.axazimuth
-
+        # store the results in sim_data
         self.sim_data["system_modtilt"] = system_modtilt
         self.sim_data["system_modazimuth"] = system_modazimuth
-
+        # also add the axis azimuth (time-invariant for single-axis tracking) formatted as timeseries over location shape, with possibly inverted values
+        self.plant_parameters_processed["system_axazimuth"] = system_axazimuth
+        
         return self
+
 
     def determine_angle_of_incidence(self):
         """
@@ -1557,8 +1565,8 @@ class SolarWorkflowManager(WorkflowManager):
         assert "solar_azimuth" in self.sim_data
 
         # get either the time-variable tracking tilt/azimuths or fixed values for fixed tilt
-        modazimuths = self.sim_data.get("system_modazimuth", self.placements["modazimuth"].values)
-        modtilts = self.sim_data.get("system_modtilt", self.placements["modtilt"].values)
+        modazimuths = self.sim_data.get("system_modazimuth", self.plant_parameters_processed["module_azimuth"])
+        modtilts = self.sim_data.get("system_modtilt", self.plant_parameters_processed["module_tilt"])
 
         self.sim_data["angle_of_incidence"] = np.nan_to_num(
             pvlib.irradiance.aoi(
@@ -1571,6 +1579,7 @@ class SolarWorkflowManager(WorkflowManager):
         )
 
         return self
+
 
     def estimate_plane_of_array_irradiances(
         self, transposition_model="perez", **kwargs
@@ -1607,26 +1616,29 @@ class SolarWorkflowManager(WorkflowManager):
         assert "diffuse_horizontal_irradiance" in self.sim_data
         assert "extra_terrestrial_irradiance" in self.sim_data
         assert "air_mass" in self.sim_data
+        assert "system_grdalbedo" in self.sim_data, f"'system_grdalbedo' is expected in sim_data, run preprocess_ground_albedo() first."
 
         def _set_total_irradiance_per_side(front=True):
             """Calculates and sets to self.sim_data the POA global and its components for front or backside"""
-            
             # get system ground albedos and tilts and azimuths for the module surfaces
-            _grdalbedos = self.sim_data.get("system_grdalbedo", self.placements["grdalbedo"].values)
-            _modtilts = self.sim_data.get("system_modtilt", self.placements["modtilt"].values)
-            _modazimuths = self.sim_data.get("system_modazimuth", self.placements["modazimuth"].values)
+            _grdalbedos = self.sim_data.get("system_grdalbedo")
+            _modtilts = self.sim_data.get("system_modtilt", self.plant_parameters_processed["module_tilt"])
+            _modazimuths = self.sim_data.get("system_modazimuth", self.plant_parameters_processed["module_azimuth"])
+            
+            # always consider all locations for the frontside but only those that have a bifaciality factor > 0 for the backside (save time calculating only what is really needed)
+            bifaciality_mask = np.ones(self.locs.count, dtype=bool) if front else (self.plant_parameters_processed["bifaciality_factor" ] != 0)
 
             _poa = pvlib.irradiance.get_total_irradiance(
-                surface_tilt=_modtilts if front else 180-_modtilts,
-                surface_azimuth=_modazimuths,
-                solar_zenith=self.sim_data["apparent_solar_zenith"],
-                solar_azimuth=self.sim_data["solar_azimuth"],
-                dni=self.sim_data["direct_normal_irradiance"],
-                ghi=self.sim_data["global_horizontal_irradiance"],
-                dhi=self.sim_data["diffuse_horizontal_irradiance"],
-                dni_extra=self.sim_data["extra_terrestrial_irradiance"],
-                airmass=self.sim_data["air_mass"],
-                albedo=_grdalbedos,
+                surface_tilt=(_modtilts if front else 180-_modtilts)[..., bifaciality_mask],
+                surface_azimuth=_modazimuths[..., bifaciality_mask] if front else ((_modazimuths + 180) % 360)[..., bifaciality_mask],
+                solar_zenith=self.sim_data["apparent_solar_zenith"][..., bifaciality_mask],
+                solar_azimuth=self.sim_data["solar_azimuth"][..., bifaciality_mask],
+                dni=self.sim_data["direct_normal_irradiance"][..., bifaciality_mask],
+                ghi=self.sim_data["global_horizontal_irradiance"][..., bifaciality_mask],
+                dhi=self.sim_data["diffuse_horizontal_irradiance"][..., bifaciality_mask],
+                dni_extra=self.sim_data["extra_terrestrial_irradiance"][..., bifaciality_mask],
+                airmass=self.sim_data["air_mass"][..., bifaciality_mask],
+                albedo=_grdalbedos[..., bifaciality_mask],
                 model=transposition_model,
                 **kwargs,
             )
@@ -1637,15 +1649,16 @@ class SolarWorkflowManager(WorkflowManager):
                 # This should set: 'poa_global', 'poa_direct', 'poa_diffuse', 'poa_sky_diffuse', and 'poa_ground_diffuse' or the respective poa_backside value
                 tmp[np.isnan(tmp)] = 0
                 _key = key+"_raw" if front else key.replace("poa_", "poa_backside_")+"_raw"
-                self.sim_data[_key] = np.where(
-                        sel_bad_poa, 0, tmp
-                    )
+                # Initialize all locations with zero, then fill only processed locations
+                self.sim_data[_key] = np.zeros(self._sim_shape_, dtype=np.asarray(tmp).dtype) 
+                self.sim_data[_key][..., bifaciality_mask] = np.where(sel_bad_poa, 0, tmp)
             return
         
         # first do frontside, always
         _set_total_irradiance_per_side(front=True)
         # then do backside only if needed
-        if self.bifacial:
+        if not (self.plant_parameters_processed["bifaciality_factor"] == 0).all():
+            # we have at least one bifacial module location, look at backside irradiance, too
             _set_total_irradiance_per_side(front=False)
 
         return self
@@ -1988,8 +2001,8 @@ class SolarWorkflowManager(WorkflowManager):
         Required data sim_data attributes are 'diffuse_horizontal_irradiance'
         'apparent_solar_zenith', 'solar_azimuth' and 'direct_normal_irradiance'.
 
-        Will save backside irradiances as well only when self.bifacial
-        flag is True in the invoking class instance.
+        Will save backside irradiances as well only when self.plant_parameters_processed["bifaciality_factor"] 
+        has non-zero entries in the invoking class instance.
 
         Unless otherwise specified in kwargs, the following argument values will 
         be extracted from module data: 'gcr', 'pvrow_height', 'pv_row_width.
@@ -2016,27 +2029,30 @@ class SolarWorkflowManager(WorkflowManager):
         # iterate over all locs
         for iloc in range(self._sim_shape_[1]):
 
+            # EXTRACT THE LOCATIONAL DATA FOR IRRADIANCE CALCULATION
+
             # helper function to extract and preprocess shape for variables either from sim data or placements or defaults
             def _extract_var(var, sim_var=None, fallback=None, time_invariant=False):
                 """First tries to get location- and time-variable sim_data, then location-variable placements column, else default."""
                 if self.sim_data.get(sim_var) is not None:
                     # get only the timeseries for the representative location
-                    return self.sim_data.get(sim_var)[:, iloc]
-                elif var is not None and var in self.placements:
+                    return np.asarray(self.sim_data.get(sim_var)[:, iloc], dtype=float).copy()
+                elif var is not None and var in self.plant_parameters_processed:
                     # value is not time-variable but in placements df
-                    val = self.placements.iloc[iloc][var]
+                    val = self.plant_parameters_processed[var]
+                    assert np.asarray(val).ndim == 1 # make sure, needed for below logic
                     if time_invariant:
                         # if parameter is time-invariant, return only the iloc-th value
-                        return val
+                        return val[iloc]
                     else:
                         # if time-variant parameter is expected, duplicate for T timesteps
-                        return np.full(self._sim_shape_[0], val)
+                        return np.full(self._sim_shape_[0], val[iloc])
                 elif fallback is not None:
                     # set to variable fallback value
                     return np.full(self._sim_shape_[0], fallback)
                 else:
                     # fall back to defaults
-                    defaults = {"n_pvrows" : 3, "index_observed_pvrow" : 1, "pvrow_width" : 2.384*2} # default width for 2P orientation of large commercial module
+                    defaults = {"n_pvrows" : 3, "index_observed_pvrow" : 1} # default width for 2P orientation of large commercial module
                     if var not in defaults:
                         raise KeyError(f"Variable '{var}' is neither a sim_data system variable, nor a column in placements dataframe nor has a default value.")
                     return defaults[var]
@@ -2044,22 +2060,22 @@ class SolarWorkflowManager(WorkflowManager):
             # define the base input args for this location
             # define a fallback for the axis azimuth in case of tracked systems where the value does not exist
             # the tracker axis is not used here but value is expected, orientation is always rectangular to module azimuth
-            _axazimuth_fallback = _extract_var("modazimuth", "system_modazimuth") + 90 if self.tracking == "fixed" else None
+            _axazimuth_fallback = _extract_var("module_azimuth", "system_modazimuth") + 90 if self.tracking == "fixed" else None
             pvfts_args = {}
             pvfts_args["solar_azimuth"] = self.sim_data["solar_azimuth"][:, iloc]
             pvfts_args["solar_zenith"] = self.sim_data["apparent_solar_zenith"][:, iloc]
-            pvfts_args["surface_azimuth"] = _extract_var("modazimuth", "system_modazimuth")
-            pvfts_args["surface_tilt"] = _extract_var("modtilt", "system_modtilt")
-            pvfts_args["axis_azimuth"] = _extract_var("axazimuth", "system_axazimuth", _axazimuth_fallback)
+            pvfts_args["surface_azimuth"] = _extract_var("module_azimuth" if self.tracking=="fixed" else None, "system_modazimuth")
+            pvfts_args["surface_tilt"] = _extract_var("module_tilt" if self.tracking=="fixed" else None, "system_modtilt")
+            pvfts_args["axis_azimuth"] = _extract_var("axazimuth" if self.tracking=="fixed" else "system_axazimuth", "system_axazimuth", _axazimuth_fallback, time_invariant=True)
             pvfts_args["timestamps"] = np.arange(self._sim_shape_[0])
             pvfts_args["dhi"] = self.sim_data["diffuse_horizontal_irradiance"][:, iloc]
             pvfts_args["dni"] = self.sim_data["direct_normal_irradiance"][:, iloc]
-            pvfts_args["gcr"] = _extract_var("gcr")
-            pvfts_args["pvrow_height"] = _extract_var("pvrow_height")
+            pvfts_args["gcr"] = _extract_var("gcr", time_invariant=True)
+            pvfts_args["pvrow_height"] = _extract_var("pvrow_height", time_invariant=True)
             pvfts_args["albedo"] = _extract_var("grdalbedo", "system_grdalbedo")
             pvfts_args["n_pvrows"] = _extract_var("n_pvrows", time_invariant=True)
             pvfts_args["index_observed_pvrow"] = _extract_var("index_observed_pvrow", time_invariant=True)
-            pvfts_args["pvrow_width"] = _extract_var("pvrow_width")
+            pvfts_args["pvrow_width"] = _extract_var("pvrow_width_sloped", time_invariant=True) # pvlib expects the full array width along the sloped edge
 
             # # CONSIDER IRRADIANCE SHADING BY HORIZON EFFECTS
 
@@ -2112,6 +2128,7 @@ class SolarWorkflowManager(WorkflowManager):
             assert (np.atleast_1d(pvfts_args["pvrow_height"])-0.5*np.atleast_1d(pvfts_args["pvrow_width"]) > 0).all(),\
                 f"pvrow_height must exceed 0.5 x pvrow_width in all cases." # leads to unrealistic results in pvlib.bifacial.pvfactors_timeseries() otherwise
 
+            # save the outputs to the respective multi-dimensional array columns
             poa_frontside[:, iloc] = _poa_frontside.values
             poa_backside[:, iloc] = _poa_backside.values
             poa_frontside_absorbed[:, iloc] = _poa_frontside_absorbed.values
@@ -2129,11 +2146,9 @@ class SolarWorkflowManager(WorkflowManager):
         # finally set the results as sim_data attributes
         _fix_bad_poa_and_set_attr(arr=poa_frontside, attr="poa_global_raw")
         _fix_bad_poa_and_set_attr(arr=poa_frontside_absorbed, attr="poa_global")
-
-        if self.bifacial:
-            # set POA values for backside only when bifacial flag is True
-            _fix_bad_poa_and_set_attr(arr=poa_backside, attr="poa_backside_global_raw")
-            _fix_bad_poa_and_set_attr(arr=poa_backside_absorbed, attr="poa_backside_global")
+        
+        _fix_bad_poa_and_set_attr(arr=poa_backside, attr="poa_backside_global_raw")
+        _fix_bad_poa_and_set_attr(arr=poa_backside_absorbed, attr="poa_backside_global")
 
         return self
 
@@ -2227,7 +2242,7 @@ class SolarWorkflowManager(WorkflowManager):
         assert "poa_ground_diffuse_raw" in self.sim_data
         assert "poa_sky_diffuse_raw" in self.sim_data
 
-        modtilts = self.sim_data.get("system_modtilt", self.placements["modtilt"].values)
+        modtilts = self.sim_data.get("system_modtilt", self.plant_parameters_processed["module_tilt"])
 
         self.sim_data["poa_direct"] = self.sim_data["poa_direct_raw"]*pvlib.pvsystem.iam.physical(
             aoi=self.sim_data["angle_of_incidence"],
@@ -2269,7 +2284,6 @@ class SolarWorkflowManager(WorkflowManager):
         module:str="WINAICO WSx-240P6",
         tracking:str="fixed",
         tech_year:int=2050,
-        bifaciality_factor:float|None=None,
         database="CEC Modules.csv"
     ):
         """
@@ -2296,17 +2310,14 @@ class SolarWorkflowManager(WorkflowManager):
             year. Must then be between year of market comparison in analysis (2019) and 2050.
             Will be ignored when non-projected existing module names or specific parameters
             are given, can then be None. By default 2050.
-        bifaciality_factor : float, optional
-            Float between 0-1 describing the backside yield reduction compared 
-            to frontside at equal radiation. Will take effect only if the module
-            has a Bifacial attribute either as True, 1, "1", "Y", "YES", or 
-            "Yes". By default None, i.e. bifacial energy production will NOT be 
-            considered.
         database : str, optional
             The database that shall be loaded, either via a known database in 
             pvlib.pvsystem.retrieve_sam() or as filename of a .csv database in 
             reskit/solar/data. By default "CEC Modules.csv".
         
+        NOTE: The bifaciality factor is provided separately as a workflow argument and loaded
+        via preprocess_bifaciality_factor(), it can be scalar or location-specific.
+
         Returns
         -------
         obj
@@ -2318,9 +2329,6 @@ class SolarWorkflowManager(WorkflowManager):
 
 
         """
-        # check inputs
-        if bifaciality_factor is not None and not 0<=bifaciality_factor<=1:
-            raise ValueError(f"bifaciality_factor must be a float >=0 and <=1 if not None, here: {bifaciality_factor}")
         if tracking not in [
             "fixed",
             "singleaxis",
@@ -2460,7 +2468,7 @@ class SolarWorkflowManager(WorkflowManager):
             elif isinstance(module, str):
                 if tech_year is not None:
                     warnings.warn(
-                        "NOTE: The tech_year argument is ignored when a specific module is given. Set tech_year to None to silence this warning."
+                        "NOTE: The tech_year argument is ignored when a specific module is given. Set tech_year to None to silence this warning.\n"
                     )
                 # Extract module parameters
                 try:
@@ -2602,19 +2610,19 @@ class SolarWorkflowManager(WorkflowManager):
         """
         assert "poa_global" in self.sim_data
         assert "cell_temperature" in self.sim_data
-        if consider_snow_cover:
-            assert "partial_snowcov" in self.sim_data, f"'partial_snowcov' must be calculated first if 'consider_snow_cover'."
+        if np.any(np.asarray(consider_snow_cover)):
+            assert "partial_snowcov" in self.sim_data, f"'partial_snowcov' must be calculated first if 'consider_snow_cover' is True for any location."
 
         assert self.module is not None, "Configure module te be simulated first via configure_cec_module()."
 
         sel = self.sim_data["poa_global"] > 0
         cell_temp = self.sim_data["cell_temperature"][sel]
 
-        if consider_snow_cover: #TODO move this block to the plant (or module?) system setup and save parallel number of strings as attr
+        if np.any(np.asarray(consider_snow_cover)): #TODO move this block to the plant (or module?) system setup and save parallel number of strings as attr
             # calculate the number of cell strings in each module parallel to the snow cover line
             if num_strings is None:
                 # take data from module if possible
-                if format == "landscape" and hasattr(self.module, "N_p"): #TODO get format from plant data
+                if format == "landscape" and "N_p" in self.module.index: 
                     # use the No of cell strings parallel to the long side
                     assert isinstance(self.module["N_p"], int) and self.module["N_p"]>0 # make sure
                     num_strings = self.module["N_p"]
@@ -2631,7 +2639,7 @@ class SolarWorkflowManager(WorkflowManager):
         # Note that bottom/top side are inverted every half day when e.g. singleaxis, but has no effect on overall production as long as partial coverage remains the same
         for _string in range(num_strings):
             # each of the cell strings may produce on both sides, or only backside if frontside is covered
-            if consider_snow_cover:
+            if np.any(np.asarray(consider_snow_cover)):
                 # conservative assumption based on pvlib.snow.dc_loss_nrel(): no production when at least partial coverage of string area
                 _production = 1- (self.sim_data["partial_snowcov"] > _string/num_strings)
             else:
@@ -2647,15 +2655,15 @@ class SolarWorkflowManager(WorkflowManager):
                 self.sim_data["poa_global"],
                 _production # _production will be zero for non-production timesteps for this string (e.g. when snow-covered)
             )[sel]
-            if self.bifacial:
+            if not (self.plant_parameters_processed["bifaciality_factor"] == 0).all():
                 # add the backside irradiance, reduced by bifaciality factor (simplified)
-                poa_back = self.bifaciality_factor * self.sim_data["poa_backside_global"][sel]
+                poa_back = np.broadcast_to(self.plant_parameters_processed["bifaciality_factor"], sel.shape)[sel] * self.sim_data["poa_backside_global"][sel]
                 # special case: Avoid artefacts when simulating vertical modules with snow
                 # usually backside is not snow covered but for vertical panels, it is as exposed as the front side , so assume same snow cover
                 # NOTE: Artefacts at very steep angles just below to 90° absolute tilt are still possible!
                 if self.tracking == "fixed":
                     # apply snow cover reduction to backside POA only of the VERTICAl modules as well
-                    vertical_mask = np.isclose(np.abs(self.placements["modtilt"].values), 90.0)
+                    vertical_mask = np.isclose(np.abs(self.plant_parameters_processed["module_tilt"]), 90.0)
                     vertical_mask_sel = np.broadcast_to(vertical_mask, sel.shape)[sel]
                     poa_back[vertical_mask_sel] *= _production[sel][vertical_mask_sel]
                 # add possible snow-adjusted poa back to total poa
@@ -2724,12 +2732,12 @@ class SolarWorkflowManager(WorkflowManager):
         )
 
         # Estimate total system generation
-        if "capacity" in self.placements.columns:
+        if "capacity" in self.plant_parameters_processed and not self._is_none(self.plant_parameters_processed).any():
             self.sim_data["total_system_generation"] = self.sim_data["capacity_factor"] * np.broadcast_to(
-                self.placements.capacity, self._sim_shape_
+                self.plant_parameters_processed["capacity"], self._sim_shape_
             )
 
-        if "modules_per_string" in self.placements.columns and "strings_per_inverter" in self.placements.columns:
+        if "modules_per_string" in self.placements.columns and "strings_per_inverter" in self.placements.columns: #TODO #ISSUE285 replace placements df in this block
             total_modules = (
                 self.placements.modules_per_string
                 * self.placements.strings_per_inverter
@@ -2799,10 +2807,10 @@ class SolarWorkflowManager(WorkflowManager):
         assert "module_dc_power_at_mpp" in self.sim_data
         assert "module_dc_voltage_at_mpp" in self.sim_data
         assert self.module is not None
-        assert "modules_per_string" in self.placements.columns
-        assert "strings_per_inverter" in self.placements.columns
+        assert "modules_per_string" in self.plant_parameters_processed #TODO #ISSUE285 write preprocessing functions to add modules per string and strings per inverter
+        assert "strings_per_inverter" in self.plant_parameters_processed
         assert (
-            "capacity" not in self.placements.columns
+            "capacity" not in self.plant_parameters_processed
         ), "Cannot simultaneously provide 'capacity' and inverter-string parameters"
 
         if method == "sandia":
@@ -2812,10 +2820,10 @@ class SolarWorkflowManager(WorkflowManager):
 
             self.sim_data["inverter_ac_power_at_mpp"] = pvlib.inverter.sandia(
                 v_dc=self.sim_data["module_dc_voltage_at_mpp"]
-                * np.broadcast_to(self.placements.modules_per_string, self._sim_shape_),
+                * np.broadcast_to(self.plant_parameters_processed["modules_per_string"], self._sim_shape_),
                 p_dc=self.sim_data["module_dc_power_at_mpp"]
                 * np.broadcast_to(
-                    self.placements.modules_per_string * self.placements.strings_per_inverter,
+                    self.plant_parameters_processed["modules_per_string"] * self.plant_parameters_processed["strings_per_inverter"],
                     self._sim_shape_,
                 ),
                 inverter=inverter,
@@ -2826,18 +2834,18 @@ class SolarWorkflowManager(WorkflowManager):
                 db = pvlib.pvsystem.retrieve_sam("CECInverter")
                 inverter = getattr(db, inverter)
 
-            self.sim_data["inverter_ac_power_at_mpp"] = pvlib.pvsystem.adrinverter(
+            self.sim_data["inverter_ac_power_at_mpp"] = pvlib.pvsystem.adrinverter( 
                 v_dc=self.sim_data["module_dc_voltage_at_mpp"]
-                * np.broadcast_to(self.placements.modules_per_string, self._sim_shape_),
+                * np.broadcast_to(self.plant_parameters_processed["modules_per_string"], self._sim_shape_),
                 p_dc=self.sim_data["module_dc_power_at_mpp"]
                 * np.broadcast_to(
-                    self.placements.modules_per_string * self.placements.strings_per_inverter,
+                    self.plant_parameters_processed["modules_per_string"] * self.plant_parameters_processed["strings_per_inverter"],
                     self._sim_shape_,
                 ),
                 inverter=inverter,
             )
 
-        number_of_inverters = getattr(self.placements, "number_of_inverters", 1)
+        number_of_inverters = self.plant_parameters_processed.get("number_of_inverters", 1)
         self.sim_data["total_system_generation"] = self.sim_data["inverter_ac_power_at_mpp"] * np.broadcast_to(
             number_of_inverters, self._sim_shape_
         )
@@ -2845,8 +2853,8 @@ class SolarWorkflowManager(WorkflowManager):
         total_capacity = (
             self.module.I_mp_ref
             * self.module.V_mp_ref
-            * self.placements.modules_per_string
-            * self.placements.strings_per_inverter
+            * self.plant_parameters_processed["modules_per_string"]
+            * self.plant_parameters_processed["strings_per_inverter"]
             * number_of_inverters
         )
 
