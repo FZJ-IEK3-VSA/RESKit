@@ -1219,8 +1219,82 @@ class SolarWorkflowManager(WorkflowManager):
         return self
     
 
-    def calculate_horizon_profile(
+    ########################
+    ### HORIZON HANDLING ###
+    ########################
+
+
+    def preprocess_horizon_profile(
         self,
+        distant_horizon_profile : str | Iterable | None,
+        azimuthal_stepsize : float = 3.0,
+        min_sampling_points : int = 12,
+        **kwargs,
+    ):
+        """
+        This convenience function calculates the horizon profiles based on the inputs for
+        'distant_horizon_profile' as well as local horizons based on local 'hill_slopes' 
+        and 'slope_azimuths'. It preprocessed the variables internally and combines them
+        into the maximum relevant horizon angles per azimuthal view axis. The results are
+        stored as 'horizon_profile' in self.plant_parameters_processed.
+
+        Parameters
+        ----------
+        azimuthal_stepsize : float, optional
+            The even angular spacing between azimuthal view axes, by default 3.0
+            (i.e. 120 sampling points on a 360° round view)
+        **kwargs
+            Passed on to self.preprocess_distant_horizon_profile()
+
+        Returns
+        -------
+        obj
+            a reference to the invoking SolarWorkflowManager object.
+        """
+        # DISTANT HORIZON
+
+        # save raw input
+        self.plant_parameters_raw["distant_horizon_profile"] = distant_horizon_profile
+
+        # first format the distant horizon profiles input
+        distant_horizon_profile, filepaths = self._preprocess_variable(
+            varname = "distant_horizon_profile",
+            value = distant_horizon_profile,
+            allow_none = True,
+            replace_none = 0, # note that this replaces None etc. by fallback value already
+            assert_type = [int, float, str],
+            force_cols = None,
+            force_dims = None,
+        )
+        # then process and get the values
+        self.preprocess_distant_horizon_profile(
+            distant_horizon_profile = distant_horizon_profile,
+            azimuthal_stepsize = azimuthal_stepsize,
+            min_sampling_points = min_sampling_points,
+            **kwargs,
+        )
+        distant_horizon_profile = self.plant_parameters_processed["distant_horizon_profile"]
+
+        # LOCAL HORIZON
+
+        if "local_horizon_profile" not in self.plant_parameters_processed:
+            # we need to first process it
+            self.calculate_local_horizon_based_on_hillslope(
+                azimuthal_stepsize = azimuthal_stepsize, 
+                allow_negative = True)
+        local_horizon_profile = self.plant_parameters_processed["local_horizon_profile"]
+
+        # combine the two, always the maximum angle is the defining one blocking the sun
+        assert distant_horizon_profile.shape == local_horizon_profile.shape, \
+            f"Shape mismatch: distant_horizon_profile {distant_horizon_profile.shape} != local_horizon_profile {local_horizon_profile.shape}"
+        horizon_profile = np.maximum(distant_horizon_profile, local_horizon_profile)
+
+        # write to preprocessed params
+        self.plant_parameters_processed["horizon_profile"] = np.asarray(horizon_profile, dtype=float)
+
+        return self
+
+
 
     def _calculate_distant_horizon_profile(
         self,
