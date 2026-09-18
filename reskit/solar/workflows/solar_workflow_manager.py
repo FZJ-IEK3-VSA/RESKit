@@ -1058,6 +1058,8 @@ class SolarWorkflowManager(WorkflowManager):
             self.sim_data["apparent_solar_zenith"][s], model=model
         )
 
+        return self
+
 
     def apply_DIRINT_model(self, use_pressure:bool=True, use_dew_temperature:bool=True):
         """
