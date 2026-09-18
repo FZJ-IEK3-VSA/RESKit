@@ -955,12 +955,28 @@ class SolarWorkflowManager(WorkflowManager):
             return self
         assert "apparent_solar_zenith" in self.sim_data,\
             "'apparent_solar_zenith' is a mandatory self.sim_data argument. Calculate e.g. via self.determine_solar_position()"
-
-        self._time_sel_ = (self.sim_data["apparent_solar_zenith"] < 95).any(axis=1)
-
+        
+        # variables which are connected between timesteps or describe non-solar parameters (e.g. for snow cover or slow-changing core temperatures) will be needed as a FULL timeseries
+        # save them to an additional "sim_data_full" container before clipping the nighttime hours
+        self.sim_data_full = OrderedDict()
+        self._sim_shape_full_ = self._sim_shape_
+        self._time_index_full_ = self.time_index
+        for key in [
+            "snow_depth_water_equivalent",
+            "snow_density",
+            "snowfall_water_equivalent",
+            "surface_air_temperature", # needed for nighttime snow melt
+        ]:
+            if key in self.sim_data:
+                val = self.sim_data[key]
+                assert val.shape == self._sim_shape_full_ # make sure
+                self.sim_data_full[key] = val 
+        
+        # then clip it only to "light hours", described by _time_sel_ mask
+        self._time_sel_ = (self.sim_data["apparent_solar_zenith"] < 95).any(axis=1) # allow a few degrees below horizon to account for diffuse radiation after sunset and possibly slightly negative horizon angles
         for key in self.sim_data.keys():
             self.sim_data[key] = self.sim_data[key][self._time_sel_, :]
-
+        # also update the time index and sim data shape
         self._time_index_ = self.time_index[self._time_sel_]
         self._set_sim_shape()
 
@@ -1635,7 +1651,14 @@ class SolarWorkflowManager(WorkflowManager):
         return self
 
 
-    def estimate_snow_coverage_loss(self, num_strings=None, format: str = "portrait", self_cleaning: bool = True, threshold_snowfall : float = 1.0):
+    def estimate_snow_coverage_loss(
+            self, 
+            num_strings=None, 
+            format: str = "portrait", 
+            self_cleaning: bool = True, 
+            threshold_snowfall : float = 1.0,
+            consider_snow_loss : bool | Iterable = True,
+            ):
         """
         Calculates and sets as attribute a timeseries of partial module snow 
         cover area ratio, for every timestep and location separately. Estimates 
@@ -1653,13 +1676,16 @@ class SolarWorkflowManager(WorkflowManager):
             is None, then uses the number of parallel strings from module "N_p" 
             parameter as num_strings when format is landscape. By default 
             portrait.
-        self_cleaning : bool, optional
+        self_cleaning : bool | np.ndarray, optional
             If True, the modules will be assumed to be tilted to the maximum 
             possible angle to facilitate snow shedding. Will not take effect for
             fixed tilt systems. By default True.
         threshold_snowfall : float, optional
             The snowfall rate threshold in cm/h below which no snow coverage
             is assumed. By default 1.0 cm/h (default in pvlib.snow.coverage_nrel).
+        consider_snow_loss : bool | Iterable, optional
+            If snow cover losses shall be considered. Can be given as a scalar or 
+            per location. By default True.
 
         Returns
         -------
@@ -1671,84 +1697,136 @@ class SolarWorkflowManager(WorkflowManager):
         ----------
         [1] Anderson, Eric A. (1976). A  point energy and mass balance model of a snow cover.
         """
-        assert format in ["portrait", "landscape"], \
-            f"format must be 'portrait' or 'landscape'."
-        assert num_strings is None or (isinstance(num_strings,int) and num_strings>0),\
-            "num_strings must be an integer > 0 if not None."
-        assert isinstance(self_cleaning, bool), "self_cleaning must be boolean"
-        assert "snowfall_water_equivalent" in self.sim_data
-        assert "poa_global" in self.sim_data
-        assert "surface_air_temperature" in self.sim_data
-
-        # save time for non-snow affected locations
-        if self.sim_data["snowfall_water_equivalent"].max()/50*1000 * 100  <= threshold_snowfall: #m snowfall_water_equivalent is water equiv. in m/h x 100 cm/m, corrected by water over snow density
-            # even at lowest possible fresh snow density (50kg/m3), we do not ever have 
-            # enough snowfall to possibly take effect, can be skipped
-            self.sim_data["partial_snowcov"] = np.zeros_like(self.sim_data["snowfall_water_equivalent"])
-            return self
-
-        # get the respective slide angle per tracking mode
-        if self.tracking == "singleaxis":
-            if self_cleaning:
-                # the module can be tilted to the max. possible angle whenever needed to remove snow
-                assert "btmaxangle" in self.placements.columns, \
-                    f"'btmaxangle' is a required plant attribute when tracking == 'singleaxis'"
-                _angle = abs(self.placements["btmaxangle"])
-            else:
-                # use the current module tilt angle due to solar position
-                _angle = self.sim_data["system_modtilt"]
-        elif self.tracking == "fixed":
-            # set the fixed module tilt angle (must be positive from ground, so use absolute)
-            _angle = self.placements["modtilt"].abs()
+        if not np.any(np.asarray(consider_snow_loss)):
+            # no location is affected, set snow coverage to zero for all locs and timesteps
+            partial_snowcov = np.zeros(shape=self._sim_shape_full_)
         else:
-            raise ValueError(f"No slide angle defined for self.tracking='{self.tracking}'.")
+            # actually calculate the partial snow coverages
+            assert format in ["portrait", "landscape"], \
+                "format must be 'portrait' or 'landscape'."
+            assert num_strings is None or (isinstance(num_strings,int) and num_strings>0),\
+                "num_strings must be an integer > 0 if not None."
+            assert isinstance(self_cleaning, bool), "self_cleaning must be boolean"
+            assert "poa_global" in self.sim_data
+            if self.tracking == "singleaxis":
+                assert "max_tracking_angle" in self.plant_parameters_processed, \
+                    "max_tracking_angle not in self.plant_parameters_processed, required for self-cleaning singleaxis tracking, run preprocess_tracking_angle() first."
+            # note that the FULL annual timeseries are needed here since snowfall and melting effects occur also at night
+            assert "snowfall_water_equivalent" in self.sim_data_full
+            assert "surface_air_temperature" in self.sim_data_full
         
-        # calculate the snow fall in "fluffy" cm/h based on water equivalent in mm/h
-        # use Anderson (1976) equation: simple. no wind speed, medium values compared to other models, used in SNOWPACK model
-        # accept minor deviation due to SURFACE (corrected by fixed 0.065K/10m, International Standard Atmosphere lapse rate) instead of 10m height air temperature to save an additional variable
-        fresh_snow_density = 50 + np.maximum(1.7 * np.power(self.sim_data["surface_air_temperature"]-0.065 + 15, 1.5), 0)
-        snowfall_rate_cm = self.sim_data["snowfall_water_equivalent"] * (1000/fresh_snow_density) * 100 # m/h x 100 cm/m
+            # save time for non-snow affected locations
+            if self.sim_data_full["snowfall_water_equivalent"].max()/50*1000 * 100  <= threshold_snowfall: #m snowfall_water_equivalent is water equiv. in m/h x 100 cm/m, corrected by water over snow density
+                # even at lowest possible fresh snow density (50kg/m3 for fresh cold snow based on literature research), we do not ever have 
+                # enough snowfall to possibly take effect, can be skipped
+                partial_snowcov = np.zeros_like(self.sim_data_full["snowfall_water_equivalent"])
+                self.sim_data_full["partial_snowcov"] = partial_snowcov
+                self.sim_data["partial_snowcov"] = partial_snowcov[self._time_sel_, :] # reduce to only daylight timesteps of interest
+                return self
 
-        if np.nanmax(snowfall_rate_cm) <= threshold_snowfall:
-            # even at the snowiest location, we do not ever have enough snowfall to possibly take effect, can be skipped
-            self.sim_data["partial_snowcov"] = np.zeros_like(self.sim_data["snowfall_water_equivalent"]) # set dummy no cover
-            return self
-
-        # estimate the share of snow-covered surface along the slant height axis
-
-        # the function needs ALL timesteps to properly track accumulation and melting, complete timeseries and store as dataframes
-        def complete_timeseries_df(data):
-            tmp = np.full((len(self.time_index), self.locs.count), 0.0, dtype=float)
-            tmp[self._time_sel_, :] = data
-            return pd.DataFrame(tmp, index=self.time_index)
-        snowfall_rate_cm_df = complete_timeseries_df(snowfall_rate_cm)
-        poa_global_df = complete_timeseries_df(self.sim_data["poa_global"])
-        surface_air_temperature_df = complete_timeseries_df(self.sim_data["surface_air_temperature"])
-        
-        # calculate partial snow coverage for each location iteratively
-        partial_snowcov = np.zeros((self._time_sel_.sum(), self.locs.count)) # initialize only for timesteps of interest
-        for iloc in range(self.locs.count):
-            # if the max. snowfall rate is below threshold, set all reduction factors to zero
-            if np.nanmax(snowfall_rate_cm[:, iloc]) <= threshold_snowfall:
-                # this particular location does not exceed the threshold ever, set dummy reduction factors of 0 and skip
-                partial_snowcov[:, iloc] = np.zeros(self._sim_shape_[0])
-                continue
-            # else calculate reduction factors
-            partial_snowcov_loc = pvlib.snow.coverage_nrel(
-                snowfall = snowfall_rate_cm_df.iloc[:, iloc], # as pd.Series
-                poa_irradiance = poa_global_df.iloc[:, iloc],
-                temp_air = surface_air_temperature_df.iloc[:, iloc], 
-                surface_tilt = _angle.iloc[iloc], 
-                initial_coverage=0, # always start at zero
-                threshold_snowfall=threshold_snowfall, 
-                can_slide_coefficient=-80.0, # pvlib.snow.coverage_nrel default
-                slide_amount_coefficient=0.197 # pvlib.snow.coverage_nrel default
-                )
-            # reduce to only daylight timesteps of interest and append to overall factors matrix
-            partial_snowcov[:, iloc] = partial_snowcov_loc.to_numpy()[self._time_sel_]
+            # preprocess cleaning info 
+            def _format_input_to_locs_array(val, varname, assert_type=None):
+                """Formats a value as a 1D array with length equal to No. of locations and checks datatype if required (multiple datatypes as list possible)"""
+                TYPE_MAP = {
+                    int: np.integer,
+                    float: np.floating,
+                    bool: np.bool_,
+                }
+                _val = np.asarray(val)
+                if assert_type is not None:
+                    if not isinstance(assert_type, list):
+                        assert_type = [assert_type]
+                    for _type in assert_type:
+                        if _type not in TYPE_MAP: 
+                            raise KeyError(f"Unknown datatype: {_type}, choose from: {', '.join(TYPE_MAP.keys())}")
+                        _typenp = TYPE_MAP[_type]
+                        if not np.issubdtype(_val.dtype, _typenp):
+                                raise TypeError(f"Expected {assert_type}, got {_val.dtype}")
+                if _val.ndim == 0: # scalar
+                    return np.full(self.locs.count, _val)
+                elif _val.ndim == 1:
+                    if not len(_val) == len(self.locs):
+                        raise ValueError(f"{varname} was provided as 1D array with length = {len(_val)} but does not match No. of locs: {len(self.locs)}")
+                    return _val
+                else:
+                    raise ValueError(f"Only scalar or 1D arrays are accepted for one-per-location arguments: {varname} = {val}")
             
-        # save partial snow coverage as attribute
-        self.sim_data["partial_snowcov"] = partial_snowcov
+            self_cleaning = _format_input_to_locs_array(val=self_cleaning, varname="self_cleaning", assert_type=bool) #TODO make self_cleaning a plant_parameters_processed param like all others, allow to pass per location
+            consider_snow_loss = _format_input_to_locs_array(val=consider_snow_loss, varname="consider_snow_loss", assert_type=bool)
+            
+            # get the respective slide angle per tracking mode
+            if self.tracking == "singleaxis":
+                # get absolute angles from optimized and maximum possible angles first
+                current_angles = np.abs(np.asarray(self.sim_data["system_modtilt"])) 
+                max_angles = self.plant_parameters_processed["max_tracking_angle"]
+                # and replace by maximum backtracking angles where self cleaning is possible
+                # max angle at night and for self-cleaning locations
+                surface_tilt_full = np.broadcast_to(
+                    max_angles[None, :],
+                    self._sim_shape_full_,
+                ).copy()
+                # during daytime, non-self-cleaning locations use actual tracker tilt
+                surface_tilt_full[
+                    np.ix_(self._time_sel_, ~self_cleaning)
+                ] = current_angles[:, ~self_cleaning]
+            elif self.tracking == "fixed":
+                # set the fixed module tilt angle (must be positive from ground, so use absolute)
+                _angles = np.abs(self.plant_parameters_processed["module_tilt"])
+                # broadcast to a full annual timeseries
+                surface_tilt_full = np.broadcast_to(
+                    _angles[None, :],
+                    self._sim_shape_full_,
+                ).copy()
+            else:
+                raise ValueError(f"No slide angle defined for self.tracking='{self.tracking}'.")
+            
+            # calculate the snow fall in "fluffy" cm/h based on water equivalent in mm/h
+            # use Anderson (1976) equation: simple. no wind speed, medium values compared to other models, used in SNOWPACK model
+            # accept minor deviation due to SURFACE (corrected by fixed 0.065K/10m, International Standard Atmosphere lapse rate) instead of 10m height air temperature to save an additional variable
+            fresh_snow_density = 50 + np.maximum(1.7 * np.power(self.sim_data_full["surface_air_temperature"]-0.065 + 15, 1.5), 0)
+            snowfall_rate_cm = self.sim_data_full["snowfall_water_equivalent"] * (1000/fresh_snow_density) * 100 # m/h x 100 cm/m
+
+            if np.nanmax(snowfall_rate_cm) <= threshold_snowfall:
+                # even at the snowiest location, we do not ever have enough snowfall to possibly take effect, can be skipped
+                partial_snowcov = np.zeros_like(self.sim_data_full["snowfall_water_equivalent"])
+                self.sim_data_full["partial_snowcov"] = partial_snowcov # set dummy no cover
+                self.sim_data["partial_snowcov"] = partial_snowcov[self._time_sel_, :] # reduce to only daylight timesteps of interest
+                return self
+
+            # warn in case of snow on near-flat modules - no melting in pvlib and sliding depends on tilt angle!
+            if np.any(np.abs(surface_tilt_full) < 10):
+                warnings.warn(f"Snow cover may occur on module tilt < 10°. note that only sliding and not melting effects are considered which may lead to unrealistically long snow cover duration.")
+            
+            # estimate the share of snow-covered surface along the slant height axis
+            poa_global_full = np.zeros(self._sim_shape_full_, dtype=float) 
+            poa_global_full[self._time_sel_, :] = self.sim_data["poa_global"]
+            # calculate partial snow coverage for each location iteratively #TODO make more efficient calculate only for actually snow-affected locations, set to zeros for all others
+            partial_snowcov = np.zeros(self._sim_shape_full_) # initialize for all timesteps of the year
+            for iloc in range(self.locs.count):
+                if not consider_snow_loss[iloc]:
+                    # we shall not consider snow loss for this loc, leave snow coverage at the dummy zero value (no effect) and skip
+                    continue
+                # if the max. snowfall rate is below threshold, set all reduction factors to zero
+                if np.nanmax(snowfall_rate_cm[:, iloc]) <= threshold_snowfall:
+                    # this particular location does not exceed the threshold ever, leave dummy reduction factors at 0 and skip
+                    continue
+                # else calculate reduction factors
+                partial_snowcov_loc = pvlib.snow.coverage_nrel(
+                    snowfall = pd.Series(snowfall_rate_cm[:, iloc], index=self.time_index),
+                    poa_irradiance = pd.Series(poa_global_full[:, iloc], index=self.time_index),
+                    temp_air = pd.Series(self.sim_data_full["surface_air_temperature"][:, iloc], index=self.time_index),
+                    surface_tilt = pd.Series(surface_tilt_full[:, iloc], index=self.time_index), 
+                    initial_coverage=0, # always start at zero
+                    threshold_snowfall=threshold_snowfall, 
+                    can_slide_coefficient=-80.0, # pvlib.snow.coverage_nrel default
+                    slide_amount_coefficient=0.197 # pvlib.snow.coverage_nrel default
+                    )
+                # append to overall factors matrix, still as a full timeseries at this stage
+                partial_snowcov[:, iloc] = partial_snowcov_loc.to_numpy()
+
+        # save partial snow coverage as attribute, both in full and clipped version
+        self.sim_data["partial_snowcov"] = partial_snowcov[self._time_sel_, :] # reduce to only daylight timesteps of interest
+        self.sim_data_full["partial_snowcov"] = partial_snowcov
 
         return self
     
