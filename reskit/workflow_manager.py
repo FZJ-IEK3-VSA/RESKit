@@ -1096,11 +1096,6 @@ def execute_workflow_iteratively(
         if weather_path_varname in cont:
             weather_path = cont.pop(weather_path_varname)
             break
-    if weather_path is None:
-        assert "source" in placements, (
-            f"'source' column is expected in placements when '{weather_path_varname}' weather_path value is None."
-        )
-        weather_path = placements["source"]
     assert isinstance(weather_path, str) or (
         isinstance(weather_path, (list, tuple, np.ndarray, pd.Series)) and all(isinstance(x, str) for x in weather_path)
     ), "weather_path must be a str or an ordered iterable of str."
@@ -1133,10 +1128,10 @@ def execute_workflow_iteratively(
         _placements = placements.loc[tilemask].copy()
         # create a copy of the workflow args for this tilepath only
         _workflow_args = workflow_args.copy()
-        # add the tilepath for the current iteration, either to workflow args or to _placements df
+        # add the tilepath for the current iteration
         if weather_path_source == "placements":
-            # some workflows may still expect a "source" column with the weather data
-            _placements["source"] = tilepath
+            # keep weather data in placements if it was extracted from there, workflow may expect that
+            _placements[weather_path_varname] = tilepath
         else:
             # else write into workflow args
             _workflow_args[weather_path_varname] = tilepath
