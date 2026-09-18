@@ -2703,51 +2703,145 @@ class SolarWorkflowManager(WorkflowManager):
             # the following equations and assumptions have been adapted to the context herein from pvlib-python read the docs
             # adapted from: https://pvlib-python.readthedocs.io/en/stable/gallery/shading/plot_simple_irradiance_adjustment_for_horizon_shading.html
             # interpolate to hourly solar azimuths indices
-            horizon_angles = np.interp( 
+            horizon_profile_loc = np.interp( 
                 pvfts_args["solar_azimuth"],
-                np.linspace(0, 360, len(self.horizon_angles[:, iloc]), endpoint=False),
-                self.horizon_angles[:, iloc],
+                np.linspace(0, 360, len(self.plant_parameters_processed["horizon_profile"][iloc, :]), endpoint=False),
+                self.plant_parameters_processed["horizon_profile"][iloc, :],
             ) 
             # calculate the timesteps when the plant is shaded by the horizon
-            _horizon_shaded = (90-self.sim_data["apparent_solar_zenith"][:, iloc]) <= horizon_angles
+            _horizon_shaded = (90-self.sim_data["apparent_solar_zenith"][:, iloc]) <= horizon_profile_loc
             # correct dni by setting it to zero for timesteps when sun is shaded by horizon - DHI is assumed to be practically not affected
             pvfts_args["dni"] = np.where(_horizon_shaded, 0, pvfts_args["dni"])
 
-            # handle kwargs for this location
+            # HANDLE KWARGS
+
+            # handle kwargs for this location - first define those args that pvlib expects to be time-variant
+            timeseries_args = {
+                "solar_azimuth",
+                "solar_zenith",
+                "surface_azimuth",
+                "surface_tilt",
+                "dni",
+                "dhi",
+            }
+            # extract the number of timesteps and locations from sim shape (N_t, N_loc)
+            n_timesteps, n_locations = self._sim_shape_
+            # iterate over the kwargs and set/overwrite them one by one - note that this is always just for ONE location (iteration above)
             for k, v in kwargs.items():
-                if isinstance(v, np.ndarray) and not v.shape==(self._sim_shape_[0],):
-                    # we have a multi-dimensional numpy array, make sure it is of shape (t,n)
-                    if not v.shape==self._sim_shape_:
-                        raise ValueError(f"kwarg '{k}' was passed as {v.shape} numpy.ndarray, must either be 1d or of shape (Ntimesteps, Nlocations), here: {self._sim_shape_}.")
-                    # set only the respective locational slice
-                    pvfts_args[k] = v[:, iloc]
-                elif not hasattr(v, "__iter__"):
-                    # scalar value, set the same for all locations
-                    pvfts_args[k] = v
+                arr = np.asarray(v)
+
+                # scalar input
+                if arr.ndim == 0:
+                    # duplicate into timeseries if expected as time-variant, else set scalar
+                    if k in timeseries_args:
+                        pvfts_args[k] = np.full(
+                            n_timesteps,
+                            arr.item(),
+                            dtype=float,
+                        )
+                    else:
+                        pvfts_args[k] = arr.item()
+                # 1d input, could be per location (time-invariant) or per timestep (same for all locs)
+                elif arr.ndim == 1:
+                    n_values = arr.shape[0]
+                    # avoid ambiguity and demand explicit 2d input if number of locations and timesteps are the same
+                    if n_values == n_timesteps == n_locations:
+                        raise ValueError(
+                            f"Number of timesteps and locations are equal "
+                            f"({n_timesteps}). Therefore, 1D kwarg '{k}' with "
+                            f"length {n_values} is ambiguous. Provide a 2D array "
+                            f"with shape {self._sim_shape_} (N_t, N_loc) for time- and "
+                            f"location-dependent data."
+                        )
+                    # time-dependent data
+                    elif n_values == n_timesteps:
+                        # make sure it is actually a timeseries argument, then set it
+                        if k not in timeseries_args:
+                            raise ValueError(
+                                f"kwarg '{k}' was provided as a 1D time series, "
+                                f"but '{k}' is not a time-varying pvfactors input."
+                            )
+                        pvfts_args[k] = arr
+                    # location-specific data
+                    elif n_values == n_locations:
+                        if k in timeseries_args:
+                            # we effectively have one scalar per location, must be inflated to a timeseries each
+                            pvfts_args[k] = np.full(
+                                n_timesteps,
+                                arr[iloc],
+                                dtype=float,
+                            )
+                        else:
+                            # keep the locational value as a scalar
+                            pvfts_args[k] = arr[iloc].item()
+                    else:
+                        raise ValueError(
+                            f"kwarg '{k}' was provided as a 1D array with length "
+                            f"{n_values}; expected {n_timesteps} timesteps or "
+                            f"{n_locations} locations."
+                        )
+                # 2d input - must then match time x locs shape of sim data
+                elif arr.ndim == 2:
+                    if arr.shape != self._sim_shape_:
+                        raise ValueError(
+                            f"kwarg '{k}' was provided as a 2D array with shape "
+                            f"{arr.shape}; expected {self._sim_shape_}."
+                        )
+                    if k not in timeseries_args:
+                        raise ValueError(
+                            f"kwarg '{k}' was provided as a time/location array, "
+                            f"but '{k}' is not a time-varying pvfactors input."
+                        )
+                    # set all timesteps for the current loc
+                    pvfts_args[k] = arr[:, iloc]
                 else:
-                    raise TypeError(f"kwargs for pvlib.bifacial.pvfactors.pvfactors_timeseries() must be scalar or numpy.ndarray type: {k}:{v}")
+                    raise ValueError(
+                        f"Unknown input dimensionality ({arr.ndim}D) "
+                        f"for kwarg '{k}'."
+                    )
+                
+            # PREPROCESS ANGLES TO ALLOW FOR PVLIB LIMITATIONS
 
             # NOTE: surface_tilt in pvlib is defined in the range 0-180°, so negative values will be handled badly
             if self.tracking == "fixed":
+                # in a fixed system, module orientations must not change over time
+                assert np.all(pvfts_args["surface_tilt"] == pvfts_args["surface_tilt"][0]), "surface_tilt must be constant over time for tracking = 'fixed'!"
+                assert np.all(pvfts_args["surface_azimuth"] == pvfts_args["surface_azimuth"][0]), "surface_azimuth must be constant over time for tracking = 'fixed'!"
+                # accept either a scalar or a repeated 1D value for axis azimuth, if the latter - reduce to scalar (can never change, is expected as scalar by pvlib)
+                if np.asarray(pvfts_args["axis_azimuth"], dtype=float).ndim == 0:
+                    pvfts_args["axis_azimuth"] = np.asarray(pvfts_args["axis_azimuth"], dtype=float).item()
+                elif np.asarray(pvfts_args["axis_azimuth"], dtype=float).ndim == 1:
+                    assert np.all(
+                        np.asarray(pvfts_args["axis_azimuth"], dtype=float) == np.asarray(pvfts_args["axis_azimuth"], dtype=float)[0]
+                        ), "axis_azimuth must be constant over time for tracking='fixed'."
+                    pvfts_args["axis_azimuth"] = np.asarray(pvfts_args["axis_azimuth"], dtype=float)[0].item()
+                else:
+                    raise ValueError("axis_azimuth must be scalar or a constant 1D array for tracking='fixed'.")
                 # fixed tilt often comes with external values where module tilt may be negative to geometrically invert azimuth
-                # in such cases, invert the tilt and surface azimuth combination so that tilt values are always positive!
-                neg_mask = pvfts_args["surface_tilt"] < 0
-                pvfts_args["surface_tilt"][neg_mask] = -pvfts_args["surface_tilt"][neg_mask]
-                pvfts_args["surface_azimuth"][neg_mask] = (pvfts_args["surface_azimuth"][neg_mask] + 180) % 360
-                # pvlib also expects the axis_azimuth to be surface azimuth + 90° for fixed tilt: adapt for flipped and ensure (with tol) for non-flipped
-                pvfts_args["axis_azimuth"][neg_mask] = (pvfts_args["surface_azimuth"][neg_mask] + 90) % 360
+                if pvfts_args["surface_tilt"][0] < 0:
+                    # in such cases, invert the tilt and surface azimuth combination so that tilt values are always positive!
+                    # can be done for all timeseries values at once because constant values have been asserted above
+                    pvfts_args["surface_tilt"] = -pvfts_args["surface_tilt"]
+                    pvfts_args["surface_azimuth"] = (pvfts_args["surface_azimuth"] + 180) % 360
+                    # pvlib also expects the axis_azimuth to be surface azimuth + 90° for fixed tilt: adapt for flipped and ensure (with tol) for non-flipped
+                    pvfts_args["axis_azimuth"] = (pvfts_args["surface_azimuth"][0] + 90) % 360
                 axis_azimuth_exp = (pvfts_args["surface_azimuth"] + 90) % 360 # the expected value
-                assert ((pvfts_args["axis_azimuth"] - axis_azimuth_exp + 180) % 360 - 180 < 1e9).all(), \
-                    "Axis azimuth must always be surface_azimuth + 90° for fixed tilt in pvlib."
+                axis_diff = (pvfts_args["axis_azimuth"] - axis_azimuth_exp[0] + 180) % 360 - 180
+                assert np.all(np.abs(axis_diff) < 1e-9), "Axis azimuth must always be surface_azimuth + 90° for fixed tilt  in pvlib."
             elif self.tracking == "singleaxis":
                 # this should be correct as it usually comes out of pvlib.tracking.singleaxis, but make sure with tolerance
                 assert (pvfts_args["surface_tilt"] >= -1e-9).all(), "Negative values in surface_tilt array."
             else:
                 raise ValueError(f"Unknown value for self.tracking: {self.tracking}")
 
+            # SIMULATE THE ACTUALLY ABSORBED IRRADIANCES
+
             # simulate and append locational output to total results
-            assert (np.atleast_1d(pvfts_args["pvrow_height"])-0.5*np.atleast_1d(pvfts_args["pvrow_width"]) > 0).all(),\
-                f"pvrow_height must exceed 0.5 x pvrow_width in all cases." # leads to unrealistic results in pvlib.bifacial.pvfactors_timeseries() otherwise
+            assert (np.atleast_1d(pvfts_args["pvrow_height"])-0.5*np.atleast_1d(pvfts_args["pvrow_width"])* np.sin(np.radians(np.max(pvfts_args["surface_tilt"]))) > 0).all(),\
+                f"pvrow_height must exceed vertical dimension of tilted pvrow_width in all cases. Set pvrow_height to > 0.5*pvrow_width to be safe." # leads to unrealistic results in pvlib.bifacial.pvfactors_timeseries() otherwise
+            assert pvfts_args["index_observed_pvrow"] < pvfts_args["n_pvrows"], \
+                f"'index_observed_pvrow' ({pvfts_args['index_observed_pvrow']}) must be < 'n_pvrows' {pvfts_args['n_pvrows']}"
+            _poa_frontside, _poa_backside, _poa_frontside_absorbed, _poa_backside_absorbed = pvlib.bifacial.pvfactors_timeseries(**pvfts_args) # old version on purpose, deprecation warning is accepted as long as it works since this version also works with elder pvlib versions <= 0.9.0
 
             # save the outputs to the respective multi-dimensional array columns
             poa_frontside[:, iloc] = _poa_frontside.values
@@ -2768,6 +2862,7 @@ class SolarWorkflowManager(WorkflowManager):
         _fix_bad_poa_and_set_attr(arr=poa_frontside, attr="poa_global_raw")
         _fix_bad_poa_and_set_attr(arr=poa_frontside_absorbed, attr="poa_global")
         
+        # set POA values for backside only when bifacial flag is True 
         _fix_bad_poa_and_set_attr(arr=poa_backside, attr="poa_backside_global_raw")
         _fix_bad_poa_and_set_attr(arr=poa_backside_absorbed, attr="poa_backside_global")
 
