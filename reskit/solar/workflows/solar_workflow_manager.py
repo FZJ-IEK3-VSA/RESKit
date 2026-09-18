@@ -2833,6 +2833,252 @@ class SolarWorkflowManager(WorkflowManager):
                 assert (pvfts_args["surface_tilt"] >= -1e-9).all(), "Negative values in surface_tilt array."
             else:
                 raise ValueError(f"Unknown value for self.tracking: {self.tracking}")
+            
+            # PROJECTION DUE TO HILL SLOPE 
+            
+            # pvlib's pvfactors_timeseries cannot consider hill slope, especially not when no tracking function is applied (fixed tilt modules)
+            # it internally treats the the system as a 2d vertical cross-section (here "profile (section) plane") of an infinite row on flat ground
+            # that neglects row elevation differences (and also tilt along the main axis) and therefore introduces significant shading error 
+            # for singleaxis tracking, this is covered in combination with pvlib.tracking.singleaxis() where crossaxis tilt is considered, but not in pvfactors_timeseries()
+            # for fixed tilt PV, axis and cross axis tilt are not considered at all so far and cannot be fed into pvfactors_timeseries() directly
+            # Idea: "Flatten" hill slope (to allow horizontal ground assumption in pvfactors) and at the same time adapt solar position and angular plant parameters by the hillslope to preserve incidence angles
+            # Use a coordinate transformation (rigid rotation around main tracking/row axis) on hill plane, solar position, module angles, row distance (-> gcr) and row height
+
+            # first get the groundslope in the "profile section" that pvfactors uses, i.e. the vertical plane through the center point, perpendicular to the horizontal projection of the main axis
+            _axis_azimuth_rad = np.radians(pvfts_args["axis_azimuth"] % 360)
+            project = False # set a flag that can be overwritten if needed
+
+            # 3D-VERSION
+            if self.tracking == "singleaxis" and not (np.isclose(self.plant_parameters_processed["singleaxis_tilt"][iloc], 0) and np.isclose(self.plant_parameters_processed["crossaxis_tilt"][iloc], 0)): 
+                project = True # we have a non-horizontal plant plane and need to do something
+                # in case of single-axis tracking, we have the relevant axis and cross axis tilts already
+                _axis_tilt_rad = np.radians(self.plant_parameters_processed["singleaxis_tilt"][iloc])
+                _crossaxis_tilt_rad = np.radians(self.plant_parameters_processed["crossaxis_tilt"][iloc])
+
+                # downhill gradient along the horizontal projection of the main axis, positive axis_tilt = descent toward axis_azimuth
+                _axis_gradient = np.tan(_axis_tilt_rad)
+                # caution: crossaxis tilt is not in a vertical plane (if row axis tilt is not zero) but perpendicular to main axis
+                # so first get ground slope in the vertical profile plane perpendicular to the HORIZONTAL axis projection
+                _root_term = np.cos(_axis_tilt_rad)**2 - np.sin(_crossaxis_tilt_rad)**2
+                if _root_term < -1e-12: # should not happen for a real terrain but axis and cross axis tilts might have been manipulated individually, so make sure
+                    raise ValueError(f"Inconsistent singleaxis_tilt ({np.degrees(_axis_tilt_rad)}°) and crossaxis_tilt ({np.degrees(_crossaxis_tilt_rad)}°) at location {iloc}.")
+                _root_term = max(_root_term, 0.0) # must be zero or positive for sqrt, fix potential floating point errors by max(x, 0)
+                _profile_groundslope_rad = np.arctan2(
+                    np.sin(_crossaxis_tilt_rad),
+                    np.cos(_axis_tilt_rad) * np.sqrt(_root_term),
+                )
+                # positive profile ground slope means terrain rises toward the right, therefore invert sign for DOWNhill gradient
+                _profile_gradient = -np.tan(_profile_groundslope_rad)
+                # next combine them into the overall slope gradient and radians slope of the 3D plant plane
+                _plant_gradient = np.hypot(_axis_gradient, _profile_gradient)
+                _plant_slope_rad = np.arctan(_plant_gradient)
+                # now get the east and north gradients separately to derive the overall plant plane azimuth
+                # for main axis: East = sin(axis_azimuth), North = cos(axis_azimuth)
+                # for profile axis (right-hand side to main axis = positive): East = cos(axis_azimuth), North = -sin(axis_azimuth)
+                _downhill_gradient_east = (
+                    _axis_gradient * np.sin(_axis_azimuth_rad)
+                    + _profile_gradient * np.cos(_axis_azimuth_rad)
+                )
+                _downhill_gradient_north = (
+                    _axis_gradient * np.cos(_axis_azimuth_rad)
+                    - _profile_gradient * np.sin(_axis_azimuth_rad)
+                )
+                # last calculate the overall plant plane azimuth from the North and East gradients
+                _plant_downhill_azimuth_rad = np.arctan2( # considers negatives correctly
+                    _downhill_gradient_east,
+                    _downhill_gradient_north,
+                )% (2.0 * np.pi) # normalize to 0-2*pi
+
+
+            elif self.tracking == "fixed" and not np.isclose(self.plant_parameters_processed["general_slope"][iloc], 0.0):
+                project = True  # we have an inclined system, need to project
+                # for fixed pv, no single axis or cross axis tilts exist, plane is solely defined by the hillslope
+                # that makes it easy as plant plane = hill plane, for which we have general slope and downhill azimuth already
+                _plant_slope_rad = np.radians(self.plant_parameters_processed["general_slope"][iloc])
+                _plant_downhill_azimuth_rad = np.radians(self.plant_parameters_processed["downhill_azimuth"][iloc] % 360.0)
+                # but we need to calculate the main row axis tilt, positive means descent toward the directed axis azimuth.
+                _axis_tilt_rad = np.arctan(
+                    np.tan(_plant_slope_rad)
+                    * np.cos(
+                        _axis_azimuth_rad
+                        - _plant_downhill_azimuth_rad
+                    )
+                )
+                # get the gradient in the crossaxis plane perpendicular to the main axis
+                _crossaxis_tilt_rad = np.arctan2(
+                    np.tan(_plant_slope_rad)
+                    * np.sin(_plant_downhill_azimuth_rad - _axis_azimuth_rad),
+                    np.cos(_axis_tilt_rad),
+                )
+
+
+            if project:
+                # we have an inclined plant plane in 3D space, apply a 3D rigid coordinate transformation to module and solar angles alike
+                # this allows the horizontal-ground-assumption enforced by pvlib whilst correctly considering self-shadowing at unchanged POAI
+
+                # start with calculating the AOI and check again later to make sure that this central parameter is indeed not affected by the transformation
+                _aoi_before_transf = pvlib.irradiance.aoi(
+                    surface_tilt=pvfts_args["surface_tilt"],
+                    surface_azimuth=pvfts_args["surface_azimuth"],
+                    solar_zenith=pvfts_args["solar_zenith"],
+                    solar_azimuth=pvfts_args["solar_azimuth"],
+                )
+                
+                # first get the upward-facing normal on the plant plane as a 3D vector in East-North-Up coordinates
+                _terrain_normal = np.array(
+                    [
+                        np.sin(_plant_slope_rad) * np.sin(_plant_downhill_azimuth_rad), # positive slope angle means horizontal components point in plant slope azimuth direction
+                        np.sin(_plant_slope_rad) * np.cos(_plant_downhill_azimuth_rad), # same as above
+                        np.cos(_plant_slope_rad),
+                    ],
+                    dtype=float,
+                )
+                # also define the target normal on horizontal ground
+                _vertical_normal = np.array(
+                    [0.0, 0.0, 1.0], # points only up
+                    dtype=float,
+                )
+
+                # The axis of the required rotation to "flatten" the terrain is therefore perpendicular to both the real terrain normal and the target vertical normal, allowing a "single rigid rotation"
+                _rotation_axis = np.cross(_terrain_normal, _vertical_normal)
+                _rotation_axis_norm = np.linalg.norm(_rotation_axis) # get its length for normalization
+                # make sure that we have a sufficient magnitude in our planned transformation
+                if _rotation_axis_norm > 1e-12:
+                    # normalize to 1
+                    _rotation_axis /= _rotation_axis_norm
+                else:
+                    # else it is probably numeric difference only, should not occur after above if statements and project = true
+                    # if still the case, define a dummy rotation axis with zero rotation angle = without effect to allow further processing
+                    _rotation_axis = np.array([1.0, 0.0, 0.0], dtype=float)
+                # the rotation angle is known already, it must be _plant_slope_rad
+                # but its cosine is also the dot product of the 2 unit vectors on the real and target ground surfaces
+                # get it from the latter just to be safe to be consistent (e.g. in above else case)
+                _rotation_angle_rad = np.arccos(
+                    np.clip(
+                        np.dot(
+                            _terrain_normal,
+                            _vertical_normal,
+                        ),
+                        -1.0,
+                        1.0,
+                    )
+                )
+                if not np.isclose(_rotation_angle_rad, _plant_slope_rad):
+                    raise RuntimeError(f"_plant_slope_rad ({_plant_slope_rad}) does not match the arccos of the dot product of the plant sloped plane and horizontal plane ({_rotation_angle_rad})!")
+
+                def _rotate_angle_and_azimuth_to_level_plant_plane(
+                    inclination_deg,
+                    azimuth_deg,
+                ):
+                    """
+                    Rotate one or more direction vectors so that the complete inclined plant plane 
+                    becomes horizontal. Will be applied to every direction, i.e. both main and cross
+                    axis tilts will be 0° in the output coordinates. Can be applied to solar vectors, 
+                    module surface vectors etc. The same rigid 3D rotation is applied to every 
+                    direction so that relative angles such as solar-module AOI are preserved exactly.
+
+                    Parameters
+                    ----------
+                    inclination_deg : scalar or array-like
+                        Angle from upward vertical (!) in degrees:
+                        0° upwards, 90° horizontal, 180° downwards.
+                        Examples: Solar zenith, module surface inclination = module tilt
+                    azimuth_deg : scalar or array-like
+                        Compass azimuth in degrees clockwise from North 0°.
+                        Examples: Solar azimuth, module (surface) azimuth
+
+                    Returns
+                    -------
+                    inclination_flat_deg : ndarray
+                        Direction angle in degrees from upward vertical after leveling.
+                    azimuth_flat_deg : ndarray
+                        Direction azimuth 0-360° in degrees from North = 0° after leveling.
+                    """
+                    # convert input angles to radians and make sure the formats/shapes are matching
+                    inclination_rad = np.radians(np.asarray(inclination_deg, dtype=float))
+                    azimuth_rad = np.radians(np.asarray(azimuth_deg, dtype=float))
+                    inclination_rad, azimuth_rad = np.broadcast_arrays(
+                        inclination_rad,
+                        azimuth_rad,
+                    )
+                    # generate an East-North-Up unit vector normal on plant plane
+                    vectors = np.stack(
+                        [
+                            np.sin(inclination_rad) * np.sin(azimuth_rad), # East
+                            np.sin(inclination_rad) * np.cos(azimuth_rad), # North
+                            np.cos(inclination_rad), # Up
+                        ],
+                        axis=-1,
+                    )
+
+                    # use the Euler-Rodrigues equation to transform the coordinates:
+                    # v_rot = v*cos(theta) + (k x v)*sin(theta) + k*(k dot v)*(1 - cos(theta))
+                    # with k as the 3D leveling-rotation axis and theta as rotation angle
+                    # the 3 rows below correspond to the 3 above terms (downscale, skew toward new orientation, re-add height)
+                    vectors_flat = (
+                        vectors *  np.cos(_rotation_angle_rad)
+                        + np.cross(_rotation_axis, vectors) * np.sin(_rotation_angle_rad)
+                        + _rotation_axis * np.sum(vectors * _rotation_axis, axis=-1, keepdims=True) * (1.0 - np.cos(_rotation_angle_rad))
+                    )
+                    # then extract the East, North, up components from the rotated vectors
+                    vector_east_flat = vectors_flat[..., 0] # East component = first entry of the last dimension
+                    vector_north_flat = vectors_flat[..., 1] # North component = first entry of the last dimension
+                    vector_up_flat = vectors_flat[..., 2] # Up component = first entry of the last dimension
+
+                    # convert rotated/flattened vectors back to the pvlib angular/spherical convention
+                    vector_horizontal_flat = np.hypot(vector_east_flat, vector_north_flat)
+                    inclination_flat_deg = np.degrees(np.arctan2(vector_horizontal_flat, vector_up_flat)) # arctan2 is sign-true
+                    azimuth_flat_deg = np.degrees(np.arctan2(vector_east_flat, vector_north_flat)) % 360.0 # same
+
+                    return (
+                        inclination_flat_deg,
+                        azimuth_flat_deg,
+                    )
+                
+                # adapt solar position (zenith and azimuth), module surfaces (tilt and azimuth), gcr and pv row height
+                
+                # solar position and module surface orientation need to be rotated with the same rigid 3D transformation
+                pvfts_args["solar_zenith"], pvfts_args["solar_azimuth"] = _rotate_angle_and_azimuth_to_level_plant_plane(
+                    inclination_deg=pvfts_args["solar_zenith"],
+                    azimuth_deg=pvfts_args["solar_azimuth"],
+                )
+                pvfts_args["surface_tilt"], pvfts_args["surface_azimuth"] = _rotate_angle_and_azimuth_to_level_plant_plane(
+                    inclination_deg=pvfts_args["surface_tilt"],
+                    azimuth_deg=pvfts_args["surface_azimuth"],
+                )
+                # axis azimuth is relevant for pvfactors_timeseries and might be affected, so transform as well 
+                _axis_inclination_flat, _axis_azimuth_flat = _rotate_angle_and_azimuth_to_level_plant_plane(
+                    inclination_deg=90.0 + np.degrees(_axis_tilt_rad), # make sure we use an inclination angle from vertical for above transformation function, not simply the default axis tilt
+                    azimuth_deg=np.degrees(_axis_azimuth_rad),
+                )
+                # assert that all worked as expected and set as new axis tilt only for the coming pvfactors_timeseries processing
+                if not np.isclose(_axis_inclination_flat, 90.0, atol=1e-8):
+                    raise RuntimeError(f"Plant-plane leveling did not produce a horizontal row axis: {_axis_inclination_flat}° at location {iloc}.")
+                pvfts_args["axis_azimuth"] = float(np.asarray(_axis_azimuth_flat)) % 360
+
+                # gcr needs to be scaled by the cosine of the cross axis slope due to the increased sloped length of the row width (the defined value is understood a vertical projection)
+                # Note that only the cross axis slope is affecting the row spacing, not the overall plant slope
+                pvfts_args["gcr"] *= np.cos(_crossaxis_tilt_rad) # sloped row width increases over horizontal (defined) row width, so gcr is reduced
+
+                # Note that pvfts_args["pvrow_height"] is not corrected, it is assumed not as vertical but as (minimum) ground distance either to level or sloped ground
+                # Steeper slope changes the module angle relative to the sloped ground, steeper relative angles may reduce the ground clearance and cause ground penetration
+                # This problem is avoided by definition as minimum distance normal to the ground, plus the relevant dimension is preserved/constant independent of slope
+
+                # finish by recalculating the AOI after transformation and compare it to before to make sure it was indeed not changed
+                _aoi_after_transf = pvlib.irradiance.aoi(
+                    surface_tilt=pvfts_args["surface_tilt"],
+                    surface_azimuth=pvfts_args["surface_azimuth"],
+                    solar_zenith=pvfts_args["solar_zenith"],
+                    solar_azimuth=pvfts_args["solar_azimuth"],
+                )
+                np.testing.assert_allclose(
+                    _aoi_before_transf,
+                    _aoi_after_transf,
+                    rtol=1e-4, # 0.1% allowed
+                    atol=1e-3, # absolute 0.001 degrees allowed
+                    equal_nan=True,
+                    err_msg=("Transformation changed solar-to-module AOI!")
+                )
 
             # SIMULATE THE ACTUALLY ABSORBED IRRADIANCES
 
