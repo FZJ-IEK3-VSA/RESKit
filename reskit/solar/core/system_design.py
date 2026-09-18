@@ -590,8 +590,8 @@ def _get_winter_solstice_solar_elevation(
         The solar hour relative to true solar noon = 12, 10h30 would become 10.5.
         By default 12 (solar noon).
     
-    Returns:
-    --------
+    Returns
+    -------
     float
         Solar elevation at given hour of winter solstice in degrees over horizon.
     """
@@ -627,7 +627,7 @@ def _get_winter_solstice_solar_elevation(
     return solar_elevation
 
 
-def calculate_row_pitch_and_gcr_from_winter_solstice_rule(
+def location_to_gcr_and_row_pitch_winter_solstice_rule(
         lats: int | float | np.ndarray | pd.Series, 
         module_tilts: int | float | np.ndarray | pd.Series, 
         north_slopes: int | float | np.ndarray | pd.Series = 0, 
@@ -732,9 +732,10 @@ def calculate_row_pitch_and_gcr_from_winter_solstice_rule(
     RP = np.maximum(RP, _min_pitch)
 
     # calculate gcr as module width over row pitch
+    # NOTE that this correctly yields a maximum geometrically GCR of zero 
+    # for locations where the sun does not rise over the (local hill-slope 
+    # determined) horizon at winter solstice
     GCR = module_area_width / RP
-    # set locations which cannot be resolved by winter solstice rule to NaN instead of zero
-    GCR[~valid] = np.nan
 
     if not _asarr:
         RP = RP[0]
