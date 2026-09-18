@@ -7,7 +7,7 @@ from types import NoneType
 import warnings
 
 from reskit.util import ResError
-
+from reskit.util.generic_helpers import _align_inputs
 
 def location_to_module_azimuth(
     locs: gk.LocationSet | Iterable, convention: str = "NorthSouth", **kwargs
