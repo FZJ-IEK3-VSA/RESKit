@@ -422,8 +422,8 @@ def location_to_gcr_tonita_et_al_2023(
 
 def location_to_gcr(
         convention: str, 
-        tracking: str, 
-        min_gcr : float | NoneType = 0.3,
+        tracking: str | np.ndarray, 
+        min_gcr : float | np.ndarray | NoneType = 0.3,
         no_nan : bool = True,
         **kwargs):
     """
