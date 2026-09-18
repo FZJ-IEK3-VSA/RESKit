@@ -3303,6 +3303,8 @@ class SolarWorkflowManager(WorkflowManager):
             raise ValueError("tracking must be either 'fixed' or 'singleaxis'")
 
         # set tracking type as class attribute
+        if tracking not in ["fixed", "singleaxis"]:
+            raise NotImplementedError(f"Unknown tracking value ({tracking}). Choose from: 'singleaxis' (HSAT), 'fixed' (tilt)")
         self.tracking = tracking
 
         def _interpolate_module_params(
