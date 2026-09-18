@@ -12,6 +12,59 @@ for the shared dependency. The `reskit-test-data` fixtures ship with RESKit as a
 verified bundle and are read from it by default; every other dataset needs network
 access for catalogue metadata and uncached files.
 
+## Get the inputs a workflow needs
+
+Call `data.paths()` immediately before the workflow. It returns the local input
+paths, using the bundled fixtures or the shared cache and fetching missing
+catalogued data as needed. A workflow's
+collection has the same name as its Python function:
+
+```python
+import reskit as rk
+from reskit import data
+
+inputs = data.paths("wind_era5_PenaSanchezDunkelWinklerEtAl2025", test=True)
+result = rk.wind.wind_era5_PenaSanchezDunkelWinklerEtAl2025(
+    placements=placements,  # prepared as in the wind workflow example
+    era5_path=inputs["era5"],
+    gwa_100m_path=inputs["gwa_100m"],
+    height_scaling_data={50: inputs["gwa_50m"], 200: inputs["gwa_200m"]},
+)
+```
+
+Here `test=True` uses the small fixtures shipped with RESKit, so input resolution
+works offline. Both variants offer the same input names, and omitting `test=True`
+selects the full variant. **The pinned public catalogue currently has no full
+ERA5 dataset**, so this workflow's full variant raises `UnknownDataset`. Select
+a catalogue containing the required full inputs before using it; removing the
+flag alone is not enough.
+
+### Optional command-line access
+
+The CLI is useful for inspecting inputs, planning a download or filling a cache
+before running Python:
+
+```bash
+reskit-data show wind_era5_PenaSanchezDunkelWinklerEtAl2025 --test
+reskit-data fetch wind_era5_PenaSanchezDunkelWinklerEtAl2025 --test --plan
+reskit-data fetch wind_era5_PenaSanchezDunkelWinklerEtAl2025 --test --paths
+```
+
+`show` describes the collection and its named inputs and downloads nothing.
+`fetch` transfers data; `--plan` previews the transfer instead of running it.
+`--paths` prints one `handle<TAB>absolute path` line per input once the files are
+there. Add `--files` to `show` for the full file list.
+
+The CLI uses the catalogue and shared cache even for test fixtures; the Python
+example above reads the bundled copy by default. To preview the full variant:
+
+```bash
+reskit-data fetch wind_era5_PenaSanchezDunkelWinklerEtAl2025 --plan
+```
+
+An `[unresolvable]` row means the selected catalogue or collection definition
+needs attention before that variant can run.
+
 ## The bundled test fixtures
 
 RESKit carries its copy of the `reskit-test-data` family in `reskit/data/test_cache`
@@ -28,7 +81,7 @@ like any other dataset, pass `download=True` or set `RESKIT_DATA_DOWNLOAD=1`:
 
 ```python
 era5_dir = data.directory("reskit-test-data/era5", download=True)
-inputs = data.paths("onshore_wind", test=True, download=True)
+inputs = data.paths("wind_era5_PenaSanchezDunkelWinklerEtAl2025", test=True, download=True)
 ```
 
 === "Bash"
@@ -130,48 +183,6 @@ all ETHOS packages, follow
 [shared machine setup](https://ethos-data.readthedocs.io/en/latest/how-to/set-up-your-machine/).
 If the pin cannot be read or lacks an input, select a complete catalogue version
 provided by the maintainer.
-
-## Get the inputs a workflow needs
-
-```bash
-reskit-data show onshore_wind --test
-reskit-data fetch onshore_wind --test --plan
-reskit-data fetch onshore_wind --test --paths
-```
-
-`show` describes the collection and its named inputs and downloads nothing;
-`fetch` is the command that transfers data. `--plan` previews the transfer
-instead of running it, and `--paths` prints one `handle<TAB>absolute path`
-line per input once the files are there. Add `--files` to `show` for the
-full file list.
-
-In Python, pass those named inputs to the workflow:
-
-```python
-import reskit as rk
-from reskit import data
-
-inputs = data.paths("onshore_wind", test=True)
-result = rk.wind.wind_era5_PenaSanchezDunkelWinklerEtAl2025(
-    placements=placements,  # prepared as in the wind workflow example
-    era5_path=inputs["era5"],
-    gwa_100m_path=inputs["gwa_100m"],
-    height_scaling_data={50: inputs["gwa_50m"], 200: inputs["gwa_200m"]},
-)
-```
-
-Both variants offer the same input names. Preview the full selection before
-dropping `--test` or `test=True`:
-
-```bash
-reskit-data fetch onshore_wind --plan
-reskit-data fetch onshore_wind
-reskit-data fetch onshore_wind --paths
-```
-
-A plain `fetch` makes the whole collection available; `--paths` also returns
-its named inputs. Full data is the default. An `[unresolvable]` row means the selected
-catalogue or collection definition needs attention before that variant can run.
 
 ## Access a catalogue key
 
@@ -292,11 +303,11 @@ lists all options.
 ## Check the result
 
 ```bash
-reskit-data verify onshore_wind --test --deep
+reskit-data verify wind_era5_PenaSanchezDunkelWinklerEtAl2025 --test --deep
 ```
 
 Expect matching files and exit status `0`. For a damaged downloaded copy,
-preview with `reskit-data verify onshore_wind --test --deep --repair --dry-run`,
+preview with `reskit-data verify wind_era5_PenaSanchezDunkelWinklerEtAl2025 --test --deep --repair --dry-run`,
 then remove `--dry-run` to repair. In-place and restricted data need correction
 at their source; staged files are unverifiable.
 

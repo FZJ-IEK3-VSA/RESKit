@@ -58,7 +58,7 @@ def test_help_and_config_work_with_the_shipped_file_offline(workspace, capsys):
 )
 def test_the_retired_commands_name_what_replaces_them(workspace, capsys, retired, replacement):
     """reskit-data works in collections; a bare catalogue key is ethos-data's."""
-    assert data.main([retired, "onshore_wind"]) == 2
+    assert data.main([retired, "wind_era5_PenaSanchezDunkelWinklerEtAl2025"]) == 2
     assert replacement in capsys.readouterr().err
 
 

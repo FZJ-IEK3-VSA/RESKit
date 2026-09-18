@@ -9,17 +9,16 @@ default the fixtures are read from there, offline, rather than downloaded.
 
     from reskit import data
 
-    inputs = data.paths("onshore_wind", test=True)   # {handle: Path}, small fixtures
-    inputs = data.paths("onshore_wind")              # the same handles, full data
-    files  = data.fetch("onshore_wind")              # a whole collection, by key
+    inputs = data.paths("wind_era5_PenaSanchezDunkelWinklerEtAl2025", test=True)   # {handle: Path}, small fixtures
+    files = data.fetch("wind_era5_PenaSanchezDunkelWinklerEtAl2025", test=True)
     clc    = data.path("corine-land-cover/CLC2018_CLC2018_V2018_20.tif")
     era5   = data.directory("reskit-test-data/era5")
 
 The same from the shell, with the ``reskit-data`` command this module provides:
 
     reskit-data show                              # the collections and their size
-    reskit-data show onshore_wind --test          # one of them, and its inputs
-    reskit-data fetch onshore_wind --test --paths # fetch one, print handle<TAB>path
+    reskit-data show wind_era5_PenaSanchezDunkelWinklerEtAl2025 --test          # one of them, and its inputs
+    reskit-data fetch wind_era5_PenaSanchezDunkelWinklerEtAl2025 --test --paths # fetch one, print handle<TAB>path
     reskit-data config show                       # where the cache is, which catalogue
     reskit-data staging add trial /path/to/data   # use unpublished development data
     reskit-data bundle verify <BUNDLE> test_suite # check the bundled fixtures
@@ -31,11 +30,17 @@ in collections; a single catalogue key -- one dataset, folder or file -- is
 ``paths`` is what a workflow wants. The collection names each input the workflow
 takes (``era5``, ``gwa_100m``, ...) under ``paths:`` in ``collections.yaml``, so
 the caller gets ``{handle: pathlib.Path}`` without knowing a single resource
-key. ``test=True`` selects the small fixtures the collection pairs with the full
+key. Call it immediately before the workflow; no CLI setup step is required.
+Workflow collections use the corresponding Python function's name.
+``test=True`` selects the small fixtures the collection pairs with the full
 data; both variants offer the same handles, so the same code runs on either.
 The full data is the default: a forgotten flag must never silently run a real
 calculation on fixtures, while an accidental full download is visible and can
 be interrupted.
+
+The pinned public catalogue currently has no full ERA5 dataset. The full variant
+of ``wind_era5_PenaSanchezDunkelWinklerEtAl2025`` therefore raises
+``UnknownDataset`` until a catalogue containing its full inputs is selected.
 
 ``fetch`` returns a mapping of ``"<dataset>/<path>" -> pathlib.Path``. Files are
 verified against the checksums in the catalogue, and anything already present is
@@ -333,7 +338,7 @@ def paths(
     this machine::
 
         inputs = data.paths(
-            "onshore_wind",
+            "wind_era5_PenaSanchezDunkelWinklerEtAl2025",
             test=True,
         )
         rk.wind.wind_era5_PenaSanchezDunkelWinklerEtAl2025(
@@ -354,8 +359,9 @@ def paths(
             },
         )
 
-    ``test=True`` selects the small ``test`` variant; drop it to run the same
-    code on the full data. Handles the bundled fixtures can answer are answered
+    ``test=True`` selects the small ``test`` variant; omitting it selects the
+    full variant, which requires a catalogue containing all its inputs.
+    Handles the bundled fixtures can answer are answered
     from there, offline, unless ``download`` asks for the catalogue's store
     (default: ``$RESKIT_DATA_DOWNLOAD``). Raises ``ethos_data.CollectionError``
     if the collection declares no ``paths``. Under ``skip_unavailable`` a handle

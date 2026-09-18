@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 import geokit as gk
 import numpy as np
@@ -6,7 +7,7 @@ import pandas as pd
 import pytest
 
 import reskit.weather as rk_weather
-from reskit import TEST_DATA
+from reskit import TEST_DATA, data
 from reskit.wind.core.data import DATAFOLDER
 from reskit.wind.workflows.workflows import (
     offshore_wind_merra_caglayan2019,
@@ -15,11 +16,6 @@ from reskit.wind.workflows.workflows import (
     wind_config,
     wind_era5_PenaSanchezDunkelWinklerEtAl2025,
 )
-
-alternative_wind_speed_rasters = {
-    50: TEST_DATA["gwa50-like.tif"],
-    200: TEST_DATA["gwa200-like.tif"],
-}
 
 
 @pytest.fixture
@@ -34,7 +30,9 @@ def pt_wind_placements() -> pd.DataFrame:
 
 @pytest.fixture
 def pt_wind_placements_Zimbabwe() -> pd.DataFrame:
-    df = pd.read_csv(TEST_DATA["turbine_placements_cityBulawayoInZimbabwa.csv"])
+    # Keep numerical regression inputs independent of administrative boundary updates.
+    # See data/bulawayo/README.md for their provenance.
+    df = pd.read_csv(Path(__file__).parents[1] / "data" / "bulawayo" / "wind_placements.csv")
 
     return df
 
@@ -93,11 +91,12 @@ def test_offshore_wind_merra_caglayan2019(pt_wind_placements):
 
 
 def test_wind_era5_PenaSanchezDunkelWinklerEtAl2025(pt_wind_placements: pd.DataFrame):
+    inputs = data.paths("wind_era5_PenaSanchezDunkelWinklerEtAl2025", test=True)
     gen = wind_era5_PenaSanchezDunkelWinklerEtAl2025(
         placements=pt_wind_placements,
-        era5_path=TEST_DATA["era5-like"],
-        gwa_100m_path=TEST_DATA["gwa100-like.tif"],
-        height_scaling_data=alternative_wind_speed_rasters,
+        era5_path=inputs["era5"],
+        gwa_100m_path=inputs["gwa_100m"],
+        height_scaling_data={50: inputs["gwa_50m"], 200: inputs["gwa_200m"]},
         output_netcdf_path=None,
         cf_correction=True,
     )
@@ -125,22 +124,22 @@ def test_onshore_wind_iconlam_2023(pt_wind_placements_Zimbabwe: pd.DataFrame):
     )
 
     assert gen.roughness.shape == (44,)
-    assert np.isclose(gen.roughness.mean(), 0.13227273)
-    assert np.isclose(gen.roughness.min(), 0.03000000)
-    assert np.isclose(gen.roughness.max(), 1.20000000)
-    assert np.isclose(gen.roughness.std(), 0.29514144)
+    assert np.isclose(gen.roughness.mean(), 0.07909091)
+    assert np.isclose(gen.roughness.min(), 0.03)
+    assert np.isclose(gen.roughness.max(), 0.75)
+    assert np.isclose(gen.roughness.std(), 0.18148151)
 
     assert gen.elevated_wind_speed.shape == (144, 44)
-    assert np.isclose(gen.elevated_wind_speed.mean(), 5.19560706)
+    assert np.isclose(gen.elevated_wind_speed.mean(), 5.18359644)
     assert np.isclose(gen.elevated_wind_speed.min(), 0.17078107)
     assert np.isclose(gen.elevated_wind_speed.max(), 11.59889682)
-    assert np.isclose(gen.elevated_wind_speed.std(), 2.82411910)
+    assert np.isclose(gen.elevated_wind_speed.std(), 2.82934687)
 
     assert gen.capacity_factor.shape == (144, 44)
-    assert np.isclose(gen.capacity_factor.mean(), 0.27857797)
-    assert np.isclose(gen.capacity_factor.min(), 0.00000000)
-    assert np.isclose(gen.capacity_factor.max(), 1.00000000)
-    assert np.isclose(gen.capacity_factor.std(), 0.34426161)
+    assert np.isclose(gen.capacity_factor.mean(), 0.27713258)
+    assert np.isclose(gen.capacity_factor.min(), 0.0)
+    assert np.isclose(gen.capacity_factor.max(), 1.0)
+    assert np.isclose(gen.capacity_factor.std(), 0.34440202)
 
 
 def test_wind_config(pt_wind_placements: pd.DataFrame):

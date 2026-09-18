@@ -8,7 +8,7 @@
 #
 #   paths:          handle -> catalogue key ("<dataset>/<file>", "<dataset>/<folder>",
 #                   "<dataset>" or a family). Names a workflow's inputs once, here, so
-#                   `reskit.data.paths("onshore_wind")` hands the caller
+#                   `reskit.data.paths("wind_era5_PenaSanchezDunkelWinklerEtAl2025")` hands the caller
 #                   {handle: local path} and nobody else has to know a resource key.
 #   test: / full:   two variants of one collection, each with its own include/extends/
 #                   paths instead of top-level ones. `test` is the small selection that
@@ -26,7 +26,7 @@
 # The public catalogue is generated from the institute's internal one by
 # `ethos-data catalog publish`, so a dataset appears below only once it has been
 # published. One collection still names a dataset that has not been -- see
-# `onshore_wind [full]`.
+# `wind_era5_PenaSanchezDunkelWinklerEtAl2025 [full]`.
 #
 # The `reskit-test-data` family below is also shipped with RESKit: `test_cache/` beside
 # this file is an ETHOS.Data bundle exported from the pinned catalogue (bundle.json,
@@ -85,8 +85,8 @@ collections:
   # logarithmically, so it never reads one. The workflows that do take
   # `height_scaling_method=("log", ...)` expect the raster as a caller-supplied
   # path, which is why no collection carries it.
-  onshore_wind:
-    title: Data for onshore wind workflows
+  wind_era5_PenaSanchezDunkelWinklerEtAl2025:
+    title: Inputs for wind_era5_PenaSanchezDunkelWinklerEtAl2025
     test:
       include:
         # Exactly what the workflow reads from ERA5: the 100 m wind (the precomputed
@@ -114,26 +114,26 @@ collections:
         # keep `paths.era5` below pointing at the same dataset.
         #
         # The consequence, until `era5` exists in the selected catalogue:
-        #   - `reskit-data show` marks `onshore_wind [full]` [unresolvable]
-        #     and exits 1, while `onshore_wind [test]` resolves;
-        #   - `reskit.data.paths("onshore_wind")` -- without
+        #   - `reskit-data show` marks `wind_era5_PenaSanchezDunkelWinklerEtAl2025 [full]` [unresolvable]
+        #     and exits 1, while `wind_era5_PenaSanchezDunkelWinklerEtAl2025 [test]` resolves;
+        #   - `reskit.data.paths("wind_era5_PenaSanchezDunkelWinklerEtAl2025")` -- without
         #     test=True, i.e. the default full variant -- raises UnknownDataset,
         #     while the same call with test=True works;
-        #   - `reskit-data verify --all` skips `onshore_wind [full]`, says so,
+        #   - `reskit-data verify --all` skips `wind_era5_PenaSanchezDunkelWinklerEtAl2025 [full]`, says so,
         #     and exits 1 even when every checked file matches.
         # The variant is kept on purpose so both flags can be exercised and the two
         # variants' handles are checked against each other from day one.
         - dataset: era5
-        - dataset: global-wind-atlas-v3
+        - dataset: global-wind-atlas-v4
           files:
-            - "gwa3_250_wind-speed_50m.tif"
-            - "gwa3_250_wind-speed_100m.tif"
-            - "gwa3_250_wind-speed_200m.tif"
+            - "wind_speed_cog_50m.tif"
+            - "wind_speed_cog_100m.tif"
+            - "wind_speed_cog_200m.tif"
       paths:
         era5: era5
-        gwa_100m: global-wind-atlas-v3/gwa3_250_wind-speed_100m.tif
-        gwa_50m: global-wind-atlas-v3/gwa3_250_wind-speed_50m.tif
-        gwa_200m: global-wind-atlas-v3/gwa3_250_wind-speed_200m.tif
+        gwa_100m: global-wind-atlas-v4/wind_speed_cog_100m.tif
+        gwa_50m: global-wind-atlas-v4/wind_speed_cog_50m.tif
+        gwa_200m: global-wind-atlas-v4/wind_speed_cog_200m.tif
 
   solar:
     title: Data for PV and CSP workflows

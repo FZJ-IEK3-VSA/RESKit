@@ -137,15 +137,15 @@ you must supply the rasters manually.
 
 ### Input data from the ETHOS.Data catalogue
 
-RESKit names the inputs its workflows take in `reskit/data/collections.yaml`, a selection
-of the shared ETHOS.Data catalogue. `reskit.data.paths()` fetches a collection and returns
-`{handle: local path}`; `test=True` selects the small test fixtures, so an example runs in
-seconds, and dropping the flag runs the identical code on the full data:
+RESKit names each workflow's input collection after the workflow in
+`reskit/data/collections.yaml`. Call `reskit.data.paths()` immediately before the
+workflow: it makes the inputs available locally and returns `{handle: local path}`.
+No shell command is required. `test=True` selects the small bundled test fixtures:
 
 ```python
 from reskit import data
 
-inputs = data.paths("onshore_wind", test=True)
+inputs = data.paths("wind_era5_PenaSanchezDunkelWinklerEtAl2025", test=True)
 result = rk.wind.wind_era5_PenaSanchezDunkelWinklerEtAl2025(
     placements=placements,
     era5_path=inputs["era5"],
@@ -154,9 +154,14 @@ result = rk.wind.wind_era5_PenaSanchezDunkelWinklerEtAl2025(
 )
 ```
 
-The same from the shell: `reskit-data fetch onshore_wind --test --paths` prints
+For optional shell access, `reskit-data fetch wind_era5_PenaSanchezDunkelWinklerEtAl2025 --test --paths` prints
 one `handle<TAB>path` line per input, `reskit-data show` lists every collection,
 and `reskit-data --help` every command.
+
+Both variants use the same input handles. The full variant is selected when
+`test=True` is omitted, but the pinned public catalogue currently lacks its ERA5
+dataset. To run that variant, select a catalogue containing the required full
+inputs; removing `test=True` alone will currently raise `UnknownDataset`.
 
 The `reskit-test-data` fixtures ship with RESKit as a verified
 [ETHOS.Data bundle](https://ethos-data.readthedocs.io/en/latest/how-to/keep-test-data-in-a-repository/)
