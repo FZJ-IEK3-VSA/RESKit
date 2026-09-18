@@ -320,6 +320,9 @@ def location_to_gcr_tonita_et_al_2023(
     tracking = _broadcast(tracking)
     shading_loss = _broadcast(shading_loss)
 
+    if np.any((np.abs(lat)<15) | (np.abs(lat)>75)):
+        warnings.warn(f"At least one absolute latitude exceeds validity range from 15-75° defined by Tonita et al.")
+
     # check inputs
     if not np.issubdtype(bifaciality_factor.dtype, np.number):
         raise TypeError("bifaciality_factor must be int or float.")
