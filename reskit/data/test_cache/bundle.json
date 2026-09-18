@@ -1375,12 +1375,12 @@
       "ethos:access": "public",
       "ethos:attribution": "ALL FILES IN THIS DATASET HAVE BEEN MODIFIED: every one is a spatial and/or temporal subset of the product named in its member descriptor, and several have been resampled. None is suitable for any purpose other than exercising RESKit's code paths.\nContains modified Copernicus Climate Change Service information (ERA5 and ERA5-Land, 2015); neither the European Commission nor ECMWF is responsible for any use of this data. EUMETSAT CM SAF: copyright 2017 EUMETSAT; Pfeifroth, U., Kothe, S., Mueller, R., Trentmann, J., Hollmann, R., Fuchs, P., Werscheck, M. (2017), doi:10.5676/EUM_SAF_CM/SARAH/V002. Contains MERRA-2 data provided by the NASA Global Modeling and Assimilation Office, and SRTM data provided by NASA/USGS. Data obtained from the Global Wind Atlas 3.0, developed, owned and operated by the Technical University of Denmark in partnership with the World Bank Group, utilizing data provided by Vortex, with funding from ESMAP. Solar resource data (c) 2023 Solargis; (c) The World Bank, Source: Global Solar Atlas 2.0. (c) European Union, Copernicus Land Monitoring Service 2018, European Environment Agency. Contains ESA Climate Change Initiative Land Cover data; users must acknowledge the ESA Climate Change Initiative and its Land Cover project together with the individual data providers, and cite ESA Land Cover CCI project team; Defourny, P. (2019): ESA Land Cover Climate Change Initiative (Land_Cover_cci): Global Land Cover Maps, Version 2.0.7, Centre for Environmental Data Analysis, https://catalogue.ceda.ac.uk/uuid/b382ebe6679d44b8b0e68ea4ef4b701c. GEBCO Bathymetric Compilation Group: The GEBCO Grid. Distance-to-coast data from the NASA Ocean Biology Processing Group. Administrative boundaries: (c) GeoBasis-DE / BKG, dl-de/by-2-0, and OCHA/ZIMSTAT under CC BY 3.0 IGO. ICON-LAM: contains modified data from Chen, S., Poll, S., Hendricks Franssen, H.-J., Heinrichs, H., Vereecken, H., Goergen, K. (2024): Convection-permitting ICON-LAM simulations for renewable energy potential estimates over southern Africa, Journal of Geophysical Research: Atmospheres, https://doi.org/10.1029/2023JD039569, dataset https://doi.org/10.26165/JUELICH-DATA/JYGQ65, licensed under CC BY 4.0.",
       "ethos:contact": "ICE-2 RESKit maintainers",
-      "ethos:derivation": "turbinePlacements.shp is 560 points; turbine_placements.csv and module_placements.csv carry the identical coordinates with turbine and module attributes attached. The two _cityBulawayoInZimbabwa tables are 44 turbines and 483 modules around Bulawayo.\nThe coordinates are ICE-2's; what they were sampled inside is the question this member had to answer -- see ethos:license_note.",
+      "ethos:derivation": "turbinePlacements.shp is 560 points; turbine_placements.csv and module_placements.csv carry the identical coordinates with turbine and module attributes attached. The two _cityBulawayoInZimbabwa tables are 44 turbines and 483 modules around Bulawayo.\nThe coordinates are ICE-2's; what they were sampled inside is the question this member had to answer -- see ethos:license_note.\nLine endings: every table is stored with LF since 2026-09-18. The two _cityBulawayoInZimbabwa tables had been CRLF and were converted without changing a value, so their checksums in this manifest date from that conversion. The RESKit repository forbids line-ending conversion for the whole fixture tree (.gitattributes).",
       "ethos:file_count": 8,
       "ethos:origin": "created",
       "ethos:remote_prefix": "reskit-test-data/placements",
       "ethos:retrieved": "2026-09-09",
-      "ethos:total_bytes": 127659,
+      "ethos:total_bytes": 127130,
       "ethos:visibility": "public",
       "homepage": "https://github.com/FZJ-IEK3-VSA/RESKit",
       "licenses": [
@@ -1402,8 +1402,8 @@
           "path": "module_placements.csv"
         },
         {
-          "bytes": 32475,
-          "hash": "sha256:120e6bf4d2fb61155164860c014ce692dec94595e160cb258f35521070fc64ec",
+          "bytes": 31991,
+          "hash": "sha256:1a0a12eaefe7ea2d10554754c31774c0e3c487b9da256631564cd728247f20f4",
           "mediatype": "text/csv",
           "name": "module_placements_citybulawayoinzimbabwa.csv",
           "path": "module_placements_cityBulawayoInZimbabwa.csv"
@@ -1449,8 +1449,8 @@
           "path": "turbine_placements.csv"
         },
         {
-          "bytes": 2402,
-          "hash": "sha256:8a1182ab0c30d6646867f4beb8ed6bbaff3dd0559fc91c2136b1e47b45505461",
+          "bytes": 2357,
+          "hash": "sha256:8ca75ed424235474a736e983fdd62d22e6e8c82d560fe44395f03d34fc373873",
           "mediatype": "text/csv",
           "name": "turbine_placements_citybulawayoinzimbabwa.csv",
           "path": "turbine_placements_cityBulawayoInZimbabwa.csv"
@@ -1723,9 +1723,9 @@
   },
   "format": "ethos-data-bundle-v1",
   "source": {
-    "catalog": "C:/Users/JA60A~1.BEL/AppData/Local/Temp/claude/c--Programming-RESKit-worktrees-RESKit1/0945fcd6-b645-4fd0-b6bb-f90ecd7818d0/scratchpad/catalogue_mirror/datacatalog.json",
-    "catalog_descriptor_sha256": "sha256:8c796883cf2617aa08127fa7b8e49b769d21589bdf61b5a97d33a3df1e25dc73",
+    "catalog": "https://raw.githubusercontent.com/FZJ-IEK3-VSA/ETHOS.Data-Catalogue/v2026.09/datacatalog.json",
+    "catalog_descriptor_sha256": "sha256:580c19890f1c90978696d3a432cd0a250d4f8e6d335c5fd89bfdd1c1bce7fde4",
     "catalog_version": null,
-    "revision": "LOCAL VERIFICATION ONLY - v2026.09 mirror with corrected licence hashes"
+    "revision": "https://raw.githubusercontent.com/FZJ-IEK3-VSA/ETHOS.Data-Catalogue/v2026.09/datacatalog.json"
   }
 }
