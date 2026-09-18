@@ -258,10 +258,169 @@ def location_to_cross_axis_tilt(locs, convention:str="flat", fallback:int|float=
 
     return caxtilts
 
+def location_to_gcr_tonita_2023(
+        lat : int | float, 
+        bifaciality_factor : int | float,
+        tracking : str,
+        shading_loss : float,
+        ):
+    """
+    Returns the optimal Ground Coverage Ratio for a horizontal 
+    single-axis tracking (HSAT) plant based on the results 
+    by Tonita et al. (2023). For details see [1].
+
+    Parameters
+    ----------
+    lat : float | int
+        The latitude of the plant.
+    bifaciality_factor : float
+        Tonita et al. provide a mono- and a bifacial equation, 
+        set bifaciality_factor to their defaults of 0.0 or 0.96
+        to get their exact results. Note that other bifaciality 
+        factors will lead to a simplified, interpolated GCR!
+    tracking : str
+        "fixed", "singleaxis" or "vertical" for fixed tilt or 
+        horizontal single axis tracking or vertical systems.
+    shading_loss : float, optional
+        Select the accepted annual  energy yield loss due to 
+        shading, Tonita et al. offer 5-15% (0.05, 0.1 and 0.15).
+    
+    Return
+    ------
+    float : Optimal ground coverage ratio allowing the specified shading loss
+
+    References
+    ----------
+    [1] Tonita, Russel, Validivia, Hinzer (2023): Optimal ground coverage ratios 
+        for tracked, fixed-tilt, and vertical photovoltaic systems for latitudes 
+        up to 75◦N, https://doi.org/10.1016/j.solener.2023.04.038
+    """
+    # check if all inputs are scalar to return a scalar again below
+    scalar_input = all(np.ndim(x) == 0 for x in [lat, bifaciality_factor, tracking, shading_loss])
+
+    # broadcast scalar inputs to the length of the longest iterable
+    inputs = [lat, bifaciality_factor, tracking, shading_loss]
+    lengths = [1 if np.ndim(x) == 0 else len(x) for x in inputs]
+    n = max(lengths)
+
+    def _broadcast(x):
+        x = np.asarray(x)
+        if x.ndim == 0:
+            return np.full(n, x.item())
+        if len(x) == 1:
+            return np.full(n, x[0])
+        if len(x) != n:
+            raise ValueError(
+                f"All iterable inputs must have length 1 or {n}, here: {len(x)}."
+            )
+        return x
+
+    lat = _broadcast(lat)
+    bifaciality_factor = _broadcast(bifaciality_factor)
+    tracking = _broadcast(tracking)
+    shading_loss = _broadcast(shading_loss)
+
+    # check inputs
+    if not np.issubdtype(bifaciality_factor.dtype, np.number):
+        raise TypeError("bifaciality_factor must be int or float.")
+    if np.any((bifaciality_factor < 0) | (bifaciality_factor > 1)):
+        raise ValueError(f"bifaciality_factor must be between 0 and 1.0, here: {bifaciality_factor}")
+    if not np.issubdtype(lat.dtype, np.number):
+        raise TypeError("lat must be int or float.")
+    if np.any((lat < -90) | (lat > 90)):
+        raise ValueError(f"lat must be between -90° and +90°, here: {lat}")
+
+    # first define the individual paramaters for every case
+    params = {
+        "singleaxis": {
+            0.05 : {
+                "bi" : (-2.68E-3, 0.361),
+                "mono" : (-2.82E-3, 0.388),
+            },
+            0.10 : {
+                "bi" : (-4.37E-3, 0.575),
+                "mono" : (-4.76E-3, 0.621),
+            },
+            0.15 : {
+                "bi" : (-5.76E-3, 0.762),
+                "mono" : (-6.33E-3, 0.825),
+            }
+        },
+        "vertical": {
+            0.05 : {
+                "bi" : (-2.68E-3, 0.361),
+                "mono" : (-2.82E-3, 0.388),
+            },
+            0.10 : {
+                "bi" : (-4.37E-3, 0.575),
+                "mono" : (-4.76E-3, 0.621),
+            },
+            0.15 : {
+                "bi" : (-5.76E-3, 0.762),
+                "mono" : (-6.33E-3, 0.825),
+            }
+        },
+        "fixed": {
+            0.05 : {
+                "bi" : (-0.560, 0.133, 40.2, 0.70),
+                "mono" : (-0.550, 0.138, 43.4, 0.71)
+            },
+            0.10 : {
+                "bi" : (-0.485, 0.171, 46.2, 0.72),
+                "mono" : (-0.441, 0.198, 48.7, 0.72),
+            },
+            0.15 : {
+                "bi" : (-0.414, 0.207, 49.9, 0.74),
+                "mono" : (-0.371, 0.208, 51.5, 0.75)
+            }
+        }
+    }
+
+    gcrmono = np.empty(lat.shape, dtype=float)
+    gcrbifac = np.empty(lat.shape, dtype=float)
+
+    # calculate only actually occurring tracking and shading loss combinations
+    for _tracking in np.unique(tracking):
+        if _tracking not in params:
+            raise ValueError(f"Unknown tracking type '{_tracking}'.")
+
+        tracking_mask = tracking == _tracking
+
+        for _shading_loss in np.unique(shading_loss[tracking_mask]):
+            # make sure we have parameters for this shading loss
+            if _shading_loss not in params[_tracking]:
+                raise KeyError(
+                    f"shading_loss = {_shading_loss} is not defined for tracking = '{_tracking}', "
+                    f"choose from: {params[_tracking].keys()}"
+                )
+
+            mask = tracking_mask & (shading_loss == _shading_loss)
+
+            if _tracking in ["singleaxis", "vertical"]:
+                # define the gcr getter for this tracking type and shading loss
+                a, b = params[_tracking][_shading_loss]["mono"]
+                gcrmono[mask] = a * np.abs(lat[mask]) + b
+
+                a, b = params[_tracking][_shading_loss]["bi"]
+                gcrbifac[mask] = a * np.abs(lat[mask]) + b
+
+            elif _tracking == "fixed":
+                P, k, a0, g0 = params[_tracking][_shading_loss]["mono"]
+                gcrmono[mask] = P/(1+np.exp(-k*(np.abs(lat[mask])-a0)))+g0
+
+                P, k, a0, g0 = params[_tracking][_shading_loss]["bi"]
+                gcrbifac[mask] = P/(1+np.exp(-k*(np.abs(lat[mask])-a0)))+g0
+
+    # get mono- and bifacial gcr based on absolute lat to account for Southern hemisphere
+    # interpolate them based on the actrual bifaciality factor
+    gcrinterp = gcrmono + (gcrbifac - gcrmono) * (bifaciality_factor - 0)/(0.96 - 0)
+
+    if scalar_input:
+        return gcrinterp.item()
+    return gcrinterp
+
 
 def location_to_gcr(
-        locs: gk.LocationSet | Iterable, 
-        tracking: str, 
         convention: str, 
         module_tilt: int | float | Iterable = None,
         north_slope : int | float | str | Iterable = 0,
