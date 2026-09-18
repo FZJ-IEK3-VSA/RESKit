@@ -6,7 +6,6 @@ import pandas as pd
 
 # other modules
 from reskit.wind.core.data import DATAFOLDER
-from reskit.default_paths import DEFAULT_PATHS
 
 
 class Parameters:
@@ -267,13 +266,9 @@ class OnshoreParameters(Parameters):
             raise TypeError(f"constant_rotor_diam must be a boolean.")
         self.constant_rotor_diam = constant_rotor_diam
 
-        # determine the parameter data file
+        # determine the parameter data file: the baseline RESKit ships unless one is given
         if fp is None:
-            # use the default file
-            if DEFAULT_PATHS["baseline_onshore_turbine_definition_path"] is None:
-                fp = os.path.join(DATAFOLDER, "baseline_turbine_onshore_RybergEtAl2019.csv")
-            else:
-                fp = DEFAULT_PATHS["baseline_onshore_turbine_definition_path"]
+            fp = os.path.join(DATAFOLDER, "baseline_turbine_onshore_RybergEtAl2019.csv")
 
         # extract baseline params from file
         self.load_and_set_custom_params(fp=fp, year=year, subclass=self, **kwargs)
@@ -349,12 +344,9 @@ class OffshoreParameters(Parameters):
             raise TypeError(f"constant_rotor_diam must be a boolean.")
         self.constant_rotor_diam = constant_rotor_diam
 
+        # determine the parameter data file: the baseline RESKit ships unless one is given
         if fp is None:
-            # use the default file
-            if DEFAULT_PATHS["baseline_offshore_turbine_definition_path"] is None:
-                fp = os.path.join(DATAFOLDER, "baseline_turbine_offshore_CaglayanEtAl2019.csv")
-            else:
-                fp = DEFAULT_PATHS["baseline_offshore_turbine_definition_path"]
+            fp = os.path.join(DATAFOLDER, "baseline_turbine_offshore_CaglayanEtAl2019.csv")
 
         # extract json params from file
         self.load_and_set_custom_params(fp=fp, year=year, subclass=self, **kwargs)

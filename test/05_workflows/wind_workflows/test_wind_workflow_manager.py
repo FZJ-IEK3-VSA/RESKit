@@ -1,5 +1,7 @@
 import copy
+from pathlib import Path
 
+import geokit as gk
 import numpy as np
 import pandas as pd
 import pytest
@@ -102,11 +104,13 @@ def test_WindWorkflowManager_set_roughness(pt_WindWorkflowManager_initialized):
     assert (man.placements["roughness"] == roughnesses).all()
 
 
+@pytest.mark.parametrize("raster_input", [str, Path, gk.raster.loadRaster], ids=["str", "path", "dataset"])
 def test_WindWorkflowManager_estimate_roughness_from_land_cover(
     pt_WindWorkflowManager_initialized,
+    raster_input,
 ):
     man = pt_WindWorkflowManager_initialized
-    man.estimate_roughness_from_land_cover(rk.TEST_DATA["clc-aachen_clipped.tif"], source_type="clc")
+    man.estimate_roughness_from_land_cover(raster_input(rk.TEST_DATA["clc-aachen_clipped.tif"]), source_type="clc")
     assert (man.placements["roughness"] == [0.5, 0.0005, 0.03, 0.03, 0.3]).all()
 
 
@@ -187,7 +191,7 @@ def test_WindWorkflowManager_project_windspeeds_to_hub_height(
 
     man.project_windspeeds_to_hub_height(
         height_scaling_method=("log", "cci"),
-        height_scaling_data=TEST_DATA["ESA_CCI_2018_clip.tif"],
+        height_scaling_data=TEST_DATA["ESA_CCI_2015_clip.tif"],
         consider_boundary_layer_height=False,
     )
 

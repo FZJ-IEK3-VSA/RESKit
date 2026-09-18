@@ -192,5 +192,7 @@ nav:
                 - Direct Air Capture: examples/6_direct_air_capture/6_1_direct_air_capture.ipynb
                 - Cooling and Heating: examples/6_direct_air_capture/6_2_cooling_heating.ipynb
 
+    - How-to guides:
+          - Get input data from the ETHOS.Data catalogue: how_to/get_input_data.md
     - API Reference: reference/
     - Code of Conduct: CODE_OF_CONDUCT.md

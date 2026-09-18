@@ -18,7 +18,7 @@
 [![conda-forge version](https://img.shields.io/conda/vn/conda-forge/reskit.svg)](https://anaconda.org/conda-forge/reskit)
 [![Tests](https://github.com/FZJ-IEK3-VSA/RESKit/actions/workflows/test_push.yml/badge.svg)](https://github.com/FZJ-IEK3-VSA/RESKit/actions/workflows/test_push.yml)
 [![Coverage](https://codecov.io/gh/FZJ-IEK3-VSA/RESKit/branch/dev/graph/badge.svg)](https://codecov.io/gh/FZJ-IEK3-VSA/RESKit)
-[![Documentation](https://readthedocs.org/projects/ethos-reskit/badge/?version=latest)](https://ethos-reskit.readthedocs.io/en/latest/)
+[![Documentation](https://readthedocs.org/projects/ethos-reskit/badge/`version=latest)](https://ethos-reskit.readthedocs.io/en/latest/)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17668775.svg)](https://doi.org/10.5281/zenodo.17668775)
 [![License](https://img.shields.io/github/license/FZJ-IEK3-VSA/RESKit)](https://github.com/FZJ-IEK3-VSA/RESKit/blob/dev/LICENSE-MIT.txt)
 
@@ -135,6 +135,51 @@ implemented — solar/CSP workflows on Global Solar Atlas rasters and wind workf
 on Global Wind Atlas rasters. `download_and_process` prints a notice for these and
 you must supply the rasters manually.
 
+### Input data from the ETHOS.Data catalogue
+
+RESKit names each workflow's input collection after the workflow in
+`reskit/data/collections.yaml`. Call `reskit.data.paths()` immediately before the
+workflow: it makes the inputs available locally and returns `{handle: local path}`.
+No shell command is required. `test=True` selects the small bundled test fixtures:
+
+```python
+from reskit import data
+
+inputs = data.paths("wind_era5_PenaSanchezDunkelWinklerEtAl2025", test=True)
+result = rk.wind.wind_era5_PenaSanchezDunkelWinklerEtAl2025(
+    placements=placements,
+    era5_path=inputs["era5"],
+    gwa_100m_path=inputs["gwa_100m"],
+    height_scaling_data={50: inputs["gwa_50m"], 200: inputs["gwa_200m"]},
+)
+```
+
+For optional shell access, `reskit-data fetch wind_era5_PenaSanchezDunkelWinklerEtAl2025 --test --paths` prints
+one `handle<TAB>path` line per input, `reskit-data show` lists every collection,
+and `reskit-data --help` every command.
+
+Both variants use the same input handles. The full variant is selected when
+`test=True` is omitted, but the pinned public catalogue currently lacks its ERA5
+dataset. To run that variant, select a catalogue containing the required full
+inputs; removing `test=True` alone will currently raise `UnknownDataset`.
+
+The `reskit-test-data` fixtures ship with RESKit as a verified
+[ETHOS.Data bundle](https://ethos-data.readthedocs.io/en/latest/how-to/keep-test-data-in-a-repository/)
+in `reskit/data/test_cache`, so `test=True`, the examples and the test suite read
+them offline. Pass `download=True`, or set `RESKIT_DATA_DOWNLOAD=1`, to fetch them
+from the catalogue's store into the shared cache instead.
+
+Install ETHOS.Data in the same environment. In a development checkout, reinstall
+RESKit with `pip install -e . --no-deps` to register its console script.
+`reskit-data show` prints the actual catalogue selection; `RESKIT_DATA_CATALOG`
+overrides it for RESKit, while shared ETHOS settings apply to all packages.
+
+Use `reskit-data staging add/list/remove` for unpublished development inputs.
+The [input-data guide](docs/how_to/get_input_data.md) covers catalogue selection,
+workflow arguments, staging and verification, with links to the shared
+configuration and bundle procedures. Cache and catalogue administration use
+`ethos-data`.
+
 ### Reading ERA5 from Zarr
 
 ETHOS.RESKit can read ERA5 directly from regular latitude/longitude Zarr stores while keeping the existing `source_type="ERA5"` workflow API. The current implementation is intended for stores such as the [Earth Data Hub ERA5 single-level dataset](https://earthdatahub.destine.eu/collections/era5/datasets/reanalysis-era5-single-levels):
@@ -239,3 +284,4 @@ This work was initially supported by the Helmholtz Association under the Joint I
   </a>
   <!-- logo:helmholtz:end -->
 </p>
+
