@@ -265,10 +265,7 @@ def turbine_design_from_avg_wind_speed(
     if multi:
         lowerlt = hub_height < (rotor_diam / 2 + baseline_params["min_tip_height"])
         if lowerlt.any():
-            if baseline_params["constant_rotor_diam"]:
-                hub_height[lowerlt] = rotor_diam / 2 + baseline_params["min_tip_height"]
-            else:
-                hub_height[lowerlt] = rotor_diam[lowerlt] / 2 + baseline_params["min_tip_height"]
+            hub_height[lowerlt] = rotor_diam[lowerlt] / 2 + baseline_params["min_tip_height"]
 
         upperlt = hub_height > baseline_params["max_hub_height"]
         if upperlt.any():
