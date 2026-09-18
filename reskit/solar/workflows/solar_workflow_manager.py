@@ -409,22 +409,38 @@ class SolarWorkflowManager(WorkflowManager):
         module_tilt : int | float | str | Iterable,
     ):
         """
-        _summary_ #TODO mention degrees
+        Preprocesses the module tilt for fixed-tilt PV systems into a 1D array
+        containing one numeric tilt value per placement and saves it under
+        ``plant_parameters_processed``.
+
+        Numeric input values are interpreted as module tilt angles in degrees.
+        A scalar numeric value is applied to all placements. String values are
+        interpreted as convention names and converted to placement-specific tilt
+        angles using
+        ``reskit.solar.core.system_design.location_to_module_tilt()``.
+        Iterable inputs may contain numeric values and/or convention names and
+        must be compatible with the number of placements.
+
+        ``None`` values are not permitted because a module tilt is required for
+        fixed tracking systems.
 
         Parameters
         ----------
         module_tilt : int | float | str | Iterable
-            _description_
+            Module tilt angle in degrees, a supported module-tilt convention, or
+            one value/convention per placement.
 
         Returns
         -------
-        _type_
-            _description_
+        obj
+            Reference to the invoking ``SolarWorkflowManager`` object.
 
         Raises
         ------
         ValueError
-            _description_
+            If ``module_tilt`` contains missing values or if a requested
+            convention cannot provide a valid tilt value for every affected
+            placement.
         """
         # first save input to allow tracing the processing 
         self.plant_parameters_raw["module_tilt"] = module_tilt
@@ -459,8 +475,9 @@ class SolarWorkflowManager(WorkflowManager):
             if np.isnan(iter_vals).any():
                 # we have nans in the data that we just extracted
                 raise ValueError(f"module_tilt values could not be extracted via required '{conv}' convention for all locations.")
-            # last set the extracted elevations from this iteration in the main elevation array, duplicate iter_gcr row values per placement for every column
-            module_tilt[mask, :] = iter_vals[:, None]
+            # apply tilts for this iteration via masking the overall array
+            # module_tilt is explicitly 1D because _preprocess_variable() is called with force_dims=1
+            module_tilt[mask] = iter_vals
 
         # finally save the processed module tilt under plant_parameters_processed
         self.plant_parameters_processed["module_tilt"] = module_tilt
@@ -472,6 +489,38 @@ class SolarWorkflowManager(WorkflowManager):
         self,
         module_azimuth : int | float | str,
         ):
+        """
+        Preprocesses the module azimuth for fixed-tilt PV systems into a 1D array
+        containing one numeric azimuth value per placement and saves it under
+        ``plant_parameters_processed``.
+
+        Numeric input values are interpreted as module azimuth angles in degrees.
+        A scalar numeric value is applied to all placements. String values are
+        interpreted as convention names and converted to placement-specific
+        azimuth angles using
+        ``reskit.solar.core.system_design.location_to_module_azimuth()``.
+
+        ``None`` values are not permitted because a module azimuth is required
+        for fixed tracking systems.
+
+        Parameters
+        ----------
+        module_azimuth : int | float | str
+            Module azimuth angle in degrees or a supported module-azimuth
+            convention.
+
+        Returns
+        -------
+        obj
+            Reference to the invoking ``SolarWorkflowManager`` object.
+
+        Raises
+        ------
+        ValueError
+            If ``module_azimuth`` contains missing values or if a requested
+            convention cannot provide a valid azimuth value for every affected
+            placement.
+        """
 
         # first save input to allow tracing the processing 
         self.plant_parameters_raw["module_azimuth"] = module_azimuth
@@ -506,8 +555,9 @@ class SolarWorkflowManager(WorkflowManager):
             if np.isnan(iter_vals).any():
                 # we have nans in the data that we just extracted
                 raise ValueError(f"module_azimuth values could not be extracted via required '{conv}' convention for all locations.")
-            # last set the extracted elevations from this iteration in the main elevation array, duplicate iter_gcr row values per placement for every column
-            module_azimuth[mask, :] = iter_vals[:, None]
+            # apply azimuths for this iteration via masking the overall array
+            # module_azimuth is explicitly 1D because _preprocess_variable() is called with force_dims=1
+            module_azimuth[mask] = iter_vals
 
         # finally save the processed module azimuth under plant_parameters_processed
         self.plant_parameters_processed["module_azimuth"] = module_azimuth
