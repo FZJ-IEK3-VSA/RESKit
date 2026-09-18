@@ -3811,7 +3811,7 @@ class SolarWorkflowManager(WorkflowManager):
                 self.plant_parameters_processed["capacity"], self._sim_shape_
             )
 
-        if "modules_per_string" in self.placements.columns and "strings_per_inverter" in self.placements.columns: #TODO #ISSUE285 replace placements df in this block
+        if "modules_per_string" in self.placements.columns and "strings_per_inverter" in self.placements.columns: 
             total_modules = (
                 self.placements.modules_per_string
                 * self.placements.strings_per_inverter
