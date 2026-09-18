@@ -119,7 +119,8 @@ class SolarWorkflowManager(WorkflowManager):
             module_bifacials = self.module["Bifacial"] in [1, "1", "YES", "Yes", "Y", True] 
             if ((bifaciality_factor>0) != module_bifacials).any():
                 print(f"NOTE: Module bifacial information and bifaciality according to bifaciality factors do not align for at least one plant", flush=True)
-        if "bifaciality_factor" in self.module.index:
+        # self.module can still be None if no module was configured yet
+        if self.module is not None and "bifaciality_factor" in self.module.index:
             # we have information on the quantitative bifaciality factor
             if not np.isclose(bifaciality_factor, self.module["bifaciality_factor"]).all():
                 print(f"NOTE: Module has bifaciality_factor information but it does not match the provided bifaciality_factor argument for all locations.", flush=True)
