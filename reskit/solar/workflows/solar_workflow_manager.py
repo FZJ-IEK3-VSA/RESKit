@@ -1221,26 +1221,34 @@ class SolarWorkflowManager(WorkflowManager):
 
     def calculate_horizon_profile(
         self,
-        digital_surface_model_path:str | Iterable,
+
+    def _calculate_distant_horizon_profile(
+        self,
+        digital_surface_model_paths: Iterable[str],
+        lons: Iterable[float],
+        lats: Iterable[float],
         angle_stepsize: float = 3.0,
         max_distance: int = 10000,
         distance_stepsize: int = 30,
         exp_spacing_factor: float = 1.01,
-        digital_terrain_model_path:str = None,
         out_of_bounds_tol : int = 0, #TODO 100 for the current run
     ):
         """
-        Returns the horizon profile based on a digital elevation model raster as 
-        an iterable of horizon angles for one or multiple locations. Azimuthal 
+        Returns the distant horizon profile based on a digital elevation model raster 
+        as an iterable of horizon angles for one or multiple locations. Azimuthal 
         sampling rate and reach/distance can be adapted. 
 
         Parameters
         ----------
-        digital_surface_model_path : str
-            The path to the digital elevation model that shall be used to 
-            extract the elevation of the horizon features, typically a DSM incl. 
-            tree, building etc. feature heights. Will also be used to extract 
-            the plant elevation if digital_terrain_model_path is None.
+        digital_surface_model_paths : Iterable[str]
+            The paths to the digital elevation models that shall be used to
+            extract the elevation of the horizon features, typically DSMs incl.
+            tree, building etc. feature heights. Each path belongs to the location
+            at the same position in lons and lats.
+        lons : Iterable[float]
+            Longitudes of the observer locations.
+        lats : Iterable[float]
+            Latitudes of the observer locations.
         angle_stepsize : float, optional
             The azimuthal angle steps for the view direction sampling points of 
             the horizont profile, by default every 3°.
@@ -1257,12 +1265,6 @@ class SolarWorkflowManager(WorkflowManager):
             depends on the distance to the location non-linearly as follows:
             s(n)= s_0**^(k**n), k=exp_spacing_factor and s_0=distance_stepsize
             By default k = 1.01.
-        digital_terrain_model_path : str, optional
-            Will be used to extract the plant elevation if given, allows to use 
-            a DTM dataset for a plant location on bare terrain with consideration 
-            of surrounding feature heights as indicated in a DSM model. If not 
-            given, the digital_surface_model_path will be used for both feature 
-            and plant elevation. By default None.
         out_of_bounds_tol : int, optional
             The accepted number of pixels that a lat/lon can be out of bounds of
             the DEM raster so that still a NaN value will be returned for this 
@@ -1270,37 +1272,30 @@ class SolarWorkflowManager(WorkflowManager):
 
         Returns
         -------
-        obj
-            A reference to the invoking SolarWorkflowManager object, with 
-            horizon_angles attribute set to a numpy array with one elevation 
-            angle per azimuthal sampling point.
+        np.ndarray
+            A 2D-array with length of placements dataframe and width equal to the 
+            number of angular sampling points, with horizon angles per view axis
+            in degrees over flat horizon.
         """
-        if digital_surface_model_path is True:
-            # must then be an attribute of placements, extract and set as new variable
-            assert "digital_surface_model_path" in self.placements, f"If 'digital_surface_model_path' is None, it must be a placements df column."
-            digital_surface_model_path = self.placements["digital_surface_model_path"].to_list()
-        elif isinstance(digital_surface_model_path, str):
-            # we only have one file for all locations, expand to iterable
-            digital_surface_model_path = [digital_surface_model_path]*len(self.placements)
-        else:
-            assert hasattr(digital_surface_model_path, "__iter__"), \
-                f"digital_surface_model_path must be True, str or an iterable of strings" 
-        assert len(digital_surface_model_path)==len(self.placements),\
-            f"digital_surface_model_path length ({len(digital_surface_model_path)}) must match length of placements ({len(self.placements)}) if given as iterable."
-        assert all([isinstance(x, str) for x in digital_surface_model_path]),\
-            f"digital_surface_model_path iterable must only contain str formatted values"
-        assert all([isfile(x) for x in digital_surface_model_path]),\
-            f"All values of digital_surface_model_path must be existing filepaths."
+        digital_surface_model_paths = list(digital_surface_model_paths)
+        lons = list(lons)
+        lats = list(lats)
+
+        assert len(digital_surface_model_paths) == len(lons) == len(lats), \
+            "digital_surface_model_paths ({len(digital_surface_model_paths)}), lons ({len(lons)}) and lats ({len(lats)}) must have identical lengths."
+        assert all([isinstance(x, str) for x in digital_surface_model_paths]),\
+            "digital_surface_model_paths iterable must only contain str formatted values"
+        assert all([isfile(x) for x in digital_surface_model_paths]),\
+            "All values of digital_surface_model_paths must be existing filepaths."
 
         # define a lines of view array adding up to 360° around the location
         azimuths = np.arange(0, 360, angle_stepsize)
         # iterate over all locations and generate horizon profiles for the azimuths
         horizons = [] # initialize collector for all locational profiles
         old_str = None # save the last DEM filepath to save the time for loading it again in case that the file remains the same
-        for i, (lat, lon) in enumerate(zip(self.placements.lat, self.placements.lon)): #.iterrows():
+        for dsm_path, lat, lon in zip(digital_surface_model_paths, lats, lons):
             lats = np.atleast_1d(lat)
             lons = np.atleast_1d(lon)
-            dsm_path = digital_surface_model_path[i]
 
             # load DEM only if necessary, i.e. only when new filepath
             if dsm_path != old_str:
@@ -1311,23 +1306,19 @@ class SolarWorkflowManager(WorkflowManager):
                     crs = src.crs
                     if crs.to_epsg() != 4326:
                         raise ValueError("DEM must be in EPSG:4326")
-            
-            #TODO load location elevation from digital_terrain_model_path if given
-            if not digital_terrain_model_path is None:
-                raise NotImplementedError("digital_terrain_model_path is not implemented yet.")
 
+            # preprocess dem data
             nrows, ncols = dem.shape
             res_lon = transform.a
             res_lat = -transform.e
             xmin = transform.c
             ymax = transform.f
 
+            # get cell row/col ids for all locations
             def get_cell_id(lon_arr, lat_arr):
                 cols = ((lon_arr - xmin) / res_lon).astype(int)
                 rows = ((ymax - lat_arr) / res_lat).astype(int)
                 return rows, cols
-
-            # get cell row/col ids for all locations
             r0, c0 = get_cell_id(lons, lats)
 
             # calculate if/by how many pixels the location exceeds the raster bounds
@@ -1416,6 +1407,10 @@ class SolarWorkflowManager(WorkflowManager):
             horizons.append(horizon)
 
         # recombine different locational profiles and set as attribute
+        distant_horizon_profile = np.vstack(horizons, dtype=float)
+
+        return distant_horizon_profile
+
 
     def preprocess_hill_slope_and_azimuth(
             self, 
