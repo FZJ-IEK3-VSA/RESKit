@@ -3578,7 +3578,9 @@ class SolarWorkflowManager(WorkflowManager):
         # some modules lack dimensional information, add it if info has been added to length_dict/width_dict manually
         if "Length" not in module.index or pd.isnull(module["Length"]):
             length_dict = {
-                    'Trina Solar Co.Ltd TSM-700NEG21C.20' : 2.384
+                    'Trina Solar Co.Ltd TSM-700NEG21C.20' : 2.384,
+                    'WINAICO WSx-240P6' : 1.665,
+                    'LG Electronics LG370Q1C-A5' : 1.700,
                 }
             try:
                 module["Length"] = length_dict[module.name]
@@ -3586,7 +3588,9 @@ class SolarWorkflowManager(WorkflowManager):
                 warnings.warn(f"module '{module.name}' from database has no Length information and no additional Length information found in RESKit dictionary. Add Length info manually in length_dict in configure_cec_module()")
         if "Width" not in module.index or pd.isnull(module["Width"]):
             width_dict = {
-                    'Trina Solar Co.Ltd TSM-700NEG21C.20' : 1.303
+                    'Trina Solar Co.Ltd TSM-700NEG21C.20' : 1.303,
+                    'WINAICO WSx-240P6' : 0.999,
+                    'LG Electronics LG370Q1C-A5' : 1.016,
                 }
             try:
                 module["Width"] = width_dict[module.name]
