@@ -1416,9 +1416,163 @@ class SolarWorkflowManager(WorkflowManager):
             horizons.append(horizon)
 
         # recombine different locational profiles and set as attribute
-        horizon = np.vstack(horizons)
-        assert self.horizon_angles is None #TODO change to interpolation to existing profile and maximum if attribute has value already
-        self.horizon_angles = horizon.T
+
+    def preprocess_hill_slope_and_azimuth(
+            self, 
+            north_slope : int | float | str | Iterable | None,
+            east_slope : int | float | str | Iterable | None,
+            general_slope : int | float | str | Iterable | None = None,
+            downhill_azimuth : int | float | str | Iterable | None = None,
+            slopes_fallback : int | float | None = None,
+            ):
+        """
+        Will process the "hill_slopes" and "slope_azimuths" inputs stored in 
+        self.plant_parameters_raw. None values willbe aligned and set to zero,
+        references to digital elevation model raster files will be opened and
+        plant-specific data will be extracted. The parameters will be overwritten
+        with all numeric float arrays.
+
+        NOTE: North+East slope as well as overall slope + azimuth fully define a
+        hill so only one of the pairs may be provided, the other will be calculated. 
+
+        Parameters
+        ----------
+        north_slope : int | float | Iterable | None
+            The slope angle in degrees between slope and horiztonal along an 
+            axis from South to North, i.e. the downhill side of positive angle 
+            north_slopes is facing North. None etc. values will be replaced by 
+            slopes_fallback if the latter is not None. Slope per placement
+            can be provided as an iterable of int or float.
+        east_slope : int | float | Iterable | None
+            The slope angle in degrees between slope and horiztonal along an 
+            axis from West to East, i.e. the downhill side of positive angle 
+            east_slopes is facing East. None etc. values will be replaced by 
+            slopes_fallback if the latter is not None. Slope per placement
+            can be provided as an iterable of int or float.
+        general_slope : int | float | Iterable | None, optional
+            The maximum slope angle in degrees between slope and horiztonal 
+            along the downhill axis pointing in downhill_azimuth direction. 
+            None etc. values will be replaced by slopes_fallback if the latter 
+            is not None. Slope per placement can be provided as an iterable 
+            of int or float. By default None.
+        downhill_azimuth : int | float | Iterable | None, optional
+            The direction of the downhill axis clockwise from North = 0°.
+            By default None.
+        slopes_fallback : int | float | None, optional
+            Missing slope values (not azimuth) will be set to this fallback.
+            Forces an error in case of missing values if slopes_fallback is
+            None. Set to 0 to ignore slope effects in the given direction.
+            By default None.
+
+        Returns
+        -------
+        obj
+            a reference to the invoking SolarWorkflowManager object.
+        """
+        # assert that the input combinations make sense
+        assert sum([x is not None for x in [north_slope, east_slope, general_slope, downhill_azimuth]]) in [0,2],\
+            "If not all inputs are None, either north_slope + east_slope OR general_slope + downhill_azimuzth must be given, the others must then be None."
+        
+        # first save the inputs to raw data
+        self.plant_parameters_raw["north_slope"] = north_slope
+        self.plant_parameters_raw["east_slope"] = east_slope
+        self.plant_parameters_raw["general_slope"] = general_slope
+        self.plant_parameters_raw["downhill_azimuth"] = downhill_azimuth
+
+        # then format and check all params
+        def _preprocess_data(varname, invals, fallback):
+            # first general formatting
+            vals, filepaths = self._preprocess_variable(
+                varname = varname,
+                value = invals,
+                allow_none = fallback is not None, 
+                replace_none = fallback,
+                assert_type = [float, int],
+                force_cols = 1,
+                force_dims = 1, # one scalar value per placement -> 1d
+            )
+            # now deal with potential DEM filepath inputs, identified via string datatype
+            # iterate over potentially different filepaths and extract vals for all locs that apply
+            fallbacks_applied = 0
+            for fp in np.unique(filepaths[~pd.isna(filepaths)]):
+                if not isfile(fp):
+                    raise FileNotFoundError(f"{varname} contains string entries which must be existing {varname} rasters but cannot find file: {fp}")
+                # generate a mask that applies also to the locations
+                mask = (filepaths == fp)
+                # extract a clipped sub raster covering the affected placements extent only to save time
+                iter_ext = gk.Extent.fromLocationSet(self.locs[mask])
+                clipped_raster = iter_ext.pad(0.5).rasterMosaic(fp)
+                if clipped_raster is None:
+                    iter_vals = np.array([np.nan] * len(self.locs[mask]))
+                else:
+                    # use average mode over neighboring cells by default to void overestimating due to very local steep angles
+                    iter_vals = gk.raster.interpolateValues(
+                        clipped_raster, 
+                        self.locs[mask],
+                        mode = "average",
+                        )
+                    if np.isnan(iter_vals).any():
+                        # if getting values fails, it could be because of interpolation method
+                        # replace only those that failed by 'near' interpolation
+                        iter_vals_near = gk.raster.interpolateValues(
+                            clipped_raster, self.locs[mask], mode="near"
+                        )
+                        iter_vals[np.isnan(iter_vals)] = iter_vals_near[np.isnan(iter_vals)]
+                if np.isnan(iter_vals).any():
+                    # we still have nans
+                    if fallback is None:
+                        # must fail then
+                        raise ValueError(f"NaN values extracted for '{varname}' and fallback is None.")
+                    else:
+                        # if allowed, replace nans by fallback value 
+                        fallbacks_applied += np.isnan(iter_vals).sum()
+                        iter_vals[np.isnan(iter_vals)] = (
+                            np.ones(shape=iter_vals.shape) * fallback
+                        )[np.isnan(iter_vals)]
+                # last set the extracted vals from this iteration in the main vals array
+                vals[mask] = iter_vals
+            
+            # warn of unavailable data if required
+            if fallbacks_applied > 0:
+                warnings.warn(f"{varname} for {fallbacks_applied} out of {len(self.locs)} placements could not be extracted from provided {varname} files and has been replaced with fallback value {fallback}.")
+                
+            return np.asarray(vals, dtype=float) # float is needed for later angle processing
+
+        if north_slope is not None or east_slope is not None:
+            if east_slope is None or north_slope is None:
+                raise ValueError("When north_slope or east_slope is not None, east_slope and north_slope must both be provided.")
+            # preprocess the north and east slopes and write to preprocessed params
+            north_slope = _preprocess_data(varname="north_slope", invals=north_slope, fallback=slopes_fallback)
+            east_slope = _preprocess_data(varname="east_slope", invals=east_slope, fallback=slopes_fallback)
+            # general slope and azimuth are then None as asserted above - calculate them from north and east slopes via rad gradients!
+            north_gradient = np.tan(np.radians(north_slope))
+            east_gradient = np.tan(np.radians(east_slope))
+            general_slope = np.degrees(
+                np.arctan(np.hypot(north_gradient, east_gradient))
+            )
+        
+        elif general_slope is not None or downhill_azimuth is not None:
+            if general_slope is None or downhill_azimuth is None:
+                raise ValueError("When general_slope or downhill_azimuth is not None, general_slope and downhill_azimuth must both be provided.")
+            # first preprocess general slope and azimuth
+            general_slope = _preprocess_data(varname="general_slope", invals=general_slope, fallback=slopes_fallback)
+            downhill_azimuth = _preprocess_data(varname="downhill_azimuth", invals=downhill_azimuth, fallback=None)
+            # now we only have the overall slope and orientation, but not the slope in North and East direction - invert above calculation
+            general_gradient = np.tan(np.radians(general_slope))
+            azimuth_radians = np.radians(downhill_azimuth)
+            north_gradient = general_gradient * np.cos(azimuth_radians)
+            east_gradient = general_gradient * np.sin(azimuth_radians)
+            north_slope = np.degrees(np.arctan(north_gradient))
+            east_slope = np.degrees(np.arctan(east_gradient))
+        
+        # postprocess azimuths to be in expected value range
+        downhill_azimuth = np.degrees(np.arctan2(east_gradient, north_gradient)) % 360
+
+        # write the resulting parameters to the preprocessed storage
+        self.plant_parameters_processed["north_slope"] = north_slope
+        self.plant_parameters_processed["east_slope"] = east_slope
+        self.plant_parameters_processed["general_slope"] = general_slope
+        self.plant_parameters_processed["downhill_azimuth"] = downhill_azimuth
 
         return self
 
