@@ -50,7 +50,7 @@ def test_weather_tilepaths():
     df = df_base.copy()
     df["lon"] = df.apply(lambda x: x.geom.GetX(), axis=1)
     df["lat"] = df.apply(lambda x: x.geom.GetY(), axis=1)
-    with pytest.raises(AssertionError) as e:
+    with pytest.raises(TypeError) as e:
         # must not work without "source" column
         tile_paths = get_location_specific_weather_paths(
             weather_paths=None,
