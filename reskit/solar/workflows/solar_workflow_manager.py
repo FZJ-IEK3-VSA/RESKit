@@ -862,9 +862,7 @@ class SolarWorkflowManager(WorkflowManager):
             # last set the extracted elevations from this iteration in the main elevation array, duplicate iter_gcr row values per placement for every column            
             albedo[:, mask] = iter_vals[mask][None, :]
 
-        # # change scalar ground albedo per location to hourly system_grdalbedo array per location
-        # self.sim_data["system_grdalbedo"] = np.tile(self.placements["grdalbedo"].to_numpy()[None, :], (self._sim_shape_[0], 1)) 
-        assert albedo.shape == self._sim_shape_ #TODO delete this and commeted out lines hereabove when confirmed that above force_cols = self._sim_shape_[0] works
+        assert albedo.shape == self._sim_shape_
 
         # now write hourly no-snow albedo values to sim_data
         if not np.all((albedo > 0) & (albedo < 1)):
@@ -2250,9 +2248,6 @@ class SolarWorkflowManager(WorkflowManager):
                 self.plant_parameters_processed["backtracking"],
                 self.plant_parameters_processed["max_tracking_angle"],
                 )):
-            # for i in range(self.locs.count):
-                # placement = self.placements.iloc[i] #TODO remove
-
                 # invert the axis azimuth (and hence axis and cross axis tilt) when axis tilt is negative, pvlib.tracking.singleaxis cannot deal with it
                 _axazimuth = _axazimuth if _axtilt >= 0 else (_axazimuth + 180) % 360
                 _caxtilt = _caxtilt if _axtilt >= 0 else -_caxtilt
@@ -2323,8 +2318,16 @@ class SolarWorkflowManager(WorkflowManager):
         assert "solar_azimuth" in self.sim_data
 
         # get either the time-variable tracking tilt/azimuths or fixed values for fixed tilt
-        modazimuths = self.sim_data.get("system_modazimuth", self.plant_parameters_processed["module_azimuth"])
-        modtilts = self.sim_data.get("system_modtilt", self.plant_parameters_processed["module_tilt"])
+        modazimuths = (
+            self.sim_data["system_modazimuth"]
+            if "system_modazimuth" in self.sim_data
+            else self.plant_parameters_processed["module_azimuth"]
+        )
+        modtilts = (
+            self.sim_data["system_modtilt"]
+            if "system_modtilt" in self.sim_data
+            else self.plant_parameters_processed["module_tilt"]
+        )
 
         self.sim_data["angle_of_incidence"] = np.nan_to_num(
             pvlib.irradiance.aoi(
@@ -2675,9 +2678,9 @@ class SolarWorkflowManager(WorkflowManager):
         # calculate corrected DNI without shading losses, store in temp variable for now
         _dni_flathorizon = self.sim_data["direct_normal_irradiance"] * _dni_scaling
 
-        # correct GHI based on equation GHI = DNI + cos(teta) * DHI, with teta as solar zenith angle
-        # GHI increases simply by the DNI delta since DHI is unaffected by horizon shading by pvlib assumption
-        self.sim_data["global_horizontal_irradiance"] = self.sim_data["global_horizontal_irradiance"] + (_dni_flathorizon - self.sim_data["direct_normal_irradiance"])
+        # correct GHI based on equation GHI = DHI + cos(teta) * DNI, with teta as solar zenith angle
+        # GHI increases simply by the teta-corrected DNI (direct normal) delta since DHI (diffuse horizontal) is unaffected by horizon shading by pvlib assumption
+        self.sim_data["global_horizontal_irradiance"] = self.sim_data["global_horizontal_irradiance"] + (_dni_flathorizon - self.sim_data["direct_normal_irradiance"]) * np.cos(np.radians(self.sim_data["apparent_solar_zenith"]))
 
         # now overwrite DNI as well with corrected value
         self.sim_data["direct_normal_irradiance"] = _dni_flathorizon
@@ -2742,7 +2745,7 @@ class SolarWorkflowManager(WorkflowManager):
                     # get only the timeseries for the representative location
                     return np.asarray(self.sim_data.get(sim_var)[:, iloc], dtype=float).copy()
                 elif var is not None and var in self.plant_parameters_processed:
-                    # value is not time-variable but in placements df
+                    # value is not time-variable but in plant_parameters_processed
                     val = self.plant_parameters_processed[var]
                     assert np.asarray(val).ndim == 1 # make sure, needed for below logic
                     if time_invariant:
