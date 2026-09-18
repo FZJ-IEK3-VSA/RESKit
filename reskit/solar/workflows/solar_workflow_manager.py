@@ -68,244 +68,241 @@ class SolarWorkflowManager(WorkflowManager):
         self._time_sel_ = None
         self._time_index_ = None
         self.module = None
-        self.bifacial = False # init as False, may be overwritten when module is configured
-        self.bifaciality_factor = None # same
-        self.horizon_angles = None
 
     ####################################
     # PREPROCESS LOCATIONAL ATTRIBUTES #
     ####################################
 
-    def estimate_missing_params(
+    def preprocess_bifaciality_factor(
         self,
-        elev,
-        ground_albedo,
-        gcr,
-        fixed_module_tilt_convention=None,
-        fixed_module_azimuth_convention=None,
-        singleaxis_tilt_convention=None,
-        singleaxis_azimuth_convention=None,
-        crossaxis_tilt_convention=None,
-        consider_snow_albedo=False,
+        bifaciality_factor = float | Iterable,
     ):
         """
-        This function checks mandatory parameters and estimates them based on a 
-        given convention or fallback values when the values are missing. For all
-        parameter values, first an existing placements column with the respective
-        name will be considered, then an attribute specific estimation function 
-        and last a fallback value will be applied.
+        Preprocesses the bifaciality factor input into a 1d array with a single numeric 
+        value per placement and saves it under plant_parameters_processed. Will check for
+        realistic value ranges.
 
         Parameters
         ----------
-        elev : int, Iterable, str
-            See 'elev' argument in self.assign_elevation().
-        ground_albedo : float, list, tuple #TODO allow Iterable with placements df length explicitly
-            See 'ground_albedo' argument in self.assign_ground_albedo(). 
-        gcr : _type_ #TODO
-            See 'gcr' argument in self.assign_gcr().
-        fixed_module_tilt_convention : str, optional
-            See 'convention' argument in 
-            reskit.solar.core.system_design.estimate_module_tilt_from_latitude(), 
-            by default None Required only if tracking == "fixed".
-        fixed_module_azimuth_convention : str, optional
-            See 'convention' argument in 
-            reskit.solar.core.system_design.estimate_module_azimuth_from_latitude(), 
-            by default None.  Required only if tracking == "fixed".
-        singleaxis_tilt_convention : str, optional
-            See 'convention' argument in 
-            reskit.solar.core.system_design.location_to_tracker_axis_tilt(), 
-            by default None. Required only if tracking == "singleaxis".
-        singleaxis_azimuth_convention : str, optional
-            See 'convention' argument in 
-            reskit.solar.core.system_design.location_to_tracker_axis_azimuth(), 
-            by default None. Required only if tracking == "singleaxis".
-        crossaxis_tilt_convention : str, optional
-            See 'convention' argument in 
-            reskit.solar.core.system_design.location_to_cross_axis_tilt(), 
-            by default None. Required only if tracking == "singleaxis".
-        consider_snow_albedo : bool, optional
-            If True, will consider hourly snow cover in the ground albedo.
-            Requires that snow_albedo, snow_density and snow_depth_water_equivalent
-            have been loaded into sim_data. By default False.
+        bifaciality_factor : float | Iterable
+            Either a float value or a 1d iterable thereof with lenghth matching the 
+            number of placements. #TODO allow also "from_module"
 
         Returns
         -------
         obj
             reference to the invoking SolarWorkflowManager object
         """
-        # check placements columns for possible other/wrong column names
-        def _check_existing_cols(substr):
-            _allcols = [
-                "modtilt",
-                "modazimuth",
-                "axazimuth",
-                "axtilt",
-                "caxtilt",
-                "elev",
-                "grdalbedo",
-            ]
-            _othercols = [
-                col
-                for col in self.placements
-                if substr.lower() in col.lower() and col not in _allcols
-            ]
-            _possiblecols = [col for col in _allcols if substr.lower() in col.lower()]
-            assert len(_possiblecols) > 0  # make sure substr makes sense
-            if len(_othercols) > 0:
-                warnings.warn(
-                    f"The following placement column names contain '{substr}' but are none of the recognized arguments related to {substr} and will be ignored: '"+"', '".join(_othercols)+f"'. Missing columns will be added. Regognized column names for '{substr}' are: '"+"', '".join(_possiblecols)+"'"
-                )
-
-        for param in ["tilt", "azimuth", "albedo", "elev"]:
-            _check_existing_cols(substr=param)
-
-        # set elevation, albedo and gcr - always required
-        self.assign_elevation(
-            elev=elev, fallback_elev=840
-        )  # mean landmass elevation as fallback
-        self.assign_ground_albedo(
-            ground_albedo=ground_albedo,
-            consider_snow_albedo=consider_snow_albedo,
+        # first save input to allow tracing the processing 
+        self.plant_parameters_raw["bifaciality_factor"] = bifaciality_factor
+        
+        # then preprocess the inputs
+        bifaciality_factor, _ = self._preprocess_variable(
+            varname = "bifaciality_factor",
+            value = bifaciality_factor,
+            allow_none = False, # bifaciality factor MUST be provided consciously by user
+            replace_none = None,
+            assert_type = [float, int],
+            force_cols = 1,
+            force_dims = 1, # one scalar value per placement -> 1d
+            as_dtype = float,
         )
-        self.assign_gcr(gcr=gcr)
+        if any(isinstance(value, str) for value in _): 
+            raise TypeError("bifaciality_factor must not contain str entries.")
 
-        # set required tilts and azimuths depending on tracking type
-        if self.tracking in ["fixed"]:
-            assert fixed_module_tilt_convention is not None, "fixed_module_tilt_convention must not be None when tracking='fixed'"
-            assert fixed_module_azimuth_convention is not None, "fixed_module_azimuth_convention must not be None when tracking='fixed'"
-            self.estimate_module_tilt_from_latitude(
-                convention=fixed_module_tilt_convention
-            )
-            self.estimate_module_azimuth_from_latitude(
-                convention=fixed_module_azimuth_convention
-            )
-        elif self.tracking in ["singleaxis"]:
-            assert singleaxis_tilt_convention is not None, "singleaxis_tilt_convention must not be None when tracking='singleaxis'"
-            assert singleaxis_azimuth_convention is not None, "singleaxis_azimuth_convention must not be None when tracking='singleaxis'"
-            assert crossaxis_tilt_convention is not None, "crossaxis_tilt_convention must not be None when tracking='singleaxis'"
-            self.estimate_tracker_axis_tilt_from_latitude(
-                convention=singleaxis_tilt_convention
-            )
-            self.estimate_tracker_axis_azimuth_from_latitude(
-                convention=singleaxis_azimuth_convention
-            )
-            self.estimate_cross_axis_tilt_from_latitude(
-                convention=crossaxis_tilt_convention
-            )
-            
+        # TODO allow 'from_module' as a source of bifaciality_factor as soon as different modules are implemented as well, will then extract module["bifaciality_factor"] for the given location(s)
+        # for now, only check if given bifaciality factor conflicts with potential module information, then inform user
+        if self.module is not None and "Bifacial" in self.module.index:
+            # we have information if the module is nifacial at all
+            module_bifacials = self.module["Bifacial"] in [1, "1", "YES", "Yes", "Y", True] 
+            if ((bifaciality_factor>0) != module_bifacials).any():
+                print(f"NOTE: Module bifacial information and bifaciality according to bifaciality factors do not align for at least one plant", flush=True)
+        if "bifaciality_factor" in self.module.index:
+            # we have information on the quantitative bifaciality factor
+            if not np.isclose(bifaciality_factor, self.module["bifaciality_factor"]).all():
+                print(f"NOTE: Module has bifaciality_factor information but it does not match the provided bifaciality_factor argument for all locations.", flush=True)
+
+        if not np.all((bifaciality_factor >= 0) & (bifaciality_factor <= 1.0)):
+            raise ValueError(f"All bifaciality_factor values must be >=0 and <=1.0.")
+
+        # finally save the processed data under plant_parameters_processed
+        self.plant_parameters_processed["bifaciality_factor"] = bifaciality_factor
+
         return self
 
 
-    def _assign_attribute(
+    def preprocess_capacity(
         self,
-        attr: str,
-        attr_default: object,
-        attr_col: str,
-        func: Callable,
-        attr_fallback: object = None,
-        verbose: bool = False,
-        allow_nan: bool = False,
-        **funcargs,
+        capacity = float | int | Iterable,
     ):
         """
-        Auxiliary function that checks if an attribute exists in self.placements
-        already and renames column to default attribute name if necessary, else
-        it sets the attribute either based on an attribute-specific function or
-        based on a scalar constant default value.
+        Preprocesses the capacity [in kW] input into a 1d array with a single numeric 
+        value per placement and saves it under plant_parameters_processed. 
 
-        attr : str
-            The attribute name used in the wfm
-        attr_default : object
-            The default value to be set if no attibute column in placements
-            dataframe and no function given. Must be None if attr_col exists in
-            placements dataframe or an extraction func is given.
-        attr_col : str
-            Name of the input column in placements dataframe containing values.
-        func : Callable
-            Function that will be applied to extract location-specific values,
-            must return an iterable of the same length as placements df.
-        attr_fallback : obj, optional
-            Will be set if the function does not extract values for all 
-            placements. Set to None to skip. By default None.
-        verbose : bool, optional
-            Prints additional information if True, by default False.
-        allow_nan : bool, optional
-            Will fail if Nans remain after trying to fill the gaps. By default False.
-        **funcargs
-            Arguments will be passed on to func.
+        Parameters
+        ----------
+        capacity : float | Iterable
+            Either a float value or a 1d iterable thereof with lenghth matching the 
+            number of placements, in [kW]
 
         Returns
         -------
         obj
             reference to the invoking SolarWorkflowManager object
         """
-        # if a different attr col is given, the attr name itself cannot be a column name as well
-        if attr_col != attr and attr in self.placements:
-            raise AttributeError(
-                f"'{attr}' cannot be an existing column in placements when {attr} column != '{attr}'"
-            )
+        # first save input to allow tracing the processing 
+        self.plant_parameters_raw["capacity"] = capacity
 
-        # if the attr column exists already in placements, use it
-        if attr_col in self.placements:
-            if attr_default is not None:
-                warnings.warn(
-                    f"Function argument for {attr} is not None (here: {attr_default}) but will be ignored since '{attr_col}' column self.placements exists and will be used."
-                )
-            if verbose and attr_col == attr:
-                print(
-                    f"'{attr}' column in placements dataframe exists and will not be overwritten."
-                )
-            elif verbose:
-                print(
-                    f"'{attr_col}' column in placements dataframe exists and will be renamed to '{attr}'."
-                )
-                self.placements.rename(columns={attr_col: attr}, inplace=True)
-            assert not self.placements[attr].isna().any(), f"{attr} data provided as self.placements column '{attr_col}' must not contain NaN values."
+        if self._is_none(capacity).any() and not self._is_none(capacity).all():
+            raise ValueError(f"'capacity' must be provided for all locations (no Nones) if provided for any.")
+        
+        # then preprocess the inputs
+        capacity, _ = self._preprocess_variable(
+            varname = "capacity",
+            value = capacity,
+            allow_none = True,
+            replace_none = None,
+            assert_type = [int, float],
+            force_cols = 1,
+            force_dims = 1, # one scalar value per placement -> 1d
+        )
+        if any(isinstance(value, str) for value in _): 
+            raise TypeError("capacity must not contain str entries.")
 
-        # else either apply the given function or default to assign missing values
-        elif func is not None:
-            # use function
-            if attr_default is not None:
-                raise TypeError(
-                    f"'{attr}' default must be None if data function shall be used to assign '{attr}'."
-                )
-            self.placements[attr] = func(**funcargs)
-            # fill NaNs with fallback if applicable
-            if attr_fallback is not None and self.placements[attr].isna().any():
-                assert isinstance(attr_fallback, (str, numbers.Number)), f"fallback value for '{attr}' must be str or number. Here: {attr_fallback}"
-                self.placements.loc[self.placements[attr].isna(), attr] = attr_fallback
-        else:
-            # use default
-            if ~isinstance(attr_default, str) and hasattr(attr_default, "__iter__") and len(attr_default) != len(self.placements):
-                raise TypeError(
-                    f"{attr} default must be scalar or an iterable of length of placements dataframe ({len(self.placements)}) if not None."
-                )
-            self.placements[attr] = attr_default
-
-        if not allow_nan:
-            # make sure none remains
-            assert not any(
-                self.placements[attr].isna()
-            ), f"Remaining NaN values for '{attr}'"
+        # finally save the processed data under plant_parameters_processed
+        self.plant_parameters_processed["capacity"] = np.asarray(capacity, dtype=float)
 
         return self
+    
 
-
-    def assign_elevation(self, elev: str | int | Iterable, fallback_elev: int = 0):
+    def preprocess_ground_coverage_ratio(
+        self,
+        gcr = float | str | Iterable,
+        fallback: float | NoneType = None,
+        min_gcr : float | NoneType = 0.3,
+    ):
         """
-        Ensures or adds an elevation ('elev') column to the placements data frame.
+        Preprocesses the gcr input into a 1d array with a single numeric value per 
+        placement and saves it under plant_parameters_processed. Will replace None, NaN, 
+        pd.Na, null or strings thereof (including empty '' string) by fallback value and
+        consider string entries as convention names based on which gcr per placement is 
+        then assigned (see reskit.solar.core.system_design.location_to_gcr() for options).
 
         Parameters
         ----------
-        elev : str, int, Iterable
+        gcr : str, float, Iterable
+            If a string is given it must be a gcr convention name allowed in 
+            reskit.solar.core.system_design.location_to_gcr(). 
+            If a float is given, it will be applied to all locations equally.
+            If an iterable is given it has to be of equal length to the number of 
+            locations and contain one of the options above per placement, None etc.
+            will be replaced by the fallback value.
+        fallback : float | NoneType, optional
+            The fallback value that can be used in case that a placement contains
+            a None (etc.) value or gcr cannot be extracted via the given convention.
+            By default None, will then trigger failure for any location for which 
+            the primary value cannot be extracted.
+        min_gcr : float | NoneType, optional
+            If given as a float, GCR values will be limited to this minimum value.
+            Has no effect if None, by default 0.3.
+
+        Returns
+        -------
+        obj
+            reference to the invoking SolarWorkflowManager object
+        """
+        assert fallback is None or isinstance(
+            fallback, float
+        ) and 0<fallback<=1, "gcr 'fallback' must be a float >0 and <=1."
+
+        # first save input to allow tracing the processing 
+        self.plant_parameters_raw["gcr"] = gcr
+        
+        # then preprocess the gcr inputs
+        gcr, conventions = self._preprocess_variable(
+            varname = "gcr",
+            value = gcr,
+            allow_none = fallback is not None,
+            replace_none = fallback, # note that this replaces None etc. by fallback value already
+            assert_type = float,
+            force_cols = 1, # one per loc
+            force_dims = 1
+        )
+
+        # now replace the entries with str conventions by the respective values
+        fallbacks_applied = 0
+        for conv in np.unique(conventions[~pd.isna(conventions)]):
+            # get the gcrs only for the affected locations
+            mask = (conventions == conv)
+            iter_gcrs = rk_solar_core.system_design.location_to_gcr(
+                locs = self.locs[mask], 
+                module_tilt = None if self.workflow_args["tracking"] == "singleaxis" else self.plant_parameters_processed["module_tilt"][mask],
+                tracking = self.workflow_args["tracking"], #TODO change when this becomes a plant_parameter, then iterate over different trackings or adapt location_to_gcr (location_to_gcr currently expects scalar tracking value)
+                convention = conv, 
+                north_slope=self.plant_parameters_processed["north_slope"][mask],
+                east_slope = None, # negligible effect as long as modules are North/South facing, add when other azimuths are possible in location_to_gcr
+                min_gcr = min_gcr,
+            )
+            if np.isnan(iter_gcrs).any():
+                # we have nans in the data that we just extracted
+                if fallback is None:
+                    # no fallback means we must fail if primary option does not work
+                    raise ValueError("gcr values could not be extracted for all locations.")
+                else:
+                    # if allowed, replace nans by fallback value 
+                    fallbacks_applied += np.isnan(iter_gcrs).sum()
+                    iter_gcrs[np.isnan(iter_gcrs)] = (
+                        np.ones(shape=iter_gcrs.shape) * fallback
+                    )[np.isnan(iter_gcrs)]
+            # last set the extracted elevations from this iteration in the main elevation array, duplicate iter_gcr row values per placement for every column
+            gcr[mask, :] = iter_gcrs[:, None]
+        # warn of unavailable elevation data if required
+        if fallbacks_applied > 0:
+            warnings.warn(f"GCR for {fallbacks_applied} out of {self.locs.count} placements could not be extracted from desired convention and has been replaced with fallback value {fallback}.")
+
+        # check and set min gcr if applicable (needed here explicitly because not all gcr values come from location_to_gcr)
+        if min_gcr is not None:
+            assert isinstance(min_gcr, float), "min_gcr must be a float if not None."
+            # set all values below min gcr to min gcr
+            gcr[gcr < min_gcr] = min_gcr
+
+        # validity check
+        if pd.isnull(gcr).any():
+            raise ValueError("gcr contains NaN values.")
+        if not np.all((gcr > 0) & (gcr <= 1.0)):
+            raise ValueError("'gcr' contains values less or equal to zero or greater 1.0.")
+
+        # finally save the processed gcr under plant_parameters_processed
+        self.plant_parameters_processed["gcr"] = np.asarray(gcr, dtype=float)
+
+        return self
+    
+
+    def preprocess_elevation(
+        self,
+        elevation: str | int | Iterable, 
+        fallback: int = 840,
+    ):
+        """
+        Preprocesses the elevation input into a 1d array with a single numeric value per 
+        placement and saves it under plant_parameters_processed. Will replace None, NaN, 
+        pd.Na, null or strings thereof (including empty '' string) by fallback value and
+        consider string entries as DEM filepaths from which elevation for the respective
+        placements will be extracted. Placements for which no data can be extracted will 
+        be assigned the fallback value as well.
+
+        Parameters
+        ----------
+        elevation : str, int, Iterable
             If a string is given it must be a path to a rasterfile including the elevations.
             If an iterable is given it has to include the elevations at each location and be
-            of equal length to self.placements dataframe.
+            of equal length to the number of locations.
             If an integer is given, it will be applied to all locations equally
-        fallback_elev : int, optional
-            The fallback value that will be used in case that elev is a raster
+        fallback : int, optional
+            The fallback value in [m] that will be used in case that elev is a raster
             path and the extraction of the elevation from raster fails (applied
-            only to no-data locations), by default 0
+            only to no-data locations). Setting fallback to None means process will 
+            fail if primary option fails, by default 840 m (average global elevation)
 
         Returns
         -------
@@ -313,52 +310,345 @@ class SolarWorkflowManager(WorkflowManager):
             reference to the invoking SolarWorkflowManager object
         """
         assert isinstance(
-            fallback_elev, int
-        ), "'fallback_elev' must be an integer elevantion in [m]."
+            fallback, int
+        ), "elevation 'fallback' must be an integer elevantion in [m]." #TODO check if we can somehow make use of the data that might have been extracted in the horizon profile already to save time
 
-        def _elev_func():
-            if elev is None:
-                # we don't have given elevation info, neither as elev arg nor in placements dataframe column
-                # set all values to fallback
-                return np.array([fallback_elev] * len(self.locs))
-            elif isinstance(elev, str):
-                # assume we have a str formatted elevation raster path
-                clipped_elev = self.ext.pad(0.5).rasterMosaic(elev)
-                if clipped_elev is None:
-                    _elevs = np.array([np.nan] * len(self.locs))
-                else:
-                    _elevs = gk.raster.interpolateValues(clipped_elev, self.locs)
-                    if np.isnan(_elevs).any():
-                        # if getting values fails, it could be because of interpolation method
-                        # replace by 'near' interpolation
-                        _elevs_near = gk.raster.interpolateValues(
-                            clipped_elev, self.locs, mode="near"
-                        )
-                        _elevs[np.isnan(_elevs)] = _elevs_near[np.isnan(_elevs)]
-                if np.isnan(_elevs).any():
-                    # if we still have nans, replace nans by fallback value
-                    _elevs[np.isnan(_elevs)] = (
-                        np.ones(shape=_elevs.shape) * fallback_elev
-                    )[np.isnan(_elevs)]
-                return _elevs
-
-        _default = elev if all([isinstance(x, numbers.Real) for x in np.atleast_1d(elev)]) else None # float or int
-        _func = _elev_func if _default is None else None
-
-        self._assign_attribute(
-            attr="elev", attr_default=_default, attr_col="elev", func=_func, attr_fallback=fallback_elev, **{}
+        # first save input to allow tracing the processing 
+        self.plant_parameters_raw["elevation"] = elevation
+        
+        # then preprocess the elevation inputs
+        elevation, filepaths = self._preprocess_variable(
+            varname = "elevation",
+            value = elevation,
+            allow_none = fallback is not None,
+            replace_none = fallback, # note that this replaces None etc. by fallback value already
+            assert_type = [int, float, str],
+            force_cols = 1,
+            force_dims = 1,
         )
 
-        assert all([isinstance(x, numbers.Number) for x in self.placements["elev"]])
+        # now deal with potential DEM filepath inputs, identified via string datatype
+        # iterate over potentially different filepaths and extract elev for all locs that apply
+        fallbacks_applied = 0
+        for fp in np.unique(filepaths[~pd.isna(filepaths)]):
+            if not isfile(fp):
+                raise FileNotFoundError(f"elevation contains string entries which must be existing DEM rasters but cannot find file: {fp}")
+            # generate a mask that applies also to the locations
+            mask = (filepaths == fp)
+            # extract a clipped sub raster covering the affected placements extent only to save time
+            iter_ext = gk.Extent.fromLocationSet(gk.LocationSet(self.locs[mask])) # LocationSet can only be in EPSG:4326 as per geokit implementation
+            clipped_elev = iter_ext.pad(0.5).rasterMosaic(fp)
+            if clipped_elev is None:
+                iter_vals = np.array([np.nan] * len(self.locs[mask]))
+            else:
+                iter_vals = gk.raster.interpolateValues(clipped_elev, self.locs[mask])
+                if np.isnan(iter_vals).any():
+                    # if getting values fails, it could be because of interpolation method
+                    # replace only those that failed by 'near' interpolation
+                    iter_vals_near = gk.raster.interpolateValues(
+                        clipped_elev, self.locs[mask], mode="near"
+                    )
+                    iter_vals[np.isnan(iter_vals)] = iter_vals_near[np.isnan(iter_vals)]
+            if np.isnan(iter_vals).any():
+                # we still have nans
+                if fallback is None:
+                    # must fail then
+                    raise ValueError("NaN values extracted for 'elevation' and fallback is None.")
+                else:
+                    # if allowed, replace nans by fallback value 
+                    fallbacks_applied += np.isnan(iter_vals).sum()
+                    iter_vals[np.isnan(iter_vals)] = (
+                        np.ones(shape=iter_vals.shape) * fallback
+                    )[np.isnan(iter_vals)]
+            # last set the extracted elevations from this iteration in the main elevation array
+            elevation[mask] = iter_vals
+        # warn of unavailable elevation data if required
+        if fallbacks_applied > 0:
+            warnings.warn(f"Elevation for {fallbacks_applied} out of {self.locs.count} placements could not be extracted from provided DEM files and has been replaced with fallback value {fallback}m.")
+
+        # finally save the processed elevation under plant_parameters_processed
+        self.plant_parameters_processed["elevation"] = np.asarray(elevation, dtype=int)
+
+        return self
+
+    def preprocess_fixed_module_tilt(
+        self,
+        module_tilt : int | float | str | Iterable,
+    ):
+        """
+        _summary_ #TODO mention degrees
+
+        Parameters
+        ----------
+        module_tilt : int | float | str | Iterable
+            _description_
+
+        Returns
+        -------
+        _type_
+            _description_
+
+        Raises
+        ------
+        ValueError
+            _description_
+        """
+        # first save input to allow tracing the processing 
+        self.plant_parameters_raw["module_tilt"] = module_tilt
+        
+        # then preprocess the inputs - do in a try-except to be able to explain the need for not-None values here (can and should be None when singleaxis tracking)
+        try:
+            module_tilt, conventions = self._preprocess_variable(
+                varname = "module_tilt",
+                value = module_tilt,
+                allow_none = False,
+                replace_none = None,
+                assert_type = [int, float],
+                force_cols = 1, # one per loc
+                force_dims = 1,
+                as_dtype = float,
+            )
+        except ValueError as e:
+            if "must not have None values" in str(e):
+                raise ValueError(
+                    f"{e} This is required when tracking='fixed'."
+                ) from e
+            raise
+
+        # now replace the entries with str conventions by the respective values
+        for conv in np.unique(conventions[~pd.isna(conventions)]):
+            # get the azimuths only for the affected locations
+            mask = (conventions == conv)
+            iter_vals = rk_solar_core.system_design.location_to_module_tilt(
+                locs = self.locs[mask], 
+                convention = conv, 
+            )
+            if np.isnan(iter_vals).any():
+                # we have nans in the data that we just extracted
+                raise ValueError(f"module_tilt values could not be extracted via required '{conv}' convention for all locations.")
+            # last set the extracted elevations from this iteration in the main elevation array, duplicate iter_gcr row values per placement for every column
+            module_tilt[mask, :] = iter_vals[:, None]
+
+        # finally save the processed module tilt under plant_parameters_processed
+        self.plant_parameters_processed["module_tilt"] = module_tilt
 
         return self
 
 
-    def assign_ground_albedo(self, ground_albedo:float|Iterable, consider_snow_albedo:bool=False):
+    def preprocess_fixed_module_azimuth(
+        self,
+        module_azimuth : int | float | str,
+        ):
+
+        # first save input to allow tracing the processing 
+        self.plant_parameters_raw["module_azimuth"] = module_azimuth
+        
+        # then preprocess the inputs - do in a try-except to be able to explain the need for not-None values here (can and should be None when singleaxis tracking)
+        try:
+            module_azimuth, conventions = self._preprocess_variable(
+                varname = "module_azimuth",
+                value = module_azimuth,
+                allow_none = False,
+                replace_none = None,
+                assert_type = [int, float],
+                force_cols = 1, # one per loc
+                force_dims = 1,
+                as_dtype = float,
+            )
+        except ValueError as e:
+            if "must not have None values" in str(e):
+                raise ValueError(
+                    f"{e} This is required when tracking='fixed'."
+                ) from e
+            raise
+
+        # now replace the entries with str conventions by the respective values
+        for conv in np.unique(conventions[~pd.isna(conventions)]):
+            # get the azimuths only for the affected locations
+            mask = (conventions == conv)
+            iter_vals = rk_solar_core.system_design.location_to_module_azimuth(
+                locs = self.locs[mask], 
+                convention = conv, 
+            )
+            if np.isnan(iter_vals).any():
+                # we have nans in the data that we just extracted
+                raise ValueError(f"module_azimuth values could not be extracted via required '{conv}' convention for all locations.")
+            # last set the extracted elevations from this iteration in the main elevation array, duplicate iter_gcr row values per placement for every column
+            module_azimuth[mask, :] = iter_vals[:, None]
+
+        # finally save the processed module azimuth under plant_parameters_processed
+        self.plant_parameters_processed["module_azimuth"] = module_azimuth
+
+        return self
+
+
+    def preprocess_tracking_angle(
+        self,
+        max_tracking_angle : int | float | Iterable,
+        ):
         """
-        Assigns a ground albedo value to every placement in self.placements in a
-        new column, unless column exists already, if so existing values will be 
-        checked and used.
+        Preprocesses the input into a 1d array with a single numeric value per location 
+        and saves it under plant_parameters_processed. Will not allow None, NaN, pd.Na, 
+        null or strings thereof (including empty '' string) or any string entries.
+
+        Parameters
+        ----------
+        max_tracking_angle : int | float | Iterable
+            If an iterable is given it has to include the values for each location and 
+            be of equal length to the number of locations. A scalar value will be 
+            applied to all locations equally.  Must be in degrees.
+
+        Returns
+        -------
+        obj
+            reference to the invoking SolarWorkflowManager object
+        """
+        # first save input to allow tracing the processing 
+        self.plant_parameters_raw["max_tracking_angle"] = max_tracking_angle
+        
+        # then preprocess the inputs
+        max_tracking_angle, _ = self._preprocess_variable(
+            varname = "max_tracking_angle",
+            value = max_tracking_angle,
+            allow_none = False,
+            replace_none = None,
+            assert_type = [float,int],
+            force_cols = 1, # one per loc
+            force_dims = 1,
+            as_dtype = float,
+        )
+
+        # write to processed data
+        self.plant_parameters_processed["max_tracking_angle"] = max_tracking_angle
+
+        return self
+    
+    def preprocess_backtracking(
+        self,
+        backtracking : bool | Iterable,
+        ):
+        """
+        Preprocesses the input into a 1d array with a single boolean value per location 
+        and saves it under plant_parameters_processed. Will not allow None, NaN, pd.Na, 
+        null or strings thereof (including empty '' string) or any string entries.
+
+        Parameters
+        ----------
+        backtracking : int | float | Iterable
+            If an iterable is given it has to include the values for each location and 
+            be of equal length to the number of locations. A scalar value will be 
+            applied to all locations equally.
+
+        Returns
+        -------
+        obj
+            reference to the invoking SolarWorkflowManager object
+        """
+        # first save input to allow tracing the processing 
+        self.plant_parameters_raw["backtracking"] = backtracking
+        
+        # then preprocess the inputs
+        backtracking, _ = self._preprocess_variable(
+            varname = "backtracking",
+            value = backtracking,
+            allow_none = False,
+            replace_none = None,
+            assert_type = bool,
+            force_cols = 1, # one per loc
+            force_dims = 1,
+            as_dtype = bool,
+        )
+
+        # write to processed data
+        self.plant_parameters_processed["backtracking"] = backtracking
+
+        return self
+
+
+    def preprocess_pvrow_height(
+        self,
+        pvrow_height : float | Iterable | None = None,
+        ):
+        """
+        _summary_
+
+        Parameters
+        ----------
+        pvrow_height : float | Iterable | None, optional
+            The height over ground in [m] of the row center axis. If None is given,
+            the value will be calculated based on the array width (based on module
+            dimensions and configuration) and (maximum) tilt angle plus minimum
+            ground clearance. By default None.
+
+        Returns
+        -------
+        obj
+            reference to the invoking SolarWorkflowManager object
+        """
+        # assert preprocessed data exists
+        if self.tracking == "singleaxis":
+            if not "max_tracking_angle" in self.plant_parameters_processed:
+                raise AttributeError(f"'max_tracking_angle' is a required attributes of self.plant_parameters_processed when tracking = 'singleaxis', run preprocess_tracking_angle() first.")
+            if not "backtracking" in self.plant_parameters_processed:
+                raise AttributeError(f"'backtracking' is a required attributes of self.plant_parameters_processed when tracking = 'singleaxis', run preprocess_backtracking() first.")
+        elif self.tracking == "fixed" and not "module_tilt" in self.plant_parameters_processed:
+            raise AttributeError(f"'module_tilt' is a required attributes of self.plant_parameters_processed when tracking = 'fixed', run preprocess_fixed_module_tilt() first.")
+        if not "pvrow_width_sloped" in self.plant_parameters_processed:
+            raise AttributeError(f"'pvrow_width_sloped' is a required attributes of self.plant_parameters_processed, run configure_cec_module() first.")
+
+        # first save input to allow tracing the processing 
+        self.plant_parameters_raw["pvrow_height"] = pvrow_height
+        
+        # then preprocess the inputs
+        pvrow_height, _ = self._preprocess_variable(
+            varname = "pvrow_height",
+            value = pvrow_height,
+            allow_none = True,
+            replace_none = None,
+            assert_type = [int, float, NoneType],
+            force_cols = 1, # one per loc
+            force_dims = 1,
+        )
+        # flag missing values
+        noheightmask = self._is_none(pvrow_height)
+
+        # if no pv row axis height (normal to sloped ground) is given, we must ensure that the modules will never tough ground in whatever angular position
+        # so define the default pv row axis height as 0.5 x the width of the array (sloped), plus 1cm to ensure positive values despite numeric effects
+        # this is particularly important as the module angles relative to the ground may change later in case of sloped ground
+        # otherwise (sin(module tilt) x 0.5 x sloped array width) + 0.01 would have been sufficient
+        min_pvrow_height = (1/2 * self.plant_parameters_processed["pvrow_width_sloped"] + 0.01)
+        # set the minimum required pv row height only for locs without specifically given height values 
+        pvrow_height[noheightmask] = min_pvrow_height[noheightmask]
+
+        # calculate the maximum vertical center to lower row edge distance under greatest possible angle
+        angles_deg = self.plant_parameters_processed["module_tilt"] if self.tracking == "fixed" else self.plant_parameters_processed["max_tracking_angle"]
+        center_to_lower_edge_vertical = 1/2 * (self.plant_parameters_processed["pvrow_width_sloped"] * np.sin(np.radians(angles_deg)))
+
+        # make sure the modules will never penetrate the ground, leads to physicalls unrealistic returns in pvlib
+        if not np.all(pvrow_height - 1/2 * self.plant_parameters_processed["pvrow_width_sloped"] > 0):
+            # the modules would penetrate the ground if vertical
+            if np.all(pvrow_height - center_to_lower_edge_vertical > 0):
+                # in the current tilt, the modules would NOT penetrate the ground, but they might when the angle becomes relatively steeper along a hill side
+                raise ValueError(
+                    f"Given pvrow_height values do not lead to a sufficient ground clearance for all locations. The values would be sufficient for current (maximum) module tilts, "
+                    "but tilt values may increase relatively to sloped ground for hill slide plants; therefore vertical modules should be possible for all locations, too."
+                    )
+            raise ValueError(f"Given pvrow_height values do not lead to a sufficient ground clearance for all locations under the given module size and all potential module angles (incl. vertical).")
+
+        # finally save the processed values under plant_parameters_processed
+        self.plant_parameters_processed["pvrow_height"] = np.asarray(pvrow_height, dtype=float)
+
+        return self
+
+
+    def preprocess_ground_albedo(
+            self,
+            ground_albedo : float | str | Iterable, 
+            consider_snow_albedo : bool = False,
+            fallback : float = 0.25,
+            ):
+        """
+        #TODO
 
         Parameters
         -------
@@ -377,11 +667,53 @@ class SolarWorkflowManager(WorkflowManager):
         obj
             reference to the invoking SolarWorkflowManager object
         """
-        if not (all([isinstance(x, float) for x in np.atleast_1d(ground_albedo)]) or (hasattr(ground_albedo, "__iter__") and len(ground_albedo) in [2,3] and all([isinstance(x, str) for x in ground_albedo[:2]]))):
-            raise TypeError(f"Unknown ground_albedo argument of type '{type(ground_albedo)}': {ground_albedo}. Must be float, iterable of floats or tuple/list of 2 strings.")
+        assert isinstance(fallback, float) and 0<fallback<1,\
+            "fallback_albedo must be a float between 0.0 and 1.0"
+
+        # write ground albedo raw input to storage
+        self.plant_parameters_raw["ground_albedo"] = ground_albedo
     
+        # first check if ground_albedo is possibly given as a tuple of landcover name and filepath
+        landcover_name = None
+        if isinstance(ground_albedo, (tuple, list)) and len(ground_albedo) == 2 and all([isinstance(x, str) for x in ground_albedo]): #TODO can we somehow allow the filepath per location?
+            # we may have a (landcover_name, landcover_filepath) definition, load the albedo data from yaml file
+            with open(DATA.get('ground_cover_albedos.yaml'), "r") as stream:
+                ground_cover_albedos = yaml.safe_load(stream)
+            if ground_albedo[0] in ground_cover_albedos["dataset_classtype_mapper"]:
+                if isfile(ground_albedo[1]):
+                    # we do have a known definition, adapt ground_albedo for further processing
+                    landcover_name = ground_albedo[0]
+                    ground_albedo = ground_albedo[1] 
+                else:
+                    raise ValueError(f"Tuple or list with len = 2 was passed as ground_cover with known landcover name '{ground_albedo[0]}' but filepath as second entry does not exist: '{ground_albedo[1]}'")
+            elif isfile(ground_albedo[1]): 
+                # the file exists but we have no known landcover name
+                raise ValueError(f"Tuple or list with len = 2 was passed as ground_cover with existing filepath as second entry but unknown landcover name: '{ground_albedo[0]}'")
+        # an Iterable of tuples has not been implemented yet
+        elif (
+            isinstance(ground_albedo, Iterable)
+            and not isinstance(ground_albedo, (str, bytes))
+            and any(isinstance(x, tuple) for x in ground_albedo)
+        ):
+            raise NotImplementedError("An iterable containing at least one tuple was passed as ground_albedo. Not implemented yet.")
+
+        # then format ground albedo input
+        albedo, filepaths = self._preprocess_variable(
+                varname = "ground_albedo",
+                value = ground_albedo,
+                allow_none = True,
+                replace_none = fallback,
+                assert_type = None,
+                force_cols = self._sim_shape_[0], # one per each timestep required
+                force_dims = 2,
+                transpose = True, # we need 8760 rows and Nloc columns here for sim shape
+            )
+        if any(isinstance(x, str) for x in filepaths) and landcover_name is None:
+            raise TypeError("ground_albedo scalar or array values may not be/contain strings, landcover dataset paths must be passed as single tuple/list: (landcover_name, landcover_path)")
+
+        # then get ground albedo from possibly linked land use datasets
         # define an aux function to extract ground albedos from landcover name and path
-        def _get_ground_albedo_from_landcover(landcover_name:str, landcover_path:str, fallback_albedo:float=0.2):
+        def _get_ground_albedo_from_landcover(landcover_name:str, landcover_path:str, fallback_albedo:float):
             """
             Get the mean snow-free broadband white sky albedos for the respective
             landcover per placement based on category type in the landcover dataset.
@@ -402,12 +734,6 @@ class SolarWorkflowManager(WorkflowManager):
                 list with local ground albedo values of length of placements 
                 attribute of invoking SolarWorkflowManager object
             """
-            assert isinstance(fallback_albedo, float) and 0<fallback_albedo<1,\
-                "fallback_albedo must be a float between 0.0 and 1.0"
-            # load the albedo data from yaml file
-            with open(DATA.get('ground_cover_albedos.yaml'), "r") as stream:
-                ground_cover_albedos = yaml.safe_load(stream)
-            
             # make sure landcover input is legit
             if landcover_name not in ground_cover_albedos["dataset_classtype_mapper"]:
                 raise KeyError(f"Unknown landcover_name '{landcover_name}'. Select from: {', '.join(ground_cover_albedos['dataset_classtype_mapper'].keys())}")
@@ -419,17 +745,9 @@ class SolarWorkflowManager(WorkflowManager):
                 raise TypeError(f"landcover_path must point to a raster type file: {e}")
             
             # get the landcover type categories for all placements
-            if "geom" in self.placements:
-                _geoms = self.placements["geom"].to_list()
-                if not all([g.GetGeometryName()=="POINT" for g in _geoms]):
-                    # get only the centroids, with SRS
-                    _CentroidWithSRS = lambda g, srs: (g.AssignSpatialReference(srs), g)[1]
-                    _geoms = [_CentroidWithSRS(g.Centroid(), g.GetSpatialReference()) for g in _geoms]
-            else:
-                _geoms = self.placements.apply(lambda x : gk.geom.point(x.lon, x.lat, srs=4326), axis=1).to_list()
             LCclasses = np.atleast_1d(gk.raster.interpolateValues(
                 source = landcover_path,
-                points = _geoms, 
+                points = self.locs, 
                 pointSRS="latlon", 
                 mode="near"
                 ))
@@ -448,258 +766,61 @@ class SolarWorkflowManager(WorkflowManager):
             ground_albedos = [groundtype_albedo_mapper[val_to_lc(c)] for c in LCclasses]
             assert not any([np.isnan(a) for a in ground_albedos]), "NaN values found in extracted ground_albedos."
             return ground_albedos
+        # iterate over all unique albedo filepaths
+        for fp in np.unique(filepaths[~pd.isna(filepaths)]):
+            # get the azimuths only for the affected locations
+            mask = (filepaths == fp)
+            iter_vals = np.asarray(_get_ground_albedo_from_landcover(
+                landcover_name = landcover_name, 
+                landcover_path = fp, 
+                fallback_albedo = fallback
+                ))
+            # last set the extracted elevations from this iteration in the main elevation array, duplicate iter_gcr row values per placement for every column            
+            albedo[:, mask] = iter_vals[mask][None, :]
 
-        # prepare the assign attribute function arguments
-        _default = ground_albedo if all([isinstance(x, float) for x in np.atleast_1d(ground_albedo)]) else None
-        _func = _get_ground_albedo_from_landcover if _default is None else None
-        _funcargs = {} if _func is None else {
-                "landcover_name" : ground_albedo[0],
-                "landcover_path" : ground_albedo[1]
-            }
-        _fallback = ground_albedo[2] if _func is not None and len(ground_albedo)==3 else None
-        
-        # apply generic function with ground albedo args
-        self._assign_attribute(
-            attr="grdalbedo", 
-            attr_default=_default, 
-            attr_col="grdalbedo", 
-            func=_func, 
-            attr_fallback=_fallback,
-            **_funcargs)
-        
-        # change scalar ground albedo per location to hourly system_grdalbedo array per location
-        self.sim_data["system_grdalbedo"] = np.tile(self.placements["grdalbedo"].to_numpy()[None, :], (self._sim_shape_[0], 1))
+        # # change scalar ground albedo per location to hourly system_grdalbedo array per location
+        # self.sim_data["system_grdalbedo"] = np.tile(self.placements["grdalbedo"].to_numpy()[None, :], (self._sim_shape_[0], 1)) 
+        assert albedo.shape == self._sim_shape_ #TODO delete this and commeted out lines hereabove when confirmed that above force_cols = self._sim_shape_[0] works
+
+        # now write hourly no-snow albedo values to sim_data
+        if not np.all((albedo > 0) & (albedo < 1)):
+            raise ValueError("ground albedo must be >0 and <1 for all locations.")
+        assert albedo.shape == self._sim_shape_ # make sure
+        self.sim_data["system_grdalbedo_nosnow"] = np.asarray(albedo, dtype=float)
 
         # consider snow albedo if applicable
-        if consider_snow_albedo:
+        consider_snow_albedo, _ = self._preprocess_variable(
+            varname = "consider_snow_albedo",
+            value = consider_snow_albedo,
+            allow_none = False,
+            replace_none = None,
+            assert_type = bool,
+            force_cols = 1, # one per loc
+            force_dims = 1,
+            as_dtype = bool,
+        )
+
+        if np.any(consider_snow_albedo):
             # make sure that we have loaded all required snow data variables
             if not all([var in self.sim_data for var in ["snow_albedo", "snow_depth_water_equivalent", "snow_density"]]):
                 raise AttributeError("consider_snow_albedo=True but no 'snow_albedo', 'snow_depth_water_equivalent' and/or 'snow_density' data found in sim_data attribute.")
             # mask only the timesteps with actual snow (>= 1cm) on the ground
             snow_mask = self.sim_data["snow_depth_water_equivalent"] * (1000 / self.sim_data["snow_density"]) >= 0.01 # m/h actual snow height on the ground
+            # apply snow albedo only to columns where consider_snow_albedo is True
+            snow_mask &= consider_snow_albedo
             # replace all ground albedo values at snowy timesteps by snow albedo
-            self.sim_data["system_grdalbedo"] = np.where(snow_mask, self.sim_data["snow_albedo"], self.sim_data["system_grdalbedo"])
+            albedo = np.where(snow_mask, self.sim_data["snow_albedo"], albedo)
 
         # final sanity check
-        if not np.all((self.sim_data["system_grdalbedo"] > 0) & (self.sim_data["system_grdalbedo"] < 1)):
+        if not np.all((albedo > 0) & (albedo < 1)):
             raise ValueError("ground albedo must be >0 and <1 for all locations.")
         
-        return self
-
-
-    def assign_gcr(self, gcr: str | float | Iterable):
-        """
-        Ensures or adds a ground coverage ratio ('gcr') column to the placements 
-        data frame. gcr is a value denoting the ground coverage ratio of a 
-        tracker system which utilizes backtracking; i.e. the ratio between the
-        PV array surface area to total ground area. A tracker system with modules 2 meters wide, centered on the tracking axis,
-            with 6 meters between the tracking axes has a gcr of 2/6=0.333. #TODO
-
-        Parameters
-        ----------
-        gcr : str, int, float, Iterable
-            If a string is given it must be either a known gcr convention or a 
-            path to a rasterfile including the local ground coverages.
-            If an iterable is given it has to include the gcrs at each location 
-            and be of equal length to self.placements dataframe.
-            If a float is given, it will be applied to all locations equally.
-            All values will be preceded by an existing 'gcr' column in the 
-            placements dataframe, only then None is accepted.
-
-        Returns
-        -------
-        obj
-            reference to the invoking SolarWorkflowManager object
-        """
-        assert "gcr" in self.placements.columns, "'gcr' column must exist in placements dataframe. #TODO allow function arg"
-        return self
-    
-
-    def estimate_module_azimuth_from_latitude(self, convention: str):
-        """
-        Estimates the fixed module azimuth of the placements of the instance and
-        writes them into the placements dataframe as 'modazimuth' column. Will use
-        existing values in 'modazimuth' column of self.placements dataframe.
-
-        Parameters
-        ----------
-        convention : str
-            The calculation method used to suggest module azimuths For details
-            see rk.solar.core.system_design.location_to_module_azimuth():
-            * "NorthSouth"
-            * Path to raster file.
-
-        Returns
-        -------
-        obj
-            reference to the invoking SolarWorkflowManager object
-        """
-        if not self.tracking == "fixed":
-            warnings.warn(
-                "estimate_module_azimuth_from_latitude() is called but tracking is not 'fixed'"
-            )
-
-        self._assign_attribute(
-            attr="modazimuth",
-            attr_default=None,  # no "standard azimuth"
-            attr_col="modazimuth",
-            func=rk_solar_core.system_design.location_to_module_azimuth,
-            **{"locs": self.locs, "convention": convention},
-        )
+        # now write hourly albedo values to sim_data
+        assert albedo.shape == self._sim_shape_ # make sure
+        self.sim_data["system_grdalbedo"] = np.asarray(albedo, dtype=float)
 
         return self
 
-
-    def estimate_tracker_axis_azimuth_from_latitude(self, convention:str):
-        """
-        Estimates the (primary) tracker axis azimuths of the placements of the 
-        instance and writes them into the placements dataframe as 'axazimuth' 
-        column. Will use existing values in 'axazimuth' column of 
-        self.placements dataframe.
-
-        Parameters
-        ----------
-        convention : str
-            The calculation method used to suggest axis azimuths For details 
-            see rk.solar.core.system_design.location_to_tracker_axis_azimuth():
-            * "North"
-            * Path to raster file.
-
-        Returns
-        -------
-        obj
-            reference to the invoking SolarWorkflowManager object
-        """
-        if not self.tracking == "singleaxis":
-            warnings.warn("estimate_tracker_axis_azimuth_from_latitude() is called but tracking is not 'singe-axis'")
-        
-        self._assign_attribute(
-            attr="axazimuth", 
-            attr_default=None, # no "standard azimuth"
-            attr_col="axazimuth", 
-            func=rk_solar_core.system_design.location_to_tracker_axis_azimuth, 
-            **{
-                "locs" : self.locs,
-                "convention" : convention
-            })
-
-        return self
-
-
-    def estimate_module_tilt_from_latitude(self, convention: str):
-        """
-        Estimates the module surface tilt of the solar panels based on the
-        latitude of the placements of the instance and writes them into the
-        placements dataframe as 'modtilt' column. Will use existing values in
-        'modtilt' column of self.placements dataframe.
-
-        Parameters
-        ----------
-        convention : str
-            The calculation method used to suggest module tilts. For details see
-            rk.solar.core.system_design.location_to_module_tilt():
-            * "Ryberg2020"
-            * string consumable by 'eval'. This string can use the variable
-              'latitude', for example "latitude*0.76".
-            * path to a rasterfile.
-
-        Returns
-        -------
-        obj
-            reference to the invoking SolarWorkflowManager object
-        """
-        if not self.tracking == "fixed":
-            warnings.warn(
-                "estimate_module_tilt_from_latitude() is called but tracking is not 'fixed'"
-            )
-
-        self._assign_attribute(
-            attr="modtilt",
-            attr_default=None,  # no "standard module tilt"
-            attr_col="modtilt",
-            func=rk_solar_core.system_design.location_to_module_tilt,
-            **{"locs": self.locs, "convention": convention},
-        )
-
-        return self
-
-
-    def estimate_tracker_axis_tilt_from_latitude(self, convention: str):
-        """
-        Estimates the (primary) tracker axis tilt for a single-axis tracking 
-        system based on the latitude of the placements of the instance and 
-        writes them into the placements dataframe as 'axtilt' column. Will use 
-        existing values in 'axtilt' column of self.placements dataframe.
-
-        Parameters
-        ----------
-        convention : str
-            The calculation method used to suggest axis tilts. For details see 
-            rk.solar.core.system_design.location_to_tracker_axis_tilt():
-            * "flat" assigns 0° axis tilt to all locations.
-            * A path to a rasterfile with angles facing in axis azimuth direction 
-              to extract axis tilts per location.
-
-        Returns
-        -------
-        obj
-            reference to the invoking SolarWorkflowManager object
-        """
-        if not self.tracking == "singleaxis":
-            warnings.warn(
-                "estimate_tracker_axis_tilt_from_latitude() is called but tracking is not 'singleaxis'"
-            )
-
-        self._assign_attribute(
-            attr="axtilt", 
-            attr_default=None, # no "standard axis tilt"
-            attr_col="axtilt", 
-            func=rk_solar_core.system_design.location_to_tracker_axis_tilt,
-            **{
-                "locs" : self.locs,
-                "convention" : convention
-            })
-
-        return self
-
-
-    def estimate_cross_axis_tilt_from_latitude(self, convention: str):
-        """
-        Estimates the cross axis azimuths at the placements of the 
-        instance and writes them into the placements dataframe as 'caxazimuth' 
-        column. Will use existing values in 'caxazimuth' column of 
-        self.placements dataframe.
-
-        Parameters
-        ----------
-        convention : str
-            The calculation method used to suggest cross axis tilts. For details 
-            see rk.solar.core.system_design.location_to_cross_axis_tilt():
-            * "flat" assigns 0° cross-axis tilt to all locations.
-            * A path to a rasterfile with angles facing in axis azimuth direction 
-              to extract axis tilts per location.
-
-        Returns
-        -------
-        obj
-            reference to the invoking SolarWorkflowManager object
-        """
-        if not self.tracking == "singleaxis":
-            warnings.warn(
-                "estimate_cross_axis_tilt_from_latitude() is called but tracking is not 'singeaxis'"
-            )
-        
-        self._assign_attribute(
-            attr="caxtilt", 
-            attr_default=None, # no "standard azimuth"
-            attr_col="caxtilt", 
-            func=rk_solar_core.system_design.location_to_cross_axis_tilt, 
-            **{
-                "locs" : self.locs,
-                "convention" : convention
-            })
-
-        return self
 
     ########################
     # GEOMETRIC OPERATIONS #
