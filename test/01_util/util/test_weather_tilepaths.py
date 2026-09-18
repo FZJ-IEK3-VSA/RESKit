@@ -20,19 +20,19 @@ def test_weather_tilepaths():
     df_base = df.copy()
 
     tile_paths = get_location_specific_weather_paths(
-        weather_paths=era5_path, 
-        locs=df["geom"], 
+        weather_paths=era5_path,
+        locs=df["geom"],
         zoom=4,
-        )
+    )
     assert tile_paths[0] == ".../4/8/5/2015"
 
     # test with iterable of geometry objects instead of dataframe
     # tile_paths = output.source.unique()
     tile_paths = get_location_specific_weather_paths(
-        weather_paths=era5_path, 
-        locs=list(df.geom), 
+        weather_paths=era5_path,
+        locs=list(df.geom),
         zoom=4,
-        )
+    )
     assert tile_paths[0] == ".../4/8/5/2015"
 
     # test with iterable of lat/lon tuples
@@ -40,10 +40,10 @@ def test_weather_tilepaths():
     df["lon"] = df.apply(lambda x: x.geom.GetX(), axis=1)
     df["lat"] = df.apply(lambda x: x.geom.GetY(), axis=1)
     tile_paths = get_location_specific_weather_paths(
-        weather_paths=era5_path, 
-        locs=list(zip(df.lon, df.lat)), 
+        weather_paths=era5_path,
+        locs=list(zip(df.lon, df.lat)),
         zoom=4,
-        )
+    )
     assert tile_paths[0] == ".../4/8/5/2015"
 
     # test with dataframe yet without weather path
@@ -53,8 +53,8 @@ def test_weather_tilepaths():
     with pytest.raises(AssertionError) as e:
         # must not work without "source" column
         tile_paths = get_location_specific_weather_paths(
-            weather_paths=None, 
-            locs=list(zip(df.lon, df.lat)), 
+            weather_paths=None,
+            locs=list(zip(df.lon, df.lat)),
             zoom=4,
         )
 
