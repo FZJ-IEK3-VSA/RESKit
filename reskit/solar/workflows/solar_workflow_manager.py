@@ -3682,123 +3682,131 @@ class SolarWorkflowManager(WorkflowManager):
         assert self.module is not None, "Configure module te be simulated first via configure_cec_module()."
 
         sel = self.sim_data["poa_global"] > 0
-        cell_temp = self.sim_data["cell_temperature"][sel]
-
-        if np.any(np.asarray(consider_snow_cover)): #TODO move this block to the plant (or module?) system setup and save parallel number of strings as attr
-            # calculate the number of cell strings in each module parallel to the snow cover line
-            if num_strings is None:
-                # take data from module if possible
-                if format == "landscape" and "N_p" in self.module.index: 
-                    # use the No of cell strings parallel to the long side
-                    assert isinstance(self.module["N_p"], int) and self.module["N_p"]>0 # make sure
-                    num_strings = self.module["N_p"]
-                else:
-                    # for portrait, all parallel strings are always affected, ergo only 1 parallel string along short side
-                    num_strings = 1 # also fall back on binary on/off solution when no N_p available
-            else:
-                assert isinstance(num_strings, int) and num_strings>0 # make sure
+        if not np.any(sel):
+            # avoid empty-array reductions if no positive POA, e.g. only a night time slice, is always zero then
+            self.sim_data["module_dc_power_at_mpp"] = np.zeros_like(
+                self.sim_data["poa_global"]
+            )
+            self.sim_data["module_dc_voltage_at_mpp"] = np.zeros_like(
+                self.sim_data["poa_global"]
+            )
         else:
-            # no snow coverage means no difference between strings, assume a single string for calculation efficiency
-            num_strings = 1
-        
-        # iterate over strings in module from bottom to top and simulate yield per each string separately as it may be covered or not
-        # Note that bottom/top side are inverted every half day when e.g. singleaxis, but has no effect on overall production as long as partial coverage remains the same
-        for _string in range(num_strings):
-            # each of the cell strings may produce on both sides, or only backside if frontside is covered
-            if np.any(np.asarray(consider_snow_cover)):
-                # conservative assumption based on pvlib.snow.dc_loss_nrel(): no production when at least partial coverage of string area
-                _production = 1- (self.sim_data["partial_snowcov"] > _string/num_strings)
+            # actually simulate
+            cell_temp = self.sim_data["cell_temperature"][sel]
+
+            if np.any(np.asarray(consider_snow_cover)): #TODO move this block to the plant (or module?) system setup and save parallel number of strings as attr
+                # calculate the number of cell strings in each module parallel to the snow cover line
+                if num_strings is None:
+                    # take data from module if possible
+                    if format == "landscape" and "N_p" in self.module.index: #TODO get format from plant data
+                        # use the No of cell strings parallel to the long side
+                        assert isinstance(self.module["N_p"], int) and self.module["N_p"]>0 # make sure
+                        num_strings = self.module["N_p"]
+                    else:
+                        # for portrait, all parallel strings are always affected, ergo only 1 parallel string along short side
+                        num_strings = 1 # also fall back on binary on/off solution when no N_p available
+                else:
+                    assert isinstance(num_strings, int) and num_strings>0 # make sure
             else:
-                # never covered, set to dummy with every time step exposed
-                _production = np.ones(shape=self._sim_shape_)
+                # no snow coverage means no difference between strings, assume a single string for calculation efficiency
+                num_strings = 1
+            
+            # iterate over strings in module from bottom to top and simulate yield per each string separately as it may be covered or not
+            # Note that bottom/top side are inverted every half day when e.g. singleaxis, but has no effect on overall production as long as partial coverage remains the same
+            for _string in range(num_strings):
+                # each of the cell strings may produce on both sides, or only backside if frontside is covered
+                if np.any(np.asarray(consider_snow_cover)):
+                    # conservative assumption based on pvlib.snow.dc_loss_nrel(): no production when at least partial coverage of string area
+                    _production = 1- (self.sim_data["partial_snowcov"] > _string/num_strings)
+                else:
+                    # never covered, set to dummy with every time step exposed
+                    _production = np.ones(shape=self._sim_shape_)
 
-            #TODO repeat simulation only for THOSE timesteps where the frontside cover boolean is different from cell strings calculated before -> save time when num_strings > 1
+                # different front- and backside irradiances would trigger (physically impossible) different electrical reactions of the same cell
+                # so reconcile front- and backside parameters: combine front and back POAs at the beginning and use a single interpolator 
+                # introduces a marginal rounding error but is much simpler/faster since params need to be calculated only once and are already aligned
+                poa = np.multiply(
+                    self.sim_data["poa_global"],
+                    _production # _production will be zero for non-production timesteps for this string (e.g. when snow-covered)
+                )[sel]
+                if not (self.plant_parameters_processed["bifaciality_factor"] == 0).all():
+                    # add the backside irradiance, reduced by bifaciality factor (simplified)
+                    poa_back = np.broadcast_to(self.plant_parameters_processed["bifaciality_factor"], sel.shape)[sel] * self.sim_data["poa_backside_global"][sel]
+                    # special case: Avoid artefacts when simulating vertical modules with snow
+                    # usually backside is not snow covered but for vertical panels, it is as exposed as the front side , so assume same snow cover
+                    # NOTE: Artefacts at very steep angles just below to 90° absolute tilt are still possible!
+                    if self.tracking == "fixed":
+                        # apply snow cover reduction to backside POA only of the VERTICAl modules as well
+                        vertical_mask = np.isclose(np.abs(self.plant_parameters_processed["module_tilt"]), 90.0)
+                        vertical_mask_sel = np.broadcast_to(vertical_mask, sel.shape)[sel]
+                        poa_back[vertical_mask_sel] *= _production[sel][vertical_mask_sel]
+                    # add possible snow-adjusted poa back to total poa
+                    poa += poa_back
 
-            # different front- and backside irradiances would trigger (physically impossible) different electrical reactions of the same cell
-            # so reconcile front- and backside parameters: combine front and back POAs at the beginning and use a single interpolator 
-            # introduces a marginal rounding error but is much simpler/faster since params need to be calculated only once and are already aligned
-            poa = np.multiply(
-                self.sim_data["poa_global"],
-                _production # _production will be zero for non-production timesteps for this string (e.g. when snow-covered)
-            )[sel]
-            if not (self.plant_parameters_processed["bifaciality_factor"] == 0).all():
-                # add the backside irradiance, reduced by bifaciality factor (simplified)
-                poa_back = np.broadcast_to(self.plant_parameters_processed["bifaciality_factor"], sel.shape)[sel] * self.sim_data["poa_backside_global"][sel]
-                # special case: Avoid artefacts when simulating vertical modules with snow
-                # usually backside is not snow covered but for vertical panels, it is as exposed as the front side , so assume same snow cover
-                # NOTE: Artefacts at very steep angles just below to 90° absolute tilt are still possible!
-                if self.tracking == "fixed":
-                    # apply snow cover reduction to backside POA only of the VERTICAl modules as well
-                    vertical_mask = np.isclose(np.abs(self.plant_parameters_processed["module_tilt"]), 90.0)
-                    vertical_mask_sel = np.broadcast_to(vertical_mask, sel.shape)[sel]
-                    poa_back[vertical_mask_sel] *= _production[sel][vertical_mask_sel]
-                # add possible snow-adjusted poa back to total poa
-                poa += poa_back
+                # Use RectBivariateSpline to speed up simulation, but at the cost of accuracy (should still be >99.996%)
+                maxpoa = np.nanmax(poa)
 
-            # Use RectBivariateSpline to speed up simulation, but at the cost of accuracy (should still be >99.996%)
-            maxpoa = np.nanmax(poa)
+                _poa = np.concatenate(
+                    [
+                        np.logspace(-1, np.log10(maxpoa / 10), 20, endpoint=False),
+                        np.linspace(maxpoa / 10, maxpoa, 80),
+                    ]
+                )
+                _temp = np.linspace(cell_temp.min(), cell_temp.max(), 100)
+                poaM, tempM = np.meshgrid(_poa, _temp)
 
-            _poa = np.concatenate(
-                [
-                    np.logspace(-1, np.log10(maxpoa / 10), 20, endpoint=False),
-                    np.linspace(maxpoa / 10, maxpoa, 80),
-                ]
-            )
-            _temp = np.linspace(cell_temp.min(), cell_temp.max(), 100)
-            poaM, tempM = np.meshgrid(_poa, _temp)
+                sotoParams = pvlib.pvsystem.calcparams_desoto(
+                    effective_irradiance=poaM.flatten(),
+                    temp_cell=tempM.flatten(),
+                    alpha_sc=self.module.alpha_sc,
+                    a_ref=self.module.a_ref,
+                    I_L_ref=self.module.I_L_ref,
+                    I_o_ref=self.module.I_o_ref,
+                    R_sh_ref=self.module.R_sh_ref,
+                    R_s=self.module.R_s,
+                    EgRef=1.121,  # PVLIB v0.7.2 Default
+                    dEgdT=-0.0002677,  # PVLIB v0.7.2 Default
+                    irrad_ref=1000,  # PVLIB v0.7.2 Default
+                    temp_ref=25,  # PVLIB v0.7.2 Default
+                )
 
-            sotoParams = pvlib.pvsystem.calcparams_desoto(
-                effective_irradiance=poaM.flatten(),
-                temp_cell=tempM.flatten(),
-                alpha_sc=self.module.alpha_sc,
-                a_ref=self.module.a_ref,
-                I_L_ref=self.module.I_L_ref,
-                I_o_ref=self.module.I_o_ref,
-                R_sh_ref=self.module.R_sh_ref,
-                R_s=self.module.R_s,
-                EgRef=1.121,  # PVLIB v0.7.2 Default
-                dEgdT=-0.0002677,  # PVLIB v0.7.2 Default
-                irrad_ref=1000,  # PVLIB v0.7.2 Default
-                temp_ref=25,  # PVLIB v0.7.2 Default
-            )
+                photoCur, satCur, resSeries, resShunt, nNsVth = sotoParams
+                gen = pvlib.pvsystem.singlediode(
+                    photocurrent=photoCur,
+                    saturation_current=satCur,
+                    resistance_series=resSeries,
+                    resistance_shunt=resShunt,
+                    nNsVth=nNsVth,
+                    method="lambertw",  # PVLIB v0.7.2 Default
+                )
+                if num_strings > 1: #TODO power could be added iteratively for more than one string but how to deal with different voltages per string, how to combine into one MODULE_dc_voltage_at_mpp?
+                    raise NotImplementedError("Define string-wise module_dc_power_at_mpp and module_dc_voltage_at_mpp combination for num_strings > 1 first.")
+                interpolator = RectBivariateSpline(
+                    _temp,
+                    _poa,
+                    np.array(gen["p_mp"]).reshape(poaM.shape),
+                    kx=3,
+                    ky=3,  # np.array() since type changed between pvlib versions
+                )
+                self.sim_data["module_dc_power_at_mpp"] = np.zeros_like(self.sim_data["poa_global"])
+                self.sim_data["module_dc_power_at_mpp"][sel] = interpolator(cell_temp, poa, grid=False)
 
-            photoCur, satCur, resSeries, resShunt, nNsVth = sotoParams
-            gen = pvlib.pvsystem.singlediode(
-                photocurrent=photoCur,
-                saturation_current=satCur,
-                resistance_series=resSeries,
-                resistance_shunt=resShunt,
-                nNsVth=nNsVth,
-                method="lambertw",  # PVLIB v0.7.2 Default
-            )
-            if num_strings > 1: #TODO power could be added iteratively for more than one string but how to deal with different voltages per string, how to combine into one MODULE_dc_voltage_at_mpp?
-                raise NotImplementedError("Define string-wise module_dc_power_at_mpp and module_dc_voltage_at_mpp combination for num_strings > 1 first.")
-            interpolator = RectBivariateSpline(
-                _temp,
-                _poa,
-                np.array(gen["p_mp"]).reshape(poaM.shape),
-                kx=3,
-                ky=3,  # np.array() since type changed between pvlib versions
-            )
-            self.sim_data["module_dc_power_at_mpp"] = np.zeros_like(self.sim_data["poa_global"])
-            self.sim_data["module_dc_power_at_mpp"][sel] = interpolator(cell_temp, poa, grid=False)
-
-            interpolator = RectBivariateSpline(
-                _temp,
-                _poa,
-                np.array(gen["v_mp"]).reshape(poaM.shape),
-                kx=3,
-                ky=3,  # np.array() since type changed between pvlib versions
-            )
-            self.sim_data["module_dc_voltage_at_mpp"] = np.zeros_like(self.sim_data["poa_global"])
-            self.sim_data["module_dc_voltage_at_mpp"][sel] = interpolator(cell_temp, poa, grid=False)
+                interpolator = RectBivariateSpline(
+                    _temp,
+                    _poa,
+                    np.array(gen["v_mp"]).reshape(poaM.shape),
+                    kx=3,
+                    ky=3,  # np.array() since type changed between pvlib versions
+                )
+                self.sim_data["module_dc_voltage_at_mpp"] = np.zeros_like(self.sim_data["poa_global"])
+                self.sim_data["module_dc_voltage_at_mpp"][sel] = interpolator(cell_temp, poa, grid=False)
         
         self.sim_data["capacity_factor"] = self.sim_data["module_dc_power_at_mpp"] / (
             self.module.I_mp_ref * self.module.V_mp_ref
         )
 
         # Estimate total system generation
-        if "capacity" in self.plant_parameters_processed and not self._is_none(self.plant_parameters_processed).any():
+        if "capacity" in self.plant_parameters_processed and not self._is_none(self.plant_parameters_processed["capacity"]).any():
             self.sim_data["total_system_generation"] = self.sim_data["capacity_factor"] * np.broadcast_to(
                 self.plant_parameters_processed["capacity"], self._sim_shape_
             )
