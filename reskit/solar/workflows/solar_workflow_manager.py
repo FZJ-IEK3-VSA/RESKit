@@ -870,41 +870,37 @@ class SolarWorkflowManager(WorkflowManager):
 
         """
         # check placements dataframe and sim_data attributes
-        assert "lon" in self.placements.columns, \
-            "'lon' is a mandatory column in placements dataframe"
-        assert "lat" in self.placements.columns, \
-            "'lat' is a mandatory column in placements dataframe"
-        assert "elev" in self.placements.columns, \
-            "'elev' is a mandatory column in placements dataframe"
-        assert "surface_pressure" in self.sim_data,\
-            "'surface_pressure' must be read in first via wfm.read()"
-        assert "surface_air_temperature" in self.sim_data,\
-            "'surface_air_temperature' must be read in first via wfm.read()"
-
-        rounded_locs = pd.DataFrame()
-        rounded_locs["lon"] = np.round(self.placements["lon"].values, lon_rounding)
-        rounded_locs["lat"] = np.round(self.placements["lat"].values, lat_rounding)
-        rounded_locs["elev"] = np.round(self.placements["elev"].values, elev_rounding)
-
+        if "elevation" not in self.plant_parameters_processed:
+            raise AttributeError(f"'elevation' attribute missing in self.plant_parameters_processed, run self.preprocess_elevation() first.")
+        if "surface_pressure" not in self.sim_data:
+            raise AttributeError("'surface_pressure' must be read in first via wfm.read()")
+        if "surface_air_temperature" not in self.sim_data:
+            raise AttributeError("'surface_air_temperature' must be read in first via wfm.read()")
+        
         solar_position_library = dict()
 
         # pd.DataFrame(np.nan, index=self.time_index, columns=self.locs)
         self.sim_data["solar_azimuth"] = np.full_like(self.sim_data["surface_pressure"], np.nan)
         # pd.DataFrame(np.nan, index=self.time_index, columns=self.locs)
         self.sim_data["apparent_solar_zenith"] = np.full_like(self.sim_data["surface_pressure"], np.nan)
-        # self.sim_data['apparent_solar_elevation'] = np.full_like(self.sim_data['surface_pressure'], np.nan)  # pd.DataFrame(np.nan, index=self.time_index, columns=self.locs)
+        # self.sim_data['apparent_solar_elevation'] = np.full_like(self.sim_data['surface_pressure'], np.nan)  # pd.DataFrame(np.nan, index=self.time_index, columns=self.locs) #TODO delete?
 
-        for loc, row in enumerate(rounded_locs.itertuples()):
-            key = (row.lon, row.lat, row.elev)
+        # get and round values
+        lats = np.round(self.locs.lats, lat_rounding)
+        lons = np.round(self.locs.lons, lon_rounding)
+        elevs = np.round(self.plant_parameters_processed["elevation"], elev_rounding)
+
+        for loc, (lat, lon, elev) in enumerate(zip(lats, lons, elevs)):
+            key = (lon, lat, elev)
             if key in solar_position_library:
-                _solpos_ = solar_position_library[key]
+                _solpos_ = solar_position_library[key] 
             else:
                 # make sure that no input is nan to avoid very hard-to-understand errors later on
                 _req = [
                     self.time_index,
-                    row.lat,
-                    row.lon,
-                    row.elev,
+                    lat,
+                    lon,
+                    elev,
                     self.sim_data["surface_pressure"][:, loc],
                     self.sim_data["surface_air_temperature"][:, loc],
                 ]
@@ -916,9 +912,9 @@ class SolarWorkflowManager(WorkflowManager):
                 ), "Arguments for pvlib.solarposition.spa_python() may not be NaN."
                 _solpos_ = pvlib.solarposition.spa_python(
                     self.time_index,
-                    latitude=row.lat,
-                    longitude=row.lon,
-                    altitude=row.elev,
+                    latitude=lat,
+                    longitude=lon,
+                    altitude=elev,
                     pressure=self.sim_data["surface_pressure"][:, loc],
                     temperature=self.sim_data["surface_air_temperature"][:, loc],
                 )
