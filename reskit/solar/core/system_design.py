@@ -259,10 +259,10 @@ def location_to_cross_axis_tilt(locs, convention:str="flat", fallback:int|float=
     return caxtilts
 
 def location_to_gcr_tonita_et_al_2023(
-        lat : int | float, 
-        bifaciality_factor : int | float,
-        tracking : str,
-        shading_loss : float,
+        lat : int | float | np.ndarray, 
+        bifaciality_factor : int | float | np.ndarray,
+        tracking : str | np.ndarray,
+        shading_loss : float | np.ndarray,
         ):
     """
     Returns the optimal Ground Coverage Ratio for a horizontal 
@@ -426,7 +426,7 @@ def location_to_gcr_tonita_et_al_2023(
 def location_to_gcr(
         convention: str, 
         tracking: str | np.ndarray, 
-        min_gcr : float | np.ndarray | NoneType = 0.3,
+        min_gcr : float | np.ndarray | NoneType = 0.169,
         no_nan : bool = True,
         **kwargs):
     """
@@ -451,7 +451,7 @@ def location_to_gcr(
           via geokit.raster.interpolateValues()
     min_gcr : float | NoneType, optional
         If given as a float, GCR values will be limited to this minimum value.
-        Has no effect if None, by default 0.3.
+        Has no effect if None, by default 0.169 (see PhD project Winkler).
     no_nan : bool, optional
         Enforces no NaN gcr values if True, by default True.
     kwargs: 

@@ -14,6 +14,7 @@ import re
 from collections.abc import Iterable
 
 from reskit.solar import core as rk_solar_core
+from reskit.util.generic_helpers import _align_inputs
 from reskit.workflow_manager import WorkflowManager
 
 from reskit.solar import DATA #TODO move data into core analog to wind/core/data
@@ -178,9 +179,10 @@ class SolarWorkflowManager(WorkflowManager):
 
     def preprocess_ground_coverage_ratio(
         self,
-        gcr = float | str | Iterable,
+        gcr : float | str | Iterable,
         fallback: float | NoneType = None,
-        min_gcr : float | NoneType = 0.3,
+        min_gcr : float | NoneType = 0.169,
+        min_interrow_distance : int | float | np.ndarray = 2.5,
     ):
         """
         Preprocesses the gcr input into a 1d array with a single numeric value per 
@@ -205,7 +207,10 @@ class SolarWorkflowManager(WorkflowManager):
             the primary value cannot be extracted.
         min_gcr : float | NoneType, optional
             If given as a float, GCR values will be limited to this minimum value.
-            Has no effect if None, by default 0.3.
+            Has no effect if None, by default 0.169.
+        min_interrow_distance : int | float | np.ndarray, optional
+            The minimum width in m between the inner edges of 2 neighboring rows, 
+            to allow e.g. acces for maintenance vehicles. By default 2.5 [m].
 
         Returns
         -------
@@ -215,6 +220,12 @@ class SolarWorkflowManager(WorkflowManager):
         assert fallback is None or isinstance(
             fallback, float
         ) and 0<fallback<=1, "gcr 'fallback' must be a float >0 and <=1."
+
+        # preprocess min_interrow_distance to locs array shape
+        _, min_interrow_distance, _ = _align_inputs(
+            self.locs.lats,
+            min_interrow_distance,
+        )
 
         # first save input to allow tracing the processing 
         self.plant_parameters_raw["gcr"] = gcr
@@ -235,17 +246,38 @@ class SolarWorkflowManager(WorkflowManager):
         for conv in np.unique(conventions[~pd.isna(conventions)]):
             # get the gcrs only for the affected locations
             mask = (conventions == conv)
-            iter_gcrs = rk_solar_core.system_design.location_to_gcr(
-                locs = self.locs[mask], 
-                module_tilt = None if self.workflow_args["tracking"] == "singleaxis" else self.plant_parameters_processed["module_tilt"][mask],
-                tracking = self.workflow_args["tracking"], #TODO change when this becomes a plant_parameter, then iterate over different trackings or adapt location_to_gcr (location_to_gcr currently expects scalar tracking value)
-                convention = conv, 
-                north_slope=self.plant_parameters_processed["north_slope"][mask],
-                east_slope = None, # negligible effect as long as modules are North/South facing, add when other azimuths are possible in location_to_gcr
-                min_gcr = min_gcr,
-            )
+            # handle different conventions differently
+            if isfile(conv):
+                # assume it is a raster and extract value
+                try:
+                    iter_gcrs = gk.raster.interpolateValues(
+                        source = conv,
+                        points = self.locs[mask],
+                    )
+                except Exception as e:
+                    raise RuntimeError(f"convention is an existing file but data could not be extracted via gk.raster.interpolateValues(): {e}")
+            elif conv == "winter_solstice_rule":
+                assert self.tracking == "fixed", f"'winter_solstice_rule' convention can only be applied to 'fixed', here '{self.tracking}' tracking."
+                iter_row_pitches, iter_gcrs = rk_solar_core.system_design.location_to_gcr_and_row_pitch_winter_solstice_rule(
+                    lats = self.locs.lats[mask], 
+                    module_tilts = self.plant_parameters_processed["module_tilt"][mask], 
+                    north_slopes = self.plant_parameters_processed["north_slope"][mask], 
+                    solar_hour = 12, 
+                    module_area_width = self.plant_parameters_processed["pvrow_width_sloped"][mask],
+                    min_interrow_distance = min_interrow_distance[mask]
+                )
+            elif conv == "tonita_et_al_2023":
+                iter_gcrs = rk_solar_core.system_design.location_to_gcr_tonita_et_al_2023(
+                    lat = self.locs.lats[mask], 
+                    bifaciality_factor = self.plant_parameters_processed["bifaciality_factor"][mask],
+                    tracking = self.tracking,
+                    shading_loss = 0.05, 
+                )
+            else:
+                raise NotImplementedError(f"Location-to-GCR convention '{conv}' is not implemented yet. Choose from: 'winter_solstice_rule', 'tonita_et_al_2023' or a raster filepath with GCR information.")
+
             if np.isnan(iter_gcrs).any():
-                # we have nans in the data that we just extracted
+                # we have nans in the data that we just extracted/calculated
                 if fallback is None:
                     # no fallback means we must fail if primary option does not work
                     raise ValueError("gcr values could not be extracted for all locations.")
@@ -256,7 +288,7 @@ class SolarWorkflowManager(WorkflowManager):
                         np.ones(shape=iter_gcrs.shape) * fallback
                     )[np.isnan(iter_gcrs)]
             # last set the extracted elevations from this iteration in the main elevation array, duplicate iter_gcr row values per placement for every column
-            gcr[mask, :] = iter_gcrs[:, None]
+            gcr[mask] = iter_gcrs
         # warn of unavailable elevation data if required
         if fallbacks_applied > 0:
             warnings.warn(f"GCR for {fallbacks_applied} out of {self.locs.count} placements could not be extracted from desired convention and has been replaced with fallback value {fallback}.")

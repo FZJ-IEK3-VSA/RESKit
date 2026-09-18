@@ -533,7 +533,7 @@ def pv_era5_WinklerUnpublished(
             view). Can be provided as a scalar or an iterable per location.
             If None is provided, the gcr convention will be assigned based on the
             tracking style (see reskit.solar.core.system_design.location_to_gcr):
-            * singleaxis: "tonita_et_al_2023_5perc" convention
+            * singleaxis: "tonita_et_al_2023" convention
             * fixed: "winter_solstice_rule" convention
             By default None.
     ground_albedo : float | str | Iterable | tuple, optional
@@ -731,9 +731,9 @@ def pv_era5_WinklerUnpublished(
         raise ValueError(f"tracking may only be 'fixed' or 'singleaxis' but is '{tracking}' here.")
     if gcr is None:
         # if not provided explitly, define gcr as tracking-specific defaults for this workflow
-        gcr = "winter_solstice_rule" if tracking == "fixed" else "tonita_et_al_2023_5perc" #TODO was 0.358
+        gcr = "winter_solstice_rule" if tracking == "fixed" else "tonita_et_al_2023"
     wf.preprocess_pvrow_height(pvrow_height=pvrow_height)
-    wf.preprocess_ground_coverage_ratio(gcr = gcr, min_gcr = 0.3)
+    wf.preprocess_ground_coverage_ratio(gcr = gcr, min_gcr = 0.169, fallback = None, min_interrow_distance=2.5)
     wf.preprocess_capacity(capacity = capacity)
 
     # PREPROCESS IRRADIATION
