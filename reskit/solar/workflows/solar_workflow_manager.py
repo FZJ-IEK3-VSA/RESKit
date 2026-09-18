@@ -10,6 +10,7 @@ from types import NoneType
 import warnings
 from scipy.interpolate import RectBivariateSpline
 import json
+import re
 from collections.abc import Iterable
 
 from reskit.solar import core as rk_solar_core
@@ -2958,7 +2959,8 @@ class SolarWorkflowManager(WorkflowManager):
         module:str="WINAICO WSx-240P6",
         tracking:str="fixed",
         tech_year:int=2050,
-        database="CEC Modules.csv"
+        database="CEC Modules.csv",
+        module_configuration : str = "2P",
     ):
         """
         configure_cec_module(self, module="WINAICO WSx-240P6")
@@ -2984,6 +2986,10 @@ class SolarWorkflowManager(WorkflowManager):
             year. Must then be between year of market comparison in analysis (2019) and 2050.
             Will be ignored when non-projected existing module names or specific parameters
             are given, can then be None. By default 2050.
+        module_configuration : str, optional
+            The number and orientation in which the modules are mounted, e.g. "2P" for
+            two-in-portrait, 2 modules stacked in a portrait orientation along the sloped 
+            length. 
         database : str, optional
             The database that shall be loaded, either via a known database in 
             pvlib.pvsystem.retrieve_sam() or as filename of a .csv database in 
@@ -3193,39 +3199,46 @@ class SolarWorkflowManager(WorkflowManager):
             except Exception:
                 module_desc = "user-configured"
             self.register_workflow_parameter("module_desc", module_desc)
+        
+        # some modules lack dimensional information, add it if info has been added to length_dict/width_dict manually
+        if "Length" not in module.index or pd.isnull(module["Length"]):
+            length_dict = {
+                    'Trina Solar Co.Ltd TSM-700NEG21C.20' : 2.384
+                }
+            try:
+                module["Length"] = length_dict[module.name]
+            except:
+                warnings.warn(f"module '{module.name}' from database has no Length information and no additional Length information found in RESKit dictionary. Add Length info manually in length_dict in configure_cec_module()")
+        if "Width" not in module.index or pd.isnull(module["Width"]):
+            width_dict = {
+                    'Trina Solar Co.Ltd TSM-700NEG21C.20' : 1.303
+                }
+            try:
+                module["Width"] = width_dict[module.name]
+            except:
+                warnings.warn(f"module '{module.name}' from database has no Width information and no additional Width information found in RESKit dictionary. Add Width info manually in width_dict in configure_cec_module()")
 
+        # save module info
         self.module = module
 
-        self.bifacial = hasattr(module, "Bifacial") and module["Bifacial"] in [1, "1", "YES", "Yes", "Y", True]
-
-        # set the right bifaciality factor, may come from module data or from workflow args
-        if self.bifacial:
-            # we need a bifaciality_factor
-            if bifaciality_factor is not None:
-                # when bifaciality factor is given in args and module is bifacial, it will be used
-                assert 0 <= bifaciality_factor <= 1, "bifaciality_factor arg value is expected to be >=0 and <=1 if module is bifacial, can be set to 0 to null effect."
-                if hasattr(module, "bifaciality_factor"):
-                    # we have a bifaciality_factor value in both workflow args and module data, prioritize arg
-                    warnings.warn(
-                        f"bifaciality_factor arg is not None and 'bifaciality_factor' key exists in module data. Module data will be overwritten by bifaciality_factor arg: {bifaciality_factor}."
-                    )
-                self.bifaciality_factor = bifaciality_factor
-                if bifaciality_factor == 0:
-                    # obviously, bifacial calculation is not intended, save time
-                    self.bifacial = False
-            elif hasattr(module, "bifaciality_factor"):
-                # we only have a bifaciality_factor in the module data, use it
-                assert 0 < module["bifaciality_factor"] <= 1, "module bifaciality_factor from database is expected to be >0 and <=1." # make sure
-                self.bifaciality_factor = module["bifaciality_factor"]
-            else:
-                # neither module nor args have bifaciality_factor
-                raise TypeError("bifaciality_factor arg is needed when module is bifacial but does not have a 'bifaciality_factor' attribute. Can be set to 0 to null effect.")
+        # ensure a known module orientation and deconstruct it into orientation and number of stacked modules #TODO make this an iterable once module can be defined per loc
+        assert isinstance(module_configuration, str), "module_configuration must be a string like '1P' or '3L'"
+        pattern = re.compile(r"^([1-9]\d*)([PL])$", re.IGNORECASE)
+        match = pattern.fullmatch(module_configuration)
+        if match:
+            stacked_qty = int(match.group(1))
+            orientation = {"L":"landscape", "P": "portrait"}[match.group(2).upper()]
         else:
-            # bifaciality factor must be None
-            if bifaciality_factor is not None:
-                # not bifacial but bifaciality factor in args, inore and set to None
-                print(f"NOTE: bifaciality_factor is not None ({bifaciality_factor}) but module '{module._name}' is not bifacial, bifaciality_factor will be ignored.")
-            self.bifaciality_factor = None
+            raise ValueError(f"Invalid module_configuration format: '{module_configuration}'. Must be a string like '1P' or '3L'")
+        # store the module configuration and details as attributes
+        self.module_configuration = module_configuration
+        self.modules_stacked = stacked_qty
+        self.module_orientation = orientation
+
+        # calculate the array width based on the module and orientation info
+        crossdim = {"portrait" : "Length", "landscape" : "Width"}[self.module_orientation]
+        pvrow_width_sloped = module[crossdim] * self.modules_stacked
+        self.plant_parameters_processed["pvrow_width_sloped"] = np.full(self.locs.count, pvrow_width_sloped)
 
         return self
 
