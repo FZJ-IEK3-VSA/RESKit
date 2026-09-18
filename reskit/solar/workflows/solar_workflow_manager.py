@@ -1423,13 +1423,82 @@ class SolarWorkflowManager(WorkflowManager):
         return self
 
 
-    def permit_single_axis_tracking(self, max_angle=90, backtrack=True):
+    def calculate_local_horizon_based_on_hillslope(
+            self,             
+            azimuthal_stepsize : int | float = 3.0, 
+            allow_negative : bool = True, 
+            ):
         """
-        Permits single axis tracking in the simulation using the 
-        pvlib.tracking.singleaxis() function [1].
+        Calculates an elliptical horizon based on the assumption of a plant 
+        hillslope plane which is much larger than the plant height, leading to 
+        a horizon angle equal to the hillslope angle in the direction of the 
+        slope line and horizon angle = 0° crosswise from North = 0°. 
+        The resulting profile will be stored "local_horizon_profile" under 
+        self.plant_parameters_processed.
 
         Parameters
         ----------
+        azimuthal_stepsize : int | float, optional
+            The angular distance between sampling points for a 360° round view
+            horizon profile starting from North 0° clockwise, e.g. 3° will lead 
+            to 120 sampling points. Should be aligned with the distant horizon 
+            sampling points for later combination. By default 3.0°. 
+        allow_negative : bool, optional
+            The local horizon may lead to significant negative horizon angles 
+            towards the downhill direction. That is not realistic in the far 
+            distance, so set allow_negative to False to enforce a minimum of 
+            zero degrees unless you combine it with a far distant horizon later.
+            By default True.
+
+        Returns
+        -------
+        obj
+            a reference to the invoking SolarWorkflowManager object.
+        """
+        assert isinstance(azimuthal_stepsize, (int, float)), "azimuthal_stepsize must be int or float"
+
+        # get hill slopes and azimuths, preprocess if needed
+        if not ("general_slope" in self.plant_parameters_processed and "downhill_azimuth" in self.plant_parameters_processed):
+            raise AttributeError("'general_slope' and 'downhill_azimuth' are required, run self.preprocess_hill_slope_and_azimuth() first.", flush=True)
+        hill_slopes = np.asarray(self.plant_parameters_processed["general_slope"], dtype=float)
+        slope_azimuths = np.asarray(self.plant_parameters_processed["downhill_azimuth"], dtype=float)
+
+        # invert the azimuth to look uphill
+        uphill_slope_azimuth = (slope_azimuths  + 180.0) % 360.0
+        uphill_slope_azimuth_rad = np.deg2rad(uphill_slope_azimuth)
+
+        # define the sampling points for the azimuth angles
+        if not np.isscalar(azimuthal_stepsize):
+            raise TypeError("azimuthal_stepsize must be a scalar number.")
+        azimuthal_stepsize = float(azimuthal_stepsize)
+        if not np.isfinite(azimuthal_stepsize) or azimuthal_stepsize <= 0:
+            raise ValueError(
+                "azimuthal_stepsize must be finite and greater than zero."
+            )
+        number_of_steps = 360.0 / azimuthal_stepsize
+        if not np.isclose(number_of_steps, round(number_of_steps)):
+            raise ValueError(
+                f"azimuthal_stepsize={azimuthal_stepsize} does not divide "
+                "360 degrees evenly."
+            )
+        azimuths = np.arange(0, 360, azimuthal_stepsize)
+        azimuths_rad = np.deg2rad(azimuths)
+        # calculate the local horizon angles mathematically based on uphill slope and direction
+        local_horizon_profile = np.rad2deg(
+            np.arctan(
+                np.tan(np.deg2rad(hill_slopes))[:, None]
+                * np.cos(azimuths_rad[None, :] - uphill_slope_azimuth_rad[:, None])
+            )
+        )
+        if not allow_negative:
+            # set negative horizon angles to zero to account for the distant horizon unless it is applied explicitly later
+            local_horizon_profile = np.maximum(local_horizon_profile, 0.0)
+        
+        # write as processed attribute
+        self.plant_parameters_processed["local_horizon_profile"] = np.asarray(local_horizon_profile, dtype=float)
+
+        return self
+
 
     def preprocess_singleaxis_and_crossaxis(
             self,
