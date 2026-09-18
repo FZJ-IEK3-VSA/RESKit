@@ -169,7 +169,7 @@ def _prepare_era5(
         raw_variables=rk.weather.Era5Source.raw_passthrough_variables(variables),
     )
     if tiling:
-        # return a path template for get_dataframe_with_weather_tilepaths()
+        # return a path template for weather_tile.get_tilepath()
         era5_path = os.path.join(era5_path, "<ZOOM>", "<X-TILE>", "<Y-TILE>")
     return {"era5_path": era5_path}
 
