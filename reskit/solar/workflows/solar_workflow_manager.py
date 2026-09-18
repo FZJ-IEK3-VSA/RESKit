@@ -1295,6 +1295,198 @@ class SolarWorkflowManager(WorkflowManager):
         return self
 
 
+    def preprocess_distant_horizon_profile(
+        self,
+        distant_horizon_profile : float | int | None | Iterable,
+        azimuthal_stepsize = 3.0,
+        min_sampling_points = 12,
+        **kwargs,
+    ):
+        """
+        Preprocesses the raw distant_horizon_profile inputs such that one distant horizon
+        profile per placement with horizon angles over flat horizon is written into
+        self.plant_parameters_processed. Checks numeric profiles, sets None to flat 
+        profiles and calculates complex profiles from location and DEM filepaths where given.
+
+        Parameters
+        ----------
+        distant_horizon_profile : str | None | Iterable
+            The distant horizon profile as positive angles above flat horizon for evenly
+            spaced azimuthal view angles, per every location. If a str per location is 
+            given, a single filepath to a DEM is expected from which the distant horizon 
+            profile will be calculated.
+        azimuthal_stepsize : float, optional
+            The even spacing between azimuthal view axes/sampling angles of the horizon 
+            profile, by default 3.0 [°] (i.e. 120 sampling points for 360° view)
+        min_sampling_points : int, optional
+            The minn. number of azimuthal angles/sampling points in the horizon profile, 
+            by default 12 (i.e. resolution not coarser than 30°)
+        **kwargs
+            Will be passed on to self._calculate_distant_horizon_profile()
+
+        Returns
+        -------
+        obj
+            a reference to the invoking SolarWorkflowManager object.
+        """
+        # first process the distant_horizon_profile as a copy of the input data
+        distant_horizon_profile = np.asarray(distant_horizon_profile, dtype=object).copy()
+        # must be either a single horizon profile array with e.g. None or one filepath per placement (1D) or one profile per placement (2D)
+        if distant_horizon_profile.size == 1: # scalar
+            if distant_horizon_profile.item() == 0:
+                distant_horizon_profile = None
+            distant_horizon_profile = np.full((self.locs.count, 1), distant_horizon_profile, dtype=object) # always use 2D view
+        elif distant_horizon_profile.ndim == 1:
+            # first check if this is given as value per location
+            is_none = self._is_none(distant_horizon_profile)
+            is_str = np.fromiter(
+                (isinstance(value, str) for value in distant_horizon_profile),
+                dtype=bool,
+                count=distant_horizon_profile.size,
+            )
+            is_zero = (distant_horizon_profile == 0)
+            if distant_horizon_profile.size == self.locs.count and np.all(is_none | is_str | is_zero):
+                # first replace a single scalar zero per location (spacer for no profile) with a None to align later processing
+                distant_horizon_profile[is_zero] = None
+                # we have one value per location which is either str or None/zero (float/int makes no sense for a profile per location, should be None = zero or a DEM path)
+                distant_horizon_profile = distant_horizon_profile[:, None] # always use 2D view
+            else:
+                # 1D input is interpreted as one angular horizon profile
+                distant_horizon_profile = np.broadcast_to(
+                    distant_horizon_profile[None, :],
+                    (self.locs.count, distant_horizon_profile.size)
+                ).copy()
+        elif distant_horizon_profile.ndim == 2:
+            if distant_horizon_profile.shape[0] != self.locs.count:
+                raise ValueError(
+                    f"The number of distant horizon profiles (first dimension of distant_horizon_profile: {distant_horizon_profile.shape[0]}) does not match the number of locations ({self.locs.count})."
+                )
+        else:
+            raise ValueError(
+                "'distant_horizon_profile' must be scalar or a 1D or 2D array."
+            )
+        
+        # we have 3 different types of potential horizon info, assign them to 3 separate masks for processing:
+        # None (no horizon = all zero), numeric iterable of actual horizon angles and a str formatted path to a digital elevation model raster
+        n_rows = distant_horizon_profile.shape[0]
+        num_mask = np.zeros(n_rows, dtype=bool)
+        none_mask = np.zeros(n_rows, dtype=bool)
+        str_mask = np.zeros(n_rows, dtype=bool)
+
+        # store the single filepath/string associated with each string row
+        str_values = np.empty(n_rows, dtype=object)
+        str_values[:] = None
+
+        for i, row in enumerate(distant_horizon_profile):
+            # first check if entries are None
+            row_none_mask = np.fromiter(
+                (value is None for value in row),
+                dtype=bool,
+                count=row.size,
+            )
+            # set None mask to True for this row only if the whole row is None, then continue.
+            if row_none_mask.all():
+                none_mask[i] = True
+                continue
+            
+            # else try strings
+            row_str_mask = np.fromiter(
+                (isinstance(value, str) for value in row),
+                dtype=bool,
+                count=row.size,
+            )
+            # same here: set str mask to True for this row only if the whole row is str, here also make sure the str are all the SAME per row! Then continue.
+            if row_str_mask.all():
+                if not np.all(row == row[0]):
+                    raise ValueError(
+                        f"distant_horizon_profile for placement #{i} contains multiple different strings."
+                    )
+                str_mask[i] = True
+                str_values[i] = row[0] # additionally populate the array with single strings per row
+                continue
+
+            # then try numeric values
+            row_num_mask = np.fromiter(
+                (isinstance(value, (int, float, np.integer, np.floating))
+                and not isinstance(value, (bool, np.bool_))
+                for value in row),
+                dtype=bool,
+                count=row.size,
+            )
+            # set numeric mask to True for this row only if the whole row is numeric
+            if row_num_mask.all():
+                numeric_row = np.asarray(row, dtype=float)
+                if not np.isfinite(numeric_row).all():
+                    raise ValueError(
+                        f"distant_horizon_profile for placement #{i} contains NaN or infinite values."
+                    )
+                num_mask[i] = True
+                continue
+
+            # must not contain rows that mix None or strings with other values
+            if row_none_mask.any() or row_str_mask.any():
+                raise ValueError(
+                    f"distant_horizon_profile for placement #{i} mixes numeric values, None, and/or strings."
+                )
+            # cover possibly unforeseen value issues
+            raise ValueError(
+                f"distant_horizon_profile for placement #{i} contains unsupported non-numeric values: {row}."
+            )     
+        
+        # deal with the azimuthal sampling angles
+        if np.any(num_mask):
+            # we do have actual exogenous distant horizon profiles given
+            # assume 360° round view and overwite step size resulting from number of sampling points
+            azimuthal_stepsize = float(360 / distant_horizon_profile.shape[1])
+            if distant_horizon_profile.shape[1] < min_sampling_points:
+                # there is no point in a far distant horizon "profile" with such coarse segments
+                raise ValueError(
+                    f"distant_horizon_profile is given as float iterable for at least one placement but has only {distant_horizon_profile.shape[1]} sampling points resulting in coarse {azimuthal_stepsize}° azimuthal resolution. Min. required sampling points are {min_sampling_points}.")
+        # in any case generate an evenly spaced array from 0 to < 360 with the azimuthal stepsize
+        azimuths = np.arange(0, 360, azimuthal_stepsize)
+
+        # then make sure that distant_horizon_profile has one column per azimuthal sampling point
+        if distant_horizon_profile.shape[1] == 1:
+            distant_horizon_profile = np.repeat(
+                distant_horizon_profile,
+                len(azimuths),
+                axis=1,
+            )
+        elif distant_horizon_profile.shape[1] != len(azimuths):
+            raise ValueError(f"Length of distant horizon profile sampling points ({distant_horizon_profile.shape[1]}) does not match the number of azimuths ({len(azimuths)}).")
+            
+        # now deal with the 3 cases (numeric profiles, None, str) separately
+
+        # 1) numeric profiles need to be checked only
+        _num_array = np.asarray(distant_horizon_profile[num_mask], dtype=float)
+        if np.any(_num_array < -3) or np.any(_num_array >= 90): # -3° is below even the most extreme angle that could occur on Mt. Everest
+            raise ValueError("numeric distant_horizon_profile contains values < -3° or >= 90°.")
+
+        # 2) None values stand for "no horizon considered" ergo set zero per every None row = all-zero profiles
+        distant_horizon_profile[none_mask] = 0.0
+
+        # 3) str values must be DEM filepaths, extract sampling points and calculate horizon profiles from them
+        if np.sum(str_mask) > 0:
+            # extract the profiles from at least one given DEM path
+            args = { # default arguments
+                "max_distance" : 10000,
+                "distance_stepsize" : 30,
+                "exp_spacing_factor" : 1.01,
+                "out_of_bounds_tol" : 0,
+            }
+            args.update(**kwargs) # allow passing user kwargs
+            distant_horizon_profile[str_mask] = self._calculate_distant_horizon_profile(
+                digital_surface_model_paths = str_values[str_mask], # pass one dem filepath per location with strs
+                lons = self.locs.lons[str_mask],
+                lats = self.locs.lats[str_mask],
+                angle_stepsize = azimuthal_stepsize,
+                **args
+            )
+
+        self.plant_parameters_processed["distant_horizon_profile"] = np.asarray(distant_horizon_profile, dtype=float)
+
+        return self
+    
 
     def _calculate_distant_horizon_profile(
         self,
