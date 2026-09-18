@@ -258,7 +258,7 @@ def location_to_cross_axis_tilt(locs, convention:str="flat", fallback:int|float=
 
     return caxtilts
 
-def location_to_gcr_tonita_2023(
+def location_to_gcr_tonita_et_al_2023(
         lat : int | float, 
         bifaciality_factor : int | float,
         tracking : str,
