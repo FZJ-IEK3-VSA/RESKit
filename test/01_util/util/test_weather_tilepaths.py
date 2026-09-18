@@ -46,13 +46,13 @@ def test_weather_tilepaths():
     )
     assert tile_paths[0] == ".../4/8/5/2015"
 
-    # test with dataframe yet without weather path
+    # test with locations yet without weather path
     df = df_base.copy()
     df["lon"] = df.apply(lambda x: x.geom.GetX(), axis=1)
     df["lat"] = df.apply(lambda x: x.geom.GetY(), axis=1)
-    with pytest.raises(TypeError) as e:
-        # must not work without "source" column
-        tile_paths = get_location_specific_weather_paths(
+    with pytest.raises(TypeError, match="weather_paths must be a list of str if not a str"):
+        # must not work without weather paths
+        get_location_specific_weather_paths(
             weather_paths=None,
             locs=list(zip(df.lon, df.lat)),
             zoom=4,

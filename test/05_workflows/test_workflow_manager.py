@@ -697,7 +697,6 @@ def iterative_placements():
         {
             "lon": np.linspace(6.0, 6.5, 6),
             "lat": np.linspace(50.0, 50.5, 6),
-            "source": ["tile_a.nc", "tile_b.nc"] * 3,
         },
         index=[10, 30, 20, 60, 40, 50],
     )
@@ -728,7 +727,8 @@ def test_execute_workflow_iteratively_location_specific_args(iterative_placement
         ),
         # workflow_args:
         placements=iterative_placements,
-        mock_path=None,  # tile paths are taken from the "source" column of the placements
+        # one tile path per location, alternating between the two tiles
+        mock_path=["tile_a.nc", "tile_b.nc"] * 3,
         global_arg="same for all locations",
     )
 
@@ -783,7 +783,7 @@ def test_execute_workflow_iteratively_invalid_location_specific_args(
             location_specific_workflow_args=location_specific_workflow_args,
             # workflow_args:
             placements=iterative_placements,
-            mock_path=None,
+            mock_path="tile.nc",
             global_arg="same for all locations",
         )
 
