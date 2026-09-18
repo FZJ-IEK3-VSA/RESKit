@@ -158,6 +158,12 @@ The same from the shell: `reskit-data fetch onshore_wind --test --paths` prints
 one `handle<TAB>path` line per input, `reskit-data show` lists every collection,
 and `reskit-data --help` every command.
 
+The `reskit-test-data` fixtures ship with RESKit as a verified
+[ETHOS.Data bundle](https://ethos-data.readthedocs.io/en/latest/how-to/keep-test-data-in-a-repository/)
+in `reskit/data/test_cache`, so `test=True`, the examples and the test suite read
+them offline. Pass `download=True`, or set `RESKIT_DATA_DOWNLOAD=1`, to fetch them
+from the catalogue's store into the shared cache instead.
+
 Install ETHOS.Data in the same environment. In a development checkout, reinstall
 RESKit with `pip install -e . --no-deps` to register its console script.
 `reskit-data show` prints the actual catalogue selection; `RESKIT_DATA_CATALOG`

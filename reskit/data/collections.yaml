@@ -27,6 +27,12 @@
 # `ethos-data catalog publish`, so a dataset appears below only once it has been
 # published. One collection still names a dataset that has not been -- see
 # `onshore_wind [full]`.
+#
+# The `reskit-test-data` family below is also shipped with RESKit: `test_cache/` beside
+# this file is an ETHOS.Data bundle exported from the pinned catalogue (bundle.json,
+# the files under data/, the licences under datasets/), and reskit.data reads the
+# fixtures from it by default. Re-export it whenever this pin moves -- see
+# docs/how_to/get_input_data.md, "Refresh the bundle".
 catalog: https://raw.githubusercontent.com/FZJ-IEK3-VSA/ETHOS.Data-Catalogue/v2026.09/datacatalog.json
 
 # THE FIXTURE FAMILY. `reskit-test-data` is a namespace: naming it selects every

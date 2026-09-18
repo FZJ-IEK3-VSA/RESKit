@@ -1,0 +1,1731 @@
+{
+  "collections": {
+    "test_suite": [
+      "reskit-test-data/boundaries/aachenShapefile.dbf",
+      "reskit-test-data/boundaries/aachenShapefile.prj",
+      "reskit-test-data/boundaries/aachenShapefile.shp",
+      "reskit-test-data/boundaries/aachenShapefile.shx",
+      "reskit-test-data/boundaries/cityBulawayoInZimbabwa.dbf",
+      "reskit-test-data/boundaries/cityBulawayoInZimbabwa.prj",
+      "reskit-test-data/boundaries/cityBulawayoInZimbabwa.shp",
+      "reskit-test-data/boundaries/cityBulawayoInZimbabwa.shx",
+      "reskit-test-data/corine/clc-aachen_clipped.tif",
+      "reskit-test-data/dist2coast/coast_distance_northsea.tif",
+      "reskit-test-data/era5-csp/10m_wind_speed.processed.nc",
+      "reskit-test-data/era5-csp/2m_temperature.nc",
+      "reskit-test-data/era5-csp/single-cell/era5_testdata_for_csp_tests.nc",
+      "reskit-test-data/era5-csp/total_sky_direct_solar_radiation_at_surface.processed.t_adjusted.nc",
+      "reskit-test-data/era5/100m_u_component_of_wind.nc",
+      "reskit-test-data/era5/100m_v_component_of_wind.nc",
+      "reskit-test-data/era5/100m_wind_direction.processed.nc",
+      "reskit-test-data/era5/100m_wind_speed.processed.nc",
+      "reskit-test-data/era5/10m_u_component_of_wind.nc",
+      "reskit-test-data/era5/10m_v_component_of_wind.nc",
+      "reskit-test-data/era5/10m_wind_direction.processed.nc",
+      "reskit-test-data/era5/10m_wind_speed.processed.nc",
+      "reskit-test-data/era5/2m_dewpoint_temperature.nc",
+      "reskit-test-data/era5/2m_temperature.nc",
+      "reskit-test-data/era5/boundary_layer_height.nc",
+      "reskit-test-data/era5/forecast_surface_roughness.nc",
+      "reskit-test-data/era5/snow_albedo.nc",
+      "reskit-test-data/era5/snow_density.nc",
+      "reskit-test-data/era5/snow_depth.nc",
+      "reskit-test-data/era5/snowfall.nc",
+      "reskit-test-data/era5/surface_pressure.nc",
+      "reskit-test-data/era5/surface_solar_radiation_downwards.processed.nc",
+      "reskit-test-data/era5/surface_solar_radiation_downwards.processed.t_adjusted.nc",
+      "reskit-test-data/era5/total_sky_direct_solar_radiation_at_surface.processed.nc",
+      "reskit-test-data/era5/total_sky_direct_solar_radiation_at_surface.processed.t_adjusted.nc",
+      "reskit-test-data/esa-cci-landcover/ESA_CCI_2015_clip.tif",
+      "reskit-test-data/esa-cci-landcover/ESA_CCI_2015_clip_cityBulawayoInZimbabwa.tif",
+      "reskit-test-data/gebco/water_depth_northsea.tif",
+      "reskit-test-data/global-solar-atlas/csp-gsa-dni-like.tif",
+      "reskit-test-data/global-solar-atlas/csp-gsa-temp-like.tif",
+      "reskit-test-data/global-solar-atlas/gsa-dni-like.tif",
+      "reskit-test-data/global-solar-atlas/gsa-ghi-like.tif",
+      "reskit-test-data/global-wind-atlas/dummy_correction_factors.tif",
+      "reskit-test-data/global-wind-atlas/gwa100-like.tif",
+      "reskit-test-data/global-wind-atlas/gwa200-like.tif",
+      "reskit-test-data/global-wind-atlas/gwa50-like.tif",
+      "reskit-test-data/icon-lam/ICON-LAM_lonlat-0.033degree_blh_2019-03_inst_per15m.nc",
+      "reskit-test-data/icon-lam/ICON-LAM_lonlat-0.033degree_d2m_2019-03_inst_per15m.nc",
+      "reskit-test-data/icon-lam/ICON-LAM_lonlat-0.033degree_fdir_2019-03_inst_per15m.nc",
+      "reskit-test-data/icon-lam/ICON-LAM_lonlat-0.033degree_fsr_2019-03_inst_per15m.nc",
+      "reskit-test-data/icon-lam/ICON-LAM_lonlat-0.033degree_sp_2019-03_inst_per15m.nc",
+      "reskit-test-data/icon-lam/ICON-LAM_lonlat-0.033degree_ssrd_2019-03_inst_per15m.nc",
+      "reskit-test-data/icon-lam/ICON-LAM_lonlat-0.033degree_t2m_2019-03_inst_per15m.nc",
+      "reskit-test-data/icon-lam/ICON-LAM_lonlat-0.033degree_ws100_2019-03_inst_per15m.nc",
+      "reskit-test-data/icon-lam/ICON-LAM_lonlat-0.033degree_ws10_2019-03_inst_per15m.nc",
+      "reskit-test-data/merra2/MERRA_tavg1_2d.2015.Europe.PS.nc4",
+      "reskit-test-data/merra2/MERRA_tavg1_2d.2015.Europe.SWGDN.nc4",
+      "reskit-test-data/merra2/MERRA_tavg1_2d.2015.Europe.T10M.nc4",
+      "reskit-test-data/merra2/MERRA_tavg1_2d.2015.Europe.T2M.nc4",
+      "reskit-test-data/merra2/MERRA_tavg1_2d.2015.Europe.T2MDEW.nc4",
+      "reskit-test-data/merra2/MERRA_tavg1_2d.2015.Europe.U10M.nc4",
+      "reskit-test-data/merra2/MERRA_tavg1_2d.2015.Europe.U2M.nc4",
+      "reskit-test-data/merra2/MERRA_tavg1_2d.2015.Europe.U50M.nc4",
+      "reskit-test-data/merra2/MERRA_tavg1_2d.2015.Europe.V10M.nc4",
+      "reskit-test-data/merra2/MERRA_tavg1_2d.2015.Europe.V2M.nc4",
+      "reskit-test-data/merra2/MERRA_tavg1_2d.2015.Europe.V50M.nc4",
+      "reskit-test-data/merra2/merged/merra-like.nc4",
+      "reskit-test-data/placements/module_placements.csv",
+      "reskit-test-data/placements/module_placements_cityBulawayoInZimbabwa.csv",
+      "reskit-test-data/placements/turbinePlacements.dbf",
+      "reskit-test-data/placements/turbinePlacements.prj",
+      "reskit-test-data/placements/turbinePlacements.shp",
+      "reskit-test-data/placements/turbinePlacements.shx",
+      "reskit-test-data/placements/turbine_placements.csv",
+      "reskit-test-data/placements/turbine_placements_cityBulawayoInZimbabwa.csv",
+      "reskit-test-data/sarah/SARAH-DNI.nc",
+      "reskit-test-data/sarah/SARAH-SIS.nc",
+      "reskit-test-data/srtm/DEM-like.tif",
+      "reskit-test-data/synthetic/baseline_turbine_test.json",
+      "reskit-test-data/synthetic/baseline_turbine_testdummy.csv",
+      "reskit-test-data/synthetic/merra_point_context.dbf",
+      "reskit-test-data/synthetic/merra_point_context.prj",
+      "reskit-test-data/synthetic/merra_point_context.shp",
+      "reskit-test-data/synthetic/merra_point_context.shx",
+      "reskit-test-data/synthetic/random_turbines.dbf",
+      "reskit-test-data/synthetic/random_turbines.prj",
+      "reskit-test-data/synthetic/random_turbines.shp",
+      "reskit-test-data/synthetic/random_turbines.shx"
+    ],
+    "test_suite_public": [
+      "reskit-test-data/boundaries/aachenShapefile.dbf",
+      "reskit-test-data/boundaries/aachenShapefile.prj",
+      "reskit-test-data/boundaries/aachenShapefile.shp",
+      "reskit-test-data/boundaries/aachenShapefile.shx",
+      "reskit-test-data/boundaries/cityBulawayoInZimbabwa.dbf",
+      "reskit-test-data/boundaries/cityBulawayoInZimbabwa.prj",
+      "reskit-test-data/boundaries/cityBulawayoInZimbabwa.shp",
+      "reskit-test-data/boundaries/cityBulawayoInZimbabwa.shx",
+      "reskit-test-data/corine/clc-aachen_clipped.tif",
+      "reskit-test-data/dist2coast/coast_distance_northsea.tif",
+      "reskit-test-data/era5-csp/10m_wind_speed.processed.nc",
+      "reskit-test-data/era5-csp/2m_temperature.nc",
+      "reskit-test-data/era5-csp/single-cell/era5_testdata_for_csp_tests.nc",
+      "reskit-test-data/era5-csp/total_sky_direct_solar_radiation_at_surface.processed.t_adjusted.nc",
+      "reskit-test-data/era5/100m_u_component_of_wind.nc",
+      "reskit-test-data/era5/100m_v_component_of_wind.nc",
+      "reskit-test-data/era5/100m_wind_direction.processed.nc",
+      "reskit-test-data/era5/100m_wind_speed.processed.nc",
+      "reskit-test-data/era5/10m_u_component_of_wind.nc",
+      "reskit-test-data/era5/10m_v_component_of_wind.nc",
+      "reskit-test-data/era5/10m_wind_direction.processed.nc",
+      "reskit-test-data/era5/10m_wind_speed.processed.nc",
+      "reskit-test-data/era5/2m_dewpoint_temperature.nc",
+      "reskit-test-data/era5/2m_temperature.nc",
+      "reskit-test-data/era5/boundary_layer_height.nc",
+      "reskit-test-data/era5/forecast_surface_roughness.nc",
+      "reskit-test-data/era5/snow_albedo.nc",
+      "reskit-test-data/era5/snow_density.nc",
+      "reskit-test-data/era5/snow_depth.nc",
+      "reskit-test-data/era5/snowfall.nc",
+      "reskit-test-data/era5/surface_pressure.nc",
+      "reskit-test-data/era5/surface_solar_radiation_downwards.processed.nc",
+      "reskit-test-data/era5/surface_solar_radiation_downwards.processed.t_adjusted.nc",
+      "reskit-test-data/era5/total_sky_direct_solar_radiation_at_surface.processed.nc",
+      "reskit-test-data/era5/total_sky_direct_solar_radiation_at_surface.processed.t_adjusted.nc",
+      "reskit-test-data/esa-cci-landcover/ESA_CCI_2015_clip.tif",
+      "reskit-test-data/esa-cci-landcover/ESA_CCI_2015_clip_cityBulawayoInZimbabwa.tif",
+      "reskit-test-data/gebco/water_depth_northsea.tif",
+      "reskit-test-data/global-solar-atlas/csp-gsa-dni-like.tif",
+      "reskit-test-data/global-solar-atlas/csp-gsa-temp-like.tif",
+      "reskit-test-data/global-solar-atlas/gsa-dni-like.tif",
+      "reskit-test-data/global-solar-atlas/gsa-ghi-like.tif",
+      "reskit-test-data/global-wind-atlas/dummy_correction_factors.tif",
+      "reskit-test-data/global-wind-atlas/gwa100-like.tif",
+      "reskit-test-data/global-wind-atlas/gwa200-like.tif",
+      "reskit-test-data/global-wind-atlas/gwa50-like.tif",
+      "reskit-test-data/merra2/MERRA_tavg1_2d.2015.Europe.PS.nc4",
+      "reskit-test-data/merra2/MERRA_tavg1_2d.2015.Europe.SWGDN.nc4",
+      "reskit-test-data/merra2/MERRA_tavg1_2d.2015.Europe.T10M.nc4",
+      "reskit-test-data/merra2/MERRA_tavg1_2d.2015.Europe.T2M.nc4",
+      "reskit-test-data/merra2/MERRA_tavg1_2d.2015.Europe.T2MDEW.nc4",
+      "reskit-test-data/merra2/MERRA_tavg1_2d.2015.Europe.U10M.nc4",
+      "reskit-test-data/merra2/MERRA_tavg1_2d.2015.Europe.U2M.nc4",
+      "reskit-test-data/merra2/MERRA_tavg1_2d.2015.Europe.U50M.nc4",
+      "reskit-test-data/merra2/MERRA_tavg1_2d.2015.Europe.V10M.nc4",
+      "reskit-test-data/merra2/MERRA_tavg1_2d.2015.Europe.V2M.nc4",
+      "reskit-test-data/merra2/MERRA_tavg1_2d.2015.Europe.V50M.nc4",
+      "reskit-test-data/merra2/merged/merra-like.nc4",
+      "reskit-test-data/placements/module_placements.csv",
+      "reskit-test-data/placements/module_placements_cityBulawayoInZimbabwa.csv",
+      "reskit-test-data/placements/turbinePlacements.dbf",
+      "reskit-test-data/placements/turbinePlacements.prj",
+      "reskit-test-data/placements/turbinePlacements.shp",
+      "reskit-test-data/placements/turbinePlacements.shx",
+      "reskit-test-data/placements/turbine_placements.csv",
+      "reskit-test-data/placements/turbine_placements_cityBulawayoInZimbabwa.csv",
+      "reskit-test-data/sarah/SARAH-DNI.nc",
+      "reskit-test-data/sarah/SARAH-SIS.nc",
+      "reskit-test-data/srtm/DEM-like.tif",
+      "reskit-test-data/synthetic/baseline_turbine_test.json",
+      "reskit-test-data/synthetic/baseline_turbine_testdummy.csv",
+      "reskit-test-data/synthetic/merra_point_context.dbf",
+      "reskit-test-data/synthetic/merra_point_context.prj",
+      "reskit-test-data/synthetic/merra_point_context.shp",
+      "reskit-test-data/synthetic/merra_point_context.shx",
+      "reskit-test-data/synthetic/random_turbines.dbf",
+      "reskit-test-data/synthetic/random_turbines.prj",
+      "reskit-test-data/synthetic/random_turbines.shp",
+      "reskit-test-data/synthetic/random_turbines.shx"
+    ]
+  },
+  "datasets": {
+    "reskit-test-data/boundaries": {
+      "$schema": "https://datapackage.org/profiles/2.0/datapackage.json",
+      "contributors": [
+        {
+          "organization": "Forschungszentrum Julich, ICE-2",
+          "roles": [
+            "author",
+            "maintainer"
+          ],
+          "title": "ICE-2 RESKit maintainers"
+        }
+      ],
+      "description": "The two administrative polygons the test fixtures are built around: Staedteregion Aachen and the city of Bulawayo, Zimbabwe. Both replaced GADM originals on 2026-09-09; see ethos:license_note.",
+      "ethos:access": "public",
+      "ethos:attribution": "ALL FILES IN THIS DATASET HAVE BEEN MODIFIED: every one is a spatial and/or temporal subset of the product named in its member descriptor, and several have been resampled. None is suitable for any purpose other than exercising RESKit's code paths.\nContains modified Copernicus Climate Change Service information (ERA5 and ERA5-Land, 2015); neither the European Commission nor ECMWF is responsible for any use of this data. EUMETSAT CM SAF: copyright 2017 EUMETSAT; Pfeifroth, U., Kothe, S., Mueller, R., Trentmann, J., Hollmann, R., Fuchs, P., Werscheck, M. (2017), doi:10.5676/EUM_SAF_CM/SARAH/V002. Contains MERRA-2 data provided by the NASA Global Modeling and Assimilation Office, and SRTM data provided by NASA/USGS. Data obtained from the Global Wind Atlas 3.0, developed, owned and operated by the Technical University of Denmark in partnership with the World Bank Group, utilizing data provided by Vortex, with funding from ESMAP. Solar resource data (c) 2023 Solargis; (c) The World Bank, Source: Global Solar Atlas 2.0. (c) European Union, Copernicus Land Monitoring Service 2018, European Environment Agency. Contains ESA Climate Change Initiative Land Cover data; users must acknowledge the ESA Climate Change Initiative and its Land Cover project together with the individual data providers, and cite ESA Land Cover CCI project team; Defourny, P. (2019): ESA Land Cover Climate Change Initiative (Land_Cover_cci): Global Land Cover Maps, Version 2.0.7, Centre for Environmental Data Analysis, https://catalogue.ceda.ac.uk/uuid/b382ebe6679d44b8b0e68ea4ef4b701c. GEBCO Bathymetric Compilation Group: The GEBCO Grid. Distance-to-coast data from the NASA Ocean Biology Processing Group. Administrative boundaries: (c) GeoBasis-DE / BKG, dl-de/by-2-0, and OCHA/ZIMSTAT under CC BY 3.0 IGO. ICON-LAM: contains modified data from Chen, S., Poll, S., Hendricks Franssen, H.-J., Heinrichs, H., Vereecken, H., Goergen, K. (2024): Convection-permitting ICON-LAM simulations for renewable energy potential estimates over southern Africa, Journal of Geophysical Research: Atmospheres, https://doi.org/10.1029/2023JD039569, dataset https://doi.org/10.26165/JUELICH-DATA/JYGQ65, licensed under CC BY 4.0.",
+      "ethos:contact": "ICE-2 RESKit maintainers",
+      "ethos:derivation": "aachenShapefile.* is the Kreis with AGS 05334 from BKG VG250, reprojected from UTM32 to EPSG:4326 and written as a 5-part multipolygon. Symmetric difference against the upstream feature is exactly zero.\ncityBulawayoInZimbabwa.* is the province with pcode ZW10 from the OCHA/ZIMSTAT Common Operational Dataset, already in EPSG:4326. Symmetric difference against upstream exactly zero.\nEach feature carries `source` and `licence` in its own attribute table, so the terms travel with the geometry rather than only with this descriptor.",
+      "ethos:file_count": 8,
+      "ethos:origin": "derived",
+      "ethos:remote_prefix": "reskit-test-data/boundaries",
+      "ethos:retrieved": "2026-09-09",
+      "ethos:total_bytes": 31056,
+      "ethos:visibility": "public",
+      "homepage": "https://github.com/FZJ-IEK3-VSA/RESKit",
+      "licenses": [
+        {
+          "ethos:applies_to": [
+            "aachenShapefile.*"
+          ],
+          "ethos:document": "licenses/dl-de-by-2-0.html",
+          "ethos:document_sha256": "0c6481c23e7278cce360960a40b348fd81a52a15d73fa11848987803b1a5f60f",
+          "path": "https://www.govdata.de/dl-de/by-2-0",
+          "title": "Data licence Germany - Attribution - Version 2.0 (dl-de/by-2-0), the terms the Bundesamt fuer Kartographie und Geodaesie publishes VG250 under"
+        },
+        {
+          "ethos:applies_to": [
+            "cityBulawayoInZimbabwa.*"
+          ],
+          "ethos:document": "licenses/CC-BY-3.0-IGO-legalcode.html",
+          "ethos:document_sha256": "ead394640e6e5bb492611a1993e95363af655e155f2c3391c289263b0ba2c4d2",
+          "name": "CC-BY-3.0-IGO",
+          "path": "https://creativecommons.org/licenses/by/3.0/igo/",
+          "title": "Creative Commons Attribution 3.0 IGO, the terms OCHA publishes the Zimbabwe Common Operational Dataset under"
+        }
+      ],
+      "name": "reskit-test-data/boundaries",
+      "resources": [
+        {
+          "bytes": 1099,
+          "hash": "sha256:ba0663cda14e5c3f093b82ef924ba59489df8a46747eb4fab50ecf34ffd8aedf",
+          "licenses": [
+            {
+              "ethos:document": "licenses/dl-de-by-2-0.html",
+              "ethos:document_sha256": "0c6481c23e7278cce360960a40b348fd81a52a15d73fa11848987803b1a5f60f",
+              "path": "https://www.govdata.de/dl-de/by-2-0",
+              "title": "Data licence Germany - Attribution - Version 2.0 (dl-de/by-2-0), the terms the Bundesamt fuer Kartographie und Geodaesie publishes VG250 under"
+            }
+          ],
+          "mediatype": "application/octet-stream",
+          "name": "aachenshapefile.dbf",
+          "path": "aachenShapefile.dbf"
+        },
+        {
+          "bytes": 145,
+          "hash": "sha256:a02a27b1d1982c8516d83398e85a3c8b1aef1713c13ef4d84d7bde17430c07c4",
+          "licenses": [
+            {
+              "ethos:document": "licenses/dl-de-by-2-0.html",
+              "ethos:document_sha256": "0c6481c23e7278cce360960a40b348fd81a52a15d73fa11848987803b1a5f60f",
+              "path": "https://www.govdata.de/dl-de/by-2-0",
+              "title": "Data licence Germany - Attribution - Version 2.0 (dl-de/by-2-0), the terms the Bundesamt fuer Kartographie und Geodaesie publishes VG250 under"
+            }
+          ],
+          "mediatype": "text/plain",
+          "name": "aachenshapefile.prj",
+          "path": "aachenShapefile.prj"
+        },
+        {
+          "bytes": 25340,
+          "ethos:sidecars": [
+            "aachenShapefile.shx",
+            "aachenShapefile.dbf",
+            "aachenShapefile.prj"
+          ],
+          "hash": "sha256:4799dbd7fb6fe8dd0c229dc1353f194de772bd0a127a55ab75a029bd4529434e",
+          "licenses": [
+            {
+              "ethos:document": "licenses/dl-de-by-2-0.html",
+              "ethos:document_sha256": "0c6481c23e7278cce360960a40b348fd81a52a15d73fa11848987803b1a5f60f",
+              "path": "https://www.govdata.de/dl-de/by-2-0",
+              "title": "Data licence Germany - Attribution - Version 2.0 (dl-de/by-2-0), the terms the Bundesamt fuer Kartographie und Geodaesie publishes VG250 under"
+            }
+          ],
+          "mediatype": "application/octet-stream",
+          "name": "aachenshapefile.shp",
+          "path": "aachenShapefile.shp"
+        },
+        {
+          "bytes": 108,
+          "hash": "sha256:74367e1e0c3bf1fab56f47c9e1bbc74278c4b11ae23eb7a896c58a0c3a35978f",
+          "licenses": [
+            {
+              "ethos:document": "licenses/dl-de-by-2-0.html",
+              "ethos:document_sha256": "0c6481c23e7278cce360960a40b348fd81a52a15d73fa11848987803b1a5f60f",
+              "path": "https://www.govdata.de/dl-de/by-2-0",
+              "title": "Data licence Germany - Attribution - Version 2.0 (dl-de/by-2-0), the terms the Bundesamt fuer Kartographie und Geodaesie publishes VG250 under"
+            }
+          ],
+          "mediatype": "application/octet-stream",
+          "name": "aachenshapefile.shx",
+          "path": "aachenShapefile.shx"
+        },
+        {
+          "bytes": 947,
+          "hash": "sha256:73dcb62715ef7ab74346d8bd02388d95c7826a32d865ee12dd0ce5d148e80b63",
+          "licenses": [
+            {
+              "ethos:document": "licenses/CC-BY-3.0-IGO-legalcode.html",
+              "ethos:document_sha256": "ead394640e6e5bb492611a1993e95363af655e155f2c3391c289263b0ba2c4d2",
+              "name": "CC-BY-3.0-IGO",
+              "path": "https://creativecommons.org/licenses/by/3.0/igo/",
+              "title": "Creative Commons Attribution 3.0 IGO, the terms OCHA publishes the Zimbabwe Common Operational Dataset under"
+            }
+          ],
+          "mediatype": "application/octet-stream",
+          "name": "citybulawayoinzimbabwa.dbf",
+          "path": "cityBulawayoInZimbabwa.dbf"
+        },
+        {
+          "bytes": 145,
+          "hash": "sha256:a02a27b1d1982c8516d83398e85a3c8b1aef1713c13ef4d84d7bde17430c07c4",
+          "licenses": [
+            {
+              "ethos:document": "licenses/CC-BY-3.0-IGO-legalcode.html",
+              "ethos:document_sha256": "ead394640e6e5bb492611a1993e95363af655e155f2c3391c289263b0ba2c4d2",
+              "name": "CC-BY-3.0-IGO",
+              "path": "https://creativecommons.org/licenses/by/3.0/igo/",
+              "title": "Creative Commons Attribution 3.0 IGO, the terms OCHA publishes the Zimbabwe Common Operational Dataset under"
+            }
+          ],
+          "mediatype": "text/plain",
+          "name": "citybulawayoinzimbabwa.prj",
+          "path": "cityBulawayoInZimbabwa.prj"
+        },
+        {
+          "bytes": 3164,
+          "ethos:sidecars": [
+            "cityBulawayoInZimbabwa.shx",
+            "cityBulawayoInZimbabwa.dbf",
+            "cityBulawayoInZimbabwa.prj"
+          ],
+          "hash": "sha256:1db9be3b17c6fe64b391f5777f4fd55f108c1d4e5fe8621a49d969937b9ad229",
+          "licenses": [
+            {
+              "ethos:document": "licenses/CC-BY-3.0-IGO-legalcode.html",
+              "ethos:document_sha256": "ead394640e6e5bb492611a1993e95363af655e155f2c3391c289263b0ba2c4d2",
+              "name": "CC-BY-3.0-IGO",
+              "path": "https://creativecommons.org/licenses/by/3.0/igo/",
+              "title": "Creative Commons Attribution 3.0 IGO, the terms OCHA publishes the Zimbabwe Common Operational Dataset under"
+            }
+          ],
+          "mediatype": "application/octet-stream",
+          "name": "citybulawayoinzimbabwa.shp",
+          "path": "cityBulawayoInZimbabwa.shp"
+        },
+        {
+          "bytes": 108,
+          "hash": "sha256:e64955bf3b67a792b4df3efde12279b41814b93fd27445d1c919490b9983b746",
+          "licenses": [
+            {
+              "ethos:document": "licenses/CC-BY-3.0-IGO-legalcode.html",
+              "ethos:document_sha256": "ead394640e6e5bb492611a1993e95363af655e155f2c3391c289263b0ba2c4d2",
+              "name": "CC-BY-3.0-IGO",
+              "path": "https://creativecommons.org/licenses/by/3.0/igo/",
+              "title": "Creative Commons Attribution 3.0 IGO, the terms OCHA publishes the Zimbabwe Common Operational Dataset under"
+            }
+          ],
+          "mediatype": "application/octet-stream",
+          "name": "citybulawayoinzimbabwa.shx",
+          "path": "cityBulawayoInZimbabwa.shx"
+        }
+      ],
+      "sources": [
+        {
+          "path": "https://daten.gdz.bkg.bund.de/produkte/vg/vg250_ebenen_0101/aktuell/",
+          "title": "BKG VG250 -- Verwaltungsgebiete 1:250 000"
+        },
+        {
+          "path": "https://data.humdata.org/dataset/cod-ab-zwe",
+          "title": "Zimbabwe - Subnational Administrative Boundaries (OCHA / ZIMSTAT)"
+        }
+      ],
+      "title": "RESKit administrative boundary test fixtures"
+    },
+    "reskit-test-data/corine": {
+      "$schema": "https://datapackage.org/profiles/2.0/datapackage.json",
+      "contributors": [
+        {
+          "organization": "Forschungszentrum Julich, ICE-2",
+          "roles": [
+            "author"
+          ],
+          "title": "Severin Ryberg"
+        },
+        {
+          "roles": [
+            "maintainer"
+          ],
+          "title": "ICE-2 RESKit maintainers"
+        }
+      ],
+      "description": "CORINE Land Cover 2018 clipped to 825 x 792 cells around Aachen, at the product's native 100 m in EPSG:3035. 27 distinct CLC grid codes in the range 1-41.",
+      "ethos:access": "public",
+      "ethos:attribution": "ALL FILES IN THIS DATASET HAVE BEEN MODIFIED: every one is a spatial and/or temporal subset of the product named in its member descriptor, and several have been resampled. None is suitable for any purpose other than exercising RESKit's code paths.\nContains modified Copernicus Climate Change Service information (ERA5 and ERA5-Land, 2015); neither the European Commission nor ECMWF is responsible for any use of this data. EUMETSAT CM SAF: copyright 2017 EUMETSAT; Pfeifroth, U., Kothe, S., Mueller, R., Trentmann, J., Hollmann, R., Fuchs, P., Werscheck, M. (2017), doi:10.5676/EUM_SAF_CM/SARAH/V002. Contains MERRA-2 data provided by the NASA Global Modeling and Assimilation Office, and SRTM data provided by NASA/USGS. Data obtained from the Global Wind Atlas 3.0, developed, owned and operated by the Technical University of Denmark in partnership with the World Bank Group, utilizing data provided by Vortex, with funding from ESMAP. Solar resource data (c) 2023 Solargis; (c) The World Bank, Source: Global Solar Atlas 2.0. (c) European Union, Copernicus Land Monitoring Service 2018, European Environment Agency. Contains ESA Climate Change Initiative Land Cover data; users must acknowledge the ESA Climate Change Initiative and its Land Cover project together with the individual data providers, and cite ESA Land Cover CCI project team; Defourny, P. (2019): ESA Land Cover Climate Change Initiative (Land_Cover_cci): Global Land Cover Maps, Version 2.0.7, Centre for Environmental Data Analysis, https://catalogue.ceda.ac.uk/uuid/b382ebe6679d44b8b0e68ea4ef4b701c. GEBCO Bathymetric Compilation Group: The GEBCO Grid. Distance-to-coast data from the NASA Ocean Biology Processing Group. Administrative boundaries: (c) GeoBasis-DE / BKG, dl-de/by-2-0, and OCHA/ZIMSTAT under CC BY 3.0 IGO. ICON-LAM: contains modified data from Chen, S., Poll, S., Hendricks Franssen, H.-J., Heinrichs, H., Vereecken, H., Goergen, K. (2024): Convection-permitting ICON-LAM simulations for renewable energy potential estimates over southern Africa, Journal of Geophysical Research: Atmospheres, https://doi.org/10.1029/2023JD039569, dataset https://doi.org/10.26165/JUELICH-DATA/JYGQ65, licensed under CC BY 4.0.",
+      "ethos:contact": "ICE-2 RESKit maintainers",
+      "ethos:derivation": "Clipped from CORINE Land Cover 2018. 100 m in ETRS89/LAEA is CORINE's native raster, so this is a spatial subset with no resampling.",
+      "ethos:file_count": 1,
+      "ethos:origin": "derived",
+      "ethos:remote_prefix": "reskit-test-data/corine",
+      "ethos:retrieved": "2026-09-09",
+      "ethos:total_bytes": 103308,
+      "ethos:visibility": "public",
+      "homepage": "https://github.com/FZJ-IEK3-VSA/RESKit",
+      "licenses": [
+        {
+          "ethos:document": "licenses/copernicus-land-data-policy.txt",
+          "ethos:document_sha256": "3ee3352f671ad7bbcc25609b7b13f34b7d6788d23404650b603449de25c0806e",
+          "path": "https://land.copernicus.eu/en/data-policy",
+          "title": "Copernicus data and information policy -- full, free and open access (Commission Delegated Regulation (EU) No 1159/2013)"
+        }
+      ],
+      "name": "reskit-test-data/corine",
+      "resources": [
+        {
+          "bytes": 103308,
+          "hash": "sha256:16c09e4a0e07cd9c1fa1674af6b5a652b86010e010174c99177f0d51438657ae",
+          "mediatype": "image/tiff",
+          "name": "clc-aachen_clipped.tif",
+          "path": "clc-aachen_clipped.tif"
+        }
+      ],
+      "sources": [
+        {
+          "path": "https://land.copernicus.eu/en/products/corine-land-cover",
+          "title": "CORINE Land Cover 2018 (Copernicus Land Monitoring Service / EEA)"
+        }
+      ],
+      "title": "RESKit CORINE Land Cover test fixture, Aachen"
+    },
+    "reskit-test-data/dist2coast": {
+      "$schema": "https://datapackage.org/profiles/2.0/datapackage.json",
+      "contributors": [
+        {
+          "organization": "Forschungszentrum Julich, ICE-2",
+          "roles": [
+            "author"
+          ],
+          "title": "M. Stargardt"
+        },
+        {
+          "roles": [
+            "maintainer"
+          ],
+          "title": "ICE-2 RESKit maintainers"
+        }
+      ],
+      "description": "Distance to the nearest coastline in kilometres over the same 24 x 24 cell box as the bathymetry fixture.",
+      "ethos:access": "public",
+      "ethos:attribution": "ALL FILES IN THIS DATASET HAVE BEEN MODIFIED: every one is a spatial and/or temporal subset of the product named in its member descriptor, and several have been resampled. None is suitable for any purpose other than exercising RESKit's code paths.\nContains modified Copernicus Climate Change Service information (ERA5 and ERA5-Land, 2015); neither the European Commission nor ECMWF is responsible for any use of this data. EUMETSAT CM SAF: copyright 2017 EUMETSAT; Pfeifroth, U., Kothe, S., Mueller, R., Trentmann, J., Hollmann, R., Fuchs, P., Werscheck, M. (2017), doi:10.5676/EUM_SAF_CM/SARAH/V002. Contains MERRA-2 data provided by the NASA Global Modeling and Assimilation Office, and SRTM data provided by NASA/USGS. Data obtained from the Global Wind Atlas 3.0, developed, owned and operated by the Technical University of Denmark in partnership with the World Bank Group, utilizing data provided by Vortex, with funding from ESMAP. Solar resource data (c) 2023 Solargis; (c) The World Bank, Source: Global Solar Atlas 2.0. (c) European Union, Copernicus Land Monitoring Service 2018, European Environment Agency. Contains ESA Climate Change Initiative Land Cover data; users must acknowledge the ESA Climate Change Initiative and its Land Cover project together with the individual data providers, and cite ESA Land Cover CCI project team; Defourny, P. (2019): ESA Land Cover Climate Change Initiative (Land_Cover_cci): Global Land Cover Maps, Version 2.0.7, Centre for Environmental Data Analysis, https://catalogue.ceda.ac.uk/uuid/b382ebe6679d44b8b0e68ea4ef4b701c. GEBCO Bathymetric Compilation Group: The GEBCO Grid. Distance-to-coast data from the NASA Ocean Biology Processing Group. Administrative boundaries: (c) GeoBasis-DE / BKG, dl-de/by-2-0, and OCHA/ZIMSTAT under CC BY 3.0 IGO. ICON-LAM: contains modified data from Chen, S., Poll, S., Hendricks Franssen, H.-J., Heinrichs, H., Vereecken, H., Goergen, K. (2024): Convection-permitting ICON-LAM simulations for renewable energy potential estimates over southern Africa, Journal of Geophysical Research: Atmospheres, https://doi.org/10.1029/2023JD039569, dataset https://doi.org/10.26165/JUELICH-DATA/JYGQ65, licensed under CC BY 4.0.",
+      "ethos:contact": "ICE-2 RESKit maintainers",
+      "ethos:derivation": "Cut from NASA OBPG's 0.01 degree distance-to-coast grid, which is computed with the Generic Mapping Tools against the GSHHG intermediate-resolution coastline -- exactly what the file's own TIFF tag says.\nVerified against the upstream subset: all 576 pixels identical. The only changes are the spatial subset and the netCDF to GeoTIFF container change. No resampling, no rescaling, no change of values at all.",
+      "ethos:file_count": 1,
+      "ethos:license_status": "resolved",
+      "ethos:origin": "derived",
+      "ethos:remote_prefix": "reskit-test-data/dist2coast",
+      "ethos:retrieved": "2026-09-09",
+      "ethos:total_bytes": 617,
+      "ethos:upstream": {
+        "checked": "2026-09-16",
+        "note": "Live, but not where this descriptor used to point. The NASA OBPG page it cited for both source and licence -- oceancolor.gsfc.nasa.gov/docs/distfromcoast/ -- now 301s to earthdata.nasa.gov/centers/ob-daac, a centre landing page that carries neither the product nor any terms. So the citation that was recorded here no longer substantiates either claim, which is why all three sources above were repointed.\nThe grid itself is still served, by PacIOOS, who mirrored it from NASA in 2012 and whose ERDDAP endpoint subsets and reprojects on request. That is now the route of record for both the bytes and the terms.",
+        "status": "live"
+      },
+      "ethos:visibility": "public",
+      "homepage": "https://github.com/FZJ-IEK3-VSA/RESKit",
+      "licenses": [
+        {
+          "ethos:document": "licenses/pacioos-dist2coast-erddap-metadata.json",
+          "ethos:document_sha256": "026a667b3c0c8b09209f2957205973b13b46296f7e01fbe00ff732e31ee4c6f8",
+          "path": "https://www.pacioos.hawaii.edu/metadata/dist2coast_1deg.html",
+          "title": "Distance-to-coast grid -- free use and redistribution, no warranty, not intended for legal use. Stated by PacIOOS (University of Hawaii), which redistributes the grid; NASA OBPG, which generated it, states no terms on any page still serving."
+        }
+      ],
+      "name": "reskit-test-data/dist2coast",
+      "resources": [
+        {
+          "bytes": 617,
+          "hash": "sha256:40a833b0fec1528d2968b5f703e447cd6e12ae84bb10ca445954152056b5a3e5",
+          "mediatype": "image/tiff",
+          "name": "coast_distance_northsea.tif",
+          "path": "coast_distance_northsea.tif"
+        }
+      ],
+      "sources": [
+        {
+          "path": "https://www.pacioos.hawaii.edu/metadata/dist2coast_1deg.html",
+          "title": "Distance to Nearest Coastline, 0.01-Degree Grid -- PacIOOS record. The live description of the product, and where the licence text below is published."
+        },
+        {
+          "path": "https://pae-paha.pacioos.hawaii.edu/erddap/griddap/dist2coast_1deg.html",
+          "title": "Same grid, PacIOOS ERDDAP griddap endpoint -- the working download route. Subsettable, serves netCDF and GeoTIFF among some forty formats."
+        },
+        {
+          "path": "https://oceancolor.gsfc.nasa.gov/docs/distfromcoast/",
+          "title": "Distance to Nearest Coastline (NASA Ocean Biology Processing Group) -- the originating product. Page retired; see ethos:upstream."
+        }
+      ],
+      "title": "RESKit distance-to-coast test fixture, German Bight"
+    },
+    "reskit-test-data/era5": {
+      "$schema": "https://datapackage.org/profiles/2.0/datapackage.json",
+      "contributors": [
+        {
+          "organization": "Forschungszentrum Julich, ICE-2",
+          "roles": [
+            "author"
+          ],
+          "title": "Severin Ryberg"
+        },
+        {
+          "organization": "Forschungszentrum Julich, ICE-2",
+          "roles": [
+            "author"
+          ],
+          "title": "Shuying Chen"
+        },
+        {
+          "roles": [
+            "maintainer"
+          ],
+          "title": "ICE-2 RESKit maintainers"
+        }
+      ],
+      "description": "ERA5 single-level fields over an 11 x 13 cell box around Aachen, 140 hours of December 2015, plus four snow variables. What RESKit's wind and PV workflow tests read as their weather input.",
+      "ethos:access": "public",
+      "ethos:attribution": "ALL FILES IN THIS DATASET HAVE BEEN MODIFIED: every one is a spatial and/or temporal subset of the product named in its member descriptor, and several have been resampled. None is suitable for any purpose other than exercising RESKit's code paths.\nContains modified Copernicus Climate Change Service information (ERA5 and ERA5-Land, 2015); neither the European Commission nor ECMWF is responsible for any use of this data. EUMETSAT CM SAF: copyright 2017 EUMETSAT; Pfeifroth, U., Kothe, S., Mueller, R., Trentmann, J., Hollmann, R., Fuchs, P., Werscheck, M. (2017), doi:10.5676/EUM_SAF_CM/SARAH/V002. Contains MERRA-2 data provided by the NASA Global Modeling and Assimilation Office, and SRTM data provided by NASA/USGS. Data obtained from the Global Wind Atlas 3.0, developed, owned and operated by the Technical University of Denmark in partnership with the World Bank Group, utilizing data provided by Vortex, with funding from ESMAP. Solar resource data (c) 2023 Solargis; (c) The World Bank, Source: Global Solar Atlas 2.0. (c) European Union, Copernicus Land Monitoring Service 2018, European Environment Agency. Contains ESA Climate Change Initiative Land Cover data; users must acknowledge the ESA Climate Change Initiative and its Land Cover project together with the individual data providers, and cite ESA Land Cover CCI project team; Defourny, P. (2019): ESA Land Cover Climate Change Initiative (Land_Cover_cci): Global Land Cover Maps, Version 2.0.7, Centre for Environmental Data Analysis, https://catalogue.ceda.ac.uk/uuid/b382ebe6679d44b8b0e68ea4ef4b701c. GEBCO Bathymetric Compilation Group: The GEBCO Grid. Distance-to-coast data from the NASA Ocean Biology Processing Group. Administrative boundaries: (c) GeoBasis-DE / BKG, dl-de/by-2-0, and OCHA/ZIMSTAT under CC BY 3.0 IGO. ICON-LAM: contains modified data from Chen, S., Poll, S., Hendricks Franssen, H.-J., Heinrichs, H., Vereecken, H., Goergen, K. (2024): Convection-permitting ICON-LAM simulations for renewable energy potential estimates over southern Africa, Journal of Geophysical Research: Atmospheres, https://doi.org/10.1029/2023JD039569, dataset https://doi.org/10.26165/JUELICH-DATA/JYGQ65, licensed under CC BY 4.0.",
+      "ethos:contact": "ICE-2 RESKit maintainers",
+      "ethos:derivation": "Downloaded from the Copernicus Climate Data Store with grib_to_netcdf off a MARS adaptor, then `cdo sellonlatbox,5.0,7.5,49,52` and `cdo seltimestep,0/140`.\nTwo vintages, and the date matters for which licence applied at download time: most files were cut on 2020-04-23 from a 2020-01-30 download, under the Licence to Use Copernicus Products; the four raw wind components were re-downloaded 2026-02-05 (grib_to_netcdf 2.42.0) and the four snow variables added 2026-06-25, under CC BY 4.0, which replaced it on 2025-07-02. Both permit redistribution with attribution, so one licence entry covers the directory.",
+      "ethos:exclude": [
+        "**/__init__.py"
+      ],
+      "ethos:file_count": 21,
+      "ethos:origin": "derived",
+      "ethos:remote_prefix": "reskit-test-data/era5",
+      "ethos:retrieved": "2026-09-09",
+      "ethos:total_bytes": 1310606,
+      "ethos:visibility": "public",
+      "homepage": "https://github.com/FZJ-IEK3-VSA/RESKit",
+      "licenses": [
+        {
+          "ethos:document": "licenses/CC-BY-4.0-legalcode.txt",
+          "ethos:document_sha256": "9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411",
+          "name": "CC-BY-4.0",
+          "path": "https://creativecommons.org/licenses/by/4.0/",
+          "title": "Creative Commons Attribution 4.0 International"
+        }
+      ],
+      "name": "reskit-test-data/era5",
+      "resources": [
+        {
+          "bytes": 42356,
+          "hash": "sha256:75b8a787f9808fcae34a53e5bf231e4ed6d42fb14f806bdbd516aac159998f9e",
+          "mediatype": "application/x-netcdf",
+          "name": "100m_u_component_of_wind.nc",
+          "path": "100m_u_component_of_wind.nc"
+        },
+        {
+          "bytes": 42356,
+          "hash": "sha256:9b6eb35b92d7b88b0d1b4394930c19e39d75bba2630e2b9cbae3fbce5988f348",
+          "mediatype": "application/x-netcdf",
+          "name": "100m_v_component_of_wind.nc",
+          "path": "100m_v_component_of_wind.nc"
+        },
+        {
+          "bytes": 70567,
+          "hash": "sha256:d5279d37536fc6c60b47b859fa230e2e6bc3ccd6478605341162abf52a067673",
+          "mediatype": "application/x-netcdf",
+          "name": "100m_wind_direction.processed.nc",
+          "path": "100m_wind_direction.processed.nc"
+        },
+        {
+          "bytes": 70559,
+          "hash": "sha256:581a0fca216e90a28d933fa57f0e32e0b6645502356cb8ed95a24d2463a14e41",
+          "mediatype": "application/x-netcdf",
+          "name": "100m_wind_speed.processed.nc",
+          "path": "100m_wind_speed.processed.nc"
+        },
+        {
+          "bytes": 42352,
+          "hash": "sha256:6834acdf1ce048cf2cff0076cde2bc4d3c267579549300d251b188370425ba66",
+          "mediatype": "application/x-netcdf",
+          "name": "10m_u_component_of_wind.nc",
+          "path": "10m_u_component_of_wind.nc"
+        },
+        {
+          "bytes": 42352,
+          "hash": "sha256:e9aada747068824439c401240091ae7f2827d96eb24bc1da00319f0ad1ea91b2",
+          "mediatype": "application/x-netcdf",
+          "name": "10m_v_component_of_wind.nc",
+          "path": "10m_v_component_of_wind.nc"
+        },
+        {
+          "bytes": 70565,
+          "hash": "sha256:224ec612ab5bd9ca7cf9e5cbcf7789961657567c5f8342a1ef1af25be8dc47ab",
+          "mediatype": "application/x-netcdf",
+          "name": "10m_wind_direction.processed.nc",
+          "path": "10m_wind_direction.processed.nc"
+        },
+        {
+          "bytes": 70557,
+          "hash": "sha256:444884046065db81a5d9d3e0deea582b870c5ee8dddf5f2d4451b50b523f3894",
+          "mediatype": "application/x-netcdf",
+          "name": "10m_wind_speed.processed.nc",
+          "path": "10m_wind_speed.processed.nc"
+        },
+        {
+          "bytes": 68216,
+          "hash": "sha256:4bedeee19701863aa609fbe3f373f8dc3d48a5753fd89d834cae9b6c57138ad0",
+          "mediatype": "application/x-netcdf",
+          "name": "2m_dewpoint_temperature.nc",
+          "path": "2m_dewpoint_temperature.nc"
+        },
+        {
+          "bytes": 68181,
+          "hash": "sha256:eec211128c8881b83ae07e96e2f97d64cc5702383e96a46f607d9aaf02f564d3",
+          "mediatype": "application/x-netcdf",
+          "name": "2m_temperature.nc",
+          "path": "2m_temperature.nc"
+        },
+        {
+          "bytes": 68208,
+          "hash": "sha256:db0d0b4b5f2039555605e46aa90eaddeb2e2c9d1ed5bdbefad6627598a22e841",
+          "mediatype": "application/x-netcdf",
+          "name": "boundary_layer_height.nc",
+          "path": "boundary_layer_height.nc"
+        },
+        {
+          "bytes": 108042,
+          "hash": "sha256:e62f61d74e43911de273da6ebb032dbcc7919b80e0666e721e62a4c4342b76f1",
+          "mediatype": "application/x-netcdf",
+          "name": "forecast_surface_roughness.nc",
+          "path": "forecast_surface_roughness.nc"
+        },
+        {
+          "bytes": 51077,
+          "hash": "sha256:26f8b83d645c1c1b44c41d0e122eaddf17a6841b34da46b018a521625a3e616f",
+          "mediatype": "application/x-netcdf",
+          "name": "snow_albedo.nc",
+          "path": "snow_albedo.nc"
+        },
+        {
+          "bytes": 51079,
+          "hash": "sha256:3a5aef44aec0126e3b8113644bf78ecce2e6fdc128cc93893e68bfa7c9afc76f",
+          "mediatype": "application/x-netcdf",
+          "name": "snow_density.nc",
+          "path": "snow_density.nc"
+        },
+        {
+          "bytes": 50771,
+          "hash": "sha256:470c6fd4a4835fc5137e4a64dfda68d5b394a4586a861c63eb9632e794ae381c",
+          "mediatype": "application/x-netcdf",
+          "name": "snow_depth.nc",
+          "path": "snow_depth.nc"
+        },
+        {
+          "bytes": 50765,
+          "hash": "sha256:de8c83060768bb50f0beb08efa12205948a9b32d36fb2f86f6535a326b619b2a",
+          "mediatype": "application/x-netcdf",
+          "name": "snowfall.nc",
+          "path": "snowfall.nc"
+        },
+        {
+          "bytes": 70526,
+          "hash": "sha256:03231262099799d38cfbf8efbb5e0bce3f447cffaea9b8d4f0e158fecb8bafce",
+          "mediatype": "application/x-netcdf",
+          "name": "surface_pressure.nc",
+          "path": "surface_pressure.nc"
+        },
+        {
+          "bytes": 68334,
+          "hash": "sha256:64222ea66c74775f95e1f26cf3224493463a973b28f3720d58b94a9d956f2556",
+          "mediatype": "application/x-netcdf",
+          "name": "surface_solar_radiation_downwards.processed.nc",
+          "path": "surface_solar_radiation_downwards.processed.nc"
+        },
+        {
+          "bytes": 67685,
+          "hash": "sha256:ba78e4cd40cc1cecdc34f457c7f0296a0ff8aa7b68913f9f10c11995c73932e0",
+          "mediatype": "application/x-netcdf",
+          "name": "surface_solar_radiation_downwards.processed.t_adjusted.nc",
+          "path": "surface_solar_radiation_downwards.processed.t_adjusted.nc"
+        },
+        {
+          "bytes": 68373,
+          "hash": "sha256:4090d95ae85ee5c464736a7b593476ff550c17f577e41cb1629365ccf71bf8b7",
+          "mediatype": "application/x-netcdf",
+          "name": "total_sky_direct_solar_radiation_at_surface.processed.nc",
+          "path": "total_sky_direct_solar_radiation_at_surface.processed.nc"
+        },
+        {
+          "bytes": 67685,
+          "hash": "sha256:a7a0a31062ff78494f19c634416ff5d91884cf4d13e6a08c26ba92f1adfc933f",
+          "mediatype": "application/x-netcdf",
+          "name": "total_sky_direct_solar_radiation_at_surface.processed.t_adjusted.nc",
+          "path": "total_sky_direct_solar_radiation_at_surface.processed.t_adjusted.nc"
+        }
+      ],
+      "sources": [
+        {
+          "path": "https://doi.org/10.24381/cds.adbb2d47",
+          "title": "ERA5 hourly data on single levels from 1940 to present (Copernicus CDS)"
+        }
+      ],
+      "title": "RESKit ERA5 test fixtures, Aachen"
+    },
+    "reskit-test-data/era5-csp": {
+      "$schema": "https://datapackage.org/profiles/2.0/datapackage.json",
+      "contributors": [
+        {
+          "organization": "Forschungszentrum Julich, ICE-2",
+          "roles": [
+            "author"
+          ],
+          "title": "K. Okosun"
+        },
+        {
+          "roles": [
+            "maintainer"
+          ],
+          "title": "ICE-2 RESKit maintainers"
+        }
+      ],
+      "description": "The same ERA5 chain cut to a box off West Africa and Morocco, where concentrating solar power is worth simulating. `single-cell/` holds a 2 x 2 cell, 8761-hour file that also draws on ERA5-Land.",
+      "ethos:access": "public",
+      "ethos:attribution": "ALL FILES IN THIS DATASET HAVE BEEN MODIFIED: every one is a spatial and/or temporal subset of the product named in its member descriptor, and several have been resampled. None is suitable for any purpose other than exercising RESKit's code paths.\nContains modified Copernicus Climate Change Service information (ERA5 and ERA5-Land, 2015); neither the European Commission nor ECMWF is responsible for any use of this data. EUMETSAT CM SAF: copyright 2017 EUMETSAT; Pfeifroth, U., Kothe, S., Mueller, R., Trentmann, J., Hollmann, R., Fuchs, P., Werscheck, M. (2017), doi:10.5676/EUM_SAF_CM/SARAH/V002. Contains MERRA-2 data provided by the NASA Global Modeling and Assimilation Office, and SRTM data provided by NASA/USGS. Data obtained from the Global Wind Atlas 3.0, developed, owned and operated by the Technical University of Denmark in partnership with the World Bank Group, utilizing data provided by Vortex, with funding from ESMAP. Solar resource data (c) 2023 Solargis; (c) The World Bank, Source: Global Solar Atlas 2.0. (c) European Union, Copernicus Land Monitoring Service 2018, European Environment Agency. Contains ESA Climate Change Initiative Land Cover data; users must acknowledge the ESA Climate Change Initiative and its Land Cover project together with the individual data providers, and cite ESA Land Cover CCI project team; Defourny, P. (2019): ESA Land Cover Climate Change Initiative (Land_Cover_cci): Global Land Cover Maps, Version 2.0.7, Centre for Environmental Data Analysis, https://catalogue.ceda.ac.uk/uuid/b382ebe6679d44b8b0e68ea4ef4b701c. GEBCO Bathymetric Compilation Group: The GEBCO Grid. Distance-to-coast data from the NASA Ocean Biology Processing Group. Administrative boundaries: (c) GeoBasis-DE / BKG, dl-de/by-2-0, and OCHA/ZIMSTAT under CC BY 3.0 IGO. ICON-LAM: contains modified data from Chen, S., Poll, S., Hendricks Franssen, H.-J., Heinrichs, H., Vereecken, H., Goergen, K. (2024): Convection-permitting ICON-LAM simulations for renewable energy potential estimates over southern Africa, Journal of Geophysical Research: Atmospheres, https://doi.org/10.1029/2023JD039569, dataset https://doi.org/10.26165/JUELICH-DATA/JYGQ65, licensed under CC BY 4.0.",
+      "ethos:contact": "ICE-2 RESKit maintainers",
+      "ethos:derivation": "`cdo sellonlatbox,-24.5,2.0,19.94,42.98` over the ERA5 download described in the sibling `era5` member.\nsingle-cell/era5_testdata_for_csp_tests.nc mixes in ERA5-Land -- its ws10 long_name reads \"Processed from ERA5:u10,v10,u100,v100,blh,fsr and ERA5-Land:u10v10\". It sits in a subdirectory because RESKit's NCSource globs a directory non-recursively, and a 2 x 2 file beside the 5 x 7 ones would be swept into the same scan.",
+      "ethos:file_count": 4,
+      "ethos:origin": "derived",
+      "ethos:remote_prefix": "reskit-test-data/era5-csp",
+      "ethos:retrieved": "2026-09-09",
+      "ethos:total_bytes": 1541015,
+      "ethos:visibility": "public",
+      "homepage": "https://github.com/FZJ-IEK3-VSA/RESKit",
+      "licenses": [
+        {
+          "ethos:document": "licenses/CC-BY-4.0-legalcode.txt",
+          "ethos:document_sha256": "9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411",
+          "name": "CC-BY-4.0",
+          "path": "https://creativecommons.org/licenses/by/4.0/",
+          "title": "Creative Commons Attribution 4.0 International"
+        }
+      ],
+      "name": "reskit-test-data/era5-csp",
+      "resources": [
+        {
+          "bytes": 536588,
+          "hash": "sha256:27c57b9db439f55b08df9770fadaa3a666fca90c966d84e7455b35c482bc07b8",
+          "mediatype": "application/x-netcdf",
+          "name": "10m_wind_speed.processed.nc",
+          "path": "10m_wind_speed.processed.nc"
+        },
+        {
+          "bytes": 465103,
+          "hash": "sha256:32f10acebc4a3557c86ab50789b25f8ef58be77921aca8c115884536cb107918",
+          "mediatype": "application/x-netcdf",
+          "name": "2m_temperature.nc",
+          "path": "2m_temperature.nc"
+        },
+        {
+          "bytes": 206336,
+          "hash": "sha256:0894b43ebef97e038a519dd13671c99f4022b72b44b051eadb12ed7e7167ad74",
+          "mediatype": "application/x-netcdf",
+          "name": "single-cell-era5_testdata_for_csp_tests.nc",
+          "path": "single-cell/era5_testdata_for_csp_tests.nc"
+        },
+        {
+          "bytes": 332988,
+          "hash": "sha256:53082caeb2ab3b24c9b09df1483ba95a9358262a5c4fe1ff9c32248821267c2d",
+          "mediatype": "application/x-netcdf",
+          "name": "total_sky_direct_solar_radiation_at_surface.processed.t_adjusted.nc",
+          "path": "total_sky_direct_solar_radiation_at_surface.processed.t_adjusted.nc"
+        }
+      ],
+      "sources": [
+        {
+          "path": "https://doi.org/10.24381/cds.adbb2d47",
+          "title": "ERA5 hourly data on single levels from 1940 to present (Copernicus CDS)"
+        },
+        {
+          "path": "https://doi.org/10.24381/cds.e2161bac",
+          "title": "ERA5-Land hourly data from 1950 to present (Copernicus CDS)"
+        }
+      ],
+      "title": "RESKit ERA5 and ERA5-Land test fixtures, Morocco"
+    },
+    "reskit-test-data/esa-cci-landcover": {
+      "$schema": "https://datapackage.org/profiles/2.0/datapackage.json",
+      "contributors": [
+        {
+          "roles": [
+            "author"
+          ],
+          "title": "ESA Land Cover CCI project team"
+        },
+        {
+          "organization": "Universite catholique de Louvain",
+          "roles": [
+            "author"
+          ],
+          "title": "Pierre Defourny"
+        },
+        {
+          "path": "https://catalogue.ceda.ac.uk/uuid/b382ebe6679d44b8b0e68ea4ef4b701c",
+          "roles": [
+            "publisher"
+          ],
+          "title": "Centre for Environmental Data Analysis (CEDA)"
+        },
+        {
+          "roles": [
+            "maintainer"
+          ],
+          "title": "ICE-2 RESKit maintainers"
+        }
+      ],
+      "description": "Two 300 m land cover clips, over Aachen and over Bulawayo, cut from the 2015 layer of the ESA CCI Land Cover v2.0.7 series distributed by CEDA. Publishable: CEDA's terms grant use to any user for any purpose.",
+      "ethos:access": "public",
+      "ethos:attribution": "ALL FILES IN THIS DATASET HAVE BEEN MODIFIED: every one is a spatial and/or temporal subset of the product named in its member descriptor, and several have been resampled. None is suitable for any purpose other than exercising RESKit's code paths.\nContains modified Copernicus Climate Change Service information (ERA5 and ERA5-Land, 2015); neither the European Commission nor ECMWF is responsible for any use of this data. EUMETSAT CM SAF: copyright 2017 EUMETSAT; Pfeifroth, U., Kothe, S., Mueller, R., Trentmann, J., Hollmann, R., Fuchs, P., Werscheck, M. (2017), doi:10.5676/EUM_SAF_CM/SARAH/V002. Contains MERRA-2 data provided by the NASA Global Modeling and Assimilation Office, and SRTM data provided by NASA/USGS. Data obtained from the Global Wind Atlas 3.0, developed, owned and operated by the Technical University of Denmark in partnership with the World Bank Group, utilizing data provided by Vortex, with funding from ESMAP. Solar resource data (c) 2023 Solargis; (c) The World Bank, Source: Global Solar Atlas 2.0. (c) European Union, Copernicus Land Monitoring Service 2018, European Environment Agency. Contains ESA Climate Change Initiative Land Cover data; users must acknowledge the ESA Climate Change Initiative and its Land Cover project together with the individual data providers, and cite ESA Land Cover CCI project team; Defourny, P. (2019): ESA Land Cover Climate Change Initiative (Land_Cover_cci): Global Land Cover Maps, Version 2.0.7, Centre for Environmental Data Analysis, https://catalogue.ceda.ac.uk/uuid/b382ebe6679d44b8b0e68ea4ef4b701c. GEBCO Bathymetric Compilation Group: The GEBCO Grid. Distance-to-coast data from the NASA Ocean Biology Processing Group. Administrative boundaries: (c) GeoBasis-DE / BKG, dl-de/by-2-0, and OCHA/ZIMSTAT under CC BY 3.0 IGO. ICON-LAM: contains modified data from Chen, S., Poll, S., Hendricks Franssen, H.-J., Heinrichs, H., Vereecken, H., Goergen, K. (2024): Convection-permitting ICON-LAM simulations for renewable energy potential estimates over southern Africa, Journal of Geophysical Research: Atmospheres, https://doi.org/10.1029/2023JD039569, dataset https://doi.org/10.26165/JUELICH-DATA/JYGQ65, licensed under CC BY 4.0.",
+      "ethos:contact": "ICE-2 RESKit maintainers",
+      "ethos:derivation": "Both files are grid-aligned subsets of ESACCI-LC-L4-LCCS-Map-300m-P1Y-2015-v2.0.7.tif -- the LCCS class layer on the product's native global 300 m grid (129600 x 64800, origin -180/90, 1/360 deg) -- downloaded from CEDA on 2026-09-16 and verified byte-for-byte against the copy catalogued as `esa-cci-landcover`, sha256 5f0030bb0645acae41f7bbc4787e815d57e8034e6d102a458edbf77f568e98e8. No resampling, no reprojection, no class remapping: each clip is an integer pixel window read straight out of that grid, so its cells are the product's own cells.\nESA_CCI_2015_clip.tif is srcWin 66780 13860 540 540, i.e. 5.5-7.0 E by 50.0-51.5 N. 18 LCCS classes.\nESA_CCI_2015_clip_cityBulawayoInZimbabwa.tif is srcWin 74994 39586 170 131 over Bulawayo. 16 LCCS classes.\nBoth windows are the extents the superseded 2018 clips had, reused exactly so the only variable is the source year: the pixel offsets came out integral to within 0 and 7e-12 of a cell, which also confirms the old clips were cut from this same global grid. Against the 2018 clips 0.84% of cells differ over Aachen and 1.19% over Bulawayo, and the set of classes present is identical in both.\nIts extent still follows the old GADM outline; if it is re-cut again, cut it to the OCHA boundary now shipped in the `boundaries` member.",
+      "ethos:file_count": 2,
+      "ethos:license_status": "resolved",
+      "ethos:origin": "derived",
+      "ethos:remote_prefix": "reskit-test-data/esa-cci-landcover",
+      "ethos:retrieved": "2026-09-16",
+      "ethos:total_bytes": 98362,
+      "ethos:visibility": "public",
+      "homepage": "https://github.com/FZJ-IEK3-VSA/RESKit",
+      "licenses": [
+        {
+          "ethos:document": "licenses/esacci_landcover_terms_and_conditions.pdf",
+          "ethos:document_sha256": "a2b89ca5649815e1a0696b3b4220351409159328e4e4dbd4116d066bec5e8377",
+          "path": "https://artefacts.ceda.ac.uk/licences/specific_licences/esacci_landcover_terms_and_conditions.pdf",
+          "title": "Terms and Conditions for use of Land Cover CCI datasets from the CCI Open Data Portal"
+        }
+      ],
+      "name": "reskit-test-data/esa-cci-landcover",
+      "resources": [
+        {
+          "bytes": 75196,
+          "hash": "sha256:1f8a633883b730cb258b2c48a4f23999f6b7439e7e1003a34ad2aa96b189b3a2",
+          "mediatype": "image/tiff",
+          "name": "esa_cci_2015_clip.tif",
+          "path": "ESA_CCI_2015_clip.tif"
+        },
+        {
+          "bytes": 23166,
+          "hash": "sha256:bd4df6aaca93dd8fbebc123e3c881bc78dec146e92ba511f0201c003ab9352af",
+          "mediatype": "image/tiff",
+          "name": "esa_cci_2015_clip_citybulawayoinzimbabwa.tif",
+          "path": "ESA_CCI_2015_clip_cityBulawayoInZimbabwa.tif"
+        }
+      ],
+      "sources": [
+        {
+          "path": "https://catalogue.ceda.ac.uk/uuid/b382ebe6679d44b8b0e68ea4ef4b701c",
+          "title": "ESA Land Cover Climate Change Initiative (Land_Cover_cci): Global Land Cover Maps, Version 2.0.7 (CEDA Archive)"
+        },
+        {
+          "path": "https://www.esa-landcover-cci.org/",
+          "title": "ESA Climate Change Initiative - Land Cover project"
+        }
+      ],
+      "title": "RESKit ESA CCI land cover test fixtures, Aachen and Bulawayo"
+    },
+    "reskit-test-data/gebco": {
+      "$schema": "https://datapackage.org/profiles/2.0/datapackage.json",
+      "contributors": [
+        {
+          "organization": "Forschungszentrum Julich, ICE-2",
+          "roles": [
+            "author"
+          ],
+          "title": "M. Stargardt"
+        },
+        {
+          "roles": [
+            "maintainer"
+          ],
+          "title": "ICE-2 RESKit maintainers"
+        }
+      ],
+      "description": "Water depth over a 24 x 24 cell, 0.01 degree box in the German Bight, used by the offshore wind cost model.",
+      "ethos:access": "public",
+      "ethos:attribution": "ALL FILES IN THIS DATASET HAVE BEEN MODIFIED: every one is a spatial and/or temporal subset of the product named in its member descriptor, and several have been resampled. None is suitable for any purpose other than exercising RESKit's code paths.\nContains modified Copernicus Climate Change Service information (ERA5 and ERA5-Land, 2015); neither the European Commission nor ECMWF is responsible for any use of this data. EUMETSAT CM SAF: copyright 2017 EUMETSAT; Pfeifroth, U., Kothe, S., Mueller, R., Trentmann, J., Hollmann, R., Fuchs, P., Werscheck, M. (2017), doi:10.5676/EUM_SAF_CM/SARAH/V002. Contains MERRA-2 data provided by the NASA Global Modeling and Assimilation Office, and SRTM data provided by NASA/USGS. Data obtained from the Global Wind Atlas 3.0, developed, owned and operated by the Technical University of Denmark in partnership with the World Bank Group, utilizing data provided by Vortex, with funding from ESMAP. Solar resource data (c) 2023 Solargis; (c) The World Bank, Source: Global Solar Atlas 2.0. (c) European Union, Copernicus Land Monitoring Service 2018, European Environment Agency. Contains ESA Climate Change Initiative Land Cover data; users must acknowledge the ESA Climate Change Initiative and its Land Cover project together with the individual data providers, and cite ESA Land Cover CCI project team; Defourny, P. (2019): ESA Land Cover Climate Change Initiative (Land_Cover_cci): Global Land Cover Maps, Version 2.0.7, Centre for Environmental Data Analysis, https://catalogue.ceda.ac.uk/uuid/b382ebe6679d44b8b0e68ea4ef4b701c. GEBCO Bathymetric Compilation Group: The GEBCO Grid. Distance-to-coast data from the NASA Ocean Biology Processing Group. Administrative boundaries: (c) GeoBasis-DE / BKG, dl-de/by-2-0, and OCHA/ZIMSTAT under CC BY 3.0 IGO. ICON-LAM: contains modified data from Chen, S., Poll, S., Hendricks Franssen, H.-J., Heinrichs, H., Vereecken, H., Goergen, K. (2024): Convection-permitting ICON-LAM simulations for renewable energy potential estimates over southern Africa, Journal of Geophysical Research: Atmospheres, https://doi.org/10.1029/2023JD039569, dataset https://doi.org/10.26165/JUELICH-DATA/JYGQ65, licensed under CC BY 4.0.",
+      "ethos:contact": "ICE-2 RESKit maintainers",
+      "ethos:derivation": "Resampled from a GEBCO grid to 0.01 degree. The product family is certain from the SeaDataNet vocabulary the file carries -- sdn_parameter_urn SDN:P01::BATHHGHT, sdn_uom_urn SDN:P06::ULAA -- and RESKit's own docstring names gebco.net as the source. The release is NOT pinned: GEBCO_2020 does not reproduce the values (RMSE about 1 m under every resampling method tried), so this came from some other release. Public domain in every release, so nothing turns on it.",
+      "ethos:file_count": 1,
+      "ethos:origin": "derived",
+      "ethos:remote_prefix": "reskit-test-data/gebco",
+      "ethos:retrieved": "2026-09-09",
+      "ethos:total_bytes": 6467,
+      "ethos:visibility": "public",
+      "homepage": "https://github.com/FZJ-IEK3-VSA/RESKit",
+      "licenses": [
+        {
+          "ethos:document": "licenses/gebco-terms-of-use.html",
+          "ethos:document_sha256": "7b2c9c45fdf4012aadc2c6205b3da86200f5e4dca6779691509e4d27e92adcd9",
+          "path": "https://www.gebco.net/data-products/gridded-bathymetry-data",
+          "title": "GEBCO Grid terms of use -- public domain"
+        }
+      ],
+      "name": "reskit-test-data/gebco",
+      "resources": [
+        {
+          "bytes": 6467,
+          "hash": "sha256:35d67de20027f946200516d88c9f345e613114f13057749688ca206cbd13a4e2",
+          "mediatype": "image/tiff",
+          "name": "water_depth_northsea.tif",
+          "path": "water_depth_northsea.tif"
+        }
+      ],
+      "sources": [
+        {
+          "path": "https://www.gebco.net/data-products/gridded-bathymetry-data",
+          "title": "The GEBCO Grid - global terrain model for ocean and land"
+        }
+      ],
+      "title": "RESKit GEBCO bathymetry test fixture, German Bight"
+    },
+    "reskit-test-data/global-solar-atlas": {
+      "$schema": "https://datapackage.org/profiles/2.0/datapackage.json",
+      "contributors": [
+        {
+          "organization": "Forschungszentrum Julich, ICE-2",
+          "roles": [
+            "author"
+          ],
+          "title": "Severin Ryberg"
+        },
+        {
+          "organization": "Forschungszentrum Julich, ICE-2",
+          "roles": [
+            "author"
+          ],
+          "title": "K. Okosun"
+        },
+        {
+          "roles": [
+            "maintainer"
+          ],
+          "title": "ICE-2 RESKit maintainers"
+        }
+      ],
+      "description": "Long-term average global horizontal and direct normal irradiation over Aachen, and direct normal irradiation with air temperature over Morocco for the CSP workflows.",
+      "ethos:access": "public",
+      "ethos:attribution": "ALL FILES IN THIS DATASET HAVE BEEN MODIFIED: every one is a spatial and/or temporal subset of the product named in its member descriptor, and several have been resampled. None is suitable for any purpose other than exercising RESKit's code paths.\nContains modified Copernicus Climate Change Service information (ERA5 and ERA5-Land, 2015); neither the European Commission nor ECMWF is responsible for any use of this data. EUMETSAT CM SAF: copyright 2017 EUMETSAT; Pfeifroth, U., Kothe, S., Mueller, R., Trentmann, J., Hollmann, R., Fuchs, P., Werscheck, M. (2017), doi:10.5676/EUM_SAF_CM/SARAH/V002. Contains MERRA-2 data provided by the NASA Global Modeling and Assimilation Office, and SRTM data provided by NASA/USGS. Data obtained from the Global Wind Atlas 3.0, developed, owned and operated by the Technical University of Denmark in partnership with the World Bank Group, utilizing data provided by Vortex, with funding from ESMAP. Solar resource data (c) 2023 Solargis; (c) The World Bank, Source: Global Solar Atlas 2.0. (c) European Union, Copernicus Land Monitoring Service 2018, European Environment Agency. Contains ESA Climate Change Initiative Land Cover data; users must acknowledge the ESA Climate Change Initiative and its Land Cover project together with the individual data providers, and cite ESA Land Cover CCI project team; Defourny, P. (2019): ESA Land Cover Climate Change Initiative (Land_Cover_cci): Global Land Cover Maps, Version 2.0.7, Centre for Environmental Data Analysis, https://catalogue.ceda.ac.uk/uuid/b382ebe6679d44b8b0e68ea4ef4b701c. GEBCO Bathymetric Compilation Group: The GEBCO Grid. Distance-to-coast data from the NASA Ocean Biology Processing Group. Administrative boundaries: (c) GeoBasis-DE / BKG, dl-de/by-2-0, and OCHA/ZIMSTAT under CC BY 3.0 IGO. ICON-LAM: contains modified data from Chen, S., Poll, S., Hendricks Franssen, H.-J., Heinrichs, H., Vereecken, H., Goergen, K. (2024): Convection-permitting ICON-LAM simulations for renewable energy potential estimates over southern Africa, Journal of Geophysical Research: Atmospheres, https://doi.org/10.1029/2023JD039569, dataset https://doi.org/10.26165/JUELICH-DATA/JYGQ65, licensed under CC BY 4.0.",
+      "ethos:contact": "ICE-2 RESKit maintainers",
+      "ethos:derivation": "Clipped from the Global Solar Atlas. gsa-ghi-like.tif and gsa-dni-like.tif are 180 x 180 at 30 arcsec over Aachen; csp-gsa-dni-like.tif is 400 x 600 at the product's native 250 m over Morocco, and csp-gsa-temp-like.tif 120 x 180 at 30 arcsec over the same window.\ngsa-dni-like.tif is byte-identical to a stray file under the `global-solar-atlas` dataset's source_dir, which excludes its copy and points here.",
+      "ethos:file_count": 4,
+      "ethos:origin": "derived",
+      "ethos:remote_prefix": "reskit-test-data/global-solar-atlas",
+      "ethos:retrieved": "2026-09-09",
+      "ethos:total_bytes": 1151033,
+      "ethos:visibility": "public",
+      "homepage": "https://github.com/FZJ-IEK3-VSA/RESKit",
+      "licenses": [
+        {
+          "ethos:document": "licenses/CC-BY-4.0-legalcode.txt",
+          "ethos:document_sha256": "9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411",
+          "name": "CC-BY-4.0",
+          "path": "https://globalsolaratlas.info/support/terms-of-use",
+          "title": "Creative Commons Attribution 4.0 International, with the mandatory dispute-resolution addition in the Global Solar Atlas terms of use"
+        }
+      ],
+      "name": "reskit-test-data/global-solar-atlas",
+      "resources": [
+        {
+          "bytes": 961086,
+          "hash": "sha256:0f81bbb3161630e927018e53c3facec092c6c3c16d680a898f767b5e672b9de7",
+          "mediatype": "image/tiff",
+          "name": "csp-gsa-dni-like.tif",
+          "path": "csp-gsa-dni-like.tif"
+        },
+        {
+          "bytes": 86832,
+          "hash": "sha256:a9173e742413eb4998c6d504d6e40a950516498e484dccd9d1842a981f724f92",
+          "mediatype": "image/tiff",
+          "name": "csp-gsa-temp-like.tif",
+          "path": "csp-gsa-temp-like.tif"
+        },
+        {
+          "bytes": 48117,
+          "hash": "sha256:8d75bbf867c7a01a2a04fa5f55a481f6606d6b82f1b165788c58f7b0617a8d55",
+          "mediatype": "image/tiff",
+          "name": "gsa-dni-like.tif",
+          "path": "gsa-dni-like.tif"
+        },
+        {
+          "bytes": 54998,
+          "hash": "sha256:af432e2eddd8fcfee34c60dfdc6ba2fa61f34db1d80e4489443acb0d556b6e80",
+          "mediatype": "image/tiff",
+          "name": "gsa-ghi-like.tif",
+          "path": "gsa-ghi-like.tif"
+        }
+      ],
+      "sources": [
+        {
+          "path": "https://globalsolaratlas.info",
+          "title": "Global Solar Atlas (Solargis / World Bank ESMAP)"
+        }
+      ],
+      "title": "RESKit Global Solar Atlas test fixtures"
+    },
+    "reskit-test-data/global-wind-atlas": {
+      "$schema": "https://datapackage.org/profiles/2.0/datapackage.json",
+      "contributors": [
+        {
+          "organization": "Forschungszentrum Julich, ICE-2",
+          "roles": [
+            "author"
+          ],
+          "title": "Severin Ryberg"
+        },
+        {
+          "organization": "Forschungszentrum Julich, ICE-2",
+          "roles": [
+            "author"
+          ],
+          "title": "Christoph Winkler"
+        },
+        {
+          "roles": [
+            "maintainer"
+          ],
+          "title": "ICE-2 RESKit maintainers"
+        }
+      ],
+      "description": "Mean wind speed at 50, 100 and 200 m over a 150 x 150 cell, 0.01 degree box around Aachen, plus a correction-factor raster derived from the 100 m layer.",
+      "ethos:access": "public",
+      "ethos:attribution": "ALL FILES IN THIS DATASET HAVE BEEN MODIFIED: every one is a spatial and/or temporal subset of the product named in its member descriptor, and several have been resampled. None is suitable for any purpose other than exercising RESKit's code paths.\nContains modified Copernicus Climate Change Service information (ERA5 and ERA5-Land, 2015); neither the European Commission nor ECMWF is responsible for any use of this data. EUMETSAT CM SAF: copyright 2017 EUMETSAT; Pfeifroth, U., Kothe, S., Mueller, R., Trentmann, J., Hollmann, R., Fuchs, P., Werscheck, M. (2017), doi:10.5676/EUM_SAF_CM/SARAH/V002. Contains MERRA-2 data provided by the NASA Global Modeling and Assimilation Office, and SRTM data provided by NASA/USGS. Data obtained from the Global Wind Atlas 3.0, developed, owned and operated by the Technical University of Denmark in partnership with the World Bank Group, utilizing data provided by Vortex, with funding from ESMAP. Solar resource data (c) 2023 Solargis; (c) The World Bank, Source: Global Solar Atlas 2.0. (c) European Union, Copernicus Land Monitoring Service 2018, European Environment Agency. Contains ESA Climate Change Initiative Land Cover data; users must acknowledge the ESA Climate Change Initiative and its Land Cover project together with the individual data providers, and cite ESA Land Cover CCI project team; Defourny, P. (2019): ESA Land Cover Climate Change Initiative (Land_Cover_cci): Global Land Cover Maps, Version 2.0.7, Centre for Environmental Data Analysis, https://catalogue.ceda.ac.uk/uuid/b382ebe6679d44b8b0e68ea4ef4b701c. GEBCO Bathymetric Compilation Group: The GEBCO Grid. Distance-to-coast data from the NASA Ocean Biology Processing Group. Administrative boundaries: (c) GeoBasis-DE / BKG, dl-de/by-2-0, and OCHA/ZIMSTAT under CC BY 3.0 IGO. ICON-LAM: contains modified data from Chen, S., Poll, S., Hendricks Franssen, H.-J., Heinrichs, H., Vereecken, H., Goergen, K. (2024): Convection-permitting ICON-LAM simulations for renewable energy potential estimates over southern Africa, Journal of Geophysical Research: Atmospheres, https://doi.org/10.1029/2023JD039569, dataset https://doi.org/10.26165/JUELICH-DATA/JYGQ65, licensed under CC BY 4.0.",
+      "ethos:contact": "ICE-2 RESKit maintainers",
+      "ethos:derivation": "Global Wind Atlas 3.0 resampled to the 0.01 degree test grid. At every one of the 22 500 pixels gwa50 < gwa100 < gwa200, which is wind shear and not something a generator produces by accident; the nodata value -999 is the GWA 3.0 idiom, where 4.0 uses nan.\ndummy_correction_factors.tif is NOT synthetic despite its name. It is gwa100-like.tif divided by its own maximum -- verified to a maximum absolute difference of 3e-8 across the grid, which is float32 rounding.",
+      "ethos:file_count": 4,
+      "ethos:origin": "derived",
+      "ethos:remote_prefix": "reskit-test-data/global-wind-atlas",
+      "ethos:retrieved": "2026-09-09",
+      "ethos:total_bytes": 329256,
+      "ethos:visibility": "public",
+      "homepage": "https://github.com/FZJ-IEK3-VSA/RESKit",
+      "licenses": [
+        {
+          "ethos:document": "licenses/CC-BY-4.0-legalcode.txt",
+          "ethos:document_sha256": "9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411",
+          "name": "CC-BY-4.0",
+          "path": "https://creativecommons.org/licenses/by/4.0/",
+          "title": "Creative Commons Attribution 4.0 International"
+        }
+      ],
+      "name": "reskit-test-data/global-wind-atlas",
+      "resources": [
+        {
+          "bytes": 57816,
+          "hash": "sha256:6fa64e9f2cb3cdcb25f3585c59a9634c79be9891cca9d2e7180ba8f941cdb0e7",
+          "mediatype": "image/tiff",
+          "name": "dummy_correction_factors.tif",
+          "path": "dummy_correction_factors.tif"
+        },
+        {
+          "bytes": 90480,
+          "hash": "sha256:56ee5f8576d3b347e0f78c051208b763cae196a36c94a01a2ea0adc0a194aeb1",
+          "mediatype": "image/tiff",
+          "name": "gwa100-like.tif",
+          "path": "gwa100-like.tif"
+        },
+        {
+          "bytes": 90480,
+          "hash": "sha256:2d455fb029c6ee0d9d42e3bb43a773994a09291ec2c5365b587bb9e1c6e87049",
+          "mediatype": "image/tiff",
+          "name": "gwa200-like.tif",
+          "path": "gwa200-like.tif"
+        },
+        {
+          "bytes": 90480,
+          "hash": "sha256:f76339ee7e399338eade8c792bce01113f3e669e4b7972df18599ab751212ec4",
+          "mediatype": "image/tiff",
+          "name": "gwa50-like.tif",
+          "path": "gwa50-like.tif"
+        }
+      ],
+      "sources": [
+        {
+          "path": "https://globalwindatlas.info",
+          "title": "Global Wind Atlas 3.0 (DTU / World Bank Group)"
+        }
+      ],
+      "title": "RESKit Global Wind Atlas 3 test fixtures, Aachen"
+    },
+    "reskit-test-data/icon-lam": {
+      "$schema": "https://datapackage.org/profiles/2.0/datapackage.json",
+      "contributors": [
+        {
+          "organization": "Forschungszentrum Julich, IBG-3 and ICE-2 (formerly IEK-3)",
+          "path": "https://orcid.org/0000-0002-0986-0950",
+          "roles": [
+            "author"
+          ],
+          "title": "Shuying Chen"
+        },
+        {
+          "roles": [
+            "maintainer"
+          ],
+          "title": "ICE-2 RESKit maintainers"
+        }
+      ],
+      "description": "Nine variables of kilometre-scale ICON-LAM output over Bulawayo, Zimbabwe: 14 x 11 cells of the 0.033 deg grid and 144 quarter-hourly steps, 2019-03-01 00:00 to 2019-03-02 11:45. Cut from the same regridded simulation as icon-lam-southern-africa (Chen et al. 2024), produced at Forschungszentrum Julich.",
+      "ethos:access": "public",
+      "ethos:additional_variables": {
+        "blh": "Planetary boundary-layer height [m], diagnosed offline by the bulk Richardson number method from 3D u, v, virtual potential temperature and model-level heights.",
+        "d2m": "2 m dew-point temperature [K], ICON td_2m.",
+        "fdir": "Direct horizontal irradiance [W m-2]: downward minus diffuse downward shortwave, sob_s + sou_s - sodifd_s.",
+        "fsr": "Surface roughness length [m], ICON gz0.",
+        "sp": "Surface pressure [Pa], ICON pres_sfc."
+      },
+      "ethos:attribution": "ALL FILES IN THIS DATASET HAVE BEEN MODIFIED: every one is a spatial and/or temporal subset of the product named in its member descriptor, and several have been resampled. None is suitable for any purpose other than exercising RESKit's code paths.\nContains modified Copernicus Climate Change Service information (ERA5 and ERA5-Land, 2015); neither the European Commission nor ECMWF is responsible for any use of this data. EUMETSAT CM SAF: copyright 2017 EUMETSAT; Pfeifroth, U., Kothe, S., Mueller, R., Trentmann, J., Hollmann, R., Fuchs, P., Werscheck, M. (2017), doi:10.5676/EUM_SAF_CM/SARAH/V002. Contains MERRA-2 data provided by the NASA Global Modeling and Assimilation Office, and SRTM data provided by NASA/USGS. Data obtained from the Global Wind Atlas 3.0, developed, owned and operated by the Technical University of Denmark in partnership with the World Bank Group, utilizing data provided by Vortex, with funding from ESMAP. Solar resource data (c) 2023 Solargis; (c) The World Bank, Source: Global Solar Atlas 2.0. (c) European Union, Copernicus Land Monitoring Service 2018, European Environment Agency. Contains ESA Climate Change Initiative Land Cover data; users must acknowledge the ESA Climate Change Initiative and its Land Cover project together with the individual data providers, and cite ESA Land Cover CCI project team; Defourny, P. (2019): ESA Land Cover Climate Change Initiative (Land_Cover_cci): Global Land Cover Maps, Version 2.0.7, Centre for Environmental Data Analysis, https://catalogue.ceda.ac.uk/uuid/b382ebe6679d44b8b0e68ea4ef4b701c. GEBCO Bathymetric Compilation Group: The GEBCO Grid. Distance-to-coast data from the NASA Ocean Biology Processing Group. Administrative boundaries: (c) GeoBasis-DE / BKG, dl-de/by-2-0, and OCHA/ZIMSTAT under CC BY 3.0 IGO. ICON-LAM: contains modified data from Chen, S., Poll, S., Hendricks Franssen, H.-J., Heinrichs, H., Vereecken, H., Goergen, K. (2024): Convection-permitting ICON-LAM simulations for renewable energy potential estimates over southern Africa, Journal of Geophysical Research: Atmospheres, https://doi.org/10.1029/2023JD039569, dataset https://doi.org/10.26165/JUELICH-DATA/JYGQ65, licensed under CC BY 4.0.",
+      "ethos:contact": "ICE-2 RESKit maintainers",
+      "ethos:derivation": "ICON-NWP v2.6.4 in limited-area mode (ICON-LAM), 3.3 km native grid over the SASSCAL southern Africa domain, driven by DWD's 13 km global ICON analysis, run on JSC JUWELS under project cjibg36. Per-variable processing and the conservative remap (cdo remapcon) to a regular 0.033 deg lon/lat grid are the same as for icon-lam-southern-africa -- see its ethos:derivation -- including the 10 m wind speed from the components, sqrt(u_10m^2 + v_10m^2), and the power-law 100 m wind speed. Taken from the untiled 2017-2019 files, not from the tiles.\nThen, as recorded in the CF history: cdo -L selyear,2019 -selmonth,3 (2023-07-28); cdo seltimestep,1/144 (2025-03-10); and a clip to 14 x 11 cells over Bulawayo, cell centres 28.328-28.757 E by 19.983-20.313 S. The clip is not in the history -- no CDO step for it -- so the window is given here from the coordinates.\nVariables are renamed to RESKit's ERA5 convention -- blh, d2m, fdir, fsr, sp, ssrd, t2m, ws10, ws100 -- which is why these files look like ERA5 at a glance. They are not.\nThe time axis is \"days since 2017-01-01\" and starts at 789.0, which is 2019-03-01 00:00, so it agrees with the 2019-03 in the filenames. An earlier version of this note called that an oddity; it is not one.",
+      "ethos:exclude": [
+        "**/__init__.py"
+      ],
+      "ethos:file_count": 9,
+      "ethos:origin": "derived",
+      "ethos:remote_prefix": "reskit-test-data/icon-lam",
+      "ethos:retrieved": "2025-03-10",
+      "ethos:total_bytes": 1059404,
+      "ethos:visibility": "public",
+      "homepage": "https://github.com/FZJ-IEK3-VSA/RESKit",
+      "licenses": [
+        {
+          "ethos:document": "licenses/CC-BY-4.0-legalcode.txt",
+          "ethos:document_sha256": "9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411",
+          "name": "CC-BY-4.0",
+          "path": "https://creativecommons.org/licenses/by/4.0/",
+          "title": "Creative Commons Attribution 4.0 International"
+        }
+      ],
+      "name": "reskit-test-data/icon-lam",
+      "resources": [
+        {
+          "bytes": 113999,
+          "hash": "sha256:1863b5ae462bcf0bd11fc5637a02092ca39c68786b82342e385b081564d63ca2",
+          "mediatype": "application/x-netcdf",
+          "name": "icon-lam_lonlat-0.033degree_blh_2019-03_inst_per15m.nc",
+          "path": "ICON-LAM_lonlat-0.033degree_blh_2019-03_inst_per15m.nc"
+        },
+        {
+          "bytes": 123436,
+          "hash": "sha256:7a28f0ba72de3854fe5856077f061d193e95ee1671ac82ac007f316dd53d9719",
+          "mediatype": "application/x-netcdf",
+          "name": "icon-lam_lonlat-0.033degree_d2m_2019-03_inst_per15m.nc",
+          "path": "ICON-LAM_lonlat-0.033degree_d2m_2019-03_inst_per15m.nc"
+        },
+        {
+          "bytes": 113351,
+          "hash": "sha256:3007387fc36d2feba4cea408c6349f4720581b6780f2b0a381daa8ef973bd978",
+          "mediatype": "application/x-netcdf",
+          "name": "icon-lam_lonlat-0.033degree_fdir_2019-03_inst_per15m.nc",
+          "path": "ICON-LAM_lonlat-0.033degree_fdir_2019-03_inst_per15m.nc"
+        },
+        {
+          "bytes": 122700,
+          "hash": "sha256:bed673d46d7b2650e9a44457b031b3b7e95c88f62b8841aef3e2de44100c2f1a",
+          "mediatype": "application/x-netcdf",
+          "name": "icon-lam_lonlat-0.033degree_fsr_2019-03_inst_per15m.nc",
+          "path": "ICON-LAM_lonlat-0.033degree_fsr_2019-03_inst_per15m.nc"
+        },
+        {
+          "bytes": 123668,
+          "hash": "sha256:54a2680ec050b84bb6dbe632ad472230b16aa01fa1ea7e346c5c568098283074",
+          "mediatype": "application/x-netcdf",
+          "name": "icon-lam_lonlat-0.033degree_sp_2019-03_inst_per15m.nc",
+          "path": "ICON-LAM_lonlat-0.033degree_sp_2019-03_inst_per15m.nc"
+        },
+        {
+          "bytes": 113146,
+          "hash": "sha256:b2353c32c6f63b2be2018d07715cacaa7b7151d408c860caa3c9b25382177227",
+          "mediatype": "application/x-netcdf",
+          "name": "icon-lam_lonlat-0.033degree_ssrd_2019-03_inst_per15m.nc",
+          "path": "ICON-LAM_lonlat-0.033degree_ssrd_2019-03_inst_per15m.nc"
+        },
+        {
+          "bytes": 123232,
+          "hash": "sha256:eb211c434e09be3621814d303126bee313208d0be1d9b7f64fa2fc652a4658df",
+          "mediatype": "application/x-netcdf",
+          "name": "icon-lam_lonlat-0.033degree_t2m_2019-03_inst_per15m.nc",
+          "path": "ICON-LAM_lonlat-0.033degree_t2m_2019-03_inst_per15m.nc"
+        },
+        {
+          "bytes": 113087,
+          "hash": "sha256:a046a8a21c9a9fada8b716aa426d1ddb8c9fe6d2e105a1944737b1b1d5b27fd7",
+          "mediatype": "application/x-netcdf",
+          "name": "icon-lam_lonlat-0.033degree_ws100_2019-03_inst_per15m.nc",
+          "path": "ICON-LAM_lonlat-0.033degree_ws100_2019-03_inst_per15m.nc"
+        },
+        {
+          "bytes": 112785,
+          "hash": "sha256:66c4406aeeef7f3c8658410002b81dcb3d39ddbfbc20475f73ac89fa8115748b",
+          "mediatype": "application/x-netcdf",
+          "name": "icon-lam_lonlat-0.033degree_ws10_2019-03_inst_per15m.nc",
+          "path": "ICON-LAM_lonlat-0.033degree_ws10_2019-03_inst_per15m.nc"
+        }
+      ],
+      "sources": [
+        {
+          "path": "https://doi.org/10.26165/JUELICH-DATA/JYGQ65",
+          "title": "Chen, S., Poll, S., Hendricks Franssen, H.-J., Heinrichs, H., Vereecken, H., Goergen, K. (2024): Convection-permitting ICON-LAM Simulations for Renewable Energy Potential Estimates over Southern Africa [dataset]. Julich DATA, V1"
+        },
+        {
+          "path": "https://doi.org/10.1029/2023JD039569",
+          "title": "Chen, S., Poll, S., Hendricks Franssen, H.-J., Heinrichs, H., Vereecken, H., Goergen, K. (2024): Convection-permitting ICON-LAM simulations for renewable energy potential estimates over southern Africa. JGR Atmospheres"
+        },
+        {
+          "path": "https://doi.org/10.1029/2024GL110122",
+          "title": "Chen, S., Goergen, K., Hendricks Franssen, H.-J., Winkler, C., Poll, S., Houssoukri Zounogo Wahabou, Y., ... & Heinrichs, H. (2024). Higher onshore wind energy potentials revealed by kilometer-scale atmospheric modeling. Geophysical Research Letters 51(19), e2024GL110122"
+        }
+      ],
+      "title": "RESKit ICON-LAM test fixtures (FZJ ICON-LAM, southern Africa, clipped)"
+    },
+    "reskit-test-data/merra2": {
+      "$schema": "https://datapackage.org/profiles/2.0/datapackage.json",
+      "contributors": [
+        {
+          "organization": "Forschungszentrum Julich, ICE-2",
+          "roles": [
+            "author"
+          ],
+          "title": "Severin Ryberg"
+        },
+        {
+          "roles": [
+            "maintainer"
+          ],
+          "title": "ICE-2 RESKit maintainers"
+        }
+      ],
+      "description": "MERRA-2 surface fields over a 3 x 4 cell box around Aachen, 71 hours of January 2015, one file per variable. `merged/` holds the same data with the eleven variables merged into one file.",
+      "ethos:access": "public",
+      "ethos:attribution": "ALL FILES IN THIS DATASET HAVE BEEN MODIFIED: every one is a spatial and/or temporal subset of the product named in its member descriptor, and several have been resampled. None is suitable for any purpose other than exercising RESKit's code paths.\nContains modified Copernicus Climate Change Service information (ERA5 and ERA5-Land, 2015); neither the European Commission nor ECMWF is responsible for any use of this data. EUMETSAT CM SAF: copyright 2017 EUMETSAT; Pfeifroth, U., Kothe, S., Mueller, R., Trentmann, J., Hollmann, R., Fuchs, P., Werscheck, M. (2017), doi:10.5676/EUM_SAF_CM/SARAH/V002. Contains MERRA-2 data provided by the NASA Global Modeling and Assimilation Office, and SRTM data provided by NASA/USGS. Data obtained from the Global Wind Atlas 3.0, developed, owned and operated by the Technical University of Denmark in partnership with the World Bank Group, utilizing data provided by Vortex, with funding from ESMAP. Solar resource data (c) 2023 Solargis; (c) The World Bank, Source: Global Solar Atlas 2.0. (c) European Union, Copernicus Land Monitoring Service 2018, European Environment Agency. Contains ESA Climate Change Initiative Land Cover data; users must acknowledge the ESA Climate Change Initiative and its Land Cover project together with the individual data providers, and cite ESA Land Cover CCI project team; Defourny, P. (2019): ESA Land Cover Climate Change Initiative (Land_Cover_cci): Global Land Cover Maps, Version 2.0.7, Centre for Environmental Data Analysis, https://catalogue.ceda.ac.uk/uuid/b382ebe6679d44b8b0e68ea4ef4b701c. GEBCO Bathymetric Compilation Group: The GEBCO Grid. Distance-to-coast data from the NASA Ocean Biology Processing Group. Administrative boundaries: (c) GeoBasis-DE / BKG, dl-de/by-2-0, and OCHA/ZIMSTAT under CC BY 3.0 IGO. ICON-LAM: contains modified data from Chen, S., Poll, S., Hendricks Franssen, H.-J., Heinrichs, H., Vereecken, H., Goergen, K. (2024): Convection-permitting ICON-LAM simulations for renewable energy potential estimates over southern Africa, Journal of Geophysical Research: Atmospheres, https://doi.org/10.1029/2023JD039569, dataset https://doi.org/10.26165/JUELICH-DATA/JYGQ65, licensed under CC BY 4.0.",
+      "ethos:contact": "ICE-2 RESKit maintainers",
+      "ethos:derivation": "Collections M2T1NXRAD and M2T1NXSLV v5.12.4, pulled through the GES DISC subsetter in 2017 (`MERRA2_400.tavg1_2d_rad_Nx.*.SUB.nc4`), merged, split by variable in 2018, then `cdo -seltimestep,1/71 -sellonlatbox,5.2,7.2,49.7,51.7` in 2019.\nmerged/merra-like.nc4 is held in a subdirectory for the same scanning reason as the `era5-csp` single-cell file: a differently shaped file beside the per-variable ones would be picked up by the same directory glob.",
+      "ethos:exclude": [
+        "**/__init__.py"
+      ],
+      "ethos:file_count": 12,
+      "ethos:origin": "derived",
+      "ethos:remote_prefix": "reskit-test-data/merra2",
+      "ethos:retrieved": "2026-09-09",
+      "ethos:total_bytes": 955041,
+      "ethos:visibility": "public",
+      "homepage": "https://github.com/FZJ-IEK3-VSA/RESKit",
+      "licenses": [
+        {
+          "ethos:document": "licenses/nasa-data-use-policy.html",
+          "ethos:document_sha256": "0a837eba4cb1782a21bc4e7294aa05bd8b67ecff39ca7c030c564d37029f9229",
+          "path": "https://www.earthdata.nasa.gov/engage/open-data-services-software-policies/data-use-policy",
+          "title": "NASA Earth science data use policy -- full and open sharing, no restriction on reuse or redistribution"
+        }
+      ],
+      "name": "reskit-test-data/merra2",
+      "resources": [
+        {
+          "bytes": 72480,
+          "hash": "sha256:4d2e66a4e86c22f38d339116448df032843a0838fa4b528a69695412b97f59bb",
+          "mediatype": "application/x-netcdf",
+          "name": "merra_tavg1_2d.2015.europe.ps.nc4",
+          "path": "MERRA_tavg1_2d.2015.Europe.PS.nc4"
+        },
+        {
+          "bytes": 72524,
+          "hash": "sha256:ddd094aa5e986b6efba3abb481c02bb49e9b2639145a3ea869fc4603aae4b6f5",
+          "mediatype": "application/x-netcdf",
+          "name": "merra_tavg1_2d.2015.europe.swgdn.nc4",
+          "path": "MERRA_tavg1_2d.2015.Europe.SWGDN.nc4"
+        },
+        {
+          "bytes": 72484,
+          "hash": "sha256:71cf97a68b10211cce25fd8f2efd77a2cd0688dcb53905a21bd05725b1641fb2",
+          "mediatype": "application/x-netcdf",
+          "name": "merra_tavg1_2d.2015.europe.t10m.nc4",
+          "path": "MERRA_tavg1_2d.2015.Europe.T10M.nc4"
+        },
+        {
+          "bytes": 72482,
+          "hash": "sha256:d990ec9a1673a8899bcf556fffe1e2f83483afc6b10fd674dfab60163d9d9f22",
+          "mediatype": "application/x-netcdf",
+          "name": "merra_tavg1_2d.2015.europe.t2m.nc4",
+          "path": "MERRA_tavg1_2d.2015.Europe.T2M.nc4"
+        },
+        {
+          "bytes": 72526,
+          "hash": "sha256:79e1cddc5a3f88fea048a4e3083319b5b3ced785a8707af5f84e67f674cb88d8",
+          "mediatype": "application/x-netcdf",
+          "name": "merra_tavg1_2d.2015.europe.t2mdew.nc4",
+          "path": "MERRA_tavg1_2d.2015.Europe.T2MDEW.nc4"
+        },
+        {
+          "bytes": 72484,
+          "hash": "sha256:84c58425f5cefa8037811f9079ed28fcb078d8c7ba9e85f356af71a44e476eec",
+          "mediatype": "application/x-netcdf",
+          "name": "merra_tavg1_2d.2015.europe.u10m.nc4",
+          "path": "MERRA_tavg1_2d.2015.Europe.U10M.nc4"
+        },
+        {
+          "bytes": 72482,
+          "hash": "sha256:eaa990131df77c392bfee23d4c5d4c2f6222f877b42a8c84995820588b7a72eb",
+          "mediatype": "application/x-netcdf",
+          "name": "merra_tavg1_2d.2015.europe.u2m.nc4",
+          "path": "MERRA_tavg1_2d.2015.Europe.U2M.nc4"
+        },
+        {
+          "bytes": 72522,
+          "hash": "sha256:091206dd4086f855879c784e877d642ca08b559a6fac51596d5bae6c1ecc1961",
+          "mediatype": "application/x-netcdf",
+          "name": "merra_tavg1_2d.2015.europe.u50m.nc4",
+          "path": "MERRA_tavg1_2d.2015.Europe.U50M.nc4"
+        },
+        {
+          "bytes": 72484,
+          "hash": "sha256:1e97747c847d2a5a9f4a7aaa48e3bca04fc3dd5db8fde627a13dc501c3f85599",
+          "mediatype": "application/x-netcdf",
+          "name": "merra_tavg1_2d.2015.europe.v10m.nc4",
+          "path": "MERRA_tavg1_2d.2015.Europe.V10M.nc4"
+        },
+        {
+          "bytes": 72482,
+          "hash": "sha256:98a2621cce9399330ac02398528fc85276033620f3fe9256ee857c8f37126d3e",
+          "mediatype": "application/x-netcdf",
+          "name": "merra_tavg1_2d.2015.europe.v2m.nc4",
+          "path": "MERRA_tavg1_2d.2015.Europe.V2M.nc4"
+        },
+        {
+          "bytes": 72522,
+          "hash": "sha256:5c390977942e7823638da6ac091ee02fee488254c8179c3920960a311c2e706a",
+          "mediatype": "application/x-netcdf",
+          "name": "merra_tavg1_2d.2015.europe.v50m.nc4",
+          "path": "MERRA_tavg1_2d.2015.Europe.V50M.nc4"
+        },
+        {
+          "bytes": 157569,
+          "hash": "sha256:77813a7bbcac88d70422a35d094e0c31178a7671c2ddd35e2dabb759a64c3723",
+          "mediatype": "application/x-netcdf",
+          "name": "merged-merra-like.nc4",
+          "path": "merged/merra-like.nc4"
+        }
+      ],
+      "sources": [
+        {
+          "path": "https://doi.org/10.5067/Q9QMY5PBNV1T",
+          "title": "MERRA-2 tavg1_2d_rad_Nx and tavg1_2d_slv_Nx, v5.12.4 (NASA GMAO / GES DISC)"
+        }
+      ],
+      "title": "RESKit MERRA-2 test fixtures, Aachen"
+    },
+    "reskit-test-data/placements": {
+      "$schema": "https://datapackage.org/profiles/2.0/datapackage.json",
+      "contributors": [
+        {
+          "organization": "Forschungszentrum Julich, ICE-2",
+          "roles": [
+            "author"
+          ],
+          "title": "Severin Ryberg"
+        },
+        {
+          "organization": "Forschungszentrum Julich, ICE-2",
+          "roles": [
+            "author"
+          ],
+          "title": "Philipp Dunkel"
+        },
+        {
+          "roles": [
+            "maintainer"
+          ],
+          "title": "ICE-2 RESKit maintainers"
+        }
+      ],
+      "description": "Turbine and PV module positions for the Aachen region and for Bulawayo, as a shapefile and as CSV tables. What the workflow tests simulate at.",
+      "ethos:access": "public",
+      "ethos:attribution": "ALL FILES IN THIS DATASET HAVE BEEN MODIFIED: every one is a spatial and/or temporal subset of the product named in its member descriptor, and several have been resampled. None is suitable for any purpose other than exercising RESKit's code paths.\nContains modified Copernicus Climate Change Service information (ERA5 and ERA5-Land, 2015); neither the European Commission nor ECMWF is responsible for any use of this data. EUMETSAT CM SAF: copyright 2017 EUMETSAT; Pfeifroth, U., Kothe, S., Mueller, R., Trentmann, J., Hollmann, R., Fuchs, P., Werscheck, M. (2017), doi:10.5676/EUM_SAF_CM/SARAH/V002. Contains MERRA-2 data provided by the NASA Global Modeling and Assimilation Office, and SRTM data provided by NASA/USGS. Data obtained from the Global Wind Atlas 3.0, developed, owned and operated by the Technical University of Denmark in partnership with the World Bank Group, utilizing data provided by Vortex, with funding from ESMAP. Solar resource data (c) 2023 Solargis; (c) The World Bank, Source: Global Solar Atlas 2.0. (c) European Union, Copernicus Land Monitoring Service 2018, European Environment Agency. Contains ESA Climate Change Initiative Land Cover data; users must acknowledge the ESA Climate Change Initiative and its Land Cover project together with the individual data providers, and cite ESA Land Cover CCI project team; Defourny, P. (2019): ESA Land Cover Climate Change Initiative (Land_Cover_cci): Global Land Cover Maps, Version 2.0.7, Centre for Environmental Data Analysis, https://catalogue.ceda.ac.uk/uuid/b382ebe6679d44b8b0e68ea4ef4b701c. GEBCO Bathymetric Compilation Group: The GEBCO Grid. Distance-to-coast data from the NASA Ocean Biology Processing Group. Administrative boundaries: (c) GeoBasis-DE / BKG, dl-de/by-2-0, and OCHA/ZIMSTAT under CC BY 3.0 IGO. ICON-LAM: contains modified data from Chen, S., Poll, S., Hendricks Franssen, H.-J., Heinrichs, H., Vereecken, H., Goergen, K. (2024): Convection-permitting ICON-LAM simulations for renewable energy potential estimates over southern Africa, Journal of Geophysical Research: Atmospheres, https://doi.org/10.1029/2023JD039569, dataset https://doi.org/10.26165/JUELICH-DATA/JYGQ65, licensed under CC BY 4.0.",
+      "ethos:contact": "ICE-2 RESKit maintainers",
+      "ethos:derivation": "turbinePlacements.shp is 560 points; turbine_placements.csv and module_placements.csv carry the identical coordinates with turbine and module attributes attached. The two _cityBulawayoInZimbabwa tables are 44 turbines and 483 modules around Bulawayo.\nThe coordinates are ICE-2's; what they were sampled inside is the question this member had to answer -- see ethos:license_note.",
+      "ethos:file_count": 8,
+      "ethos:origin": "created",
+      "ethos:remote_prefix": "reskit-test-data/placements",
+      "ethos:retrieved": "2026-09-09",
+      "ethos:total_bytes": 127659,
+      "ethos:visibility": "public",
+      "homepage": "https://github.com/FZJ-IEK3-VSA/RESKit",
+      "licenses": [
+        {
+          "ethos:document": "licenses/CC-BY-4.0-legalcode.txt",
+          "ethos:document_sha256": "9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411",
+          "name": "CC-BY-4.0",
+          "path": "https://creativecommons.org/licenses/by/4.0/",
+          "title": "Creative Commons Attribution 4.0 International"
+        }
+      ],
+      "name": "reskit-test-data/placements",
+      "resources": [
+        {
+          "bytes": 37842,
+          "hash": "sha256:e6381c0d16d22a8300cbb6ef78b54da946869783f2f13dbf36d37e5b2dbfb86c",
+          "mediatype": "text/csv",
+          "name": "module_placements.csv",
+          "path": "module_placements.csv"
+        },
+        {
+          "bytes": 32475,
+          "hash": "sha256:120e6bf4d2fb61155164860c014ce692dec94595e160cb258f35521070fc64ec",
+          "mediatype": "text/csv",
+          "name": "module_placements_citybulawayoinzimbabwa.csv",
+          "path": "module_placements_cityBulawayoInZimbabwa.csv"
+        },
+        {
+          "bytes": 6785,
+          "hash": "sha256:ba82065e0a78681ffd6b8d10e85b9276a9e7aad84b18ca1cc916ea1327785234",
+          "mediatype": "application/octet-stream",
+          "name": "turbineplacements.dbf",
+          "path": "turbinePlacements.dbf"
+        },
+        {
+          "bytes": 143,
+          "hash": "sha256:98aaf3d1c0ecadf1a424a4536de261c3daf4e373697cb86c40c43b989daf52eb",
+          "mediatype": "text/plain",
+          "name": "turbineplacements.prj",
+          "path": "turbinePlacements.prj"
+        },
+        {
+          "bytes": 15780,
+          "ethos:sidecars": [
+            "turbinePlacements.shx",
+            "turbinePlacements.dbf",
+            "turbinePlacements.prj"
+          ],
+          "hash": "sha256:4e2fbd2ef70575ebf5c812197f5dec0e472c11ad9124985fd3e11eeff81b094c",
+          "mediatype": "application/octet-stream",
+          "name": "turbineplacements.shp",
+          "path": "turbinePlacements.shp"
+        },
+        {
+          "bytes": 4580,
+          "hash": "sha256:1dbd48d0a65724aa5fb94741a595d0691646750f707fb040589aa38a29ac7406",
+          "mediatype": "application/octet-stream",
+          "name": "turbineplacements.shx",
+          "path": "turbinePlacements.shx"
+        },
+        {
+          "bytes": 27652,
+          "hash": "sha256:9c312e4e6a0e24faa565fd290dd0a933584e135f81a6d3ddb6666515cf782543",
+          "mediatype": "text/csv",
+          "name": "turbine_placements.csv",
+          "path": "turbine_placements.csv"
+        },
+        {
+          "bytes": 2402,
+          "hash": "sha256:8a1182ab0c30d6646867f4beb8ed6bbaff3dd0559fc91c2136b1e47b45505461",
+          "mediatype": "text/csv",
+          "name": "turbine_placements_citybulawayoinzimbabwa.csv",
+          "path": "turbine_placements_cityBulawayoInZimbabwa.csv"
+        }
+      ],
+      "sources": [
+        {
+          "path": "https://github.com/FZJ-IEK3-VSA/RESKit",
+          "title": "RESKit - Renewable Energy Simulation toolkit for Python"
+        }
+      ],
+      "title": "RESKit turbine and module placement tables"
+    },
+    "reskit-test-data/sarah": {
+      "$schema": "https://datapackage.org/profiles/2.0/datapackage.json",
+      "contributors": [
+        {
+          "organization": "Forschungszentrum Julich, ICE-2",
+          "roles": [
+            "author"
+          ],
+          "title": "Severin Ryberg"
+        },
+        {
+          "roles": [
+            "maintainer"
+          ],
+          "title": "ICE-2 RESKit maintainers"
+        }
+      ],
+      "description": "Surface incoming shortwave and direct normal irradiance from the EUMETSAT CM SAF SARAH-2 climate data record, 51 x 61 cells over Aachen, 48 timesteps of January 2015.",
+      "ethos:access": "public",
+      "ethos:attribution": "ALL FILES IN THIS DATASET HAVE BEEN MODIFIED: every one is a spatial and/or temporal subset of the product named in its member descriptor, and several have been resampled. None is suitable for any purpose other than exercising RESKit's code paths.\nContains modified Copernicus Climate Change Service information (ERA5 and ERA5-Land, 2015); neither the European Commission nor ECMWF is responsible for any use of this data. EUMETSAT CM SAF: copyright 2017 EUMETSAT; Pfeifroth, U., Kothe, S., Mueller, R., Trentmann, J., Hollmann, R., Fuchs, P., Werscheck, M. (2017), doi:10.5676/EUM_SAF_CM/SARAH/V002. Contains MERRA-2 data provided by the NASA Global Modeling and Assimilation Office, and SRTM data provided by NASA/USGS. Data obtained from the Global Wind Atlas 3.0, developed, owned and operated by the Technical University of Denmark in partnership with the World Bank Group, utilizing data provided by Vortex, with funding from ESMAP. Solar resource data (c) 2023 Solargis; (c) The World Bank, Source: Global Solar Atlas 2.0. (c) European Union, Copernicus Land Monitoring Service 2018, European Environment Agency. Contains ESA Climate Change Initiative Land Cover data; users must acknowledge the ESA Climate Change Initiative and its Land Cover project together with the individual data providers, and cite ESA Land Cover CCI project team; Defourny, P. (2019): ESA Land Cover Climate Change Initiative (Land_Cover_cci): Global Land Cover Maps, Version 2.0.7, Centre for Environmental Data Analysis, https://catalogue.ceda.ac.uk/uuid/b382ebe6679d44b8b0e68ea4ef4b701c. GEBCO Bathymetric Compilation Group: The GEBCO Grid. Distance-to-coast data from the NASA Ocean Biology Processing Group. Administrative boundaries: (c) GeoBasis-DE / BKG, dl-de/by-2-0, and OCHA/ZIMSTAT under CC BY 3.0 IGO. ICON-LAM: contains modified data from Chen, S., Poll, S., Hendricks Franssen, H.-J., Heinrichs, H., Vereecken, H., Goergen, K. (2024): Convection-permitting ICON-LAM simulations for renewable energy potential estimates over southern Africa, Journal of Geophysical Research: Atmospheres, https://doi.org/10.1029/2023JD039569, dataset https://doi.org/10.26165/JUELICH-DATA/JYGQ65, licensed under CC BY 4.0.",
+      "ethos:contact": "ICE-2 RESKit maintainers",
+      "ethos:derivation": "Ordered from the CM SAF web interface -- the CF history carries the order path `/cmsaf/cmsaf-ops7/runsystem/orders/order_36443/` -- then `cdo sellonlatbox,5.0,7.5,49,52` and `seltimestep,0/48`.\nThe files name themselves: institution EUMETSAT/CMSAF, title \"Surface Solar Radiation Climate Data Record using Heliosat, Edition 2 (SARAH-2); CM SAF\".",
+      "ethos:exclude": [
+        "**/__init__.py"
+      ],
+      "ethos:file_count": 2,
+      "ethos:origin": "derived",
+      "ethos:remote_prefix": "reskit-test-data/sarah",
+      "ethos:retrieved": "2026-09-09",
+      "ethos:total_bytes": 1098279,
+      "ethos:visibility": "public",
+      "homepage": "https://github.com/FZJ-IEK3-VSA/RESKit",
+      "licenses": [
+        {
+          "ethos:document": "licenses/cmsaf-sarah-2-doi-record.html",
+          "ethos:document_sha256": "57f843c9a308984eb8a2f42ea777ca281aa345752796e960b9a6568427167bab",
+          "name": "CC-BY-4.0",
+          "path": "https://wui.cmsaf.eu/safira/action/viewDoiDetails?acronym=SARAH_V002",
+          "title": "Creative Commons Attribution 4.0 International, as stated on the CM SAF record for SARAH Edition 2"
+        }
+      ],
+      "name": "reskit-test-data/sarah",
+      "resources": [
+        {
+          "bytes": 549060,
+          "hash": "sha256:a3dc61a30d768c6462ac95ce223d7c6075ea97bcec469c4ec03099b44bde7732",
+          "mediatype": "application/x-netcdf",
+          "name": "sarah-dni.nc",
+          "path": "SARAH-DNI.nc"
+        },
+        {
+          "bytes": 549219,
+          "hash": "sha256:cad4959e480df3c8d6355246de2094e552585308960a8e0a2d39359228c68c0d",
+          "mediatype": "application/x-netcdf",
+          "name": "sarah-sis.nc",
+          "path": "SARAH-SIS.nc"
+        }
+      ],
+      "sources": [
+        {
+          "path": "https://doi.org/10.5676/EUM_SAF_CM/SARAH/V002",
+          "title": "Surface Solar Radiation Data Set - Heliosat (SARAH), Edition 2 (EUMETSAT CM SAF)"
+        }
+      ],
+      "title": "RESKit CM SAF SARAH-2 test fixtures, Aachen"
+    },
+    "reskit-test-data/srtm": {
+      "$schema": "https://datapackage.org/profiles/2.0/datapackage.json",
+      "contributors": [
+        {
+          "organization": "Forschungszentrum Julich, ICE-2",
+          "roles": [
+            "author"
+          ],
+          "title": "Severin Ryberg"
+        },
+        {
+          "roles": [
+            "maintainer"
+          ],
+          "title": "ICE-2 RESKit maintainers"
+        }
+      ],
+      "description": "A 144 x 144 cell elevation model at 1/96 degree over the Aachen test box, resampled from SRTM 1 arc-second.",
+      "ethos:access": "public",
+      "ethos:attribution": "ALL FILES IN THIS DATASET HAVE BEEN MODIFIED: every one is a spatial and/or temporal subset of the product named in its member descriptor, and several have been resampled. None is suitable for any purpose other than exercising RESKit's code paths.\nContains modified Copernicus Climate Change Service information (ERA5 and ERA5-Land, 2015); neither the European Commission nor ECMWF is responsible for any use of this data. EUMETSAT CM SAF: copyright 2017 EUMETSAT; Pfeifroth, U., Kothe, S., Mueller, R., Trentmann, J., Hollmann, R., Fuchs, P., Werscheck, M. (2017), doi:10.5676/EUM_SAF_CM/SARAH/V002. Contains MERRA-2 data provided by the NASA Global Modeling and Assimilation Office, and SRTM data provided by NASA/USGS. Data obtained from the Global Wind Atlas 3.0, developed, owned and operated by the Technical University of Denmark in partnership with the World Bank Group, utilizing data provided by Vortex, with funding from ESMAP. Solar resource data (c) 2023 Solargis; (c) The World Bank, Source: Global Solar Atlas 2.0. (c) European Union, Copernicus Land Monitoring Service 2018, European Environment Agency. Contains ESA Climate Change Initiative Land Cover data; users must acknowledge the ESA Climate Change Initiative and its Land Cover project together with the individual data providers, and cite ESA Land Cover CCI project team; Defourny, P. (2019): ESA Land Cover Climate Change Initiative (Land_Cover_cci): Global Land Cover Maps, Version 2.0.7, Centre for Environmental Data Analysis, https://catalogue.ceda.ac.uk/uuid/b382ebe6679d44b8b0e68ea4ef4b701c. GEBCO Bathymetric Compilation Group: The GEBCO Grid. Distance-to-coast data from the NASA Ocean Biology Processing Group. Administrative boundaries: (c) GeoBasis-DE / BKG, dl-de/by-2-0, and OCHA/ZIMSTAT under CC BY 3.0 IGO. ICON-LAM: contains modified data from Chen, S., Poll, S., Hendricks Franssen, H.-J., Heinrichs, H., Vereecken, H., Goergen, K. (2024): Convection-permitting ICON-LAM simulations for renewable energy potential estimates over southern Africa, Journal of Geophysical Research: Atmospheres, https://doi.org/10.1029/2023JD039569, dataset https://doi.org/10.26165/JUELICH-DATA/JYGQ65, licensed under CC BY 4.0.",
+      "ethos:contact": "ICE-2 RESKit maintainers",
+      "ethos:derivation": "SRTM 1 arc-second resampled to 1/96 degree (37.5 arcsec). Identified from its registration rather than its resolution: the corner sits exactly 0.5 arcsec off the whole degree, which is what a node-registered 1 arcsec grid gives, and the nodata value -32768 is SRTM's void marker. Verified against SRTMGL1 pulled from ESA's STEP server: mean bias -0.003 m, RMSE 2.70 m, 94.6% of cells within 5 m.\nThe -193 m minimum is the floor of the Hambach open-pit lignite mine, not an error.",
+      "ethos:file_count": 1,
+      "ethos:origin": "derived",
+      "ethos:remote_prefix": "reskit-test-data/srtm",
+      "ethos:retrieved": "2026-09-09",
+      "ethos:total_bytes": 25342,
+      "ethos:visibility": "public",
+      "homepage": "https://github.com/FZJ-IEK3-VSA/RESKit",
+      "licenses": [
+        {
+          "ethos:document": "licenses/nasa-data-use-policy.html",
+          "ethos:document_sha256": "0a837eba4cb1782a21bc4e7294aa05bd8b67ecff39ca7c030c564d37029f9229",
+          "path": "https://www.earthdata.nasa.gov/engage/open-data-services-software-policies/data-use-policy",
+          "title": "NASA Earth science data use policy -- full and open sharing, no restriction on reuse or redistribution"
+        }
+      ],
+      "name": "reskit-test-data/srtm",
+      "resources": [
+        {
+          "bytes": 25342,
+          "hash": "sha256:cf8c94a79dfb4baa1f8aec5326c4c56ab613e17373863aee043403d50d917c88",
+          "mediatype": "image/tiff",
+          "name": "dem-like.tif",
+          "path": "DEM-like.tif"
+        }
+      ],
+      "sources": [
+        {
+          "path": "https://doi.org/10.5067/MEaSUREs/SRTM/SRTMGL1.003",
+          "title": "NASA Shuttle Radar Topography Mission Global 1 arc second (SRTMGL1 v003)"
+        }
+      ],
+      "title": "RESKit SRTM elevation test fixture, Aachen"
+    },
+    "reskit-test-data/synthetic": {
+      "$schema": "https://datapackage.org/profiles/2.0/datapackage.json",
+      "contributors": [
+        {
+          "organization": "Forschungszentrum Julich, ICE-2",
+          "roles": [
+            "author"
+          ],
+          "title": "Severin Ryberg"
+        },
+        {
+          "organization": "Forschungszentrum Julich, ICE-2",
+          "roles": [
+            "author"
+          ],
+          "title": "Christoph Winkler"
+        },
+        {
+          "roles": [
+            "maintainer"
+          ],
+          "title": "ICE-2 RESKit maintainers"
+        }
+      ],
+      "description": "Fixtures invented here, with no upstream at all: a rectangle that is exactly one MERRA-2 grid cell, 100 randomly placed turbines, and two turbine cost baselines.",
+      "ethos:access": "public",
+      "ethos:attribution": "ALL FILES IN THIS DATASET HAVE BEEN MODIFIED: every one is a spatial and/or temporal subset of the product named in its member descriptor, and several have been resampled. None is suitable for any purpose other than exercising RESKit's code paths.\nContains modified Copernicus Climate Change Service information (ERA5 and ERA5-Land, 2015); neither the European Commission nor ECMWF is responsible for any use of this data. EUMETSAT CM SAF: copyright 2017 EUMETSAT; Pfeifroth, U., Kothe, S., Mueller, R., Trentmann, J., Hollmann, R., Fuchs, P., Werscheck, M. (2017), doi:10.5676/EUM_SAF_CM/SARAH/V002. Contains MERRA-2 data provided by the NASA Global Modeling and Assimilation Office, and SRTM data provided by NASA/USGS. Data obtained from the Global Wind Atlas 3.0, developed, owned and operated by the Technical University of Denmark in partnership with the World Bank Group, utilizing data provided by Vortex, with funding from ESMAP. Solar resource data (c) 2023 Solargis; (c) The World Bank, Source: Global Solar Atlas 2.0. (c) European Union, Copernicus Land Monitoring Service 2018, European Environment Agency. Contains ESA Climate Change Initiative Land Cover data; users must acknowledge the ESA Climate Change Initiative and its Land Cover project together with the individual data providers, and cite ESA Land Cover CCI project team; Defourny, P. (2019): ESA Land Cover Climate Change Initiative (Land_Cover_cci): Global Land Cover Maps, Version 2.0.7, Centre for Environmental Data Analysis, https://catalogue.ceda.ac.uk/uuid/b382ebe6679d44b8b0e68ea4ef4b701c. GEBCO Bathymetric Compilation Group: The GEBCO Grid. Distance-to-coast data from the NASA Ocean Biology Processing Group. Administrative boundaries: (c) GeoBasis-DE / BKG, dl-de/by-2-0, and OCHA/ZIMSTAT under CC BY 3.0 IGO. ICON-LAM: contains modified data from Chen, S., Poll, S., Hendricks Franssen, H.-J., Heinrichs, H., Vereecken, H., Goergen, K. (2024): Convection-permitting ICON-LAM simulations for renewable energy potential estimates over southern Africa, Journal of Geophysical Research: Atmospheres, https://doi.org/10.1029/2023JD039569, dataset https://doi.org/10.26165/JUELICH-DATA/JYGQ65, licensed under CC BY 4.0.",
+      "ethos:contact": "ICE-2 RESKit maintainers",
+      "ethos:file_count": 10,
+      "ethos:origin": "created",
+      "ethos:remote_prefix": "reskit-test-data/synthetic",
+      "ethos:retrieved": "2026-09-09",
+      "ethos:total_bytes": 8085,
+      "ethos:visibility": "public",
+      "homepage": "https://github.com/FZJ-IEK3-VSA/RESKit",
+      "licenses": [
+        {
+          "ethos:document": "licenses/CC-BY-4.0-legalcode.txt",
+          "ethos:document_sha256": "9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411",
+          "name": "CC-BY-4.0",
+          "path": "https://creativecommons.org/licenses/by/4.0/",
+          "title": "Creative Commons Attribution 4.0 International"
+        }
+      ],
+      "name": "reskit-test-data/synthetic",
+      "resources": [
+        {
+          "bytes": 81,
+          "hash": "sha256:565613b233a4cbdbd632bde35d3471a9d7a28e66a889458e8ee22b0dbe593816",
+          "mediatype": "application/json",
+          "name": "baseline_turbine_test.json",
+          "path": "baseline_turbine_test.json"
+        },
+        {
+          "bytes": 567,
+          "hash": "sha256:ddfae48c8a6d88414690a4f8dd0401798a53f8f6562874ffbee3c3099cc58f9b",
+          "mediatype": "text/csv",
+          "name": "baseline_turbine_testdummy.csv",
+          "path": "baseline_turbine_testdummy.csv"
+        },
+        {
+          "bytes": 77,
+          "hash": "sha256:21c7d45ce651b9379a7f77efc0bbb0a5f3bd8a04cb5bf4395d6b7f885a29efb1",
+          "mediatype": "application/octet-stream",
+          "name": "merra_point_context.dbf",
+          "path": "merra_point_context.dbf"
+        },
+        {
+          "bytes": 143,
+          "hash": "sha256:98aaf3d1c0ecadf1a424a4536de261c3daf4e373697cb86c40c43b989daf52eb",
+          "mediatype": "text/plain",
+          "name": "merra_point_context.prj",
+          "path": "merra_point_context.prj"
+        },
+        {
+          "bytes": 236,
+          "ethos:sidecars": [
+            "merra_point_context.shx",
+            "merra_point_context.dbf",
+            "merra_point_context.prj"
+          ],
+          "hash": "sha256:fc4983836e9888352272020a6b3b0589b594aaa6c3599c26e0000416378a4b02",
+          "mediatype": "application/octet-stream",
+          "name": "merra_point_context.shp",
+          "path": "merra_point_context.shp"
+        },
+        {
+          "bytes": 108,
+          "hash": "sha256:7f5d1b99c142e054b879265f088087111ae9c6e3cafa723fb03df7c8f410c732",
+          "mediatype": "application/octet-stream",
+          "name": "merra_point_context.shx",
+          "path": "merra_point_context.shx"
+        },
+        {
+          "bytes": 2930,
+          "hash": "sha256:0dac4116909728c30d3293c7661c016713b2c52c1478f8063f22f65a68171b36",
+          "mediatype": "application/octet-stream",
+          "name": "random_turbines.dbf",
+          "path": "random_turbines.dbf"
+        },
+        {
+          "bytes": 143,
+          "hash": "sha256:98aaf3d1c0ecadf1a424a4536de261c3daf4e373697cb86c40c43b989daf52eb",
+          "mediatype": "text/plain",
+          "name": "random_turbines.prj",
+          "path": "random_turbines.prj"
+        },
+        {
+          "bytes": 2900,
+          "ethos:sidecars": [
+            "random_turbines.shx",
+            "random_turbines.dbf",
+            "random_turbines.prj"
+          ],
+          "hash": "sha256:c871a7b7aa0ed25876f51d73753eb84b0aa26baa0608900186f739e0a695d00a",
+          "mediatype": "application/octet-stream",
+          "name": "random_turbines.shp",
+          "path": "random_turbines.shp"
+        },
+        {
+          "bytes": 900,
+          "hash": "sha256:08ee0a4209e4fd601e75287a0248e2a0869eb80821dfa76ed9c824bb59ee174a",
+          "mediatype": "application/octet-stream",
+          "name": "random_turbines.shx",
+          "path": "random_turbines.shx"
+        }
+      ],
+      "sources": [
+        {
+          "path": "https://github.com/FZJ-IEK3-VSA/RESKit",
+          "title": "RESKit - Renewable Energy Simulation toolkit for Python"
+        }
+      ],
+      "title": "RESKit synthetic test fixtures"
+    }
+  },
+  "format": "ethos-data-bundle-v1",
+  "source": {
+    "catalog": "C:/Users/JA60A~1.BEL/AppData/Local/Temp/claude/c--Programming-RESKit-worktrees-RESKit1/0945fcd6-b645-4fd0-b6bb-f90ecd7818d0/scratchpad/catalogue_mirror/datacatalog.json",
+    "catalog_descriptor_sha256": "sha256:8c796883cf2617aa08127fa7b8e49b769d21589bdf61b5a97d33a3df1e25dc73",
+    "catalog_version": null,
+    "revision": "LOCAL VERIFICATION ONLY - v2026.09 mirror with corrected licence hashes"
+  }
+}

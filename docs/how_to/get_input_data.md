@@ -8,8 +8,96 @@ uses this interface.
 Install RESKit and ETHOS.Data in the same environment. In a development checkout,
 `pip install -e . --no-deps` installs the `reskit-data` console script.
 See [ETHOS.Data installation](https://ethos-data.readthedocs.io/en/latest/installation/)
-for the shared dependency. Catalogue metadata and uncached public files need
-network access unless local copies are selected.
+for the shared dependency. The `reskit-test-data` fixtures ship with RESKit as a
+verified bundle and are read from it by default; every other dataset needs network
+access for catalogue metadata and uncached files.
+
+## The bundled test fixtures
+
+RESKit carries its copy of the `reskit-test-data` family in `reskit/data/test_cache`
+as an [ETHOS.Data bundle](https://ethos-data.readthedocs.io/en/latest/how-to/keep-test-data-in-a-repository/):
+`bundle.json` records every file with the size and SHA-256 the pinned catalogue
+declares, the files sit under `data/<dataset>/<path>`, and `datasets/` archives
+the licences. `paths`, `fetch`, `path` and `directory` answer from that copy
+whenever it holds what was asked for, checked against those hashes once per
+process and never downloaded, so the examples and the test suite run offline.
+Everything the bundle does not hold comes from the catalogue as described below.
+
+To fetch the fixtures from the catalogue's store instead, into the shared cache
+like any other dataset, pass `download=True` or set `RESKIT_DATA_DOWNLOAD=1`:
+
+```python
+era5_dir = data.directory("reskit-test-data/era5", download=True)
+inputs = data.paths("onshore_wind", test=True, download=True)
+```
+
+=== "Bash"
+
+    ```bash
+    export RESKIT_DATA_DOWNLOAD=1
+    ```
+
+=== "PowerShell"
+
+    ```powershell
+    $env:RESKIT_DATA_DOWNLOAD = "1"
+    ```
+
+The argument wins over the variable. A bundled file that is missing or altered
+is an error, never a reason to download: the copy in a checkout is what the
+tests run on. `reskit-data fetch`, `show` and `verify` always work through the
+catalogue, as do `reskit.data.plan()` and `describe()`; `reskit-data bundle`
+works on the copy:
+
+```bash
+reskit-data bundle verify reskit/data/test_cache test_suite   # the bundled copy
+reskit-data fetch test_suite --plan                            # what the catalogue route would transfer
+```
+
+### Refresh the bundle
+
+Regenerate the bundle whenever the catalogue pin in `collections.yaml` moves or
+a fixture changes. Export runs against the catalogue named with `--catalog` (pass
+the pin explicitly, so a machine-wide catalogue setting cannot leak into the
+manifest), takes the existing files as verified input, and refuses a target that
+exists; so export beside the bundle and move the manifest over:
+
+=== "Bash"
+
+    ```bash
+    pin=$(sed -n 's/^catalog: *//p' reskit/data/collections.yaml)
+    roots=""
+    for m in $(ls reskit/data/test_cache/data/reskit-test-data); do
+      roots="$roots --source-root reskit-test-data/$m=reskit/data/test_cache/data/reskit-test-data/$m"
+    done
+    reskit-data --catalog "$pin" bundle export reskit/data/test_cache-next test_suite test_suite_public \
+      --source-revision "$pin" $roots
+    mv reskit/data/test_cache-next/bundle.json reskit/data/test_cache/
+    rm -rf reskit/data/test_cache/datasets && mv reskit/data/test_cache-next/datasets reskit/data/test_cache/
+    rm -rf reskit/data/test_cache-next
+    reskit-data bundle verify reskit/data/test_cache test_suite
+    ```
+
+=== "PowerShell"
+
+    ```powershell
+    $pin = (Select-String '^catalog:\s*(\S+)' reskit/data/collections.yaml).Matches[0].Groups[1].Value
+    $roots = Get-ChildItem reskit/data/test_cache/data/reskit-test-data -Directory |
+      ForEach-Object { "--source-root"; "reskit-test-data/$($_.Name)=reskit/data/test_cache/data/reskit-test-data/$($_.Name)" }
+    reskit-data --catalog $pin bundle export reskit/data/test_cache-next test_suite test_suite_public `
+      --source-revision $pin @roots
+    Move-Item reskit/data/test_cache-next/bundle.json reskit/data/test_cache/ -Force
+    Remove-Item reskit/data/test_cache/datasets -Recurse -Force -ErrorAction SilentlyContinue
+    Move-Item reskit/data/test_cache-next/datasets reskit/data/test_cache/
+    Remove-Item reskit/data/test_cache-next -Recurse -Force
+    reskit-data bundle verify reskit/data/test_cache test_suite
+    ```
+
+Export fails if a file in the repository differs from the catalogue, or if the
+catalogue's own metadata is inconsistent, for instance a licence document that
+does not match its recorded hash. Fix the source; never edit the manifest.
+Commit `bundle.json`, `datasets/` and any changed fixture together with the pin.
+`--source-revision` is a provenance label; the pin selects the revision.
 
 ## Select the catalogue
 

@@ -1,0 +1,26 @@
+Copernicus Land Monitoring Service -- Data policy
+=================================================
+
+Archived copy, retrieved 2026-09-07 from:
+  https://land.copernicus.eu/en/data-policy
+
+Kept in the catalogue because a licence referenced only by URL is a licence
+that can vanish -- the URL printed in this catalogue's own ESA CCI delivery
+readme is already dead. This copy is the terms as they stood on the date
+above; the URL remains authoritative.
+
+The three binding conditions below are reproduced verbatim in this
+dataset's ethos:attribution.
+------------------------------------------------------------------------------
+
+The Copernicus component is governed by Regulation (EU) No 2021/696 of the European Parliament and of the Council of 28 April 2021 establishing the Union Space Programme and the European Union Agency for the Space Programme and repealing Regulations (EU) No 912/2010, (EU) No 1285/2013 and (EU) No 377/2014 and Decision No 541/2014/EU.
+Within the Copernicus component, a portfolio of land monitoring activities has been delegated by the European Union to the European Environment Agency (EEA) and the DG Joint Research Centre of the European Commission.
+The Copernicus land monitoring products and services are made available on a principle of full, open and free access , as established by the Commission Delegated Regulation (EU) No 1159/2013 of 12 July 2013.
+Free, full and open access to the products and services of the Copernicus Land Monitoring Service is made on the conditions that:
+When distributing or communicating Copernicus Land Monitoring Service products and services (data, software scripts, web services, user and methodological documentation and similar) to the public, users shall inform the public of the source of these products and services.
+Where the Copernicus Land Monitoring Service products and services have been adapted or modified by the user, the user shall clearly state this.
+Users shall make sure not to convey the impression to the public that the user's activities are officially endorsed by the European Union.
+ Important: the user has all intellectual property rights to the products he/she has created based on the Copernicus Land Monitoring Service products and services.
+How to cite and reference the products and services of the Copernicus Land Monitoring Service? For a publication If you are planning to publish a publication (scientific, commercial, etc.), then you should explicitly make mention of: “This publication has been prepared using European Union's Copernicus Land Monitoring Service information; <insert all relevant DOI links here, if applicable>” For added products or derivative works If you have developed a product or service using the products or services of the Copernicus Land Monitoring Service, then you should explicitly make mention of: “ Generated using European Union's Copernicus Land Monitoring Service information; <insert all relevant DOI links here, if applicable>” For service redistribution If you have redistributed a part of the Copernicus Land Monitoring Service (product, dataset, web service, software scripts, user and methodological documentation, image etc.), then you should explicitly make mention of: “ European Union's Copernicus Land Monitoring Service information; <insert all relevant DOI links here, if applicable>” For a specific dataset citation We recommend to use this convention to cite a specific dataset: "Dataset title.
+European Union's Copernicus Land Monitoring Service information , <provide the name and URL of data access point> (Accessed on DD.MM.YYYY) . <DOI: dataset DOI, if applicable>" Note:
+DOIs, if applicable, are provided on dataset pages.

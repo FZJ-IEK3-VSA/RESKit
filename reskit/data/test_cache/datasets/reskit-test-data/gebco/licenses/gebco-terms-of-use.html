@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr" prefix="og: https://ogp.me/ns#">
+  <head>
+    <meta charset="utf-8" />
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-H3JDGPBK1H"></script>
+<script>window.dataLayer = window.dataLayer || [];function gtag(){dataLayer.push(arguments)};gtag("js", new Date());gtag("set", "developer_id.dMDhkMT", true);gtag("config", "G-H3JDGPBK1H", {"groups":"default","page_placeholder":"PLACEHOLDER_page_location"});</script>
+<meta name="description" content="GEBCO Gridded Bathymetry Data - a global grid of elevation values at 15 arc-second intervals." />
+<link rel="canonical" href="https://www.gebco.net/data-products/gridded-bathymetry-data" />
+<link rel="image_src" href="https://www.gebco.net/profiles/custom/seabed/themes/seaboot/images/home-page-grid.jpg" />
+<meta property="og:site_name" content="GEBCO" />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://www.gebco.net/data-products/gridded-bathymetry-data" />
+<meta property="og:title" content="Gridded Bathymetry Data" />
+<meta property="og:description" content="The General Bathymetric Chart of the Oceans (GEBCO) aims to provide the most authoritative, publicly available bathymetry data sets for the world&#039;s oceans." />
+<meta property="og:image" content="https://www.gebco.net/profiles/custom/seabed/themes/seaboot/images/home-page-grid.jpg" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:description" content="The General Bathymetric Chart of the Oceans (GEBCO) aims to provide the most authoritative, publicly available bathymetry data sets for the world&#039;s oceans." />
+<meta name="twitter:site" content="@gebcobathymetry" />
+<meta name="twitter:title" content="Gridded Bathymetry Data" />
+<meta name="twitter:image" content="https://www.gebco.net/profiles/custom/seabed/themes/seaboot/images/home-page-grid.jpg" />
+<meta name="Generator" content="Drupal 10 (https://www.drupal.org)" />
+<meta name="MobileOptimized" content="width" />
+<meta name="HandheldFriendly" content="true" />
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+<meta http-equiv="x-ua-compatible" content="ie=edge" />
+<link rel="icon" href="/profiles/custom/seabed/themes/seaboot/favicon.png" type="image/png" />
+
+    <title>Gridded Bathymetry Data | GEBCO</title>
+    <link rel="stylesheet" media="all" href="/sites/default/files/css/css_CM1goDFKwpWfMv0msWNhBpDaCUhY2EVv-MIN7rqdUlM.css?delta=0&amp;language=en&amp;theme=seaboot&amp;include=eJyFUMtuAyEM_CEKqvpByAbvLg1gZJtG-fuQHNIqe-jJ8jysGSOzqQmMiCBSOKAQ5CSzocN3buNucCXlRmeycybXKBcIW6lG4hMMK9wd4zY1gVEQts8vN0BgX85DQ5Y5oPpfxM8-JtaiB2UnpIO7lh-KjfoMb7t_ZfhfuVpdBpduTgkevrBXRqgfarda-u6UU4EanwXiQi76t65P3NZBevjPwjPk7aD1JL2pUQsISs44xW8Na9wBui6Tgw" />
+<link rel="stylesheet" media="all" href="//cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" />
+<link rel="stylesheet" media="all" href="/sites/default/files/css/css_Tyk-izAqWRPlwPTqqFCq68HUGwL4O0sjLOmyIhrCJNA.css?delta=2&amp;language=en&amp;theme=seaboot&amp;include=eJyFUMtuAyEM_CEKqvpByAbvLg1gZJtG-fuQHNIqe-jJ8jysGSOzqQmMiCBSOKAQ5CSzocN3buNucCXlRmeycybXKBcIW6lG4hMMK9wd4zY1gVEQts8vN0BgX85DQ5Y5oPpfxM8-JtaiB2UnpIO7lh-KjfoMb7t_ZfhfuVpdBpduTgkevrBXRqgfarda-u6UU4EanwXiQi76t65P3NZBevjPwjPk7aD1JL2pUQsISs44xW8Na9wBui6Tgw" />
+<link rel="stylesheet" media="all" href="/sites/default/files/css/css_yz0_yummPRXcnfBpWjgOZHaw8lhqwIiMSxn1dSbpIyI.css?delta=3&amp;language=en&amp;theme=seaboot&amp;include=eJyFUMtuAyEM_CEKqvpByAbvLg1gZJtG-fuQHNIqe-jJ8jysGSOzqQmMiCBSOKAQ5CSzocN3buNucCXlRmeycybXKBcIW6lG4hMMK9wd4zY1gVEQts8vN0BgX85DQ5Y5oPpfxM8-JtaiB2UnpIO7lh-KjfoMb7t_ZfhfuVpdBpduTgkevrBXRqgfarda-u6UU4EanwXiQi76t65P3NZBevjPwjPk7aD1JL2pUQsISs44xW8Na9wBui6Tgw" />
+<link rel="stylesheet" media="all" href="//use.fontawesome.com/releases/v5.13.0/css/all.css" />
+<link rel="stylesheet" media="all" href="/sites/default/files/css/css_W7uaQGJUkFA_7Voic_EHUBy_YMOyIcjYrKRhPWbmzKA.css?delta=5&amp;language=en&amp;theme=seaboot&amp;include=eJyFUMtuAyEM_CEKqvpByAbvLg1gZJtG-fuQHNIqe-jJ8jysGSOzqQmMiCBSOKAQ5CSzocN3buNucCXlRmeycybXKBcIW6lG4hMMK9wd4zY1gVEQts8vN0BgX85DQ5Y5oPpfxM8-JtaiB2UnpIO7lh-KjfoMb7t_ZfhfuVpdBpduTgkevrBXRqgfarda-u6UU4EanwXiQi76t65P3NZBevjPwjPk7aD1JL2pUQsISs44xW8Na9wBui6Tgw" />
+<link rel="stylesheet" media="all" href="//fonts.googleapis.com/css?family=Overpass:200,400,700|Roboto" />
+<link rel="stylesheet" media="all" href="/sites/default/files/css/css_QGjcQeTZesfZy9E1qKVq93uSHe1Liwx7INSlfMZEw44.css?delta=7&amp;language=en&amp;theme=seaboot&amp;include=eJyFUMtuAyEM_CEKqvpByAbvLg1gZJtG-fuQHNIqe-jJ8jysGSOzqQmMiCBSOKAQ5CSzocN3buNucCXlRmeycybXKBcIW6lG4hMMK9wd4zY1gVEQts8vN0BgX85DQ5Y5oPpfxM8-JtaiB2UnpIO7lh-KjfoMb7t_ZfhfuVpdBpduTgkevrBXRqgfarda-u6UU4EanwXiQi76t65P3NZBevjPwjPk7aD1JL2pUQsISs44xW8Na9wBui6Tgw" />
+
+    
+  </head>
+  <body class="layout-one-sidebar layout-sidebar-second page-node-8 path-node node--type-page">
+    <a href="#main-content" class="visually-hidden focusable skip-link">
+      Skip to main content
+    </a>
+    
+      <div class="dialog-off-canvas-main-canvas" data-off-canvas-main-canvas>
+    <div id="page-wrapper">
+  <div id="page" class="bg-white">
+    <header id="header" class="header" role="banner" aria-label="Site header">
+                      <nav class="navbar navbar-dark navbar-expand-lg mb-5" id="navbar-main">
+                    <div class="container container align-items-start align-items-lg-center">
+                                    <button class="navbar-toggler navbar-toggler-right mr-auto outline-none" type="button" data-toggle="collapse" data-target="#CollapsingNavbar" aria-controls="CollapsingNavbar" aria-expanded="false" aria-label="Toggle navigation"><i class="fas fa-bars menu-toggler-icon font-size-xxl"></i></button>
+              <button class="navbar-toggler navbar-toggler-right outline-none" type="button" data-toggle="collapse" data-target="#CollapsingSearch" aria-controls="CollapsingSearch" aria-expanded="false" aria-label="Toggle search"><i class="fas fa-search search-toggler-icon fa-fw font-size-xxl"></i></button>
+
+              <div class="collapse navbar-collapse" id="CollapsingNavbar">
+                  <nav role="navigation" aria-labelledby="block-seaboot-main-menu-menu" id="block-seaboot-main-menu" class="block block-menu navigation menu--main mr-auto d-none d-lg-block">
+            
+  <h2 class="sr-only" id="block-seaboot-main-menu-menu">Main navigation</h2>
+  
+
+        
+              <ul id="block-seaboot-main-menu" class="clearfix nav navbar-nav">
+                    <li class="nav-item">
+                          <a href="/" class="nav-link nav-link--" data-drupal-link-system-path="&lt;front&gt;">Home</a>
+              </li>
+                <li class="nav-item menu-item--expanded active dropdown">
+                          <a href="/data-products" class="nav-link active dropdown-toggle nav-link--data-products" aria-expanded="false" aria-haspopup="true" data-drupal-link-system-path="node/7">Data &amp; Products</a>
+                        <ul class="dropdown-menu dropdown-menu--1">
+                    <li class="dropdown-item menu-item--expanded active dropright">
+                          <a href="/data-products/gridded-bathymetry-data" class="nav-link active dropdown-toggle nav-link--data-products-gridded-bathymetry-data is-active" aria-expanded="false" aria-haspopup="true" data-drupal-link-system-path="node/8" aria-current="page">Gridded Bathymetry Data</a>
+                        <ul class="dropdown-menu dropdown-menu--2">
+                    <li class="dropdown-item">
+                          <a href="/data-products/gridded-bathymetry-data/arctic-ocean" class="nav-link nav-link--data-products-gridded-bathymetry-data-arctic-ocean" data-drupal-link-system-path="node/25">Regional grid - Arctic Ocean (IBCAO)</a>
+              </li>
+                <li class="dropdown-item">
+                          <a href="/data-products/gridded-bathymetry-data/southern-ocean" class="nav-link nav-link--data-products-gridded-bathymetry-data-southern-ocean" data-drupal-link-system-path="node/26">Regional grid - Southern Ocean (IBCSO)</a>
+              </li>
+                <li class="dropdown-item">
+                          <a href="/data-products/gridded-bathymetry-data/data-set-errata" class="nav-link nav-link--data-products-gridded-bathymetry-data-data-set-errata" data-drupal-link-system-path="node/9">Errata and known issues</a>
+              </li>
+                <li class="dropdown-item">
+                          <a href="/data-products-gridded-bathymetry-data/gebco2026-grid" class="nav-link nav-link--data-products-gridded-bathymetry-data-gebco2026-grid" data-drupal-link-system-path="node/414">GEBCO_2026 Grid</a>
+              </li>
+                <li class="dropdown-item">
+                          <a href="/data-products-gridded-bathymetry-data/gebco2025-grid" class="nav-link nav-link--data-products-gridded-bathymetry-data-gebco2025-grid" data-drupal-link-system-path="node/397">GEBCO_2025 Grid</a>
+              </li>
+                <li class="dropdown-item">
+                          <a href="/data-products-gridded-bathymetry-data/gebco2024-grid" class="nav-link nav-link--data-products-gridded-bathymetry-data-gebco2024-grid" data-drupal-link-system-path="node/377">GEBCO_2024 Grid</a>
+              </li>
+                <li class="dropdown-item">
+                          <a href="/data-products/gridded-bathymetry-data/gebco2023-grid" title="Access the GEBCO_2023 Grid" class="nav-link nav-link--data-products-gridded-bathymetry-data-gebco2023-grid" data-drupal-link-system-path="node/369">GEBCO_2023 Grid</a>
+              </li>
+                <li class="dropdown-item">
+                          <a href="/data-products/gridded-bathymetry-data/gebco-2022" class="nav-link nav-link--data-products-gridded-bathymetry-data-gebco-2022" data-drupal-link-system-path="node/349">GEBCO_2022 Grid</a>
+              </li>
+                <li class="dropdown-item">
+                          <a href="/data-products/gridded-bathymetry-data/gebco-2021" class="nav-link nav-link--data-products-gridded-bathymetry-data-gebco-2021" data-drupal-link-system-path="node/16">GEBCO_2021 Grid</a>
+              </li>
+                <li class="dropdown-item">
+                          <a href="/data-products/gridded-bathymetry-data/gebco-2020" class="nav-link nav-link--data-products-gridded-bathymetry-data-gebco-2020" data-drupal-link-system-path="node/15">GEBCO_2020 Grid</a>
+              </li>
+                <li class="dropdown-item">
+                          <a href="/data-products/gridded-bathymetry-data/gebco-2019" class="nav-link nav-link--data-products-gridded-bathymetry-data-gebco-2019" data-drupal-link-system-path="node/14">GEBCO_2019 Grid</a>
+              </li>
+        </ul>
+  
+              </li>
+                <li class="dropdown-item">
+                          <a href="/data-products/undersea-feature-names" class="nav-link nav-link--data-products-undersea-feature-names" data-drupal-link-system-path="node/52">Undersea Feature Names</a>
+              </li>
+                <li class="dropdown-item menu-item--expanded dropright">
+                          <a href="/data-products/gebco-web-services" class="nav-link dropdown-toggle nav-link--data-products-gebco-web-services" aria-expanded="false" aria-haspopup="true" data-drupal-link-system-path="node/18">GEBCO Web Services</a>
+                        <ul class="dropdown-menu dropdown-menu--2">
+                    <li class="dropdown-item">
+                          <a href="/data-products/gebco-web-services/web-map-service" class="nav-link nav-link--data-products-gebco-web-services-web-map-service" data-drupal-link-system-path="node/19">Web Map Service</a>
+              </li>
+                <li class="dropdown-item">
+                          <a href="/data-products/gebco-web-services/previous-wms" class="nav-link nav-link--data-products-gebco-web-services-previous-wms" data-drupal-link-system-path="node/29">Previous GEBCO WMS</a>
+              </li>
+        </ul>
+  
+              </li>
+                <li class="dropdown-item">
+                          <a href="/data-products/printable-maps" class="nav-link nav-link--data-products-printable-maps" data-drupal-link-system-path="node/54">Printable Maps</a>
+              </li>
+                <li class="dropdown-item">
+                          <a href="/data-products/gebco-cook-book" class="nav-link nav-link--data-products-gebco-cook-book" data-drupal-link-system-path="node/17">IHO-IOC GEBCO Cook Book</a>
+              </li>
+                <li class="dropdown-item">
+                          <a href="/data-products/historical-gebco-charts" class="nav-link nav-link--data-products-historical-gebco-charts" data-drupal-link-system-path="node/28">Historical GEBCO Charts</a>
+              </li>
+                <li class="dropdown-item">
+                          <a href="/data-products/historical-data-sets" class="nav-link nav-link--data-products-historical-data-sets" data-drupal-link-system-path="node/30">Historical Data Sets</a>
+              </li>
+                <li class="dropdown-item">
+                          <a href="/data-products/imagery" class="nav-link nav-link--data-products-imagery" data-drupal-link-system-path="node/33">Imagery</a>
+              </li>
+                <li class="dropdown-item">
+                          <a href="/data-products/history-gebco" class="nav-link nav-link--data-products-history-gebco" data-drupal-link-system-path="node/32">History of GEBCO</a>
+              </li>
+                <li class="dropdown-item">
+                          <a href="/data-products/gebco-digital-atlas" class="nav-link nav-link--data-products-gebco-digital-atlas" data-drupal-link-system-path="node/404">GEBCO Digital Atlas</a>
+              </li>
+        </ul>
+  
+              </li>
+                <li class="nav-item">
+                          <a href="https://seabed2030.org" class="nav-link nav-link-https--seabed2030org">Seabed 2030</a>
+              </li>
+                <li class="nav-item">
+                          <a href="/training" class="nav-link nav-link--training" data-drupal-link-system-path="node/55">Training</a>
+              </li>
+                <li class="nav-item">
+                          <a href="/news" class="nav-link nav-link--news" data-drupal-link-system-path="news">News &amp; Media</a>
+              </li>
+                <li class="nav-item menu-item--expanded dropdown">
+                          <a href="/about-us" class="nav-link dropdown-toggle nav-link--about-us" aria-expanded="false" aria-haspopup="true" data-drupal-link-system-path="node/2">About</a>
+                        <ul class="dropdown-menu dropdown-menu--1">
+                    <li class="dropdown-item">
+                          <a href="/about-us/overview" class="nav-link nav-link--about-us-overview" data-drupal-link-system-path="node/56">Overview</a>
+              </li>
+                <li class="dropdown-item">
+                          <a href="/about-us/gebco-strategy" class="nav-link nav-link--about-us-gebco-strategy" data-drupal-link-system-path="node/396">GEBCO Strategy</a>
+              </li>
+                <li class="dropdown-item">
+                          <a href="/about-us/project-history" class="nav-link nav-link--about-us-project-history" data-drupal-link-system-path="node/31">Project History</a>
+              </li>
+                <li class="dropdown-item">
+                          <a href="/about-us/seabed2030-project" class="nav-link nav-link--about-us-seabed2030-project" data-drupal-link-system-path="node/1">Seabed 2030</a>
+              </li>
+                <li class="dropdown-item menu-item--expanded dropright">
+                          <a href="/about-us/acknowledgements" class="nav-link dropdown-toggle nav-link--about-us-acknowledgements" aria-expanded="false" aria-haspopup="true" data-drupal-link-system-path="node/3">Acknowledgements</a>
+                        <ul class="dropdown-menu dropdown-menu--2">
+                    <li class="dropdown-item">
+                          <a href="/about-us/acknowledgements/our-data-contributors" class="nav-link nav-link--about-us-acknowledgements-our-data-contributors" data-drupal-link-system-path="node/6">Our Data Contributors</a>
+              </li>
+                <li class="dropdown-item">
+                          <a href="/about-us/acknowledgements/working-with-industry" class="nav-link nav-link--about-us-acknowledgements-working-with-industry" data-drupal-link-system-path="node/57">Working With Industry</a>
+              </li>
+        </ul>
+  
+              </li>
+                <li class="dropdown-item">
+                          <a href="/about-us/contributing-data" class="nav-link nav-link--about-us-contributing-data" data-drupal-link-system-path="node/5">Contributing Data</a>
+              </li>
+                <li class="dropdown-item">
+                          <a href="/about-us/presentations-publications" class="nav-link nav-link--about-us-presentations-publications" data-drupal-link-system-path="node/58">Presentations and Publications</a>
+              </li>
+                <li class="dropdown-item menu-item--expanded dropright">
+                          <a href="/about-us/committees-groups" class="nav-link dropdown-toggle nav-link--about-us-committees-groups" aria-expanded="false" aria-haspopup="true" data-drupal-link-system-path="node/4">Committees and Groups</a>
+                        <ul class="dropdown-menu dropdown-menu--2">
+                    <li class="dropdown-item">
+                          <a href="/about-us/committees-groups/guiding-committee" class="nav-link nav-link--about-us-committees-groups-guiding-committee" data-drupal-link-system-path="node/27">Guiding Committee</a>
+              </li>
+                <li class="dropdown-item menu-item--collapsed">
+                          <a href="/about-us/committees-groups/scrum" class="nav-link nav-link--about-us-committees-groups-scrum" data-drupal-link-system-path="node/59">Regional Mapping</a>
+              </li>
+                <li class="dropdown-item">
+                          <a href="/about-us/committees-groups/scufn" class="nav-link nav-link--about-us-committees-groups-scufn" data-drupal-link-system-path="node/60">Undersea Features Names</a>
+              </li>
+                <li class="dropdown-item">
+                          <a href="/about-us/committees-groups/tscom" class="nav-link nav-link--about-us-committees-groups-tscom" data-drupal-link-system-path="node/61">Technical Mapping</a>
+              </li>
+                <li class="dropdown-item">
+                          <a href="/about-us/committees-groups/scope" class="nav-link nav-link--about-us-committees-groups-scope" data-drupal-link-system-path="node/62">Communication and Outreach</a>
+              </li>
+        </ul>
+  
+              </li>
+                <li class="dropdown-item">
+                          <a href="/about-us/meetings-minutes" class="nav-link nav-link--about-us-meetings-minutes" data-drupal-link-system-path="node/35">Meetings and Minutes</a>
+              </li>
+                <li class="dropdown-item">
+                          <a href="/about-us/gebco-symposium" class="nav-link nav-link--about-us-gebco-symposium" data-drupal-link-system-path="about-us/gebco-symposium">GEBCO Symposium</a>
+              </li>
+                <li class="dropdown-item">
+                          <a href="/about-us/faq" class="nav-link nav-link--about-us-faq" data-drupal-link-system-path="node/11">Frequently Asked Questions</a>
+              </li>
+                <li class="dropdown-item">
+                          <a href="/about-us/links" class="nav-link nav-link--about-us-links" data-drupal-link-system-path="node/34">Useful links</a>
+              </li>
+        </ul>
+  
+              </li>
+                <li class="nav-item">
+                          <a href="/contact" class="nav-link nav-link--contact" data-drupal-link-system-path="contact">Contact</a>
+              </li>
+        </ul>
+  
+
+
+  </nav>
+
+
+              </div>
+
+              <div class="collapse navbar-collapse clearfix flex-lg-grow-0" id="CollapsingSearch">
+                                  <div class="form-inline navbar-form mt-3 mt-lg-0">
+                      <section class="region region-header-form flex-fill">
+    <div class="search-block-form block block-search block-search-form-block" data-drupal-selector="search-block-form" id="block-searchform" role="search">
+  
+    
+    <div class="content d-lg-none d-xl-block">
+        <div class="content d-lg-none d-xl-block">
+      <form action="/search/node" method="get" id="search-block-form" accept-charset="UTF-8" class="search-form search-block-form form-row d-flex align-items-center">
+  
+
+
+
+  <fieldset class="js-form-item js-form-type-search form-type-search js-form-item-keys form-item-keys form-no-label form-group flex-fill mb-0">
+          <label for="edit-keys" class="visually-hidden">Search</label>
+                    <input title="Enter the terms you wish to search for." data-drupal-selector="edit-keys" type="search" id="edit-keys" name="keys" value="" size="15" maxlength="128" class="form-search form-control" placeholder="Search" />
+
+                      </fieldset>
+<div data-drupal-selector="edit-actions" class="form-actions js-form-wrapper form-wrapper" id="edit-actions"><button data-twig-suggestion="search_block_form" data-drupal-selector="edit-submit" type="submit" id="edit-submit" value="Search" class="button js-form-submit form-submit btn btn-link text-white font-size-xl py-0"><i class="fas fa-search"></i><span class="sr-only">Search</span></button>
+</div>
+
+</form>
+
+    </div>
+  
+  </div>
+
+  <a href="https://www.gebco.net/search" class="text-white btn font-size-xl d-none d-lg-block d-xl-none"><span class="sr-only">Search</span><i class="fas fa-search"></i></a>
+</div>
+
+  </section>
+
+                  </div>
+                              </div>
+
+                                            </div>
+                  </nav>
+          <section class="region region-header container pb-lg-5">
+    <div class="row flex-row-reverse align-items-center">
+      <div id="block-header-logos" class="block-content-image_row block block-block-content block-block-contentd2ba1176-892a-4ee4-aef0-6a742fa131fb col-8 col-lg-5 col-xl-4">
+  
+    
+      <div class="content">
+      
+      <div class="field field--name-field-image-links-paragraphs field--type-entity-reference-revisions field--label-hidden d-flex justify-content-center align-items-center field__items">
+              <div class="field__item px-2">  <div class="paragraph paragraph--type--image-with-link paragraph--view-mode--default">
+          
+            <div class="field field--name-field-media-image field--type-entity-reference field--label-hidden field__item">
+<div class="media--type-image media--view-mode-image-row">
+  
+  
+            <div class="field field--name-field-media-image field--type-image field--label-hidden field__item">  <a href="https://iho.int/"><img loading="lazy" src="/sites/default/files/styles/image_row_small/public/images/iho-logo.png?itok=NYYjE93z" width="300" height="100" alt="IHO Logo" class="image-style-image-row-small img-fluid"></a>
+
+
+</div>
+      
+</div>
+</div>
+      
+      </div>
+</div>
+              <div class="field__item px-2">  <div class="paragraph paragraph--type--image-with-link paragraph--view-mode--default">
+          
+            <div class="field field--name-field-media-image field--type-entity-reference field--label-hidden field__item">
+<div class="media--type-image media--view-mode-image-row">
+  
+  
+            <div class="field field--name-field-media-image field--type-image field--label-hidden field__item">  <a href="https://ioc.unesco.org/"><img loading="lazy" src="/sites/default/files/styles/image_row_small/public/images/combined_unesco_ioc_blue_0.png?itok=3URABwfe" width="104" height="100" alt="Combined IOC and UNESCO logo" class="image-style-image-row-small img-fluid"></a>
+
+
+</div>
+      
+</div>
+</div>
+      
+      </div>
+</div>
+              <div class="field__item px-2">  <div class="paragraph paragraph--type--image-with-link paragraph--view-mode--default">
+          
+            <div class="field field--name-field-media-image field--type-entity-reference field--label-hidden field__item">
+<div class="media--type-image media--view-mode-image-row">
+  
+  
+            <div class="field field--name-field-media-image field--type-image field--label-hidden field__item">  <a href="https://www.gebco.net"><img loading="lazy" src="/sites/default/files/styles/image_row_small/public/images/gebco_logo_image_2024_2.png?itok=A-LLk3MZ" width="100" height="100" alt="GEBCO logo" class="image-style-image-row-small img-fluid"></a>
+
+
+</div>
+      
+</div>
+</div>
+      
+      </div>
+</div>
+          </div>
+  
+    </div>
+  </div>
+
+<div class="col-4 col-lg-7 col-xl-8">
+
+  <div class="d-flex align-items-center">
+
+          <a href="/" title="Home" rel="home" class="pr-3">
+                  <img src="/profiles/custom/seabed/themes/seaboot/logo.png" alt="GEBCO logo" class="img-fluid d-inline-block align-top" width="115" height="115" />
+              </a>
+    
+          <div class="d-none d-lg-block">
+                  <div class="h2 text-white mb-0">GEBCO</div>
+                          <div class="h5 text-white mb-0">General Bathymetric Chart of the Oceans</div>
+              </div>
+    
+  </div>
+
+</div>
+
+    </div>
+  </section>
+
+        
+          </header>
+          <div class="highlighted bg-white">
+        <aside class="container section clearfix" role="complementary">
+            <div data-drupal-messages-fallback class="hidden"></div>
+
+
+        </aside>
+      </div>
+            <div id="main-wrapper" class="layout-main-wrapper clearfix">
+              <div id="main" class="container">
+            <section class="region region-breadcrumb">
+    <div id="block-seaboot-breadcrumbs" class="block block-system block-system-breadcrumb-block">
+  
+    
+      <div class="content">
+      
+
+  <nav role="navigation" aria-label="breadcrumb">
+    <ol class="breadcrumb p-0 mb-0">
+                  <li class="breadcrumb-item">
+          <a href="/" class="text-muted">Home</a>
+        </li>
+                        <li class="breadcrumb-item">
+          <a href="/data-products" class="text-muted">Data and Products</a>
+        </li>
+              </ol>
+  </nav>
+
+    </div>
+  </div>
+
+  </section>
+
+          <div class="row row-offcanvas row-offcanvas-left pt-5 clearfix">
+              <main class="main-content col" id="content" role="main">
+                <section class="section">
+                  <a id="main-content" tabindex="-1"></a>
+                    <div id="block-seaboot-page-title" class="block block-core block-page-title-block mb-5">
+  
+    
+      <div class="content">
+      
+  <h1 class="title"><span class="field field--name-title field--type-string field--label-hidden">Gridded Bathymetry Data</span>
+</h1>
+
+
+    </div>
+  </div>
+<div id="block-seaboot-content" class="block block-system block-system-main-block">
+  
+    
+      <div class="content">
+      
+
+<article data-history-node-id="8" class="node node--type-page node--view-mode-full clearfix">
+  <header>
+    
+        
+      </header>
+  <div class="node__content clearfix">
+    
+            <div class="clearfix text-formatted field field--name-body field--type-text-with-summary field--label-hidden field__item"><h2>Global ocean &amp; land terrain models</h2><p>GEBCO’s current gridded bathymetric data set, the GEBCO_2026 Grid, is a global terrain model for ocean and land, providing elevation data, in meters, on a 15 arc-second interval grid. It is accompanied by a Type Identifier (TID) Grid that gives information on the types of source data that the GEBCO_2026 Grid is based.</p><p>This release includes a version of the grid with under-ice topography/bathymetry information for Greenland and Antarctica.</p><ul><li><a href="#global">Download global coverage grids</a></li><li><a href="#area">Download data for user-defined areas</a></li><li><a href="#multi">Multi-resolution grid product</a></li><li><a href="#opendap">Access the GEBCO grid via OPeNDAP</a></li></ul><p>More <a href="/data-products-gridded-bathymetry-data/gebco2025-grid" data-entity-type="node" data-entity-uuid="eac3495d-1e71-46e2-a5e1-b700645e56f8" data-entity-substitution="canonical">information</a> about the grid, its terms of use and attribution. <a href="https://www.gebco.net/data-products/gridded-bathymetry-data/feedback/">Provide feedback</a>, tell us how you are using the grid.</p><p>GEBCO releases a new global grid every year, generally in July. Find out more about the&nbsp;<a href="/data-products/gridded-bathymetry-data/grid-development" data-entity-type="node" data-entity-uuid="8cc573d1-d288-4392-acc3-7b0d0e277c4f" data-entity-substitution="canonical">grid generation process</a>.</p><h2 id="global">Download global coverage grids</h2><p>The GEBCO_2026 Grid and TID Grid can be download as global files in netCDF format or a set of 8 tiles (each with an area of 90° x 90°), giving global coverage, in Esri ASCII raster and data GeoTiff formats. The data files are included in a zip file along with the data set documentation.</p><div class="table-responsive"><div class="table-responsive" ><table class="table table table-bordered table-bordered"><tbody><tr><td>GEBCO_2026 Grid (ice surface elevation)</td><td><a href="https://dap.ceda.ac.uk/bodc/gebco/global/gebco_2026/ice_surface_elevation/netcdf/GEBCO_2026.zip?download=1">netCDF</a> (4 Gbytes, 7.0 Gbytes uncompressed)</td><td><a href="https://dap.ceda.ac.uk/bodc/gebco/global/gebco_2026/ice_surface_elevation/geotiff/gebco_2026_geotiff.zip?download=1">Data GeoTiff</a><a href="https://www.bodc.ac.uk/data/open_download/gebco/gebco_2024/geotiff/"> </a>(4 Gbytes, 7.2 Gbytes uncompressed)</td><td><a href="https://dap.ceda.ac.uk/bodc/gebco/global/gebco_2026/ice_surface_elevation/esri_ascii_raster/gebco_2026_ascii.zip?download=1">Esri ASCII raster</a> (4.8 Gbytes, 18.2 Gbytes uncompressed)</td></tr><tr><td>GEBCO_2026 Grid (sub-ice topo/bathy)</td><td><a href="https://dap.ceda.ac.uk/bodc/gebco/global/gebco_2026/sub_ice_topography_bathymetry/netcdf/GEBCO_2026_sub_ice.zip?download=1">netCDF</a><a href="https://www.bodc.ac.uk/data/open_download/gebco/gebco_2024_sub_ice_topo/zip/"> </a>(4.1 Gbytes, 7.0 Gbytes uncompressed)</td><td><a href="https://dap.ceda.ac.uk/bodc/gebco/global/gebco_2026/sub_ice_topography_bathymetry/geotiff/gebco_2026_sub_ice_topo_geotiff.zip?download=1">Data GeoTiff</a><a href="https://www.bodc.ac.uk/data/open_download/gebco/gebco_2024_sub_ice_topo/geotiff/"> </a>(4.1 Gbytes, 7.2 Gbytes uncompressed)</td><td><a href="https://dap.ceda.ac.uk/bodc/gebco/global/gebco_2026/sub_ice_topography_bathymetry/esri_ascii_raster/gebco_2026_sub_ice_ascii.zip?download=1">Esri ASCII raster</a> (4.9 Gbytes, 18.2 Gbytes uncompressed)</td></tr><tr><td>GEBCO_2026 TID Grid</td><td><a href="https://dap.ceda.ac.uk/bodc/gebco/global/gebco_2026/type_identifier_grid/netcdf/gebco_2026_tid.zip?download=1">netCDF</a> (94.4 Mbytes, 3.5 Gbytes uncompressed)</td><td><a href="https://dap.ceda.ac.uk/bodc/gebco/global/gebco_2026/type_identifier_grid/geotiff/gebco_2026_tid_geotiff.zip?download=1">Data GeoTiff</a> (91.7 Mbytes, 3.4 Gbytes uncompressed)</td><td><a href="https://dap.ceda.ac.uk/bodc/gebco/global/gebco_2026/type_identifier_grid/esri_ascii_raster/gebco_2026_tid_ascii.zip?download=1">Esri ASCII raster</a> (120.5 Mbytes, 9.6 Gbytes uncompressed)</td></tr></tbody></table></div></div><h2 id="area">Download data for user-defined areas</h2><p>Use our <a href="https://download.gebco.net">application</a> to select and download data in netCDF, Esri ASCII raster and data GeoTiff formats.</p><p>&nbsp;</p><a href="https://download.gebco.net">
+
+<div class="media--type-image media--view-mode-default">
+  
+  
+  <div class="field field--name-field-media-image field--type-image field--label-visually_hidden">
+    <div class="field__label visually-hidden"><strong>Image:</strong></div>
+              <div class="field__item">    <picture>
+                  <source srcset="/sites/default/files/styles/page_full_no_sidebars/public/images/gebco_download_app_0.webp?itok=_E-boEoB 1x" type="image/webp" width="749" height="376">
+              <source srcset="/sites/default/files/styles/page_full_no_sidebars/public/images/gebco_download_app_0.jpg?itok=_E-boEoB 1x" type="image/jpeg" width="749" height="376">
+                  <img loading="eager" srcset="/sites/default/files/styles/page_full_no_sidebars/public/images/gebco_download_app_0.jpg?itok=_E-boEoB 1x" width="749" height="376" src="/sites/default/files/styles/page_full_no_sidebars/public/images/gebco_download_app_0.jpg?itok=_E-boEoB" alt="GEBCO grid download app" class="img-fluid">
+
+  </picture>
+
+</div>
+          </div>
+
+</div>
+</a><h2 id="multi">Multi-resolution grids</h2><p><span>The global GEBCO grid is currently made available as a global 15 arc-second interval grid. However, in some regions, it is based on data at higher resolutions. To accommodate users who want access to higher resolution gridded bathymetry data, where it exists, a </span><a href="/data-products/gridded-bathymetry-data/multi-res" data-entity-type="node" data-entity-uuid="cb5d7f42-1f2c-4168-94c9-212a4e8ae1a2" data-entity-substitution="canonical"><strong>test multi-resolution grid product</strong></a><span> has been developed. This is now available through the new download application.</span></p><h2 id="opendap">Access the GEBCO grid via OPeNDAP</h2><p>GEBCO’s gridded data sets are now available for <a href="https://data.ceda.ac.uk/bodc/gebco/global/gebco_2026">direct download</a> from the Natural Environment Research Council's (NERC) Centre for Environmental Data Analysis (CEDA).</p><p>Through CEDA, GEBCO’s gridded data sets can also be accessed via <a href="https://www.opendap.org/">OPeNDAP</a> – allowing direct access to the data sets through a number of applications.</p><p>To access the GEBCO_2026 Grid via OPeNDAP – navigate to the directory that contains the netCDF data file for the gridded data set that you are interested in, for example, the <a href="https://data.ceda.ac.uk/bodc/gebco/global/gebco_2026/ice_surface_elevation/netcdf">ice surface elevation</a> version of the grid, and click on the ‘extract subset’ icon to access the OPeNDAP Dataset Access Form and data set URL. The image below illustrates this.</p>
+
+<div class="media--type-image media--view-mode-default">
+  
+  
+  <div class="field field--name-field-media-image field--type-image field--label-visually_hidden">
+    <div class="field__label visually-hidden"><strong>Image:</strong></div>
+              <div class="field__item">    <picture>
+                  <source srcset="/sites/default/files/styles/page_full_no_sidebars/public/images/gebco_2026%20ceda%20diagram.webp?itok=Cm3iJxwi 1x" type="image/webp" width="889" height="398">
+              <source srcset="/sites/default/files/styles/page_full_no_sidebars/public/images/gebco_2026%20ceda%20diagram.png?itok=Cm3iJxwi 1x" type="image/png" width="889" height="398">
+                  <img loading="eager" srcset="/sites/default/files/styles/page_full_no_sidebars/public/images/gebco_2026%20ceda%20diagram.png?itok=Cm3iJxwi 1x" width="889" height="398" src="/sites/default/files/styles/page_full_no_sidebars/public/images/gebco_2026%20ceda%20diagram.png?itok=Cm3iJxwi" alt="GEBCO 2026 OPeNDAP download" class="img-fluid">
+
+  </picture>
+
+</div>
+          </div>
+
+</div>
+<h2>Data set attribution for GEBCO_2026 Grid</h2><p>If the data sets are used in a presentation or publication then we ask that you acknowledge the source. This should be of the form:</p><h6>GEBCO Bathymetric Compilation Group 2026 (2026). The GEBCO_2026 Grid - a continuous terrain model for oceans and land at 15 arc-second intervals. doi:10.5285/4f68d5c7-45eb-f999-e063-7086abc036fa</h6><p>Link: <a href="https://doi.org/10.5285/4f68d5c7-45eb-f999-e063-7086abc036fa">https://doi.org/10.5285/4f68d5c7-45eb-f999-e063-7086abc036fa</a></p><h2>Terms of use</h2><p>The GEBCO Grid is placed in the public domain and may be used free of charge. Use of the GEBCO Grid indicates that the user accepts the <a href="https://www.gebco.net/data-products/gridded-bathymetry/terms-of-use">conditions of use and disclaimer information</a>.</p><h2>Data set errata and known issues</h2><p>Although every care is taken during the development of the GEBCO bathymetric grids, errors can occasionally occur, and can be reported to the Seabed 2030 Global Centre (
+<span class="boshfpngr">
+  <a href="mailto:gdacc@se%61b%65d%32030.%6fr%67" rel="nofollow">gdacc@seabed2030.org</a>
+</span>
+). Known issues can be viewed on our <a href="/data-products/gridded-bathymetry-data/data-set-errata" data-entity-type="node" data-entity-uuid="6320b9c8-a640-493f-aa7c-23428d276c08" data-entity-substitution="canonical">errata pages</a>.</p><h2>Type Identifier (TID) Grid</h2><p>The TID grid identifies the type of source data that the corresponding grid cells in the GEBCO Grid are based on. Further information about the TID codes can be found in the <a href="/data-products-gridded-bathymetry-data/gebco2026-grid" data-entity-type="node" data-entity-uuid="63bd506b-eca6-4672-9cd2-705aec64b511" data-entity-substitution="canonical">accompanying documentation</a>.</p><p>Find out more about the TID Grid from our StoryMap. <a href="https://storymaps.arcgis.com/stories/115beb845eae4facb1047a5deb28f121">English</a>, <a href="https://storymaps.arcgis.com/stories/ac6e968648224b019cf50dd9aedbd6dc">Spanish</a> and <a href="https://storymaps.arcgis.com/stories/51f9f91887bf466f8c416f7f48364970">French</a> language versions are available.<span>&nbsp;</span></p><p>&nbsp;</p><div class="table-responsive" ><table class="table table table-bordered"><tbody><tr><td><a href="https://storymaps.arcgis.com/stories/115beb845eae4facb1047a5deb28f121">
+
+<div class="media--type-image media--view-mode-default">
+  
+  
+  <div class="field field--name-field-media-image field--type-image field--label-visually_hidden">
+    <div class="field__label visually-hidden"><strong>Image:</strong></div>
+              <div class="field__item">    <picture>
+                  <source srcset="/sites/default/files/styles/page_full_no_sidebars/public/images/tid_storymap.webp?itok=uxtUp-gy 1x" type="image/webp" width="1010" height="500">
+              <source srcset="/sites/default/files/styles/page_full_no_sidebars/public/images/tid_storymap.JPG?itok=uxtUp-gy 1x" type="image/jpeg" width="1010" height="500">
+                  <img loading="eager" srcset="/sites/default/files/styles/page_full_no_sidebars/public/images/tid_storymap.JPG?itok=uxtUp-gy 1x" width="1010" height="500" src="/sites/default/files/styles/page_full_no_sidebars/public/images/tid_storymap.JPG?itok=uxtUp-gy" alt="TID StoryMap English language version" class="img-fluid">
+
+  </picture>
+
+</div>
+          </div>
+
+</div>
+</a></td><td><a href="https://storymaps.arcgis.com/stories/ac6e968648224b019cf50dd9aedbd6dc">
+
+<div class="media--type-image media--view-mode-default">
+  
+  
+  <div class="field field--name-field-media-image field--type-image field--label-visually_hidden">
+    <div class="field__label visually-hidden"><strong>Image:</strong></div>
+              <div class="field__item">    <picture>
+                  <source srcset="/sites/default/files/styles/page_full_no_sidebars/public/images/tid_storymap_esp.webp?itok=uK8QWWbh 1x" type="image/webp" width="1010" height="500">
+              <source srcset="/sites/default/files/styles/page_full_no_sidebars/public/images/tid_storymap_esp.jpg?itok=uK8QWWbh 1x" type="image/jpeg" width="1010" height="500">
+                  <img loading="eager" srcset="/sites/default/files/styles/page_full_no_sidebars/public/images/tid_storymap_esp.jpg?itok=uK8QWWbh 1x" width="1010" height="500" src="/sites/default/files/styles/page_full_no_sidebars/public/images/tid_storymap_esp.jpg?itok=uK8QWWbh" alt="TID StoryMap Spanish language version" class="img-fluid">
+
+  </picture>
+
+</div>
+          </div>
+
+</div>
+</a></td><td><a href="https://storymaps.arcgis.com/stories/51f9f91887bf466f8c416f7f48364970">
+
+<div class="media--type-image media--view-mode-default">
+  
+  
+  <div class="field field--name-field-media-image field--type-image field--label-visually_hidden">
+    <div class="field__label visually-hidden"><strong>Image:</strong></div>
+              <div class="field__item">    <picture>
+                  <source srcset="/sites/default/files/styles/page_full_no_sidebars/public/images/tid_sm_fl_0.webp?itok=MK10mwSL 1x" type="image/webp" width="1010" height="483">
+              <source srcset="/sites/default/files/styles/page_full_no_sidebars/public/images/tid_sm_fl_0.jpg?itok=MK10mwSL 1x" type="image/jpeg" width="1010" height="483">
+                  <img loading="eager" srcset="/sites/default/files/styles/page_full_no_sidebars/public/images/tid_sm_fl_0.jpg?itok=MK10mwSL 1x" width="1010" height="483" src="/sites/default/files/styles/page_full_no_sidebars/public/images/tid_sm_fl_0.jpg?itok=MK10mwSL" alt="Type Identifier (TID) Grid StoryMap French language version" class="img-fluid">
+
+  </picture>
+
+</div>
+          </div>
+
+</div>
+</a></td></tr></tbody></table></div><h2>Note on vertical datum and GEBCO's grids</h2><p>GEBCO's global elevation models are generated by the assimilation of heterogeneous data types assuming all of them to be referred to mean sea level. However, in some shallow water areas, the grids include data from sources having a vertical datum other than mean sea level. We are working to understand how best to fully assimilate these data.</p><h2>Provide feedback</h2><p>To help us improve our products and services, use our form to <a href="/data-products/gridded-bathymetry-data/feedback" data-entity-type="node" data-entity-uuid="f89d2f67-d12e-4ac2-9b96-9b5d27f38d2e" data-entity-substitution="canonical">provide feedback</a> on the GEBCO grid.</p><h3>Find out more</h3><ul><li><a href="/data-products-gridded-bathymetry-data/gebco2026-grid" data-entity-type="node" data-entity-uuid="63bd506b-eca6-4672-9cd2-705aec64b511" data-entity-substitution="canonical">About the GEBCO_2026 Grid</a></li><li><a href="/about-us/acknowledgements/our-data-contributors" data-entity-type="node" data-entity-uuid="39b67047-46be-4560-a7d6-edfd70803805" data-entity-substitution="canonical">Data contributors</a></li><li><a href="https://www.gebco.net/data-products/historical-data-sets">Historical GEBCO data sets</a></li><li><a href="https://www.gebco.net/data-products/gridded-bathymetry-data/shallow-water-bathymetry">Improving GEBCO's grid in shallow water regions</a></li><li><a href="https://topex.ucsd.edu/WWW_html/srtm15_plus.html">SRTM15_plus</a></li></ul></div>
+      
+
+
+  </div>
+</article>
+
+    </div>
+  </div>
+
+
+                </section>
+              </main>
+                                      <div class="sidebar_second sidebar order-last col-lg-4" id="sidebar_second">
+                <aside class="section mt-7 mt-lg-0 position-relative h-100" role="complementary">
+                    <nav role="navigation" aria-labelledby="block-main-menu-children-menu" id="block-main-menu-children" class="block block-menu navigation menu--main">
+      
+  <h2 id="block-main-menu-children-menu"><a href="/data-products" class="menu-item--active-trail" data-drupal-link-system-path="node/7">Data &amp; Products</a></h2>
+  
+
+        
+                        <ul class="clearfix list-unstyled menu--sidebar">
+                    <li class="menu-item--expanded menu-item--active-trail my-2">
+                <a href="/data-products/gridded-bathymetry-data" class="active is-active" data-drupal-link-system-path="node/8" aria-current="page">Gridded Bathymetry Data</a>
+                                          <ul class="list-unstyled ml-3">
+                    <li class="my-2">
+                <a href="/data-products/gridded-bathymetry-data/arctic-ocean" data-drupal-link-system-path="node/25">Regional grid - Arctic Ocean (IBCAO)</a>
+              </li>
+                <li class="my-2">
+                <a href="/data-products/gridded-bathymetry-data/southern-ocean" data-drupal-link-system-path="node/26">Regional grid - Southern Ocean (IBCSO)</a>
+              </li>
+                <li class="my-2">
+                <a href="/data-products/gridded-bathymetry-data/data-set-errata" data-drupal-link-system-path="node/9">Errata and known issues</a>
+              </li>
+                <li class="my-2">
+                <a href="/data-products-gridded-bathymetry-data/gebco2026-grid" data-drupal-link-system-path="node/414">GEBCO_2026 Grid</a>
+              </li>
+                <li class="my-2">
+                <a href="/data-products-gridded-bathymetry-data/gebco2025-grid" data-drupal-link-system-path="node/397">GEBCO_2025 Grid</a>
+              </li>
+                <li class="my-2">
+                <a href="/data-products-gridded-bathymetry-data/gebco2024-grid" data-drupal-link-system-path="node/377">GEBCO_2024 Grid</a>
+              </li>
+                <li class="my-2">
+                <a href="/data-products/gridded-bathymetry-data/gebco2023-grid" title="Access the GEBCO_2023 Grid" data-drupal-link-system-path="node/369">GEBCO_2023 Grid</a>
+              </li>
+                <li class="my-2">
+                <a href="/data-products/gridded-bathymetry-data/gebco-2022" data-drupal-link-system-path="node/349">GEBCO_2022 Grid</a>
+              </li>
+                <li class="my-2">
+                <a href="/data-products/gridded-bathymetry-data/gebco-2021" data-drupal-link-system-path="node/16">GEBCO_2021 Grid</a>
+              </li>
+                <li class="my-2">
+                <a href="/data-products/gridded-bathymetry-data/gebco-2020" data-drupal-link-system-path="node/15">GEBCO_2020 Grid</a>
+              </li>
+                <li class="my-2">
+                <a href="/data-products/gridded-bathymetry-data/gebco-2019" data-drupal-link-system-path="node/14">GEBCO_2019 Grid</a>
+              </li>
+        </ul>
+  
+              </li>
+                <li class="my-2">
+                <a href="/data-products/undersea-feature-names" data-drupal-link-system-path="node/52">Undersea Feature Names</a>
+              </li>
+                <li class="menu-item--collapsed my-2">
+                <a href="/data-products/gebco-web-services" data-drupal-link-system-path="node/18">GEBCO Web Services</a>
+              </li>
+                <li class="my-2">
+                <a href="/data-products/printable-maps" data-drupal-link-system-path="node/54">Printable Maps</a>
+              </li>
+                <li class="my-2">
+                <a href="/data-products/gebco-cook-book" data-drupal-link-system-path="node/17">IHO-IOC GEBCO Cook Book</a>
+              </li>
+                <li class="my-2">
+                <a href="/data-products/historical-gebco-charts" data-drupal-link-system-path="node/28">Historical GEBCO Charts</a>
+              </li>
+                <li class="my-2">
+                <a href="/data-products/historical-data-sets" data-drupal-link-system-path="node/30">Historical Data Sets</a>
+              </li>
+                <li class="my-2">
+                <a href="/data-products/imagery" data-drupal-link-system-path="node/33">Imagery</a>
+              </li>
+                <li class="my-2">
+                <a href="/data-products/history-gebco" data-drupal-link-system-path="node/32">History of GEBCO</a>
+              </li>
+                <li class="my-2">
+                <a href="/data-products/gebco-digital-atlas" data-drupal-link-system-path="node/404">GEBCO Digital Atlas</a>
+              </li>
+        </ul>
+  
+
+
+  </nav>
+<div id="block-seaboot-tocjsblock" class="block block-toc-js block-toc-js-block pt-3 mt-n3 d-none d-lg-block sticky-top">
+  
+    
+      <div class="content">
+      <div  class="toc-js" id="toc-js-block" data-selectors="h2,h3" data-selectors-minimum="1" data-container=".node" data-prefix="toc" data-list-type="ul" data-list-classes="list-unstyled" data-li-classes="my-2" data-heading-classes="" data-skip-invisible-headings="1" data-use-heading-html="0" data-heading-cleanup-selector=".visually-hidden, .sr-only" data-collapsible-items="0" data-collapsible-expanded="1" data-back-to-top="0" data-back-to-top-selector="" data-heading-focus="0" data-back-to-toc="0" data-back-to-toc-classes="visually-hidden-focusable" data-smooth-scrolling="1" data-scroll-to-offset="" data-highlight-on-scroll="1" data-highlight-offset="0" data-sticky="0" data-sticky-offset="0" data-toc-container="" data-ajax-page-updates="0" data-observable-selector="">
+  <nav role="navigation" aria-labelledby="toc-js-block__title">    <h2>Jump to</h2>
+  </nav>
+</div>
+
+    </div>
+  </div>
+
+
+                </aside>
+              </div>
+                      </div>
+        </div>
+          </div>
+      </div>
+
+  <footer class="site-footer text-white font-size-sm">
+          <div class="container">
+                  <div class="site-footer__top row pt-3">
+
+            <div class="col-md-6">
+                <section class="region region-footer-first">
+    <div id="block-socialmedialinks" class="block-social-media-links block block-social-media-links-block">
+  
+    
+      <div class="content">
+      
+
+<ul class="social-media-links--platforms platforms inline horizontal">
+      <li>
+      <a class="social-media-link-icon--twitter text-light" href="https://x.com/gebcobathymetry"  aria-label="Follow us on Twitter" title="Follow us on Twitter" >
+        <span class='fab fa-x-twitter fa-3x'></span>
+      </a>
+
+          </li>
+      <li>
+      <a class="social-media-link-icon--facebook text-light" href="https://www.facebook.com/GEBCO"  aria-label="Find us on Facebook" title="Find us on Facebook" >
+        <span class='fab fa-facebook fa-3x'></span>
+      </a>
+
+          </li>
+  </ul>
+
+    </div>
+  </div>
+
+  </section>
+
+            </div>
+
+            <div class="col-md-6">
+                <section class="region region-footer-second">
+    <div id="block-bodclogo" class="block-content-image_row block block-block-content block-block-contentc03cb464-dcbb-4cb4-8a39-81c033ecc937">
+  
+    
+      <div class="content">
+      
+      <div class="field field--name-field-image-links-paragraphs field--type-entity-reference-revisions field--label-hidden d-flex justify-content-center align-items-center field__items">
+              <div class="field__item px-2">  <div class="paragraph paragraph--type--image-with-link paragraph--view-mode--default">
+          
+            <div class="field field--name-field-media-image field--type-entity-reference field--label-hidden field__item">
+<div class="media--type-image media--view-mode-image-row">
+  
+  
+            <div class="field field--name-field-media-image field--type-image field--label-hidden field__item">  <a href="https://www.bodc.ac.uk"><img loading="lazy" src="/sites/default/files/styles/image_row_small/public/images/BODC%20LOGO%20-%20FOR%20DARK%20BACKGROUNDS%20%28RGB%29.png?itok=vhRQ-Jyn" width="283" height="100" alt="BODC Logo" class="image-style-image-row-small img-fluid"></a>
+
+
+</div>
+      
+</div>
+</div>
+      
+      </div>
+</div>
+          </div>
+  
+    </div>
+  </div>
+
+  </section>
+
+            </div>
+
+          </div>
+                          <div class="site-footer__bottom row">
+            <div class="col-12">
+                <section class="region region-footer-bottom">
+    <div id="block-copyrightblock" class="block block-copyright-block">
+  
+    
+      <div class="content">
+      <p>Copyright © 2020-2026,&nbsp;<a title="Insert this token into your form">GEBCO</a></p>
+
+<p>Hosted by the British Oceanographic Data Centre (BODC)</p>
+
+    </div>
+  </div>
+<nav role="navigation" aria-labelledby="block-seaboot-footer-menu" id="block-seaboot-footer" class="block block-menu navigation menu--footer">
+            
+  <h2 class="visually-hidden" id="block-seaboot-footer-menu">Footer menu</h2>
+  
+
+        
+              <ul id="block-seaboot-footer" class="clearfix list-inline">
+                    <li class="list-inline-item">
+                <a href="/privacy-policy" class="menu-item--privacy-policy text-white" data-drupal-link-system-path="node/13">Privacy Policy</a>
+              </li>
+                <li class="list-inline-item">
+                <a href="/disclaimer" class="menu-item--disclaimer text-white" data-drupal-link-system-path="node/10">Disclaimer</a>
+              </li>
+        </ul>
+  
+
+
+  </nav>
+
+  </section>
+
+            </div>
+          </div>
+              </div>
+      </footer>
+</div>
+
+  </div>
+
+    <div class="off-canvas-wrapper"><div id="off-canvas">
+              <ul>
+                    <li class="menu-item--front-page menu-name--main">
+        <a href="/" data-drupal-link-system-path="&lt;front&gt;">Home</a>
+              </li>
+                <li class="menu-item--a0e1024f-ec75-4a72-80b0-c16772fac05e menu-name--main menu-item--active-trail">
+        <a href="/data-products" data-drupal-link-system-path="node/7">Data &amp; Products</a>
+                                <ul>
+                    <li class="menu-item--d8c3d8d9-e7ec-49a9-ae7a-a18df3a74793 menu-name--main menu-item--active-trail">
+        <a href="/data-products/gridded-bathymetry-data" data-drupal-link-system-path="node/8" class="is-active" aria-current="page">Gridded Bathymetry Data</a>
+                                <ul>
+                    <li class="menu-item--_23c1a7d-201c-42c4-a589-188a5d736baa menu-name--main">
+        <a href="/data-products/gridded-bathymetry-data/arctic-ocean" data-drupal-link-system-path="node/25">Regional grid - Arctic Ocean (IBCAO)</a>
+              </li>
+                <li class="menu-item--cd95fd56-9542-4f71-a92f-9bdf0f6f76ad menu-name--main">
+        <a href="/data-products/gridded-bathymetry-data/southern-ocean" data-drupal-link-system-path="node/26">Regional grid - Southern Ocean (IBCSO)</a>
+              </li>
+                <li class="menu-item--_259c53c-7731-432f-8f6d-9aacb99533b2 menu-name--main">
+        <a href="/data-products/gridded-bathymetry-data/data-set-errata" data-drupal-link-system-path="node/9">Errata and known issues</a>
+              </li>
+                <li class="menu-item--_302ba76-4d79-4fc1-a223-60c5492abc7f menu-name--main">
+        <a href="/data-products-gridded-bathymetry-data/gebco2026-grid" data-drupal-link-system-path="node/414">GEBCO_2026 Grid</a>
+              </li>
+                <li class="menu-item--_9b29c1b-4e9a-44d4-9d0d-4841442720c0 menu-name--main">
+        <a href="/data-products-gridded-bathymetry-data/gebco2025-grid" data-drupal-link-system-path="node/397">GEBCO_2025 Grid</a>
+              </li>
+                <li class="menu-item--_cc0b81f-08a2-4ec3-9d89-b8d475b1dd19 menu-name--main">
+        <a href="/data-products-gridded-bathymetry-data/gebco2024-grid" data-drupal-link-system-path="node/377">GEBCO_2024 Grid</a>
+              </li>
+                <li class="menu-item--_48136ac-4b58-403e-bc7f-db014aaa706d menu-name--main">
+        <a href="/data-products/gridded-bathymetry-data/gebco2023-grid" title="Access the GEBCO_2023 Grid" data-drupal-link-system-path="node/369">GEBCO_2023 Grid</a>
+              </li>
+                <li class="menu-item--_ea8707d-b0ab-4987-9d84-5ae48e9ad7f7 menu-name--main">
+        <a href="/data-products/gridded-bathymetry-data/gebco-2022" data-drupal-link-system-path="node/349">GEBCO_2022 Grid</a>
+              </li>
+                <li class="menu-item--c3edbbe2-7149-4791-818c-794602393e00 menu-name--main">
+        <a href="/data-products/gridded-bathymetry-data/gebco-2021" data-drupal-link-system-path="node/16">GEBCO_2021 Grid</a>
+              </li>
+                <li class="menu-item--_899d35c-7822-4a32-b691-14c91f63ee7b menu-name--main">
+        <a href="/data-products/gridded-bathymetry-data/gebco-2020" data-drupal-link-system-path="node/15">GEBCO_2020 Grid</a>
+              </li>
+                <li class="menu-item--_fa9bfee-5aa5-4749-9f48-d0d0cb6527dc menu-name--main">
+        <a href="/data-products/gridded-bathymetry-data/gebco-2019" data-drupal-link-system-path="node/14">GEBCO_2019 Grid</a>
+              </li>
+        </ul>
+  
+              </li>
+                <li class="menu-item--_caa27b5-ccfa-40d5-ad30-ca11c4a29252 menu-name--main">
+        <a href="/data-products/undersea-feature-names" data-drupal-link-system-path="node/52">Undersea Feature Names</a>
+              </li>
+                <li class="menu-item--fd1a6589-c70f-4548-81dd-9629b521202c menu-name--main">
+        <a href="/data-products/gebco-web-services" data-drupal-link-system-path="node/18">GEBCO Web Services</a>
+                                <ul>
+                    <li class="menu-item--_2b26c43-f48a-44fd-a83d-617de526cea5 menu-name--main">
+        <a href="/data-products/gebco-web-services/web-map-service" data-drupal-link-system-path="node/19">Web Map Service</a>
+              </li>
+                <li class="menu-item--b7b0c3b5-0742-40cf-b535-a5f5a4b3871c menu-name--main">
+        <a href="/data-products/gebco-web-services/previous-wms" data-drupal-link-system-path="node/29">Previous GEBCO WMS</a>
+              </li>
+        </ul>
+  
+              </li>
+                <li class="menu-item--_5bba32f-23be-4b96-bc98-44230d87fd26 menu-name--main">
+        <a href="/data-products/printable-maps" data-drupal-link-system-path="node/54">Printable Maps</a>
+              </li>
+                <li class="menu-item--a30ccaa8-3cb8-4708-bf45-bb39216a4a32 menu-name--main">
+        <a href="/data-products/gebco-cook-book" data-drupal-link-system-path="node/17">IHO-IOC GEBCO Cook Book</a>
+              </li>
+                <li class="menu-item--_23acdbe-cedc-418f-a036-e803b20d7ea4 menu-name--main">
+        <a href="/data-products/historical-gebco-charts" data-drupal-link-system-path="node/28">Historical GEBCO Charts</a>
+              </li>
+                <li class="menu-item--_0bde4cd-a84e-464a-b64b-d5697005b5e5 menu-name--main">
+        <a href="/data-products/historical-data-sets" data-drupal-link-system-path="node/30">Historical Data Sets</a>
+              </li>
+                <li class="menu-item--e31e6556-15bb-4117-b65f-2d34ee2ef2f7 menu-name--main">
+        <a href="/data-products/imagery" data-drupal-link-system-path="node/33">Imagery</a>
+              </li>
+                <li class="menu-item--c945db70-4822-43c1-ba00-d59c17739a6f menu-name--main">
+        <a href="/data-products/history-gebco" data-drupal-link-system-path="node/32">History of GEBCO</a>
+              </li>
+                <li class="menu-item--ccbbd679-8e5d-42ec-9059-a6ddcec79a3b menu-name--main">
+        <a href="/data-products/gebco-digital-atlas" data-drupal-link-system-path="node/404">GEBCO Digital Atlas</a>
+              </li>
+        </ul>
+  
+              </li>
+                <li class="menu-item--_5790646-46e0-4492-aff8-65a953cde2bc menu-name--main">
+        <a href="https://seabed2030.org">Seabed 2030</a>
+              </li>
+                <li class="menu-item--a1d9a61f-d6ee-41c8-ae82-14aaee2ba9bb menu-name--main">
+        <a href="/training" data-drupal-link-system-path="node/55">Training</a>
+              </li>
+                <li class="menu-item--viewsnewspage-1 menu-name--main">
+        <a href="/news" data-drupal-link-system-path="news">News &amp; Media</a>
+              </li>
+                <li class="menu-item--_418631d-ee6c-43fa-934d-41f54263ce69 menu-name--main">
+        <a href="/about-us" data-drupal-link-system-path="node/2">About</a>
+                                <ul>
+                    <li class="menu-item--d4925422-496b-40d2-bde8-76b5a12cb8f0 menu-name--main">
+        <a href="/about-us/overview" data-drupal-link-system-path="node/56">Overview</a>
+              </li>
+                <li class="menu-item--aca6a09f-8167-4e43-8161-12c9f8c3d196 menu-name--main">
+        <a href="/about-us/gebco-strategy" data-drupal-link-system-path="node/396">GEBCO Strategy</a>
+              </li>
+                <li class="menu-item--_f5281d7-3085-4b7a-bb93-12fc937bb28d menu-name--main">
+        <a href="/about-us/project-history" data-drupal-link-system-path="node/31">Project History</a>
+              </li>
+                <li class="menu-item--_d62fe76-beb7-466c-b26d-bf024fef5836 menu-name--main">
+        <a href="/about-us/seabed2030-project" data-drupal-link-system-path="node/1">Seabed 2030</a>
+              </li>
+                <li class="menu-item--_ab629fe-4ae9-467a-990b-6f2e46330003 menu-name--main">
+        <a href="/about-us/acknowledgements" data-drupal-link-system-path="node/3">Acknowledgements</a>
+                                <ul>
+                    <li class="menu-item--_fd4985e-722d-4618-b6cb-254e198fdba9 menu-name--main">
+        <a href="/about-us/acknowledgements/our-data-contributors" data-drupal-link-system-path="node/6">Our Data Contributors</a>
+              </li>
+                <li class="menu-item--bdbb7eea-0654-445e-aa98-7982745ba8d8 menu-name--main">
+        <a href="/about-us/acknowledgements/working-with-industry" data-drupal-link-system-path="node/57">Working With Industry</a>
+              </li>
+        </ul>
+  
+              </li>
+                <li class="menu-item--cb263afb-4579-4517-8162-95da269c3028 menu-name--main">
+        <a href="/about-us/contributing-data" data-drupal-link-system-path="node/5">Contributing Data</a>
+              </li>
+                <li class="menu-item--_dae43f6-46a6-4e2c-af03-5a3f70d8a9cc menu-name--main">
+        <a href="/about-us/presentations-publications" data-drupal-link-system-path="node/58">Presentations and Publications</a>
+              </li>
+                <li class="menu-item--_0d8b2d7-8b64-4e2b-b574-7d748bb73996 menu-name--main">
+        <a href="/about-us/committees-groups" data-drupal-link-system-path="node/4">Committees and Groups</a>
+                                <ul>
+                    <li class="menu-item--_6cfe30a-e01a-458c-ad2d-a8cfc53a0c75 menu-name--main">
+        <a href="/about-us/committees-groups/guiding-committee" data-drupal-link-system-path="node/27">Guiding Committee</a>
+              </li>
+                <li class="menu-item--_b7f5ecc-038d-4923-aae9-1d3b6f12f2a9 menu-name--main">
+        <a href="/about-us/committees-groups/scrum" data-drupal-link-system-path="node/59">Regional Mapping</a>
+                                <ul>
+                    <li class="menu-item--_d04f2a1-6a5e-4e32-bcd5-956be1b73e1d menu-name--main">
+        <a href="/about/committees-and-groups/scrum/mapping-projects" title="Information on GEBCO-related regional mapping projects" data-drupal-link-system-path="node/294">Mapping projects</a>
+              </li>
+        </ul>
+  
+              </li>
+                <li class="menu-item--_c28071b-8824-4b34-8b95-56d47dcd54eb menu-name--main">
+        <a href="/about-us/committees-groups/scufn" data-drupal-link-system-path="node/60">Undersea Features Names</a>
+              </li>
+                <li class="menu-item--_6771450-8a10-4487-9ea4-cee8c228e7bd menu-name--main">
+        <a href="/about-us/committees-groups/tscom" data-drupal-link-system-path="node/61">Technical Mapping</a>
+              </li>
+                <li class="menu-item--_d503722-60a2-4577-a684-b2338444c23b menu-name--main">
+        <a href="/about-us/committees-groups/scope" data-drupal-link-system-path="node/62">Communication and Outreach</a>
+              </li>
+        </ul>
+  
+              </li>
+                <li class="menu-item--_7c4ce90-4ec4-441b-b530-b37e12d017e1 menu-name--main">
+        <a href="/about-us/meetings-minutes" data-drupal-link-system-path="node/35">Meetings and Minutes</a>
+              </li>
+                <li class="menu-item--_6aab411-0df6-423d-a25b-7badc52c9c1d menu-name--main">
+        <a href="/about-us/gebco-symposium" data-drupal-link-system-path="about-us/gebco-symposium">GEBCO Symposium</a>
+              </li>
+                <li class="menu-item--_8cb4725-5e00-43ff-9641-2545aa186f7b menu-name--main">
+        <a href="/about-us/faq" data-drupal-link-system-path="node/11">Frequently Asked Questions</a>
+              </li>
+                <li class="menu-item--_b2379d6-6ed3-4efe-a2bc-7f86a2ee6b66 menu-name--main">
+        <a href="/about-us/links" data-drupal-link-system-path="node/34">Useful links</a>
+              </li>
+        </ul>
+  
+              </li>
+                <li class="menu-item--viewscontactpage-1 menu-name--main">
+        <a href="/contact" data-drupal-link-system-path="contact">Contact</a>
+              </li>
+        </ul>
+  
+
+</div></div>
+    <script type="application/json" data-drupal-selector="drupal-settings-json">{"path":{"baseUrl":"\/","pathPrefix":"","currentPath":"node\/8","currentPathIsAdmin":false,"isFront":false,"currentLanguage":"en"},"pluralDelimiter":"\u0003","suppressDeprecationErrors":true,"responsive_menu":{"position":"left","theme":"theme-dark","pagedim":"pagedim","modifyViewport":true,"use_bootstrap":true,"breakpoint":"(min-width: 960px)","drag":false},"google_analytics":{"account":"G-H3JDGPBK1H","trackOutbound":true,"trackMailto":true,"trackTel":true,"trackDownload":true,"trackDownloadExtensions":"7z|aac|arc|arj|asf|asx|avi|bin|csv|doc(x|m)?|dot(x|m)?|exe|flv|gif|gz|gzip|hqx|jar|jpe?g|js|mp(2|3|4|e?g)|mov(ie)?|msi|msp|pdf|phps|png|ppt(x|m)?|pot(x|m)?|pps(x|m)?|ppam|sld(x|m)?|thmx|qtm?|ra(m|r)?|sea|sit|tar|tgz|torrent|txt|wav|wma|wmv|wpd|xls(x|m|b)?|xlt(x|m)|xlam|xml|z|zip"},"toc_js":{"toc-js-block":{"back_to_top_label":"Back to top","back_to_toc_label":"Back to table of contents"}},"ajaxTrustedUrl":{"\/search\/node":true},"user":{"uid":0,"permissionsHash":"378bdd37d496c0b3b95c5cc157d1f8d1b21cc2ae77637a61728e37d713869cd6"}}</script>
+<script src="/sites/default/files/js/js_n_M3XwyxuMNHfbLcPUwcwrfvDNMhSa5fg-YvPgaQcVQ.js?scope=footer&amp;delta=0&amp;language=en&amp;theme=seaboot&amp;include=eJxdyEEKwzAMBdELORWhBzKyUYSL4h8sOeDbt91mNbxRQE0yd7YVrTrpYySUY3rlEBqI_Z2G-IXu7ZZ8Sp_08KsA4TH4Si78B6mhsG0ey1rXFKj54_TLF0BWMYY"></script>
+
+  </body>
+</html>

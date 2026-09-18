@@ -1,9 +1,12 @@
 """Paths to the test fixtures, keyed for convenience.
 
-The fixture tree under ``data/`` is organised **by provenance** -- one directory
-per upstream product -- so that what a file is, and what licence it carries, is
-visible from where it sits. See RESKIT-TEST-DATA-PROVENANCE.md in the workspace
-root for what each directory holds.
+The fixture tree under ``data/reskit-test-data/`` is organised **by provenance**
+-- one directory per upstream product, each a member of the ``reskit-test-data``
+family in the ETHOS.Data catalogue -- so that what a file is, and what licence it
+carries, is visible from where it sits. This directory is an ETHOS.Data bundle:
+``bundle.json`` beside ``data/`` records every file with the size and hash the
+catalogue declares, and ``datasets/`` archives the licences. ``reskit.data``
+reads the same files by catalogue key.
 
 ``TEST_DATA`` maps three kinds of key to an absolute path:
 
@@ -23,7 +26,7 @@ from collections import OrderedDict
 from os.path import abspath, basename, dirname, join, relpath
 from os import walk
 
-_ROOT = join(dirname(abspath(__file__)), "data")
+_ROOT = join(dirname(abspath(__file__)), "data", "reskit-test-data")
 
 # Directory names used before the tree was grouped by provenance. Kept so that
 # existing callers keep working; delete this map, and fix the call sites, when
