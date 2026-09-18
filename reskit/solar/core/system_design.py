@@ -7,7 +7,7 @@ from types import NoneType
 import warnings
 
 from reskit.util import ResError
-from reskit.util.generic_helpers import _align_inputs
+from reskit.util.generic_helpers import _align_inputs, _check_kwargs
 
 def location_to_module_azimuth(
     locs: gk.LocationSet | Iterable, convention: str = "NorthSouth", **kwargs
@@ -484,6 +484,12 @@ def location_to_gcr(
     if isinstance(convention, str) and isfile(convention):
         # try to extract data from raster
         try:
+            _check_kwargs(
+                func=gk.raster.interpolateValues, 
+                kwargs=kwargs, 
+                raise_error=True,
+                raise_warnings=True
+                )
             gcrs = gk.raster.interpolateValues(convention, **kwargs)
         except Exception:
             raise OSError(f"File cannot be read by gk.raster.interpolateValues(): {convention}.")
@@ -492,6 +498,12 @@ def location_to_gcr(
     elif convention == "winter_solstice_rule":
         if not np.all(np.asarray(tracking) == "fixed"):
             raise ValueError(f"winter solstice rule can be applied only to 'fixed' tilt, tracking is here: '{tracking}'")
+        _check_kwargs(
+            func=location_to_gcr_and_row_pitch_winter_solstice_rule, 
+            kwargs=kwargs, 
+            raise_error=True,
+            raise_warnings=True
+            )
         row_pitches, gcrs = location_to_gcr_and_row_pitch_winter_solstice_rule(
             **kwargs
             )
@@ -499,6 +511,13 @@ def location_to_gcr(
     elif convention == "tonita_et_al_2023":
         # Based on Tonita et al. (2023): Optimal ground coverage ratios for tracked, fixed-tilt, and vertical photovoltaic systems for latitudes up to 75◦N
         # interpolates bifaciality based on separate mono- and bifacial (factor 0.96, see Tonita et al. 2023) lines
+        # frst check our kwargs against the expected args of the function
+        _check_kwargs(
+            func=location_to_gcr_tonita_et_al_2023, 
+            kwargs=kwargs, 
+            raise_error=True,
+            raise_warnings=True
+            )
         gcrs = location_to_gcr_tonita_et_al_2023(
             tracking=tracking,
             **kwargs
