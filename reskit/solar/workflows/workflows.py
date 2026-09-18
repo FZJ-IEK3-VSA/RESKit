@@ -418,8 +418,8 @@ def pv_era5_WinklerUnpublished(
     singleaxis_tilt : int | float | str | Iterable | None = None,
     crossaxis_tilt : int | float | str | Iterable | None = None,
     elevation : int | float | str | Iterable | None = 840,
-    north_slope : int | float | str | Iterable = 0,
-    east_slope : int | float | str | Iterable = 0,
+    north_slope : int | float | str | Iterable = None,
+    east_slope : int | float | str | Iterable = None,
     gcr  : float | str | Iterable | None = None,
     ground_albedo : float | str | Iterable = 0.25,
     distant_horizon_profile : np.ndarray | str | None = None,
@@ -516,18 +516,20 @@ def pv_era5_WinklerUnpublished(
             filepath to a DEM raster is expected. Can be provided as a scalar or an 
             iterable per location. Can be provided as a scalar or an iterable per 
             location. Defaults to 840 (average global landmass elevation).
-    north_slope : int | float | str | Iterable, optional
+    north_slope : int | float | str | Iterable | None, optional
             The slope facing/descending towards North in degrees over horizontal.
             Can be provided as a scalar or an iterable per location. If a str is 
             given, a filepath to a slope raster is expected. Will affect both 
-            local horizon shading and row/cross axis tilts. By default 0, 
-            i.e. flat terrain in North-South orientation.
-    east_slope : int | float | str | Iterable, optional
+            local horizon shading and row/cross axis tilts. By default None, 
+            i.e. flat terrain in North-South orientation unless specified via
+            axes tilts.
+    east_slope : int | float | str | Iterable | None, optional
             The slope facing/descending towards East in degrees over horizontal.
             Can be provided as a scalar or an iterable per location. If a str is 
             given, a filepath to a slope raster is expected.  Will affect both 
-            local horizon shading and row/cross axis tilts. By default 0, 
-            i.e. flat terrain in North-South orientation.
+            local horizon shading and row/cross axis tilts. By default None, 
+            i.e. flat terrain in North-South orientation unless specified via
+            axes tilts.
     gcr  : float | str | Iterable | None, optional
             The ground coverage ratio, understood as a vertical projection (bird 
             view). Can be provided as a scalar or an iterable per location.
@@ -683,7 +685,7 @@ def pv_era5_WinklerUnpublished(
 
     # PREPROCESS PLANT INPUT DATA
 
-    # configure the module #TODO this should be solved via plant specific parameters in the future
+    # configure the module 
     wf.configure_cec_module(
         module=module, 
         tech_year=tech_year, 

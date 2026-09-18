@@ -77,7 +77,7 @@ class SolarWorkflowManager(WorkflowManager):
 
     def preprocess_bifaciality_factor(
         self,
-        bifaciality_factor = float | Iterable,
+        bifaciality_factor : float | Iterable,
     ):
         """
         Preprocesses the bifaciality factor input into a 1d array with a single numeric 
@@ -136,7 +136,7 @@ class SolarWorkflowManager(WorkflowManager):
 
     def preprocess_capacity(
         self,
-        capacity = float | int | Iterable,
+        capacity : float | int | Iterable,
     ):
         """
         Preprocesses the capacity [in kW] input into a 1d array with a single numeric 
@@ -343,9 +343,9 @@ class SolarWorkflowManager(WorkflowManager):
         obj
             reference to the invoking SolarWorkflowManager object
         """
-        assert isinstance(
+        assert fallback is None or isinstance(
             fallback, int
-        ), "elevation 'fallback' must be an integer elevantion in [m]." #TODO check if we can somehow make use of the data that might have been extracted in the horizon profile already to save time
+        ), "elevation 'fallback' must be an integer elevantion in [m] if not None."
 
         # first save input to allow tracing the processing 
         self.plant_parameters_raw["elevation"] = elevation
@@ -1777,6 +1777,7 @@ class SolarWorkflowManager(WorkflowManager):
 
         NOTE: North+East slope as well as overall slope + azimuth fully define a
         hill so only one of the pairs may be provided, the other will be calculated. 
+        If all four parameters are None, a horizontal plane will be assumed.
 
         Parameters
         ----------
@@ -1815,12 +1816,18 @@ class SolarWorkflowManager(WorkflowManager):
         # assert that the input combinations make sense
         assert sum([x is not None for x in [north_slope, east_slope, general_slope, downhill_azimuth]]) in [0,2],\
             "If not all inputs are None, either north_slope + east_slope OR general_slope + downhill_azimuzth must be given, the others must then be None."
-        
+
         # first save the inputs to raw data
         self.plant_parameters_raw["north_slope"] = north_slope
         self.plant_parameters_raw["east_slope"] = east_slope
         self.plant_parameters_raw["general_slope"] = general_slope
         self.plant_parameters_raw["downhill_azimuth"] = downhill_azimuth
+
+        # then cover the all-None case
+        if all(x is None for x in [north_slope, east_slope, general_slope, downhill_azimuth]):
+            # if no hill geometry is provided, assume flat terrain
+            north_slope = 0.0
+            east_slope = 0.0
 
         # then format and check all params
         def _preprocess_data(varname, invals, fallback):
@@ -2383,8 +2390,16 @@ class SolarWorkflowManager(WorkflowManager):
             """Calculates and sets to self.sim_data the POA global and its components for front or backside"""
             # get system ground albedos and tilts and azimuths for the module surfaces
             _grdalbedos = self.sim_data.get("system_grdalbedo")
-            _modtilts = self.sim_data.get("system_modtilt", self.plant_parameters_processed["module_tilt"])
-            _modazimuths = self.sim_data.get("system_modazimuth", self.plant_parameters_processed["module_azimuth"])
+            _modtilts = (
+                self.sim_data["system_modtilt"]
+                if "system_modtilt" in self.sim_data
+                else self.plant_parameters_processed["module_tilt"]
+            )
+            _modazimuths = (
+                self.sim_data["system_modazimuth"]
+                if "system_modazimuth" in self.sim_data
+                else self.plant_parameters_processed["module_azimuth"]
+            )
             
             # always consider all locations for the frontside but only those that have a bifaciality factor > 0 for the backside (save time calculating only what is really needed)
             bifaciality_mask = np.ones(self.locs.count, dtype=bool) if front else (self.plant_parameters_processed["bifaciality_factor" ] != 0)
@@ -3290,7 +3305,11 @@ class SolarWorkflowManager(WorkflowManager):
         assert "poa_ground_diffuse_raw" in self.sim_data
         assert "poa_sky_diffuse_raw" in self.sim_data
 
-        modtilts = self.sim_data.get("system_modtilt", self.plant_parameters_processed["module_tilt"])
+        modtilts = (
+            self.sim_data["system_modtilt"]
+            if "system_modtilt" in self.sim_data
+            else self.plant_parameters_processed["module_tilt"]
+        )
 
         self.sim_data["poa_direct"] = self.sim_data["poa_direct_raw"]*pvlib.pvsystem.iam.physical(
             aoi=self.sim_data["angle_of_incidence"],
