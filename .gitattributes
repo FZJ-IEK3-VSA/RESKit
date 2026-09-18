@@ -1,0 +1,9 @@
+# Line endings: LF, the Linux convention, in the repository and in every checkout,
+# whatever core.autocrlf says on the machine.
+* text=auto eol=lf
+
+# The fixture bundle under reskit/data/test_cache is catalogued data: every file must
+# check out byte-for-byte as committed, or its SHA-256 no longer matches the ETHOS.Data
+# catalogue and `reskit-data bundle verify` fails (as it did on the Windows runners, where
+# core.autocrlf=true rewrote the LF text fixtures). No conversion in either direction.
+reskit/data/test_cache/** -text

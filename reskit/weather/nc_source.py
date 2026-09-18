@@ -8,6 +8,7 @@ import geokit as gk
 import pandas as pd
 
 from ..util import ResError
+from ..util.paths import as_path_string, is_path_like
 
 
 # make a data handler
@@ -211,7 +212,8 @@ class NCSource(object):
             if isinstance(src, list):
                 for s in src:
                     out.extend(addSource(s))
-            elif isinstance(src, str):
+            elif is_path_like(src):
+                src = as_path_string(src)
                 if isfile(src):  # Assume its an NC file
                     out.extend(
                         [

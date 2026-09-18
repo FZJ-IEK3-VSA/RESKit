@@ -20,6 +20,14 @@ maintainers = [
 ]
 license = { file = "MIT.txt" }
 
+# The `reskit-data` command: ETHOS.Data's collection commands (show, fetch,
+# verify), bundles and staging use reskit/data/collections.yaml,
+# which package-data ships (see "*.*" below). Nothing is registered with ETHOS.Data; reskit.data finds
+# the file beside itself. Console scripts live in the installed metadata, so a new
+# checkout needs one reinstall: pip install -e . --no-deps
+[project.scripts]
+reskit-data = "reskit.data:main"
+
 
 [tool.setuptools.packages.find]
 where = ["."]

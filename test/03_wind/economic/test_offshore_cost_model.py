@@ -1,11 +1,8 @@
 from reskit.wind.economic.offshore_cost_model import *
 import numpy as np
 import pytest
-from reskit.default_paths import DEFAULT_PATHS
 from reskit.parameters.parameters import OffshoreParameters
-import reskit._test.data as pkg_data
 from pathlib import Path
-from importlib.resources import files, as_file
 from reskit.util.local_values import water_depth_from_location
 from unittest.mock import MagicMock
 
