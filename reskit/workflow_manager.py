@@ -384,10 +384,10 @@ class WorkflowManager:
                 # booleans have the problem in numpy of making every string True
                 # that is unwanted therefore define explicit True/False values
                 boolmapper = {
-                    True: True, # True is equal to 1 here
+                    True: True,  # True is equal to 1 here
                     "1": True,
                     "true": True,
-                    False: False, # True is equal to 0 here
+                    False: False,  # True is equal to 0 here
                     "0": False,
                     "false": False,
                 }

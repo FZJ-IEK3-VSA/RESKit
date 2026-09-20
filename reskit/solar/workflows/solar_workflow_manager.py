@@ -282,7 +282,7 @@ class SolarWorkflowManager(WorkflowManager):
                     lat=self.locs.lats[mask],
                     bifaciality_factor=self.plant_parameters_processed["bifaciality_factor"][mask],
                     tracking=self.tracking,
-                    shading_loss=0.05,  
+                    shading_loss=0.05,
                 )
             else:
                 raise NotImplementedError(
