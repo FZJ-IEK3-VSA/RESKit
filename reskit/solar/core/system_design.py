@@ -716,31 +716,31 @@ def location_to_gcr_and_row_pitch_winter_solstice_rule(
 
 
 def get_park_capacity_density(
-      cap_dens_module: float | int, 
-      gcrs: int | float | np.ndarray | pd.Series, 
-      min_cap_dens_park: float | None = None,
-      shape_factor: float | np.ndarray = 1.0,
-      ):
+    cap_dens_module: float | int,
+    gcrs: int | float | np.ndarray | pd.Series,
+    min_cap_dens_park: float | None = None,
+    shape_factor: float | np.ndarray | pd.Series = 1.0,
+):
     """
-    Calculate the solar park capacity density based on module capacity density, 
-    Ground Coverage Ratio and area efficiency of plot. Enforce minimum capacity 
+    Calculate the solar park capacity density based on module capacity density,
+    Ground Coverage Ratio and area efficiency of plot. Enforce minimum capacity
     density where required.
-    
+
     Parameters
     ----------
     cap_dens_module : float | int
-        Capacity density of the module type in [W/m²]
+        Capacity density of the module type in [W/m²].
     gcrs : int | float | np.ndarray | pd.Series
         Ground coverage ratios per location in positive floats <= 1.0.
     min_cap_dens_park : float | int | None, optional
-        The minimum allowed capacity density in [MW/ha], will be set if value is 
-        below this threshold. Will be ignored if None, by default None
-        NOTE: This minimum will be applied to the array area, not to the 
-        fenced area. The shape_factor can hence afterwards reduce the effective 
-        capacity density across the whole fenced plot when it is not completely 
+        The minimum allowed capacity density in [MW/ha], will be set if value is
+        below this threshold. Will be ignored if None, by default None.
+        NOTE: This minimum will be applied to the array area, not to the
+        fenced area. The shape_factor can hence afterwards reduce the effective
+        capacity density across the whole fenced plot when it is not completely
         covered with solar arrays.
-    shape_factor : float | np.ndarray, optional
-        The share of the property/plot that is actually built upon, usually not 
+    shape_factor : float | np.ndarray | pd.Series, optional
+        The share of the property/plot that is actually built upon, usually not
         100% due to local shading, inconvenient property shape or crossing roads,
         maintenance and inverter buildings. Will reduce the final park capacity
         density by this very factor, can be given per each location individually.
@@ -748,40 +748,74 @@ def get_park_capacity_density(
 
     Returns
     -------
-    float, np.ndarray
-       The capacity density of the park in [MW/ha], either as float for a single 
-       or as array for multiple locations.
+    float | np.ndarray
+        The capacity density of the park in [MW/ha], either as float for a single
+        location or as array for multiple locations.
     """
-    # check types and set as array flag
-    _asarr = False
-    for var in [gcrs, shape_factor]:
-        if not isinstance(var, (int, float, np.ndarray)):
-            raise TypeError("gcrs and shape_factor inputs must be int, float, pd.Series or np.ndarray types.")
-        if isinstance(var, (np.ndarray. pd.Series)):
-            _asarr = True
+    # check input types and remember whether an array-like output is expected
+    valid_types = (int, float, np.number, np.ndarray, pd.Series)
+
+    if not isinstance(gcrs, valid_types):
+        raise TypeError(
+            "gcrs must be int, float, pd.Series or np.ndarray."
+        )
+    if not isinstance(shape_factor, valid_types):
+        raise TypeError(
+            "shape_factor must be int, float, pd.Series or np.ndarray."
+        )
     if not isinstance(cap_dens_module, (float, int, np.number)):
-        raise TypeError("cap_dens_module must be float or int if not None.")
-    if not min_cap_dens_park is None or isinstance(min_cap_dens_park, (float, int, np.number)):
+        raise TypeError("cap_dens_module must be float or int.")
+    if not (
+        min_cap_dens_park is None
+        or isinstance(min_cap_dens_park, (float, int, np.number))
+    ):
         raise TypeError("min_cap_dens_park must be float or int if not None.")
-    
-    # scale to park density via gcr
-    cap_dens_park = np.atleast_1d(cap_dens_module) * np.atleast_1d(gcrs) *10000/1E6 # MW/ha
 
-    # set min density if applicable
-    if min_cap_dens_park is not None:
-       cap_dens_park[cap_dens_park<np.atleast_1d(min_cap_dens_park)] = min_cap_dens_park
+    _asarr = isinstance(gcrs, (np.ndarray, pd.Series)) or isinstance(
+        shape_factor, (np.ndarray, pd.Series)
+    )
 
-    # apply the shape factor reduction 
-    shape_factor = np.atleast_1d(shape_factor)
+    # convert location-dependent inputs to arrays
+    gcrs = np.atleast_1d(np.asarray(gcrs, dtype=float))
+    shape_factor = np.atleast_1d(np.asarray(shape_factor, dtype=float))
+
+    # check compatible dimensions
     if shape_factor.size not in (1, gcrs.size):
-        raise ValueError(f"shape_factor must either be scalar or have the same length as gcrs. Here: {shape_factor}")
+        raise ValueError(
+            "shape_factor must either be scalar or have the same length "
+            f"as gcrs. Here: {shape_factor}"
+        )
+
+    # check allowed ranges
+    if np.any(~np.isfinite(gcrs)):
+        raise ValueError("gcrs must contain only finite values.")
     if np.any((gcrs <= 0) | (gcrs > 1)):
         raise ValueError("gcrs must contain values > 0 and <= 1.")
+
+    if np.any(~np.isfinite(shape_factor)):
+        raise ValueError("shape_factor must contain only finite values.")
     if np.any((shape_factor <= 0) | (shape_factor > 1)):
         raise ValueError("shape_factor must contain values > 0 and <= 1.")
+
+    # scale module capacity density to array-area park density via GCR
+    cap_dens_park = (
+        float(cap_dens_module)
+        * gcrs
+        * 10000
+        / 1e6
+    )  # MW/ha
+
+    # enforce minimum array-area capacity density if applicable
+    if min_cap_dens_park is not None:
+        cap_dens_park = np.maximum(
+            cap_dens_park,
+            float(min_cap_dens_park),
+        )
+
+    # account for the share of the complete plot actually occupied by arrays
     cap_dens_park = shape_factor * cap_dens_park
 
-    return cap_dens_park if _asarr else cap_dens_park[0]
+    return cap_dens_park if _asarr else cap_dens_park[0].item()
 
 
 def get_gcr_from_capacity_density(
