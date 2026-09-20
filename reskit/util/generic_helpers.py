@@ -18,10 +18,7 @@ def _align_inputs(*args):
     arrays = [np.asarray(arg) for arg in args]
     scalar = all(arr.ndim == 0 for arr in arrays)
 
-    lengths = [
-        1 if arr.ndim == 0 else len(arr)
-        for arr in arrays
-    ]
+    lengths = [1 if arr.ndim == 0 else len(arr) for arr in arrays]
     n = max(lengths)
 
     aligned = []
@@ -31,10 +28,7 @@ def _align_inputs(*args):
         elif len(arr) == 1 and n > 1:
             arr = np.full(n, arr[0])
         elif len(arr) != n:
-            raise ValueError(
-                f"All non-scalar inputs must have length 1 or {n}, "
-                f"here found length {len(arr)}."
-            )
+            raise ValueError(f"All non-scalar inputs must have length 1 or {n}, here found length {len(arr)}.")
 
         aligned.append(arr)
 
@@ -50,7 +44,7 @@ def _check_kwargs(func, kwargs, raise_error=True, raise_warnings=True):
     func : Callable
         The function wgainst which the kwargs shall be checked
     kwargs : dict
-        The kwargs and values that shall be checked against the 
+        The kwargs and values that shall be checked against the
         func signature.
     raise_error : bool, optional
         Will raise an error on missing mandatory arguments, by
@@ -80,10 +74,7 @@ def _check_kwargs(func, kwargs, raise_error=True, raise_warnings=True):
     signature = inspect.signature(func)
     params = signature.parameters
 
-    accepts_kwargs = any(
-        p.kind == inspect.Parameter.VAR_KEYWORD
-        for p in params.values()
-    )
+    accepts_kwargs = any(p.kind == inspect.Parameter.VAR_KEYWORD for p in params.values())
 
     missing_mandatory = {}
     missing_optional = {}
@@ -98,11 +89,7 @@ def _check_kwargs(func, kwargs, raise_error=True, raise_warnings=True):
 
         if name not in kwargs:
             if param.default is inspect.Parameter.empty:
-                arg_type = (
-                    None
-                    if param.annotation is inspect.Parameter.empty
-                    else param.annotation
-                )
+                arg_type = None if param.annotation is inspect.Parameter.empty else param.annotation
                 missing_mandatory[name] = arg_type
             else:
                 missing_optional[name] = param.default
@@ -110,13 +97,10 @@ def _check_kwargs(func, kwargs, raise_error=True, raise_warnings=True):
     if accepts_kwargs:
         extra = {}
     else:
-        extra = {
-            name: value
-            for name, value in kwargs.items()
-            if name not in params
-        }
+        extra = {name: value for name, value in kwargs.items() if name not in params}
 
     if raise_error and missing_mandatory:
+
         def _format_annotation(annotation):
             if annotation is None:
                 return "(type not specified)"
@@ -125,19 +109,12 @@ def _check_kwargs(func, kwargs, raise_error=True, raise_warnings=True):
             return str(annotation)
 
         missing_str = ", ".join(
-            f"'{name}' : {_format_annotation(arg_type)}"
-            for name, arg_type in missing_mandatory.items()
+            f"'{name}' : {_format_annotation(arg_type)}" for name, arg_type in missing_mandatory.items()
         )
-        raise TypeError(
-            f"Missing mandatory argument(s) for "
-            f"'{getattr(func, '__name__', str(func))}': {missing_str}"
-        )
+        raise TypeError(f"Missing mandatory argument(s) for '{getattr(func, '__name__', str(func))}': {missing_str}")
 
     if raise_warnings and missing_optional:
-        missing_optional_str = ", ".join(
-            f"'{name}' : {default!r}"
-            for name, default in missing_optional.items()
-        )
+        missing_optional_str = ", ".join(f"'{name}' : {default!r}" for name, default in missing_optional.items())
         warnings.warn(
             f"The following optional argument(s) for "
             f"'{getattr(func, '__name__', str(func))}' have not been provided, "
@@ -146,10 +123,7 @@ def _check_kwargs(func, kwargs, raise_error=True, raise_warnings=True):
         )
 
     if raise_warnings and extra:
-        extra_str = ", ".join(
-            f"'{name}' : {value!r}"
-            for name, value in extra.items()
-        )
+        extra_str = ", ".join(f"'{name}' : {value!r}" for name, value in extra.items())
         warnings.warn(
             f"Extra keyword argument(s) passed to "
             f"'{getattr(func, '__name__', str(func))}' (cannot not be applied): {extra_str}",
@@ -161,4 +135,3 @@ def _check_kwargs(func, kwargs, raise_error=True, raise_warnings=True):
         "missing_optional": missing_optional,
         "extra": extra,
     }
-

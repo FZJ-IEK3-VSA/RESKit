@@ -50,26 +50,26 @@ class WindWorkflowManager(WorkflowManager):
         placements,
         synthetic_power_curve_cut_out=25,
         synthetic_power_curve_rounding=1,
-        max_specific_power = 2000,
+        max_specific_power=2000,
     ):
         """
-        Initializes a WindWorkflowManager instance. 
+        Initializes a WindWorkflowManager instance.
 
         Parameters
         ----------
         placements : _type_
-            Placements dataframe, incl. "geom" column with osgeo.ogr.Geometry 
-            column objects or "lat" and "lon" column with degree values 
+            Placements dataframe, incl. "geom" column with osgeo.ogr.Geometry
+            column objects or "lat" and "lon" column with degree values
             in EPSG:4326.
         synthetic_power_curve_cut_out : int, optional
             Cut-out wind speed for synthetic power curves, by default 25
         synthetic_power_curve_rounding : int, optional
-            Rounding digits (positive decimals) for specific power, 
+            Rounding digits (positive decimals) for specific power,
             by default 1
         max_specific_power : int, optional
-            The upper allowed limit for specific power inn [W/m²]. 
-            Values range from 190 to 970 W/m2 across all "modern" turbines 
-            in Turbine_Library, but small historic turbines can be 
+            The upper allowed limit for specific power inn [W/m²].
+            Values range from 190 to 970 W/m2 across all "modern" turbines
+            in Turbine_Library, but small historic turbines can be
             significantly higher. By default 2000.
         """
         # Do basic workflow construction
@@ -192,7 +192,9 @@ class WindWorkflowManager(WorkflowManager):
         if not isinstance(consider_boundary_layer_height, bool):
             raise TypeError("consider_boundary_layer_height must be boolean.")
         if not (isinstance(height_scaling_method, (tuple, list)) and len(height_scaling_method) == 2):
-            raise TypeError(f"height_scaling_method must be a tuple of length 2. Here: {height_scaling_method} (type: {type(height_scaling_method)})")
+            raise TypeError(
+                f"height_scaling_method must be a tuple of length 2. Here: {height_scaling_method} (type: {type(height_scaling_method)})"
+            )
 
         if height_scaling_method[0] == "log":
             # we have a logarithmic scaling approach, check landcover raster

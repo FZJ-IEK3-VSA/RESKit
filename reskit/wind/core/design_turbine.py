@@ -10,16 +10,17 @@ from reskit.parameters.parameters import OnshoreParameters, OffshoreParameters
 import warnings
 from copy import copy
 
+
 def onshore_turbine_from_avg_wind_speed(wind_speed, **kwargs):
     """
     Convenience function for backward compatibility, will be removed soon.
     All kwargs are passed to turbine_design_from_avg_wind_speed() with
-    technology='onshore'. 
-    
-    NOTE: 'reference_wind_speed' is allowed as kwarg here for backward 
-    compatibility only and will be set for both 'reference_wind_speed_hubheight' 
-    and 'reference_wind_speed_specpow'. This allows to use the former workflow 
-    reference_wind_speed param with the new turbine_design_from_avg_wind_speed() 
+    technology='onshore'.
+
+    NOTE: 'reference_wind_speed' is allowed as kwarg here for backward
+    compatibility only and will be set for both 'reference_wind_speed_hubheight'
+    and 'reference_wind_speed_specpow'. This allows to use the former workflow
+    reference_wind_speed param with the new turbine_design_from_avg_wind_speed()
     function. It is recommended to use specific values for each parameter though.
 
     wind_speed : numeric or array_like
@@ -37,11 +38,12 @@ def onshore_turbine_from_avg_wind_speed(wind_speed, **kwargs):
     )
     kwargs["wind_speed"] = wind_speed
     kwargs["technology"] = "onshore"
-    # check if reference_wind_speed if in kwargs, if so, replace by 
+    # check if reference_wind_speed if in kwargs, if so, replace by
     # reference_wind_speed_specpow and reference_wind_speed_hubheight
     if "reference_wind_speed" in kwargs:
-        assert not any([k in kwargs for k in ["reference_wind_speed_specpow", "reference_wind_speed_hubheight"]]),\
+        assert not any([k in kwargs for k in ["reference_wind_speed_specpow", "reference_wind_speed_hubheight"]]), (
             "legacy argument 'reference_wind_speed' cannot be given together with current arguments 'reference_wind_speed_specpow' or 'reference_wind_speed_hubheight'"
+        )
         refws = kwargs.pop("reference_wind_speed", "None")
         kwargs["reference_wind_speed_specpow"] = refws
         kwargs["reference_wind_speed_hubheight"] = refws
@@ -90,12 +92,12 @@ def turbine_design_from_avg_wind_speed(
         Baseline turbine rotor diameter in m, by default 136.
 
     reference_wind_speed_hubheight : numeric, optional
-        Average wind speed corresponding to the baseline hub height value, 
+        Average wind speed corresponding to the baseline hub height value,
         takes effect only for conventions which differentiate between parameter-
         specific windspeeds (e.g. WinklerEtAl2026).
 
     reference_wind_speed_specpow : numeric, optional
-        Average wind speed corresponding to the baseline specific power value, 
+        Average wind speed corresponding to the baseline specific power value,
         takes effect only for conventions which differentiate between parameter-
         specific windspeeds (e.g. WinklerEtAl2026).
 
@@ -141,22 +143,23 @@ def turbine_design_from_avg_wind_speed(
     func_mapper = {
         "onshore": {
             "RybergEtAl2019": {
-                "specific_power": lambda ws, base_sp, ref_ws: base_sp / (np.exp(
-                    0.53769024 * np.log(ref_ws) + 4.74917728
-                )) * (np.exp(
-                    0.53769024 * np.log(ws) + 4.74917728
-                )),
-                "hub_height": lambda ws, base_hh, ref_ws: base_hh / (np.exp(-0.84976623 * np.log(ref_ws) + 6.1879937)) * (np.exp(-0.84976623 * np.log(ws) + 6.1879937)),
+                "specific_power": lambda ws, base_sp, ref_ws: base_sp
+                / (np.exp(0.53769024 * np.log(ref_ws) + 4.74917728))
+                * (np.exp(0.53769024 * np.log(ws) + 4.74917728)),
+                "hub_height": lambda ws, base_hh, ref_ws: base_hh
+                / (np.exp(-0.84976623 * np.log(ref_ws) + 6.1879937))
+                * (np.exp(-0.84976623 * np.log(ws) + 6.1879937)),
             },
             "WinklerEtAl2027": {
-                "specific_power": lambda ws, base_sp, ref_ws: base_sp + 7.06 * base_sp/295 * (ws**1.48 - ref_ws**1.48),
-                "hub_height": lambda ws, base_hh, ref_ws: base_hh - 12.9 * base_hh/124 * (ws - ref_ws),
+                "specific_power": lambda ws, base_sp, ref_ws: base_sp
+                + 7.06 * base_sp / 295 * (ws**1.48 - ref_ws**1.48),
+                "hub_height": lambda ws, base_hh, ref_ws: base_hh - 12.9 * base_hh / 124 * (ws - ref_ws),
             },
         },
         "offshore": {
             "WinklerEtAl2027": {
-                "specific_power": lambda ws, base_sp, ref_ws: base_sp + 193 * base_sp/358 * np.log(ws/ref_ws),
-                "hub_height": lambda ws, base_hh, ref_ws: base_hh - 0.669 * (base_hh/99.3) * (ws - ref_ws),
+                "specific_power": lambda ws, base_sp, ref_ws: base_sp + 193 * base_sp / 358 * np.log(ws / ref_ws),
+                "hub_height": lambda ws, base_hh, ref_ws: base_hh - 0.669 * (base_hh / 99.3) * (ws - ref_ws),
             },
         },
     }
@@ -174,9 +177,7 @@ def turbine_design_from_avg_wind_speed(
         scaling_funcs = conv_mapper[convention]
     except:
         # no matching convention found
-        raise ValueError(
-            f"convention for technology '{technology}' must be in: {', '.join(conv_mapper.keys())}"
-        )
+        raise ValueError(f"convention for technology '{technology}' must be in: {', '.join(conv_mapper.keys())}")
 
     # define a dict to hold the parameter values
     baseline_params = dict()
@@ -205,9 +206,7 @@ def turbine_design_from_avg_wind_speed(
                 elif technology.lower() == "offshore":
                     Params = OffshoreParameters(fp=baseline_turbine_fp, year=tech_year)
                 else:
-                    raise ValueError(
-                        f"Parameters singleton cannot be initialized for technology '{technology}'."
-                    )
+                    raise ValueError(f"Parameters singleton cannot be initialized for technology '{technology}'.")
             # set value from Params
             _val = getattr(Params, arg)
             print(f"Parameter '{arg}' taken from Params as: {_val}", flush=True)
@@ -222,9 +221,10 @@ def turbine_design_from_avg_wind_speed(
     assert not pd.isnull(reference_wind_speed_specpow), "reference_wind_speed_specpow must be given."
     # apply the respective scaling function
     specific_power = scaling_funcs["specific_power"](
-        ws=wind_speed, 
+        ws=wind_speed,
         base_sp=compute_specific_power(baseline_params["base_capacity"], baseline_params["base_rotor_diam"]),
-        ref_ws=reference_wind_speed_specpow)
+        ref_ws=reference_wind_speed_specpow,
+    )
     # limit to min. specific power
     if multi:
         lt180 = specific_power < baseline_params["min_specific_power"]
@@ -258,9 +258,8 @@ def turbine_design_from_avg_wind_speed(
     assert not pd.isnull(reference_wind_speed_hubheight), "reference_wind_speed_hubheight must be given."
     # apply the respective scaling function
     hub_height = scaling_funcs["hub_height"](
-        ws=wind_speed, 
-        base_hh=baseline_params["base_hub_height"],
-        ref_ws=reference_wind_speed_hubheight)
+        ws=wind_speed, base_hh=baseline_params["base_hub_height"], ref_ws=reference_wind_speed_hubheight
+    )
     # limit to min. tip height and maximum hub height
     if multi:
         lowerlt = hub_height < (rotor_diam / 2 + baseline_params["min_tip_height"])

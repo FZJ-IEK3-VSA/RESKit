@@ -90,12 +90,12 @@ def openfield_pv_merra_ryberg2019(
 
     # estimates tilt, azimuth and elev
     wf.estimate_missing_params(
-        elev, 
-        ground_albedo=0.25, 
+        elev,
+        ground_albedo=0.25,
         gcr=2.0 / 7.0,
         fixed_module_tilt_convention="Ryberg2020",
-        fixed_module_azimuth_convention="NorthSouth",        
-        )
+        fixed_module_azimuth_convention="NorthSouth",
+    )
 
     wf.read(
         variables=[
@@ -175,7 +175,7 @@ def openfield_pv_era5(
     placements: Pandas Dataframe
             Locations that you want to do the simulations for.
             Columns need to be lat (latitudes), lon (longitudes), capacity.
-            Tilt and azimuths can be provided as columns or will be extracted 
+            Tilt and azimuths can be provided as columns or will be extracted
             based on conventions, see 'tracking' description for details.
 
     era5_path: str
@@ -193,26 +193,26 @@ def openfield_pv_era5(
             Default is Winaico Wsx-240P6
 
     elev: float
-            Elevation that you want to model your PV system at. Will be taken 
+            Elevation that you want to model your PV system at. Will be taken
             from 'elev' column if available.
 
     tracking: str
             Determines wether your PV system is fixed or not. Default is fixed.
-            NOTE: Has been limited to 'fixed' for this workflow due to 
-            inconsistencies when using 'singleaxis', argument is not removed 
+            NOTE: Has been limited to 'fixed' for this workflow due to
+            inconsistencies when using 'singleaxis', argument is not removed
             only for reasons of backward compatibility. For single-axis tracking
             calculations please use pv_era5_WinklerUnpublished() instead.
-            
+
             NOTE: The tilt and azimuth definitions change with different tracking systems.
-            For fixed tilt systems the following column names apply: 
+            For fixed tilt systems the following column names apply:
             * module_tilt_col="modtilt"
             * module_azimuth_col="modazimuth"
             The column names for the tracker axis tilts and azimuth are instead:
             * axis_azimuth_col="axazimuth"
             * axis_tilt_col="axtilt"
             * crossaxis_tilt_col="caxtilt"
-            Note that the use of 'tilt' and 'azimuth' columns is discouraged, 
-            they will be interpreted as and renamed to the respective module or 
+            Note that the use of 'tilt' and 'azimuth' columns is discouraged,
+            they will be interpreted as and renamed to the respective module or
             axis column names depending depending on tracking.
 
     inverter: str
@@ -283,25 +283,33 @@ def openfield_pv_era5(
     A xarray dataset including all the output variables you defined as your output_variables.
     """
     wf = SolarWorkflowManager(placements)
-    wf.configure_cec_module(module=module, tech_year=tech_year, tracking=tracking, database="CECMod", bifaciality_factor=0) 
+    wf.configure_cec_module(
+        module=module, tech_year=tech_year, tracking=tracking, database="CECMod", bifaciality_factor=0
+    )
 
     # tilt and azimuth were ambiguous depending on tracking, rename to consistent attribute names throughout the wfm
     if not tracking == "fixed":
-        raise rk_util.RESKitDeprecationError("tracking has been limited to 'fixed' due to inconsistencies, use pv_era5_WinklerUnpublished() for single-axis tracking.")
+        raise rk_util.RESKitDeprecationError(
+            "tracking has been limited to 'fixed' due to inconsistencies, use pv_era5_WinklerUnpublished() for single-axis tracking."
+        )
     if "tilt" in wf.placements:
-        assert 'modtilt' not in wf.placements, f"'tilt' and 'modtilt' columns cannot exist both when tracking == 'fixed'."
+        assert "modtilt" not in wf.placements, (
+            f"'tilt' and 'modtilt' columns cannot exist both when tracking == 'fixed'."
+        )
         warnings.warn(f"'tilt' column will be interpreted as and renamed to 'modtilt'.")
-        wf.placements.rename(columns={"tilt" : "modtilt"})
+        wf.placements.rename(columns={"tilt": "modtilt"})
     if "azimuth" in wf.placements:
-        assert "modazimuth" not in wf.placements, f"'azimuth' and 'modazimuth' columns cannot exist both when tracking == 'fixed'."
+        assert "modazimuth" not in wf.placements, (
+            f"'azimuth' and 'modazimuth' columns cannot exist both when tracking == 'fixed'."
+        )
         warnings.warn(f"'azimuth' column will be interpreted as and renamed to 'modazimuth'.")
-        wf.placements.rename(columns={"azimuth" : "modazimuth"})
+        wf.placements.rename(columns={"azimuth": "modazimuth"})
     # estimates tilt, azimuth and elev
     wf.estimate_missing_params(
-        elev=elev, 
+        elev=elev,
         ground_albedo=0.25,
         gcr=2.0 / 7.0,
-        fixed_module_tilt_convention="Ryberg2020", 
+        fixed_module_tilt_convention="Ryberg2020",
         fixed_module_azimuth_convention="NorthSouth",
     )
 
@@ -403,47 +411,47 @@ def openfield_pv_era5(
 
 
 def pv_era5_WinklerUnpublished(
-    placements : pd.DataFrame,
-    tracking : str,
-    era5_path : str,
-    global_solar_atlas_ghi_path : str,
-    global_solar_atlas_dni_path : str,
-    module_azimuth : int | float | str | Iterable | None = None,
-    module_tilt : int | float | str | Iterable | None = None,
-    singleaxis_azimuth : int | float | str | Iterable | None = None,
-    singleaxis_tilt : int | float | str | Iterable | None = None,
-    crossaxis_tilt : int | float | str | Iterable | None = None,
-    elevation : int | float | str | Iterable | None = 840,
-    north_slope : int | float | str | Iterable = None,
-    east_slope : int | float | str | Iterable = None,
-    gcr  : float | str | Iterable | None = None,
-    ground_albedo : float | str | Iterable = 0.25,
-    distant_horizon_profile : np.ndarray | str | None = None,
-    consider_snow_effects : bool | Iterable = True,
-    DNI_nodata_fallback : float | str | Callable = 1.0,
-    DNI_nodata_fallback_scaling : float = 1.0,
-    GHI_nodata_fallback : float | str | Callable = 1.0,
-    GHI_nodata_fallback_scaling : float = 1.0,
-    capacity : int | float | Iterable = None,
-    module : str = 'Trina Solar Co.Ltd TSM-700NEG21C.20',
-    bifaciality_factor : float | Iterable = 0.9,
-    max_tracking_angle : int | Iterable = 60,
-    backtracking : bool | Iterable = True,
-    pvrow_height : int | float | Iterable | None = None,
-    module_configuration : str = "2P", 
-    inverter : str = None,
-    inverter_kwargs : dict = {},
-    tech_year : int = 2035, # was 2050
-    output_netcdf_path : str =None,
-    output_variables : list | None=None,
-    new_style : bool =True, #TODO remove
+    placements: pd.DataFrame,
+    tracking: str,
+    era5_path: str,
+    global_solar_atlas_ghi_path: str,
+    global_solar_atlas_dni_path: str,
+    module_azimuth: int | float | str | Iterable | None = None,
+    module_tilt: int | float | str | Iterable | None = None,
+    singleaxis_azimuth: int | float | str | Iterable | None = None,
+    singleaxis_tilt: int | float | str | Iterable | None = None,
+    crossaxis_tilt: int | float | str | Iterable | None = None,
+    elevation: int | float | str | Iterable | None = 840,
+    north_slope: int | float | str | Iterable = None,
+    east_slope: int | float | str | Iterable = None,
+    gcr: float | str | Iterable | None = None,
+    ground_albedo: float | str | Iterable = 0.25,
+    distant_horizon_profile: np.ndarray | str | None = None,
+    consider_snow_effects: bool | Iterable = True,
+    DNI_nodata_fallback: float | str | Callable = 1.0,
+    DNI_nodata_fallback_scaling: float = 1.0,
+    GHI_nodata_fallback: float | str | Callable = 1.0,
+    GHI_nodata_fallback_scaling: float = 1.0,
+    capacity: int | float | Iterable = None,
+    module: str = "Trina Solar Co.Ltd TSM-700NEG21C.20",
+    bifaciality_factor: float | Iterable = 0.9,
+    max_tracking_angle: int | Iterable = 60,
+    backtracking: bool | Iterable = True,
+    pvrow_height: int | float | Iterable | None = None,
+    module_configuration: str = "2P",
+    inverter: str = None,
+    inverter_kwargs: dict = {},
+    tech_year: int = 2035,  # was 2050
+    output_netcdf_path: str = None,
+    output_variables: list | None = None,
+    new_style: bool = True,  # TODO remove
 ):
     """
-    Simulation of an openfield PV system based on ERA-5 Data, geospatially disaggregated based 
+    Simulation of an openfield PV system based on ERA-5 Data, geospatially disaggregated based
     on Global Solar Atlas long-run averages. Allows for the consideration of snow effects, hill
     slopes, module bifaciality, interrow shading, horizon shading.
 
-    NOTE: None, np.nan, pd.NA or "null" or "" values in below parameters will generally be 
+    NOTE: None, np.nan, pd.NA or "null" or "" values in below parameters will generally be
     considered as no-data entries and will take no effect.
 
     Parameters
@@ -451,83 +459,83 @@ def pv_era5_WinklerUnpublished(
     placements: Pandas Dataframe
             Locations that you want to do the simulations for.
             Columns need to be lat (latitudes), lon (longitudes), capacity.
-            Tilt and azimuths can be provided as columns or will be extracted 
+            Tilt and azimuths can be provided as columns or will be extracted
             based on conventions, see 'tracking' description for details.
     tracking: str
             Determines wether your PV system is fixed or has tracking capability.
             * 'fixed' means fixed module tilt, no tracking ability.
             * 'singleaxis' stands for single-axis tracking capacbility, row axis
               can be horizontal or tilted (see singleaxis_tilt)
-            NOTE: Depending on the 'tracking' setting, different input arguments 
+            NOTE: Depending on the 'tracking' setting, different input arguments
             become mandatory, the respective others should then be None:
             * 'Fixed' tilt arguments: module_tilt, module_azimuth
             * 'Singleaxis' tracking args: singleaxis_azimuth, axis_tilt, crossaxis_tilt
     era5_path: str
-            Path to the ERA5 Data on your computer. Can be a single ".nc" file, or a 
+            Path to the ERA5 Data on your computer. Can be a single ".nc" file, or a
             directory containing many ".nc" files.
     global_solar_atlas_ghi_path: str
             Path to the global solar atlas ghi raster on your computer.
     global_solar_atlas_dni_path: str
             Path to the global solar atlas dni raster on your computer.
     module_azimuth : int | float | Iterable | str | None, optional
-            The module azimuths in degrees clockwise from North = 0°. Module 
+            The module azimuths in degrees clockwise from North = 0°. Module
             azimuths can also be assigned optimally when no angles are provided,
-            then a single or one string per placement is needed determining the 
-            desired module tilt convention (e.g. 'NorthSouth' etc., 
+            then a single or one string per placement is needed determining the
+            desired module tilt convention (e.g. 'NorthSouth' etc.,
             see reskit.solar.core.system_design.location_to_module_azimuth()).
             Can be provided as a scalar or an iterable per location.
             Note : None is expected only if tracking != 'fixed'. By default None.
     module_tilt : int | float | Iterable | str | None, optional
             The module tilt towards the module azimuth in degrees from flat ground.
             Module tilts can also be assigned optimally when no angles are provided,
-            then a single or one string per placement is needed determining the 
-            desired module tilt convention (e.g. 'Ryberg2019', 'Winkler2027' etc., 
+            then a single or one string per placement is needed determining the
+            desired module tilt convention (e.g. 'Ryberg2019', 'Winkler2027' etc.,
             see reskit.solar.core.system_design.location_to_module_tilt()).
             Can be provided as a scalar or an iterable per location.
             Note : None is expected only if tracking != 'fixed'. By default None.
     singleaxis_azimuth : int | float | Iterable | str | None, optional
-            The main tracking axis azimuth of a single-axis tracking system clockwise 
+            The main tracking axis azimuth of a single-axis tracking system clockwise
             from North = 0°. If a str is given, a known convention is expected
             (see reskit.solar.core.system_design.location_to_tracker_axis_azimuth()).
             Can be provided as a scalar or an iterable per location.
             None is expected only if tracking != 'singleaxis'. By default None.
     singleaxis_tilt : int | float | Iterable | str | None, optional
-            The main tracking axis tilt (angle to horizontal) of a single-axis 
-            tracking system descending towards above axis azimuth. Will be 
-            calculated from axis azimuth, hill slopes and orientation assuming 
+            The main tracking axis tilt (angle to horizontal) of a single-axis
+            tracking system descending towards above axis azimuth. Will be
+            calculated from axis azimuth, hill slopes and orientation assuming
             constant ground distance if not given. A known convention is expected
-            (see reskit.solar.core.system_design.location_to_tracker_axis_tilt()) 
-            if a str is given. Can be provided as a scalar or an iterable per 
+            (see reskit.solar.core.system_design.location_to_tracker_axis_tilt())
+            if a str is given. Can be provided as a scalar or an iterable per
             location. None is expected if tracking != 'singleaxis'. By default None.
     crossaxis_tilt : int | float | Iterable | str | None, optional
-            The cross-axis tilt perpendicular to the main axis vector (angle to 
-            horizontal) of a single-axis tracking system. Will be 
-            calculated from axis azimuth, hill slopes and orientation assuming 
+            The cross-axis tilt perpendicular to the main axis vector (angle to
+            horizontal) of a single-axis tracking system. Will be
+            calculated from axis azimuth, hill slopes and orientation assuming
             constant ground distance if not given. A known convention is expected
-            (see reskit.solar.core.system_design.location_to_cross_axis_tilt()) 
-            if a str is given. Can be provided as a scalar or an iterable per 
+            (see reskit.solar.core.system_design.location_to_cross_axis_tilt())
+            if a str is given. Can be provided as a scalar or an iterable per
             location. None is expected if tracking != 'singleaxis'. By default None.
     elevation: int | float | str | Iterable, optional
             Elevation of the PV system over sea level in [m]. If a str is given, a
-            filepath to a DEM raster is expected. Can be provided as a scalar or an 
-            iterable per location. Can be provided as a scalar or an iterable per 
+            filepath to a DEM raster is expected. Can be provided as a scalar or an
+            iterable per location. Can be provided as a scalar or an iterable per
             location. Defaults to 840 (average global landmass elevation).
     north_slope : int | float | str | Iterable | None, optional
             The slope facing/descending towards North in degrees over horizontal.
-            Can be provided as a scalar or an iterable per location. If a str is 
-            given, a filepath to a slope raster is expected. Will affect both 
-            local horizon shading and row/cross axis tilts. By default None, 
+            Can be provided as a scalar or an iterable per location. If a str is
+            given, a filepath to a slope raster is expected. Will affect both
+            local horizon shading and row/cross axis tilts. By default None,
             i.e. flat terrain in North-South orientation unless specified via
             axes tilts.
     east_slope : int | float | str | Iterable | None, optional
             The slope facing/descending towards East in degrees over horizontal.
-            Can be provided as a scalar or an iterable per location. If a str is 
-            given, a filepath to a slope raster is expected.  Will affect both 
-            local horizon shading and row/cross axis tilts. By default None, 
+            Can be provided as a scalar or an iterable per location. If a str is
+            given, a filepath to a slope raster is expected.  Will affect both
+            local horizon shading and row/cross axis tilts. By default None,
             i.e. flat terrain in North-South orientation unless specified via
             axes tilts.
     gcr  : float | str | Iterable | None, optional
-            The ground coverage ratio, understood as a vertical projection (bird 
+            The ground coverage ratio, understood as a vertical projection (bird
             view). Can be provided as a scalar or an iterable per location.
             If None is provided, the gcr convention will be assigned based on the
             tracking style (see reskit.solar.core.system_design.location_to_gcr):
@@ -535,69 +543,69 @@ def pv_era5_WinklerUnpublished(
             * fixed: "winter_solstice_rule" convention
             By default None.
     ground_albedo : float | str | Iterable | tuple, optional
-            The average base ground albedo without temporal snow effects. 
+            The average base ground albedo without temporal snow effects.
             Can be provided as a scalar or an iterable per location:
-            * tuple: format (dataset name, dataset filepath) to point to a 
-              landcover dataset. Albedo values will then be mapped to landcover 
+            * tuple: format (dataset name, dataset filepath) to point to a
+              landcover dataset. Albedo values will then be mapped to landcover
               classes based on [2] for every single location.
-            * float : The same albedo value to be set for all placements. 
+            * float : The same albedo value to be set for all placements.
             * Iterable : Iterable of float values per location.
-            If snow effects are considered, ground albedo will be increased in 
+            If snow effects are considered, ground albedo will be increased in
             hours with ground covered by snow. Default value is 0.25 (based on pvlib)
     distant_horizon_profile : numpy.ndarray | str | None, optional
-            The horizon profile in degrees from level horizon, positive for 
-            mountains. If provided as np.ndarray, one row is expected per placement, 
-            the columns are then the horizon angles clockwise starting from North. 
-            The 360° full circle will be divided by the number of columns, i.e. 36 
-            columns mean one sampling point every 10° azimuth rotation. If a single 
-            string or an iterable of strings with one per placement is provided, 
-            existing filepaths to a digital elevation model (DEM) raster file are 
-            expected from which the horizon profile will be calculated. None means 
-            no consideration of the horizon shading. The distant horizon will be 
+            The horizon profile in degrees from level horizon, positive for
+            mountains. If provided as np.ndarray, one row is expected per placement,
+            the columns are then the horizon angles clockwise starting from North.
+            The 360° full circle will be divided by the number of columns, i.e. 36
+            columns mean one sampling point every 10° azimuth rotation. If a single
+            string or an iterable of strings with one per placement is provided,
+            existing filepaths to a digital elevation model (DEM) raster file are
+            expected from which the horizon profile will be calculated. None means
+            no consideration of the horizon shading. The distant horizon will be
             combined with a local horizon from hill slope if given. By default None.
     consider_snow_effects : bool | Iterable, optional
             Boolean as a a scalar or per location if snow effects shall be considered,
             then affects both ground albedo in times of snow-covered ground as well
-            as shadowing of by snow covered modules. Can be provided as a scalar or 
+            as shadowing of by snow covered modules. Can be provided as a scalar or
             an iterable per location, by default True.
     DNI_nodata_fallback: float | str | Callable, optional
-            When global_solar_atlas_dni_path has no data, one can decide between different 
+            When global_solar_atlas_dni_path has no data, one can decide between different
             fallback options, by default 1.0:
             * np.nan or None : return np.nan for missing values in global_solar_atlas_dni_path
-            * float : Apply this float value as a scaling factor for all no-data locations only: 
+            * float : Apply this float value as a scaling factor for all no-data locations only:
                 source_long_run_average * DNI_nodata_fallback.
-                NOTE: A value of 1.0 will return the source lra value in case of 
+                NOTE: A value of 1.0 will return the source lra value in case of
                 missing global_solar_atlas_dni_path values.
-            * str : Will be interpreted as a filepath to a raster with alternative absolute 
+            * str : Will be interpreted as a filepath to a raster with alternative absolute
                 global_solar_atlas_dni_path values
-            * Callable : any callable method taking the arguments (all iterables): 'locs' and 
-                'source_long_run_average_value' (the locations as gk.geom.point objects and 
+            * Callable : any callable method taking the arguments (all iterables): 'locs' and
+                'source_long_run_average_value' (the locations as gk.geom.point objects and
                 original value from source data). The output values will be considered as
                 the new real_long_run_average for missing locations only.
             NOTE: np.nan will still be returned in case that the nodata fallback does not yield values either.
     DNI_nodata_fallback_scaling: float, optional
-            The scaling factor that will be applied to the DNI nodata fallback e.g. in case of 
+            The scaling factor that will be applied to the DNI nodata fallback e.g. in case of
             different units compared to source data. By default 1.0, i.e. no effect.
     GHI_nodata_fallback: str | str | Callable, optional
-            When global_solar_atlas_ghi_path has no data, one can decide between different 
+            When global_solar_atlas_ghi_path has no data, one can decide between different
             fallback options, by default 1.0:
             - np.nan or None : return np.nan for missing values in global_solar_atlas_ghi_path
-            - float : Apply this float value as a scaling factor for all no-data locations only: 
+            - float : Apply this float value as a scaling factor for all no-data locations only:
                 source_long_run_average * GHI_nodata_fallback.
-                NOTE: A value of 1.0 will return the source lra value in case of missing 
+                NOTE: A value of 1.0 will return the source lra value in case of missing
                 global_solar_atlas_ghi_path values.
-            - str : Will be interpreted as a filepath to a raster with alternative absolute 
+            - str : Will be interpreted as a filepath to a raster with alternative absolute
                 global_solar_atlas_ghi_path values
-            - callable : any callable method taking the arguments (all iterables): 'locs' and 
-                'source_long_run_average_value' (the locations as gk.geom.point objects and 
+            - callable : any callable method taking the arguments (all iterables): 'locs' and
+                'source_long_run_average_value' (the locations as gk.geom.point objects and
                 original value from source data). The output values will be considered as
                 the new real_long_run_average for missing locations only.
             NOTE: np.nan will also be returned in case that the nodata fallback does not yield values either
     GHI_nodata_fallback_scaling: float, optional
-            The scaling factor that will be applied to the GHI nodata fallback e.g. in case of 
+            The scaling factor that will be applied to the GHI nodata fallback e.g. in case of
             different units compared to source data. By default 1.0, i.e. no effect.
     capacity : int | float | Iterable, optional
-            The capacity of the PV plant in kW, will then also return energy production (else 
+            The capacity of the PV plant in kW, will then also return energy production (else
             only capacity factors). Can be provided as a scalar or an iterable per location.
             By default None.
     module : str, optional
@@ -609,38 +617,38 @@ def pv_era5_WinklerUnpublished(
             information. Can be provided as a scalar or an iterable per location. Bifaciality
             factor of 0.0 means monofacial module. By default 0.9.
     max_tracking_angle : int | Iterable, optional
-            The maximum allowed tracking angle in degrees around the single-axis tracking axis. 
-            Can be provided as a scalar or an iterable per location. Will take effect only when 
+            The maximum allowed tracking angle in degrees around the single-axis tracking axis.
+            Can be provided as a scalar or an iterable per location. Will take effect only when
             tracking = 'singleaxis'. By default 60°.
     backtracking : bool | Iterable, optional
-            If backtracking is allowed to minimize self-shadowing of a single-axis tracking 
-            system. Can be provided as a scalar or an iterable per location. Will take effect 
+            If backtracking is allowed to minimize self-shadowing of a single-axis tracking
+            system. Can be provided as a scalar or an iterable per location. Will take effect
             only when tracking = 'singleaxis'. By default True.
     pvrow_height : int | float | None | Iterable, optional
-            The row center axis height measured perpendicular to the ground, i.e. not 
-            necessarily vertical for sloped hills. Can be provided as a scalar or an iterable 
-            per location. If None is given, height will be calculated such that the lower 
+            The row center axis height measured perpendicular to the ground, i.e. not
+            necessarily vertical for sloped hills. Can be provided as a scalar or an iterable
+            per location. If None is given, height will be calculated such that the lower
             module edges can just not touch the ground in a maximally rotated (vertical) position.
             By default None.
     module_configuration : str, optional
             How many modules are stacked along the sloped axis of an array width, and if they are
-            mounted in 'portrait' or 'landscape' orientation, e.g. "2P" or "3L". By default "2P". 
-    inverter : str 
+            mounted in 'portrait' or 'landscape' orientation, e.g. "2P" or "3L". By default "2P".
+    inverter : str
             The name of the inverted if used, else no inverted will be assumed. By default None.
             See reskit.solar.SolarWorkflowManager.apply_inverter_losses for more usage information.
     inverter_kwargs : dict, optional
             A dictionary with inverter arguments for solar_workflow_manager.apply_inverter_losses()
             if an inverter is given, by default empty {}.
     tech_year : int, optional
-            The technological year to which the selected module shall be projected if such feature 
+            The technological year to which the selected module shall be projected if such feature
             is implemented for the selected module, by default 2035.
     output_netcdf_path : str, optional
             The path where the results shall be saved as netcdf file, by default None.
     output_variables : list | None
-            The list of output variables which shall be added to the output dataset, by default 
+            The list of output variables which shall be added to the output dataset, by default
             None, i.e. ALL eligible parameters will be returned.
     new_style : bool, optional #TODO remove
-        Defaults to True 
+        Defaults to True
 
     Returns
     -------
@@ -664,12 +672,12 @@ def pv_era5_WinklerUnpublished(
     ]
     if np.asarray(consider_snow_effects).any():
         # add snow variables to the vars to be loaded from ERA-5
-        vars += [        
-        "snowfall_water_equivalent",
-        "snow_albedo",
-        "snow_depth_water_equivalent",
-        "snow_density",
-    ]
+        vars += [
+            "snowfall_water_equivalent",
+            "snow_albedo",
+            "snow_depth_water_equivalent",
+            "snow_density",
+        ]
     wf.read(
         variables=vars,
         source_type="ERA5",
@@ -681,44 +689,46 @@ def pv_era5_WinklerUnpublished(
 
     # PREPROCESS PLANT INPUT DATA
 
-    # configure the module 
+    # configure the module
     wf.configure_cec_module(
-        module=module, 
-        tech_year=tech_year, 
-        tracking=tracking, 
+        module=module,
+        tech_year=tech_year,
+        tracking=tracking,
         database="CEC Modules.csv",
-        module_configuration = module_configuration,
-        )
+        module_configuration=module_configuration,
+    )
 
     # preprocess the individual plant parameters #TODO use the plant-specific variables stored herein!
-    wf.preprocess_bifaciality_factor(bifaciality_factor = bifaciality_factor)
+    wf.preprocess_bifaciality_factor(bifaciality_factor=bifaciality_factor)
     wf.preprocess_hill_slope_and_azimuth(
-        north_slope = north_slope,
-        east_slope = east_slope,
-        )
-    wf.preprocess_elevation(elevation = elevation)
+        north_slope=north_slope,
+        east_slope=east_slope,
+    )
+    wf.preprocess_elevation(elevation=elevation)
     wf.preprocess_horizon_profile(
-        distant_horizon_profile = distant_horizon_profile,
-        azimuthal_stepsize = 3.0,
-        min_sampling_points = 12,
-        )
+        distant_horizon_profile=distant_horizon_profile,
+        azimuthal_stepsize=3.0,
+        min_sampling_points=12,
+    )
     wf.preprocess_ground_albedo(
-        ground_albedo = ground_albedo, 
-        consider_snow_albedo = consider_snow_effects,
-        fallback = 0.25, # based on pvlib defaults and existing RK solar workflows
-        )
+        ground_albedo=ground_albedo,
+        consider_snow_albedo=consider_snow_effects,
+        fallback=0.25,  # based on pvlib defaults and existing RK solar workflows
+    )
     if tracking == "fixed":
-        wf.preprocess_fixed_module_azimuth(module_azimuth = module_azimuth)
-        wf.preprocess_fixed_module_tilt(module_tilt = module_tilt)
+        wf.preprocess_fixed_module_azimuth(module_azimuth=module_azimuth)
+        wf.preprocess_fixed_module_tilt(module_tilt=module_tilt)
         # some arguments should explicitly be None to avoid the user expecting effects from these
-        assert wf._is_none(singleaxis_azimuth).all(), "singleaxis_azimuth is expected to be None when tracking == 'fixed'"
+        assert wf._is_none(singleaxis_azimuth).all(), (
+            "singleaxis_azimuth is expected to be None when tracking == 'fixed'"
+        )
         assert wf._is_none(singleaxis_tilt).all(), "singleaxis_tilt is expected to be None when tracking == 'fixed'"
         assert wf._is_none(crossaxis_tilt).all(), "crossaxis_tilt is expected to be None when tracking == 'fixed'"
     elif tracking == "singleaxis":
         wf.preprocess_singleaxis_and_crossaxis(
-            singleaxis_azimuth = singleaxis_azimuth,
-            singleaxis_tilt = singleaxis_tilt,
-            crossaxis_tilt = crossaxis_tilt,
+            singleaxis_azimuth=singleaxis_azimuth,
+            singleaxis_tilt=singleaxis_tilt,
+            crossaxis_tilt=crossaxis_tilt,
         )
         wf.preprocess_tracking_angle(max_tracking_angle=max_tracking_angle)
         wf.preprocess_backtracking(backtracking=backtracking)
@@ -731,8 +741,8 @@ def pv_era5_WinklerUnpublished(
         # if not provided explitly, define gcr as tracking-specific defaults for this workflow
         gcr = "winter_solstice_rule" if tracking == "fixed" else "tonita_et_al_2023"
     wf.preprocess_pvrow_height(pvrow_height=pvrow_height)
-    wf.preprocess_ground_coverage_ratio(gcr = gcr, min_gcr = 0.169, fallback = None, min_interrow_distance=2.5)
-    wf.preprocess_capacity(capacity = capacity)
+    wf.preprocess_ground_coverage_ratio(gcr=gcr, min_gcr=0.169, fallback=None, min_interrow_distance=2.5)
+    wf.preprocess_capacity(capacity=capacity)
 
     # PREPROCESS IRRADIATION
 
@@ -761,7 +771,8 @@ def pv_era5_WinklerUnpublished(
     # GSA already contains terrain shading, correct the shading-affected real LRA upwards to not double-count horizon shading
     # will take no effect if no/flat horizon is considered only
     wf.scale_to_unshaded_real_lra(
-        max_scaling_factor=1/0.9 # GSA terrain losses limited to 10% acc. to GSA manual : https://documents1.worldbank.org/curated/en/529431592893043403/pdf/Global-Solar-Atlas-2-0-Technical-Report.pdf
+        max_scaling_factor=1
+        / 0.9  # GSA terrain losses limited to 10% acc. to GSA manual : https://documents1.worldbank.org/curated/en/529431592893043403/pdf/Global-Solar-Atlas-2-0-Technical-Report.pdf
     )
 
     # CALCULATE ABSORBED PLANE OF ARRAY IRRADIANCES
@@ -780,7 +791,7 @@ def pv_era5_WinklerUnpublished(
         wf.apply_angle_of_incidence_losses_to_poa()
 
     # SIMULATE MODULE RESPONSE AND ELECTRICAL YIELD
-    
+
     if np.any(np.asarray(consider_snow_effects)):
         wf.estimate_snow_coverage_loss(consider_snow_loss=consider_snow_effects)
     wf.cell_temperature_from_sapm()
@@ -790,21 +801,14 @@ def pv_era5_WinklerUnpublished(
     if inverter is not None:
         wf.apply_inverter_losses(inverter=inverter, **inverter_kwargs)
     loss_factor = 0.115  # assumed from openfield_pv_era5() by confirming practically the same output under same conditions (Winkler, 10/2025)
-    variables = [
-        _var
-        for _var in ["capacity_factor", "total_system_generation"]
-        if _var in wf.sim_data.keys()
-    ]
+    variables = [_var for _var in ["capacity_factor", "total_system_generation"] if _var in wf.sim_data.keys()]
     wf.apply_loss_factor(loss_factor, variables=variables)
 
     # SAVE AND RETURN
 
-    ds = wf.to_xarray(
-        output_netcdf_path=output_netcdf_path, output_variables=output_variables
-    )
+    ds = wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
     return ds
-
 
 
 def openfield_pv_sarah_unvalidated(
@@ -1010,7 +1014,7 @@ def openfield_pv_iconlam(
     wf.configure_cec_module(module=module, tech_year=tech_year, tracking=tracking, database="CECMod")
 
     # ensure the tracking parameter is correct
-    if tracking in ["single-axis", "single_axis"]: 
+    if tracking in ["single-axis", "single_axis"]:
         tracking = "singleaxis"
     assert tracking in [
         "fixed",
@@ -1020,11 +1024,11 @@ def openfield_pv_iconlam(
     # estimates tilt, azimuth and elev
     wf.estimate_missing_params(
         elev,
-        ground_albedo=0.25, 
+        ground_albedo=0.25,
         gcr=2.0 / 7.0,
         fixed_module_tilt_convention="Ryberg2020",
-        fixed_module_azimuth_convention="NorthSouth",    
-        )
+        fixed_module_azimuth_convention="NorthSouth",
+    )
 
     wf.read(
         variables=[

@@ -90,6 +90,7 @@ NUMPY_TYPE_EQUIVALENTS = {
     np.bool_: bool,
 }
 
+
 class WorkflowManager:
     """
     The WorkflowManager class assists with the construction of more specialized WorkflowManagers,
@@ -140,14 +141,16 @@ class WorkflowManager:
             assert "lat" in self.placements.columns, (
                 "if geom are not point geometries, dataframe must contain lat columns"
             )
-            self.locs = gk.LocationSet(self.placements[["lon", "lat"]].values)            
+            self.locs = gk.LocationSet(self.placements[["lon", "lat"]].values)
 
         # limit the input placements longitude to range of -180...180
         _check_coordinate_range(self.placements, "lon", -180, 180)
         # limit the input placements latitude to range of -90...90
         _check_coordinate_range(self.placements, "lat", -90, 90)
 
-        self.centerpoints = np.array([gk.geom.point(lon, lat, srs=_srs) for lon, lat in zip(self.placements["lon"], self.placements["lat"])])
+        self.centerpoints = np.array(
+            [gk.geom.point(lon, lat, srs=_srs) for lon, lat in zip(self.placements["lon"], self.placements["lat"])]
+        )
 
         # get bounds of the extent
         _bounds = list(self.locs.getBounds())
@@ -169,31 +172,30 @@ class WorkflowManager:
     # STAGE 1: Add and preprocess parameters
 
     def _is_none(self, var):
-        """Returns a boolean array with Trues for a scalar or iterable consisting only of None, NaN, "null", "", "nan" or "none" (case-insenstive).""" 
-        if np.ndim(var) > 0: 
-            return np.vectorize(self._is_none, otypes=[bool])(var) 
-        if isinstance(var, str): 
+        """Returns a boolean array with Trues for a scalar or iterable consisting only of None, NaN, "null", "", "nan" or "none" (case-insenstive)."""
+        if np.ndim(var) > 0:
+            return np.vectorize(self._is_none, otypes=[bool])(var)
+        if isinstance(var, str):
             return np.array(var.strip().lower() in {"", "null", "none", "nan"})
         return np.array(bool(pd.isna(var)))
-
 
     def _preprocess_variable(
         self,
         varname,
         value,
-        allow_none : bool = False,
-        replace_none = None,
-        assert_type : type | list[type] | None = None,
-        force_cols : int | None = None,
-        force_dims : int | None = None,
-        as_dtype = None,
-        transpose : bool = False,
+        allow_none: bool = False,
+        replace_none=None,
+        assert_type: type | list[type] | None = None,
+        force_cols: int | None = None,
+        force_dims: int | None = None,
+        as_dtype=None,
+        transpose: bool = False,
     ):
         """
-        Checks and processes the formatting of an input variable into the desired 
+        Checks and processes the formatting of an input variable into the desired
         array shape and dataytype and asserts no None (and equivalents) if required.
         Also enforces that every placement = row is consistently defined, i.e. all
-        numerically defined, or defined via a string (which must then be the same 
+        numerically defined, or defined via a string (which must then be the same
         for all columns) or all None.
 
         Note that for string entries, always all entries within a row must be identical.
@@ -206,17 +208,17 @@ class WorkflowManager:
             If None (or variants thereof) are allowed, by default False.
         replace_none : int | float | str, optional
             Optionally replace None entries with a fallback if allow_none.
-            By default None, will only replace alternative None values like np.nan, 
+            By default None, will only replace alternative None values like np.nan,
             "nan", pd.null etc. by None.
         assert_type : dtype | list, optional
-            Assert one or a list of multiple datatypes optionally, by default None 
+            Assert one or a list of multiple datatypes optionally, by default None
             i.e. no effect.
         force_cols : integer, optional
-            Will enforce the desired number of columns in the value array. Will 
-            duplicate single columns into the desired number or reduce duplicate 
-            columns to one, else assert the number of required force_cols. Raises 
+            Will enforce the desired number of columns in the value array. Will
+            duplicate single columns into the desired number or reduce duplicate
+            columns to one, else assert the number of required force_cols. Raises
             an error if value has multiple columns not equal to force_cols.
-            Note that the value will become a 2d array if "columns" are enforced. If 
+            Note that the value will become a 2d array if "columns" are enforced. If
             a 1d array is desired instead, use in combination with force_dims = 1.
             By default None.
         force_dims : integer, optional
@@ -229,7 +231,7 @@ class WorkflowManager:
             strings would raise an error. If None, no datatype changes will be applied.
         transpose : bool, optional
             If True, the final array will be returned as transposed. Note that force_cols
-            and force_dims apply to the original array, i.e. force_cols must hence be 
+            and force_dims apply to the original array, i.e. force_cols must hence be
             understood as "force rows" and force_dims must be inverted when transpose is
             True. By default False.
 
@@ -244,42 +246,39 @@ class WorkflowManager:
         # every value must always be an array with length = len(self.placements), assert for 1d and 2d and duplicate value into array for scalar value
         if value.ndim == 0:
             value = np.full(n_placements, value.item(), dtype=object)
-        assert value.ndim in (1, 2), \
-            f"{varname} must be scalar, 1D or 2D, got shape {value.shape}."
-        assert value.shape[0] == n_placements, \
-            f"{varname} must have {n_placements} rows, got {value.shape[0]}."
-        
-        # if force_cols is not None, we have 4 cases: 1) actual column number matches force_cols, 2) we have only 1 column which can be duplicated 
+        assert value.ndim in (1, 2), f"{varname} must be scalar, 1D or 2D, got shape {value.shape}."
+        assert value.shape[0] == n_placements, f"{varname} must have {n_placements} rows, got {value.shape[0]}."
+
+        # if force_cols is not None, we have 4 cases: 1) actual column number matches force_cols, 2) we have only 1 column which can be duplicated
         # to force_cols, 3) we have multiple columns but all with the same value per row which could be reduced to 1 column if force_cols is 1 only
         # or 4) we have multiple columns but their number does not match force_cols - the latter case must raise an error
-        if force_cols is not None and not (isinstance(force_cols, int) and force_cols>=1):
+        if force_cols is not None and not (isinstance(force_cols, int) and force_cols >= 1):
             raise ValueError(f"force_cols must be None or an integer >= 1, here: {force_cols}")
         if force_cols is not None:
             if value.ndim == 1:
                 value = value[:, None]
             n_cols = value.shape[1]
-            if n_cols == force_cols: 
+            if n_cols == force_cols:
                 # we have exactly the amount of columns that we need, do nothing
-                pass 
-            elif n_cols == 1: 
+                pass
+            elif n_cols == 1:
                 # only one column, simply duplicate the one column as often as required
                 value = np.repeat(value, force_cols, axis=1)
             elif force_cols == 1 and np.all(value == value[:, [0]]):
                 # all entries per row are the same, can be reduced to 1 column without information loss
                 value = value[:, [0]]
             else:
-                raise ValueError(
-                    f"{varname} must have {force_cols} column(s) but has {n_cols}."
-                )
-        
+                raise ValueError(f"{varname} must have {force_cols} column(s) but has {n_cols}.")
+
         # one can also enforce a 1d or 2d array if the data allows for it
-        if force_dims is not None and force_dims not in [1,2]:
+        if force_dims is not None and force_dims not in [1, 2]:
             raise ValueError(f"force_dims must be None or either 1 or 2 (d), here: {force_dims}")
         if force_dims == 1:
             if value.ndim == 2:
                 # 2D can only be reduced without information loss if it has one column or every row contains only duplicate entries
-                assert value.shape[1] == 1 or np.all(value == value[:, [0]]), \
+                assert value.shape[1] == 1 or np.all(value == value[:, [0]]), (
                     f"{varname} cannot be reduced to 1D without information loss."
+                )
                 value = value[:, 0]
         elif force_dims == 2:
             if value.ndim == 1:
@@ -287,12 +286,9 @@ class WorkflowManager:
                 value = value[:, None]
 
         # value must then either be 1d or 2d with a single column or 2d with only repetitive values per row, will then be reduced to 1 column
-        assert value.ndim == 1 or (
-            value.ndim == 2 and (
-                value.shape[1] == 1 or
-                np.all(value == value[:, [0]])
-            )
-        ), f"{varname} must be a scalar, 1D or 2D with identical values in each row."
+        assert value.ndim == 1 or (value.ndim == 2 and (value.shape[1] == 1 or np.all(value == value[:, [0]]))), (
+            f"{varname} must be a scalar, 1D or 2D with identical values in each row."
+        )
 
         # now deal with data types and Nones
 
@@ -303,15 +299,14 @@ class WorkflowManager:
         if value.ndim == 2:
             # only then we can have different entries per placement
             num_mask = np.vectorize(lambda x: isinstance(x, (int, float, np.number)), otypes=[bool])(value)
-            assert np.all(
-                none_mask.all(axis=1) |
-                str_mask.all(axis=1) |
-                num_mask.all(axis=1)
-            ), f"{varname} contains rows mixing None, strings and numeric values."
+            assert np.all(none_mask.all(axis=1) | str_mask.all(axis=1) | num_mask.all(axis=1)), (
+                f"{varname} contains rows mixing None, strings and numeric values."
+            )
             # also check if all strings per row are identical
             multistring_rows = str_mask.all(axis=1) & ~np.all(value == value[:, [0]], axis=1)
-            assert not np.any(multistring_rows), \
+            assert not np.any(multistring_rows), (
                 f"{varname} contains rows with differing strings: {[np.unique(row).tolist() for row in value[multistring_rows]]}"
+            )
             # retrieve the unique string per row (NaN for non-string rows)
             row_strings = np.full(value.shape[0], np.nan, dtype=object)
             row_strings[str_mask.all(axis=1)] = value[str_mask.all(axis=1), 0]
@@ -320,7 +315,9 @@ class WorkflowManager:
             row_strings = np.where(str_mask, value, np.nan).astype(object)
         # enforce no-Nones if required
         if not allow_none:
-            assert replace_none is None, f"replace_none must be None (default) when allow_none is False, will then not allow any value array with None (or equivalent) at all."
+            assert replace_none is None, (
+                f"replace_none must be None (default) when allow_none is False, will then not allow any value array with None (or equivalent) at all."
+            )
             if np.any(none_mask):
                 raise ValueError(f"{varname} must not have None values.")
         # replace None, if None at least all "null", np.nan etc will be replaced
@@ -342,40 +339,34 @@ class WorkflowManager:
             # add NoneType if None is allowed, but only if it is not already in iterable
             if allow_none and NoneType not in accepted_types:
                 accepted_types += (NoneType,)
-            
+
             # expand by equivalent numpy types and remove duplicates
             accepted_types_expanded = accepted_types + tuple(
-                equivalent
-                for typ in accepted_types
-                if (equivalent := NUMPY_TYPE_EQUIVALENTS.get(typ)) is not None
+                equivalent for typ in accepted_types if (equivalent := NUMPY_TYPE_EQUIVALENTS.get(typ)) is not None
             )
-            accepted_types_expanded = tuple(
-                dict.fromkeys(accepted_types_expanded)
-            )
+            accepted_types_expanded = tuple(dict.fromkeys(accepted_types_expanded))
 
             # deal with bools separately as they are int in numpy types
             bool_allowed = bool in accepted_types_expanded or np.bool_ in accepted_types_expanded
+
             # check validity of each entry and return as boolean
             def valid_entry(x):
                 if isinstance(x, (bool, np.bool_)) and not bool_allowed:
                     return False
                 return isinstance(x, accepted_types_expanded)
+
             invalid_mask = np.vectorize(lambda x: not valid_entry(x), otypes=[bool])(value)
             # raise an error if we have invalid value types
             if np.any(invalid_mask):
-                accepted_type_names = sorted({
-                    typ.__name__ for typ in accepted_types_expanded
-                })
-                invalid_type_names = sorted({
-                    type(x).__name__ for x in value[invalid_mask]
-                })
+                accepted_type_names = sorted({typ.__name__ for typ in accepted_types_expanded})
+                invalid_type_names = sorted({type(x).__name__ for x in value[invalid_mask]})
                 raise TypeError(
                     f"'{varname}' expects only selected datatypes "
                     f"({', '.join(accepted_type_names)}) "
                     f"but contains invalid datatypes: "
                     f"{', '.join(invalid_type_names)}."
                 )
-        
+
         # optionally convert the final value array to a requested dtype
         # while preventing conversions that lose or alter information
         if as_dtype is not None:
@@ -383,20 +374,36 @@ class WorkflowManager:
             try:
                 target_dtype = np.dtype(as_dtype)
             except TypeError as exc:
-                raise TypeError(f"as_dtype {as_dtype!r} for '{varname}' cannot be interpreted as a numpy.dtype.") from exc
+                raise TypeError(
+                    f"as_dtype {as_dtype!r} for '{varname}' cannot be interpreted as a numpy.dtype."
+                ) from exc
             # get a copy of the original values to compare against later
             original_value = value.copy()
             # deal with booleans and other dtypes separately
             if np.issubdtype(target_dtype, np.bool_):
                 # booleans have the problem in numpy of making every string True
                 # that is unwanted therefore define explicit True/False values
-                boolmapper = {True : True, 1: True, "1": True, "true": True, False:False, 0:False, "0":False, "false":False}
+                boolmapper = {
+                    True: True,
+                    1: True,
+                    "1": True,
+                    "true": True,
+                    False: False,
+                    0: False,
+                    "0": False,
+                    "false": False,
+                }
+
                 def parse_bool(x):
-                    if isinstance(x, str): x = x.lower()
+                    if isinstance(x, str):
+                        x = x.lower()
                     try:
                         return boolmapper[x]
                     except:
-                        raise ValueError(f"'{varname}' cannot be converted losslessly to bool: invalid value {x!r}. Only the following values are accepted: {boolmapper.keys()}")
+                        raise ValueError(
+                            f"'{varname}' cannot be converted losslessly to bool: invalid value {x!r}. Only the following values are accepted: {boolmapper.keys()}"
+                        )
+
                 value = np.vectorize(parse_bool, otypes=[bool])(value)
             else:
                 try:
@@ -406,29 +413,29 @@ class WorkflowManager:
 
                 # make sure that we did not lose information, convert back to object values to compare with original data
                 converted_as_object = converted_value.astype(object)
+
                 # define a comparison function for cell values
                 def values_equivalent(original, converted):
                     # Treat missing values as equivalent.
                     if self._is_none(np.asarray([original], dtype=object))[0]:
-                        return self._is_none(
-                            np.asarray([converted], dtype=object)
-                        )[0]
+                        return self._is_none(np.asarray([converted], dtype=object))[0]
 
                     # Numeric values need special handling.
-                    if isinstance(original, (int, float, np.number)) and isinstance(
-                        converted, (int, float, np.number)
-                    ):
+                    if isinstance(original, (int, float, np.number)) and isinstance(converted, (int, float, np.number)):
                         if np.isnan(original) and np.isnan(converted):
                             return True
-                        return bool(np.isclose(
-                            original,
-                            converted,
-                            rtol=0,
-                            atol=0,
-                            equal_nan=True,
-                        ))
+                        return bool(
+                            np.isclose(
+                                original,
+                                converted,
+                                rtol=0,
+                                atol=0,
+                                equal_nan=True,
+                            )
+                        )
 
                     return original == converted
+
                 # apply to original and converted object array
                 equivalent_mask = np.vectorize(
                     values_equivalent,
@@ -438,11 +445,15 @@ class WorkflowManager:
                 if not np.all(equivalent_mask):
                     changed_original = original_value[~equivalent_mask]
                     changed_converted = converted_as_object[~equivalent_mask]
-                    examples = list(zip(
-                        changed_original[:5].tolist(),
-                        changed_converted[:5].tolist(),
-                    ))
-                    raise ValueError(f"Converting '{varname}' to dtype {target_dtype} would change values. Examples of (original, converted): {examples}")
+                    examples = list(
+                        zip(
+                            changed_original[:5].tolist(),
+                            changed_converted[:5].tolist(),
+                        )
+                    )
+                    raise ValueError(
+                        f"Converting '{varname}' to dtype {target_dtype} would change values. Examples of (original, converted): {examples}"
+                    )
                 # else set the final return value
                 value = converted_value
 
@@ -605,7 +616,7 @@ class WorkflowManager:
                 self.locs,  # Manipulate locs here
                 interpolation=spatial_interpolation_mode,
                 force_as_data_frame=True,
-                outside_okay=True, # TODO make dynamic
+                outside_okay=True,  # TODO make dynamic
             )
 
             if not set_time_index:
@@ -977,9 +988,7 @@ class WorkflowManager:
         elif isinstance(output_variables, Iterable):
             selected_variables = list(output_variables)
         else:
-            raise TypeError(
-                "output_variables must be None, a string, or an iterable of strings."
-            )
+            raise TypeError("output_variables must be None, a string, or an iterable of strings.")
 
         # required variables
         required_variables = ["RESKit_sim_order"]
@@ -1037,14 +1046,9 @@ class WorkflowManager:
 
                 # value should be an array and have only datatypes which can be written to NETCDF/Zarr via xarray
                 if not isinstance(val, np.ndarray):
-                    raise TypeError(
-                        f"self.plant_parameters_processed['{par}'] data is not a np.array."
-                    )
+                    raise TypeError(f"self.plant_parameters_processed['{par}'] data is not a np.array.")
 
-                if not all(
-                    isinstance(x, (Number, str, bytes, bytearray))
-                    for x in val.flat
-                ):
+                if not all(isinstance(x, (Number, str, bytes, bytearray)) for x in val.flat):
                     # at least one datatype cannot be written, skip this parameter
                     print(
                         f"Parameter '{par}' contains non-number/string/bytes "
@@ -1123,10 +1127,7 @@ class WorkflowManager:
                                 f"{self._sim_shape_[0]} "
                             )
                     else:
-                        raise ValueError(
-                            f"self.plant_parameters_processed['{par}'] has "
-                            f"unknown shape: {val.shape} "
-                        )
+                        raise ValueError(f"self.plant_parameters_processed['{par}'] has unknown shape: {val.shape} ")
                 else:
                     raise ValueError(
                         f"self.plant_parameters_processed['{par}'] has unknown "

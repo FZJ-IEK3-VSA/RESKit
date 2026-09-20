@@ -69,8 +69,8 @@ def get_tile_xy(zoom, lon=None, lat=None, geom=None):
 
 def get_tilepath(weather_path, lat=None, lon=None, zoom=None):
     """
-    Returns a tilepath with potential <X-TILE> and <Y-TILE> as well 
-    as <ZOOM> spacers replaced by the respective values based on 
+    Returns a tilepath with potential <X-TILE> and <Y-TILE> as well
+    as <ZOOM> spacers replaced by the respective values based on
     latitude, longitude and zoom level.
 
     weather_path : str

@@ -82,7 +82,7 @@ def test_SolarWorkflowManager_estimate_tilt_from_latitude(
     man.estimate_tilt_from_latitude("Ryberg2020")
 
     assert np.isclose(
-        man.placements["modtilt"], # modtilt exists now!
+        man.placements["modtilt"],  # modtilt exists now!
         [39.0679049, 39.1082060, 39.1484058, 39.1885045, 39.2285025],
     ).all()
 
@@ -458,7 +458,7 @@ def pt_SolarWorkflowManager_aoi(
 def test_SolarWorkflowManager_estimate_plane_of_array_irradiances(
     pt_SolarWorkflowManager_aoi: SolarWorkflowManager,
 ) -> SolarWorkflowManager:
-    man.placements["grdalbedo"] = 0.25 # required
+    man.placements["grdalbedo"] = 0.25  # required
     man.estimate_plane_of_array_irradiances(
         transposition_model="perez",
     )
@@ -487,7 +487,7 @@ def pt_SolarWorkflowManager_poa(
     pt_SolarWorkflowManager_aoi: SolarWorkflowManager,
 ) -> SolarWorkflowManager:
     man = pt_SolarWorkflowManager_aoi_fixed
-    man.placements["grdalbedo"] = 0.25 # required
+    man.placements["grdalbedo"] = 0.25  # required
     man.estimate_plane_of_array_irradiances(transposition_model="perez")
 
     return man
@@ -497,7 +497,7 @@ def test_SolarWorkflowManager_cell_temperature_from_sapm(
     pt_SolarWorkflowManager_poa: SolarWorkflowManager,
 ) -> SolarWorkflowManager:
     man = pt_SolarWorkflowManager_poa
-    man.sim_data["poa_global"] = man.sim_data["poa_global_raw"] # required
+    man.sim_data["poa_global"] = man.sim_data["poa_global_raw"]  # required
     man.cell_temperature_from_sapm(mounting="glass_open_rack")
 
     print_testresults(man.sim_data["cell_temperature"])
@@ -700,7 +700,13 @@ def test_SolarWorkflowManager_nan_values_tilt_azimuth_elev___init__() -> SolarWo
 
     # estimates tilt, azimuth and elev
     elev = 300  # fallback elevation
-    man.estimate_missing_params(elev, ground_albedo=0.25, gcr = 2.0/7.0, fixed_module_tilt_convention="Ryberg2020",fixed_module_azimuth_convention="NorthSouth")
+    man.estimate_missing_params(
+        elev,
+        ground_albedo=0.25,
+        gcr=2.0 / 7.0,
+        fixed_module_tilt_convention="Ryberg2020",
+        fixed_module_azimuth_convention="NorthSouth",
+    )
 
     assert ~man.placements["modtilt"].isna().any()
     assert ~man.placements["modazimuth"].isna().any()

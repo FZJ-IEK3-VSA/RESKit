@@ -298,9 +298,7 @@ class NCSource(object):
             assert time_index_from in self.variables.index, (
                 f'ERA_5-key {time_index_from} not known. Check variable "time_index_from" and folder {source}'
             )
-            self.variables.loc[time_name, "path"] = self.variables.loc[
-                time_index_from, "path"
-            ]
+            self.variables.loc[time_name, "path"] = self.variables.loc[time_index_from, "path"]
 
         # set basic variables
         ds = nc.Dataset(self.variables["path"][lat_name], keepweakref=True)
@@ -573,7 +571,7 @@ class NCSource(object):
             surface_dew_temperature      -> The dew-point temperature at the surface
             global_horizontal_irradiance -> The global horizontal irradiance at the surface
             direct_normal_irradiance     -> The direct normal irradiance at the surface
-            direct_horzontal_irradiance  -> The direct irradiance at the surface on a horizontal plane 
+            direct_horzontal_irradiance  -> The direct irradiance at the surface on a horizontal plane
             snow_albedo                  -> The fraction of solar (shortwave) radiation reflected by snow across the solar spectrum
             snow_density                 -> The mass of snow per cubic metre in the snow layer
             snow_depth_water_equivalent  -> The amount of snow from the snow-covered area of a grid box
@@ -735,7 +733,7 @@ class NCSource(object):
             # Check for out of bounds
             oob = (latI < 0) | (latI >= self._latN) | (lonI < 0) | (lonI >= self._lonN)
             if oob.any() and not outside_okay:
-                    raise ResError(f"The following locations are outside the boundaries: {locations[oob]}")
+                raise ResError(f"The following locations are outside the boundaries: {locations[oob]}")
 
             # As int?
             if as_int:
@@ -744,7 +742,12 @@ class NCSource(object):
 
             # Make output
             # set the index tuples or replace the actual index by the (clipped) max or min index if oob
-            inds = [Index(yi=max(min(y, self._latStop-self._latStart), 0), xi=max(min(x, self._lonStop-self._lonStart), 0)) for y, x in zip(latI, lonI)]
+            inds = [
+                Index(
+                    yi=max(min(y, self._latStop - self._latStart), 0), xi=max(min(x, self._lonStop - self._lonStart), 0)
+                )
+                for y, x in zip(latI, lonI)
+            ]
             if locations.count == 1:
                 return inds[0]
             else:
