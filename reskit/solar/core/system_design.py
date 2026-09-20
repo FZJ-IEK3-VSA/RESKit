@@ -567,8 +567,8 @@ def _get_winter_solstice_solar_elevation(
         Solar elevation at given hour of winter solstice in degrees over horizon.
     """
     # check inputs
-    assert isinstance(solar_hour, (int, float)) and 0<= solar_hour <= 24, \
-        "solar_hour must be >= 0 and <= 24."
+    assert np.issubdtype((a := np.asarray(solar_hour)).dtype, np.number) and np.all((0 <= a) & (a <= 24)), \
+        "solar_hour must contain only numeric values >= 0 and <= 24."
     assert isinstance(lats, (int, float, np.ndarray)), \
         "lats must be int, float or np.ndarray"
     if isinstance(lats, np.ndarray):
