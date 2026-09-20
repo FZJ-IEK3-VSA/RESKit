@@ -1,3 +1,4 @@
+from catboost import CatBoostRegressor
 import numpy as np
 import geokit as gk
 import pandas as pd
@@ -8,6 +9,7 @@ import warnings
 
 from reskit.util import ResError
 from reskit.util.generic_helpers import _align_inputs, _check_kwargs
+
 
 def location_to_module_azimuth(
     locs: gk.LocationSet | Iterable, convention: str = "NorthSouth", **kwargs
@@ -116,6 +118,274 @@ def location_to_module_tilt(
         raise ResError(f"Unknown convention (or non-existing file) for location_to_module_tilt(): '{convention}'")
 
     return tilt
+
+
+def location_to_module_tilt_and_gcr_winkler_2027(
+    lat: float | np.ndarray,
+    ghi: float | np.ndarray,
+    fdir: float | np.ndarray,
+    north_slope: int | float | np.ndarray,
+    east_slope: int | float | np.ndarray,
+    elevation: int | float | np.ndarray,
+    peakmonth: float | np.ndarray,
+    snowfall: float | np.ndarray | None = None,
+    snowcoverdays: float | int | np.ndarray | None = None,
+    consider_snow: bool = True,
+    bifacial: bool = True,
+    optimal_period : str = "annual",
+):
+    """
+    Estimates the optimal fixed module tilt for one or multiple locations
+    using a pretrained CatBoost regression model. Will enforce a minimum
+    absolute tilt angle of 10° for self-cleaning. The specific model used
+    here was developed only for winter solstice rule-optimal ground coverage
+    ratios, the matching gcrs are returned for every location for convenience.
+
+    Parameters
+    ----------
+    lat : float | np.ndarray
+        Signed latitude of the location(s) in degrees, in the range
+        [-90, 90].
+
+    ghi : float | np.ndarray
+        Global horizontal irradiation at the location(s) in [#TODO].
+
+    fdir : float | np.ndarray
+        Vertical/horizontal direct irradiance in [#TODO].
+
+    north_slope : int | float | np.ndarray
+        Hillslope angle in degrees along the South-North axis. Positive
+        values indicate slopes descending towards North, negative values
+        indicate slopes descending towards South.
+
+    east_slope : int | float | np.ndarray
+        Hillslope angle in degrees along the West-East axis. Positive
+        values indicate slopes descending towards East, negative values
+        indicate slopes descending towards West.
+
+    elevation : int | float | np.ndarray
+        Elevation above sea level in meters.
+
+    peakmonth : float | np.ndarray
+        Month in which a North-South horizontal single-axis tracking 
+        system would achieve its peak energy yield at the same location, 
+        using January = 0, ..., December = 11. 
+
+    snowfall : float | np.ndarray | None, optional
+        Mean hourly snowfall water equivalent in [m/h]. Can be None
+        only when consider_snow is False, by default None.
+
+    snowcoverdays : float | int | np.ndarray | None, optional
+        Average annual number of days with snow cover on the ground.
+        Can be None only when consider_snow is False, by default None.
+
+    consider_snow : bool, optional
+        If True, use a model trained considering snow effects. By
+        default True.
+
+    bifacial : bool, optional
+        If True, use a model trained for a bifaciality factor of 0.9.
+        If False, use a monofacial model. By default True.
+
+    optimal_period : str, optional
+        The models are optimized for maximum energy yield either overall
+        ('annual' yield) or in the winter/low season ('min_month').
+        By default 'annual'.
+
+    Returns
+    -------
+    tuple[float, float] | tuple[np.ndarray, np.ndarray]
+        Tuple containing:
+
+        - Predicted fixed module tilt angle(s) in degrees.
+        - Corresponding ground coverage ratio(s) according to the winter
+        solstice rule.
+
+        If all aligned inputs are scalar, both tuple entries are returned
+        as floats. Otherwise, both entries are returned as 1D NumPy arrays
+        with one value per location.
+
+    Raises
+    ------
+    TypeError
+        If ``bifacial`` or ``consider_snow`` are not booleans, or if
+        feature values are not numeric.
+
+    ValueError
+        If input values are outside their physically allowed ranges, or
+        if the loaded model returns non-finite tilt values.
+
+    NotImplementedError
+        If no trained model is currently configured for the requested
+        combination of ``consider_snow`` and ``bifacial``.
+    """
+    # check scalar inputs
+    if not all(isinstance(x, (bool, np.bool_)) for x in [bifacial, consider_snow]):
+        raise TypeError(
+            "The following args must be booleans: bifacial, consider_snow"
+        )
+    if not optimal_period in ["annual", "min_month"]:
+        raise ValueError(f"optimal_period must be 'annual' or 'min_month', here: {optimal_period}")
+
+    # important: define features in the EXACT order that was used to train the model
+    features = {
+        "lat": lat,
+        "ghi": ghi,
+        "fdir": fdir,
+        "north_slope": north_slope,
+        "east_slope": east_slope,
+        "elevation": elevation,
+    }
+    # snow variables are added only if snow shall actually be considered
+    if consider_snow:
+        if snowfall is None or snowcoverdays is None:
+            raise ValueError(
+                "snowfall and snowcoverdays must not be None when consider_snow is True."
+            )
+        features["snowfall"] = snowfall
+        features["snowcoverdays"] = snowcoverdays
+    # peakmonth is always considered
+    features["peakmonth"] = peakmonth
+
+    # align the feature values as arrays of same shape
+    *aligned_features, _scalar = _align_inputs(*features.values())
+    features = dict(zip(features.keys(), aligned_features))
+
+    # check features, first general no nan/inf check
+    for name, values in features.items():
+        if np.any(np.isinf(values)):
+            raise ValueError(f"{name} must not contain infinite values.")
+        if name not in ["snowcoverdays"] and np.any(np.isnan(values)):
+            # snowcoverdays may not have data on islands etc (is then treated as min = no snow by default), but all other features must not have NaN values
+            raise ValueError(f"{name} contains NaN values.")
+    # check allowed value ranges
+    if np.any((features["lat"] < -90) | (features["lat"] > 90)):
+        raise ValueError("lat values must be >= -90 and <= 90 degrees.")
+    if np.any(features["ghi"] < 0):
+        raise ValueError("ghi values must be >= 0.")
+    if np.any(
+        (features["north_slope"] <= -90)
+        | (features["north_slope"] >= 90)
+    ):
+        raise ValueError("north_slope values must be > -90 and < 90 degrees.")
+    if np.any(
+        (features["east_slope"] <= -90)
+        | (features["east_slope"] >= 90)
+    ):
+        raise ValueError("east_slope values must be > -90 and < 90 degrees.")
+    if np.any(
+        (features["peakmonth"] < 0)
+        | (features["peakmonth"] > 11)
+    ):
+        raise ValueError("peakmonth values must be between 0 (January) and 11 (December).")
+    if consider_snow:
+        if np.any(features["snowfall"] < 0):
+            raise ValueError("snowfall values must be >= 0.")
+        if np.any(
+            (features["snowcoverdays"] < 0)
+            | (features["snowcoverdays"] > 366)
+        ):
+            raise ValueError("snowcoverdays values must be >= 0 and <= 366.")
+
+    # select the appropriate pretrained model, get the path and load the model
+    model_paths = {
+        "annual" : {
+            True: {  # consider snow
+                True: (
+                    "/fast/central/projects/2020_c-winkler_phd/"
+                    "_01_LEAandCapacity/_03_CapacityPreprocessing/"
+                    "_02_pv_park_capacity_density/outputs/model/v20260828/"
+                    "CatBoostRegressionModel_DirectOptimalTilt_avgcf_"
+                    "v20260828_Consider_Snow_EffectsTrue_"
+                    "Bifaciality_Factor0.9_26-09-16_15h51m_"
+                    "mintilt10_FourthPass_Lossguide_model.cbm" # bifacial snow model
+                ),
+                False: None,  # TODO: add monofacial snow annual model
+            },
+            False: {  # no snow
+                True: None,   # TODO: add bifacial no-snow annual model
+                False: None,  # TODO: add monofacial no-snow annual model
+            },
+        },
+        "min_month" : {
+            True: {  # consider snow
+                True: None,  # TODO: add bifacial snow min_month model
+                False: None,  # TODO: add monofacial min_month snow model
+            },
+            False: {  # no snow
+                True: None,   # TODO: add bifacial no-snow min_month model
+                False: None,  # TODO: add monofacial no-snow min_month model
+            },
+        },
+    }
+
+    model_path = model_paths[optimal_period][consider_snow][bifacial]
+    if model_path is None:
+        raise NotImplementedError(
+            f"No CatBoost model is configured for optimal_period={optimal_period}, "
+            f"consider_snow={consider_snow}, bifacial={bifacial}."
+        )
+
+    model = CatBoostRegressor()
+    import time
+    _start = time.time()
+    model.load_model(model_path)
+    print(f"loading model took {time.time() - _start} seconds") #TODO remove the time log and import
+
+    # define an X vector with features in exact training order (!)
+    X = np.column_stack(tuple(features.values())).astype(
+        np.float32,
+        copy=False,
+    )
+
+    # predict the optimal module tilts
+    module_tilts = np.asarray(
+        model.predict(X),
+        dtype=float,
+    )
+    if not np.all(np.isfinite(module_tilts)):
+        raise ValueError(
+            "CatBoost model returned non-finite module tilt values."
+        )
+    
+    # the initial models were trained with a minimum absolute tilt of 10°
+    # enforce wherever the optimality surface yields values below that
+    too_flat = np.abs(module_tilts) < 10
+    if np.any(too_flat):
+        # replace by +/-10° depending on sign, ecxact 0° will become 10°
+        module_tilts[too_flat] = np.copysign(
+            10.0,
+            module_tilts[too_flat],
+        )
+
+    # the model tilts are to be applied in combination with GCR values according
+    # to the winter solstice rule with the following parameters
+    row_pitches, gcrs = location_to_gcr_and_row_pitch_winter_solstice_rule(
+        lats = features["lat"], 
+        module_tilts = module_tilts, 
+        north_slopes = features["north_slope"], 
+        solar_hour = 12, 
+        module_area_width = 3.3,
+        min_interrow_distance = 2.5
+        )
+    if not (np.all(np.isfinite(gcrs)) & np.all(gcrs >= 0)):
+        raise ValueError(
+            "location_to_gcr_and_row_pitch_winter_solstice_rule() returned non-finite or negative gcr values."
+        )
+    # also, a min. GCR of 0.169 was enforced during training
+    too_wide = gcrs < 0.169
+    if np.any(too_wide):
+        # replace by +/-10° depending on sign, ecxact 0° will become 10°
+        gcrs[too_wide] = np.copysign(
+            0.169,
+            gcrs[too_wide],
+        )
+
+    if _scalar:
+        # we had all scalar inputs, return as scalars as well
+        return module_tilts[0].item(), gcrs[0].item()
+
+    return module_tilts, gcrs
 
 
 def location_to_tracker_axis_azimuth(locs, convention:str="North", **kwargs):
