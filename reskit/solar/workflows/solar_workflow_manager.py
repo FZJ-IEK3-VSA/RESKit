@@ -279,10 +279,10 @@ class SolarWorkflowManager(WorkflowManager):
                 )
             elif conv == "tonita_et_al_2023":
                 iter_gcrs = rk_solar_core.system_design.location_to_gcr_tonita_et_al_2023(
-                    lat=self.locs.lats[mask],
-                    bifaciality_factor=self.plant_parameters_processed["bifaciality_factor"][mask],
-                    tracking=self.tracking,
-                    shading_loss=0.05,
+                    lat = self.locs.lats[mask], 
+                    bifaciality_factor = self.plant_parameters_processed["bifaciality_factor"][mask],
+                    tracking = self.tracking,
+                    shading_loss = 0.05,
                 )
             else:
                 raise NotImplementedError(
@@ -534,7 +534,6 @@ class SolarWorkflowManager(WorkflowManager):
             convention cannot provide a valid azimuth value for every affected
             placement.
         """
-
         # first save input to allow tracing the processing
         self.plant_parameters_raw["module_azimuth"] = module_azimuth
 
@@ -760,7 +759,7 @@ class SolarWorkflowManager(WorkflowManager):
         #TODO
 
         Parameters
-        -------
+        ----------
         ground_albedo : float, tuple, list
             * float : value will be set to all placements
             * tuple/list : Must then contain landcover dataset information and
@@ -1188,7 +1187,6 @@ class SolarWorkflowManager(WorkflowManager):
         [8]	Matthew J. Reno, Clifford W. Hansen and Joshua S. Stein, “Global Horizontal Irradiance Clear Sky Models: Implementation and Analysis” Sandia Report, (2012).
 
         """
-
         assert "apparent_solar_zenith" in self.sim_data, (
             "'apparent_solar_zenith' is a mandatory self.sim_data argument. Calculate e.g. via self.determine_solar_position()"
         )
@@ -3355,7 +3353,7 @@ class SolarWorkflowManager(WorkflowManager):
         # finally set the results as sim_data attributes
         _fix_bad_poa_and_set_attr(arr=poa_frontside, attr="poa_global_raw")
         _fix_bad_poa_and_set_attr(arr=poa_frontside_absorbed, attr="poa_global")
-
+        
         # set POA values for backside only when bifacial flag is True
         _fix_bad_poa_and_set_attr(arr=poa_backside, attr="poa_backside_global_raw")
         _fix_bad_poa_and_set_attr(arr=poa_backside_absorbed, attr="poa_backside_global")
@@ -3445,7 +3443,6 @@ class SolarWorkflowManager(WorkflowManager):
 
 
         """
-
         assert "poa_direct_raw" in self.sim_data
         assert "poa_ground_diffuse_raw" in self.sim_data
         assert "poa_sky_diffuse_raw" in self.sim_data
