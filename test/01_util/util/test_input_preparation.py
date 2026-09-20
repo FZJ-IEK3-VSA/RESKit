@@ -1,7 +1,12 @@
+import ast
+import inspect
+import sys
+import textwrap
+
 import pytest
 
 from reskit.weather import Era5Source
-from reskit.weather.Era5Source.Era5Prepare import _ERA5_NC_TO_TILE_LABEL
+from reskit.weather.era5_source.era5_prepare import _ERA5_NC_TO_TILE_LABEL, era5_variables
 from reskit.util.input_preparation import (
     _SOURCE_PREPARERS,
     _merge_dependencies,
@@ -45,20 +50,20 @@ def test_raw_variables_for_workflow_pv():
 
 
 def test_raw_variables_for_workflow_csp():
-    result = _raw_variables_for_workflow("CSP_PTR_ERA5")
+    result = _raw_variables_for_workflow("csp_ptr_era5")
     # CSP only passes 2m_temperature through raw; fdir and u10/v10 are preprocessed
     assert set(result) == {"t2m"}
 
 
 def test_raw_variables_solar_excludes_preprocessed():
-    for workflow in ("openfield_pv_era5", "CSP_PTR_ERA5"):
+    for workflow in ("openfield_pv_era5", "csp_ptr_era5"):
         result = _raw_variables_for_workflow(workflow)
         for preprocessed in ("ssrd", "fdir", "u10", "v10"):
             assert preprocessed not in result
 
 
 def test_solar_workflows_registered():
-    for workflow in ("openfield_pv_era5", "CSP_PTR_ERA5"):
+    for workflow in ("openfield_pv_era5", "csp_ptr_era5"):
         assert workflow in depends_on
         assert depends_on[workflow]["ERA5"]
 
@@ -82,11 +87,11 @@ def test_cooling_heating_workflows_registered():
 
 
 def test_csp_specific_dataset_registered():
-    assert "CSP_PTR_ERA5_specific_dataset" in depends_on
-    # same ERA5 needs as the CSP_PTR_ERA5 wrapper ...
-    assert depends_on["CSP_PTR_ERA5_specific_dataset"]["ERA5"] == depends_on["CSP_PTR_ERA5"]["ERA5"]
+    assert "csp_ptr_era5_specific_dataset" in depends_on
+    # same ERA5 needs as the csp_ptr_era5 wrapper ...
+    assert depends_on["csp_ptr_era5_specific_dataset"]["ERA5"] == depends_on["csp_ptr_era5"]["ERA5"]
     # ... but only the DNI raster (HTF selection, which needs TEMP, happens in the wrapper)
-    assert depends_on["CSP_PTR_ERA5_specific_dataset"]["GSA"] == ["DNI"]
+    assert depends_on["csp_ptr_era5_specific_dataset"]["GSA"] == ["DNI"]
 
 
 def test_merge_dependencies_single_workflow():
@@ -96,18 +101,18 @@ def test_merge_dependencies_single_workflow():
 
 
 def test_merge_dependencies_unions_across_workflows():
-    merged = _merge_dependencies(["openfield_pv_era5", "CSP_PTR_ERA5", "wind_era5_PenaSanchezDunkelWinklerEtAl2025"])
+    merged = _merge_dependencies(["openfield_pv_era5", "csp_ptr_era5", "wind_era5_PenaSanchezDunkelWinklerEtAl2025"])
     # union spans every source touched by the given workflows
     assert set(merged) == {"ERA5", "GSA", "GWA4"}
     # every variable of each input workflow is present in the union
-    for workflow in ("openfield_pv_era5", "CSP_PTR_ERA5", "wind_era5_PenaSanchezDunkelWinklerEtAl2025"):
+    for workflow in ("openfield_pv_era5", "csp_ptr_era5", "wind_era5_PenaSanchezDunkelWinklerEtAl2025"):
         for source, variables in depends_on[workflow].items():
             assert set(variables) <= set(merged[source])
 
 
 def test_merge_dependencies_deduplicates_preserving_order():
     # openfield_pv and CSP share several ERA5 variables; the union must not repeat them
-    merged = _merge_dependencies(["openfield_pv_era5", "CSP_PTR_ERA5"])
+    merged = _merge_dependencies(["openfield_pv_era5", "csp_ptr_era5"])
     for variables in merged.values():
         assert len(variables) == len(set(variables))
 
@@ -158,3 +163,109 @@ def test_ERA5_NC_TO_TILE_LABEL_ws100_label():
 
 def test_ERA5_NC_TO_TILE_LABEL_ssrd_t_adj_label():
     assert _ERA5_NC_TO_TILE_LABEL["ssrd_t_adj"] == "surface_solar_radiation_downwards.processed.t_adjusted"
+
+
+def test_every_downloadable_era5_variable_has_a_name_and_a_tile_label():
+    """A variable which prepare_era5() downloads must survive into a tile.
+
+    prepare_era5() downloads era5_variables when the caller gives no variables. A name
+    without a CDS_TO_NC_NAME entry or without a tile label is dropped without an error,
+    see era5_tiler() in reskit/weather/Era5Source/Era5Prepare.py.
+    """
+    for cds_name in era5_variables:
+        assert cds_name in Era5Source.CDS_TO_NC_NAME, f"{cds_name} has no NC short name"
+
+    for nc_name in Era5Source.raw_passthrough_variables(era5_variables):
+        assert nc_name in _ERA5_NC_TO_TILE_LABEL, f"{nc_name} has no tile label"
+
+
+# What the ERA5 preprocessing derives from the raw download, see _ERA5_NC_TO_TILE_LABEL
+# and preprocess_era5_data() in reskit/weather/Era5Source/Era5Prepare.py.
+_DERIVED_NC_NAMES = {
+    ("u100", "v100"): ["ws100", "wd100"],
+    ("u10", "v10"): ["ws10", "wd10"],
+    ("ssrd",): ["ssrd", "ssrd_t_adj"],
+    ("fdir",): ["fdir", "fdir_t_adj"],
+}
+
+_ERA5_WORKFLOWS = sorted(workflow for workflow in depends_on if "ERA5" in depends_on[workflow])
+
+
+def _prepared_nc_names(workflow):
+    """Give the NC names which a prepared ERA5 dataset of the workflow contains."""
+    cds_names = depends_on[workflow]["ERA5"]
+    downloaded = {Era5Source.CDS_TO_NC_NAME[name] for name in cds_names if name in Era5Source.CDS_TO_NC_NAME}
+
+    names = set(Era5Source.raw_passthrough_variables(cds_names))
+    for inputs, outputs in _DERIVED_NC_NAMES.items():
+        if set(inputs) <= downloaded:
+            names.update(outputs)
+    return names
+
+
+def _workflow_function(workflow):
+    """Find the function of a registered workflow name."""
+    for module_name, module in list(sys.modules.items()):
+        if not module_name.startswith("reskit"):
+            continue
+        function = getattr(module, workflow, None)
+        if callable(function) and getattr(function, "__module__", "").startswith("reskit"):
+            return function
+    raise AssertionError(f"no function found for the registered workflow {workflow!r}")
+
+
+def _era5_variables_read_by(function):
+    """Give the variables which the workflow reads from an ERA5 source."""
+    variables = []
+    for node in ast.walk(ast.parse(textwrap.dedent(inspect.getsource(function)))):
+        if not isinstance(node, ast.Call) or getattr(node.func, "attr", None) != "read":
+            continue
+        keywords = {keyword.arg: keyword.value for keyword in node.keywords}
+        source_type = keywords.get("source_type")
+        if not isinstance(source_type, ast.Constant) or source_type.value != "ERA5":
+            continue
+        given = keywords.get("variables")
+        if isinstance(given, ast.List):
+            variables += [element.value for element in given.elts if isinstance(element, ast.Constant)]
+    return variables
+
+
+def _nc_name_of(variable):
+    """Give the NC name which the standard loader of the variable reads.
+
+    Give None if the loader builds the name itself, as the wind speed loaders do. Those
+    loaders already raise an explicit RuntimeError when a component is absent.
+    """
+    loader = getattr(Era5Source, f"sload_{variable}", None)
+    if loader is None:
+        return None
+    for node in ast.walk(ast.parse(textwrap.dedent(inspect.getsource(loader)))):
+        if not isinstance(node, ast.Call) or getattr(node.func, "attr", None) != "load":
+            continue
+        given = list(node.args) + [keyword.value for keyword in node.keywords if keyword.arg == "variable"]
+        for argument in given:
+            if isinstance(argument, ast.Constant) and isinstance(argument.value, str):
+                return argument.value
+    return None
+
+
+@pytest.mark.parametrize("workflow", _ERA5_WORKFLOWS)
+def test_era5_dependencies_cover_the_variables_the_workflow_reads(workflow):
+    """A prepared ERA5 dataset must contain every variable which the workflow reads."""
+    available = _prepared_nc_names(workflow)
+
+    for variable in _era5_variables_read_by(_workflow_function(workflow)):
+        nc_name = _nc_name_of(variable)
+        if nc_name is None:
+            continue
+        assert nc_name in available, (
+            f"{workflow} reads '{variable}' ('{nc_name}'), but depends_on['{workflow}']['ERA5'] "
+            f"prepares only {sorted(available)}"
+        )
+
+
+@pytest.mark.parametrize("workflow", _ERA5_WORKFLOWS)
+def test_every_era5_dependency_has_a_tile_label(workflow):
+    """Every raw ERA5 variable of a workflow must have a tile label."""
+    for nc_name in Era5Source.raw_passthrough_variables(depends_on[workflow]["ERA5"]):
+        assert nc_name in _ERA5_NC_TO_TILE_LABEL

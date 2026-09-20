@@ -7,6 +7,7 @@ import pandas as pd
 import pytest
 
 from reskit import TEST_DATA
+from reskit.util import ResError
 from reskit.weather import Era5Source
 
 
@@ -19,6 +20,14 @@ def pt_Era5Source():
 def pt_BoundedEra5Source():
     aachenExt = gk.Extent.fromVector(gk._test_data_["aachenShapefile.shp"])
     return Era5Source(TEST_DATA["era5-like"], bounds=aachenExt, index_pad=1, verbose=False)
+
+
+def test_load_an_absent_variable_raises(pt_Era5Source):
+    """An absent variable must give an error which names it, not a bare assert."""
+    with pytest.raises(ResError) as error:
+        pt_Era5Source.load("not_a_variable")
+
+    assert "not_a_variable" in str(error.value)
 
 
 def test_Era5Source___init__():
@@ -371,6 +380,9 @@ def test_Era5Source_get(pt_Era5Source, pt_BoundedEra5Source):
     s1 = pt_Era5Source.get(var, pt, interpolation="bilinear")
     assert np.isclose(s1.values.mean(), 15.277533860286267)
 
+    s1 = pt_Era5Source.get(var, pt, interpolation="cubic")
+    assert np.isclose(s1.values.mean(), 15.298774201244854)
+
 
 def test_Era5Source_sload_snow_albedo(pt_Era5Source, pt_BoundedEra5Source):
     var = "snow_albedo"
@@ -446,3 +458,64 @@ def test_Era5Source_sload_snowfall_water_equivalent(pt_Era5Source, pt_BoundedEra
     assert pt_BoundedEra5Source.data[var].shape == a
     assert np.isclose(pt_BoundedEra5Source.data[var].mean(), b)
     assert np.isclose(pt_BoundedEra5Source.data[var][33, 1, 2], c)
+
+
+def _write_cf_era5_file(path, *, n_times=4):
+    """Write a small ERA5 file which uses the CF compliant 'valid_time' axis.
+
+    Returns the time stamps which the file holds.
+    """
+    import xarray as xr
+
+    times = pd.date_range("2015-01-01", periods=n_times, freq="h")
+    lat = np.array([52.0, 51.75, 51.5], dtype="f4")  # descending, as in a real download
+    lon = np.array([5.0, 5.25, 5.5], dtype="f4")
+    values = np.arange(n_times * lat.size * lon.size, dtype="f4").reshape(n_times, lat.size, lon.size)
+    ds = xr.Dataset(
+        {"sp": (("valid_time", "latitude", "longitude"), values, {"units": "Pa"})},
+        coords={"valid_time": times, "latitude": lat, "longitude": lon},
+    )
+    ds["valid_time"].encoding = {"units": "hours since 1900-01-01 00:00:00.0", "calendar": "gregorian"}
+    ds.to_netcdf(path)
+    return times
+
+
+def test_Era5Source_reads_a_cf_compliant_file(tmp_path):
+    """Era5Source must accept both ERA5 download formats, 'time' and 'valid_time'."""
+    path = tmp_path / "reanalysis-era5-single-levels.z4.x8.y5.y2015.surface_pressure.nc"
+    times = _write_cf_era5_file(path)
+
+    source = Era5Source(str(path), verbose=False)
+
+    assert source.time_name == "valid_time"
+    assert source.time_index.equals(pd.DatetimeIndex(times) - pd.Timedelta(minutes=30))
+
+    source.load("sp", "surface_pressure")
+    assert source.data["surface_pressure"].shape == (len(times), 3, 3)
+
+
+@pytest.mark.parametrize(
+    "bounds",
+    [
+        pytest.param((5.0, 49.0, 7.5, 52.0), id="exactly_the_data_extent"),
+        pytest.param((2.0, 46.0, 10.0, 55.0), id="larger_than_the_data_extent"),
+    ],
+)
+def test_bounds_covering_the_whole_extent_keep_the_whole_grid(bounds):
+    """Bounds with every cell inside them must not be cut down to a corner of the grid."""
+    unbounded = Era5Source(TEST_DATA["era5-like"], verbose=False)
+    source = Era5Source(TEST_DATA["era5-like"], bounds=gk.Extent(*bounds, srs=gk.srs.EPSG4326), verbose=False)
+
+    assert (source.lats == unbounded.lats).all()
+    assert (source.lons == unbounded.lons).all()
+
+    source.sload_surface_pressure()
+    assert source.data["surface_pressure"].shape[1:] == (unbounded.lats.size, unbounded.lons.size)
+
+
+def test_bounds_which_miss_the_data_raise():
+    """Bounds that do not overlap the data at all are a mistake, not an empty selection."""
+    with pytest.raises(ResError) as error:
+        Era5Source(TEST_DATA["era5-like"], bounds=gk.Extent(20.0, 49.0, 22.0, 52.0, srs=gk.srs.EPSG4326), verbose=False)
+
+    assert "do not overlap" in str(error.value)

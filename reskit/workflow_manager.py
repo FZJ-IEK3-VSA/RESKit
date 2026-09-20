@@ -1,28 +1,82 @@
 # import base packages
 import datetime
 import warnings
-from collections import OrderedDict  # TODO is this needed when
+from collections import OrderedDict
 from collections.abc import Iterable
 from glob import glob
-from os.path import basename, isdir, isfile, join
+from itertools import compress
 from numbers import Number
+from os.path import basename, isdir, isfile, join
 from types import FunctionType, NoneType
-from typing import (
-    List,
-    OrderedDict,
-    Union,
-)  # TODO remove OrderedDict here (duplicated with collections above?)
+from typing import List, Union
 
 # import third party packages
 import geokit as gk
 import numpy as np
 import pandas as pd
 import xarray
+from pandas.api.types import is_numeric_dtype
 
 from reskit import weather as rk_weather
 
 # import other modules
-from reskit.util.weather_tile import get_dataframe_with_weather_tilepaths
+from reskit.util.paths import as_path_string, is_path_like
+from reskit.util.weather_tile import get_location_specific_weather_paths
+
+
+# The smallest half width, in SRS units, which is added to a zero-width extent.
+_MIN_EXTENT_HALF_WIDTH = 1e-5
+
+
+def _check_coordinate_range(placements, column, minimum, maximum):
+    """Check that every coordinate of a placements column is finite and in range.
+
+    Parameters
+    ----------
+    placements : pandas.DataFrame
+        The placements table to check.
+
+    column : str
+        The name of the coordinate column, i.e. 'lon' or 'lat'.
+
+    minimum, maximum : float
+        The inclusive limits of the valid range.
+
+    Raises
+    ------
+    ValueError
+        If one or more values are outside the range, or are NaN, or are infinite.
+    """
+    values = pd.to_numeric(placements[column], errors="coerce")
+    invalid = ~values.between(minimum, maximum, inclusive="both")
+    if invalid.any():
+        offenders = ", ".join(f"{index}: {value}" for index, value in values[invalid].head(10).items())
+        raise ValueError(
+            f"All '{column}' values must be finite and between {minimum} and {maximum}. "
+            f"{int(invalid.sum())} of {len(values)} placements are invalid "
+            f"(index: value): {offenders}"
+        )
+
+
+def _expand_degenerate_bound(value):
+    """Expand a zero-width extent bound around one coordinate value.
+
+    The expansion is additive. A multiplicative expansion keeps a zero coordinate at zero.
+    This gives a degenerate extent which GeoKit rejects, e.g. for a single placement at
+    (0, 0). A multiplicative expansion also inverts the bounds of a negative coordinate.
+
+    Parameters
+    ----------
+    value : float
+        The coordinate value which is both the lower and the upper bound.
+
+    Returns
+    -------
+    tuple of float
+        The new lower bound and the new upper bound.
+    """
+    half_width = max(abs(value) * 1e-5, _MIN_EXTENT_HALF_WIDTH)
+    return value - half_width, value + half_width
 
 
 NUMPY_TYPE_EQUIVALENTS = {
@@ -89,9 +143,9 @@ class WorkflowManager:
             self.locs = gk.LocationSet(self.placements[["lon", "lat"]].values)            
 
         # limit the input placements longitude to range of -180...180
-        assert self.placements["lon"].between(-180, 180, inclusive="both").any()
+        _check_coordinate_range(self.placements, "lon", -180, 180)
         # limit the input placements latitude to range of -90...90
-        assert self.placements["lat"].between(-90, 90, inclusive="both").any()
+        _check_coordinate_range(self.placements, "lat", -90, 90)
 
         self.centerpoints = np.array([gk.geom.point(lon, lat, srs=_srs) for lon, lat in zip(self.placements["lon"], self.placements["lat"])])
 
@@ -99,23 +153,9 @@ class WorkflowManager:
         _bounds = list(self.locs.getBounds())
         # if no extension in lon and/or lat direction, create incremental artificial width
         if _bounds[0] == _bounds[2]:
-            _x = _bounds[0]
-            if _x != 0:
-                _bounds[0] = _x * 0.99999
-                _bounds[2] = _x * 1.00001
-            else:
-                # we have a single zero degree longitude, add a marginal buffer
-                _bounds[0] = _x + 0.00001
-                _bounds[2] = _x - 0.00001
+            _bounds[0], _bounds[2] = _expand_degenerate_bound(_bounds[0])
         if _bounds[1] == _bounds[3]:
-            _y = _bounds[1]
-            if _y != 0:
-                _bounds[1] = _y * 0.99999
-                _bounds[3] = _y * 1.00001
-            else:
-                # we have a single zero degree latitude, add a marginal buffer
-                _bounds[1] = _y + 0.00001
-                _bounds[3] = _y - 0.00001
+            _bounds[1], _bounds[3] = _expand_degenerate_bound(_bounds[1])
         # create extent attribute
         self.ext = gk.Extent(_bounds, srs=_srs)
 
@@ -511,7 +551,8 @@ class WorkflowManager:
                 variables,
             ]
 
-        if isinstance(source, str) and source_type != "user":
+        if is_path_like(source) and source_type != "user":
+            source = as_path_string(source)
             storage_format = kwargs.pop("storage_format", None)
             is_zarr = storage_format == "zarr" or source.endswith(".zarr") or source.startswith("gs://")
             if source_type == "ERA5":
@@ -587,6 +628,9 @@ class WorkflowManager:
         """
         Auxiliary function to extract raster values with NaN fallback options.
         """
+        # geokit before 1.7 opens only string paths; a pathlib.Path (what reskit.data
+        # returns) would be handed back unopened and fail inside rasterInfo().
+        fp = as_path_string(fp)
         assert isfile(fp), f"File '{fp}' in adjust_variable_to_long_run_average() does not exist."
         # execute with warnings filter since values outside of source data would trigger geokit UserWarning every time
         with warnings.catch_warnings():
@@ -693,11 +737,16 @@ class WorkflowManager:
         WorkflowManager
             Returns the invoking WorkflowManager (for chaining)
         """
-        if not (nodata_fallback is None or callable(nodata_fallback) or isinstance(nodata_fallback, (float, int, str))):
+        if not (
+            nodata_fallback is None
+            or callable(nodata_fallback)
+            or isinstance(nodata_fallback, (float, int))
+            or is_path_like(nodata_fallback)
+        ):
             raise TypeError(f"'nodata_fallback' must be a float or a Callable.")
 
         # first get source values
-        if isinstance(source_long_run_average, str):
+        if is_path_like(source_long_run_average):
             # assume raster fp
             source_lra = self.get_scalar_values_from_raster(
                 fp=source_long_run_average, spatial_interpolation="linear-spline"
@@ -706,7 +755,7 @@ class WorkflowManager:
             source_lra = source_long_run_average
 
         # then get lng-run average values for scaling
-        if isinstance(real_long_run_average, str):
+        if is_path_like(real_long_run_average):
             # assume a raster path
             real_lra = self.get_scalar_values_from_raster(
                 fp=real_long_run_average, spatial_interpolation=spatial_interpolation
@@ -740,7 +789,7 @@ class WorkflowManager:
                 fallback_lra = nodata_fallback(
                     locs=self.locs, source_long_run_average_value=source_lra
                 )  # no additional scaling
-            elif isinstance(nodata_fallback, str):
+            elif is_path_like(nodata_fallback):
                 # assume this is yet another raster path as fallback and extract missing values
                 fallback_lra = (
                     self.get_scalar_values_from_raster(fp=nodata_fallback, spatial_interpolation=spatial_interpolation)
@@ -798,7 +847,7 @@ class WorkflowManager:
             [description], by default "linear-spline"
         """
         # Get values from high resolution tiff file
-        if isinstance(source_high_resolution, str):
+        if is_path_like(source_high_resolution):
             points = [(loc.lon, loc.lat) for loc in self.locs._locations]
             correction_values_high_res = gk.raster.interpolateValues(  # TODO change here
                 source_high_resolution, points, mode=spatial_interpolation
@@ -808,7 +857,7 @@ class WorkflowManager:
             correction_values_high_res = source_high_resolution
 
         # Get values from low resolution tiff file (meant over eg. ERA5)
-        if isinstance(source_low_resolution, str):
+        if is_path_like(source_low_resolution):
             points = [(loc.lon, loc.lat) for loc in self.locs._locations]
             correction_values_low_res = gk.raster.interpolateValues(  # TODO change here
                 source_low_resolution, points, mode=spatial_interpolation
@@ -931,45 +980,53 @@ class WorkflowManager:
             raise TypeError(
                 "output_variables must be None, a string, or an iterable of strings."
             )
+
         # required variables
-        required_variables  = ["RESKit_sim_order"]
+        required_variables = ["RESKit_sim_order"]
 
         times = self.time_index
         if times[0].tz is not None:
             times = [np.datetime64(dt.tz_convert("UTC").tz_convert(None)) for dt in times]
         times_days = np.unique(pd.DatetimeIndex(times).date).astype("datetime64")
+
+        # Old tiles may be shifted by one hour, causing the last day of the
+        # previous year to appear. Do not silently modify the time axis.
         if times_days[0].astype("datetime64[Y]") != times_days[-1].astype("datetime64[Y]"):
-            # old tiles where shifted by 1 hour, so the last day of the previous year also appears. catch this problem whti this if clause
-            times_days = times_days[1:]
+            raise ValueError(
+                "The daily time coordinates span multiple years. "
+                "This may indicate an old tile shifted by one hour, causing the "
+                "last day of the previous year to appear in the time index."
+            )
+
         xds = OrderedDict()
         encoding = dict()
 
-        if "location_id" in self.placements.columns:
-            location_coords = self.placements["location_id"].copy()
-            del self.placements["location_id"]
+        # work on a copy, exporting must not change the state of the WorkflowManager
+        placements = self.placements
+        if "location_id" in placements.columns:
+            location_coords = placements["location_id"].copy()
+            placements = placements.drop(columns=["location_id"])
         else:
-            location_coords = np.arange(self.placements.shape[0])
+            location_coords = np.arange(placements.shape[0])
 
         # write placements
-        for c in self.placements.columns:
-            # check if c in requestet output_variables
+        for c in placements.columns:
+            # check if c in requested output_variables
             if selected_variables is not None:
                 if c not in selected_variables and c not in required_variables:
                     continue
-            if np.issubdtype(self.placements[c].dtype, np.number):
-                write = True
-            else:
-                write = True
-                for element in self.placements[c]:
-                    if not isinstance(element, (str, bytearray)):
-                        write = False
-                        break
-            if write:
-                xds[c] = xarray.DataArray(
-                    self.placements[c],
-                    dims=["location"],
-                    coords=dict(location=location_coords),
-                )
+
+            column = placements[c]
+
+            if not is_numeric_dtype(column):
+                if not all(isinstance(x, (str, bytearray)) for x in column):
+                    continue
+
+            xds[c] = xarray.DataArray(
+                column.to_numpy(),
+                dims=["location"],
+                coords=dict(location=location_coords),
+            )
 
         # write preprocessed plant parameters
         if hasattr(self, "plant_parameters_processed"):
@@ -977,58 +1034,117 @@ class WorkflowManager:
                 if selected_variables is not None:
                     if par not in selected_variables and par not in required_variables:
                         continue
+
                 # value should be an array and have only datatypes which can be written to NETCDF/Zarr via xarray
                 if not isinstance(val, np.ndarray):
-                    raise TypeError(f"self.plant_parameters_processed['{par}'] data is not a np.array.")
-                if not all(isinstance(x, (Number, str, bytes, bytearray)) for x in val.flat):
+                    raise TypeError(
+                        f"self.plant_parameters_processed['{par}'] data is not a np.array."
+                    )
+
+                if not all(
+                    isinstance(x, (Number, str, bytes, bytearray))
+                    for x in val.flat
+                ):
                     # at least one datatype cannot be written, skip this parameter
-                    print(f"Parameter '{par}' contains non-number/string/bytes datatypes and cannot be written to output dataset, skip.")
+                    print(
+                        f"Parameter '{par}' contains non-number/string/bytes "
+                        "datatypes and cannot be written to output dataset, skip."
+                    )
                     continue
+
                 # value may be of different shapes and dimensions
                 if val.ndim == 1:
-                    if not len(val) == self.locs.count: # should then be one per loc
-                        raise ValueError(f"self.plant_parameters_processed['{par}'] is a 1D np.array but its length ({len(val)}) does not match the number of locations ({self.locs.count}).")
+                    if not len(val) == self.locs.count:  # should then be one per loc
+                        raise ValueError(
+                            f"self.plant_parameters_processed['{par}'] is a 1D "
+                            f"np.array but its length ({len(val)}) does not match "
+                            f"the number of locations ({self.locs.count})."
+                        )
+
                     # save with locations as sole dimension
                     xds[par] = xarray.DataArray(
                         val,
                         dims=["location"],
                         coords=dict(location=location_coords),
-                    ) 
+                    )
+
                 elif val.ndim == 2:
                     # could be different coordinate dimensions
-                    if val.shape == self._sim_shape_[::-1]: #TODO the dimensions of plant_parameters_processed are currently inverted compared to sim_data, consider aligning them
-                        # data is time- and location dependent like sim data (N_timesteps, N_locs)
+                    if val.shape == self._sim_shape_[::-1]:
+                        # TODO the dimensions of plant_parameters_processed are currently
+                        # inverted compared to sim_data, consider aligning them
+
+                        # data is time- and location dependent like sim data
+                        # (N_timesteps, N_locs)
                         xds[par] = xarray.DataArray(
-                            np.transpose(val), # transposed because of the inverted coordinate dimensions, see #TODO above
+                            np.transpose(val),
+                            # transposed because of the inverted coordinate dimensions,
+                            # see TODO above
                             dims=["time", "location"],
-                            coords=dict(time=times, location=location_coords),
+                            coords=dict(
+                                time=times,
+                                location=location_coords,
+                            ),
                         )
+
                     elif val.shape[0] == self.locs.count:
                         if not val.shape[1] > 1:
-                            raise ValueError(f"self.plant_parameters_processed['{par}'] is a 2D np.array with width = 1, store as 1D array instead.")
-                        # we have a 2D array with the correct number of placements but the width differs from the No. of timesteps
-                        if par in ["horizon_profile", "distant_horizon_profile", "local_horizon_profile"]:
-                            # expected for horizon profiles, width describes the length of the profile (No. of sampling points)
+                            raise ValueError(
+                                f"self.plant_parameters_processed['{par}'] is a "
+                                "2D np.array with width = 1, store as 1D array instead."
+                            )
+
+                        # we have a 2D array with the correct number of placements but
+                        # the width differs from the No. of timesteps
+                        if par in [
+                            "horizon_profile",
+                            "distant_horizon_profile",
+                            "local_horizon_profile",
+                        ]:
+                            # expected for horizon profiles, width describes the length
+                            # of the profile (No. of sampling points)
                             xds[par] = xarray.DataArray(
                                 val,
                                 dims=["location", "azimuth_bins"],
-                                coords=dict(location=location_coords, azimuth_bins=np.arange(0, 360, 360/val.shape[1]))
-                                )
+                                coords=dict(
+                                    location=location_coords,
+                                    azimuth_bins=np.arange(
+                                        0,
+                                        360,
+                                        360 / val.shape[1],
+                                    ),
+                                ),
+                            )
                         else:
-                            raise ValueError(f"self.plant_parameters_processed['{par}'] is a 2D np.array with unknown width ({val.shape[1]}) which does not match the number of timesteps: {self._sim_shape_[0]} ")
+                            raise ValueError(
+                                f"self.plant_parameters_processed['{par}'] is a "
+                                f"2D np.array with unknown width ({val.shape[1]}) "
+                                "which does not match the number of timesteps: "
+                                f"{self._sim_shape_[0]} "
+                            )
                     else:
-                        raise ValueError(f"self.plant_parameters_processed['{par}'] has unknown shape: {val.shape} ")
+                        raise ValueError(
+                            f"self.plant_parameters_processed['{par}'] has "
+                            f"unknown shape: {val.shape} "
+                        )
                 else:
-                    raise ValueError(f"self.plant_parameters_processed['{par}'] has unknown dimensionality: {val.ndim}D (shape {val.shape})")
+                    raise ValueError(
+                        f"self.plant_parameters_processed['{par}'] has unknown "
+                        f"dimensionality: {val.ndim}D (shape {val.shape})"
+                    )
 
         # write sim_data
         for key in self.sim_data.keys():
-            # check if key in requestet output_variables
+            # check if key in requested output_variables
             if selected_variables is not None:
                 if key not in selected_variables and key not in required_variables:
                     continue
 
-            tmp = np.full((len(self.time_index), self.locs.count), 0.0, dtype=float)
+            tmp = np.full(
+                (len(self.time_index), self.locs.count),
+                0.0,
+                dtype=float,
+            )
             tmp[self._time_sel_, :] = self.sim_data[key]
 
             xds[key] = xarray.DataArray(
@@ -1041,18 +1157,24 @@ class WorkflowManager:
         # write sim_data_daily, only if exists
         if hasattr(self, "sim_data_daily"):
             for key in self.sim_data_daily.keys():
-                # check if key in requestet output_variables
-                if output_variables is not None:
-                    if key not in output_variables:
+                # check if key in requested output_variables
+                if selected_variables is not None:
+                    if key not in selected_variables and key not in required_variables:
                         continue
 
-                tmp = np.full((len(times_days), self.locs.count), np.nan) #TODO check if non-zero timeseries can be handled differently (e.g. albedo should not be zero at night)
+                tmp = np.full(
+                    (len(times_days), self.locs.count),
+                    np.nan,
+                )
                 tmp[:, :] = self.sim_data_daily[key]
 
                 xds[key] = xarray.DataArray(
                     tmp,
                     dims=["time_days", "location"],
-                    coords=dict(time_days=times_days, location=location_coords),
+                    coords=dict(
+                        time_days=times_days,
+                        location=location_coords,
+                    ),
                 )
                 encoding[key] = dict(zlib=True)
 
@@ -1223,6 +1345,9 @@ def distribute_workflow(
     assert isinstance(placements, pd.DataFrame)
     assert ("lon" in placements.columns and "lat" in placements.columns) or ("geom" in placements.columns)
 
+    # work on a copy, the caller's placements table must not be changed by this function
+    placements = placements.copy()
+
     # Split placements into groups
     if "geom" in placements.columns:
         locs = gk.LocationSet(placements)
@@ -1281,8 +1406,10 @@ def load_workflow_result(datasets, loader=xarray.load_dataset, sortby="location"
         else:
             datasets = glob(datasets)
 
-    if len(datasets) == 1:
-        ds = xarray.load_dataset(datasets[0]).sortby("locations")
+    if len(datasets) == 0:
+        raise ValueError("No workflow result files were found to load.")
+    elif len(datasets) == 1:
+        ds = loader(datasets[0])
     else:
         ds = xarray.concat(map(loader, datasets), dim="location")
 
@@ -1296,6 +1423,7 @@ def execute_workflow_iteratively(
     workflow,
     weather_path_varname,
     zoom=None,
+    location_specific_workflow_args={},
     **workflow_args,
 ):
     """
@@ -1312,70 +1440,173 @@ def execute_workflow_iteratively(
     zoom : int, optional
         The zoom level of the weather tiles, required only if <X-TILE> or <Y-TILE> in weather path.
 
+    location_workflow_args : dict, optional
+        Dict with location-specific arguments of the "workflow" as keys, and the respective arg
+        value as values. The values are expected to be at least 1d iterables, with the first
+        dimension matching the number of locations in length. The values of this iterable will
+        then be applied per location along this axis.
+        # NOTE: This does not apply to a "placements" dataframe; pass as "workflow_arg" below if required
+
     **workflow_args
         Passed on to the workflow specified above. Must contain ''placements'' and the above
         weather_path_varname as keys.
     """
-    # check key inputs
-    assert callable(workflow), f"workflow must be a callable RESkit workflow function."
-    assert "placements" in workflow_args.keys(), f"'placements' is a mandatory argument/key in workflow_args"
-    assert weather_path_varname in workflow_args.keys(), (
-        f"weather_path_varname ('{weather_path_varname}')  must be a key in workflow_args."
-    )
+    # CHECK INPUTS
 
-    # extract data needed for placement preparation
+    assert callable(workflow), "workflow must be a callable RESkit workflow function."
+    assert isinstance(location_specific_workflow_args, dict), "location_specific_workflow_args must be a dict."
+    assert isinstance(weather_path_varname, str), f"weather_path_varname ({weather_path_varname}) must be str."
+
+    assert "placements" in workflow_args, "'placements' is a mandatory argument/key in workflow_args."
     placements = workflow_args["placements"]
-    if "output_netcdf_path" in workflow_args.keys():
-        output_netcdf_path = workflow_args["output_netcdf_path"]
-    else:
-        output_netcdf_path = None
-    if "output_variables" in workflow_args.keys():
-        output_variables = workflow_args["output_variables"]
-    else:
-        output_variables = None
+    assert isinstance(placements, pd.DataFrame), f"placements must be a pd.DataFrame, here: {type(placements)}"
+    # generate and write copy back into argy to not manipulate the original
+    placements = placements.copy()
+    workflow_args["placements"] = placements
 
-    # possibly generate dataframe from single locations and add actual weather filepath where needed
-    if weather_path_varname not in placements.columns:
-        weather_path = workflow_args[weather_path_varname]
-        placements = get_dataframe_with_weather_tilepaths(placements=placements, weather_path=weather_path, zoom=zoom)
+    # make sure that the location specific args are ordered iterables and match the locations in shape
+    location_specific_workflow_args = location_specific_workflow_args.copy()  # may be manipulated later
+    for _arg, _val in location_specific_workflow_args.items():
+        if isinstance(_val, set):
+            raise TypeError("A set cannot be a positional argument because it is unordered.")
+        if isinstance(_val, str) or not isinstance(_val, Iterable):
+            raise TypeError(
+                f"Location-specific workflow arg '{_arg}' must be an iterable with length equal to placements, pass scalar values as workflow arg."
+            )
+        try:
+            n = len(_val)
+        except TypeError:
+            raise TypeError(
+                f"Location-specific workflow arg '{_arg}' must be an iterable with a defined first dimension."
+            )
+        if n != len(placements):
+            raise ValueError(
+                f"Location-specific workflow arg '{_arg}' has first-dimension length {n}, expected {len(placements)}."
+            )
+
+    # avoid duplicate argument values
+    workflow_keys = set(workflow_args)
+    location_specific_keys = set(location_specific_workflow_args)
+    placement_keys = set(placements.columns)
+    dups = (
+        (workflow_keys & location_specific_keys)
+        | (workflow_keys & placement_keys)
+        | (location_specific_keys & placement_keys)
+    )
+    if dups:
+        raise KeyError(
+            "Workflow arguments must be defined only once across workflow_args, "
+            "location_specific_workflow_args, and placements.columns. "
+            f"Duplicates: {', '.join(sorted(dups))}"
+        )
+
+    # ADD INDEX TO PRESERVE/RESTORE ORDER AFTER BATCHWISE ITERATION
+
+    # add an iterable with the current order so it can be restored afterwards
     if "RESKit_sim_order" in placements.columns:
         # make sure it is a consecutive integer sequence
         if not np.array_equal(placements["RESKit_sim_order"], np.arange(len(placements))):
-            raise ValueError("If placements dataframe has a 'RESKit_sim_order' column, it must contain a consecutive integer sequence.")                              
+            raise ValueError(
+                "If placements dataframe has a 'RESKit_sim_order' column, it must contain a consecutive integer sequence."
+            )
     else:
         # add, is mandatory for later recombination of placements and results
         with pd.option_context("mode.chained_assignment", None):
             placements.loc[placements.index, "RESKit_sim_order"] = range(len(placements))
 
-    # remove output saving for the iterative function execution of sub dfs
-    workflow_args.update({"output_netcdf_path": None})
-    # iterate over weather tiles
-    for i, tilepath in enumerate(placements["source"].unique()):
+    # REMOVE ARGS WHICH ARE NOT MEANT FOR THE ITERATIVE WORKFLOW EXECUTION
+
+    # extract the overall save_args of to_netcdf() before iteration over tiles
+    save_args = {}
+    for k in ["output_netcdf_path", "output_variables", "custom_attributes"]:
+        assert k not in location_specific_keys and k not in placement_keys, (
+            f"'{k}' must be a workflow arg if defined, cannot be a location-specific arg or a placements column name."
+        )
+        # remove the saving-related args (which should not be passed to individual iterations over tiles) and store them in save args instead
+        save_args[k] = workflow_args.pop(k, None)
+
+    # PREPROCESS THE WEATHER TILE PATHS
+
+    assert weather_path_varname in workflow_keys | location_specific_keys | placement_keys, (
+        f"weather_path_varname '{weather_path_varname}' must be either a key in workflow_args or location_specific_workflow_args, or a placements df column."
+    )
+    # get the weather path data
+    containers = {
+        "location_specific_workflow_args": location_specific_workflow_args,
+        "workflow_args": workflow_args,
+        "placements": placements,
+    }
+    for weather_path_source, cont in containers.items():
+        if weather_path_varname in cont:
+            weather_path = cont.pop(weather_path_varname)
+            break
+    assert isinstance(weather_path, str) or (
+        isinstance(weather_path, (list, tuple, np.ndarray, pd.Series)) and all(isinstance(x, str) for x in weather_path)
+    ), "weather_path must be a str or an ordered iterable of str."
+    # broadcast it to one value per location if not provided as such
+    try:
+        weather_paths = np.broadcast_to(
+            weather_path,
+            (len(placements),),
+        ).tolist()
+    except ValueError:
+        raise ValueError(f"'{weather_path_varname}' must be scalar or have length {len(placements)}.")
+    # get a locations iterable
+    if "geom" in placements:
+        locs = placements["geom"].to_list()
+    elif "lon" in placements and "lat" in placements:
+        locs = list(zip(placements.lon, placements.lat))
+    else:
+        raise AttributeError(f"placements is expected to have a 'geom' column or both 'lat' and 'lon'columns.")
+    # now complete the paths by replacing potential spacers based on the respective locations and zoom value
+    tilepaths = np.asarray(get_location_specific_weather_paths(weather_paths=weather_paths, locs=locs, zoom=zoom))
+
+    # ITERATIVELY SIMULATE FOR EVERY WEATHER TILEPATH
+
+    # extract unique weather tiles and iterate over them
+    unique_tilepaths = sorted(np.unique(tilepaths))
+    for i, tilepath in enumerate(unique_tilepaths):
         # generate a mask for the placements covered by this tile
-        tilemask = placements["source"].eq(tilepath).to_numpy()
-        # iterate over the workflow args, whenever the data is obviously per tile, reduce to only the selected placements
+        tilemask = tilepaths == tilepath
+        # mask the placements dataframe to filter affected rows
+        _placements = placements.loc[tilemask].copy()
+        # create a copy of the workflow args for this tilepath only
         _workflow_args = workflow_args.copy()
+        # add the tilepath for the current iteration
+        if weather_path_source == "placements":
+            # keep weather data in placements if it was extracted from there, workflow may expect that
+            _placements[weather_path_varname] = tilepath
+        else:
+            # else write into workflow args
+            _workflow_args[weather_path_varname] = tilepath
+        # iterate over the global workflow args and change only the "special cases"
         for _arg, _val in workflow_args.items():
             if _arg == "placements":
                 # reduce placements to subset within the current tile
-                _workflow_args[_arg] = placements.loc[tilemask]
-            elif _arg == weather_path_varname:
-                # set the current weather path tile path
-                _workflow_args[_arg] = tilepath
+                _workflow_args[_arg] = _placements
             else:
-                # check if we have an iterable with values per loc which we might have to mask as well
-                try:
-                    _arr  = np.array(_val)
-                    if _arr.ndim > 0 and _arr.shape[0] == len(placements):
-                        # we have an iterable argument with obviously 1 val per loc
-                        # reduce to only the affected location values and update in _workflow_args per tile
-                        _workflow_args[_arg] = _arr[tilemask, ...] # mask only the first dimension, leave all others as is
-                except Exception:
-                    pass # no need to update anything
+                # we can use it as it is, it is a standard "global" arg across all locs
+                pass
+        # now iterate over the location-specific args and select only those values that apply to the tile subset of the placements df
+        for _arg, _val in location_specific_workflow_args.items():
+            # mask the iterable just like the placements
+            if isinstance(_val, np.ndarray):
+                _val = _val[tilemask]  # apply mask on first dimension
+            elif isinstance(_val, list):
+                _val = list(compress(_val, tilemask))
+            elif isinstance(_val, tuple):
+                _val = tuple(compress(_val, tilemask))
+            elif isinstance(_val, (pd.Series, pd.DataFrame)):
+                _val = _val.iloc[tilemask]
+            else:
+                raise TypeError(f"Unknown iterable type for location-specific workflow arg '{_arg}': {type(_val)}")
+            # add the reduced iterable to the final workflow args
+            _workflow_args[_arg] = _val
+
         # execute workflow with subset and add to list of results
         print(
             datetime.datetime.now(),
-            f"Now processing tile {i + 1}/{len(placements['source'].unique())} with {len(_workflow_args['placements'])} locations: {tilepath}",
+            f"Now processing tile {i + 1}/{len(unique_tilepaths)} with {len(_placements)} locations: {tilepath}",
         )
         xrds = workflow(**_workflow_args)
         xrds = xrds.set_index(location="RESKit_sim_order")
@@ -1384,12 +1615,14 @@ def execute_workflow_iteratively(
         else:
             reskit_xr = xarray.concat([reskit_xr, xrds], dim="location")
 
+    # SAVE OR COMPLETE XARRAY
+
     # create a dummy wfm instance for saving
+    reskit_xr = reskit_xr.sortby("location")
     wfm = WorkflowManager(placements=placements.drop(columns="RESKit_sim_order"))
-    wfm.to_netcdf(
+    reskit_xr = wfm.to_netcdf(
         xds=reskit_xr,
-        output_netcdf_path=output_netcdf_path,
-        output_variables=output_variables,
+        **save_args,  # pass output path and variables if given
     )
 
     return reskit_xr

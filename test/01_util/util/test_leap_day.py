@@ -19,7 +19,7 @@ def test_remove_leap_day():
     # Test pandas Series
     series_8784 = pd.Series(
         array_8784,
-        index=pd.date_range("01-01-2000 00:00:00", "31-12-2000 23:00:00", freq="H"),
+        index=pd.date_range("01-01-2000 00:00:00", "31-12-2000 23:00:00", freq="h"),
     )
 
     fixed_array = remove_leap_day(series_8784)

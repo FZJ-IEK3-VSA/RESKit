@@ -5,15 +5,16 @@ import xarray as xr
 import os
 import geokit as gk
 import time
+import warnings
 from datetime import datetime
 
-from .egs_workflow_manager import EGS_workflowmanager
+from .egs_workflow_manager import EGSWorkflowManager
 
 from ..data import path_temperatures
 from ..data import path_heat_flow_sustainable_W_per_m2
 
 
-def EGSworkflow(
+def egs_workflow(
     placements: pd.DataFrame,
     sourceTemperature=path_temperatures,
     sourceSustainableHeatflow=path_heat_flow_sustainable_W_per_m2,
@@ -41,22 +42,21 @@ def EGSworkflow(
         None or xarray object: Workflow results, optionally saved to `savepath`.
 
     Citation:
-         Franzmann, David and Heinrichs, Heidi and Stolten, Detlef, Global Electricity Potentials
-         from Geothermal Power Under Technical, Economic, Sustainable Evaluation. Available at SSRN:
-         https://ssrn.com/abstract=5029989 or http://dx.doi.org/10.2139/ssrn.5029989
+         Franzmann, D., Heinrichs, H. and Stolten, D. (2025), Global geothermal electricity
+         potentials: A technical, economic, and thermal renewability assessment.
+         Renewable Energy 250, 123199. https://doi.org/10.1016/j.renene.2025.123199
     """
     citation = """
     This workflow can be cited as:
-    Franzmann, David and Heinrichs, Heidi
-    and Stolten, Detlef, Global Electricity Potentials from Geothermal Power
-    Under Technical, Economic, Sustainable Evaluation.
-    Available at SSRN: https://ssrn.com/abstract=5029989
-    or http://dx.doi.org/10.2139/ssrn.5029989
+    Franzmann, D., Heinrichs, H. and Stolten, D. (2025), Global geothermal
+    electricity potentials: A technical, economic, and thermal renewability
+    assessment. Renewable Energy 250, 123199.
+    https://doi.org/10.1016/j.renene.2025.123199
     """
 
     print(citation)
 
-    wfm = EGS_workflowmanager(placements=placements)
+    wfm = EGSWorkflowManager(placements=placements)
 
     ### data loading
     tic_data_loading = time.time()
@@ -121,5 +121,27 @@ def EGSworkflow(
         return output
 
 
+##########################
+# DEPRECATED NAMES (#226) #
+##########################
+# The names below were renamed for PEP 8 in RESKit v0.6.0. Each old name stays
+# available as a warning wrapper until v1.0.0. Do not add new code here.
+
+
+def EGSworkflow(*args, **kwargs):
+    """
+    Deprecated alias of :func:`egs_workflow`.
+
+    Kept for backward compatibility and scheduled for removal in RESKit v1.0.0.
+    Use :func:`egs_workflow` instead. All arguments are passed through unchanged.
+    """
+    warnings.warn(
+        "EGSworkflow() is deprecated and will be removed in RESKit v1.0.0. Use egs_workflow() instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return egs_workflow(*args, **kwargs)
+
+
 if __name__ == "__main__":
-    print("\nThis is not an executable file. Pls run EGSworkflow(args)\n")
+    print("\nThis is not an executable file. Pls run egs_workflow(args)\n")

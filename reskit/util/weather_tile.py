@@ -3,11 +3,12 @@ from copy import copy
 import geokit as gk
 import osgeo
 import pandas as pd
+import re
 from smopy import deg2num
 import numpy as np
 
 
-def get_tile_XY(zoom, lon=None, lat=None, geom=None):
+def get_tile_xy(zoom, lon=None, lat=None, geom=None):
     """
     Returns the X/Y id of the respective tile for a given
     latitude and longitude and tile No.
@@ -66,105 +67,103 @@ def get_tile_XY(zoom, lon=None, lat=None, geom=None):
     return (X, Y)
 
 
-def get_dataframe_with_weather_tilepaths(placements, weather_path, zoom):
+def get_tilepath(weather_path, lat=None, lon=None, zoom=None):
     """
-    This method will generate a dataframe from a list of input placements
-    and add the link to the corresponding weather data tile in a new dataframe
-    column 'source'.
+    Returns a tilepath with potential <X-TILE> and <Y-TILE> as well 
+    as <ZOOM> spacers replaced by the respective values based on 
+    latitude, longitude and zoom level.
 
-    placements : pd.DataFrame with 'geom' column and osgeo.ogr.Geometry point
-    objects in EPSG:4326 or 'lat' and 'lon' columns with degrees in EPSG:4326.
-    weather_path : The path to the tilepath or a dummy path containing '<X-TILE>'
-    and '<Y-TILE>', optionally also <ZOOM> as spacers. These will be replaced by
-    the actual tile ID in x and y direction, plus zoom value if applicable.
-    weather_path can also be None only if 'source' is an existing attribute of the
-    placements dataframe, the column values will be assumed as existing filepaths
-    of weather data tiles then.
-    in placements dataframe or if no '<ZOOM>' spacer in weather_path.
+    weather_path : str
+        The base path, may contain '<X-TILE>', '<Y-TILE>' and '<ZOOM>
+        spacers which will be replaced.
+    lat : int | float | None, optional
+        The latitude in degrees, takes effect only if weather_path
+        contains spacers. By default None.
+    lon : int | float | None, optional
+        The longitude in degrees, takes effect only if weather_path
+        contains spacers. By default None.
+    zoom : int | None, optional
+        The zoom level at which the tiling was done, takes effect
+        only if weather_path contains spacers. By default None.
+
+    Returns
+    -------
+        str : weather_path with all spacers replaced by the respective
+              values
     """
-    if not isinstance(placements, pd.DataFrame):
-        if not hasattr(placements, "__iter__"):
-            raise TypeError(f"If placements is not a pd.DataFrame, it must be an iterable.")
-        # we definitely have an iterator at hand, unpack and check of what types
-        if all([isinstance(x, tuple) and all([isinstance(latlon, (float, int)) for latlon in x]) for x in placements]):
-            # we have lon and lat values at hand, generate two lon/lat columns
-            lons, lats = zip(*placements)
-            placements = pd.DataFrame()
-            placements["lon"] = lons
-            placements["lat"] = lats
-        elif all([isinstance(x, osgeo.ogr.Geometry) for x in placements]):
-            assert all(
-                [
-                    x.GetSpatialReference() is None or x.GetSpatialReference().IsSame(gk.srs.loadSRS(4326))
-                    for x in placements
-                ]
-            ), f"All srs of objects in placements must be EPSG:4326"
-            assert all(["POINT" in x.GetGeometryName() for x in placements]), f"All geometries must be POINT features."
-            # we have geometries, create a geom column and extract lat/lon
-            _placements = copy(placements)
-            placements = pd.DataFrame()
-            placements["geom"] = _placements
-            placements["lon"] = placements["geom"].apply(lambda x: x.GetX())
-            placements["lat"] = placements["geom"].apply(lambda x: x.GetY())
+    if "<X-TILE>" in weather_path or "<Y-TILE>" in weather_path or "<ZOOM>" in weather_path:
+        assert isinstance(zoom, int) and zoom > 0, (
+            f"zoom must be a positive integer tiling level if weather_path contains X/Y spacers"
+        )
+        assert isinstance(lat, (int, float, np.number)), (
+            f"lat must be a float or integer degree if weather_path contains X/Y spacers"
+        )
+        assert isinstance(lon, (int, float, np.number)), (
+            f"lon must be a float or integer degree if weather_path contains X/Y spacers"
+        )
+        _X, _Y = get_tile_xy(zoom=zoom, lon=lon, lat=lat, geom=None)
+        weather_path = (
+            weather_path.replace("<X-TILE>", str(_X)).replace("<Y-TILE>", str(_Y)).replace("<ZOOM>", str(zoom))
+        )
+    # make sure we got all spacers
+    spacers = re.findall(r"<[^>]*>", weather_path)
+    if len(spacers) > 0:
+        raise ValueError(
+            f"weather_path still contains spacer after replacing '<X-TILE>', '<Y-TILE>' and '<ZOOM>': {', '.join(spacers)}"
+        )
+    return weather_path
+
+
+def get_location_specific_weather_paths(weather_paths, locs, zoom=None):
+    """
+    Generate an iterable with one path per location, replacing potential
+    spacers with location-specific data.#
+
+    weather_paths : str | list[str]
+        A str filepath or a list thereof, with spacers '<X-TILE>',
+        '<Y-TILE>' and '<ZOOM> allowed. Length must match the length
+        of locs if provided as a list.
+    locs : list[tuple] | geokit.LocationSet
+
+    Returns
+    -------
+        list[str] : List of completed weather paths, specific for and in
+        the same order as the locations
+    """
+    # check inputs
+    if isinstance(locs, gk.LocationSet):
+        locs = locs._locations
+    if isinstance(locs, tuple) or isinstance(locs, str) or not hasattr(locs, "__iter__"):
+        raise TypeError(f"weather_paths must be an iterable but not a str or tuple.")
+    if isinstance(weather_paths, str):
+        weather_paths = [weather_paths] * len(locs)
+    elif not isinstance(weather_paths, list):
+        raise TypeError("weather_paths must be a list of str if not a str.")
+    if not all([isinstance(x, str) for x in weather_paths]):
+        raise TypeError("All values in weather_paths must be str.")
+    if not len(weather_paths) == len(locs):
+        raise ValueError(f"weather_paths and locs must have the same length if weather_paths is given as a list.")
+
+    # define a container for completed weather paths and fill iteratively
+    out = []
+    for wp, loc in zip(weather_paths, locs):
+        if isinstance(loc, tuple):
+            # assume we have a (lon, lat) tuple in EPSG:4326
+            lon, lat = loc
+        elif isinstance(loc, osgeo.ogr.Geometry):
+            assert loc.GetGeometryName() == "POINT", (
+                f"loc must be a POINT geometry if provided as osgeo.ogr.Geometry, here: {loc.GetGeometryName()}"
+            )
+            loc = gk.geom.transform(loc, toSRS=4326)
+            lon = loc.GetX()
+            lat = loc.GetY()
+        elif isinstance(loc, gk.Location):
+            # is always in EPSG:4326
+            lon = loc.lon
+            lat = loc.lat
         else:
-            raise TypeError(
-                f"If placements is an iterator, it must contain either (lon, lat) tuples or osgeo.ogr.Geometry point geometries in EPS:4326."
-            )
-    else:
-        # we have a df, make sure the necessary data is available and add lat/lon where needed
-        assert "geom" in placements.columns or all([c in placements.columns for c in ["lon", "lat"]]), (
-            f"pd.DataFrame must contain 'geom' or 'lat' and 'lon' columns."
-        )
-        if "RESKit_sim_order" in placements.columns:
-            assert (placements["RESKit_sim_order"].to_numpy() == np.arange(len(placements))).all(), (
-                "'RESKit_sim_order' must equal range(len(placements))"
-            )
-        if not "lon" in placements.columns:
-            placements["lon"] = placements.geom.apply(lambda x: x.GetX())
-        if not "lat" in placements.columns:
-            placements["lat"] = placements.geom.apply(lambda x: x.GetY())
+            raise TypeError(f"Unknown loc type: {type(loc)}")
+        # now complete the weather path with location data
+        out.append(get_tilepath(weather_path=wp, lat=lat, lon=lon, zoom=zoom))
 
-    # get the actual weather tilepath
-    def _get_tilepath(weather_path, zoom, lat, lon):
-        if "<X-TILE>" in weather_path or "<Y-TILE>" in weather_path:
-            assert isinstance(zoom, int), (
-                f"zoom must be a positive integer tiling level if weather_path contains X/Y spacers"
-            )
-            _X, _Y = get_tile_XY(zoom=zoom, lon=lon, lat=lat, geom=None)
-            return weather_path.replace("<X-TILE>", str(_X)).replace("<Y-TILE>", str(_Y)).replace("<ZOOM>", str(zoom))
-        else:
-            return weather_path
-
-    if weather_path is None:
-        # the info must already be in the dataframe then
-        assert "source" in placements.columns, (
-            f"weather_path is None yet no 'source' attribute in placements dataframe."
-        )
-        if any([_str in _fp for _str in ["<X-TILE>", "<Y-TILE>", "<ZOOM>"] for _fp in placements.source]):
-            # overwrite source attributes with specific tilepaths
-            print(f"NOTE: 'source' attributes will be overwritten with specific filepath!")
-            placements["source"] = placements.apply(
-                lambda x: _get_tilepath(weather_path=x.source, zoom=zoom, lon=x.lon, lat=x.lat).replace(
-                    "<ZOOM>", str(zoom)
-                ),
-                axis=1,
-            )
-    else:
-        # make sure we have no source column to avoid overwriting data
-        assert not "source" in placements.columns, (
-            f"If weather_path is given, placements must not have a 'source' attribute already"
-        )
-
-        # add source column with the actual tile filepaths
-        with pd.option_context("mode.chained_assignment", None):
-            placements["source"] = placements.apply(
-                lambda x: _get_tilepath(
-                    weather_path=weather_path, zoom=zoom, lon=x.lon, lat=x.lat
-                ),
-                axis=1,
-        )
-
-    # add an id column to ensure correct order preservation
-    # placements["RESKit_sim_order"] = range(len(placements)) #TODO remove
-
-    return placements
+    return out

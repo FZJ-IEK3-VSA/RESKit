@@ -1,5 +1,7 @@
 import copy
+from pathlib import Path
 
+import geokit as gk
 import numpy as np
 import pandas as pd
 import pytest
@@ -14,7 +16,7 @@ alternative_wind_speed_rasters = {
 }
 
 
-def test_WindWorkflowManager___init__():
+def _make_WindWorkflowManager():
     placements = pd.DataFrame()
     placements["lon"] = [
         6.083,
@@ -68,8 +70,13 @@ def test_WindWorkflowManager___init__():
     return man
 
 
-def test_WindWorkflowManager_with_ws___init__():
-    man = test_WindWorkflowManager___init__()
+def test_WindWorkflowManager___init__():
+    """Run _make_WindWorkflowManager(), which other tests use as a factory."""
+    _make_WindWorkflowManager()
+
+
+def _make_WindWorkflowManager_with_ws():
+    man = _make_WindWorkflowManager()
     # generate random wind data for only 24 hrs and add to manager
     np.random.seed(seed=12345)
     wind_speeds = np.random.randint(0, 16, size=(24, len(man.placements)))
@@ -79,9 +86,14 @@ def test_WindWorkflowManager_with_ws___init__():
     return man
 
 
+def test_WindWorkflowManager_with_ws___init__():
+    """Run _make_WindWorkflowManager_with_ws(), which other tests use as a factory."""
+    _make_WindWorkflowManager_with_ws()
+
+
 @pytest.fixture
 def pt_WindWorkflowManager_initialized() -> WindWorkflowManager:
-    return test_WindWorkflowManager___init__()
+    return _make_WindWorkflowManager()
 
 
 def test_WindWorkflowManager_set_roughness(pt_WindWorkflowManager_initialized):
@@ -92,11 +104,13 @@ def test_WindWorkflowManager_set_roughness(pt_WindWorkflowManager_initialized):
     assert (man.placements["roughness"] == roughnesses).all()
 
 
+@pytest.mark.parametrize("raster_input", [str, Path, gk.raster.loadRaster], ids=["str", "path", "dataset"])
 def test_WindWorkflowManager_estimate_roughness_from_land_cover(
     pt_WindWorkflowManager_initialized,
+    raster_input,
 ):
     man = pt_WindWorkflowManager_initialized
-    man.estimate_roughness_from_land_cover(rk.TEST_DATA["clc-aachen_clipped.tif"], source_type="clc")
+    man.estimate_roughness_from_land_cover(raster_input(rk.TEST_DATA["clc-aachen_clipped.tif"]), source_type="clc")
     assert (man.placements["roughness"] == [0.5, 0.0005, 0.03, 0.03, 0.3]).all()
 
 
@@ -177,7 +191,7 @@ def test_WindWorkflowManager_project_windspeeds_to_hub_height(
 
     man.project_windspeeds_to_hub_height(
         height_scaling_method=("log", "cci"),
-        height_scaling_data=TEST_DATA["ESA_CCI_2018_clip.tif"],
+        height_scaling_data=TEST_DATA["ESA_CCI_2015_clip.tif"],
         consider_boundary_layer_height=False,
     )
 
@@ -206,7 +220,7 @@ def test_WindWorkflowManager_convolute_power_curves(pt_WindWorkflowManager_initi
 
 def test_WindWorkflowManager_apply_wake_correction_of_wind_speeds():
     # first without any "wake_curve"
-    man = test_WindWorkflowManager_with_ws___init__()
+    man = _make_WindWorkflowManager_with_ws()
     assert not "wake_curve" in man.placements.columns
     man.apply_wake_correction_of_wind_speeds(wake_curve=None)
 
@@ -216,7 +230,7 @@ def test_WindWorkflowManager_apply_wake_correction_of_wind_speeds():
     ).all()
 
     # now with scalar "wake_curve" function arg
-    man = test_WindWorkflowManager_with_ws___init__()
+    man = _make_WindWorkflowManager_with_ws()
     assert not "wake_curve" in man.placements.columns
     man.apply_wake_correction_of_wind_speeds(wake_curve="dena_mean")
 
@@ -226,7 +240,7 @@ def test_WindWorkflowManager_apply_wake_correction_of_wind_speeds():
     ).all()
 
     # and last with location-specific column value
-    man = test_WindWorkflowManager_with_ws___init__()
+    man = _make_WindWorkflowManager_with_ws()
     man.placements["wake_curve"] = None
     man.placements.loc[2, "wake_curve"] = "dena_mean"
     man.apply_wake_correction_of_wind_speeds(wake_curve=None)
@@ -322,4 +336,25 @@ def test_WindWorkflowManager_mixed_values___init___():
     assert (man.placements["rotor_diam"] == placements["rotor_diam"]).all()
     assert (man.placements["powerCurve"] == ["SPC:138,25", "SPC:207,25", "SPC:275,25", "V117-3300", "SPC:413,25"]).all()
 
-    return man
+
+@pytest.mark.parametrize("max_batch_size", [0, -1, -10])
+def test_WindWorkflowManager_simulate_rejects_a_non_positive_batch_size(pt_WindWorkflowManager_loaded, max_batch_size):
+    # an integer zero passed the old check and later caused a division by zero
+    with pytest.raises(ValueError):
+        pt_WindWorkflowManager_loaded.simulate(max_batch_size=max_batch_size)
+
+
+@pytest.mark.parametrize("max_batch_size", [1.5, "3", True, False, [3]])
+def test_WindWorkflowManager_simulate_rejects_a_wrong_batch_size_type(pt_WindWorkflowManager_loaded, max_batch_size):
+    with pytest.raises(TypeError):
+        pt_WindWorkflowManager_loaded.simulate(max_batch_size=max_batch_size)
+
+
+def test_WindWorkflowManager_simulate_accepts_a_batch_size_above_the_placement_count(
+    pt_WindWorkflowManager_loaded,
+):
+    # a batch size above the placement count is limited to the placement count
+    man = pt_WindWorkflowManager_loaded
+    man.simulate(max_batch_size=1000)
+
+    assert np.isclose(man.sim_data["capacity_factor"].mean(), 0.4845642857142858)

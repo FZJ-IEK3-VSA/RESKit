@@ -25,7 +25,7 @@ def pt_wind_placements() -> pd.DataFrame:
     return df
 
 
-def test_WorkflowManager___init__():
+def _make_WorkflowManager():
     placements = pd.DataFrame()
     placements["lon"] = [
         6.083,
@@ -72,9 +72,14 @@ def test_WorkflowManager___init__():
     return man
 
 
+def test_WorkflowManager___init__():
+    """Run _make_WorkflowManager(), which other tests use as a factory."""
+    _make_WorkflowManager()
+
+
 @pytest.fixture
 def pt_WorkflowManager_initialized() -> WorkflowManager:
-    return test_WorkflowManager___init__()
+    return _make_WorkflowManager()
 
 
 def test_WorkflowManager_set_time_index(
@@ -665,3 +670,121 @@ def test_execute_workflow_iteratively(pt_wind_placements):
     assert np.isclose(gen.capacity_factor.min(), 0.0)
     assert np.isclose(gen.capacity_factor.max(), 0.99326205)
     assert np.isclose(gen.capacity_factor.std(), 0.35040166)
+
+
+def _mock_workflow(calls: list):
+    """A minimal stand-in for a RESKit workflow: records the arguments it was called
+    with and returns a dataset shaped like a real workflow result.
+    """
+
+    def mock_workflow(placements, mock_path, **kwargs):
+        sim_order = placements["RESKit_sim_order"].to_numpy()
+        calls.append(dict(placements=placements.copy(), mock_path=mock_path, **kwargs))
+        return xarray.Dataset(
+            data_vars={"capacity_factor": (("time", "location"), np.tile(sim_order, (3, 1)).astype(float))},
+            coords={
+                "time": pd.date_range("2020-01-01", periods=3, freq="h"),
+                "RESKit_sim_order": ("location", sim_order),
+            },
+        )
+
+    return mock_workflow
+
+
+@pytest.fixture
+def iterative_placements():
+    return pd.DataFrame(
+        {
+            "lon": np.linspace(6.0, 6.5, 6),
+            "lat": np.linspace(50.0, 50.5, 6),
+        },
+        index=[10, 30, 20, 60, 40, 50],
+    )
+
+
+def test_execute_workflow_iteratively_location_specific_args(iterative_placements):
+    """Placements are batched per weather tile and location-specific args are sliced along."""
+    calls = []
+    n = len(iterative_placements)
+    # spread the placements over two tiles in an alternating fashion, i.e. the tile
+    # subsets are the even and the odd rows and thus not contiguous blocks
+    even, odd = np.arange(0, n, 2), np.arange(1, n, 2)
+    profiles = np.arange(n * 3).reshape(n, 3)
+    series = pd.Series(np.arange(n) * 1.5, index=["f", "d", "b", "e", "c", "a"])
+    frame = pd.DataFrame(profiles, index=series.index, columns=["a", "b", "c"])
+
+    result = execute_workflow_iteratively(
+        workflow=_mock_workflow(calls),
+        weather_path_varname="mock_path",
+        zoom=None,
+        location_specific_workflow_args=dict(
+            as_array=np.arange(n) * 10,
+            as_profiles=profiles,  # one timeseries per location
+            as_list=list(range(n)),
+            as_tuple=tuple(range(n)),
+            as_series=series,
+            as_frame=frame,
+        ),
+        # workflow_args:
+        placements=iterative_placements,
+        # one tile path per location, alternating between the two tiles
+        mock_path=["tile_a.nc", "tile_b.nc"] * 3,
+        global_arg="same for all locations",
+    )
+
+    # one call per tile, each with the placements and arg values of that tile only
+    assert len(calls) == 2
+    assert {c["mock_path"] for c in calls} == {"tile_a.nc", "tile_b.nc"}
+    rows_by_tile = {"tile_a.nc": even, "tile_b.nc": odd}
+    for call in calls:
+        rows = rows_by_tile[call["mock_path"]]
+        assert call["placements"]["RESKit_sim_order"].tolist() == rows.tolist()
+        assert call["as_array"].tolist() == (rows * 10).tolist()
+        assert call["as_list"] == rows.tolist()
+        assert isinstance(call["as_list"], list)
+        assert call["as_tuple"] == tuple(rows)
+        assert isinstance(call["as_tuple"], tuple)
+        pd.testing.assert_series_equal(call["as_series"], series.iloc[rows])
+        pd.testing.assert_frame_equal(call["as_frame"], frame.iloc[rows])
+        # only the first dimension is sliced, the per-location timeseries stay intact
+        np.testing.assert_array_equal(call["as_profiles"], profiles[rows])
+        # args that are not location-specific are passed on untouched
+        assert call["global_arg"] == "same for all locations"
+
+    # the tile results are recombined into a single dataset, indexed by simulation order
+    assert result["capacity_factor"].shape == (3, n)
+    assert sorted(result["location"].to_numpy().tolist()) == list(range(n))
+    np.testing.assert_array_equal(
+        result["capacity_factor"].sel(location=np.arange(n)).to_numpy(),
+        np.tile(np.arange(n), (3, 1)),
+    )
+
+
+@pytest.mark.parametrize(
+    "location_specific_workflow_args, error, message",
+    [
+        (dict(global_arg=np.arange(6)), KeyError, "Duplicates: global_arg"),
+        (dict(too_short=np.arange(5)), ValueError, "first-dimension length 5, expected 6"),
+        (dict(a_scalar=42), TypeError, "must be an iterable"),
+        (dict(a_set=set(range(6))), TypeError, "set cannot be"),
+        ([np.arange(6)], AssertionError, "must be a dict"),
+    ],
+)
+def test_execute_workflow_iteratively_invalid_location_specific_args(
+    iterative_placements, location_specific_workflow_args, error, message
+):
+    calls = []
+
+    with pytest.raises(error, match=message):
+        execute_workflow_iteratively(
+            workflow=_mock_workflow(calls),
+            weather_path_varname="mock_path",
+            zoom=None,
+            location_specific_workflow_args=location_specific_workflow_args,
+            # workflow_args:
+            placements=iterative_placements,
+            mock_path="tile.nc",
+            global_arg="same for all locations",
+        )
+
+    assert calls == [], "no workflow should have been executed for invalid inputs"

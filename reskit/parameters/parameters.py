@@ -6,7 +6,6 @@ import pandas as pd
 
 # other modules
 from reskit.wind.core.data import DATAFOLDER
-from reskit.default_paths import DEFAULT_PATHS
 
 
 class Parameters:
@@ -110,29 +109,33 @@ class Parameters:
                 )
             params_df.set_index("year", inplace=True)
 
+            # drop the nameless columns which pandas creates from a written row index
+            _unnamed = [_col for _col in params_df.columns if str(_col).startswith("Unnamed:")]
+            if _unnamed:
+                params_df = params_df.drop(columns=_unnamed)
+
             # check the csv columns, must all be baseline plant attrs
             def _return_colum_type(_param):
-                try:
-                    # check if we have a plant parameter
-                    assert (_param in getattr(subclass, "mand_args")) or (_param in getattr(subclass, "opt_args"))
+                """Classify a csv column as 'parameter', 'unit' or 'other'."""
+                _mand_args = getattr(subclass, "mand_args")
+                _opt_args = getattr(subclass, "opt_args")
+                if (_param in _mand_args) or (_param in _opt_args):
+                    # we have a plant parameter
                     return "parameter"
-                except:
-                    try:
-                        # check if we have a plant parameter unit
-                        assert (_param.strip("_unit") in getattr(subclass, "mand_args")) or (
-                            _param.strip("_unit") in getattr(subclass, "opt_args")
-                        )
+                if _param.endswith("_unit"):
+                    # we may have a plant parameter unit
+                    _base = _param[: -len("_unit")]
+                    if (_base in _mand_args) or (_base in _opt_args):
                         return "unit"
-                    except:
-                        return "other"
+                return "other"
 
-            # check and fail if not a param or unit
+            # check and fail if not a parameter or a unit
             for _param in params_df.columns:
                 if _param == "remarks":
                     # skip remarks column
                     continue
-                elif not _return_colum_type(_param) in ["param", "unit"]:
-                    AttributeError(
+                elif _return_colum_type(_param) not in ["parameter", "unit"]:
+                    raise AttributeError(
                         f"Baseline plant parameter csv column '{_param}' is not an attribute of '{subclass.__class__.__name__}'."
                     )
 
@@ -263,13 +266,9 @@ class OnshoreParameters(Parameters):
             raise TypeError(f"constant_rotor_diam must be a boolean.")
         self.constant_rotor_diam = constant_rotor_diam
 
-        # determine the parameter data file
+        # determine the parameter data file: the baseline RESKit ships unless one is given
         if fp is None:
-            # use the default file
-            if DEFAULT_PATHS["baseline_onshore_turbine_definition_path"] is None:
-                fp = os.path.join(DATAFOLDER, "baseline_turbine_onshore_RybergEtAl2019.csv")
-            else:
-                fp = DEFAULT_PATHS["baseline_onshore_turbine_definition_path"]
+            fp = os.path.join(DATAFOLDER, "baseline_turbine_onshore_RybergEtAl2019.csv")
 
         # extract baseline params from file
         self.load_and_set_custom_params(fp=fp, year=year, subclass=self, **kwargs)
@@ -345,12 +344,9 @@ class OffshoreParameters(Parameters):
             raise TypeError(f"constant_rotor_diam must be a boolean.")
         self.constant_rotor_diam = constant_rotor_diam
 
+        # determine the parameter data file: the baseline RESKit ships unless one is given
         if fp is None:
-            # use the default file
-            if DEFAULT_PATHS["baseline_offshore_turbine_definition_path"] is None:
-                fp = os.path.join(DATAFOLDER, "baseline_turbine_offshore_CaglayanEtAl2019.csv")
-            else:
-                fp = DEFAULT_PATHS["baseline_offshore_turbine_definition_path"]
+            fp = os.path.join(DATAFOLDER, "baseline_turbine_offshore_CaglayanEtAl2019.csv")
 
         # extract json params from file
         self.load_and_set_custom_params(fp=fp, year=year, subclass=self, **kwargs)

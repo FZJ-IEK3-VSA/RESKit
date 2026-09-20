@@ -3,4 +3,4 @@ recursive-include reskit/util *
 recursive-include reskit/weather *
 recursive-include reskit/wind *
 recursive-include reskit/solar *
-recursive-include reskit/_test *
+recursive-include reskit/data *

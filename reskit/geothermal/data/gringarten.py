@@ -4,7 +4,7 @@ import pandas as pd
 import os
 
 
-class gringarten:
+class Gringarten:
     # water properties
     rho_water = 1000  # kg/m^3
     cp_water = 4186  # J/kgK
@@ -23,9 +23,9 @@ class gringarten:
         self.z = z
 
         self.x_ED = x_ED
-        self.getNFracs()
+        self.get_n_fracs()
 
-    def getNFracs(self):
+    def get_n_fracs(self):
         if self.x_ED == "inf":
             n_Fracs = 1
         else:
@@ -40,7 +40,7 @@ class gringarten:
         # x_E = self.x / (2*n_Fracs)
         # x_ED = (self.rho_water * self.cp_water) / self.K_rock * self.Vdot_total / (n_Fracs * self.y * self.z) * x_E
 
-    def getDimlessTime(self, time):
+    def get_dimless_time(self, time):
         self.time = time
         t_D = (
             (self.rho_water * self.cp_water) ** 2
@@ -50,7 +50,7 @@ class gringarten:
         )
         self.t_D = t_D
 
-    def getGringartenCurve(self, path=None):
+    def get_gringarten_curve(self, path=None):
         if path is None:
             path = os.path.join(os.path.abspath(os.path.dirname(__file__)), "Gringartencurve.xlsx")
 
@@ -80,7 +80,7 @@ class gringarten:
 
         self.T_D = T_D
 
-    def getWaterTemp(self, T_Rock, T_Inj):
+    def get_water_temp(self, T_Rock, T_Inj):
         self.T_Rock = T_Rock
         self.T_Inj = T_Inj
 
@@ -91,7 +91,7 @@ class gringarten:
 
         self.T_out = T_water_outlet
 
-    def getEGSProps(self, timestep=None):
+    def get_egs_props(self, timestep=None):
         dt = self.time[1] - self.time[0]
         Qdot_water = self.Vdot_total * self.rho_water * self.cp_water * (self.T_out - self.T_Inj)
         Q_water = Qdot_water.cumsum(axis=2) * dt
@@ -145,7 +145,7 @@ class gringarten:
 
         return output
 
-    def getResourceUseTime(self, T_abandon):
+    def get_resource_use_time(self, T_abandon):
         """Returns the time in years, after which the reservoir is depleted (if enough time steps are given)
 
         Parameters
@@ -172,9 +172,9 @@ class gringarten:
 if __name__ == "__main__":
     SECONDS_PER_YEAR = 365 * 24 * 3600
     # unit tests
-    grin = gringarten(50e-3, 1000, 1000, 1000, 2)
+    grin = Gringarten(50e-3, 1000, 1000, 1000, 2)
     assert np.isclose(grin.n_Fracs, 8.9 / 2, rtol=0.01)  # from augstine with different mass flow
-    grin.getDimlessTime(
+    grin.get_dimless_time(
         np.array(
             [
                 1 * 365 * 24 * 3600,

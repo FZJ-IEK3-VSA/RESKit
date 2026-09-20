@@ -7,10 +7,10 @@ import geokit as gk
 import time
 from datetime import datetime
 
-from ..data.gringarten import gringarten
+from ..data.gringarten import Gringarten
 
 
-class EGS_workflowmanager:
+class EGSWorkflowManager:
     SECONDS_PER_YEAR = 365 * 24 * 3600
     USD2EUR = 0.88  # EUR
     rho_water = 1000  # kg/m^3
@@ -433,7 +433,7 @@ class EGS_workflowmanager:
         z = self.data["z_m"]  # m
         x_ED = self.data["x_ED_1"]  # 1
 
-        grin = gringarten(
+        grin = Gringarten(
             Vdot_total=Vdot_total,
             x=x,
             y=y,
@@ -442,11 +442,11 @@ class EGS_workflowmanager:
         )
 
         num_of_timesteps = 1000  # self.data['lifetime_a']
-        grin.getDimlessTime(np.linspace(1, num_of_timesteps, num_of_timesteps) * self.SECONDS_PER_YEAR)
-        grin.getGringartenCurve()
-        grin.getWaterTemp(self.sim_data["temperature"], self.data["T_inj"])
-        ans = grin.getEGSProps(timestep=self.data["lifetime_a"])
-        resource_use_time_a = grin.getResourceUseTime(T_abandon=self.data["minRockTemperature_degC"])
+        grin.get_dimless_time(np.linspace(1, num_of_timesteps, num_of_timesteps) * self.SECONDS_PER_YEAR)
+        grin.get_gringarten_curve()
+        grin.get_water_temp(self.sim_data["temperature"], self.data["T_inj"])
+        ans = grin.get_egs_props(timestep=self.data["lifetime_a"])
+        resource_use_time_a = grin.get_resource_use_time(T_abandon=self.data["minRockTemperature_degC"])
 
         # calc eta
         eta = self.data["eta_plant"](ans["T_Water_out"])  # average temperature over lifetime
@@ -748,7 +748,7 @@ class EGS_workflowmanager:
             Parameters
             ----------
             placements : pd.Dataframe
-                placement file from EGS_workflowmanager
+                placement file from EGSWorkflowManager
 
             Returns
             -------
@@ -786,9 +786,11 @@ class EGS_workflowmanager:
 
             if filetype.lower() == ".shp":
                 # do shapefile
-                self.placements["geom"] = self.placements[["lon", "lat"]].apply(
-                    lambda x: gk.geom.point(x[0], x[1]), axis=1
-                )
+
+                self.placements["geom"] = [
+                    gk.geom.point(row.lon, row.lat) for row in self.placements[["lon", "lat"]].itertuples()
+                ]
+
                 gk.vector.createVector(self.placements, savepath)
             elif filetype.lower() == ".nc4":
                 # do netcdf4
@@ -1002,4 +1004,4 @@ class EGS_workflowmanager:
 
 
 if __name__ == "__main__":
-    print("\nThis is not an executable file. Pls run EGSworkflow(args)\n")
+    print("\nThis is not an executable file. Pls run egs_workflow(args)\n")

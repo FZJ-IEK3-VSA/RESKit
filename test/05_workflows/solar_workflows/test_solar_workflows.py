@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import geokit as gk
 import numpy as np
 import pandas as pd
@@ -21,7 +23,9 @@ def pt_pv_placements() -> pd.DataFrame:
 
 @pytest.fixture
 def pt_pv_placements_Zimbabwe() -> pd.DataFrame:
-    df = pd.read_csv(TEST_DATA["module_placements_cityBulawayoInZimbabwa.csv"])
+    # Keep numerical regression inputs independent of administrative boundary updates.
+    # See data/bulawayo/README.md for their provenance.
+    df = pd.read_csv(Path(__file__).parents[1] / "data" / "bulawayo" / "pv_placements.csv")
 
     return df
 

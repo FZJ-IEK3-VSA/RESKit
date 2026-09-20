@@ -90,6 +90,11 @@ def location_to_module_tilt(
         Suggested tilt angle at each of the provided `locs`.
         Has the same length as the number of `locs`.
 
+    Raises
+    ------
+    ResError
+        If `convention` is not a string, or if it is not a known convention.
+
     Notes
     -----
     "Ryberg2020"
@@ -100,6 +105,12 @@ def location_to_module_tilt(
     .. [1] TODO: Cite future Ryberg2020 publication
 
     """
+    if not isinstance(convention, str):
+        raise ResError(f"Tilt convention must be a string, but is: {type(convention)}")
+
+    if convention not in _TILT_CONVENTIONS:
+        raise ResError(f"Tilt convention must be one of {', '.join(_TILT_CONVENTIONS)}, but is: {convention}")
+
     locs = gk.LocationSet(locs)
 
     if not isinstance(convention, str):

@@ -12,35 +12,28 @@ build:
     python: mambaforge-latest
   jobs:
     pre_build:
-      # Generate the Sphinx configuration for this Jupyter Book so it builds.
-      # - "jupyter-book config sphinx . --toc docs/_toc.yml --config docs/_config.yml"
-      - echo "Start creation of config.py"
-      # - jupyter-book config sphinx --toc docs/_toc.yaml --config docs/_config.yaml .readthedocs.yaml
       - conda run --name $READTHEDOCS_VERSION pip install -e . --no-deps
-      - conda run --name $READTHEDOCS_VERSION jupyter-book config sphinx .
-      - echo "Creation of config.py is terminated"
-      - cat conf.py
-      - echo "conf.py content printed"
+      - conda list -n $READTHEDOCS_VERSION
+      # Execute the example notebooks in parallel before the build. mkdocs-jupyter
+      # is configured with execute:false and renders these outputs; docs/hooks.py
+      # stages examples/ into docs/examples/ during the build.
+      #
+      # --workers is pinned rather than left at the script's default of
+      # cpu_count()-1: os.cpu_count() reports the build host's CPUs, not the
+      # container's quota, so the default oversubscribes and the kernels thrash.
+      #
+      # Notebooks needing credentials (CDS / Earth Data Hub), a large ERA5
+      # download, or a purchased power-curve dataset are excluded by the
+      # script's own defaults, as is one recipe notebook whose paths are
+      # placeholders; see DEFAULT_EXCLUDED in docs/scripts/execute_notebooks.py.
+      - conda run --name $READTHEDOCS_VERSION python docs/scripts/execute_notebooks.py --workers 2
+
     build:
       html:
-        - conda list
-        - ls -lR
-        - echo $READTHEDOCS_OUTPUT
-        # by the time of testing $READTHEDOCS_OUTPUT=_readthedocs
-        # For local execution paste the following command from an activated environment
-        # sphinx-build -vvv -T -b html --jobs auto -D language=en . _readthedocs/html
-        - conda run --name $READTHEDOCS_VERSION sphinx-build -vvv -T -b html --jobs auto -D language=en . $READTHEDOCS_OUTPUT/html
-        - ls -lR
+        - conda run --name $READTHEDOCS_VERSION mkdocs build --site-dir $READTHEDOCS_OUTPUT/html
+
 conda:
   environment: requirements.yml
 
-# Build documentation in the "docs/" directory with Sphinx
-sphinx:
-  configuration: conf.py
-  builder: html
-  fail_on_warning: false
-# Optionally build your docs in additional formats such as PDF and ePub
-# formats:
-#    - pdf
-#    - epub
-
+mkdocs:
+  configuration: mkdocs.yml

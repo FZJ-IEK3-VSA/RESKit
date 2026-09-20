@@ -92,7 +92,7 @@ def test_turbine_design_from_avg_wind_speed():
     assert isinstance(output, dict)
     assert np.isclose(output["capacity"], 20000)  # default
     assert np.isclose(
-        output["hub_height"], 160.34007765824106
+        output["hub_height"], 159.9192741935484
     )  # slightly lower than default since ref ws slightly higher than ref ws for hub height
     assert np.isclose(output["rotor_diam"], 270)
     assert np.isclose(output["specific_power"], 349.3112605583437)  # default
@@ -116,12 +116,12 @@ def test_turbine_design_from_avg_wind_speed():
     )
     assert isinstance(output, dict)
     assert np.isclose(
-        output["capacity"], 19092.081687353104
+        output["capacity"], 18904.178576900114
     )  # slightly lower than default since ref ws slightly lower than ref ws for spec pow
     assert np.isclose(output["hub_height"], 170)  #
     assert np.isclose(output["rotor_diam"], 270)
     assert np.isclose(
-        output["specific_power"], 333.4539560446091
+        output["specific_power"], 330.1721224258507
     )  # slightly lower than default since ref ws slightly lower than ref ws for spec pow
 
     # TODO add tests: data year out of range, custom params as args, wrong convention, other wind speed, offshore

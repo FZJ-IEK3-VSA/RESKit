@@ -1,18 +1,34 @@
-<a href="https://www.fz-juelich.de/en/ice/ice-2">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://github.com/FZJ-IEK3-VSA/README_assets/blob/v.1.0.0/ICE2_Logos/JSA-Header-dark.svg?raw=True">
-    <img src="https://github.com/FZJ-IEK3-VSA/README_assets/blob/v.1.0.0/ICE2_Logos/JSA-Header.svg?raw=True" alt="Logo für Forschungszentrum Juelich - Juelich System Analysis" height="80px">
-  </picture>
-</a>
+<!-- markdownlint-disable line-length no-inline-html -->
 
-| Version                                                                                                             | Zenodo Release                                                                                              | Docstring Style                                                                  | Coverage                                                                                                                                             |
-| ------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [![Conda Version](https://img.shields.io/conda/vn/conda-forge/reskit.svg)](https://anaconda.org/conda-forge/reskit) | [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17668775.svg)](https://doi.org/10.5281/zenodo.17668775) | ![Numpy docstring Style](https://img.shields.io/badge/%20style-numpy-459db9.svg) | [![codecov](https://codecov.io/gh/FZJ-IEK3-VSA/RESKit/branch/master/graph/badge.svg)](https://codecov.io/gh/FZJ-IEK3-VSA/RESKit) |
-# RESKit - **R**enewable **E**nergy **S**imulation tool**kit** for Python
+<!-- logo:header:start -->
+<p align="center">
+  <a href="https://www.fz-juelich.de/en/ice/ice-2">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/FZJ-IEK3-VSA/README_assets/v.1.0.0/ICE2_Logos/JSA-Header-dark.svg">
+      <img src="https://raw.githubusercontent.com/FZJ-IEK3-VSA/README_assets/v.1.0.0/ICE2_Logos/JSA-Header.svg" alt="Jülich Systems Analysis" height="80">
+    </picture>
+  </a>
+</p>
+<!-- logo:header:end -->
 
+# ETHOS.RESKit - Renewable Energy Simulation Toolkit
 
+**Broad-scale renewable energy simulation for energy system models — millions of individual units in minutes.**
 
-RESKit aids with the broad-scale simulation of renewable energy systems, primarily for the purpose of input generation to Energy System Design Models. Simulation tools currently exist for onshore and offshore wind turbines, as well as for solar photovoltaic (PV) systems and concentrated solar power (CSP), in addition to general weather-data manipulation tools. Simulations are performed in the context of singular units, however high computational performance is nevertheless maintained. As a result, this tool allows for the simulation of millions of individual turbines and PV/CSP systems in a matter of minutes depending on the hardware.
+[![conda-forge version](https://img.shields.io/conda/vn/conda-forge/reskit.svg)](https://anaconda.org/conda-forge/reskit)
+[![Tests](https://github.com/FZJ-IEK3-VSA/RESKit/actions/workflows/test_push.yml/badge.svg)](https://github.com/FZJ-IEK3-VSA/RESKit/actions/workflows/test_push.yml)
+[![Coverage](https://codecov.io/gh/FZJ-IEK3-VSA/RESKit/branch/dev/graph/badge.svg)](https://codecov.io/gh/FZJ-IEK3-VSA/RESKit)
+[![Documentation](https://readthedocs.org/projects/ethos-reskit/badge/`version=latest)](https://ethos-reskit.readthedocs.io/en/latest/)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17668775.svg)](https://doi.org/10.5281/zenodo.17668775)
+[![License](https://img.shields.io/github/license/FZJ-IEK3-VSA/RESKit)](https://github.com/FZJ-IEK3-VSA/RESKit/blob/dev/LICENSE-MIT.txt)
+
+<!-- readme-only:start -->
+📖 **Read the full documentation at [ethos-reskit.readthedocs.io](https://ethos-reskit.readthedocs.io/).**
+<!-- readme-only:end -->
+
+ETHOS.RESKit aids with the broad-scale simulation of renewable energy systems, primarily for the purpose of input generation to Energy System Design Models. Simulation tools currently exist for onshore and offshore wind turbines, as well as for solar photovoltaic (PV) systems and concentrated solar power (CSP), in addition to general weather-data manipulation tools. Simulations are performed in the context of singular units, however high computational performance is nevertheless maintained. As a result, this tool allows for the simulation of millions of individual turbines and PV/CSP systems in a matter of minutes depending on the hardware.
+
+ETHOS.RESKit is part of the [Energy Transformation PatHway Optimization Suite (ETHOS) at ICE-2](https://www.fz-juelich.de/de/ice/ice-2/leistungen/model-services). It builds on [ETHOS.GeoKit](https://github.com/FZJ-IEK3-VSA/geokit) for its geospatial operations, and the time series it simulates are a common input to energy system models such as [ETHOS.FINE](https://github.com/FZJ-IEK3-VSA/FINE).
 
 ## Features
 
@@ -25,14 +41,14 @@ RESKit aids with the broad-scale simulation of renewable energy systems, primari
 
 ## Installation
 
-#### For Users (Application Only)
+### For Users (Application Only)
 
 1 a) If you do not have an existing conda/mamba environment:
 ```
 conda env create -c conda-forge reskit -n <ENVIRONMENT-NAME>
 ```
 
-1 b) If you have an existing environment, install RESKit into it:
+1 b) If you have an existing environment, install ETHOS.RESKit into it:
 ```
 conda install -c conda-forge reskit -n <YOUR-ENVIRONMENT-NAME>
 ```
@@ -42,17 +58,17 @@ conda install -c conda-forge reskit -n <YOUR-ENVIRONMENT-NAME>
 conda activate <YOUR-ENVIRONMENT-NAME>
 ```
 
-3 a) Get the RESKit source code (including examples):
+3 a) Get the ETHOS.RESKit source code (including examples):
 ```
 git clone https://github.com/FZJ-IEK3-VSA/reskit.git
 cd reskit
 ```
 
 3 b) If you do not have Git and just want to check the examples, download and extract the source code with this link:
-> https://github.com/FZJ-IEK3-VSA/RESKit/archive/refs/heads/master.zip
+> https://github.com/FZJ-IEK3-VSA/RESKit/archive/refs/heads/dev.zip
 
 
-#### For Developers
+### For Developers
 Please follow these steps for an editable installation:
 
 1 ) Clone and checkout dev:
@@ -63,7 +79,7 @@ cd reskit
 git checkout dev
 ```
 
-2 a) RESkit should be installable to a new environment with:
+2 a) ETHOS.RESKit should be installable to a new environment with:
 
 ```
 conda env create --file requirements.yml
@@ -80,9 +96,93 @@ conda env update --file requirements.yml -n <ENVIRONMENT-NAME>
 pip install -e .
 ```
 
-## ERA5 Zarr
+## Getting Started
 
-RESKit can read ERA5 directly from regular latitude/longitude Zarr stores while keeping the existing `source_type="ERA5"` workflow API. The current implementation is intended for stores such as the [Earth Data Hub ERA5 single-level dataset](https://earthdatahub.destine.eu/collections/era5/datasets/reanalysis-era5-single-levels):
+### Preparing Weather Data
+
+ETHOS.RESKit workflows are driven by gridded weather data. ETHOS.RESKit ships a single
+high-level helper, `rk.download_and_process`, that downloads exactly the variables a
+given workflow needs from the relevant data provider, preprocesses them (e.g. wind
+speed from u/v components, solar unit and time-shift corrections), and optionally
+tiles them into the `<zoom>/<x>/<y>/<year>/` directory structure expected by the
+weather sources.
+
+ERA5 reanalysis from the Copernicus Climate Data Store (CDS) is currently the
+supported source; additional weather data sources are planned.
+
+```python
+import reskit as rk
+
+result = rk.download_and_process(
+    workflows="wind_era5_PenaSanchezDunkelWinklerEtAl2025",
+    start_date="2000-01-01",
+    end_date="2000-12-31",
+    boundary_box={"north": 55, "south": 47, "west": 6, "east": 15},  # Germany
+    output_dir="/path/to/your/weather_data",
+    tiling=True,
+)
+print(result["era5_path"])
+```
+
+To prepare data for several workflows in a single call, pass a list of workflow names
+as `workflows`; the union of their variable requirements is downloaded and processed at
+once, e.g. `workflows=["openfield_pv_era5", "CSP_PTR_ERA5"]`. A CDS account with a
+configured `~/.cdsapirc` API key is required for ERA5
+(see https://cds.climate.copernicus.eu/how-to-api).
+
+Note that some workflows also rely on data whose automated download is not yet
+implemented — solar/CSP workflows on Global Solar Atlas rasters and wind workflows
+on Global Wind Atlas rasters. `download_and_process` prints a notice for these and
+you must supply the rasters manually.
+
+### Input data from the ETHOS.Data catalogue
+
+RESKit names each workflow's input collection after the workflow in
+`reskit/data/collections.yaml`. Call `reskit.data.paths()` immediately before the
+workflow: it makes the inputs available locally and returns `{handle: local path}`.
+No shell command is required. `test=True` selects the small bundled test fixtures:
+
+```python
+from reskit import data
+
+inputs = data.paths("wind_era5_PenaSanchezDunkelWinklerEtAl2025", test=True)
+result = rk.wind.wind_era5_PenaSanchezDunkelWinklerEtAl2025(
+    placements=placements,
+    era5_path=inputs["era5"],
+    gwa_100m_path=inputs["gwa_100m"],
+    height_scaling_data={50: inputs["gwa_50m"], 200: inputs["gwa_200m"]},
+)
+```
+
+For optional shell access, `reskit-data fetch wind_era5_PenaSanchezDunkelWinklerEtAl2025 --test --paths` prints
+one `handle<TAB>path` line per input, `reskit-data show` lists every collection,
+and `reskit-data --help` every command.
+
+Both variants use the same input handles. The full variant is selected when
+`test=True` is omitted, but the pinned public catalogue currently lacks its ERA5
+dataset. To run that variant, select a catalogue containing the required full
+inputs; removing `test=True` alone will currently raise `UnknownDataset`.
+
+The `reskit-test-data` fixtures ship with RESKit as a verified
+[ETHOS.Data bundle](https://ethos-data.readthedocs.io/en/latest/how-to/keep-test-data-in-a-repository/)
+in `reskit/data/test_cache`, so `test=True`, the examples and the test suite read
+them offline. Pass `download=True`, or set `RESKIT_DATA_DOWNLOAD=1`, to fetch them
+from the catalogue's store into the shared cache instead.
+
+Install ETHOS.Data in the same environment. In a development checkout, reinstall
+RESKit with `pip install -e . --no-deps` to register its console script.
+`reskit-data show` prints the actual catalogue selection; `RESKIT_DATA_CATALOG`
+overrides it for RESKit, while shared ETHOS settings apply to all packages.
+
+Use `reskit-data staging add/list/remove` for unpublished development inputs.
+The [input-data guide](docs/how_to/get_input_data.md) covers catalogue selection,
+workflow arguments, staging and verification, with links to the shared
+configuration and bundle procedures. Cache and catalogue administration use
+`ethos-data`.
+
+### Reading ERA5 from Zarr
+
+ETHOS.RESKit can read ERA5 directly from regular latitude/longitude Zarr stores while keeping the existing `source_type="ERA5"` workflow API. The current implementation is intended for stores such as the [Earth Data Hub ERA5 single-level dataset](https://earthdatahub.destine.eu/collections/era5/datasets/reanalysis-era5-single-levels):
 
 Earth Data Hub requires authentication. Follow the credential instructions on the linked dataset page and save the generated credentials as `~/.netrc` (not in a directory on `PATH`). On shared systems, restrict access with `chmod 600 ~/.netrc`. The HTTPS backend will use those credentials automatically.
 
@@ -99,47 +199,11 @@ wf.read(
 
 Current limitations:
 - The implementation only supports regular `(time|valid_time, latitude, longitude)` Zarr layouts, not flattened `values`-based ERA5 archives.
-- If the Zarr store does not ship RESKit's processed `ssrd_t_adj` and `fdir_t_adj` fields,  `global_horizontal_irradiance` and `direct_horizontal_irradiance` fall back to processing the raw `ssrd` and `fdir` on the fly.
+- If the Zarr store does not ship ETHOS.RESKit's processed `ssrd_t_adj` and `fdir_t_adj` fields,  `global_horizontal_irradiance` and `direct_horizontal_irradiance` fall back to processing the raw `ssrd` and `fdir` on the fly.
 
+### Example notebooks
 
-## Preparing Weather Data
-
-RESKit workflows are driven by gridded weather data. RESKit ships a single
-high-level helper, `rk.download_and_process`, that downloads exactly the variables a
-given workflow needs from the relevant data provider, preprocesses them (e.g. wind
-speed from u/v components, solar unit and time-shift corrections), and optionally
-tiles them into the `<zoom>/<x>/<y>/<year>/` directory structure expected by the
-weather sources.
-
-ERA5 reanalysis from the Copernicus Climate Data Store (CDS) is currently the
-supported source; additional weather data sources are planned.
-
-```python
-import reskit as rk
-
-result = rk.download_and_process(
-    workflow="wind_era5_PenaSanchezDunkelWinklerEtAl2025",
-    start_date="2000-01-01",
-    end_date="2000-12-31",
-    boundary_box={"north": 55, "south": 47, "west": 6, "east": 15},  # Germany
-    output_dir="/path/to/your/weather_data",
-    tiling=True,
-)
-print(result["era5_path"])
-```
-
-To prepare data for several workflows in a single call, pass a list of workflow names
-as `workflow`; the union of their variable requirements is downloaded and processed at
-once, e.g. `workflow=["openfield_pv_era5", "CSP_PTR_ERA5"]`. A CDS account with a
-configured `~/.cdsapirc` API key is required for ERA5
-(see https://cds.climate.copernicus.eu/how-to-api).
-
-Note that some workflows also rely on data whose automated download is not yet
-implemented — solar/CSP workflows on Global Solar Atlas rasters and wind workflows
-on Global Wind Atlas rasters. `download_and_process` prints a notice for these and
-you must supply the rasters manually.
-
-End-to-end examples live in [examples/1_load_input_data/](examples/1_load_input_data/):
+End-to-end examples live in [examples/1_load_input_data/](https://github.com/FZJ-IEK3-VSA/RESKit/tree/dev/examples/1_load_input_data):
 - [1_1_3_prepare_era5_for_wind_workflow.ipynb](examples/1_load_input_data/1_1_3_prepare_era5_for_wind_workflow.ipynb)
 - [1_1_4_prepare_era5_for_solar_workflow.ipynb](examples/1_load_input_data/1_1_4_prepare_era5_for_solar_workflow.ipynb)
 
@@ -149,9 +213,9 @@ timeframe), see the lower-level example notebook
 
 ## Citation
 
-If you decide to use RESkit anywhere in a published work related to wind energy, please kindly cite us using the following publications.
+If you decide to use ETHOS.RESKit anywhere in a published work related to wind energy, please kindly cite us using the following publications.
 
-When using the ETHOS.RESKit.Wind workflow please cite: 
+When using the ETHOS.RESKit.Wind workflow please cite:
 ```bibtex
 @article{PenaSanchezDunkelWinklerEtAl2026,
   title = {Towards High Resolution, Validated and Open Global Wind Power Assessments},
@@ -182,41 +246,42 @@ When using anything else:
   volume = {182},
   year = {2019}
 }
-
 ```
+
+## Contributions and Support
+All contributions are welcome:
+- If you want to report a bug, please open an [Issue](https://github.com/FZJ-IEK3-VSA/RESKit/issues/new). We will then take care of the issue as soon as possible.
+- If you want to contribute with additional features or code improvements, open a [Pull request](https://github.com/FZJ-IEK3-VSA/RESKit/pulls).
 
 ## License
 
 The source code in this repository is licensed under: MIT License Copyright (c) 2019-2025 FZJ-ICE-2
 
-The data files [cf_correction_factors_PSDW2025.tif](reskit/wind/core/data/cf_correction_factors_PSDW2025.tif) and [ws_correction_factors_PSDW2025.yaml](reskit/wind/core/data/ws_correction_factors_PSDW2025.yaml) are licensed under CC-BY-4.0
+The data files [cf_correction_factors_PSDW2025.tif](https://github.com/FZJ-IEK3-VSA/RESKit/blob/dev/reskit/wind/core/data/cf_correction_factors_PSDW2025.tif) and [ws_correction_factors_PSDW2025.yaml](https://github.com/FZJ-IEK3-VSA/RESKit/blob/dev/reskit/wind/core/data/ws_correction_factors_PSDW2025.yaml) are licensed under CC-BY-4.0
 
 You should have received a copy of the MIT License along with this program.  
 If not, see <https://opensource.org/licenses/MIT>
 
-## Contributions and Support
-Every contributions are welcome:
-- If you want to report a bug, please open an [Issue](https://github.com/FZJ-IEK3-VSA/RESKit/issues/new). We will then take care of the issue as soon as possible.
-- If you want to contribute with additional features or code improvements, open a [Pull request](https://github.com/FZJ-IEK3-VSA/RESKit/pulls).
-
-## About Us 
+## About Us
 
 We are the <a href="https://www.fz-juelich.de/en/ice/ice-2">Institute of Climate and Energy Systems – Jülich Systems Analysis (ICE-2)</a> at the <a href="https://www.fz-juelich.de/en"> Forschungszentrum Jülich</a>.
 Our work focuses on independent, interdisciplinary research in energy, bioeconomy, infrastructure, and sustainability. We support a just, greenhouse gas–neutral transformation through open models and policy-relevant science.
 
-
 ## Code of Conduct
 Please respect our [code of conduct](https://github.com/FZJ-IEK3-VSA/README_assets/blob/main/CODE_CONDUCT.md).
 
+## Acknowledgments
 
+This work was initially supported by the Helmholtz Association under the Joint Initiative ["Energy System 2050   A Contribution of the Research Field Energy"](https://www.helmholtz.de/en/research/energy/energy_system_2050/).
 
-## Acknowledgement
-This work was initially supported by the Helmholtz Association under the Joint Initiative ["Energy System 2050   A Contribution of the Research Field Energy"](https://www.helmholtz.de/en/research/energy/energy_system_2050/). 
+<p align="left">
+  <!-- logo:helmholtz:start -->
+  <a href="https://www.helmholtz.de/en/">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/FZJ-IEK3-VSA/README_assets/v.1.0.0/Helmholtz_Logos/Helmholtz-Logo-White-RGB.svg">
+      <img src="https://raw.githubusercontent.com/FZJ-IEK3-VSA/README_assets/v.1.0.0/Helmholtz_Logos/Helmholtz-Logo-Dark-Blue-RGB.svg" alt="Helmholtz Association" width="200">
+    </picture>
+  </a>
+  <!-- logo:helmholtz:end -->
+</p>
 
-<a href="https://www.helmholtz.de/en/">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/FZJ-IEK3-VSA/README_assets/v.1.0.0/Helmholtz_Logos/Helmholtz-Logo-White-RGB.svg">
-    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/FZJ-IEK3-VSA/README_assets/v.1.0.0/Helmholtz_Logos/Helmholtz-Logo-Dark-Blue-RGB.svg">
-    <img src="https://raw.githubusercontent.com/FZJ-IEK3-VSA/README_assets/v.1.0.0/Helmholtz_Logos/Helmholtz-Logo-Dark-Blue-RGB.svg" alt="Helmholtz Logo" width="200px" style="float:left">
-  </picture>
-</a>

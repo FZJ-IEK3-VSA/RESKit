@@ -1,1 +1,0 @@
-from .GWAmeanSource import GWAmeanSource

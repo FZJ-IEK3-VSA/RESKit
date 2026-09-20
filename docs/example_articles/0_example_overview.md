@@ -7,4 +7,4 @@ Reskit simulates various renewable energy supply technologies and direct air cap
 3. [Wind Power](./3_wind_power.md)
 4. [Solar](./4_solar.md)
 5. [Geothermal](./5_geothermal.md)
-6. [Direct Air Capture (DAC)](./6_direct_air_capture)
+6. [Direct Air Capture (DAC)](./6_direct_air_capture.md)

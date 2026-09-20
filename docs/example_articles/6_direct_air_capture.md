@@ -1,3 +1,3 @@
 # Direct Air Capture (DAC)
 
-RESKit provides high- and low-temperature diret air capture (DAC) workflows, which are presented in this [this example](../../examples/6_direct_air_capture/6_1_direct_air_capture.ipynb). To model the heat supply, a cooling and heating simulation is provided in an additional example that can be used to simulate other technologies. This [example](../../examples/6_direct_air_capture/6_2_cooling_heating.ipynb) demonstrates the application. 
+RESKit provides high- and low-temperature diret air capture (DAC) workflows, which are presented in this [this example](../examples/6_direct_air_capture/6_1_direct_air_capture.ipynb). To model the heat supply, a cooling and heating simulation is provided in an additional example that can be used to simulate other technologies. This [example](../examples/6_direct_air_capture/6_2_cooling_heating.ipynb) demonstrates the application. 
