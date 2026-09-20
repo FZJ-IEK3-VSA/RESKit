@@ -279,10 +279,10 @@ class SolarWorkflowManager(WorkflowManager):
                 )
             elif conv == "tonita_et_al_2023":
                 iter_gcrs = rk_solar_core.system_design.location_to_gcr_tonita_et_al_2023(
-                    lat = self.locs.lats[mask], 
-                    bifaciality_factor = self.plant_parameters_processed["bifaciality_factor"][mask],
-                    tracking = self.tracking,
-                    shading_loss = 0.05,
+                    lat=self.locs.lats[mask],
+                    bifaciality_factor=self.plant_parameters_processed["bifaciality_factor"][mask],
+                    tracking=self.tracking,
+                    shading_loss=0.05,  
                 )
             else:
                 raise NotImplementedError(
@@ -3353,7 +3353,7 @@ class SolarWorkflowManager(WorkflowManager):
         # finally set the results as sim_data attributes
         _fix_bad_poa_and_set_attr(arr=poa_frontside, attr="poa_global_raw")
         _fix_bad_poa_and_set_attr(arr=poa_frontside_absorbed, attr="poa_global")
-        
+
         # set POA values for backside only when bifacial flag is True
         _fix_bad_poa_and_set_attr(arr=poa_backside, attr="poa_backside_global_raw")
         _fix_bad_poa_and_set_attr(arr=poa_backside_absorbed, attr="poa_backside_global")
