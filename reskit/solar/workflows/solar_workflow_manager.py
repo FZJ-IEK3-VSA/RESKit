@@ -2658,8 +2658,14 @@ class SolarWorkflowManager(WorkflowManager):
             # calculate the snow fall in "fluffy" cm/h based on water equivalent in mm/h
             # use Anderson (1976) equation: simple. no wind speed, medium values compared to other models, used in SNOWPACK model
             # accept minor deviation due to SURFACE (corrected by fixed 0.065K/10m, International Standard Atmosphere lapse rate) instead of 10m height air temperature to save an additional variable
-            fresh_snow_density = 50 + np.maximum(
-                1.7 * np.power(self.sim_data_full["surface_air_temperature"] - 0.065 + 15, 1.5), 0
+            air_temperature_10m = np.clip(
+                self.sim_data_full["surface_air_temperature"] - 0.065, 
+                -15, 
+                2,
+            )
+            fresh_snow_density = 50 + 1.7 * np.power(
+                air_temperature_10m + 15,
+                1.5,
             )
             snowfall_rate_cm = (
                 self.sim_data_full["snowfall_water_equivalent"] * (1000 / fresh_snow_density) * 100
