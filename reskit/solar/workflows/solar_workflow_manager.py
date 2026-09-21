@@ -821,9 +821,8 @@ class SolarWorkflowManager(WorkflowManager):
             allow_none=True,
             replace_none=fallback,
             assert_type=None,
-            force_cols=self._sim_shape_[0],  # one per each timestep required
-            force_dims=2,
-            transpose=True,  # we need 8760 rows and Nloc columns here for sim shape
+            force_cols=1,  # one value per placement
+            force_dims=1,
         )
         if any(isinstance(x, str) for x in filepaths) and landcover_name is None:
             raise TypeError(
@@ -898,16 +897,18 @@ class SolarWorkflowManager(WorkflowManager):
                     landcover_name=landcover_name, landcover_path=fp, fallback_albedo=fallback
                 )
             )
-            # last set the extracted elevations from this iteration in the main elevation array, duplicate iter_gcr row values per placement for every column
-            albedo[:, mask] = iter_vals[mask][None, :]
+            # set the extracted ground albedo values for the affected placements
+            albedo[mask] = iter_vals[mask]
 
-        assert albedo.shape == self._sim_shape_
+        # convert the fully resolved snow-free ground albedo to numeric values
+        albedo = np.asarray(albedo, dtype=float)
+        assert albedo.shape == (self.locs.count,)
 
-        # now write hourly no-snow albedo values to sim_data
+        # validate and store the time-invariant snow-free ground albedo per placement
         if not np.all((albedo > 0) & (albedo < 1)):
             raise ValueError("ground albedo must be >0 and <1 for all locations.")
-        assert albedo.shape == self._sim_shape_  # make sure
-        self.sim_data["system_grdalbedo_nosnow"] = np.asarray(albedo, dtype=float)
+
+        self.plant_parameters_processed["ground_albedo_nosnow"] = albedo
 
         # consider snow albedo if applicable
         consider_snow_albedo, _ = self._preprocess_variable(
@@ -935,16 +936,20 @@ class SolarWorkflowManager(WorkflowManager):
             )  # m/h actual snow height on the ground
             # apply snow albedo only to columns where consider_snow_albedo is True
             snow_mask &= consider_snow_albedo
-            # replace all ground albedo values at snowy timesteps by snow albedo
-            albedo = np.where(snow_mask, self.sim_data["snow_albedo"], albedo)
 
-        # final sanity check
-        if not np.all((albedo > 0) & (albedo < 1)):
-            raise ValueError("ground albedo must be >0 and <1 for all locations.")
+            # materialize a time-dependent ground albedo only when snow effects are considered
+            system_grdalbedo = np.where(
+                snow_mask,
+                self.sim_data["snow_albedo"],
+                albedo[None, :],
+            )
 
-        # now write hourly albedo values to sim_data
-        assert albedo.shape == self._sim_shape_  # make sure
-        self.sim_data["system_grdalbedo"] = np.asarray(albedo, dtype=float)
+            # final sanity check of the time-dependent ground albedo
+            if not np.all((system_grdalbedo > 0) & (system_grdalbedo < 1)):
+                raise ValueError("ground albedo must be >0 and <1 for all locations.")
+
+            assert system_grdalbedo.shape == self._sim_shape_
+            self.sim_data["system_grdalbedo"] = system_grdalbedo
 
         return self
 
@@ -2442,14 +2447,19 @@ class SolarWorkflowManager(WorkflowManager):
         assert "diffuse_horizontal_irradiance" in self.sim_data
         assert "extra_terrestrial_irradiance" in self.sim_data
         assert "air_mass" in self.sim_data
-        assert "system_grdalbedo" in self.sim_data, (
-            f"'system_grdalbedo' is expected in sim_data, run preprocess_ground_albedo() first."
-        )
+        assert (
+            "system_grdalbedo" in self.sim_data
+            or "ground_albedo_nosnow" in self.plant_parameters_processed
+        ), "'system_grdalbedo' or 'ground_albedo_nosnow' is expected, run preprocess_ground_albedo() first."
 
         def _set_total_irradiance_per_side(front=True):
             """Calculates and sets to self.sim_data the POA global and its components for front or backside"""
             # get system ground albedos and tilts and azimuths for the module surfaces
-            _grdalbedos = self.sim_data.get("system_grdalbedo")
+            _grdalbedos = (
+                self.sim_data["system_grdalbedo"]
+                if "system_grdalbedo" in self.sim_data
+                else self.plant_parameters_processed["ground_albedo_nosnow"]
+            )
             _modtilts = (
                 self.sim_data["system_modtilt"]
                 if "system_modtilt" in self.sim_data
@@ -2931,7 +2941,7 @@ class SolarWorkflowManager(WorkflowManager):
             pvfts_args["dni"] = self.sim_data["direct_normal_irradiance"][:, iloc]
             pvfts_args["gcr"] = _extract_var(iloc, "gcr", time_invariant=True)
             pvfts_args["pvrow_height"] = _extract_var(iloc, "pvrow_height", time_invariant=True)
-            pvfts_args["albedo"] = _extract_var(iloc, "grdalbedo", "system_grdalbedo")
+            pvfts_args["albedo"] = _extract_var(iloc, "ground_albedo_nosnow", "system_grdalbedo", time_invariant=True)
             pvfts_args["n_pvrows"] = _extract_var(iloc, "n_pvrows", time_invariant=True)
             pvfts_args["index_observed_pvrow"] = _extract_var(iloc, "index_observed_pvrow", time_invariant=True)
             pvfts_args["pvrow_width"] = _extract_var(
