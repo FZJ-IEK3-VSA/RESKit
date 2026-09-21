@@ -29,6 +29,7 @@ dependencies:
   - jsonmerge
   - wombat
   - ethos_data >=0.2.1
+  - solarfactors>=1.6.1,<=1.6.1
   # dev
   - nbval <=0.11.0
   - ruff =0.14.1
