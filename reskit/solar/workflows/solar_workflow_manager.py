@@ -3348,16 +3348,25 @@ class SolarWorkflowManager(WorkflowManager):
                 > 0
             ).all(), (
                 f"pvrow_height must exceed vertical dimension of tilted pvrow_width in all cases. Set pvrow_height to > 0.5*pvrow_width to be safe."
-            )  # leads to unrealistic results in pvlib.bifacial.pvfactors_timeseries() otherwise
+            )  # leads to unrealistic results in pvlib.bifacial.pvfactors.pvfactors_timeseries() otherwise
             assert pvfts_args["index_observed_pvrow"] < pvfts_args["n_pvrows"], (
                 f"'index_observed_pvrow' ({pvfts_args['index_observed_pvrow']}) must be < 'n_pvrows' {pvfts_args['n_pvrows']}"
             )
-            (
-                _poa_frontside,
-                _poa_backside,
-                _poa_frontside_absorbed,
-                _poa_backside_absorbed,
-            ) = pvlib.bifacial.pvfactors.pvfactors_timeseries(**pvfts_args)
+            #TODO remove the filterwarnings as soon as fixed in solarfactors: https://github.com/pvlib/solarfactors/issues/42 
+            with warnings.catch_warnings():
+                # catch the repeated infinite values warning which may due to a code negligence in pvfactors only
+                warnings.filterwarnings(
+                    "ignore",
+                    message="invalid value encountered in divide",
+                    category=RuntimeWarning,
+                    module=r"pvfactors\.viewfactors\.vfmethods",
+            )
+                (
+                    _poa_frontside,
+                    _poa_backside,
+                    _poa_frontside_absorbed,
+                    _poa_backside_absorbed,
+                ) = pvlib.bifacial.pvfactors.pvfactors_timeseries(**pvfts_args)
 
             # validate pvfactors outputs before writing them into the result arrays
             _poa_results = {
