@@ -57,7 +57,8 @@ def test_turbine_design_from_avg_wind_speed():
         base_capacity=None,
         base_hub_height=None,
         base_rotor_diam=None,
-        reference_wind_speed=None,
+        reference_wind_speed_hubheight=None,
+        reference_wind_speed_specpow=None,
         min_tip_height=None,
         min_specific_power=None,
         max_hub_height=None,
@@ -79,7 +80,8 @@ def test_turbine_design_from_avg_wind_speed():
         base_capacity=None,
         base_hub_height=None,
         base_rotor_diam=None,
-        reference_wind_speed=None,
+        reference_wind_speed_hubheight=None,
+        reference_wind_speed_specpow=None,
         min_tip_height=None,
         min_specific_power=None,
         max_hub_height=None,
@@ -87,7 +89,7 @@ def test_turbine_design_from_avg_wind_speed():
         baseline_turbine_fp=os.path.join(
             DATAFOLDER, "Baseline_plant_wind_turbine_offshore_Global_Winkler2025_v20251108.csv"
         ),
-        convention="WinklerEtAl2026",
+        convention="WinklerEtAl2027",
     )
     assert isinstance(output, dict)
     assert np.isclose(output["capacity"], 20000)  # default
@@ -104,7 +106,8 @@ def test_turbine_design_from_avg_wind_speed():
         base_capacity=None,
         base_hub_height=None,
         base_rotor_diam=None,
-        reference_wind_speed=None,
+        reference_wind_speed_hubheight=None,
+        reference_wind_speed_specpow=None,
         min_tip_height=None,
         min_specific_power=None,
         max_hub_height=None,
@@ -112,7 +115,7 @@ def test_turbine_design_from_avg_wind_speed():
         baseline_turbine_fp=os.path.join(
             DATAFOLDER, "Baseline_plant_wind_turbine_offshore_Global_Winkler2025_v20251108.csv"
         ),
-        convention="WinklerEtAl2026",
+        convention="WinklerEtAl2027",
     )
     assert isinstance(output, dict)
     assert np.isclose(

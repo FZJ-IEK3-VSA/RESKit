@@ -47,6 +47,10 @@ def onshore_turbine_from_avg_wind_speed(wind_speed, **kwargs):
         refws = kwargs.pop("reference_wind_speed", "None")
         kwargs["reference_wind_speed_specpow"] = refws
         kwargs["reference_wind_speed_hubheight"] = refws
+    elif not any([k in kwargs for k in ["reference_wind_speed_specpow", "reference_wind_speed_hubheight"]]):
+        Params = OnshoreParameters(fp=kwargs.get("baseline_turbine_fp"), year=kwargs.get("tech_year", 2050))
+        kwargs["reference_wind_speed_specpow"] = Params.reference_wind_speed
+        kwargs["reference_wind_speed_hubheight"] = Params.reference_wind_speed
     # return results of turbine_design_from_avg_wind_speed
     return turbine_design_from_avg_wind_speed(**kwargs)
 
@@ -218,6 +222,9 @@ def turbine_design_from_avg_wind_speed(
     # Design Specific Power
     # get reference wind speed, can be general (e.g. RybergEtAl2019) or parameter-specific (e.g. WinklerEtAl2026)
     reference_wind_speed_specpow = baseline_params["reference_wind_speed_specpow"]
+    if pd.isnull(reference_wind_speed_specpow) and convention == "RybergEtAl2019":
+        # the legacy function did not use separate reference windspeeds per parameter
+        reference_wind_speed_specpow = Params.reference_wind_speed
     assert not pd.isnull(reference_wind_speed_specpow), "reference_wind_speed_specpow must be given."
     # apply the respective scaling function
     specific_power = scaling_funcs["specific_power"](
@@ -255,6 +262,9 @@ def turbine_design_from_avg_wind_speed(
     # Design Hub Height
     # get reference wind speed, can be general (e.g. RybergEtAl2019) or parameter-specific (e.g. WinklerEtAl2026)
     reference_wind_speed_hubheight = baseline_params["reference_wind_speed_hubheight"]
+    if pd.isnull(reference_wind_speed_hubheight) and convention == "RybergEtAl2019":
+        # Ryberg had one windspeed for all, see above for spec pow
+        reference_wind_speed_hubheight = Params.reference_wind_speed
     assert not pd.isnull(reference_wind_speed_hubheight), "reference_wind_speed_hubheight must be given."
     # apply the respective scaling function
     hub_height = scaling_funcs["hub_height"](
