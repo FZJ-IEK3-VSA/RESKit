@@ -777,6 +777,9 @@ class WorkflowManager:
         else:
             real_lra = real_long_run_average
 
+        # flag rows which need fallback values after the main data extraction
+        fallback_required = np.isnan(real_lra).copy()
+
         # replace missing values with no-data fallback if needed
         if isinstance(nodata_fallback, str) and nodata_fallback.lower() == "source":
             warnings.warn(
@@ -828,13 +831,23 @@ class WorkflowManager:
             else:
                 raise ValueError(f"Missing values for variable '{variable}' and NaNs not allowed.")
 
-        # write info with missing values to sim_data:
-        self.placements[f"missing_values_{basename(real_long_run_average)}_nodata_fallback{nodata_fallback}"] = (
-            np.isnan(factors)
-        )
+        # create an info column which fallback scaling was applied where
+        # 'none' indicates no-fallback locations, primary dataset worked
+        fallback_info = np.full(len(factors), "none", dtype=object) 
+        # successfull fallback ops contain the scaling factor, also str for consistency
+        fallback_success = fallback_required & np.isfinite(factors) 
+        fallback_info[fallback_success] = [
+            f"{factor:.4g}" for factor in factors[fallback_success]
+        ]
+        # unsuccessfull fallbacks are assigned a "FAILED" flag
+        fallback_failed = fallback_required & ~np.isfinite(factors)
+        fallback_info[fallback_failed] = "FAILED"
+        # save this information to a new column in placements
+        self.placements[f"LRA_fallback_{variable}"] = fallback_info
 
+        # finally scale the sim data by the correction/disaggregation factors that we have now extracted
         self.sim_data[variable] = factors * self.sim_data[variable]
-        self.placements[f"LRA_factor_{variable}"] = factors
+
         return self
 
     def spatial_disaggregation(
