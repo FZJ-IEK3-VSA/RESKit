@@ -100,9 +100,6 @@ def location_to_module_tilt(locs, convention: str = "Ryberg2020", **kwargs):
     if not isinstance(convention, str):
         raise ResError(f"Tilt convention must be a string, but is: {type(convention)}")
 
-    if convention not in _TILT_CONVENTIONS:
-        raise ResError(f"Tilt convention must be one of {', '.join(_TILT_CONVENTIONS)}, but is: {convention}")
-
     locs = gk.LocationSet(locs)
 
     if not isinstance(convention, str):
