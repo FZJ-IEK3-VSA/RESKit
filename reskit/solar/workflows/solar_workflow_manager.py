@@ -3368,6 +3368,19 @@ class SolarWorkflowManager(WorkflowManager):
                     _poa_backside_absorbed,
                 ) = pvlib.bifacial.pvfactors.pvfactors_timeseries(**pvfts_args)
 
+            # TODO remove block below when fixed in solarfactors see https://github.com/pvlib/solarfactors/issues/37 
+            # known bug may return NaN when dni and ghi are both zero for a given timestep
+            _zero_irradiance = (np.asarray(pvfts_args["dni"]) == 0) & (np.asarray(pvfts_args["dhi"]) == 0)
+            if np.any(_zero_irradiance):
+                _poa_frontside = _poa_frontside.mask(_zero_irradiance & ~np.isfinite(_poa_frontside), 0)
+                _poa_backside = _poa_backside.mask(_zero_irradiance & ~np.isfinite(_poa_backside), 0)
+                _poa_frontside_absorbed = _poa_frontside_absorbed.mask(
+                    _zero_irradiance & ~np.isfinite(_poa_frontside_absorbed), 0
+                )
+                _poa_backside_absorbed = _poa_backside_absorbed.mask(
+                    _zero_irradiance & ~np.isfinite(_poa_backside_absorbed), 0
+                )
+
             # validate pvfactors outputs before writing them into the result arrays
             _poa_results = {
                 "poa_frontside": _poa_frontside,
