@@ -2842,8 +2842,29 @@ class SolarWorkflowManager(WorkflowManager):
         poa_frontside_absorbed = np.empty(self._sim_shape_)
         poa_backside_absorbed = np.empty(self._sim_shape_)
 
+        # preprocess values which are invariant over the location iteration
+        n_timesteps, n_locations = self._sim_shape_
+        timestamps = np.arange(n_timesteps)
+
+        horizon_profile = self.plant_parameters_processed["horizon_profile"]
+        horizon_azimuths = np.linspace(
+            0,
+            360,
+            horizon_profile.shape[1],
+            endpoint=False,
+        )
+
+        timeseries_args = {
+            "solar_azimuth",
+            "solar_zenith",
+            "surface_azimuth",
+            "surface_tilt",
+            "dni",
+            "dhi",
+        }
+
         # iterate over all locs
-        for iloc in range(self._sim_shape_[1]):
+        for iloc in range(n_locations):
             # EXTRACT THE LOCATIONAL DATA FOR IRRADIANCE CALCULATION
 
             # helper function to extract and preprocess shape for variables either from sim data or placements or defaults
@@ -2898,7 +2919,7 @@ class SolarWorkflowManager(WorkflowManager):
                 _axazimuth_fallback,
                 time_invariant=True,
             )
-            pvfts_args["timestamps"] = np.arange(self._sim_shape_[0])
+            pvfts_args["timestamps"] = pvfts_args["timestamps"] = timestamps
             pvfts_args["dhi"] = self.sim_data["diffuse_horizontal_irradiance"][:, iloc]
             pvfts_args["dni"] = self.sim_data["direct_normal_irradiance"][:, iloc]
             pvfts_args["gcr"] = _extract_var("gcr", time_invariant=True)
@@ -2917,8 +2938,8 @@ class SolarWorkflowManager(WorkflowManager):
             # interpolate to hourly solar azimuths indices
             horizon_profile_loc = np.interp(
                 pvfts_args["solar_azimuth"],
-                np.linspace(0, 360, len(self.plant_parameters_processed["horizon_profile"][iloc, :]), endpoint=False),
-                self.plant_parameters_processed["horizon_profile"][iloc, :],
+                horizon_azimuths,
+                horizon_profile[iloc, :],
             )
             # calculate the timesteps when the plant is shaded by the horizon
             _horizon_shaded = (90 - self.sim_data["apparent_solar_zenith"][:, iloc]) <= horizon_profile_loc
@@ -2927,17 +2948,6 @@ class SolarWorkflowManager(WorkflowManager):
 
             # HANDLE KWARGS
 
-            # handle kwargs for this location - first define those args that pvlib expects to be time-variant
-            timeseries_args = {
-                "solar_azimuth",
-                "solar_zenith",
-                "surface_azimuth",
-                "surface_tilt",
-                "dni",
-                "dhi",
-            }
-            # extract the number of timesteps and locations from sim shape (N_t, N_loc)
-            n_timesteps, n_locations = self._sim_shape_
             # iterate over the kwargs and set/overwrite them one by one - note that this is always just for ONE location (iteration above)
             for k, v in kwargs.items():
                 arr = np.asarray(v)
