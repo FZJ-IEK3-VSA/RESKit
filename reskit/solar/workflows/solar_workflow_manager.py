@@ -3352,9 +3352,57 @@ class SolarWorkflowManager(WorkflowManager):
             assert pvfts_args["index_observed_pvrow"] < pvfts_args["n_pvrows"], (
                 f"'index_observed_pvrow' ({pvfts_args['index_observed_pvrow']}) must be < 'n_pvrows' {pvfts_args['n_pvrows']}"
             )
-            _poa_frontside, _poa_backside, _poa_frontside_absorbed, _poa_backside_absorbed = (
-                pvlib.bifacial.pvfactors_timeseries(**pvfts_args)
-            )  # old version on purpose, deprecation warning is accepted as long as it works since this version also works with elder pvlib versions <= 0.9.0
+            (
+                _poa_frontside,
+                _poa_backside,
+                _poa_frontside_absorbed,
+                _poa_backside_absorbed,
+            ) = pvlib.bifacial.pvfactors.pvfactors_timeseries(**pvfts_args)
+
+            # validate pvfactors outputs before writing them into the result arrays
+            _poa_results = {
+                "poa_frontside": _poa_frontside,
+                "poa_backside": _poa_backside,
+                "poa_frontside_absorbed": _poa_frontside_absorbed,
+                "poa_backside_absorbed": _poa_backside_absorbed,
+            }
+            for _name, _arr in _poa_results.items():
+                # flag potential NaN or inf values
+                _values = _arr.to_numpy()
+                _invalid_output = ~np.isfinite(_values)
+
+                if _invalid_output.any():
+                    # We have NaN or inf values. Iterate over inputs to check
+                    # whether it is non-finite at the affected timesteps.
+                    _invalid_inputs = []
+                    for _input_name, _input in pvfts_args.items():
+                        _input_values = np.asarray(_input)
+                        # only check numeric inputs
+                        if not np.issubdtype(_input_values.dtype, np.number):
+                            continue
+                        # scalar input
+                        if _input_values.ndim == 0:
+                            if not np.isfinite(_input_values):
+                                _invalid_inputs.append(
+                                    f"{_input_name}={_input_values}"
+                                )
+                        # timeseries input
+                        elif (
+                            _input_values.ndim == 1
+                            and _input_values.shape[0] == _invalid_output.shape[0]
+                        ):
+                            _invalid_input = ~np.isfinite(_input_values)
+
+                            if (_invalid_input & _invalid_output).any():
+                                _invalid_inputs.append(_input_name)
+                    raise ValueError(
+                        f"pvfactors returned non-finite values for {_name} "
+                        f"at placement {iloc}. "
+                        f"Invalid output timesteps: "
+                        f"{np.where(_invalid_output)[0].tolist()}. "
+                        f"Non-finite inputs at these timesteps: "
+                        f"{_invalid_inputs if _invalid_inputs else 'none'}"
+                    )
 
             # save the outputs to the respective multi-dimensional array columns
             poa_frontside[:, iloc] = _poa_frontside.values
