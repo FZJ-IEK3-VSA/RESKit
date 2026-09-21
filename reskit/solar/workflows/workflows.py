@@ -668,7 +668,6 @@ def pv_era5_WinklerUnpublished(
         "surface_wind_speed",
         "surface_pressure",
         "surface_air_temperature",
-        "surface_dew_temperature",
     ]
     if np.asarray(consider_snow_effects).any():
         # add snow variables to the vars to be loaded from ERA-5
