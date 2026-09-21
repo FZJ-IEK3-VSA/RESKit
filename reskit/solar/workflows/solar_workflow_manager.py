@@ -2902,25 +2902,32 @@ class SolarWorkflowManager(WorkflowManager):
             # define the base input args for this location
             # define a fallback for the axis azimuth in case of tracked systems where the value does not exist
             # the tracker axis is not used here but value is expected, orientation is always rectangular to module azimuth
-            _axazimuth_fallback = (
-                _extract_var(iloc, "module_azimuth", "system_modazimuth") + 90 if self.tracking == "fixed" else None
-            )
             pvfts_args = {}
             pvfts_args["solar_azimuth"] = self.sim_data["solar_azimuth"][:, iloc]
             pvfts_args["solar_zenith"] = self.sim_data["apparent_solar_zenith"][:, iloc]
-            pvfts_args["surface_azimuth"] = _extract_var(iloc, 
-                "module_azimuth" if self.tracking == "fixed" else None, "system_modazimuth"
+            pvfts_args["surface_azimuth"] = _extract_var(
+                iloc,
+                "module_azimuth" if self.tracking == "fixed" else None,
+                "system_modazimuth",
             )
-            pvfts_args["surface_tilt"] = _extract_var(iloc, 
-                "module_tilt" if self.tracking == "fixed" else None, "system_modtilt"
+            pvfts_args["surface_tilt"] = _extract_var(
+                iloc,
+                "module_tilt" if self.tracking == "fixed" else None,
+                "system_modtilt",
             )
-            pvfts_args["axis_azimuth"] = _extract_var(iloc, 
+
+            _axazimuth_fallback = (
+                (pvfts_args["surface_azimuth"][0] + 90) % 360 if self.tracking == "fixed" else None
+            )
+
+            pvfts_args["axis_azimuth"] = _extract_var(
+                iloc,
                 "axazimuth" if self.tracking == "fixed" else "system_axazimuth",
                 "system_axazimuth",
                 _axazimuth_fallback,
                 time_invariant=True,
             )
-            pvfts_args["timestamps"] = pvfts_args["timestamps"] = timestamps
+            pvfts_args["timestamps"] = timestamps
             pvfts_args["dhi"] = self.sim_data["diffuse_horizontal_irradiance"][:, iloc]
             pvfts_args["dni"] = self.sim_data["direct_normal_irradiance"][:, iloc]
             pvfts_args["gcr"] = _extract_var(iloc, "gcr", time_invariant=True)
