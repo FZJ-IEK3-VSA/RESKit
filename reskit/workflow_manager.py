@@ -996,15 +996,6 @@ class WorkflowManager:
             times = [np.datetime64(dt.tz_convert("UTC").tz_convert(None)) for dt in times]
         times_days = np.unique(pd.DatetimeIndex(times).date).astype("datetime64")
 
-        # Old tiles may be shifted by one hour, causing the last day of the
-        # previous year to appear. Do not silently modify the time axis.
-        if times_days[0].astype("datetime64[Y]") != times_days[-1].astype("datetime64[Y]"):
-            raise ValueError(
-                "The daily time coordinates span multiple years. "
-                "This may indicate an old tile shifted by one hour, causing the "
-                "last day of the previous year to appear in the time index."
-            )
-
         xds = OrderedDict()
         encoding = dict()
 
