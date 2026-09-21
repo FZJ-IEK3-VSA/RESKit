@@ -3443,10 +3443,15 @@ class SolarWorkflowManager(WorkflowManager):
             poa_frontside_absorbed[:, iloc] = _poa_frontside_absorbed.values
             poa_backside_absorbed[:, iloc] = _poa_backside_absorbed.values
 
+        # determine invalid high frontside POA before modifying any result array
+        sel_high_front_poa = poa_frontside >= 1600
+
         def _fix_bad_poa_and_set_attr(arr, attr):
-            """Sets sim_data attribute with 0 values where raw front POA > 0"""
-            sel_bad_poa = (poa_frontside >= 1600) | (arr < 0)  # pvlib yields negative irradiation in some cases
-            self.sim_data[attr] = np.where(sel_bad_poa, 0, arr)
+            """Sets negative values and values with raw front POA >= 1600 to zero."""
+            # pvlib yields negative irradiation in some cases
+            np.maximum(arr, 0, out=arr)
+            arr[sel_high_front_poa] = 0
+            self.sim_data[attr] = arr
 
         # finally set the results as sim_data attributes
         _fix_bad_poa_and_set_attr(arr=poa_frontside, attr="poa_global_raw")
