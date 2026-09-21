@@ -252,6 +252,7 @@ class WorkflowManager:
         # if force_cols is not None, we have 4 cases: 1) actual column number matches force_cols, 2) we have only 1 column which can be duplicated
         # to force_cols, 3) we have multiple columns but all with the same value per row which could be reduced to 1 column if force_cols is 1 only
         # or 4) we have multiple columns but their number does not match force_cols - the latter case must raise an error
+        expand_single_column = False
         if force_cols is not None and not (isinstance(force_cols, int) and force_cols >= 1):
             raise ValueError(f"force_cols must be None or an integer >= 1, here: {force_cols}")
         if force_cols is not None:
@@ -262,8 +263,8 @@ class WorkflowManager:
                 # we have exactly the amount of columns that we need, do nothing
                 pass
             elif n_cols == 1:
-                # only one column, simply duplicate the one column as often as required
-                value = np.repeat(value, force_cols, axis=1)
+                # postpone duplication until after validation and datatype handling
+                expand_single_column = True
             elif force_cols == 1 and np.all(value == value[:, [0]]):
                 # all entries per row are the same, can be reduced to 1 column without information loss
                 value = value[:, [0]]
@@ -454,6 +455,10 @@ class WorkflowManager:
                     )
                 # else set the final return value
                 value = converted_value
+
+        # duplicate a single column only after all element-wise validation and datatype handling
+        if expand_single_column and force_dims != 1:
+            value = np.repeat(value, force_cols, axis=1)
 
         if transpose:
             value = np.transpose(value)
