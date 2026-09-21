@@ -3383,34 +3383,29 @@ class SolarWorkflowManager(WorkflowManager):
                 if _invalid_output.any():
                     # We have NaN or inf values. Iterate over inputs to check
                     # whether it is non-finite at the affected timesteps.
-                    _invalid_inputs = []
+                    _bad_timesteps = np.where(_invalid_output)[0]
+                    _input_values_at_bad_timesteps = {}
+
                     for _input_name, _input in pvfts_args.items():
                         _input_values = np.asarray(_input)
+
                         # only check numeric inputs
                         if not np.issubdtype(_input_values.dtype, np.number):
                             continue
+
                         # scalar input
                         if _input_values.ndim == 0:
-                            if not np.isfinite(_input_values):
-                                _invalid_inputs.append(
-                                    f"{_input_name}={_input_values}"
-                                )
-                        # timeseries input
-                        elif (
-                            _input_values.ndim == 1
-                            and _input_values.shape[0] == _invalid_output.shape[0]
-                        ):
-                            _invalid_input = ~np.isfinite(_input_values)
+                            _input_values_at_bad_timesteps[_input_name] = _input_values.item()
 
-                            if (_invalid_input & _invalid_output).any():
-                                _invalid_inputs.append(_input_name)
+                        # timeseries input
+                        elif _input_values.ndim == 1 and _input_values.shape[0] == _invalid_output.shape[0]:
+                            _input_values_at_bad_timesteps[_input_name] = _input_values[_bad_timesteps].tolist()
+
                     raise ValueError(
                         f"pvfactors returned non-finite values for {_name} "
                         f"at placement {iloc}. "
-                        f"Invalid output timesteps: "
-                        f"{np.where(_invalid_output)[0].tolist()}. "
-                        f"Non-finite inputs at these timesteps: "
-                        f"{_invalid_inputs if _invalid_inputs else 'none'}"
+                        f"Invalid output timesteps: {_bad_timesteps.tolist()}. "
+                        f"Inputs at these timesteps: {_input_values_at_bad_timesteps}"
                     )
 
             # save the outputs to the respective multi-dimensional array columns
