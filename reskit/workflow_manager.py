@@ -1553,10 +1553,13 @@ def execute_workflow_iteratively(
     # get a locations iterable
     if "geom" in placements:
         locs = placements["geom"].to_list()
+        # these may be polygons which cannot be handled by get_location_specific_weather_paths()
+        # but later simulation uses only centroids, do so here, too (does not change point geoms)
+        locs = [gk.geom.getCentroid(g) for g in locs]
     elif "lon" in placements and "lat" in placements:
         locs = list(zip(placements.lon, placements.lat))
     else:
-        raise AttributeError(f"placements is expected to have a 'geom' column or both 'lat' and 'lon'columns.")
+        raise AttributeError("placements is expected to have a 'geom' column or both 'lat' and 'lon'columns.")
     # now complete the paths by replacing potential spacers based on the respective locations and zoom value
     tilepaths = np.asarray(get_location_specific_weather_paths(weather_paths=weather_paths, locs=locs, zoom=zoom))
 
