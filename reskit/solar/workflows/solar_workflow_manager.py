@@ -2863,57 +2863,58 @@ class SolarWorkflowManager(WorkflowManager):
             "dhi",
         }
 
+        # helper function to extract and preprocess shape for variables either from sim data or placements or defaults
+        def _extract_var(iloc, var, sim_var=None, fallback=None, time_invariant=False):
+            """First tries to get location- and time-variable sim_data, then location-variable placements column, else default."""
+            if self.sim_data.get(sim_var) is not None:
+                # get only the timeseries for the representative location
+                return np.asarray(self.sim_data.get(sim_var)[:, iloc], dtype=float).copy()
+            elif var is not None and var in self.plant_parameters_processed:
+                # value is not time-variable but in plant_parameters_processed
+                val = self.plant_parameters_processed[var]
+                assert np.asarray(val).ndim == 1  # make sure, needed for below logic
+                if time_invariant:
+                    # if parameter is time-invariant, return only the iloc-th value
+                    return val[iloc]
+                else:
+                    # if time-variant parameter is expected, duplicate for T timesteps
+                    return np.full(self._sim_shape_[0], val[iloc])
+            elif fallback is not None:
+                # set to variable fallback value
+                return np.full(self._sim_shape_[0], fallback)
+            else:
+                # fall back to defaults
+                defaults = {
+                    "n_pvrows": 3,
+                    "index_observed_pvrow": 1,
+                }  # default width for 2P orientation of large commercial module
+                if var not in defaults:
+                    raise KeyError(
+                        f"Variable '{var}' is neither a sim_data system variable, nor a column in placements dataframe nor has a default value."
+                    )
+                return defaults[var]
+            
         # iterate over all locs
         for iloc in range(n_locations):
-            # EXTRACT THE LOCATIONAL DATA FOR IRRADIANCE CALCULATION
 
-            # helper function to extract and preprocess shape for variables either from sim data or placements or defaults
-            def _extract_var(var, sim_var=None, fallback=None, time_invariant=False):
-                """First tries to get location- and time-variable sim_data, then location-variable placements column, else default."""
-                if self.sim_data.get(sim_var) is not None:
-                    # get only the timeseries for the representative location
-                    return np.asarray(self.sim_data.get(sim_var)[:, iloc], dtype=float).copy()
-                elif var is not None and var in self.plant_parameters_processed:
-                    # value is not time-variable but in plant_parameters_processed
-                    val = self.plant_parameters_processed[var]
-                    assert np.asarray(val).ndim == 1  # make sure, needed for below logic
-                    if time_invariant:
-                        # if parameter is time-invariant, return only the iloc-th value
-                        return val[iloc]
-                    else:
-                        # if time-variant parameter is expected, duplicate for T timesteps
-                        return np.full(self._sim_shape_[0], val[iloc])
-                elif fallback is not None:
-                    # set to variable fallback value
-                    return np.full(self._sim_shape_[0], fallback)
-                else:
-                    # fall back to defaults
-                    defaults = {
-                        "n_pvrows": 3,
-                        "index_observed_pvrow": 1,
-                    }  # default width for 2P orientation of large commercial module
-                    if var not in defaults:
-                        raise KeyError(
-                            f"Variable '{var}' is neither a sim_data system variable, nor a column in placements dataframe nor has a default value."
-                        )
-                    return defaults[var]
+            # EXTRACT THE LOCATIONAL DATA FOR IRRADIANCE CALCULATION
 
             # define the base input args for this location
             # define a fallback for the axis azimuth in case of tracked systems where the value does not exist
             # the tracker axis is not used here but value is expected, orientation is always rectangular to module azimuth
             _axazimuth_fallback = (
-                _extract_var("module_azimuth", "system_modazimuth") + 90 if self.tracking == "fixed" else None
+                _extract_var(iloc, "module_azimuth", "system_modazimuth") + 90 if self.tracking == "fixed" else None
             )
             pvfts_args = {}
             pvfts_args["solar_azimuth"] = self.sim_data["solar_azimuth"][:, iloc]
             pvfts_args["solar_zenith"] = self.sim_data["apparent_solar_zenith"][:, iloc]
-            pvfts_args["surface_azimuth"] = _extract_var(
+            pvfts_args["surface_azimuth"] = _extract_var(iloc, 
                 "module_azimuth" if self.tracking == "fixed" else None, "system_modazimuth"
             )
-            pvfts_args["surface_tilt"] = _extract_var(
+            pvfts_args["surface_tilt"] = _extract_var(iloc, 
                 "module_tilt" if self.tracking == "fixed" else None, "system_modtilt"
             )
-            pvfts_args["axis_azimuth"] = _extract_var(
+            pvfts_args["axis_azimuth"] = _extract_var(iloc, 
                 "axazimuth" if self.tracking == "fixed" else "system_axazimuth",
                 "system_axazimuth",
                 _axazimuth_fallback,
@@ -2922,12 +2923,12 @@ class SolarWorkflowManager(WorkflowManager):
             pvfts_args["timestamps"] = pvfts_args["timestamps"] = timestamps
             pvfts_args["dhi"] = self.sim_data["diffuse_horizontal_irradiance"][:, iloc]
             pvfts_args["dni"] = self.sim_data["direct_normal_irradiance"][:, iloc]
-            pvfts_args["gcr"] = _extract_var("gcr", time_invariant=True)
-            pvfts_args["pvrow_height"] = _extract_var("pvrow_height", time_invariant=True)
-            pvfts_args["albedo"] = _extract_var("grdalbedo", "system_grdalbedo")
-            pvfts_args["n_pvrows"] = _extract_var("n_pvrows", time_invariant=True)
-            pvfts_args["index_observed_pvrow"] = _extract_var("index_observed_pvrow", time_invariant=True)
-            pvfts_args["pvrow_width"] = _extract_var(
+            pvfts_args["gcr"] = _extract_var(iloc, "gcr", time_invariant=True)
+            pvfts_args["pvrow_height"] = _extract_var(iloc, "pvrow_height", time_invariant=True)
+            pvfts_args["albedo"] = _extract_var(iloc, "grdalbedo", "system_grdalbedo")
+            pvfts_args["n_pvrows"] = _extract_var(iloc, "n_pvrows", time_invariant=True)
+            pvfts_args["index_observed_pvrow"] = _extract_var(iloc, "index_observed_pvrow", time_invariant=True)
+            pvfts_args["pvrow_width"] = _extract_var(iloc, 
                 "pvrow_width_sloped", time_invariant=True
             )  # pvlib expects the full array width along the sloped edge
 
