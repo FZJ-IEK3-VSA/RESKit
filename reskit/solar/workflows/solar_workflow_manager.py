@@ -2893,10 +2893,9 @@ class SolarWorkflowManager(WorkflowManager):
                         f"Variable '{var}' is neither a sim_data system variable, nor a column in placements dataframe nor has a default value."
                     )
                 return defaults[var]
-            
+
         # iterate over all locs
         for iloc in range(n_locations):
-
             # EXTRACT THE LOCATIONAL DATA FOR IRRADIANCE CALCULATION
 
             # define the base input args for this location
@@ -2916,9 +2915,7 @@ class SolarWorkflowManager(WorkflowManager):
                 "system_modtilt",
             )
 
-            _axazimuth_fallback = (
-                (pvfts_args["surface_azimuth"][0] + 90) % 360 if self.tracking == "fixed" else None
-            )
+            _axazimuth_fallback = (pvfts_args["surface_azimuth"][0] + 90) % 360 if self.tracking == "fixed" else None
 
             pvfts_args["axis_azimuth"] = _extract_var(
                 iloc,
@@ -2935,8 +2932,8 @@ class SolarWorkflowManager(WorkflowManager):
             pvfts_args["albedo"] = _extract_var(iloc, "grdalbedo", "system_grdalbedo")
             pvfts_args["n_pvrows"] = _extract_var(iloc, "n_pvrows", time_invariant=True)
             pvfts_args["index_observed_pvrow"] = _extract_var(iloc, "index_observed_pvrow", time_invariant=True)
-            pvfts_args["pvrow_width"] = _extract_var(iloc, 
-                "pvrow_width_sloped", time_invariant=True
+            pvfts_args["pvrow_width"] = _extract_var(
+                iloc, "pvrow_width_sloped", time_invariant=True
             )  # pvlib expects the full array width along the sloped edge
 
             # # CONSIDER IRRADIANCE SHADING BY HORIZON EFFECTS
