@@ -2321,8 +2321,7 @@ class SolarWorkflowManager(WorkflowManager):
                 _axtilt = _axtilt if _axtilt >= 0 else -_axtilt
                 # calculate the optimal tracking orientations
                 tmp = pvlib.tracking.singleaxis(
-                    # zenith is defined as angle from vertical and >90° is impossible, set maximum of 90° to avoid nans
-                    apparent_zenith=pd.Series(
+                    pd.Series(
                         np.where(
                             self.sim_data["apparent_solar_zenith"][:, i] <= 90,
                             self.sim_data["apparent_solar_zenith"][:, i],
@@ -2330,7 +2329,10 @@ class SolarWorkflowManager(WorkflowManager):
                         ),
                         index=self._time_index_,
                     ),
-                    apparent_azimuth=pd.Series(self.sim_data["solar_azimuth"][:, i], index=self._time_index_),
+                    pd.Series(
+                        self.sim_data["solar_azimuth"][:, i],
+                        index=self._time_index_,
+                    ),
                     axis_tilt=_axtilt,
                     axis_azimuth=_axazimuth,
                     max_angle=_max_angle,
