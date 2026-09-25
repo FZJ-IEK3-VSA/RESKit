@@ -1611,6 +1611,7 @@ class SolarWorkflowManager(WorkflowManager):
 
         return self
 
+        
     def _calculate_distant_horizon_profile(
         self,
         digital_surface_model_paths: Iterable[str],
@@ -1620,7 +1621,7 @@ class SolarWorkflowManager(WorkflowManager):
         max_distance: int = 10000,
         distance_stepsize: int = 30,
         exp_spacing_factor: float = 1.01,
-        out_of_bounds_tol: int = 0,  # TODO 100 for the current run
+        out_of_bounds_tol: int = 0,
     ):
         """
         Returns the distant horizon profile based on a digital elevation model raster
@@ -1630,7 +1631,7 @@ class SolarWorkflowManager(WorkflowManager):
         Parameters
         ----------
         digital_surface_model_paths : Iterable[str]
-            The paths to the digital elevation models that shall be used to
+            The paths to the digital surface models that shall be used to
             extract the elevation of the horizon features, typically DSMs incl.
             tree, building etc. feature heights. Each path belongs to the location
             at the same position in lons and lats.
@@ -1640,7 +1641,7 @@ class SolarWorkflowManager(WorkflowManager):
             Latitudes of the observer locations.
         angle_stepsize : float, optional
             The azimuthal angle steps for the view direction sampling points of
-            the horizont profile, by default every 3°.
+            the horizon profile, by default every 3°.
         max_distance : int, optional
             The maximum distance in meters up to which horizon features will be
             considered for the profile. By default 10 000 [m].
@@ -1655,9 +1656,11 @@ class SolarWorkflowManager(WorkflowManager):
             s(n)= s_0**^(k**n), k=exp_spacing_factor and s_0=distance_stepsize
             By default k = 1.01.
         out_of_bounds_tol : int, optional
-            The accepted number of pixels that a lat/lon can be out of bounds of
-            the DEM raster so that still a NaN value will be returned for this
-            angle. Beyond this pixel tolerance it will fail.
+            The accepted number of pixels by which a plant location may lie outside
+            the DEM raster. If within this tolerance, the plant location is shifted
+            to the nearest valid edge pixel. Beyond this pixel tolerance, it will
+            fail. Note that sufficient DEM coverage around the resulting plant
+            location is still required for the horizon calculation.
 
         Returns
         -------
@@ -1666,40 +1669,249 @@ class SolarWorkflowManager(WorkflowManager):
             number of angular sampling points, with horizon angles per view axis
             in degrees over flat horizon.
         """
+
+        import warnings
+
         digital_surface_model_paths = list(digital_surface_model_paths)
         lons = list(lons)
         lats = list(lats)
 
         assert len(digital_surface_model_paths) == len(lons) == len(lats), (
-            "digital_surface_model_paths ({len(digital_surface_model_paths)}), lons ({len(lons)}) and lats ({len(lats)}) must have identical lengths."
+            f"digital_surface_model_paths ({len(digital_surface_model_paths)}), "
+            f"lons ({len(lons)}) and lats ({len(lats)}) must have identical lengths."
         )
-        assert all([isinstance(x, str) for x in digital_surface_model_paths]), (
+        assert all(isinstance(x, str) for x in digital_surface_model_paths), (
             "digital_surface_model_paths iterable must only contain str formatted values"
         )
-        assert all([isfile(x) for x in digital_surface_model_paths]), (
+        assert all(isfile(x) for x in digital_surface_model_paths), (
             "All values of digital_surface_model_paths must be existing filepaths."
         )
 
-        # define a lines of view array adding up to 360° around the location
+        # define lines of view adding up to 360° around the location
         azimuths = np.arange(0, 360, angle_stepsize)
-        # iterate over all locations and generate horizon profiles for the azimuths
-        horizons = []  # initialize collector for all locational profiles
-        old_str = None  # save the last DEM filepath to save the time for loading it again in case that the file remains the same
-        for dsm_path, lat, lon in zip(digital_surface_model_paths, lats, lons):
-            lats = np.atleast_1d(lat)
-            lons = np.atleast_1d(lon)
 
-            # load DEM only if necessary, i.e. only when new filepath
+        # iterate over all locations and generate horizon profiles
+        horizons = []
+        old_str = None
+
+        for dsm_path, lat, lon in zip(
+            digital_surface_model_paths,
+            lats,
+            lons,
+        ):
+            loc_lats = np.atleast_1d(lat).astype(float)
+            loc_lons = np.atleast_1d(lon).astype(float)
+
+            # load DEM only if necessary, i.e. only when filepath changes
             if dsm_path != old_str:
                 old_str = dsm_path
-                with rasterio.open(dsm_path) as src:  # TODO replace by osgeo approach to avoid rasterio import
-                    dem = src.read(1)
+
+                with rasterio.open(dsm_path) as src:
+                    # Raster NoData / mask values are converted to NaN.
+                    dem = (
+                        src.read(1, masked=True)
+                        .astype(float)
+                        .filled(np.nan)
+                    )
+
                     transform = src.transform
                     crs = src.crs
+
                     if crs.to_epsg() != 4326:
                         raise ValueError("DEM must be in EPSG:4326")
 
-            # preprocess dem data
+                # -----------------------------------------------------------------
+                # TEMPORARY WORKAROUND FOR ZERO-LINE ARTIFACTS IN PREPROCESSED DEMS
+                #
+                # Some preprocessed DEMs contain one-pixel-wide straight lines of
+                # exact zero values although surrounding elevations are valid.
+                # Detect only straight horizontal/vertical zero lines of at least
+                # three pixels length and replace them by the median of surrounding
+                # finite, non-zero DEM cells.
+                #
+                # Remove this whole block once the upstream DEM preprocessing has
+                # been fixed.
+                # -----------------------------------------------------------------
+
+                zero = dem == 0
+
+                if np.any(zero):
+                    # zero-valued direct neighbours
+                    up_zero = np.zeros_like(zero)
+                    down_zero = np.zeros_like(zero)
+                    left_zero = np.zeros_like(zero)
+                    right_zero = np.zeros_like(zero)
+
+                    up_zero[1:, :] = zero[:-1, :]
+                    down_zero[:-1, :] = zero[1:, :]
+                    left_zero[:, 1:] = zero[:, :-1]
+                    right_zero[:, :-1] = zero[:, 1:]
+
+                    # Cores of straight zero lines with at least 3 pixels length.
+                    vertical_core = zero & up_zero & down_zero
+                    horizontal_core = zero & left_zero & right_zero
+
+                    # Expand the cores by one pixel in line direction so that the
+                    # endpoints of each >=3-pixel line are included as well.
+                    vertical_line = vertical_core.copy()
+
+                    vertical_line[:-1, :] |= (
+                        zero[:-1, :]
+                        & vertical_core[1:, :]
+                    )
+
+                    vertical_line[1:, :] |= (
+                        zero[1:, :]
+                        & vertical_core[:-1, :]
+                    )
+
+                    horizontal_line = horizontal_core.copy()
+
+                    horizontal_line[:, :-1] |= (
+                        zero[:, :-1]
+                        & horizontal_core[:, 1:]
+                    )
+
+                    horizontal_line[:, 1:] |= (
+                        zero[:, 1:]
+                        & horizontal_core[:, :-1]
+                    )
+
+                    # Require the line to be only one pixel wide.
+                    vertical_line &= ~left_zero & ~right_zero
+                    horizontal_line &= ~up_zero & ~down_zero
+
+                    repair_mask = vertical_line | horizontal_line
+
+                    # Handle crossings between one-pixel-wide horizontal and
+                    # vertical zero lines. A true crossing has non-zero diagonals,
+                    # unlike the interior of a larger zero-valued area.
+                    crossing_candidates = (
+                        zero
+                        & vertical_core
+                        & horizontal_core
+                        & ~repair_mask
+                    )
+
+                    crossing_rows, crossing_cols = np.where(
+                        crossing_candidates
+                    )
+
+                    if crossing_rows.size:
+                        diagonal_contains_zero = np.zeros(
+                            crossing_rows.size,
+                            dtype=bool,
+                        )
+
+                        for dr, dc in (
+                            (-1, -1),
+                            (-1, 1),
+                            (1, -1),
+                            (1, 1),
+                        ):
+                            rr = crossing_rows + dr
+                            cc = crossing_cols + dc
+
+                            inside = (
+                                (rr >= 0)
+                                & (rr < dem.shape[0])
+                                & (cc >= 0)
+                                & (cc < dem.shape[1])
+                            )
+
+                            diagonal_contains_zero[inside] |= zero[
+                                rr[inside],
+                                cc[inside],
+                            ]
+
+                        crossing_rows = crossing_rows[
+                            ~diagonal_contains_zero
+                        ]
+                        crossing_cols = crossing_cols[
+                            ~diagonal_contains_zero
+                        ]
+
+                        repair_mask[
+                            crossing_rows,
+                            crossing_cols,
+                        ] = True
+
+                    repair_rows, repair_cols = np.where(repair_mask)
+
+                    if repair_rows.size:
+                        # Collect the eight directly surrounding cells.
+                        neighbour_values = np.full(
+                            (8, repair_rows.size),
+                            np.nan,
+                            dtype=float,
+                        )
+
+                        for i, (dr, dc) in enumerate(
+                            (
+                                (-1, -1),
+                                (-1, 0),
+                                (-1, 1),
+                                (0, -1),
+                                (0, 1),
+                                (1, -1),
+                                (1, 0),
+                                (1, 1),
+                            )
+                        ):
+                            rr = repair_rows + dr
+                            cc = repair_cols + dc
+
+                            inside = (
+                                (rr >= 0)
+                                & (rr < dem.shape[0])
+                                & (cc >= 0)
+                                & (cc < dem.shape[1])
+                            )
+
+                            values = dem[
+                                rr[inside],
+                                cc[inside],
+                            ]
+
+                            values = np.where(
+                                np.isfinite(values) & (values != 0),
+                                values,
+                                np.nan,
+                            )
+
+                            neighbour_values[i, inside] = values
+
+                        has_valid_neighbour = np.isfinite(
+                            neighbour_values
+                        ).any(axis=0)
+
+                        replacements = np.full(
+                            repair_rows.size,
+                            np.nan,
+                            dtype=float,
+                        )
+
+                        replacements[has_valid_neighbour] = np.nanmedian(
+                            neighbour_values[
+                                :,
+                                has_valid_neighbour,
+                            ],
+                            axis=0,
+                        )
+
+                        # If a detected line cannot be reconstructed from valid
+                        # surrounding cells, turn it into NaN. It will then fail
+                        # explicitly if it is actually required below.
+                        dem[
+                            repair_rows,
+                            repair_cols,
+                        ] = replacements
+
+                # -----------------------------------------------------------------
+                # END TEMPORARY ZERO-LINE WORKAROUND
+                # -----------------------------------------------------------------
+
+            # preprocess DEM data
             nrows, ncols = dem.shape
             res_lon = transform.a
             res_lat = -transform.e
@@ -1708,102 +1920,321 @@ class SolarWorkflowManager(WorkflowManager):
 
             # get cell row/col ids for all locations
             def get_cell_id(lon_arr, lat_arr):
-                cols = ((lon_arr - xmin) / res_lon).astype(int)
-                rows = ((ymax - lat_arr) / res_lat).astype(int)
+                cols = np.floor(
+                    (lon_arr - xmin) / res_lon
+                ).astype(int)
+
+                rows = np.floor(
+                    (ymax - lat_arr) / res_lat
+                ).astype(int)
+
                 return rows, cols
 
-            r0, c0 = get_cell_id(lons, lats)
+            r0, c0 = get_cell_id(
+                loc_lons,
+                loc_lats,
+            )
 
-            # calculate if/by how many pixels the location exceeds the raster bounds
+            # calculate if/by how many pixels the location exceeds raster bounds
             exceeds = np.maximum.reduce(
                 [
-                    np.maximum(-r0, 0),  # top
-                    np.maximum(r0 - (nrows - 1), 0),  # bottom
-                    np.maximum(-c0, 0),  # left
-                    np.maximum(c0 - (ncols - 1), 0),  # right
+                    np.maximum(-r0, 0),                  # top
+                    np.maximum(r0 - (nrows - 1), 0),    # bottom
+                    np.maximum(-c0, 0),                  # left
+                    np.maximum(c0 - (ncols - 1), 0),    # right
                 ]
             ).astype(int)
 
-            # sometimes, the lat/lon is only SLIGHTLY out of bounds, in such cases allow returning NaNs - else fail based on out_of_bounds_tol
             if np.any(exceeds > out_of_bounds_tol):
-                # this exceeds the tolerances, too far away - fail!
                 raise IndexError(
-                    f"Observer location is outside DEM by more than out_of_bounds_tol={out_of_bounds_tol} pixel, here {max(exceeds)} pixel/s."
+                    f"Plant location is outside DEM by more than "
+                    f"out_of_bounds_tol={out_of_bounds_tol} pixel, "
+                    f"here {max(exceeds)} pixel/s: "
+                    f"lat/lon: {lat}, {lon}, DEM file: {dsm_path}"
                 )
-            elif np.any(exceeds > 0):
-                # we are only < out_of_bounds_tol pixel away from the raster, move the location "inwards" to the outmost pixel
-                print(
-                    f"NOTE: Location was {max(exceeds)} pixels out of bounds, but below tolerance = {out_of_bounds_tol} pixels. Location shifted inwards slightly."
-                )
-                r0 = np.clip(r0, 0, nrows - 1)
-                c0 = np.clip(c0, 0, ncols - 1)
 
-            # get the plant elevations (zero distance)
+            elif np.any(exceeds > 0):
+                print(
+                    f"NOTE: Plant location was {max(exceeds)} pixels out of bounds, "
+                    f"but below tolerance = {out_of_bounds_tol} pixels. "
+                    f"Location shifted inwards to the nearest valid edge pixel."
+                )
+
+                outside_top = r0 < 0
+                outside_bottom = r0 >= nrows
+                outside_left = c0 < 0
+                outside_right = c0 >= ncols
+
+                r0 = np.clip(
+                    r0,
+                    0,
+                    nrows - 1,
+                )
+
+                c0 = np.clip(
+                    c0,
+                    0,
+                    ncols - 1,
+                )
+
+                # Also move the actual ray origin to the corresponding edge pixel.
+                # Otherwise elev0 would be taken from the shifted edge pixel while
+                # the horizon rays would still start from the original location.
+                if np.any(outside_top):
+                    loc_lats[outside_top] = (
+                        ymax
+                        - 0.5 * res_lat
+                    )
+
+                if np.any(outside_bottom):
+                    loc_lats[outside_bottom] = (
+                        ymax
+                        - (nrows - 0.5) * res_lat
+                    )
+
+                if np.any(outside_left):
+                    loc_lons[outside_left] = (
+                        xmin
+                        + 0.5 * res_lon
+                    )
+
+                if np.any(outside_right):
+                    loc_lons[outside_right] = (
+                        xmin
+                        + (ncols - 0.5) * res_lon
+                    )
+
+                # Recalculate the raster indices from the actually shifted location.
+                r0, c0 = get_cell_id(
+                    loc_lons,
+                    loc_lats,
+                )
+
+            # get plant elevation at zero distance
             elev0 = dem[r0, c0]
 
-            # create a distance spacing array based on step and exponential growth factor
-            distances = [distance_stepsize, distance_stepsize + distance_stepsize**exp_spacing_factor]
-            while distances[-1] < max_distance:
-                # growth linearly for exp_spacing_factor==1, else exponentially
-                distances.append(distances[-1] + (distances[-1] - distances[-2]) ** exp_spacing_factor)
-            distances = np.array(distances)
+            # NoData or other non-finite elevations must not be used.
+            if not np.isfinite(elev0).all():
+                raise ValueError(
+                    f"Plant location has invalid DEM elevation: "
+                    f"lat/lon: {lat}, {lon}, DEM file: {dsm_path}"
+                )
 
-            # get the radians of the azimuths
-            az_rad = np.radians(azimuths)[:, None]
+            # create distance spacing array
+            distances = [
+                distance_stepsize,
+                distance_stepsize
+                + distance_stepsize**exp_spacing_factor,
+            ]
+
+            while distances[-1] < max_distance:
+                distances.append(
+                    distances[-1]
+                    + (
+                        distances[-1]
+                        - distances[-2]
+                    ) ** exp_spacing_factor
+                )
+
+            # Never sample farther than max_distance and make sure that the
+            # requested maximum distance itself is the final sampling point.
+            distances = np.asarray(
+                distances,
+                dtype=float,
+            )
+
+            distances = distances[
+                distances < max_distance
+            ]
+
+            distances = np.append(
+                distances,
+                float(max_distance),
+            )
+
+            # get radians of azimuths
+            az_rad = np.radians(
+                azimuths
+            )[:, None]
 
             # dx/dy for all azimuths & distances
             d = distances[None, :]
+
             dx = d * np.sin(az_rad)
             dy = d * np.cos(az_rad)
 
-            # convert meters to degrees (depends on observer lat!)
+            # convert meters to degrees
             meters_per_deg_lat = 111320
-            meters_per_deg_lon = 111320 * np.cos(np.radians(lats))
+
+            meters_per_deg_lon = (
+                111320
+                * np.cos(
+                    np.radians(loc_lats)
+                )
+            )
 
             # reshape for broadcasting
-            lats_r = lats[:, None, None]
-            lons_r = lons[:, None, None]
-            mpd_lat = meters_per_deg_lat
-            mpd_lon = meters_per_deg_lon[:, None, None]
-            dx = dx[None, :, :]
-            dy = dy[None, :, :]
+            lats_r = loc_lats[
+                :,
+                None,
+                None,
+            ]
 
-            # compute sampling points along the rays for all observers
-            dlat = dy / mpd_lat  # mpd_lat is scalar
-            dlon = dx / mpd_lon  # mpd_lon is an array, depends on lat
+            lons_r = loc_lons[
+                :,
+                None,
+                None,
+            ]
+
+            mpd_lat = meters_per_deg_lat
+
+            mpd_lon = meters_per_deg_lon[
+                :,
+                None,
+                None,
+            ]
+
+            dx = dx[
+                None,
+                :,
+                :,
+            ]
+
+            dy = dy[
+                None,
+                :,
+                :,
+            ]
+
+            # compute sampling points along rays
+            dlat = dy / mpd_lat
+            dlon = dx / mpd_lon
+
             lat_pts = lats_r + dlat
             lon_pts = lons_r + dlon
 
-            # extract the elevation values for all of these points
-            rows, cols = get_cell_id(lon_pts, lat_pts)
+            # extract elevation values for all sampling points
+            rows, cols = get_cell_id(
+                lon_pts,
+                lat_pts,
+            )
 
-            # mask out-of-bounds
-            in_bounds = (rows >= 0) & (rows < nrows) & (cols >= 0) & (cols < ncols)
+            # mask out-of-bounds samples
+            in_bounds = (
+                (rows >= 0)
+                & (rows < nrows)
+                & (cols >= 0)
+                & (cols < ncols)
+            )
+
+            # check DEM coverage along each horizon ray
+            ray_has_any = np.any(
+                in_bounds,
+                axis=2,
+            )
+
+            ray_is_complete = np.all(
+                in_bounds,
+                axis=2,
+            )
+
+            # fail if at least one horizon ray has no DEM coverage at all
+            if not np.all(ray_has_any):
+                raise ValueError(
+                    f"At least one horizon ray has no DEM coverage: "
+                    f"lat/lon: {lat}, {lon}, DEM file: {dsm_path}"
+                )
+
+            # warn if at least one ray does not reach max_distance
+            if not np.all(ray_is_complete):
+                n_incomplete = np.sum(
+                    ~ray_is_complete
+                )
+
+                warnings.warn(
+                    f"{n_incomplete} horizon ray(s) do not reach the requested "
+                    f"maximum distance of {max_distance} m because they leave the DEM: "
+                    f"lat/lon: {lat}, {lon}, DEM file: {dsm_path}",
+                    RuntimeWarning,
+                )
 
             # flatten for indexing
             flat_rows = rows.ravel()
             flat_cols = cols.ravel()
             flat_mask = in_bounds.ravel()
 
-            elev_flat = np.full(flat_rows.size, np.nan)
-            valid_idx = np.where(flat_mask)[0]
-            elev_flat[valid_idx] = dem[flat_rows[valid_idx], flat_cols[valid_idx]]
+            elev_flat = np.full(
+                flat_rows.size,
+                np.nan,
+            )
 
-            elev_sampled = elev_flat.reshape(rows.shape)
+            valid_idx = np.where(
+                flat_mask
+            )[0]
+
+            sampled = dem[
+                flat_rows[valid_idx],
+                flat_cols[valid_idx],
+            ]
+
+            # NoData or other non-finite elevations must not be used.
+            if not np.isfinite(sampled).all():
+                raise ValueError(
+                    f"DEM contains invalid elevation values at horizon sampling "
+                    f"points: lat/lon: {lat}, {lon}, DEM file: {dsm_path}"
+                )
+
+            elev_flat[
+                valid_idx
+            ] = sampled
+
+            elev_sampled = elev_flat.reshape(
+                rows.shape
+            )
 
             # calculate horizon angles
-            elev_diff = elev_sampled - elev0[:, None, None]
-            angles = np.degrees(np.arctan2(elev_diff, d))
-            angles[~in_bounds] = -np.inf
-            horizon = np.nanmax(angles, axis=2)
+            elev_diff = (
+                elev_sampled
+                - elev0[:, None, None]
+            )
 
-            # append profile to the overall list with all locations
-            horizons.append(horizon)
+            angles = np.degrees(
+                np.arctan2(
+                    elev_diff,
+                    d,
+                )
+            )
 
-        # recombine different locational profiles and set as attribute
-        distant_horizon_profile = np.vstack(horizons, dtype=float)
+            # out-of-bounds samples must never define the horizon
+            angles[
+                ~in_bounds
+            ] = -np.inf
+
+            horizon = np.nanmax(
+                angles,
+                axis=2,
+            )
+
+            # Final defensive check: no NaN/inf horizon values may leave this
+            # function unnoticed.
+            if not np.isfinite(horizon).all():
+                raise ValueError(
+                    f"Invalid horizon angle calculated: "
+                    f"lat/lon: {lat}, {lon}, DEM file: {dsm_path}"
+                )
+
+            horizons.append(
+                horizon
+            )
+
+        # recombine locational profiles
+        distant_horizon_profile = np.vstack(
+            horizons,
+            dtype=float,
+        )
 
         return distant_horizon_profile
+
 
     def preprocess_hill_slope_and_azimuth(
         self,
