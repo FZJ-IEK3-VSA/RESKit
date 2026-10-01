@@ -386,7 +386,7 @@ class EGSWorkflowManager:
         self.sim_data_VM["T_Rock_abandon_VM_degC"] = (
             self.sim_data["temperature"] - self.sim_data_VM["dT_total_res_VM_K"]
         )
-        self.sim_data_VM["T_Water_out_VM_degC"] = self.sim_data_VM["temperature_VM_degC"]
+        self.sim_data_VM["T_Water_out_VM_degC"] = T_out
         pass
 
     def GringartenMethodFixedT(self):
@@ -494,7 +494,7 @@ class EGSWorkflowManager:
         P_el_MW = Qdot_sust_W * 1e-6 * eta_plant
 
         # get water mass flow
-        mdot_water_kg_per_s = Qdot_sust_W / (self.rho_water * self.cp_water * (T_water_out - self.data["T_inj"]))
+        mdot_water_kg_per_s = Qdot_sust_W / (self.cp_water * (T_water_out - self.data["T_inj"]))
         mdot_water_kg_per_s_per_well = mdot_water_kg_per_s / self.data["n_production_wells_1"]
 
         # save vars
@@ -536,8 +536,8 @@ class EGSWorkflowManager:
         productivity_m3_per_s_per_Pa = self.data["productivity_(l_per_s)/bar"] * 1e-3 / 1e5  # Pa/(m^3/s)
         detaP = Vdot_m3_per_s_per_well / productivity_m3_per_s_per_Pa  # Pa
 
-        P_pump = detaP * Vdot_m3_per_s_per_well / self.data["eta_pump_1"]
-        P_pump_MW = P_pump / 1e6
+        P_pump_per_well = detaP * Vdot_m3_per_s_per_well / self.data["eta_pump_1"]
+        P_pump_MW = P_pump_per_well * self.data["n_production_wells_1"] / 1e6
 
         sim_data_techmethod[f"P_Pump_{tech_method_short}_MW"] = P_pump_MW
         sim_data_techmethod[f"P_out_net_{tech_method_short}_MW"] = (
@@ -589,9 +589,7 @@ class EGSWorkflowManager:
             CAPEX_Plant_MUSD = 1560 * P_nom / 1e3  # 1560 EUR/kW from 2006_Heidinger-et-al
             # Other
             CAPEX_Stim_MUSD = 2.5
-            CAPEX_Pump_MUSD = (
-                1720 * sim_data_techmethod[f"P_Pump_{tech_method_short}_MW"] * self.data["n_production_wells_1"] / 1e3
-            )
+            CAPEX_Pump_MUSD = 1720 * sim_data_techmethod[f"P_Pump_{tech_method_short}_MW"] / 1e3
             CAPEX_Expl_MUSD = 1.85
             # add up
             CAPEX_Total_MUSD = (
