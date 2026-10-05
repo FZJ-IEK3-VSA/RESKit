@@ -62,12 +62,21 @@ def _block_solve_engine():
             # ground radiosities in terms of the PV row ones: q0_G = (r_G + F_GP q0_P) / invrho_G
             f_pg_scaled = vf[p, g] / invrho_mat[g][None]  # F_PG D_G^-1, (P, G, t)
             # the PV row system: (diag(invrho_P) - F_PP - F_PG D_G^-1 F_GP) q0_P = r_P + F_PG D_G^-1 r_G
-            schur = -vf[p, p] - np.einsum("pgt,gqt->pqt", f_pg_scaled, vf[g, p])
+            schur = -vf[p, p]
+            # Each ground surface is seen by only a few PV row surfaces and sees only a few, so
+            # F_PG D_G^-1 F_GP is summed over the non-zero pairs only, ground surface by ground
+            # surface: about an eighth of the dense product for 3 rows, same summation order.
+            f_gp = vf[g, p]
+            seen_by, sees = f_pg_scaled.any(axis=2), f_gp.any(axis=2)  # (P, G), (G, P)
+            for j in range(n_gnd):
+                rows, cols = np.flatnonzero(seen_by[:, j]), np.flatnonzero(sees[j])
+                if rows.size and cols.size:
+                    schur[rows[:, None], cols[None, :]] -= f_pg_scaled[rows, j][:, None, :] * f_gp[j, cols][None, :, :]
             n_pv = schur.shape[0]
             schur[np.arange(n_pv), np.arange(n_pv)] += invrho_mat[p]
             rhs = r_p + np.einsum("pgt,gt->pt", f_pg_scaled, r_g)
             q0_p = np.linalg.solve(np.moveaxis(schur, -1, 0), rhs.T[..., None])[..., 0].T
-            q0_g = (r_g + np.einsum("gpt,pt->gt", vf[g, p], q0_p)) / invrho_mat[g]
+            q0_g = (r_g + np.einsum("gpt,pt->gt", f_gp, q0_p)) / invrho_mat[g]
 
             q0 = np.empty_like(irradiance_mat)
             q0[g], q0[p], q0[s] = q0_g, q0_p, q0_s
@@ -76,9 +85,10 @@ def _block_solve_engine():
             qinc = invrho_mat * q0
             isotropic_mat = vf[:-1, -1, :] * irradiance_mat[-1, :]
             reflection_mat = qinc[:-1, :] - irradiance_mat[:-1, :] - isotropic_mat
-            # without AOI methods the absorption matrix is (1 - rho_i) * vf_ik, row by row
+            # without AOI methods the absorption matrix is (1 - rho_i) * vf_ik, row by row, and
+            # F q0 needs no product: A q0 = irradiance with A = diag(invrho) - F gives F q0 = qinc - irradiance
             irradiance_abs_mat = self.irradiance.get_summed_components(pvarray, absorbed=True)
-            qabs = (1.0 - rho_mat[:-1]) * np.einsum("ikt,kt->it", vf[:-1], q0) + irradiance_abs_mat
+            qabs = (1.0 - rho_mat[:-1]) * (qinc[:-1] - irradiance_mat[:-1]) + irradiance_abs_mat
             # PVEngine also stores ts_vf_aoi_matrix, a third (n + 1)^2 x n_timesteps array that
             # nothing downstream of the report needs; it is left unset (None)
 
