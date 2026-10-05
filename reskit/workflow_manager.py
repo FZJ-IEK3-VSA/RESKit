@@ -833,12 +833,10 @@ class WorkflowManager:
 
         # create an info column which fallback scaling was applied where
         # 'none' indicates no-fallback locations, primary dataset worked
-        fallback_info = np.full(len(factors), "none", dtype=object) 
+        fallback_info = np.full(len(factors), "none", dtype=object)
         # successfull fallback ops contain the scaling factor, also str for consistency
-        fallback_success = fallback_required & np.isfinite(factors) 
-        fallback_info[fallback_success] = [
-            f"{factor:.4g}" for factor in factors[fallback_success]
-        ]
+        fallback_success = fallback_required & np.isfinite(factors)
+        fallback_info[fallback_success] = [f"{factor:.4g}" for factor in factors[fallback_success]]
         # unsuccessfull fallbacks are assigned a "FAILED" flag
         fallback_failed = fallback_required & ~np.isfinite(factors)
         fallback_info[fallback_failed] = "FAILED"

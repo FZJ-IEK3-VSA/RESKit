@@ -142,6 +142,7 @@ def location_to_module_tilt_and_gcr_winkler_2027(
     absolute tilt angle of 10° for self-cleaning. The specific model used
     here was developed only for winter solstice rule-optimal ground coverage
     ratios, the matching gcrs are returned for every location for convenience.
+    A min. GCR of 0.169 will be enforced in extreme locations.
 
     Parameters
     ----------
@@ -192,6 +193,7 @@ def location_to_module_tilt_and_gcr_winkler_2027(
     optimal_period : str, optional
         The models are optimized for maximum energy yield either overall
         ('annual' yield) or in the winter/low season ('min_month').
+        For 'min_month', the annual model is used above 50° absolute latitude.
         By default 'annual'.
 
     Returns
@@ -201,7 +203,7 @@ def location_to_module_tilt_and_gcr_winkler_2027(
 
         - Predicted fixed module tilt angle(s) in degrees.
         - Corresponding ground coverage ratio(s) according to the winter
-        solstice rule.
+          solstice rule.
 
         If all aligned inputs are scalar, both tuple entries are returned
         as floats. Otherwise, both entries are returned as 1D NumPy arrays
@@ -221,10 +223,11 @@ def location_to_module_tilt_and_gcr_winkler_2027(
         If no trained model is currently configured for the requested
         combination of ``consider_snow`` and ``bifacial``.
     """
+
     # check scalar inputs
     if not all(isinstance(x, (bool, np.bool_)) for x in [bifacial, consider_snow]):
         raise TypeError("The following args must be booleans: bifacial, consider_snow")
-    if not optimal_period in ["annual", "min_month"]:
+    if optimal_period not in ["annual", "min_month"]:
         raise ValueError(f"optimal_period must be 'annual' or 'min_month', here: {optimal_period}")
 
     # important: define features in the EXACT order that was used to train the model
@@ -273,18 +276,18 @@ def location_to_module_tilt_and_gcr_winkler_2027(
         if np.any((features["snowcoverdays"] < 0) | (features["snowcoverdays"] > 366)):
             raise ValueError("snowcoverdays values must be >= 0 and <= 366.")
 
-    # select the appropriate pretrained model, get the path and load the model
+    # define the respective model file paths containing the pretrained neural network data for the selected parameters
     model_paths = {
         "annual": {
             True: {  # consider snow
-                True: (
+                True: (  # bifacial
                     "/fast/central/projects/2020_c-winkler_phd/"
                     "_01_LEAandCapacity/_03_CapacityPreprocessing/"
                     "_02_pv_park_capacity_density/outputs/model/v20260828/"
                     "CatBoostRegressionModel_DirectOptimalTilt_avgcf_"
                     "v20260828_Consider_Snow_EffectsTrue_"
                     "Bifaciality_Factor0.9_26-09-16_15h51m_"
-                    "mintilt10_FourthPass_Lossguide_model.cbm"  # bifacial snow model
+                    "mintilt10_FourthPass_Lossguide_model.cbm"  # bifacial snow avgcf model
                 ),
                 False: None,  # TODO: add monofacial snow annual model
             },
@@ -295,7 +298,15 @@ def location_to_module_tilt_and_gcr_winkler_2027(
         },
         "min_month": {
             True: {  # consider snow
-                True: None,  # TODO: add bifacial snow min_month model
+                True: (
+                    "/fast/central/projects/2020_c-winkler_phd/"
+                    "_01_LEAandCapacity/_03_CapacityPreprocessing/"
+                    "_02_pv_park_capacity_density/outputs/model/v20260828/"
+                    "CatBoostRegressionModel_DirectOptimalTilt_cfminmonth_"
+                    "v20260828_Consider_Snow_EffectsTrue_"
+                    "Bifaciality_Factor0.9_26-09-19_08h31m_"
+                    "mintilt10_FourthPass_Lossguide_model.cbm"
+                ),  # bifacial snow min_month model
                 False: None,  # TODO: add monofacial min_month snow model
             },
             False: {  # no snow
@@ -305,20 +316,6 @@ def location_to_module_tilt_and_gcr_winkler_2027(
         },
     }
 
-    model_path = model_paths[optimal_period][consider_snow][bifacial]
-    if model_path is None:
-        raise NotImplementedError(
-            f"No CatBoost model is configured for optimal_period={optimal_period}, "
-            f"consider_snow={consider_snow}, bifacial={bifacial}."
-        )
-
-    model = CatBoostRegressor()
-    import time
-
-    _start = time.time()
-    model.load_model(model_path)
-    print(f"loading model took {time.time() - _start} seconds")  # TODO remove the time log and import
-
     # define an X vector with features in exact training order (!)
     X = np.column_stack(tuple(features.values())).astype(
         np.float32,
@@ -326,10 +323,41 @@ def location_to_module_tilt_and_gcr_winkler_2027(
     )
 
     # predict the optimal module tilts
-    module_tilts = np.asarray(
-        model.predict(X),
-        dtype=float,
-    )
+    module_tilts = np.empty(X.shape[0], dtype=float)
+
+    if optimal_period == "min_month":
+        model_periods = {  # TODO possibly remove this and uncomment the next if a predefined lat boundary shall be set above which always annual is applied
+            "min_month": np.ones(X.shape[0], dtype=bool),
+        }
+        # model_periods = { # TODO comment in to exogenously set a limit of e.g. 50° lat abs above which min month optimization makes no sense anymore
+        #     "min_month": np.abs(features["lat"]) <= 50,
+        #     "annual": np.abs(features["lat"]) > 50,
+        # }
+    else:
+        model_periods = {
+            "annual": np.ones(X.shape[0], dtype=bool),
+        }
+
+    for model_period, mask in model_periods.items():
+        if not np.any(mask):
+            continue
+        # select the appropriate pretrained model, get the path and load the model
+        model_path = model_paths[model_period][consider_snow][bifacial]
+        if model_path is None:
+            raise NotImplementedError(
+                f"No CatBoost model is configured for optimal_period={model_period}, "
+                f"consider_snow={consider_snow}, bifacial={bifacial}."
+            )
+
+        model = CatBoostRegressor()
+        import time
+
+        _start = time.time()
+        model.load_model(model_path)
+        print(f"loading model took {time.time() - _start} seconds")  # TODO remove the time log and import
+
+        module_tilts[mask] = model.predict(X[mask])
+
     if not np.all(np.isfinite(module_tilts)):
         raise ValueError("CatBoost model returned non-finite module tilt values.")
 
@@ -360,11 +388,8 @@ def location_to_module_tilt_and_gcr_winkler_2027(
     # also, a min. GCR of 0.169 was enforced during training
     too_wide = gcrs < 0.169
     if np.any(too_wide):
-        # replace by +/-10° depending on sign, ecxact 0° will become 10°
-        gcrs[too_wide] = np.copysign(
-            0.169,
-            gcrs[too_wide],
-        )
+        # enforce the minimum GCR used during training
+        gcrs[too_wide] = 0.169
 
     if _scalar:
         # we had all scalar inputs, return as scalars as well

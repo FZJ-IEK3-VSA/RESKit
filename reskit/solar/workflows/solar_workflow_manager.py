@@ -1611,7 +1611,6 @@ class SolarWorkflowManager(WorkflowManager):
 
         return self
 
-        
     def _calculate_distant_horizon_profile(
         self,
         digital_surface_model_paths: Iterable[str],
@@ -1708,11 +1707,7 @@ class SolarWorkflowManager(WorkflowManager):
 
                 with rasterio.open(dsm_path) as src:
                     # Raster NoData / mask values are converted to NaN.
-                    dem = (
-                        src.read(1, masked=True)
-                        .astype(float)
-                        .filled(np.nan)
-                    )
+                    dem = src.read(1, masked=True).astype(float).filled(np.nan)
 
                     transform = src.transform
                     crs = src.crs
@@ -1755,27 +1750,15 @@ class SolarWorkflowManager(WorkflowManager):
                     # endpoints of each >=3-pixel line are included as well.
                     vertical_line = vertical_core.copy()
 
-                    vertical_line[:-1, :] |= (
-                        zero[:-1, :]
-                        & vertical_core[1:, :]
-                    )
+                    vertical_line[:-1, :] |= zero[:-1, :] & vertical_core[1:, :]
 
-                    vertical_line[1:, :] |= (
-                        zero[1:, :]
-                        & vertical_core[:-1, :]
-                    )
+                    vertical_line[1:, :] |= zero[1:, :] & vertical_core[:-1, :]
 
                     horizontal_line = horizontal_core.copy()
 
-                    horizontal_line[:, :-1] |= (
-                        zero[:, :-1]
-                        & horizontal_core[:, 1:]
-                    )
+                    horizontal_line[:, :-1] |= zero[:, :-1] & horizontal_core[:, 1:]
 
-                    horizontal_line[:, 1:] |= (
-                        zero[:, 1:]
-                        & horizontal_core[:, :-1]
-                    )
+                    horizontal_line[:, 1:] |= zero[:, 1:] & horizontal_core[:, :-1]
 
                     # Require the line to be only one pixel wide.
                     vertical_line &= ~left_zero & ~right_zero
@@ -1786,16 +1769,9 @@ class SolarWorkflowManager(WorkflowManager):
                     # Handle crossings between one-pixel-wide horizontal and
                     # vertical zero lines. A true crossing has non-zero diagonals,
                     # unlike the interior of a larger zero-valued area.
-                    crossing_candidates = (
-                        zero
-                        & vertical_core
-                        & horizontal_core
-                        & ~repair_mask
-                    )
+                    crossing_candidates = zero & vertical_core & horizontal_core & ~repair_mask
 
-                    crossing_rows, crossing_cols = np.where(
-                        crossing_candidates
-                    )
+                    crossing_rows, crossing_cols = np.where(crossing_candidates)
 
                     if crossing_rows.size:
                         diagonal_contains_zero = np.zeros(
@@ -1812,24 +1788,15 @@ class SolarWorkflowManager(WorkflowManager):
                             rr = crossing_rows + dr
                             cc = crossing_cols + dc
 
-                            inside = (
-                                (rr >= 0)
-                                & (rr < dem.shape[0])
-                                & (cc >= 0)
-                                & (cc < dem.shape[1])
-                            )
+                            inside = (rr >= 0) & (rr < dem.shape[0]) & (cc >= 0) & (cc < dem.shape[1])
 
                             diagonal_contains_zero[inside] |= zero[
                                 rr[inside],
                                 cc[inside],
                             ]
 
-                        crossing_rows = crossing_rows[
-                            ~diagonal_contains_zero
-                        ]
-                        crossing_cols = crossing_cols[
-                            ~diagonal_contains_zero
-                        ]
+                        crossing_rows = crossing_rows[~diagonal_contains_zero]
+                        crossing_cols = crossing_cols[~diagonal_contains_zero]
 
                         repair_mask[
                             crossing_rows,
@@ -1861,12 +1828,7 @@ class SolarWorkflowManager(WorkflowManager):
                             rr = repair_rows + dr
                             cc = repair_cols + dc
 
-                            inside = (
-                                (rr >= 0)
-                                & (rr < dem.shape[0])
-                                & (cc >= 0)
-                                & (cc < dem.shape[1])
-                            )
+                            inside = (rr >= 0) & (rr < dem.shape[0]) & (cc >= 0) & (cc < dem.shape[1])
 
                             values = dem[
                                 rr[inside],
@@ -1881,9 +1843,7 @@ class SolarWorkflowManager(WorkflowManager):
 
                             neighbour_values[i, inside] = values
 
-                        has_valid_neighbour = np.isfinite(
-                            neighbour_values
-                        ).any(axis=0)
+                        has_valid_neighbour = np.isfinite(neighbour_values).any(axis=0)
 
                         replacements = np.full(
                             repair_rows.size,
@@ -1920,13 +1880,9 @@ class SolarWorkflowManager(WorkflowManager):
 
             # get cell row/col ids for all locations
             def get_cell_id(lon_arr, lat_arr):
-                cols = np.floor(
-                    (lon_arr - xmin) / res_lon
-                ).astype(int)
+                cols = np.floor((lon_arr - xmin) / res_lon).astype(int)
 
-                rows = np.floor(
-                    (ymax - lat_arr) / res_lat
-                ).astype(int)
+                rows = np.floor((ymax - lat_arr) / res_lat).astype(int)
 
                 return rows, cols
 
@@ -1938,10 +1894,10 @@ class SolarWorkflowManager(WorkflowManager):
             # calculate if/by how many pixels the location exceeds raster bounds
             exceeds = np.maximum.reduce(
                 [
-                    np.maximum(-r0, 0),                  # top
-                    np.maximum(r0 - (nrows - 1), 0),    # bottom
-                    np.maximum(-c0, 0),                  # left
-                    np.maximum(c0 - (ncols - 1), 0),    # right
+                    np.maximum(-r0, 0),  # top
+                    np.maximum(r0 - (nrows - 1), 0),  # bottom
+                    np.maximum(-c0, 0),  # left
+                    np.maximum(c0 - (ncols - 1), 0),  # right
                 ]
             ).astype(int)
 
@@ -1981,28 +1937,16 @@ class SolarWorkflowManager(WorkflowManager):
                 # Otherwise elev0 would be taken from the shifted edge pixel while
                 # the horizon rays would still start from the original location.
                 if np.any(outside_top):
-                    loc_lats[outside_top] = (
-                        ymax
-                        - 0.5 * res_lat
-                    )
+                    loc_lats[outside_top] = ymax - 0.5 * res_lat
 
                 if np.any(outside_bottom):
-                    loc_lats[outside_bottom] = (
-                        ymax
-                        - (nrows - 0.5) * res_lat
-                    )
+                    loc_lats[outside_bottom] = ymax - (nrows - 0.5) * res_lat
 
                 if np.any(outside_left):
-                    loc_lons[outside_left] = (
-                        xmin
-                        + 0.5 * res_lon
-                    )
+                    loc_lons[outside_left] = xmin + 0.5 * res_lon
 
                 if np.any(outside_right):
-                    loc_lons[outside_right] = (
-                        xmin
-                        + (ncols - 0.5) * res_lon
-                    )
+                    loc_lons[outside_right] = xmin + (ncols - 0.5) * res_lon
 
                 # Recalculate the raster indices from the actually shifted location.
                 r0, c0 = get_cell_id(
@@ -2016,25 +1960,17 @@ class SolarWorkflowManager(WorkflowManager):
             # NoData or other non-finite elevations must not be used.
             if not np.isfinite(elev0).all():
                 raise ValueError(
-                    f"Plant location has invalid DEM elevation: "
-                    f"lat/lon: {lat}, {lon}, DEM file: {dsm_path}"
+                    f"Plant location has invalid DEM elevation: lat/lon: {lat}, {lon}, DEM file: {dsm_path}"
                 )
 
             # create distance spacing array
             distances = [
                 distance_stepsize,
-                distance_stepsize
-                + distance_stepsize**exp_spacing_factor,
+                distance_stepsize + distance_stepsize**exp_spacing_factor,
             ]
 
             while distances[-1] < max_distance:
-                distances.append(
-                    distances[-1]
-                    + (
-                        distances[-1]
-                        - distances[-2]
-                    ) ** exp_spacing_factor
-                )
+                distances.append(distances[-1] + (distances[-1] - distances[-2]) ** exp_spacing_factor)
 
             # Never sample farther than max_distance and make sure that the
             # requested maximum distance itself is the final sampling point.
@@ -2043,9 +1979,7 @@ class SolarWorkflowManager(WorkflowManager):
                 dtype=float,
             )
 
-            distances = distances[
-                distances < max_distance
-            ]
+            distances = distances[distances < max_distance]
 
             distances = np.append(
                 distances,
@@ -2053,9 +1987,7 @@ class SolarWorkflowManager(WorkflowManager):
             )
 
             # get radians of azimuths
-            az_rad = np.radians(
-                azimuths
-            )[:, None]
+            az_rad = np.radians(azimuths)[:, None]
 
             # dx/dy for all azimuths & distances
             d = distances[None, :]
@@ -2066,12 +1998,7 @@ class SolarWorkflowManager(WorkflowManager):
             # convert meters to degrees
             meters_per_deg_lat = 111320
 
-            meters_per_deg_lon = (
-                111320
-                * np.cos(
-                    np.radians(loc_lats)
-                )
-            )
+            meters_per_deg_lon = 111320 * np.cos(np.radians(loc_lats))
 
             # reshape for broadcasting
             lats_r = loc_lats[
@@ -2120,12 +2047,7 @@ class SolarWorkflowManager(WorkflowManager):
             )
 
             # mask out-of-bounds samples
-            in_bounds = (
-                (rows >= 0)
-                & (rows < nrows)
-                & (cols >= 0)
-                & (cols < ncols)
-            )
+            in_bounds = (rows >= 0) & (rows < nrows) & (cols >= 0) & (cols < ncols)
 
             # check DEM coverage along each horizon ray
             ray_has_any = np.any(
@@ -2141,15 +2063,12 @@ class SolarWorkflowManager(WorkflowManager):
             # fail if at least one horizon ray has no DEM coverage at all
             if not np.all(ray_has_any):
                 raise ValueError(
-                    f"At least one horizon ray has no DEM coverage: "
-                    f"lat/lon: {lat}, {lon}, DEM file: {dsm_path}"
+                    f"At least one horizon ray has no DEM coverage: lat/lon: {lat}, {lon}, DEM file: {dsm_path}"
                 )
 
             # warn if at least one ray does not reach max_distance
             if not np.all(ray_is_complete):
-                n_incomplete = np.sum(
-                    ~ray_is_complete
-                )
+                n_incomplete = np.sum(~ray_is_complete)
 
                 warnings.warn(
                     f"{n_incomplete} horizon ray(s) do not reach the requested "
@@ -2168,9 +2087,7 @@ class SolarWorkflowManager(WorkflowManager):
                 np.nan,
             )
 
-            valid_idx = np.where(
-                flat_mask
-            )[0]
+            valid_idx = np.where(flat_mask)[0]
 
             sampled = dem[
                 flat_rows[valid_idx],
@@ -2184,19 +2101,12 @@ class SolarWorkflowManager(WorkflowManager):
                     f"points: lat/lon: {lat}, {lon}, DEM file: {dsm_path}"
                 )
 
-            elev_flat[
-                valid_idx
-            ] = sampled
+            elev_flat[valid_idx] = sampled
 
-            elev_sampled = elev_flat.reshape(
-                rows.shape
-            )
+            elev_sampled = elev_flat.reshape(rows.shape)
 
             # calculate horizon angles
-            elev_diff = (
-                elev_sampled
-                - elev0[:, None, None]
-            )
+            elev_diff = elev_sampled - elev0[:, None, None]
 
             angles = np.degrees(
                 np.arctan2(
@@ -2206,9 +2116,7 @@ class SolarWorkflowManager(WorkflowManager):
             )
 
             # out-of-bounds samples must never define the horizon
-            angles[
-                ~in_bounds
-            ] = -np.inf
+            angles[~in_bounds] = -np.inf
 
             horizon = np.nanmax(
                 angles,
@@ -2218,14 +2126,9 @@ class SolarWorkflowManager(WorkflowManager):
             # Final defensive check: no NaN/inf horizon values may leave this
             # function unnoticed.
             if not np.isfinite(horizon).all():
-                raise ValueError(
-                    f"Invalid horizon angle calculated: "
-                    f"lat/lon: {lat}, {lon}, DEM file: {dsm_path}"
-                )
+                raise ValueError(f"Invalid horizon angle calculated: lat/lon: {lat}, {lon}, DEM file: {dsm_path}")
 
-            horizons.append(
-                horizon
-            )
+            horizons.append(horizon)
 
         # recombine locational profiles
         distant_horizon_profile = np.vstack(
@@ -2234,7 +2137,6 @@ class SolarWorkflowManager(WorkflowManager):
         )
 
         return distant_horizon_profile
-
 
     def preprocess_hill_slope_and_azimuth(
         self,
@@ -2878,10 +2780,9 @@ class SolarWorkflowManager(WorkflowManager):
         assert "diffuse_horizontal_irradiance" in self.sim_data
         assert "extra_terrestrial_irradiance" in self.sim_data
         assert "air_mass" in self.sim_data
-        assert (
-            "system_grdalbedo" in self.sim_data
-            or "ground_albedo_nosnow" in self.plant_parameters_processed
-        ), "'system_grdalbedo' or 'ground_albedo_nosnow' is expected, run preprocess_ground_albedo() first."
+        assert "system_grdalbedo" in self.sim_data or "ground_albedo_nosnow" in self.plant_parameters_processed, (
+            "'system_grdalbedo' or 'ground_albedo_nosnow' is expected, run preprocess_ground_albedo() first."
+        )
 
         def _set_total_irradiance_per_side(front=True):
             """Calculates and sets to self.sim_data the POA global and its components for front or backside"""
@@ -3090,8 +2991,8 @@ class SolarWorkflowManager(WorkflowManager):
             # use Anderson (1976) equation: simple. no wind speed, medium values compared to other models, used in SNOWPACK model
             # accept minor deviation due to SURFACE (corrected by fixed 0.065K/10m, International Standard Atmosphere lapse rate) instead of 10m height air temperature to save an additional variable
             air_temperature_10m = np.clip(
-                self.sim_data_full["surface_air_temperature"] - 0.065, 
-                -15, 
+                self.sim_data_full["surface_air_temperature"] - 0.065,
+                -15,
                 2,
             )
             fresh_snow_density = 50 + 1.7 * np.power(
@@ -3799,7 +3700,7 @@ class SolarWorkflowManager(WorkflowManager):
             assert pvfts_args["index_observed_pvrow"] < pvfts_args["n_pvrows"], (
                 f"'index_observed_pvrow' ({pvfts_args['index_observed_pvrow']}) must be < 'n_pvrows' {pvfts_args['n_pvrows']}"
             )
-            #TODO remove the filterwarnings as soon as fixed in solarfactors: https://github.com/pvlib/solarfactors/issues/42 
+            # TODO remove the filterwarnings as soon as fixed in solarfactors: https://github.com/pvlib/solarfactors/issues/42
             with warnings.catch_warnings():
                 # catch the repeated infinite values warning which may due to a code negligence in pvfactors only
                 warnings.filterwarnings(
@@ -3807,7 +3708,7 @@ class SolarWorkflowManager(WorkflowManager):
                     message="invalid value encountered in divide",
                     category=RuntimeWarning,
                     module=r"pvfactors\.viewfactors\.vfmethods",
-            )
+                )
                 (
                     _poa_frontside,
                     _poa_backside,
@@ -3815,7 +3716,7 @@ class SolarWorkflowManager(WorkflowManager):
                     _poa_backside_absorbed,
                 ) = pvlib.bifacial.pvfactors.pvfactors_timeseries(**pvfts_args)
 
-            # TODO remove block below when fixed in solarfactors see https://github.com/pvlib/solarfactors/issues/37 
+            # TODO remove block below when fixed in solarfactors see https://github.com/pvlib/solarfactors/issues/37
             # known bug may return NaN when dni and ghi are both zero for a given timestep
             _zero_irradiance = (np.asarray(pvfts_args["dni"]) == 0) & (np.asarray(pvfts_args["dhi"]) == 0)
             if np.any(_zero_irradiance):
