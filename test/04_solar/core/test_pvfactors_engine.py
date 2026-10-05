@@ -4,7 +4,7 @@ import pvlib
 import pytest
 from pvlib.bifacial.pvfactors import pvfactors_timeseries as pvlib_pvfactors_timeseries
 
-from reskit.solar.core.pvfactors_engine import _block_solve_engine, pvfactors_timeseries
+from reskit.solar.core.pvfactors_engine import _block_solve_engine, _vf_calculator, pvfactors_timeseries
 
 
 def _inputs(tracking, n_pvrows):
@@ -59,3 +59,24 @@ def test_pvfactors_timeseries_matches_pvlib(tracking, n_pvrows, monkeypatch):
     for name, exp, res in zip(("inc_front", "inc_back", "abs_front", "abs_back"), expected, result):
         pd.testing.assert_index_equal(res.index, exp.index)
         np.testing.assert_allclose(res.to_numpy(), exp.to_numpy(), rtol=1e-12, atol=1e-9, err_msg=name)
+
+
+@pytest.mark.parametrize("tracking, n_pvrows", [("fixed", 3), ("singleaxis", 3), ("fixed", 5)])
+def test_vf_calculator_matches_pvfactors_exactly(tracking, n_pvrows):
+    from pvfactors.geometry.pvarray import OrderedPVArray
+    from pvfactors.viewfactors.calculator import VFCalculator
+
+    args = _inputs(tracking, n_pvrows)
+    n_steps = len(args["solar_zenith"])
+    pvarray = OrderedPVArray.init_from_dict(
+        {key: args[key] for key in ("n_pvrows", "axis_azimuth", "pvrow_height", "pvrow_width", "gcr")}
+    )
+    pvarray.fit(
+        args["solar_zenith"],
+        args["solar_azimuth"],
+        np.full(n_steps, args["surface_tilt"], dtype=float),
+        np.full(n_steps, args["surface_azimuth"], dtype=float),
+    )
+    expected = VFCalculator().build_ts_vf_matrix(pvarray)
+    result = _vf_calculator()().build_ts_vf_matrix(pvarray)
+    np.testing.assert_array_equal(result, expected)

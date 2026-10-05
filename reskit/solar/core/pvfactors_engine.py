@@ -16,8 +16,14 @@ factor matrix, not from the data. The sky radiosity is therefore a division, the
 radiosities follow from the PV row ones, and only the Schur complement
 A_PP - F_PG D_G^-1 F_GP of the PV row surfaces (12 x 12 for 3 rows) needs a dense solve.
 
-pvfactors_timeseries() below is pvlib's function of the same name with this engine plugged in;
-the results agree with pvlib's to floating point rounding.
+Building the view factor matrix is the other large cost, mostly the view factors between the
+PV row and ground surfaces. pvfactors computes them for the ground on both sides of every PV
+row surface and then zeroes one side wherever the rows are tilted the other way; for a fixed
+tilt that is the same side at every time step, so about half of that work is discarded
+whole. The view factor calculator below skips it.
+
+pvfactors_timeseries() below is pvlib's function of the same name with this engine and view
+factor calculator plugged in; the results agree with pvlib's to floating point rounding.
 """
 
 import functools
@@ -107,6 +113,65 @@ def _block_solve_engine():
     return BlockSolvePVEngine
 
 
+@functools.cache
+def _vf_calculator():
+    """The view factor calculator class, built on first use like the engine."""
+    from pvfactors.viewfactors.calculator import VFCalculator
+    from pvfactors.viewfactors.vfmethods import VFTsMethods
+
+    class SkipMaskedVFTsMethods(VFTsMethods):
+        """VFTsMethods that skips PV row to ground view factors which would be zeroed whole."""
+
+        def vf_pvrow_gnd_surf(self, ts_pvrows, ts_ground, tilted_to_left, vf_matrix):
+            # As VFTsMethods.vf_pvrow_gnd_surf(), which computes every PV row surface against the
+            # ground on both sides and then keeps the front's view to the left and the back's to
+            # the right only where the rows are tilted to the left (and vice versa). A side that
+            # is kept at no time step would only write zeros over the zeros already there.
+            n_pvrows = len(ts_pvrows)
+            any_left, any_right = bool(np.any(tilted_to_left)), bool(not np.all(tilted_to_left))
+            for idx_pvrow, ts_pvrow in enumerate(ts_pvrows):
+                sides = {
+                    True: ts_ground.ts_surfaces_side_of_cut_point("left", idx_pvrow),
+                    False: ts_ground.ts_surfaces_side_of_cut_point("right", idx_pvrow),
+                }
+                for is_back, side in ((False, ts_pvrow.front), (True, ts_pvrow.back)):
+                    for pvrow_surf in side.all_ts_surfaces:
+                        if pvrow_surf.is_empty:
+                            continue
+                        ts_length = pvrow_surf.length
+                        i = pvrow_surf.index
+                        for is_left, gnd_surfaces in sides.items():
+                            # the front sees the left ground when tilted to the left, the back the right
+                            if not (any_left if is_left != is_back else any_right):
+                                continue
+                            for gnd_surf in gnd_surfaces:
+                                if gnd_surf.is_empty:
+                                    continue
+                                j = gnd_surf.index
+                                vf_pvrow_to_gnd, vf_gnd_to_pvrow = self.vf_pvrow_surf_to_gnd_surf_obstruction_hottel(
+                                    pvrow_surf,
+                                    idx_pvrow,
+                                    n_pvrows,
+                                    tilted_to_left,
+                                    ts_pvrows,
+                                    gnd_surf,
+                                    ts_length,
+                                    is_back=is_back,
+                                    is_left=is_left,
+                                )
+                                vf_matrix[i, j, :] = vf_pvrow_to_gnd
+                                vf_matrix[j, i, :] = vf_gnd_to_pvrow
+
+    class SkipMaskedVFCalculator(VFCalculator):
+        """VFCalculator with SkipMaskedVFTsMethods."""
+
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.vf_ts_methods = SkipMaskedVFTsMethods()
+
+    return SkipMaskedVFCalculator
+
+
 def pvfactors_timeseries(
     solar_azimuth,
     solar_zenith,
@@ -176,6 +241,7 @@ def pvfactors_timeseries(
         surface_azimuth,
         albedo,
         cls_engine=_block_solve_engine(),
+        cls_vf=_vf_calculator(),
         irradiance_model_params=irradiance_model_params,
     )
     df_report = pd.DataFrame(report, index=timestamps)
