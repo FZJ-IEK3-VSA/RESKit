@@ -15,6 +15,7 @@ import re
 from collections.abc import Iterable
 
 from reskit.solar import core as rk_solar_core
+from reskit.solar.core import pvfactors_engine
 from reskit.util.generic_helpers import _align_inputs
 from reskit.workflow_manager import WorkflowManager
 
@@ -3190,7 +3191,9 @@ class SolarWorkflowManager(WorkflowManager):
         """
         Estimates the incoming and absorbed plane of array irradiance using the
         pvlib.bifacial.pvfactors.pvfactors_timeseries function [1] both for the
-        front and backside of the module.
+        front and backside of the module. It runs as
+        reskit.solar.core.pvfactors_engine.pvfactors_timeseries(), which solves pvfactors'
+        radiosity system block-wise, with the same results.
 
         Parameters
         ----------
@@ -3753,7 +3756,7 @@ class SolarWorkflowManager(WorkflowManager):
                     _poa_backside,
                     _poa_frontside_absorbed,
                     _poa_backside_absorbed,
-                ) = pvlib.bifacial.pvfactors.pvfactors_timeseries(**pvfts_args)
+                ) = pvfactors_engine.pvfactors_timeseries(**pvfts_args)
 
             # TODO remove block below when fixed in solarfactors see https://github.com/pvlib/solarfactors/issues/37
             # known bug may return NaN when dni and ghi are both zero for a given timestep
