@@ -422,14 +422,28 @@ class Era5ZarrSource(Era5Source):
                 y_min -= self.MAX_LAT_DIFFERENCE / 2
                 y_max += self.MAX_LAT_DIFFERENCE / 2
 
-            lon_mask = np.logical_and(self._allLons >= x_min, self._allLons <= x_max)
-            lat_mask = np.logical_and(self._allLats >= y_min, self._allLats <= y_max)
+            # Take the first and last cell inside the bounds directly, as NCSource does.
+            # Looking for the first cell outside them instead misses when every cell is
+            # inside, which is what asking for the whole extent of a store does.
+            inside = np.flatnonzero(np.logical_and(self._allLons >= x_min, self._allLons <= x_max))
+            if inside.size == 0:
+                raise ResError(
+                    "The given bounds do not overlap the data in longitude: bounds are "
+                    f"{self.bounds.xMin} to {self.bounds.xMax}, the data covers "
+                    f"{self._allLons.min()} to {self._allLons.max()}"
+                )
+            self._lonStart = inside[0] - 1
+            self._lonStop = inside[-1] + 2
 
-            self._lonStart = np.argmax(lon_mask) - 1
-            self._lonStop = self._lonStart + 1 + np.argmin(lon_mask[self._lonStart + 1 :]) + 1
-
-            self._latStart = np.argmax(lat_mask) - 1
-            self._latStop = self._latStart + 1 + np.argmin(lat_mask[self._latStart + 1 :]) + 1
+            inside = np.flatnonzero(np.logical_and(self._allLats >= y_min, self._allLats <= y_max))
+            if inside.size == 0:
+                raise ResError(
+                    "The given bounds do not overlap the data in latitude: bounds are "
+                    f"{self.bounds.yMin} to {self.bounds.yMax}, the data covers "
+                    f"{self._allLats.min()} to {self._allLats.max()}"
+                )
+            self._latStart = inside[0] - 1
+            self._latStop = inside[-1] + 2
 
             self._lonStart = max(0, self._lonStart - index_pad)
             self._lonStop = min(self._allLons.size, self._lonStop + index_pad)
