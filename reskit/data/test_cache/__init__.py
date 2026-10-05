@@ -16,9 +16,9 @@ reads the same files by catalogue key.
 * a provenance directory name::    TEST_DATA["era5"]
 
 A Zarr store is registered like a file, under its relative path and bare name
-(``TEST_DATA["era5-edh.zarr"]``), and the files inside it are not registered at all.
-``era5-edh/era5-edh.zarr`` is real Earth Data Hub ERA5 data for the box and hours of
-``era5/``, cut once by ``scripts/make_era5_edh_test_data.py``.
+(``TEST_DATA["era5.zarr"]``), and the files inside it are not registered at all.
+``era5-zarr/era5.zarr`` is real ERA5 data from an online Zarr store for the box and
+hours of ``era5/``, cut once by ``scripts/make_era5_zarr_test_data.py``.
 
 Three filenames appear in both ``era5/`` and ``era5-csp/``
 (``2m_temperature.nc``, ``10m_wind_speed.processed.nc`` and

@@ -10,7 +10,7 @@
     "reskit_source_url": "https://data.earthdatahub.destine.eu/era5/era5-single-levels-atmosphere-v0.zarr",
     "reskit_retrieved": "2026-10-05",
     "reskit_selection": "valid_time 2014-12-31 23:00 to 2015-01-06 19:00, latitude 52.0 to 49.0, longitude 5.0 to 7.5",
-    "reskit_created_by": "scripts/make_era5_edh_test_data.py"
+    "reskit_created_by": "scripts/make_era5_zarr_test_data.py"
   },
   "zarr_format": 3,
   "consolidated_metadata": {
