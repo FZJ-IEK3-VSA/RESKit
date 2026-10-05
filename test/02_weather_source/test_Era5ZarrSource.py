@@ -480,3 +480,37 @@ def test_Era5ZarrSource_get_data_frame_on_360_grid(tmp_path):
     assert list(out.columns) == ["(-0.1, 50.25)", "(-0.15, 50.0)"]
     assert np.allclose(out["(-0.1, 50.25)"].values, [4, 13])
     assert np.allclose(out["(-0.15, 50.0)"].values, [6, 15])
+
+
+@pytest.mark.parametrize(
+    "bounds",
+    [
+        pytest.param((5.75, 50.0, 7.0, 51.25), id="exactly_the_data_extent"),
+        pytest.param((2.0, 46.0, 10.0, 55.0), id="larger_than_the_data_extent"),
+    ],
+)
+def test_Era5ZarrSource_bounds_covering_the_whole_extent_keep_the_whole_grid(era5_zarr_store, bounds):
+    """Bounds with every cell inside them must not be cut down to a corner of the grid."""
+    unbounded = Era5ZarrSource(str(era5_zarr_store), verbose=False)
+    source = Era5ZarrSource(
+        str(era5_zarr_store), bounds=gk.Extent(*bounds, srs=gk.srs.EPSG4326), index_pad=0, verbose=False
+    )
+
+    assert (source.lats == unbounded.lats).all()
+    assert (source.lons == unbounded.lons).all()
+
+    source.sload_surface_pressure()
+    assert source.data["surface_pressure"].shape[1:] == (unbounded.lats.size, unbounded.lons.size)
+
+
+@pytest.mark.parametrize(
+    "bounds, axis",
+    [
+        pytest.param((20.0, 50.0, 22.0, 51.0), "longitude", id="beside_the_data"),
+        pytest.param((6.0, 60.0, 6.5, 61.0), "latitude", id="above_the_data"),
+    ],
+)
+def test_Era5ZarrSource_bounds_which_miss_the_data_raise(era5_zarr_store, bounds, axis):
+    """Bounds that do not overlap the data at all are a mistake, not an empty selection."""
+    with pytest.raises(ResError, match=f"do not overlap the data in {axis}"):
+        Era5ZarrSource(str(era5_zarr_store), bounds=gk.Extent(*bounds, srs=gk.srs.EPSG4326), verbose=False)
