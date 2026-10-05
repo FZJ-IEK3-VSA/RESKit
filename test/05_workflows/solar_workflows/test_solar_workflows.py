@@ -109,10 +109,10 @@ def test_openfield_pv_iconlam(pt_pv_placements_Zimbabwe):
     assert np.isclose(float(gen["total_system_generation"].fillna(0).mean()), 5082.177954576783)
 
 
-def test_openfield_pv_era5(pt_pv_placements):
+def test_openfield_pv_era5(era5_path, pt_pv_placements):
     gen = openfield_pv_era5(
         placements=pt_pv_placements,
-        era5_path=TEST_DATA["era5-like"],
+        era5_path=era5_path,
         global_solar_atlas_ghi_path=TEST_DATA["gsa-ghi-like.tif"],
         global_solar_atlas_dni_path=TEST_DATA["gsa-dni-like.tif"],
         module="WINAICO WSx-240P6",
@@ -285,11 +285,11 @@ def test_openfield_pv_merra_ryberg2019(pt_pv_placements):
     assert np.isclose(float(gen["total_system_generation"].fillna(0).mean()), 84.0307944797316)
 
 
-def test_openfield_pv_sarah_unvalidated(pt_pv_placements):
+def test_openfield_pv_sarah_unvalidated(era5_path, pt_pv_placements):
     gen = openfield_pv_sarah_unvalidated(
         placements=pt_pv_placements,
         sarah_path=TEST_DATA["sarah-like"],
-        era5_path=TEST_DATA["era5-like"],
+        era5_path=era5_path,
         module="WINAICO WSx-240P6",
         elev=300,
         tracking="fixed",

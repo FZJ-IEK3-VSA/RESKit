@@ -93,6 +93,7 @@ def test_WorkflowManager_set_time_index(
 
 
 def test_WorkflowManager_read(
+    era5_path,
     pt_WorkflowManager_initialized: WorkflowManager,
 ) -> WorkflowManager:
     man = pt_WorkflowManager_initialized
@@ -103,7 +104,7 @@ def test_WorkflowManager_read(
             "surface_air_temperature",
         ],
         source_type="ERA5",
-        source=rk.TEST_DATA["era5-like"],
+        source=era5_path,
         set_time_index=True,
         verbose=False,
         spatial_interpolation_mode="bilinear",
@@ -134,10 +135,12 @@ class SourceWithoutSload:
 
 @pytest.fixture
 def pt_era5_source(
+    era5_source_class,
+    era5_path,
     pt_WorkflowManager_initialized: WorkflowManager,
 ) -> rk.weather.Era5Source:
-    source = rk.weather.Era5Source(
-        rk.TEST_DATA["era5-like"],
+    source = era5_source_class(
+        era5_path,
         bounds=pt_WorkflowManager_initialized.ext,
     )
     source.sload("elevated_wind_speed")
@@ -207,6 +210,7 @@ def test_WorkflowManager_read_preloaded_source_without_sload(
 
 
 def test_WorkflowManager_read_single_variable_from_path(
+    era5_path,
     pt_WorkflowManager_initialized: WorkflowManager,
 ):
     """A single variable can be given as a plain string when reading from a path"""
@@ -214,7 +218,7 @@ def test_WorkflowManager_read_single_variable_from_path(
     man.read(
         variables="elevated_wind_speed",
         source_type="ERA5",
-        source=rk.TEST_DATA["era5-like"],
+        source=era5_path,
         set_time_index=True,
     )
 
@@ -261,6 +265,7 @@ def test_WorkflowManager_read_time_slice_requires_zarr(
 
 @pytest.fixture
 def pt_WorkflowManager_loaded(
+    era5_path,
     pt_WorkflowManager_initialized: WorkflowManager,
 ) -> WorkflowManager:
     man = pt_WorkflowManager_initialized
@@ -272,7 +277,7 @@ def pt_WorkflowManager_loaded(
             "surface_air_temperature",
         ],
         source_type="ERA5",
-        source=rk.TEST_DATA["era5-like"],
+        source=era5_path,
         set_time_index=True,
         verbose=False,
         spatial_interpolation_mode="bilinear",
@@ -283,6 +288,7 @@ def pt_WorkflowManager_loaded(
 
 
 def test_WorkflowManager_spatial_disagregation(
+    era5_path,
     pt_WorkflowManager_initialized: WorkflowManager,
 ) -> WorkflowManager:
     man = pt_WorkflowManager_initialized
@@ -293,7 +299,7 @@ def test_WorkflowManager_spatial_disagregation(
             "direct_horizontal_irradiance",
         ],
         source_type="ERA5",
-        source=rk.TEST_DATA["era5-like"],
+        source=era5_path,
         set_time_index=True,
         verbose=False,
         spatial_interpolation_mode="bilinear",
@@ -547,11 +553,11 @@ def simple_workflow(placements, era5_path, var1, var2):
     return man.to_xarray()
 
 
-def test_distribute_workflow():
+def test_distribute_workflow(era5_path):
     xds = distribute_workflow(
         workflow_function=simple_workflow,
         placements=pd.read_csv(TEST_DATA["turbine_placements.csv"]),
-        era5_path=TEST_DATA["era5-like"],
+        era5_path=era5_path,
         var1=0.5,
         var2="pants",
         jobs=2,
@@ -583,11 +589,11 @@ def test_distribute_workflow():
     assert np.isclose(float(xds["capacity_factor"].fillna(0).mean()), 3.8672000730080187)
 
 
-def test_WorkflowQueue():
+def test_WorkflowQueue(era5_path):
     # Create a queue
     queue = WorkflowQueue(
         workflow=simple_workflow,
-        era5_path=TEST_DATA["era5-like"],
+        era5_path=era5_path,
     )
 
     # append jobs to queue

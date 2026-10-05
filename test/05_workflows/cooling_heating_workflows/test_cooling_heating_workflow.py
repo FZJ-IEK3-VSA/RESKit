@@ -26,10 +26,10 @@ def placements() -> pd.DataFrame:
     return placements
 
 
-def test_air_cooling_wenzel2025(placements: pd.DataFrame):
+def test_air_cooling_wenzel2025(era5_path, placements: pd.DataFrame):
     gen = air_cooling_wenzel2025(
         placements=placements,
-        era5_path=TEST_DATA["era5-like"],
+        era5_path=era5_path,
         temperatureCoolant=40,
         designTemperature=20,
     )
@@ -59,10 +59,10 @@ def test_air_cooling_wenzel2025(placements: pd.DataFrame):
     )
 
 
-def test_evaporative_cooling_wortmann2025(placements: pd.DataFrame):
+def test_evaporative_cooling_wortmann2025(era5_path, placements: pd.DataFrame):
     gen = evaporative_cooling_wortmann2025(
         placements=placements,
-        era5_path=TEST_DATA["era5-like"],
+        era5_path=era5_path,
         temperatureCoolant=80,
         heatTransferDelta=10,
         efficiencyCoolingTower=0.65,
@@ -93,8 +93,8 @@ def test_evaporative_cooling_wortmann2025(placements: pd.DataFrame):
     )
 
 
-def test_air_source_heat_pump(placements: pd.DataFrame):
-    gen = air_source_heat_pump(placements=placements, era5_path=TEST_DATA["era5-like"])
+def test_air_source_heat_pump(era5_path, placements: pd.DataFrame):
+    gen = air_source_heat_pump(placements=placements, era5_path=era5_path)
     assert np.all(np.isclose(gen.COP.mean(dim="time"), [1.90161814, 1.90016073, 1.86173579]))
     assert np.all(np.isclose(gen.COP.min(dim="time"), [1.83157454, 1.83375042, 1.778988]))
     assert np.all(np.isclose(gen.COP.max(dim="time"), [2.03473257, 2.01022362, 2.02689851]))
