@@ -57,6 +57,21 @@ def _check_coordinate_range(placements, column, minimum, maximum):
         )
 
 
+def _zarr_regions(locs, dataset):
+    """Positions of the locations per region of the store's spatial chunk grid.
+
+    A Zarr source reads the rectangle around the locations it is given, so locations far apart
+    read everything between them -- most of the globe for one location per continent. Grouping
+    them by chunk-sized regions (Earth Data Hub: 60 cells = 15 degrees) keeps each read to the
+    chunks around its own locations, while locations in one region still share their reads.
+    """
+    size = rk_weather.Era5ZarrSource.spatial_chunk_degrees(dataset) or 10.0
+    keys = np.stack([((np.asarray(locs.lons) + 180) % 360) // size, (np.asarray(locs.lats) + 90) // size])
+    _, region = np.unique(keys, axis=1, return_inverse=True)
+    region = np.asarray(region).ravel()
+    return [np.flatnonzero(region == r) for r in range(region.max() + 1)]
+
+
 def _expand_degenerate_bound(value):
     """Expand a zero-width extent bound around one coordinate value.
 
@@ -277,6 +292,28 @@ class WorkflowManager:
                             "of netCDF4 ERA5 data by selecting the corresponding files instead."
                         )
                     era5_kwargs["time_slice"] = time_slice
+                if is_zarr:
+                    # A Zarr source reads the rectangle around all placements: read placements far
+                    # apart (e.g. on other continents) region by region instead, see _read_by_region()
+                    dataset = rk_weather.Era5ZarrSource._open_dataset(
+                        source,
+                        era5_kwargs.get("chunks"),
+                        era5_kwargs.get("consolidated", True),
+                        era5_kwargs.get("storage_options"),
+                    )
+                    regions = _zarr_regions(self.locs, dataset)
+                    if len(regions) > 1:
+                        source, frames = self._read_by_region(
+                            source_constructor,
+                            dataset,
+                            regions,
+                            variables,
+                            spatial_interpolation_mode,
+                            time_index_from=time_index_from,
+                            **era5_kwargs,
+                        )
+                        return self._store_read_variables(source, frames, set_time_index, temporal_reindex_method)
+                    source = dataset  # opened once
                 source = source_constructor(source, bounds=self.ext, time_index_from=time_index_from, **era5_kwargs)
             else:
                 source = source_constructor(source, bounds=self.ext, **kwargs)
@@ -295,17 +332,47 @@ class WorkflowManager:
                         + ", ".join(missing_variables)
                     )
 
+        frames = {
+            var: source.get(var, self.locs, interpolation=spatial_interpolation_mode, force_as_data_frame=True)
+            for var in variables
+        }
+        return self._store_read_variables(source, frames, set_time_index, temporal_reindex_method)
+
+    def _read_by_region(self, source_constructor, dataset, regions, variables, spatial_interpolation_mode, **kwargs):
+        """Read the variables region by region: one source per group of placements, each reading
+        only the rectangle around its own placements.
+
+        Returns the source of the first region (for the time index and the wind speed heights,
+        which all regions share) and per variable a DataFrame with a column per placement, in the
+        order of `.locs`.
+        """
+        first, columns = None, {var: [None] * self.locs.count for var in variables}
+        for members in regions:
+            locs = gk.LocationSet([self.locs[i] for i in members])
+            bounds = list(locs.getBounds())
+            if bounds[0] == bounds[2]:
+                bounds[0], bounds[2] = _expand_degenerate_bound(bounds[0])
+            if bounds[1] == bounds[3]:
+                bounds[1], bounds[3] = _expand_degenerate_bound(bounds[1])
+            # a shallow copy: the source adds its derived variables to the dataset it is given
+            source = source_constructor(dataset.copy(), bounds=gk.Extent(bounds, srs=4326), **kwargs)
+            source.sload(*variables)
+            for var in variables:
+                frame = source.get(var, locs, interpolation=spatial_interpolation_mode, force_as_data_frame=True)
+                for column, i in enumerate(members):
+                    columns[var][i] = frame.iloc[:, column].to_numpy()
+            first = first or source
+        index = first.time_index
+        frames = {var: pd.DataFrame(np.column_stack(columns[var]), index=index) for var in variables}
+        return first, frames
+
+    def _store_read_variables(self, source, frames, set_time_index, temporal_reindex_method):
+        """Put the read variables (DataFrames, a column per placement) into `.sim_data`."""
         if set_time_index:
             self.set_time_index(source.time_index)
 
-        # read variables
-        for var in variables:
-            self.sim_data[var] = source.get(
-                var,
-                self.locs,  # Manipulate locs here
-                interpolation=spatial_interpolation_mode,
-                force_as_data_frame=True,
-            )
+        for var, frame in frames.items():
+            self.sim_data[var] = frame
 
             if not set_time_index:
                 self.sim_data[var] = self.sim_data[var].reindex(self.time_index, method=temporal_reindex_method)
