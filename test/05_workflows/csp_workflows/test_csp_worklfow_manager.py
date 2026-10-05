@@ -323,7 +323,7 @@ def test_apply_azimuth(pt_PTRWorkflowManager_initialized):
 # test read ERA5
 
 
-def test_read_ERA5(era5_path, pt_PTRWorkflowManager_initialized):
+def test_read_ERA5(pt_PTRWorkflowManager_initialized):
     wfm = pt_PTRWorkflowManager_initialized
     wfm.read(
         variables=[
@@ -332,7 +332,7 @@ def test_read_ERA5(era5_path, pt_PTRWorkflowManager_initialized):
             "surface_wind_speed",
         ],
         source_type="ERA5",
-        source=era5_path,
+        source=rk.TEST_DATA["era5-like"],
         set_time_index=True,
         verbose=False,
     )
@@ -350,7 +350,6 @@ def test_read_ERA5(era5_path, pt_PTRWorkflowManager_initialized):
 
 @pytest.fixture
 def pt_PTRWorkflowManager_loaded(
-    era5_path,
     pt_PTRWorkflowManager_initialized: PTRWorkflowManager,
 ) -> PTRWorkflowManager:
     wfm = pt_PTRWorkflowManager_initialized
@@ -362,7 +361,7 @@ def pt_PTRWorkflowManager_loaded(
             "surface_wind_speed",
         ],
         source_type="ERA5",
-        source=era5_path,
+        source=rk.TEST_DATA["era5-like"],
         set_time_index=True,
         verbose=False,
     )
@@ -690,7 +689,7 @@ def test_calculateHeattoHTF(pt_PTRWorkflowManager_HeattoHTF):
 #####  TEST Heat_loss_model   ######
 ####################################
 @pytest.fixture
-def pt_PTRWorkflowManager_heat_loss(era5_path) -> PTRWorkflowManager:
+def pt_PTRWorkflowManager_heat_loss() -> PTRWorkflowManager:
     placements = pd.DataFrame()
     placements["lon"] = [6.083, 6.083, 5.583]  # Longitude
     placements["lat"] = [
@@ -702,6 +701,7 @@ def pt_PTRWorkflowManager_heat_loss(era5_path) -> PTRWorkflowManager:
 
     datasetname = "Initial"
     verbose = False
+    era5_path = rk.TEST_DATA["era5-like"]
     elev_path = rk.TEST_DATA["DEM-like.tif"]
 
     wf = PTRWorkflowManager(placements)

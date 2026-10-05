@@ -12,6 +12,9 @@ integers, the EDH ones are bit-rounded -- so it is compared with them loosely: t
 measured, and still catches a wrong unit, offset or time step.
 """
 
+from os import sep
+from os.path import join
+
 import numpy as np
 import pytest
 import xarray as xr
@@ -86,3 +89,13 @@ def _assert_close(sources, loader, variable):
 )
 def test_edh_data_matches_the_netcdf_fixtures(sources, loader, variable):
     _assert_close(sources, loader, variable)
+
+
+def test_the_store_is_registered_as_a_single_fixture():
+    """Under its relative path and its bare name, while the files inside it are not."""
+    assert (
+        TEST_DATA["era5-edh.zarr"]
+        == TEST_DATA[join("era5-edh", "era5-edh.zarr")]
+        == join(TEST_DATA["era5-edh"], "era5-edh.zarr")
+    )
+    assert not [key for key in TEST_DATA if ".zarr" + sep in key]
