@@ -203,7 +203,6 @@ def test_SolarWorkflowManager_apply_elevation(pt_SolarWorkflowManager_initialize
 
 @pytest.fixture
 def pt_SolarWorkflowManager_loaded(
-    era5_path,
     pt_SolarWorkflowManager_initialized: SolarWorkflowManager,
 ) -> SolarWorkflowManager:
     man = pt_SolarWorkflowManager_initialized
@@ -219,7 +218,7 @@ def pt_SolarWorkflowManager_loaded(
             "surface_dew_temperature",
         ],
         source_type="ERA5",
-        source=era5_path,
+        source=rk.TEST_DATA["era5-like"],
         set_time_index=True,
         verbose=False,
     )

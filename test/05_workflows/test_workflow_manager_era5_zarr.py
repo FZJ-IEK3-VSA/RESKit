@@ -12,14 +12,8 @@ from reskit.solar.workflows.workflows import openfield_pv_era5
 from reskit.wind.workflows.workflows import wind_era5_PenaSanchezDunkelWinklerEtAl2025
 
 
-@pytest.fixture(scope="module")
-def era5_like_zarr_store():
-    """The 'era5-like' netCDF4 test data as a Zarr store, see scripts/make_era5_zarr_test_data.py.
-
-    Both weather sources therefore see bit-identical data, so any difference in the
-    results has to come from the source implementations themselves.
-    """
-    return TEST_DATA["era5.zarr"]
+# The 140 hours of the 'era5' netCDF4 fixtures, on RESKit's time index
+EDH_HOURS = slice("2014-12-31 23:30", "2015-01-06 18:30")
 
 
 @pytest.fixture
@@ -61,10 +55,15 @@ def _read_era5(placements, source, **kwargs):
     return man
 
 
-def test_era5_netcdf_and_zarr_read_identically(pt_placements, era5_like_zarr_store):
-    """WorkflowManager.read() must give the same data for both ERA5 source types."""
+def test_era5_netcdf_and_zarr_read_alike(pt_placements):
+    """WorkflowManager.read() gives from real Earth Data Hub data what it gives from the netCDF4 fixtures.
+
+    era5-edh.zarr covers the same box and hours as the 'era5' fixtures. Not to the bit --
+    the netCDF4 fixtures are packed to 16 bit integers, the EDH data is bit-rounded -- but
+    to 1 % of each variable's range, see test/02_weather_source/test_Era5EdhTestData.py.
+    """
     netcdf_man = _read_era5(pt_placements, TEST_DATA["era5-like"])
-    zarr_man = _read_era5(pt_placements, era5_like_zarr_store)
+    zarr_man = _read_era5(pt_placements, TEST_DATA["era5-edh.zarr"], time_slice=EDH_HOURS)
 
     assert zarr_man.time_index.equals(netcdf_man.time_index)
 
@@ -72,7 +71,8 @@ def test_era5_netcdf_and_zarr_read_identically(pt_placements, era5_like_zarr_sto
         netcdf_data = netcdf_man.sim_data[variable]
         zarr_data = zarr_man.sim_data[variable]
         assert zarr_data.shape == netcdf_data.shape, variable
-        assert np.allclose(zarr_data, netcdf_data, equal_nan=True), variable
+        tolerance = 0.01 * (netcdf_data.max() - netcdf_data.min())
+        assert np.abs(zarr_data - netcdf_data).max() <= tolerance, variable
 
     assert zarr_man.elevated_wind_speed_height == netcdf_man.elevated_wind_speed_height
     assert zarr_man.surface_wind_speed_height == netcdf_man.surface_wind_speed_height
