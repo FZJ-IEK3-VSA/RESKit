@@ -348,7 +348,7 @@ class WorkflowManager:
             # if getting values fails, it could be because of interpolation method.
             # these values will be replaced with the nearest interpolation method
             if np.isnan(_lra).any():
-                _lra_near = np.atleast_1d(gk.raster.interpolateValues(fp, self.locs, mode="near"))
+                _lra_near = np.atleast_1d(gk.raster.interpolateValues(fp, points, mode="near"))
                 _lra[np.isnan(_lra)] = _lra_near[np.isnan(_lra)]
             # still nans, i.e. the cell itself is nan, but maybe its neighbors are not
             # try the (nan)median of the surrounding cells
@@ -358,7 +358,6 @@ class WorkflowManager:
                     """Aux function to mimic the 3 expected inputs in interpolateValues()"""
                     return np.nanmedian(vals)
 
-                points = [(loc.lon, loc.lat) for loc in self.locs._locations]
                 _lra_near = np.atleast_1d(gk.raster.interpolateValues(fp, points, mode="func", func=_nanmedian))
                 _lra[np.isnan(_lra)] = _lra_near[np.isnan(_lra)]
         return _lra
