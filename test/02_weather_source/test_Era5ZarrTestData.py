@@ -7,9 +7,9 @@ uses is derived from the raw accumulations. It covers the box and the 140 hours 
 the 'era5' netCDF4 fixtures, plus the hour before them.
 
 Its values are not those of the netCDF4 fixtures -- those were packed to 16 bit
-integers, the Zarr ones are bit-rounded -- so it is compared with them loosely: to
-1 % of each variable's range. That is about 15 times the largest difference
-measured, and still catches a wrong unit, offset or time step.
+integers, the Zarr ones are bit-rounded -- so each element may differ from them by
+what both encodings round away, see test/era5_encoding.py. A wrong unit or time
+step exceeds that, which the negative controls below make sure of.
 """
 
 from os import sep
@@ -18,6 +18,7 @@ from os.path import join
 import numpy as np
 import pytest
 import xarray as xr
+from era5_encoding import ZARR_MANTISSA_BITS, assert_matches_encoding
 
 from reskit import TEST_DATA
 from reskit.weather import Era5Source, Era5ZarrSource
@@ -25,7 +26,17 @@ from reskit.weather import Era5Source, Era5ZarrSource
 STORE = TEST_DATA["era5.zarr"]
 # The 140 hours of the 'era5' netCDF4 fixtures, on RESKit's time index
 ERA5_HOURS = slice("2014-12-31 23:30", "2015-01-06 18:30")
-TOLERANCE = 0.01  # of the range of the variable
+LOADERS = {
+    "elevated_wind_speed": "sload_elevated_wind_speed",
+    "surface_wind_speed": "sload_surface_wind_speed",
+    "surface_pressure": "sload_surface_pressure",
+    "surface_air_temperature": "sload_surface_air_temperature",
+    "surface_dew_temperature": "sload_surface_dew_temperature",
+    "boundary_layer_height": "sload_boundary_layer_height",
+    # derived from the raw accumulations, see Era5ZarrSource._derive_solar_variables
+    "global_horizontal_irradiance": "sload_global_horizontal_irradiance",
+    "direct_horizontal_irradiance": "sload_direct_horizontal_irradiance",
+}
 
 
 @pytest.fixture(scope="module")
@@ -46,6 +57,13 @@ def test_the_store_has_the_layout_of_its_online_source():
         assert ds.attrs["reskit_source_url"].startswith("https://")
 
 
+def test_the_store_keeps_the_mantissa_bits_its_tolerance_assumes():
+    dropped_bits = (1 << (23 - ZARR_MANTISSA_BITS)) - 1
+    with xr.open_zarr(STORE) as ds:
+        for name, variable in ds.data_vars.items():
+            assert not (variable.values.view(np.uint32) & dropped_bits).any(), name
+
+
 def test_Era5ZarrSource_reads_the_store(sources):
     zarr, netcdf = sources
 
@@ -61,34 +79,38 @@ def test_Era5ZarrSource_reads_the_store(sources):
     assert not np.isnan(zarr.data["direct_horizontal_irradiance"]).any()
 
 
-def _assert_close(sources, loader, variable):
+def _load(sources, variable):
     zarr, netcdf = sources
-    getattr(zarr, loader)()
-    getattr(netcdf, loader)()
-    expected = netcdf.data[variable]
-    actual = zarr.data[variable]
+    for source in sources:
+        getattr(source, LOADERS[variable])()
+    return zarr.data[variable], netcdf.data[variable]
 
-    assert actual.shape == expected.shape
-    tolerance = TOLERANCE * (expected.max() - expected.min())
-    assert np.abs(actual - expected).max() <= tolerance, variable
+
+@pytest.mark.parametrize("variable", LOADERS)
+def test_zarr_data_matches_the_netcdf_fixtures(sources, variable):
+    assert_matches_encoding(*_load(sources, variable), variable)
+
+
+@pytest.mark.parametrize("variable", LOADERS)
+def test_the_tolerance_catches_a_time_step_off_by_one_hour(sources, variable):
+    actual, expected = _load(sources, variable)
+    with pytest.raises(AssertionError):
+        assert_matches_encoding(actual[1:], expected[:-1], variable)
 
 
 @pytest.mark.parametrize(
-    "loader, variable",
+    "variable, wrong_unit",
     [
-        ("sload_elevated_wind_speed", "elevated_wind_speed"),
-        ("sload_surface_wind_speed", "surface_wind_speed"),
-        ("sload_surface_pressure", "surface_pressure"),
-        ("sload_surface_air_temperature", "surface_air_temperature"),
-        ("sload_surface_dew_temperature", "surface_dew_temperature"),
-        ("sload_boundary_layer_height", "boundary_layer_height"),
-        # derived from the raw accumulations, see Era5ZarrSource._derive_solar_variables
-        ("sload_global_horizontal_irradiance", "global_horizontal_irradiance"),
-        ("sload_direct_horizontal_irradiance", "direct_horizontal_irradiance"),
+        ("surface_air_temperature", lambda celsius: celsius + 273.15),
+        ("surface_dew_temperature", lambda celsius: celsius + 273.15),
+        ("surface_pressure", lambda pascal: pascal / 100),
+        ("global_horizontal_irradiance", lambda w_per_m2: w_per_m2 * 3600),
     ],
 )
-def test_zarr_data_matches_the_netcdf_fixtures(sources, loader, variable):
-    _assert_close(sources, loader, variable)
+def test_the_tolerance_catches_a_wrong_unit(sources, variable, wrong_unit):
+    actual, expected = _load(sources, variable)
+    with pytest.raises(AssertionError):
+        assert_matches_encoding(wrong_unit(actual), expected, variable)
 
 
 def test_the_store_is_registered_as_a_single_fixture():
