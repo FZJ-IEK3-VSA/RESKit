@@ -43,11 +43,11 @@ def test_weather_source_reads_a_path_directory():
     assert from_path.variables.equals(from_string.variables)
 
 
-def test_wind_workflow_accepts_path_inputs():
+def test_wind_workflow_accepts_path_inputs(era5_path):
     """The rasters and the weather folder of a workflow may be Path objects."""
     placements = pd.read_csv(TEST_DATA["turbine_placements.csv"])
     arguments = dict(
-        era5_path=TEST_DATA["era5-like"],
+        era5_path=era5_path,
         gwa_100m_path=TEST_DATA["gwa100-like.tif"],
         height_scaling_data={
             50: TEST_DATA["gwa50-like.tif"],
@@ -66,11 +66,11 @@ def test_wind_workflow_accepts_path_inputs():
     assert np.allclose(from_paths["capacity_factor"].values, from_strings["capacity_factor"].values)
 
 
-def test_solar_workflow_accepts_path_inputs():
+def test_solar_workflow_accepts_path_inputs(era5_path):
     """The long-run-average rasters of a solar workflow may be Path objects."""
     placements = pd.read_csv(TEST_DATA["module_placements.csv"])
     arguments = dict(
-        era5_path=TEST_DATA["era5-like"],
+        era5_path=era5_path,
         global_solar_atlas_ghi_path=TEST_DATA["gsa-ghi-like.tif"],
         global_solar_atlas_dni_path=TEST_DATA["gsa-dni-like.tif"],
     )

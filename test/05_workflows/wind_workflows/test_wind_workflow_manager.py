@@ -116,6 +116,7 @@ def test_WindWorkflowManager_estimate_roughness_from_land_cover(
 
 @pytest.fixture
 def pt_WindWorkflowManager_loaded(
+    era5_path,
     pt_WindWorkflowManager_initialized: WindWorkflowManager,
 ) -> WindWorkflowManager:
     man = pt_WindWorkflowManager_initialized
@@ -127,7 +128,7 @@ def pt_WindWorkflowManager_loaded(
             "surface_air_temperature",
         ],
         source_type="ERA5",
-        source=rk.TEST_DATA["era5-like"],
+        source=era5_path,
         set_time_index=True,
         verbose=False,
     )

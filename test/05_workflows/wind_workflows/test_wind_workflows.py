@@ -142,10 +142,10 @@ def test_onshore_wind_iconlam_2023(pt_wind_placements_Zimbabwe: pd.DataFrame):
     assert np.isclose(gen.capacity_factor.std(), 0.34440202)
 
 
-def test_wind_config(pt_wind_placements: pd.DataFrame):
+def test_wind_config(era5_path, pt_wind_placements: pd.DataFrame):
     gen = wind_config(
         placements=pt_wind_placements,
-        weather_path=TEST_DATA["era5-like"],
+        weather_path=era5_path,
         weather_source_type="ERA5",
         enable_lra_adjustment=True,
         weather_lra_ws_path=rk_weather.Era5Source.LONG_RUN_AVERAGE_WINDSPEED_2008TO2017,

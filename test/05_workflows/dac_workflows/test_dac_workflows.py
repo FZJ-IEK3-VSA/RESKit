@@ -21,8 +21,8 @@ def dac_placements() -> pd.DataFrame:
     return placements
 
 
-def test_lt_dac_era5_wenzel2025(dac_placements: pd.DataFrame):
-    gen = lt_dac_era5_wenzel2025(placements=dac_placements, era5_path=TEST_DATA["era5-like"], model="LT_jajjawi")
+def test_lt_dac_era5_wenzel2025(era5_path, dac_placements: pd.DataFrame):
+    gen = lt_dac_era5_wenzel2025(placements=dac_placements, era5_path=era5_path, model="LT_jajjawi")
     assert np.all(
         np.isclose(
             gen.capacity_factor.mean(dim="time"),
@@ -49,8 +49,8 @@ def test_lt_dac_era5_wenzel2025(dac_placements: pd.DataFrame):
     )
 
 
-def test_ht_dac_era5_wenzel2025(dac_placements: pd.DataFrame):
-    gen = ht_dac_era5_wenzel2025(placements=dac_placements, era5_path=TEST_DATA["era5-like"], model="HT_okosun")
+def test_ht_dac_era5_wenzel2025(era5_path, dac_placements: pd.DataFrame):
+    gen = ht_dac_era5_wenzel2025(placements=dac_placements, era5_path=era5_path, model="HT_okosun")
     assert np.all(
         np.isclose(
             gen.capacity_factor.mean(dim="time"),
@@ -77,22 +77,22 @@ def test_ht_dac_era5_wenzel2025(dac_placements: pd.DataFrame):
     )
 
 
-def test_lt_dac_rejects_an_unknown_fill_method(dac_placements: pd.DataFrame):
+def test_lt_dac_rejects_an_unknown_fill_method(era5_path, dac_placements: pd.DataFrame):
     # the docstring documents a NotImplementedError, the code used an assert
     with pytest.raises(NotImplementedError, match="bogus"):
         lt_dac_era5_wenzel2025(
             placements=dac_placements,
-            era5_path=TEST_DATA["era5-like"],
+            era5_path=era5_path,
             model="LT_jajjawi",
             fillMethod="bogus",
         )
 
 
 @pytest.mark.parametrize("fill_method", ["nearest", "offTmin"])
-def test_lt_dac_accepts_the_supported_fill_methods(dac_placements: pd.DataFrame, fill_method):
+def test_lt_dac_accepts_the_supported_fill_methods(era5_path, dac_placements: pd.DataFrame, fill_method):
     gen = lt_dac_era5_wenzel2025(
         placements=dac_placements,
-        era5_path=TEST_DATA["era5-like"],
+        era5_path=era5_path,
         model="LT_jajjawi",
         fillMethod=fill_method,
     )
@@ -101,6 +101,7 @@ def test_lt_dac_accepts_the_supported_fill_methods(dac_placements: pd.DataFrame,
 
 
 def test_ht_dac_rejects_an_unknown_model(dac_placements: pd.DataFrame):
+    # fails before any weather data is read, so one storage format suffices
     with pytest.raises(NotImplementedError, match="bogus"):
         ht_dac_era5_wenzel2025(
             placements=dac_placements,

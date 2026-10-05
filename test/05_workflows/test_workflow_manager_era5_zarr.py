@@ -1,6 +1,4 @@
-import glob
 import inspect
-from os.path import join
 
 import numpy as np
 import pandas as pd
@@ -15,23 +13,13 @@ from reskit.wind.workflows.workflows import wind_era5_PenaSanchezDunkelWinklerEt
 
 
 @pytest.fixture(scope="module")
-def era5_like_zarr_store(tmp_path_factory):
-    """The 'era5-like' netCDF4 test data, merged into a single Zarr store.
+def era5_like_zarr_store():
+    """The 'era5-like' netCDF4 test data as a Zarr store, see scripts/make_era5_zarr_test_data.py.
 
     Both weather sources therefore see bit-identical data, so any difference in the
     results has to come from the source implementations themselves.
     """
-    import xarray as xr
-
-    datasets = [xr.open_dataset(path) for path in sorted(glob.glob(join(TEST_DATA["era5-like"], "*.nc")))]
-    ds = xr.merge(datasets)
-
-    store = tmp_path_factory.mktemp("era5_like_zarr") / "era5-like.zarr"
-    ds.to_zarr(store)
-    for dataset in datasets:
-        dataset.close()
-
-    return store
+    return TEST_DATA["era5.zarr"]
 
 
 @pytest.fixture
