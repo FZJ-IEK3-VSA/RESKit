@@ -1,13 +1,14 @@
-"""Cut the ERA5 Zarr test store from the Earth Data Hub (EDH) ERA5 single-levels store.
+"""Cut the ERA5 Zarr test store from an online ERA5 Zarr store.
 
 The stores of scripts/make_era5_zarr_test_data.py are converted from the netCDF4
 fixtures, so they share the netCDF4 layout: a 'time' axis, longitudes on
 [-180, 180), packed integers and the radiation RESKit preprocessed. They test that
 Era5ZarrSource reads the same data as Era5Source, but none of what is specific to
 a real online store. This script cuts such a store, so that the tests can read real
-EDH data the way users do:
+online data the way users do. The source is SOURCE_URL, currently the ERA5
+single-levels store of the Earth Data Hub (EDH):
 
-    EDH era5-single-levels-atmosphere-v0.zarr  ->  era5-edh/era5-edh.zarr
+    SOURCE_URL  ->  era5-zarr/era5.zarr
 
 * The same box as the 'era5' fixtures (49-52 N, 5-7.5 E) and their 140 hours
   (2015-01-01 00:00 to 2015-01-06 19:00), plus the hour before, so that the tests
@@ -34,7 +35,7 @@ Requires EDH credentials in ~/.netrc:
 
 Usage (from the repository root):
 
-    python scripts/make_era5_edh_test_data.py
+    python scripts/make_era5_zarr_test_data.py
 """
 
 import argparse
@@ -53,7 +54,7 @@ from reskit.weather import Era5Source
 SOURCE_URL = "https://data.earthdatahub.destine.eu/era5/era5-single-levels-atmosphere-v0.zarr"
 
 FIXTURES = Path(__file__).resolve().parents[1] / "reskit" / "data" / "test_cache" / "data" / "reskit-test-data"
-STORE = FIXTURES / "era5-edh" / "era5-edh.zarr"
+STORE = FIXTURES / "era5-zarr" / "era5.zarr"
 
 TIME = "valid_time"
 VARIABLES = sorted(Era5Source.CDS_TO_NC_NAME.values())
@@ -71,7 +72,7 @@ def cut(source: str = SOURCE_URL) -> xr.Dataset:
     Parameters
     ----------
     source : str, optional
-        The EDH store to cut from
+        The store to cut from
 
     Returns
     -------
@@ -128,7 +129,7 @@ def write_store(dataset: xr.Dataset, store: Path, source: str = SOURCE_URL) -> N
             f"{TIME} {TIMES[0]} to {TIMES[1]}, latitude {LATITUDES[0]} to {LATITUDES[1]}, "
             f"longitude {LONGITUDES[0]} to {LONGITUDES[1]}"
         ),
-        reskit_created_by="scripts/make_era5_edh_test_data.py",
+        reskit_created_by="scripts/make_era5_zarr_test_data.py",
     )
 
     if store.exists():

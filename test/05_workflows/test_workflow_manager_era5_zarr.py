@@ -13,7 +13,7 @@ from reskit.wind.workflows.workflows import wind_era5_PenaSanchezDunkelWinklerEt
 
 
 # The 140 hours of the 'era5' netCDF4 fixtures, on RESKit's time index
-EDH_HOURS = slice("2014-12-31 23:30", "2015-01-06 18:30")
+ERA5_HOURS = slice("2014-12-31 23:30", "2015-01-06 18:30")
 
 
 @pytest.fixture
@@ -56,14 +56,14 @@ def _read_era5(placements, source, **kwargs):
 
 
 def test_era5_netcdf_and_zarr_read_alike(pt_placements):
-    """WorkflowManager.read() gives from real Earth Data Hub data what it gives from the netCDF4 fixtures.
+    """WorkflowManager.read() gives from a real online Zarr store what it gives from the netCDF4 fixtures.
 
-    era5-edh.zarr covers the same box and hours as the 'era5' fixtures. Not to the bit --
-    the netCDF4 fixtures are packed to 16 bit integers, the EDH data is bit-rounded -- but
-    to 1 % of each variable's range, see test/02_weather_source/test_Era5EdhTestData.py.
+    era5.zarr covers the same box and hours as the 'era5' fixtures. Not to the bit --
+    the netCDF4 fixtures are packed to 16 bit integers, the Zarr data is bit-rounded -- but
+    to 1 % of each variable's range, see test/02_weather_source/test_Era5ZarrTestData.py.
     """
     netcdf_man = _read_era5(pt_placements, TEST_DATA["era5-like"])
-    zarr_man = _read_era5(pt_placements, TEST_DATA["era5-edh.zarr"], time_slice=EDH_HOURS)
+    zarr_man = _read_era5(pt_placements, TEST_DATA["era5.zarr"], time_slice=ERA5_HOURS)
 
     assert zarr_man.time_index.equals(netcdf_man.time_index)
 
