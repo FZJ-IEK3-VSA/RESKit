@@ -19,6 +19,8 @@ A Zarr store is registered like a file, under its relative path and bare name
 (``TEST_DATA["era5.zarr"]``), and the files inside it are not registered at all.
 The ERA5 stores in ``era5-zarr/`` mirror the netCDF4 files of ``era5/`` and
 ``era5-csp/`` and are generated from them by ``scripts/make_era5_zarr_test_data.py``.
+``era5-edh/era5-edh.zarr`` is real Earth Data Hub data for the same box and hours,
+cut once by ``scripts/make_era5_edh_test_data.py``.
 
 Three filenames appear in both ``era5/`` and ``era5-csp/``
 (``2m_temperature.nc``, ``10m_wind_speed.processed.nc`` and
