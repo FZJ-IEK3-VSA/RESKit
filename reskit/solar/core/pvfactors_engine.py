@@ -20,7 +20,9 @@ Building the view factor matrix is the other large cost, mostly the view factors
 PV row and ground surfaces. pvfactors computes them for the ground on both sides of every PV
 row surface and then zeroes one side wherever the rows are tilted the other way; for a fixed
 tilt that is the same side at every time step, so about half of that work is discarded
-whole. The view factor calculator below skips it.
+whole. The view factor calculator below skips it, and computes the rest for all ground surfaces
+on one side of a PV row at once, sharing what depends only on the ground between the PV row
+surfaces; the view factor matrix stays bit-identical to pvfactors'.
 
 pvfactors_timeseries() below is pvlib's function of the same name with this engine and view
 factor calculator plugged in; the results agree with pvlib's to floating point rounding.
@@ -119,57 +121,132 @@ def _vf_calculator():
     from pvfactors.viewfactors.calculator import VFCalculator
     from pvfactors.viewfactors.vfmethods import VFTsMethods
 
-    class SkipMaskedVFTsMethods(VFTsMethods):
-        """VFTsMethods that skips PV row to ground view factors which would be zeroed whole."""
+    from pvfactors.config import DISTANCE_TOLERANCE
+
+    def _distance(pt_1, pt_2):
+        # VFTsMethods._distance(), on arrays that broadcast
+        return np.sqrt((pt_2[1] - pt_1[1]) ** 2 + (pt_2[0] - pt_1[0]) ** 2)
+
+    def _angle_with_x_axis(pt_1, pt_2):
+        # VFTsMethods._angle_with_x_axis()
+        return np.arctan2(pt_2[1] - pt_1[1], pt_2[0] - pt_1[0])
+
+    def _xy(ts_point):
+        return np.asarray(ts_point.x, dtype=float), np.asarray(ts_point.y, dtype=float)
+
+    class VectorisedVFTsMethods(VFTsMethods):
+        """VFTsMethods with the PV row to ground view factors computed for all ground surfaces at once."""
 
         def vf_pvrow_gnd_surf(self, ts_pvrows, ts_ground, tilted_to_left, vf_matrix):
-            # As VFTsMethods.vf_pvrow_gnd_surf(), which computes every PV row surface against the
-            # ground on both sides and then keeps the front's view to the left and the back's to
-            # the right only where the rows are tilted to the left (and vice versa). A side that
-            # is kept at no time step would only write zeros over the zeros already there.
+            # As VFTsMethods.vf_pvrow_gnd_surf() with vf_pvrow_surf_to_gnd_surf_obstruction_hottel(),
+            # _vf_surface_to_surface() and _vf_hottel_gnd_surf(), with the same arithmetic in the
+            # same order, so the matrix is bit-identical. pvfactors calls those once per pair of
+            # PV row and ground surface; here the ground surfaces on one side of a PV row are
+            # stacked into (n_ground, n_steps) arrays, and what depends only on the ground and
+            # the obstructing row -- angles and distances to its lowest point -- is computed once
+            # for all PV row surfaces instead of once per pair and string.
+            #
+            # pvfactors keeps the front's view to the left ground and the back's to the right only
+            # where the rows are tilted to the left, and vice versa; a side kept at no time step
+            # would only write zeros over the zeros already there and is skipped.
             n_pvrows = len(ts_pvrows)
+            n_steps = len(tilted_to_left)
             any_left, any_right = bool(np.any(tilted_to_left)), bool(not np.all(tilted_to_left))
             for idx_pvrow, ts_pvrow in enumerate(ts_pvrows):
-                sides = {
-                    True: ts_ground.ts_surfaces_side_of_cut_point("left", idx_pvrow),
-                    False: ts_ground.ts_surfaces_side_of_cut_point("right", idx_pvrow),
-                }
-                for is_back, side in ((False, ts_pvrow.front), (True, ts_pvrow.back)):
-                    for pvrow_surf in side.all_ts_surfaces:
-                        if pvrow_surf.is_empty:
-                            continue
-                        ts_length = pvrow_surf.length
-                        i = pvrow_surf.index
-                        for is_left, gnd_surfaces in sides.items():
-                            # the front sees the left ground when tilted to the left, the back the right
-                            if not (any_left if is_left != is_back else any_right):
-                                continue
-                            for gnd_surf in gnd_surfaces:
-                                if gnd_surf.is_empty:
-                                    continue
-                                j = gnd_surf.index
-                                vf_pvrow_to_gnd, vf_gnd_to_pvrow = self.vf_pvrow_surf_to_gnd_surf_obstruction_hottel(
-                                    pvrow_surf,
-                                    idx_pvrow,
-                                    n_pvrows,
-                                    tilted_to_left,
-                                    ts_pvrows,
-                                    gnd_surf,
-                                    ts_length,
-                                    is_back=is_back,
-                                    is_left=is_left,
-                                )
-                                vf_matrix[i, j, :] = vf_pvrow_to_gnd
-                                vf_matrix[j, i, :] = vf_gnd_to_pvrow
+                for is_left, side_name in ((True, "left"), (False, "right")):
+                    pvrow_sides = [
+                        (is_back, pvrow_side)
+                        for is_back, pvrow_side in ((False, ts_pvrow.front), (True, ts_pvrow.back))
+                        # the front sees the left ground when tilted to the left, the back the right
+                        if (any_left if is_left != is_back else any_right)
+                    ]
+                    gnd_surfaces = [
+                        surf
+                        for surf in ts_ground.ts_surfaces_side_of_cut_point(side_name, idx_pvrow)
+                        if not surf.is_empty
+                    ]
+                    if not pvrow_sides or not gnd_surfaces:
+                        continue
+                    j = np.array([surf.index for surf in gnd_surfaces])
+                    # the ground surfaces' boundary points as (n_ground, n_steps) arrays
+                    gnd_b1, gnd_b2 = (
+                        tuple(
+                            np.stack([np.broadcast_to(c, (n_steps,)) for c in coords])
+                            for coords in zip(*(_xy(getattr(surf.coords, b)) for surf in gnd_surfaces))
+                        )
+                        for b in ("b1", "b2")
+                    )
+                    gnd_length = _distance(gnd_b1, gnd_b2)  # TsLineCoords.length
+                    no_obstruction = (is_left and idx_pvrow == 0) or (not is_left and idx_pvrow == n_pvrows - 1)
+                    if not no_obstruction:
+                        # the neighbouring row's lowest point may block the view; per ground point
+                        idx_obstr = idx_pvrow - 1 if is_left else idx_pvrow + 1
+                        obstr = _xy(ts_pvrows[idx_obstr].full_pvrow_coords.lowest_point)
+                        alpha_obstr = {b: _angle_with_x_axis(pt, obstr) for b, pt in (("b1", gnd_b1), ("b2", gnd_b2))}
+                        dist_gnd_obstr = {b: _distance(pt, obstr) for b, pt in (("b1", gnd_b1), ("b2", gnd_b2))}
 
-    class SkipMaskedVFCalculator(VFCalculator):
-        """VFCalculator with SkipMaskedVFTsMethods."""
+                    for is_back, pvrow_side in pvrow_sides:
+                        for pvrow_surf in pvrow_side.all_ts_surfaces:
+                            if pvrow_surf.is_empty:
+                                continue
+                            i = pvrow_surf.index
+                            width = pvrow_surf.length
+                            if no_obstruction:
+                                # _vf_surface_to_surface(pvrow_surf.coords, gnd_surf, width)
+                                pv_b1, pv_b2 = _xy(pvrow_surf.coords.b1), _xy(pvrow_surf.coords.b2)
+                                sum_1 = _distance(pv_b1, gnd_b1) + _distance(pv_b2, gnd_b2)
+                                sum_2 = _distance(pv_b1, gnd_b2) + _distance(pv_b2, gnd_b1)
+                                numerator = np.abs(sum_2 - sum_1)
+                            else:
+                                # _vf_hottel_gnd_surf(highest, lowest, gnd b1, gnd b2, obstr, width, is_left)
+                                high, low = _xy(pvrow_surf.highest_point), _xy(pvrow_surf.lowest_point)
+                                dist_obstr_pv = {"high": _distance(obstr, high), "low": _distance(obstr, low)}
+
+                                def hottel_string_length(pv_name, pv, gnd_name, gnd):
+                                    l_pv = _distance(pv, gnd)
+                                    alpha_pv = _angle_with_x_axis(gnd, pv)
+                                    if is_left:
+                                        is_obstructing = alpha_pv > alpha_obstr[gnd_name]
+                                    else:
+                                        is_obstructing = alpha_pv < alpha_obstr[gnd_name]
+                                    l_obstr = dist_gnd_obstr[gnd_name] + dist_obstr_pv[pv_name]
+                                    return np.where(is_obstructing, l_obstr, l_pv)
+
+                                near, far = (
+                                    (("b1", gnd_b1), ("b2", gnd_b2)) if is_left else (("b2", gnd_b2), ("b1", gnd_b1))
+                                )
+                                l1 = hottel_string_length("high", high, *near)
+                                l2 = hottel_string_length("low", low, *far)
+                                d1 = hottel_string_length("high", high, *far)
+                                d2 = hottel_string_length("low", low, *near)
+                                numerator = d1 + d2 - l1 - l2
+                            vf_pvrow_to_gnd = np.divide(
+                                numerator,
+                                2.0 * width,
+                                where=width > DISTANCE_TOLERANCE,
+                                out=np.zeros(numerator.shape),
+                            )
+                            if is_left != is_back:
+                                vf_pvrow_to_gnd = np.where(tilted_to_left, vf_pvrow_to_gnd, 0.0)
+                            else:
+                                vf_pvrow_to_gnd = np.where(tilted_to_left, 0.0, vf_pvrow_to_gnd)
+                            vf_gnd_to_pvrow = np.divide(
+                                vf_pvrow_to_gnd * width,
+                                gnd_length,
+                                where=gnd_length > DISTANCE_TOLERANCE,
+                                out=np.zeros_like(gnd_length),
+                            )
+                            vf_matrix[i, j, :] = vf_pvrow_to_gnd
+                            vf_matrix[j, i, :] = vf_gnd_to_pvrow
+
+    class VectorisedVFCalculator(VFCalculator):
+        """VFCalculator with VectorisedVFTsMethods."""
 
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
-            self.vf_ts_methods = SkipMaskedVFTsMethods()
+            self.vf_ts_methods = VectorisedVFTsMethods()
 
-    return SkipMaskedVFCalculator
+    return VectorisedVFCalculator
 
 
 def pvfactors_timeseries(
