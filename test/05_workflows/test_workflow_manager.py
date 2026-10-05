@@ -331,6 +331,20 @@ def test_WorkflowManager_adjust_variable_to_long_run_average(
     assert np.isclose(man.sim_data["elevated_wind_speed"].max(), 13.853410433409616)
 
 
+def test_WorkflowManager_get_scalar_values_from_raster_for_a_subset_of_points():
+    """The fallbacks for missing values look up the given points, not all placements."""
+    placements = pd.DataFrame({"lon": [6.1, 6.2, 9.0], "lat": [50.5, 50.6, 50.5], "capacity": 1.0})
+    man = WorkflowManager(placements)
+    fp = TEST_DATA["gwa100-like.tif"]
+
+    subset = man.get_scalar_values_from_raster(fp, "linear-spline", points=[(6.2, 50.6), (9.0, 50.5)])
+    every = man.get_scalar_values_from_raster(fp, "linear-spline")
+
+    assert subset.shape == (2,)
+    assert subset[0] == every[1]
+    assert np.isnan(subset[1]) and np.isnan(every[2])  # 9 E lies outside the raster
+
+
 def test_WorkflowManager_adjust_variable_to_long_run_average_() -> WorkflowManager:
     # create a test placements dataframe
     columns = ["lat", "lon", "capacity"]
