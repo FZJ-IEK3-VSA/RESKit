@@ -114,6 +114,31 @@ def test_wind_era5_PenaSanchezDunkelWinklerEtAl2025(pt_wind_placements: pd.DataF
     assert np.isclose(gen.capacity_factor.std(), 0.29513281)
 
 
+def test_wind_era5_PenaSanchezDunkelWinklerEtAl2025_on_edh_data(pt_wind_placements: pd.DataFrame):
+    """Real Earth Data Hub data gives what the netCDF4 fixtures of the same hours give.
+
+    Not to the bit: the netCDF4 fixtures are packed to 16 bit integers, the EDH data is
+    bit-rounded. The tolerances are about four times the largest difference measured.
+    """
+    inputs = data.paths("wind_era5_PenaSanchezDunkelWinklerEtAl2025", test=True)
+    arguments = dict(
+        placements=pt_wind_placements,
+        gwa_100m_path=inputs["gwa_100m"],
+        height_scaling_data={50: inputs["gwa_50m"], 200: inputs["gwa_200m"]},
+        output_netcdf_path=None,
+        cf_correction=True,
+    )
+    netcdf = wind_era5_PenaSanchezDunkelWinklerEtAl2025(era5_path=inputs["era5"], **arguments)
+    edh = wind_era5_PenaSanchezDunkelWinklerEtAl2025(
+        era5_path=TEST_DATA["era5-edh.zarr"], time_slice=slice("2014-12-31 23:30", "2015-01-06 18:30"), **arguments
+    )
+
+    assert edh.capacity_factor.shape == netcdf.capacity_factor.shape
+    assert (edh.time.values == netcdf.time.values).all()
+    assert np.abs(edh.capacity_factor - netcdf.capacity_factor).max() < 0.05
+    assert np.isclose(edh.capacity_factor.mean(), netcdf.capacity_factor.mean(), rtol=1e-3)
+
+
 def test_onshore_wind_iconlam_2023(pt_wind_placements_Zimbabwe: pd.DataFrame):
     gen = onshore_wind_iconlam_2023(
         placements=pt_wind_placements_Zimbabwe,
