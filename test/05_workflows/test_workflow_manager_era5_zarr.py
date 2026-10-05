@@ -3,6 +3,7 @@ import inspect
 import numpy as np
 import pandas as pd
 import pytest
+from era5_encoding import assert_matches_encoding
 
 pytest.importorskip("zarr")
 
@@ -60,7 +61,8 @@ def test_era5_netcdf_and_zarr_read_alike(pt_placements):
 
     era5.zarr covers the same box and hours as the 'era5' fixtures. Not to the bit --
     the netCDF4 fixtures are packed to 16 bit integers, the Zarr data is bit-rounded -- but
-    to 1 % of each variable's range, see test/02_weather_source/test_Era5ZarrTestData.py.
+    up to what both encodings round away, see test/era5_encoding.py. Bilinear interpolation
+    averages neighbouring cells, so it cannot make the difference larger.
     """
     netcdf_man = _read_era5(pt_placements, TEST_DATA["era5-like"])
     zarr_man = _read_era5(pt_placements, TEST_DATA["era5.zarr"], time_slice=ERA5_HOURS)
@@ -68,11 +70,7 @@ def test_era5_netcdf_and_zarr_read_alike(pt_placements):
     assert zarr_man.time_index.equals(netcdf_man.time_index)
 
     for variable in ERA5_COMPARISON_VARIABLES:
-        netcdf_data = netcdf_man.sim_data[variable]
-        zarr_data = zarr_man.sim_data[variable]
-        assert zarr_data.shape == netcdf_data.shape, variable
-        tolerance = 0.01 * (netcdf_data.max() - netcdf_data.min())
-        assert np.abs(zarr_data - netcdf_data).max() <= tolerance, variable
+        assert_matches_encoding(zarr_man.sim_data[variable], netcdf_man.sim_data[variable], variable)
 
     assert zarr_man.elevated_wind_speed_height == netcdf_man.elevated_wind_speed_height
     assert zarr_man.surface_wind_speed_height == netcdf_man.surface_wind_speed_height
