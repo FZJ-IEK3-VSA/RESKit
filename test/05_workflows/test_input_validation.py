@@ -1,5 +1,7 @@
+import ast
 import importlib
 import inspect
+import textwrap
 
 import geokit as gk
 import numpy as np
@@ -7,7 +9,7 @@ import pandas as pd
 import pytest
 
 from reskit import TEST_DATA, data, validate_inputs
-from reskit.util.input_validation import WORKFLOW_FAMILIES, _weather_reads
+from reskit.util.input_validation import WORKFLOW_FAMILIES
 
 WORKFLOW = "wind_era5_PenaSanchezDunkelWinklerEtAl2025"
 
@@ -46,7 +48,7 @@ def test_validate_inputs_reports_every_problem(wind_inputs, tmp_path):
     report = validate_inputs(WORKFLOW, placements, output_netcdf_path=str(tmp_path / "no" / "out.nc"), **arguments)
 
     errors = {(finding.check, finding.message.split(":")[0]) for finding in report.errors}
-    assert ("placements", "need the column 'hub_height'") in errors
+    assert ("placements", "placements need the column 'hub_height'") in errors
     assert ("gwa_100m_path", "does not exist") in errors
     assert ("output_netcdf_path", "the output directory does not exist") in errors
     assert any(check == "weather 'era5_path'" and "does not cover 1 of" in m for check, m in errors)
@@ -67,19 +69,33 @@ def test_validate_inputs_reports_unavailable_weather_variable():
     assert len(weather_errors) == 1 and "cannot provide 'boundary_layer_height'" in weather_errors[0]
 
 
-def _weather_workflows():
+def _read_calls(function):
+    """(source argument, source type, variables, time_index_from) of each read() call of a workflow"""
+    for node in ast.walk(ast.parse(textwrap.dedent(inspect.getsource(function)))):
+        if isinstance(node, ast.Call) and getattr(node.func, "attr", None) == "read":
+            keywords = {keyword.arg: keyword.value for keyword in node.keywords}
+            source_type = keywords["source_type"]
+            time_index_from = keywords.get("time_index_from")
+            yield (
+                keywords["source"].id,
+                ast.literal_eval(source_type) if isinstance(source_type, ast.Constant) else None,
+                tuple(ast.literal_eval(keywords["variables"])),
+                ast.literal_eval(time_index_from) if time_index_from is not None else None,
+            )
+
+
+def _workflows_reading_weather():
     for family in WORKFLOW_FAMILIES:
         module = importlib.import_module(f"reskit.{family}.workflows.workflows")
-        for name, function in inspect.getmembers(module, inspect.isfunction):
-            source = inspect.getsource(function)
-            if (
-                function.__module__ == module.__name__
-                and "path" in str(inspect.signature(function))
-                and ".read(" in source
-            ):
+        for _, function in inspect.getmembers(module, inspect.isfunction):
+            if function.__module__ == module.__name__ and any(_read_calls(function)):
                 yield function
 
 
-@pytest.mark.parametrize("workflow", list(_weather_workflows()), ids=lambda f: f.__name__)
-def test_validate_inputs_finds_the_weather_source_of_every_workflow(workflow):
-    assert _weather_reads(workflow)
+@pytest.mark.parametrize("workflow", list(_workflows_reading_weather()), ids=lambda f: f.__name__)
+def test_declared_weather_inputs_match_the_read_calls(workflow):
+    declared = {
+        (argument, weather.source_type, weather.variables, weather.time_index_from)
+        for argument, weather in workflow.inputs.weather.items()
+    }
+    assert set(_read_calls(workflow)) == declared

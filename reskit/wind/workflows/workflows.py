@@ -12,8 +12,18 @@ import reskit.weather as rk_weather
 from reskit.wind.core.data import DATAFOLDER
 from reskit.wind.core.windspeed_correction import build_ws_correction_function
 from reskit.wind.workflows.wind_workflow_manager import WindWorkflowManager
+from reskit.util.input_validation import WeatherInput, declare_inputs
 
 
+@declare_inputs(
+    WindWorkflowManager,
+    weather={
+        "era5_path": WeatherInput(
+            "ERA5", ("elevated_wind_speed", "surface_pressure", "surface_air_temperature", "boundary_layer_height")
+        )
+    },
+    files=("gwa_100m_path", "height_scaling_data"),
+)
 def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
     placements,
     era5_path,
@@ -194,6 +204,13 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
     return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
 
+@declare_inputs(
+    WindWorkflowManager,
+    weather={
+        "merra_path": WeatherInput("MERRA", ("elevated_wind_speed", "surface_pressure", "surface_air_temperature"))
+    },
+    files=("gwa_50m_path", "clc2012_path"),
+)
 def onshore_wind_merra_ryberg2019_europe(
     placements,
     merra_path,
@@ -272,6 +289,10 @@ def onshore_wind_merra_ryberg2019_europe(
     return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
 
+@declare_inputs(
+    WindWorkflowManager,
+    weather={"merra_path": WeatherInput("MERRA", ("elevated_wind_speed",))},
+)
 def offshore_wind_merra_caglayan2019(
     placements,
     merra_path,
@@ -336,6 +357,15 @@ def offshore_wind_merra_caglayan2019(
     return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
 
+@declare_inputs(
+    WindWorkflowManager,
+    weather={
+        "icon_lam_path": WeatherInput(
+            "ICON-LAM", ("elevated_wind_speed", "surface_pressure", "surface_air_temperature", "boundary_layer_height")
+        )
+    },
+    files=("esa_cci_path",),
+)
 def onshore_wind_iconlam_2023(
     placements,
     icon_lam_path,
@@ -420,6 +450,16 @@ def onshore_wind_iconlam_2023(
     return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
 
+@declare_inputs(
+    WindWorkflowManager,
+    weather={
+        "weather_path": WeatherInput(
+            variables=("elevated_wind_speed", "surface_pressure", "surface_air_temperature", "boundary_layer_height"),
+            source_type_argument="weather_source_type",
+        )
+    },
+    files=("weather_lra_ws_path", "real_lra_ws_path", "height_scaling_data", "cf_correction_factor"),
+)
 def wind_config(
     placements,
     weather_path,

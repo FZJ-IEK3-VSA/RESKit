@@ -3,20 +3,19 @@
 A simulation discovers a missing placement column, an unavailable weather variable, a
 raster without values at the placements or a time span outside the weather data only
 while it runs, possibly after hours. validate_inputs performs these checks up front,
-reading only metadata and single raster values, and reports all problems at once.
+reading only metadata and the raster values at the placements, and reports all problems
+at once.
 
-The checks are derived from the workflow itself wherever possible: its signature gives
-the arguments, and its calls of WorkflowManager.read() give the weather sources and
-variables. Only the placement columns are listed per workflow family, below.
+Every workflow declares its inputs with declare_inputs: its workflow manager, which
+knows the placement columns it needs, the weather sources it reads, and the arguments
+which name input or output files.
 """
 
-import ast
 import importlib
 import inspect
 import netrc
 import os
 import re
-import textwrap
 import warnings
 from dataclasses import dataclass, field
 from urllib.parse import urlparse
@@ -30,32 +29,63 @@ from reskit.util.paths import as_path_string, is_path_like
 
 WORKFLOW_FAMILIES = ("wind", "solar", "csp", "dac", "cooling_heating", "geothermal")
 
-# The columns the placements need besides their location, per workflow family. Each
-# requirement lists alternatives, of which one must be present completely.
-REQUIRED_PLACEMENT_COLUMNS = {
-    "wind": [[("capacity",)], [("hub_height",)], [("rotor_diam",), ("powerCurve",)]],
-    "solar": [[("capacity",), ("modules_per_string", "strings_per_inverter")]],
-    "csp": [[("land_area_m2",), ("aperture_area_m2",), ("area",), ("area_m2",)]],
-    "dac": [[("capacity",)]],
-    "cooling_heating": [[("capacity",)]],
-    "geothermal": [],
-}
-NON_NUMERIC_COLUMNS = {"powerCurve"}
+_REMOTE_SCHEMES = ("http", "https", "gs", "s3")
 
-# Arguments naming a file the workflow writes rather than reads
-OUTPUT_ARGUMENTS = {"output_netcdf_path", "savepath"}
 
-# Arguments of WorkflowManager.read() which do not configure the weather source
-_READ_ONLY_ARGUMENTS = {
-    "variables",
-    "source",
-    "source_type",
-    "set_time_index",
-    "spatial_interpolation_mode",
-    "temporal_reindex_method",
-}
+@dataclass(frozen=True)
+class WeatherInput:
+    """A weather source which a workflow reads.
 
-_FILE_EXTENSIONS = {".tif", ".tiff", ".nc", ".nc4", ".zarr", ".shp", ".gpkg", ".csv", ".xlsx", ".json", ".yaml"}
+    Parameters
+    ----------
+    source_type : str, optional
+        The source type, e.g. "ERA5", as WorkflowManager.read() takes it
+    variables : tuple of str
+        The standard variables the workflow reads, e.g. "elevated_wind_speed"
+    source_type_argument : str, optional
+        The workflow argument which gives the source type, instead of `source_type`
+    time_index_from : str, optional
+        The variable whose time axis the workflow uses, see WorkflowManager.read()
+    """
+
+    source_type: str = None
+    variables: tuple = ()
+    source_type_argument: str = None
+    time_index_from: str = None
+
+
+@dataclass(frozen=True)
+class WorkflowInputs:
+    """The inputs a workflow declares with declare_inputs."""
+
+    manager: type
+    weather: dict
+    files: tuple
+    outputs: tuple
+
+
+def declare_inputs(manager, weather=None, files=(), outputs=("output_netcdf_path",)):
+    """Declares the inputs of a workflow, which validate_inputs checks.
+
+    Parameters
+    ----------
+    manager : type
+        The workflow manager class; its placement_problems() checks the placements
+    weather : dict, optional
+        The weather sources the workflow reads, as {argument: WeatherInput}, where the
+        argument gives the path of the source
+    files : tuple of str, optional
+        The arguments which may name input files. An argument may also give a dict or a
+        list of files, or a value which is not a path, which is then not checked.
+    outputs : tuple of str, optional
+        The arguments which may name an output file or directory
+    """
+
+    def decorate(function):
+        function.inputs = WorkflowInputs(manager, dict(weather or {}), tuple(files), tuple(outputs))
+        return function
+
+    return decorate
 
 
 @dataclass(frozen=True)
@@ -112,11 +142,11 @@ def validate_inputs(workflow, placements, **workflow_kwargs):
 
     The following is checked:
         * The arguments match the signature of the workflow
-        * The placements have a valid location and the columns the workflow needs, with
-          numeric values for every placement
-        * Every weather source opens, provides the variables the workflow reads, covers
-          all placements and has a regular time axis; a 'time_slice' lies within the
-          available time span; a 'https://' store has credentials in ~/.netrc
+        * The placements have valid locations and the columns the workflow needs
+        * Every weather source opens, provides the variables the workflow reads with the
+          time steps of its time axis, covers all placements and has a regular time axis;
+          a 'time_slice' lies within the available time span; a 'https://' store has
+          credentials in ~/.netrc
         * Every input file exists, and every raster has values at the placements
         * The directory of every output file exists and is writable
 
@@ -158,156 +188,71 @@ def validate_inputs(workflow, placements, **workflow_kwargs):
     """
     function = _resolve_workflow(workflow)
     report = ValidationReport(function.__name__)
-
-    if "RESKitDeprecationError" in inspect.getsource(function):
-        report._add("error", "workflow", f"'{function.__name__}' was removed from RESKit, see its docstring")
-        return report
-
     signature = inspect.signature(function)
     try:
         bound = signature.bind(placements, **workflow_kwargs)
-        bound.apply_defaults()
-        arguments = dict(bound.arguments)
     except TypeError as error:
         report._add("error", "arguments", str(error))
-        arguments = {**_defaults(signature), **workflow_kwargs}
-
-    manager = _check_placements(report, function.__module__.split(".")[1], placements)
-
-    reads = _weather_reads(function)
-    if manager is not None:
-        for read in reads:
-            _check_weather(report, manager, read, arguments)
-
-    skip = {"placements"} | {read.argument for read in reads}
-    _check_files(report, manager, {k: v for k, v in arguments.items() if k not in skip})
+        defaults = {
+            name: parameter.default
+            for name, parameter in signature.parameters.items()
+            if parameter.default is not inspect.Parameter.empty
+        }
+        arguments = {**defaults, **workflow_kwargs, "placements": placements}
+    else:
+        bound.apply_defaults()
+        arguments = bound.arguments
+    _validate(report, function.inputs, arguments)
     return report
 
 
 def _resolve_workflow(workflow):
-    """The workflow function for a name, or the given function."""
+    """The workflow function for a name, or the given function, if it declares its inputs."""
     if callable(workflow):
-        return workflow
+        function = workflow
+    else:
+        from reskit.util.input_preparation import DEPRECATED_WORKFLOW_NAMES
 
-    from reskit.util.input_preparation import DEPRECATED_WORKFLOW_NAMES
-
-    name = DEPRECATED_WORKFLOW_NAMES.get(workflow, workflow)
-    for family in WORKFLOW_FAMILIES:
-        module = importlib.import_module(f"reskit.{family}.workflows.workflows")
-        function = getattr(module, name, None)
-        if inspect.isfunction(function) and function.__module__ == module.__name__:
-            return function
-    raise ValueError(f"Unknown RESKit workflow: {workflow!r}")
-
-
-def _defaults(signature):
-    return {
-        name: parameter.default
-        for name, parameter in signature.parameters.items()
-        if parameter.default is not inspect.Parameter.empty
-    }
+        name = DEPRECATED_WORKFLOW_NAMES.get(workflow, workflow)
+        modules = (importlib.import_module(f"reskit.{family}.workflows.workflows") for family in WORKFLOW_FAMILIES)
+        function = next((getattr(m, name) for m in modules if hasattr(getattr(m, name, None), "inputs")), None)
+        if function is None:
+            raise ValueError(f"Unknown or removed RESKit workflow: {workflow!r}")
+    if not isinstance(getattr(function, "inputs", None), WorkflowInputs):
+        raise ValueError(f"{function.__name__} does not declare its inputs, see reskit.util.input_validation")
+    return function
 
 
-def _check_placements(report, family, placements):
-    """Checks the placements; returns a WorkflowManager for them, or None if they are unusable."""
+def _validate(report, inputs, arguments):
+    """Runs all checks of validate_inputs for the bound arguments of a workflow."""
     from reskit.workflow_manager import WorkflowManager
 
-    if not isinstance(placements, pd.DataFrame):
-        report._add("error", "placements", f"must be a pandas DataFrame, not {type(placements).__name__}")
-        return None
-    if placements.empty:
-        report._add("error", "placements", "contain no placements")
-        return None
+    placements = arguments["placements"]
+    for problem in inputs.manager.placement_problems(placements):
+        report._add("error", "placements", problem)
 
-    for requirement in REQUIRED_PLACEMENT_COLUMNS.get(family, []):
-        present = [columns for columns in requirement if all(c in placements.columns for c in columns)]
-        if not present:
-            alternatives = " or ".join(" and ".join(f"'{c}'" for c in columns) for columns in requirement)
-            report._add("error", "placements", f"need the column {alternatives}")
-            continue
-        for column in present[0]:
-            if column in NON_NUMERIC_COLUMNS:
-                continue
-            values = placements[column]
-            if not pd.api.types.is_numeric_dtype(values):
-                report._add("error", "placements", f"column '{column}' must be numeric, not {values.dtype}")
-            elif values.isna().any():
-                report._add("error", "placements", f"{values.isna().sum()} placements have no '{column}'")
+    # the locations of the placements, for the checks of the weather sources and rasters,
+    # which a missing column does not prevent
+    manager = None
+    if not WorkflowManager.placement_problems(placements):
+        if len(placements) == 0:
+            report._add("error", "placements", "contain no placements")
+        else:
+            try:
+                manager = WorkflowManager(placements)
+            except ValueError as error:
+                report._add("error", "placements", str(error))
 
-    try:
-        return WorkflowManager(placements)
-    except Exception as error:  # every reason the locations are unusable is a finding
-        report._add("error", "placements", f"have no valid location: {error}")
-        return None
+    if manager is not None:
+        for argument, weather in inputs.weather.items():
+            _check_weather(report, manager, argument, weather, arguments)
+    _check_files(report, manager, inputs, arguments)
 
 
-@dataclass
-class _WeatherRead:
-    """A call of WorkflowManager.read() in a workflow, see _weather_reads."""
-
-    argument: str  # the workflow argument holding the path of the weather source
-    source_type: object  # the source type, or the name of the argument holding it
-    source_type_is_argument: bool
-    variables: list
-    options: dict  # further arguments: values, or names of workflow arguments (as ast.Name)
-
-
-def _weather_reads(function):
-    """The weather reads of a workflow, taken from its calls of WorkflowManager.read().
-
-    A call of another workflow of the same module, e.g. by a wrapper, contributes the
-    reads of that workflow.
-    """
-    parameters = inspect.signature(function).parameters
-    tree = ast.parse(textwrap.dedent(inspect.getsource(function)))
-    reads = []
-    for node in ast.walk(tree):
-        if not isinstance(node, ast.Call):
-            continue
-        if isinstance(node.func, ast.Name):
-            callee = function.__globals__.get(node.func.id)
-            if inspect.isfunction(callee) and callee is not function and callee.__module__ == function.__module__:
-                reads.extend(read for read in _weather_reads(callee) if read.argument in parameters)
-            continue
-        if not (isinstance(node.func, ast.Attribute) and node.func.attr == "read"):
-            continue
-        keywords = {k.arg: k.value for k in node.keywords if k.arg is not None}
-        source = keywords.get("source")
-        if not (isinstance(source, ast.Name) and source.id in parameters):
-            continue
-        source_type = keywords["source_type"]
-        options = {}
-        for name, value in keywords.items():
-            if name in _READ_ONLY_ARGUMENTS:
-                continue
-            if isinstance(value, ast.Name) and value.id in parameters:
-                options[name] = value
-            else:
-                try:
-                    options[name] = ast.literal_eval(value)
-                except ValueError:
-                    pass
-        reads.append(
-            _WeatherRead(
-                argument=source.id,
-                source_type=source_type.id if isinstance(source_type, ast.Name) else ast.literal_eval(source_type),
-                source_type_is_argument=isinstance(source_type, ast.Name),
-                variables=ast.literal_eval(keywords["variables"]),
-                options=options,
-            )
-        )
-
-    # a wrapper may call the same workflow more than once, e.g. once per dataset
-    unique = {}
-    for read in reads:
-        unique.setdefault((read.argument, read.source_type, tuple(read.variables)), read)
-    return list(unique.values())
-
-
-def _check_weather(report, manager, read, arguments):
+def _check_weather(report, manager, argument, weather, arguments):
     """Opens a weather source for its metadata only and checks it against the workflow."""
-    check = f"weather '{read.argument}'"
-    path = arguments.get(read.argument)
+    check = f"weather '{argument}'"
+    path = arguments.get(argument)
     if path is None:
         report._add("error", check, "no weather source given")
         return
@@ -315,9 +260,6 @@ def _check_weather(report, manager, read, arguments):
         report._add("info", check, "given as an initialized source, not checked")
         return
     path = as_path_string(path)
-    source_type = arguments.get(read.source_type) if read.source_type_is_argument else read.source_type
-    options = {k: arguments.get(v.id) if isinstance(v, ast.Name) else v for k, v in read.options.items()}
-
     if re.search(r"<[^>]*>", path):
         report._add(
             "error",
@@ -326,23 +268,32 @@ def _check_weather(report, manager, read, arguments):
             "execute_workflow_iteratively resolves the placeholders per placement",
         )
         return
-    remote = urlparse(path).scheme in ("http", "https", "gs", "s3")
-    if not remote and not os.path.exists(path):
+    url = urlparse(path)
+    if url.scheme not in _REMOTE_SCHEMES and not os.path.exists(path):
         report._add("error", check, f"does not exist: {path}")
         return
-    if urlparse(path).scheme == "https" and not _has_netrc_entry(urlparse(path).hostname):
-        report._add("warning", check, f"~/.netrc has no credentials for {urlparse(path).hostname}")
+    if url.scheme == "https" and not _has_netrc_entry(url.hostname):
+        report._add("warning", check, f"~/.netrc has no credentials for {url.hostname}")
+
+    source_type = arguments.get(weather.source_type_argument) if weather.source_type_argument else weather.source_type
+    options = dict(time_index_from=weather.time_index_from, verbose=False)
+    time_slice = arguments.get("time_slice")
+    if time_slice is not None:
+        options["time_slice"] = time_slice
 
     with warnings.catch_warnings():
+        # e.g. the notes of Era5ZarrSource on variables it derives on the fly
         warnings.simplefilter("ignore")
         try:
             source = manager._open_source(source_type, path, **options)
-        except Exception as error:  # every reason the source does not open is a finding
+        except (ResError, RuntimeError, OSError, ValueError, KeyError) as error:
             report._add("error", check, f"cannot be opened as {source_type} source: {error}")
             return
-        used_variables = _probe_variables(report, check, source, read.variables)
+        unavailable = source.unavailable_variables(*weather.variables)
+    for variable, reason in unavailable.items():
+        report._add("error", check, f"cannot provide '{variable}': {reason}")
 
-    _check_time_axis(report, check, source, used_variables, options.get("time_slice"))
+    _check_time_axis(report, check, source.time_index, time_slice)
     _check_coverage(report, check, source, manager)
 
 
@@ -353,32 +304,7 @@ def _has_netrc_entry(host):
         return False
 
 
-def _probe_variables(report, check, source, variables):
-    """Runs the source's standard loaders without reading data, reporting what is missing.
-
-    The loaders decide which raw variables a standard variable needs, including their
-    fallbacks. Replacing 'load' by a check of the source's variable table lets them run
-    on placeholders. Returns the raw variables the loaders would read.
-    """
-    used = []
-
-    def probe(variable, name=None, *args, **kwargs):
-        if variable not in source.variables.index:
-            raise ResError(f"the source has no variable '{variable}'")
-        used.append(variable)
-        source.data[name or variable] = np.zeros((1, 1, 1))
-
-    source.load = probe
-    for variable in variables:
-        try:
-            source.sload(variable)
-        except Exception as error:  # every reason a loader fails is a finding
-            report._add("error", check, f"cannot provide '{variable}': {error}")
-    return used
-
-
-def _check_time_axis(report, check, source, used_variables, time_slice):
-    time_index = source.time_index
+def _check_time_axis(report, check, time_index, time_slice):
     if len(time_index) == 0:
         report._add("error", check, "has no time steps in the requested time span")
         return
@@ -388,32 +314,21 @@ def _check_time_axis(report, check, source, used_variables, time_slice):
     if steps.size > 1:
         report._add("warning", check, f"has an irregular time axis with steps of {', '.join(map(str, steps))}")
 
-    if isinstance(time_slice, slice):
-        for bound, outside, edge in (
-            (time_slice.start, lambda t: t < time_index[0], "starts before"),
-            (time_slice.stop, lambda t: t > time_index[-1], "ends after"),
-        ):
-            if bound is None:
-                continue
-            bound = pd.Timestamp(bound)
-            if time_index.tz is not None and bound.tz is None:
-                bound = bound.tz_localize(time_index.tz)
-            if outside(bound):
-                report._add(
-                    "warning",
-                    check,
-                    f"'time_slice' {edge} the data; only {time_index[0]} to {time_index[-1]} is simulated",
-                )
-
-    # every file of a netCDF4 source must have the time steps of the time axis
-    if "shape" in source.variables.columns:
-        expected = len(getattr(source, "_timeindex_full", source._timeindex_raw))
-        for variable in dict.fromkeys(used_variables):
-            steps = source.variables.loc[variable, "shape"][0]
-            if steps != expected:
-                report._add(
-                    "error", check, f"variable '{variable}' has {steps} time steps, the time axis has {expected}"
-                )
+    if not isinstance(time_slice, slice):
+        return
+    for bound, outside, edge in (
+        (time_slice.start, lambda t: t < time_index[0], "starts before"),
+        (time_slice.stop, lambda t: t > time_index[-1], "ends after"),
+    ):
+        if bound is None:
+            continue
+        bound = pd.Timestamp(bound)
+        if time_index.tz is not None and bound.tz is None:
+            bound = bound.tz_localize(time_index.tz)
+        if outside(bound):
+            report._add(
+                "warning", check, f"'time_slice' {edge} the data; only {time_index[0]} to {time_index[-1]} is simulated"
+            )
 
 
 def _check_coverage(report, check, source, manager):
@@ -421,8 +336,9 @@ def _check_coverage(report, check, source, manager):
     lats, lons = np.asarray(source.lats), np.asarray(source.lons)
     half_lat = np.abs(np.diff(lats)).max() / 2 if lats.size > 1 else 0
     half_lon = np.abs(np.diff(lons)).max() / 2 if lons.size > 1 else 0
-    lon = manager.locs.lons % 360 if getattr(source, "_longitude_360", False) else manager.locs.lons
     lat = manager.locs.lats
+    # a source may give longitudes on a [0, 360) grid
+    lon = manager.locs.lons % 360 if lons.max() > 180 else manager.locs.lons
     outside = (
         (lat < lats.min() - half_lat)
         | (lat > lats.max() + half_lat)
@@ -439,47 +355,52 @@ def _check_coverage(report, check, source, manager):
         )
 
 
-def _check_files(report, manager, arguments):
-    """Checks every argument which names a file: input files exist, rasters have values at
-    the placements, and output files can be written.
+def _check_files(report, manager, inputs, arguments):
+    """Checks that input files exist and rasters have values at the placements, and that
+    output files can be written.
     """
-    for name, value in arguments.items():
-        for label, path in _paths_in(name, value):
-            if name in OUTPUT_ARGUMENTS:
-                directory = path if os.path.isdir(path) else os.path.dirname(os.path.abspath(path))
-                if not os.path.isdir(directory):
-                    report._add("error", label, f"the output directory does not exist: {directory}")
-                elif not os.access(directory, os.W_OK):
-                    report._add("error", label, f"the output directory is not writable: {directory}")
-                continue
+    for name in inputs.outputs:
+        for label, path in _paths_in(name, arguments.get(name)):
+            directory = path if os.path.isdir(path) else os.path.dirname(os.path.abspath(path))
+            if not os.path.isdir(directory):
+                report._add("error", label, f"the output directory does not exist: {directory}")
+            elif not os.access(directory, os.W_OK):
+                report._add("error", label, f"the output directory is not writable: {directory}")
+
+    for name in inputs.files:
+        for label, path in _paths_in(name, arguments.get(name)):
             if not os.path.exists(path):
                 report._add("error", label, f"does not exist: {path}")
-                continue
-            if manager is None or not _is_raster(path):
-                continue
-            try:
-                values = gk.raster.interpolateValues(path, points=manager.locs, mode="near")
-            except Exception as error:  # every reason a raster cannot be read is a finding
-                report._add("error", label, f"cannot be read as raster: {error}")
-                continue
-            missing = int(np.isnan(np.asarray(values, dtype=float)).sum())
-            if missing:
-                report._add(
-                    "warning",
-                    label,
-                    f"has no value at {missing} of {manager.locs.count} placements (outside the raster or nodata)",
-                )
+            elif manager is not None and _is_raster(path):
+                _check_raster_values(report, label, path, manager)
+
+
+def _check_raster_values(report, label, path, manager):
+    try:
+        values = gk.raster.interpolateValues(path, points=manager.locs, mode="near")
+    except (gk.error.GeoKitError, RuntimeError, OSError, ValueError) as error:
+        report._add("error", label, f"cannot be read as raster: {error}")
+        return
+    missing = int(np.isnan(np.asarray(values, dtype=float)).sum())
+    if missing:
+        report._add(
+            "warning",
+            label,
+            f"has no value at {missing} of {manager.locs.count} placements (outside the raster or nodata)",
+        )
 
 
 def _is_raster(path):
     try:
         return gk.util.isRaster(path)
-    except Exception:  # geokit fails on some files instead of returning False, e.g. on netCDF4 files
+    except (AttributeError, RuntimeError):  # geokit fails on some files, e.g. netCDF4, instead of returning False
         return False
 
 
 def _paths_in(name, value):
-    """The (label, path) pairs of an argument value which names files, also inside a dict or list."""
+    """The (label, path) pairs of an argument value, which may be a path, a dict or list of
+    paths, or no path at all, e.g. a number.
+    """
     if isinstance(value, dict):
         items = [(f"{name}[{key!r}]", item) for key, item in value.items()]
     elif isinstance(value, (list, tuple)):
@@ -487,13 +408,5 @@ def _paths_in(name, value):
     else:
         items = [(name, value)]
     for label, item in items:
-        if _looks_like_path(item):
+        if is_path_like(item) and urlparse(as_path_string(item)).scheme not in _REMOTE_SCHEMES:
             yield label, as_path_string(item)
-
-
-def _looks_like_path(value):
-    if isinstance(value, os.PathLike):
-        return True
-    if not isinstance(value, str) or urlparse(value).scheme in ("http", "https", "gs", "s3"):
-        return False
-    return "/" in value or os.sep in value or os.path.splitext(value)[1].lower() in _FILE_EXTENSIONS

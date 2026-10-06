@@ -6,6 +6,7 @@ import pandas as pd
 
 # import othert modules
 from .cooling_heating_workflow_manager import CoolingHeatingWorkflowManager
+from reskit.util.input_validation import WeatherInput, declare_inputs
 from ...util.relative_humidity import calculate_relative_humidity
 from ...util.wet_bulb_temperature import calculate_wet_bulb_temperature
 
@@ -86,6 +87,10 @@ def evaporative_cooling_wortmann2025(
     wf = CoolingHeatingWorkflowManager(placements)
 
 
+@declare_inputs(
+    CoolingHeatingWorkflowManager,
+    weather={"era5_path": WeatherInput("ERA5", ("surface_air_temperature",))},
+)
 def air_cooling_wenzel2025(
     placements: pd.DataFrame,
     era5_path: str,
@@ -235,6 +240,10 @@ def air_cooling_wenzel2025(
     )
 
 
+@declare_inputs(
+    CoolingHeatingWorkflowManager,
+    weather={"era5_path": WeatherInput("ERA5", ("surface_air_temperature",))},
+)
 def air_source_heat_pump(
     placements: pd.DataFrame,
     era5_path: str,
@@ -312,6 +321,10 @@ def air_source_heat_pump(
     )
 
 
+@declare_inputs(
+    CoolingHeatingWorkflowManager,
+    weather={"era5_path": WeatherInput("ERA5", ("surface_air_temperature", "surface_dew_temperature"))},
+)
 def evaporative_cooling_wortmann2025(
     placements: pd.DataFrame,
     era5_path: str,

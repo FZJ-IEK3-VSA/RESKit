@@ -27,7 +27,7 @@ from reskit.util.weather_tile import get_location_specific_weather_paths
 _MIN_EXTENT_HALF_WIDTH = 1e-5
 
 
-def _check_coordinate_range(placements, column, minimum, maximum):
+def _coordinate_range_problem(placements, column, minimum, maximum):
     """Check that every coordinate of a placements column is finite and in range.
 
     Parameters
@@ -41,20 +41,57 @@ def _check_coordinate_range(placements, column, minimum, maximum):
     minimum, maximum : float
         The inclusive limits of the valid range.
 
-    Raises
-    ------
-    ValueError
-        If one or more values are outside the range, or are NaN, or are infinite.
+    Returns
+    -------
+    str or None
+        The problem if one or more values are outside the range, or are NaN, or are
+        infinite, else None.
     """
     values = pd.to_numeric(placements[column], errors="coerce")
     invalid = ~values.between(minimum, maximum, inclusive="both")
-    if invalid.any():
-        offenders = ", ".join(f"{index}: {value}" for index, value in values[invalid].head(10).items())
-        raise ValueError(
-            f"All '{column}' values must be finite and between {minimum} and {maximum}. "
-            f"{int(invalid.sum())} of {len(values)} placements are invalid "
-            f"(index: value): {offenders}"
-        )
+    if not invalid.any():
+        return None
+    offenders = ", ".join(f"{index}: {value}" for index, value in values[invalid].head(10).items())
+    return (
+        f"All '{column}' values must be finite and between {minimum} and {maximum}. "
+        f"{int(invalid.sum())} of {len(values)} placements are invalid "
+        f"(index: value): {offenders}"
+    )
+
+
+def _check_coordinate_range(placements, column, minimum, maximum):
+    """Raise a ValueError if _coordinate_range_problem finds a problem."""
+    problem = _coordinate_range_problem(placements, column, minimum, maximum)
+    if problem is not None:
+        raise ValueError(problem)
+
+
+def _numeric_column_problems(placements, *columns):
+    """The problems if the placements lack one of the columns, or if it is not numeric or has
+    missing values. Used by the placement_problems() of the workflow managers.
+    """
+    if not isinstance(placements, pd.DataFrame):
+        return []
+    problems = []
+    for column in columns:
+        if column not in placements.columns:
+            problems.append(f"placements need the column '{column}'")
+        elif not is_numeric_dtype(placements[column]):
+            problems.append(f"placements column '{column}' must be numeric, not {placements[column].dtype}")
+        elif placements[column].isna().any():
+            problems.append(f"{placements[column].isna().sum()} placements have no '{column}'")
+    return problems
+
+
+def _any_column_problems(placements, *columns):
+    """The problem if the placements have none of the columns."""
+    if not isinstance(placements, pd.DataFrame) or any(column in placements.columns for column in columns):
+        return []
+    return [f"placements need one of the columns {', '.join(repr(column) for column in columns)}"]
+
+
+def _has_point_geometries(placements):
+    return "geom" in placements.columns and placements["geom"].iloc[0].GetGeometryName() == "POINT"
 
 
 def _expand_degenerate_bound(value):
@@ -101,16 +138,17 @@ class WorkflowManager:
     """
 
     def __init__(self, placements: pd.DataFrame):
+        problems = self.placement_problems(placements)
+        if problems:
+            raise ValueError("Invalid placements:\n" + "\n".join(f"  - {problem}" for problem in problems))
+
         # arrange placements, locs, and extent
-        assert isinstance(placements, pd.DataFrame)
         self.placements = placements.copy()
         self.locs = None
 
         # Check if input file contains a geometry column
-        ispoint = False
+        ispoint = len(placements) > 0 and _has_point_geometries(placements)
         if "geom" in placements.columns:
-            if self.placements["geom"].iloc[0].GetGeometryName() == "POINT":
-                ispoint = True
             _srs = placements.geom.iloc[0].GetSpatialReference()
         else:
             # assume lat/lon values in EPSG:4326
@@ -121,13 +159,6 @@ class WorkflowManager:
             self.placements["lon"] = self.locs.lons
             self.placements["lat"] = self.locs.lats
             del self.placements["geom"]
-        else:
-            assert "lon" in self.placements.columns, (
-                "if geom are not point geometries, dataframe must contain lon columns"
-            )
-            assert "lat" in self.placements.columns, (
-                "if geom are not point geometries, dataframe must contain lat columns"
-            )
 
         if self.locs is None:
             self.locs = gk.LocationSet(self.placements[["lon", "lat"]].values)
@@ -151,6 +182,36 @@ class WorkflowManager:
         self.sim_data = OrderedDict()
         self.time_index = None
         self.workflow_parameters = OrderedDict()
+
+    @classmethod
+    def placement_problems(cls, placements) -> List[str]:
+        """Finds the problems which make the placements unusable for this workflow manager.
+
+        The base class checks the locations; a specialized workflow manager adds the columns
+        it needs. The constructor raises a ValueError listing all problems, and
+        reskit.validate_inputs reports them before a workflow runs.
+
+        Parameters
+        ----------
+        placements : pandas.DataFrame
+            The placements to check
+
+        Returns
+        -------
+        list of str
+            The problems found, empty if the placements are usable
+        """
+        if not isinstance(placements, pd.DataFrame):
+            return [f"placements must be a pandas DataFrame, not {type(placements).__name__}"]
+        if len(placements) > 0 and _has_point_geometries(placements):
+            return []
+        if "lon" not in placements.columns or "lat" not in placements.columns:
+            return ["placements need point geometries in the column 'geom', or the columns 'lon' and 'lat'"]
+        problems = [
+            _coordinate_range_problem(placements, "lon", -180, 180),
+            _coordinate_range_problem(placements, "lat", -90, 90),
+        ]
+        return [problem for problem in problems if problem is not None]
 
     # STAGE 2: weather data reading and adjusting
 
