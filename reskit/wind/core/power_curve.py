@@ -404,8 +404,10 @@ class PowerCurve:
         lower = np.maximum(indices - half_width, 0)
         upper = np.minimum(indices + half_width + 1, _steps)
 
+        # only every 40th point is returned (see below), so only those are computed
         convolutedCF = np.zeros(_steps)
-        for i, ws_ in enumerate(ws):
+        for i in range(0, _steps, 40):
+            ws_ = ws[i]
             window = slice(lower[i], upper[i])
             z = (ws[window] - ws_) / std[i]
             pdf = np.exp(-0.5 * z * z) * (_INV_SQRT_2PI / std[i])
