@@ -270,6 +270,20 @@ def test_WorkflowManager_read_time_slice_equals_cropped_full_read():
         np.testing.assert_array_equal(sliced.sim_data[var], full.sim_data[var][window])
 
 
+def test_WorkflowManager_read_time_slice_rejects_initialized_source(
+    pt_WorkflowManager_initialized: WorkflowManager,
+    pt_era5_source: rk.weather.Era5Source,
+):
+    with pytest.raises(ValueError, match="already initialized source"):
+        pt_WorkflowManager_initialized.read(
+            variables=["elevated_wind_speed"],
+            source_type="user",
+            source=pt_era5_source,
+            set_time_index=True,
+            time_slice=slice("2015-01-02", "2015-01-03"),
+        )
+
+
 @pytest.mark.parametrize(
     "workflow",
     [

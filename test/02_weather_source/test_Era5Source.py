@@ -519,3 +519,16 @@ def test_bounds_which_miss_the_data_raise():
         Era5Source(TEST_DATA["era5-like"], bounds=gk.Extent(20.0, 49.0, 22.0, 52.0, srs=gk.srs.EPSG4326), verbose=False)
 
     assert "do not overlap" in str(error.value)
+
+
+@pytest.mark.parametrize(
+    "time_slice, message",
+    [
+        pytest.param("2015-01-02", "must be a slice", id="not_a_slice"),
+        pytest.param(slice("2015-01-02", "2015-01-03", 2), "must be a slice", id="with_a_step"),
+        pytest.param(slice("2030-01-01", "2030-01-02"), "selects no time steps", id="outside_the_data"),
+    ],
+)
+def test_invalid_time_slice_raises(time_slice, message):
+    with pytest.raises(ResError, match=message):
+        Era5Source(TEST_DATA["era5-like"], time_slice=time_slice, verbose=False)
