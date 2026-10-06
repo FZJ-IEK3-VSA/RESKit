@@ -20,7 +20,7 @@ def _workflow(placements, correction_path, factor=2.0, output_netcdf_path=None):
 
 def test_workflow_results_record_their_provenance(tmp_path):
     correction = tmp_path / "correction.csv"
-    correction.write_text("1.0\n")
+    correction.write_bytes(b"1.0\n")
     placements = pd.DataFrame({"lon": [6.0, 7.0], "lat": [50.0, 51.0]})
 
     output = tmp_path / "result.nc"
