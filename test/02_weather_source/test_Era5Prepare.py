@@ -16,6 +16,7 @@ from reskit.weather.era5_source.era5_prepare import (
     _ERA5_NC_TO_TILE_LABEL,
     _align_longitudes_to_source_convention,
     _era5_download_jobs,
+    _era5_request_problems,
     _get_source_lon_boxes,
     _iter_tile_x_indices,
     _normalize_lon,
@@ -25,6 +26,7 @@ from reskit.weather.era5_source.era5_prepare import (
     _tile_variable_to_file,
     era5_downloader,
     era5_tiler,
+    prepare_era5,
     preprocess_era5_data,
 )
 
@@ -194,6 +196,44 @@ def test_download_jobs_cover_exactly_requested_days(start, end):
 def test_download_jobs_end_before_start_raises():
     with pytest.raises(ValueError):
         _era5_download_jobs("2000-02-01", "2000-01-01")
+
+
+_BOX = {"north": 1, "south": 0, "west": 0, "east": 1}
+
+
+@pytest.mark.parametrize(
+    "start_date, end_date, boundary_box, problem",
+    [
+        ("2000-01-01", "2000-01-31", _BOX, None),
+        (None, "2000-01-31", _BOX, "start_date: None is not a date"),
+        ("", "2000-01-31", _BOX, "start_date: '' is not a date"),
+        ("2000-01-01T00:00Z", "2000-01-31T00:00+01:00", _BOX, None),
+        ("2000-01-01", "2000-01-31", {"north": 50.5, "south": 50.5, "west": 6.25, "east": 6.25}, None),
+        ("1939-12-31", "2000-01-31", _BOX, "ERA5 starts on 1940-01-01"),
+    ],
+)
+def test_era5_request_problems(monkeypatch, tmp_path, start_date, end_date, boundary_box, problem):
+    monkeypatch.setenv("CDSAPI_URL", "https://cds.example")
+    monkeypatch.setenv("CDSAPI_KEY", "key")
+    problems = _era5_request_problems(start_date, end_date, boundary_box, str(tmp_path))
+    assert problems == [] if problem is None else any(problem in p for p in problems), problems
+
+
+def test_era5_request_problems_reports_an_incomplete_cdsapirc(monkeypatch, tmp_path):
+    monkeypatch.delenv("CDSAPI_URL", raising=False)
+    monkeypatch.delenv("CDSAPI_KEY", raising=False)
+    cdsapirc = tmp_path / "cdsapirc"
+    cdsapirc.write_text("url: https://cds.example\n")
+    monkeypatch.setenv("CDSAPI_RC", str(cdsapirc))
+    problems = _era5_request_problems("2000-01-01", "2000-01-31", _BOX, str(tmp_path))
+    assert len(problems) == 1 and "no CDS API key" in problems[0]
+
+
+def test_prepare_era5_checks_the_request_before_writing(tmp_path):
+    output_dir = tmp_path / "out"
+    with pytest.raises(ValueError, match="south <= north"):
+        prepare_era5("2000-01-01", "2000-01-31", {**_BOX, "south": 2}, str(output_dir))
+    assert not output_dir.exists()
 
 
 def test_normalize_lon_wraps_out_of_range_values():

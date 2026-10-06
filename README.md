@@ -130,6 +130,11 @@ once, e.g. `workflows=["openfield_pv_era5", "CSP_PTR_ERA5"]`. A CDS account with
 configured `~/.cdsapirc` API key is required for ERA5
 (see https://cds.climate.copernicus.eu/how-to-api).
 
+Before downloading, `download_and_process` checks the dates, the boundary box, the
+output directories and the CDS API key, and raises all problems together. The API key
+and the ERA5 time span are not checked if the raw ERA5 file is already downloaded. Pass
+`dry_run=True` to run only these checks and print what would be downloaded.
+
 Note that some workflows also rely on data whose automated download is not yet
 implemented — solar/CSP workflows on Global Solar Atlas rasters and wind workflows
 on Global Wind Atlas rasters. `download_and_process` prints a notice for these and
