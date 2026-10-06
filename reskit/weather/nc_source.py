@@ -134,6 +134,7 @@ class NCSource(object):
         flip_lon=False,
         time_offset_minutes=None,
         time_index_from=None,
+        time_slice=None,
     ):
         """Initialize a generic netCDF4 file source
 
@@ -197,6 +198,14 @@ class NCSource(object):
 
         time_offset_minutes : numeric, optional
             If not none, adds the specific offset in minutes to the timesteps read from the weather file
+
+        time_slice : slice, optional
+            Restricts the source to the time steps between `time_slice.start` and
+            `time_slice.stop`, both inclusive, e.g. slice("2015-03-01", "2015-03-31 23:30")
+            * The bounds refer to the time index of the source, i.e. after the
+              `time_offset_minutes` are applied
+            * Only the selected time steps are read from disk
+            * If None, all time steps are used
 
 
         See Also
@@ -461,6 +470,21 @@ class NCSource(object):
         else:
             self.time_index = self._timeindex_raw
 
+        # restrict the time steps to read; 'load' reads the rows _time_rows of every file
+        self._timeindex_full = self._timeindex_raw
+        self._time_rows = slice(0, len(self._timeindex_raw))
+        if time_slice is not None:
+            if not isinstance(time_slice, slice) or time_slice.step is not None:
+                raise ResError(f"'time_slice' must be a slice of two timestamps without a step, not {time_slice!r}")
+            self._time_rows = self.time_index.slice_indexer(time_slice.start, time_slice.stop)
+            if self._time_rows.start >= self._time_rows.stop:
+                raise ResError(
+                    f"The 'time_slice' {time_slice.start} to {time_slice.stop} selects no time steps. "
+                    f"The source covers {self.time_index[0]} to {self.time_index[-1]}."
+                )
+            self._timeindex_raw = self._timeindex_raw[self._time_rows]
+            self.time_index = self.time_index[self._time_rows]
+
         # initialize the data container
         self.data = OrderedDict()
 
@@ -646,19 +670,17 @@ class NCSource(object):
         ds = nc.Dataset(self.variables["path"][variable], keepweakref=True)
         var = ds[variable]
 
-        if height_idx is None:
-            tmp = var[:, self._latStart : self._latStop, self._lonStart : self._lonStop]
-        else:
-            tmp = var[
-                :,
+        def read_rows(rows):
+            if height_idx is None:
+                return var[rows, self._latStart : self._latStop, self._lonStart : self._lonStop]
+            return var[
+                rows,
                 height_idx,
                 self._latStart : self._latStop,
                 self._lonStart : self._lonStop,
             ]
 
-        # process, maybe?
-        if processor is not None:
-            tmp = processor(tmp)
+        tmp = read_rows(self._time_rows)
 
         # forward fill the last time step since it can sometimes be missing
         if not tmp.shape[0] == self._timeindex_raw.shape[0]:
@@ -670,9 +692,15 @@ class NCSource(object):
 
             lastTimeIndex = nc.num2date(ds[self.time_name][-1], ds[self.time_name].units)
 
-            if not lastTimeIndex in self._timeindex_raw:
+            if not lastTimeIndex in self._timeindex_full:
                 raise ResError("Filling is only intended to fill the last missing step")
-            tmp = np.append(tmp, tmp[np.newaxis, -1, :, :], axis=0)
+            # repeat the file's last step; read it explicitly, since a time_slice of only the
+            # missing step reads no rows at all
+            tmp = np.append(tmp, read_rows(slice(-1, None)), axis=0)
+
+        # process, maybe?
+        if processor is not None:
+            tmp = processor(tmp)
 
         # save the data
         if not self._flip_lat and not self._flip_lon:

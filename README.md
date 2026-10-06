@@ -180,6 +180,23 @@ workflow arguments, staging and verification, with links to the shared
 configuration and bundle procedures. Cache and catalogue administration use
 `ethos-data`.
 
+### Simulating a shorter period
+
+By default a workflow simulates every time step of its weather data. Pass `time_slice` to simulate
+only part of it; both bounds are inclusive, and only the selected time steps are read from the
+weather source, which saves reading and simulation time:
+
+```python
+rk.wind.wind_era5_PenaSanchezDunkelWinklerEtAl2025(
+    ...,
+    time_slice=slice("2015-03-01", "2015-03-31 23:30"),
+)
+```
+
+All workflows which read weather data accept `time_slice`, for every weather source (ERA5 as
+netCDF4 or Zarr, MERRA, SARAH and ICON-LAM). The bounds refer to the time index of the workflow
+result, e.g. ERA5 time steps lie at half past the hour.
+
 ### Reading ERA5 from Zarr
 
 ETHOS.RESKit can read ERA5 directly from regular latitude/longitude Zarr stores while keeping the existing `source_type="ERA5"` workflow API. The current implementation is intended for stores such as the [Earth Data Hub ERA5 single-level dataset](https://earthdatahub.destine.eu/collections/era5/datasets/reanalysis-era5-single-levels):

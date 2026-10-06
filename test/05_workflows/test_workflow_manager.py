@@ -1,3 +1,5 @@
+import inspect
+
 import geokit as gk
 import numpy as np
 import osgeo
@@ -246,17 +248,51 @@ def test_WorkflowManager_read_without_time_index(
         )
 
 
-def test_WorkflowManager_read_time_slice_requires_zarr(
-    pt_WorkflowManager_initialized: WorkflowManager,
-):
-    with pytest.raises(RuntimeError, match="only supported for Zarr-backed ERA5 sources"):
-        pt_WorkflowManager_initialized.read(
-            variables=["elevated_wind_speed"],
+def test_WorkflowManager_read_time_slice_equals_cropped_full_read():
+    def read(**kwargs):
+        man = _make_WorkflowManager()
+        man.read(
+            variables=["elevated_wind_speed", "global_horizontal_irradiance"],
             source_type="ERA5",
             source=rk.TEST_DATA["era5-like"],
             set_time_index=True,
-            time_slice=slice("2015-01-01", "2015-01-02"),
+            verbose=False,
+            **kwargs,
         )
+        return man
+
+    full = read()
+    sliced = read(time_slice=slice("2015-01-02 00:30", "2015-01-03 23:30"))
+
+    window = (full.time_index >= "2015-01-02 00:30") & (full.time_index <= "2015-01-03 23:30")
+    assert sliced.time_index.equals(full.time_index[window])
+    for var in full.sim_data:
+        np.testing.assert_array_equal(sliced.sim_data[var], full.sim_data[var][window])
+
+
+@pytest.mark.parametrize(
+    "workflow",
+    [
+        rk.wind.workflows.workflows.wind_era5_PenaSanchezDunkelWinklerEtAl2025,
+        rk.wind.workflows.workflows.onshore_wind_merra_ryberg2019_europe,
+        rk.wind.workflows.workflows.offshore_wind_merra_caglayan2019,
+        rk.wind.workflows.workflows.onshore_wind_iconlam_2023,
+        rk.wind.workflows.workflows.wind_config,
+        rk.solar.workflows.workflows.openfield_pv_merra_ryberg2019,
+        rk.solar.workflows.workflows.openfield_pv_era5,
+        rk.solar.workflows.workflows.openfield_pv_sarah_unvalidated,
+        rk.solar.workflows.workflows.openfield_pv_iconlam,
+        rk.csp.workflows.workflows.csp_ptr_era5,
+        rk.csp.workflows.workflows.csp_ptr_era5_specific_dataset,
+        rk.dac.workflows.workflows.lt_dac_era5_wenzel2025,
+        rk.dac.workflows.workflows.ht_dac_era5_wenzel2025,
+        rk.cooling_heating.workflows.workflows.air_cooling_wenzel2025,
+        rk.cooling_heating.workflows.workflows.air_source_heat_pump,
+        rk.cooling_heating.workflows.workflows.evaporative_cooling_wortmann2025,
+    ],
+)
+def test_weather_workflows_expose_time_slice(workflow):
+    assert "time_slice" in inspect.signature(workflow).parameters
 
 
 @pytest.fixture

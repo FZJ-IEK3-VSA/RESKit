@@ -124,6 +124,11 @@ class MerraSource(NCSource):
             * Generally, there should be no missing data at all. This option is only intended to
                 catch the rare scenarios where one or two timesteps are missing
 
+        time_slice : slice, optional
+            Restricts the source to the time steps between `time_slice.start` and
+            `time_slice.stop`, both inclusive. Only these time steps are read from disk
+            * See NCSource for details
+
         See Also
         --------
         MerraSource

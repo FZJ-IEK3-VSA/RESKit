@@ -98,6 +98,7 @@ def air_cooling_wenzel2025(
     pressureDropWater: int | float = 200000,
     output_netcdf_path: str = None,
     output_variables: List[str] = None,
+    time_slice=None,
 ):
     """
     Simulate an air-cooling system based on ERA5 weather data.
@@ -130,6 +131,11 @@ def air_cooling_wenzel2025(
         Path to save the output NetCDF file. Default is None.
     output_variables : list of str, optional
         List of simulation variables to save to the NetCDF file. If None, all variables are saved.
+
+    time_slice : slice, optional
+        Simulate only the time steps between time_slice.start and time_slice.stop, both
+        inclusive, e.g. slice("2015-03-01", "2015-03-31 23:30"). Only these time steps
+        are read from the weather source. By default None, i.e. all time steps.
 
     Returns
     -------
@@ -167,6 +173,7 @@ def air_cooling_wenzel2025(
         ],
         source_type="ERA5",
         source=era5_path,
+        time_slice=time_slice,
         set_time_index=True,
         verbose=False,
     )
@@ -242,6 +249,7 @@ def air_source_heat_pump(
     secondLawEfficiency: int | float = 0.5,
     output_netcdf_path: str = None,
     output_variables: List[str] = None,
+    time_slice=None,
 ):
     """
     Simulate an air-source heat pump based on ERA5 weather data.
@@ -264,6 +272,11 @@ def air_source_heat_pump(
         Path to save the output NetCDF file. Default is None.
     output_variables : list of str, optional
         List of simulation variables to save to the NetCDF file. If None, all variables are saved.
+
+    time_slice : slice, optional
+        Simulate only the time steps between time_slice.start and time_slice.stop, both
+        inclusive, e.g. slice("2015-03-01", "2015-03-31 23:30"). Only these time steps
+        are read from the weather source. By default None, i.e. all time steps.
 
     Returns
     -------
@@ -294,6 +307,7 @@ def air_source_heat_pump(
         ],
         source_type="ERA5",
         source=era5_path,
+        time_slice=time_slice,
         set_time_index=True,
         verbose=False,
     )
@@ -322,6 +336,7 @@ def evaporative_cooling_wortmann2025(
     typical_cycles_blowdown: int = 5,
     output_netcdf_path: str = None,
     output_variables: List[str] = None,
+    time_slice=None,
 ):
     """
     Simulate an evaporative-cooling system based on ERA5 weather data.
@@ -349,6 +364,11 @@ def evaporative_cooling_wortmann2025(
         Path to save the output NetCDF file. Default is None.
     output_variables : list of str, optional
         List of simulation variables to save to the NetCDF file. If None, all variables are saved.
+
+    time_slice : slice, optional
+        Simulate only the time steps between time_slice.start and time_slice.stop, both
+        inclusive, e.g. slice("2015-03-01", "2015-03-31 23:30"). Only these time steps
+        are read from the weather source. By default None, i.e. all time steps.
 
     Returns
     -------
@@ -379,6 +399,7 @@ def evaporative_cooling_wortmann2025(
         variables=["surface_air_temperature", "surface_dew_temperature"],
         source_type="ERA5",
         source=era5_path,
+        time_slice=time_slice,
         set_time_index=True,
         verbose=False,
     )
