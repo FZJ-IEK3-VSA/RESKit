@@ -202,7 +202,8 @@ report.raise_if_errors()
 
 Every workflow also runs these checks itself before it simulates: it raises a `ResError`
 listing all errors, and emits a warning for every warning. Pass `validate=False` to a
-workflow to skip them.
+workflow to skip them. The [validation guide](docs/how_to/validate_inputs.md) explains the
+report and how a new workflow declares its inputs.
 
 ### Reading ERA5 from Zarr
 

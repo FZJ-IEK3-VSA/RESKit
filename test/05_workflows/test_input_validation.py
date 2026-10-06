@@ -104,6 +104,7 @@ def _workflows_reading_weather():
 
 @pytest.mark.parametrize("workflow", list(_workflows_reading_weather()), ids=lambda f: f.__name__)
 def test_declared_weather_inputs_match_the_read_calls(workflow):
+    assert hasattr(workflow, "inputs"), f"{workflow.__name__} needs @declare_inputs, see docs/how_to/validate_inputs.md"
     declared = {
         (argument, weather.source_type, weather.variables, weather.time_index_from)
         for argument, weather in workflow.inputs.weather.items()

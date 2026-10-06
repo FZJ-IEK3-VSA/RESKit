@@ -99,9 +99,19 @@ def declare_inputs(manager, weather=None, files=(), outputs=("output_netcdf_path
 
         workflow.inputs = inputs
         workflow.__signature__ = _with_validate_parameter(signature)
+        workflow.__doc__ = (function.__doc__ or "") + _VALIDATE_DOC
         return workflow
 
     return decorate
+
+
+_VALIDATE_DOC = """
+
+    Input validation
+    ----------------
+    The workflow checks its inputs before it simulates and raises a ResError listing all
+    errors, see reskit.validate_inputs. Pass validate=False to skip the check.
+"""
 
 
 def _validate_call(name, signature, inputs, args, kwargs):
