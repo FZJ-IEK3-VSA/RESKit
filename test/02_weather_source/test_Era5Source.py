@@ -532,3 +532,26 @@ def test_bounds_which_miss_the_data_raise():
 def test_invalid_time_slice_raises(time_slice, message):
     with pytest.raises(ResError, match=message):
         Era5Source(TEST_DATA["era5-like"], time_slice=time_slice, verbose=False)
+
+
+@pytest.mark.parametrize("time_slice", [None, slice("2015-01-01 01:00", None)])
+def test_a_file_missing_the_last_step_is_forward_filled(tmp_path, time_slice):
+    """A variable whose file lacks the last time step of the source repeats its last step."""
+    import xarray as xr
+
+    times = pd.date_range("2015-01-01", periods=4, freq="h")
+    for name, n_times in [("sp", 4), ("t2m", 3)]:
+        values = np.arange(n_times * 9, dtype="f4").reshape(n_times, 3, 3)
+        ds = xr.Dataset(
+            {name: (("time", "latitude", "longitude"), values)},
+            coords={"time": times[:n_times], "latitude": [52.0, 51.75, 51.5], "longitude": [5.0, 5.25, 5.5]},
+        )
+        ds["time"].encoding = {"units": "hours since 1900-01-01 00:00:00.0", "calendar": "gregorian"}
+        ds.to_netcdf(tmp_path / f"{name}.nc")
+
+    source = Era5Source(str(tmp_path), time_slice=time_slice, verbose=False)
+    source.load("t2m")
+
+    t2m = source.data["t2m"]
+    assert t2m.shape[0] == len(source.time_index)
+    np.testing.assert_array_equal(t2m[-1], t2m[-2])

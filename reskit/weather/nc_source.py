@@ -459,6 +459,7 @@ class NCSource(object):
         )
         ds.close()
 
+        self._time_offset = pd.Timedelta(minutes=time_offset_minutes or 0)
         if time_offset_minutes is not None:
             from datetime import timedelta
 
@@ -690,9 +691,17 @@ class NCSource(object):
                     % (variable, self.time_index.shape[0], tmp.shape[0])
                 )
 
-            lastTimeIndex = nc.num2date(ds[self.time_name][-1], ds[self.time_name].units)
-
-            if not lastTimeIndex in self._timeindex_full:
+            # the file must end exactly one step before the source
+            lastTimeIndex = nc.num2date(
+                ds[self.time_name][-1],
+                ds[self.time_name].units,
+                only_use_cftime_datetimes=False,
+                only_use_python_datetimes=True,
+            )
+            if (
+                var.shape[0] != len(self._timeindex_full) - 1
+                or lastTimeIndex + self._time_offset != self._timeindex_full[-2]
+            ):
                 raise ResError("Filling is only intended to fill the last missing step")
             # repeat the file's last step; read it explicitly, since a time_slice of only the
             # missing step reads no rows at all
