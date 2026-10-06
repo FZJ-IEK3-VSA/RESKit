@@ -177,3 +177,44 @@ def test_WorkflowManager_read_era5_netcdf_rejects_time_slice():
             set_time_index=True,
             verbose=False,
         )
+
+
+def test_WorkflowManager_reads_placements_far_apart_region_by_region(pt_placements, monkeypatch):
+    """Placements in different regions of the store's chunk grid are read per region, with the
+    same result as one read: a Zarr source reads the rectangle around its placements, so one read
+    for placements on two continents would load everything between them.
+    """
+    from reskit import weather as rk_weather
+
+    store = TEST_DATA["era5.zarr"]
+    together = _read_era5(pt_placements, store)
+    # 0.1 degree regions: the placements, 0.1 degree apart, fall into separate regions
+    monkeypatch.setattr(rk_weather.Era5ZarrSource, "spatial_chunk_degrees", staticmethod(lambda dataset: 0.1))
+    regions = []
+    read_by_region = WorkflowManager._read_by_region
+    monkeypatch.setattr(
+        WorkflowManager,
+        "_read_by_region",
+        lambda self, constructor, dataset, parts, *args, **kwargs: regions.append(len(parts))
+        or read_by_region(self, constructor, dataset, parts, *args, **kwargs),
+    )
+
+    apart = _read_era5(pt_placements, store)
+
+    assert regions and regions[0] > 1
+    assert apart.time_index.equals(together.time_index)
+    assert apart.elevated_wind_speed_height == together.elevated_wind_speed_height
+    for var in ERA5_COMPARISON_VARIABLES:
+        np.testing.assert_allclose(apart.sim_data[var], together.sim_data[var], rtol=1e-6, err_msg=var)
+
+
+def test_Era5ZarrSource_spatial_chunk_degrees():
+    import xarray as xr
+
+    from reskit import weather as rk_weather
+
+    store = xr.open_dataset(TEST_DATA["era5.zarr"], engine="zarr")
+    lat_chunk = store["u100"].encoding["chunks"][store["u100"].dims.index("latitude")]
+
+    assert rk_weather.Era5ZarrSource.spatial_chunk_degrees(store) == pytest.approx(max(1.0, lat_chunk * 0.25))
+    assert rk_weather.Era5ZarrSource.spatial_chunk_degrees(store.load().drop_encoding()) is None

@@ -144,6 +144,8 @@ class Era5ZarrSource(Era5Source):
             consolidated=consolidated,
             storage_options=storage_options,
         )
+        if isinstance(source, xr.Dataset):  # name it by its store in the messages, not by its repr
+            source = source.encoding.get("source", "an opened xarray.Dataset")
 
         self.time_name, ds = self._normalise_time_axis(ds)
         ds, self._derived_variables = self._derive_solar_variables(ds)
@@ -211,6 +213,35 @@ class Era5ZarrSource(Era5Source):
 
         if verbose:
             print(f"Opened ERA5 Zarr source: {source}")
+
+    @staticmethod
+    def spatial_chunk_degrees(dataset):
+        """The latitude span in degrees of one spatial chunk of the store, at least 1 degree.
+
+        Taken from the first data variable with a chunked latitude dimension; None if the store
+        has none (e.g. an unchunked in-memory dataset).
+
+        Parameters
+        ----------
+        dataset : xarray.Dataset
+            The opened store, see _open_dataset()
+        """
+        if "latitude" not in dataset.coords or dataset["latitude"].size < 2:
+            return None
+        resolution = abs(float(dataset["latitude"][1] - dataset["latitude"][0]))
+        for variable in dataset.data_vars.values():
+            if "latitude" not in variable.dims:
+                continue
+            chunks = variable.encoding.get("chunks") or variable.encoding.get("preferred_chunks")
+            if isinstance(chunks, dict):
+                cells = chunks.get("latitude")
+            elif chunks is not None and len(chunks) == variable.ndim:
+                cells = chunks[variable.dims.index("latitude")]
+            else:
+                continue
+            if cells:
+                return max(1.0, cells * resolution)
+        return None
 
     @staticmethod
     def _open_dataset(source, chunks, consolidated, storage_options):
