@@ -9,6 +9,8 @@ import pandas as pd
 import pytest
 
 from reskit import TEST_DATA, data, validate_inputs
+from reskit.util import ResError
+from reskit.wind.workflows.workflows import wind_era5_PenaSanchezDunkelWinklerEtAl2025
 from reskit.util.input_validation import WORKFLOW_FAMILIES
 
 WORKFLOW = "wind_era5_PenaSanchezDunkelWinklerEtAl2025"
@@ -67,6 +69,14 @@ def test_validate_inputs_reports_unavailable_weather_variable():
 
     weather_errors = [f.message for f in report.errors if f.check == "weather 'weather_path'"]
     assert len(weather_errors) == 1 and "cannot provide 'boundary_layer_height'" in weather_errors[0]
+
+
+def test_workflow_validates_its_inputs_before_running(wind_inputs, tmp_path):
+    placements, arguments = wind_inputs
+    arguments["gwa_100m_path"] = str(tmp_path / "missing.tif")
+
+    with pytest.raises(ResError, match=r"\[gwa_100m_path\] does not exist"):
+        wind_era5_PenaSanchezDunkelWinklerEtAl2025(placements, **arguments)
 
 
 def _read_calls(function):

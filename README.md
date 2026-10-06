@@ -200,6 +200,10 @@ print(report)  # all errors and warnings at once
 report.raise_if_errors()
 ```
 
+Every workflow also runs these checks itself before it simulates: it raises a `ResError`
+listing all errors, and emits a warning for every warning. Pass `validate=False` to a
+workflow to skip them.
+
 ### Reading ERA5 from Zarr
 
 ETHOS.RESKit can read ERA5 directly from regular latitude/longitude Zarr stores while keeping the existing `source_type="ERA5"` workflow API. The current implementation is intended for stores such as the [Earth Data Hub ERA5 single-level dataset](https://earthdatahub.destine.eu/collections/era5/datasets/reanalysis-era5-single-levels):

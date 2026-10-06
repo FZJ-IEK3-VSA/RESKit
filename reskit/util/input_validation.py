@@ -11,6 +11,7 @@ knows the placement columns it needs, the weather sources it reads, and the argu
 which name input or output files.
 """
 
+import functools
 import importlib
 import inspect
 import netrc
@@ -65,7 +66,12 @@ class WorkflowInputs:
 
 
 def declare_inputs(manager, weather=None, files=(), outputs=("output_netcdf_path",)):
-    """Declares the inputs of a workflow, which validate_inputs checks.
+    """Declares the inputs of a workflow, which the workflow then validates before it runs.
+
+    The decorated workflow takes the additional keyword argument `validate`, by default
+    True: the workflow first checks its inputs as validate_inputs does, raises a ResError
+    listing all problems if it finds an error, and emits a warning for every warning
+    found. Pass validate=False to skip the check.
 
     Parameters
     ----------
@@ -82,10 +88,43 @@ def declare_inputs(manager, weather=None, files=(), outputs=("output_netcdf_path
     """
 
     def decorate(function):
-        function.inputs = WorkflowInputs(manager, dict(weather or {}), tuple(files), tuple(outputs))
-        return function
+        inputs = WorkflowInputs(manager, dict(weather or {}), tuple(files), tuple(outputs))
+        signature = inspect.signature(function)
+
+        @functools.wraps(function)
+        def workflow(*args, validate=True, **kwargs):
+            if validate:
+                _validate_call(function.__name__, signature, inputs, args, kwargs)
+            return function(*args, **kwargs)
+
+        workflow.inputs = inputs
+        workflow.__signature__ = _with_validate_parameter(signature)
+        return workflow
 
     return decorate
+
+
+def _validate_call(name, signature, inputs, args, kwargs):
+    """Validates the arguments of a workflow call, see declare_inputs."""
+    try:
+        bound = signature.bind(*args, **kwargs)
+    except TypeError:
+        return  # the call of the workflow itself raises the clearer error
+    bound.apply_defaults()
+    report = ValidationReport(name)
+    _validate(report, inputs, bound.arguments)
+    report.raise_if_errors()
+    for finding in report.warnings:
+        warnings.warn(f"{name}: [{finding.check}] {finding.message}", stacklevel=3)
+
+
+def _with_validate_parameter(signature):
+    """The signature of a workflow with the keyword argument 'validate' added."""
+    parameters = list(signature.parameters.values())
+    validate = inspect.Parameter("validate", inspect.Parameter.KEYWORD_ONLY, default=True)
+    has_var_keyword = bool(parameters) and parameters[-1].kind == inspect.Parameter.VAR_KEYWORD
+    parameters.insert(len(parameters) - has_var_keyword, validate)
+    return signature.replace(parameters=parameters)
 
 
 @dataclass(frozen=True)
