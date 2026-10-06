@@ -273,8 +273,10 @@ def test_every_era5_dependency_has_a_tile_label(workflow):
 
 def test_download_and_process_raises_all_problems_before_downloading(monkeypatch, tmp_path):
     monkeypatch.delenv("CDSAPI_URL", raising=False)
+    monkeypatch.delenv("CDSAPI_KEY", raising=False)
     monkeypatch.setenv("CDSAPI_RC", str(tmp_path / "missing_cdsapirc"))
     output_dir = tmp_path / "out"
+    (tmp_path / "a_file").touch()
 
     with pytest.raises(ValueError) as error:
         download_and_process(
@@ -283,11 +285,14 @@ def test_download_and_process_raises_all_problems_before_downloading(monkeypatch
             end_date="2000-01-01",
             boundary_box={"north": 0, "south": 10, "west": 0, "east": 1},
             output_dir=str(output_dir),
+            tiling=True,
+            tile_output_dir=str(tmp_path / "a_file" / "tiles"),
         )
 
     message = str(error.value)
     assert "end_date 2000-01-01 is before start_date 2000-02-01" in message
-    assert "south < north" in message
+    assert "south <= north" in message
+    assert "tile_output_dir" in message
     assert "no CDS API key" in message
     assert not output_dir.exists()
 
@@ -297,10 +302,25 @@ def test_download_and_process_dry_run_downloads_nothing(monkeypatch, tmp_path, c
     monkeypatch.setenv("CDSAPI_KEY", "key")
     output_dir = tmp_path / "out"
 
-    plan = download_and_process(
+    result = download_and_process(
         "wind_era5_PenaSanchezDunkelWinklerEtAl2025", **{**_DUMMY_KWARGS, "output_dir": str(output_dir)}, dry_run=True
     )
 
-    assert plan == _merge_dependencies(["wind_era5_PenaSanchezDunkelWinklerEtAl2025"])
-    assert "ERA5 (download in 1 CDS request(s))" in capsys.readouterr().out
+    assert result == {"era5_path": str(output_dir / "processed")}
+    assert "ERA5 (would be downloaded in 1 CDS request(s))" in capsys.readouterr().out
     assert not output_dir.exists()
+
+
+def test_download_and_process_needs_no_cds_key_for_a_downloaded_raw_file(monkeypatch, tmp_path, capsys):
+    monkeypatch.delenv("CDSAPI_URL", raising=False)
+    monkeypatch.delenv("CDSAPI_KEY", raising=False)
+    monkeypatch.setenv("CDSAPI_RC", str(tmp_path / "missing_cdsapirc"))
+    raw_file = tmp_path / "raw" / "reanalysis-era5-single-levels_20000101-20000131_N1_S0_W0_E1_raw.nc"
+    raw_file.parent.mkdir()
+    raw_file.touch()
+
+    download_and_process(
+        "wind_era5_PenaSanchezDunkelWinklerEtAl2025", **{**_DUMMY_KWARGS, "output_dir": str(tmp_path)}, dry_run=True
+    )
+
+    assert f"already downloaded to {raw_file}" in capsys.readouterr().out

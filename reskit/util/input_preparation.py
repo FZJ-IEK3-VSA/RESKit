@@ -1,8 +1,6 @@
 import os
 import warnings
 
-import pandas as pd
-
 import reskit as rk
 
 #######################################################
@@ -147,11 +145,21 @@ def _merge_dependencies(workflows):
 
 
 def _prepare_era5(
-    variables, *, start_date, end_date, boundary_box, output_dir, tiling, zoom_level, tile_output_dir, **_
+    variables,
+    *,
+    start_date,
+    end_date,
+    boundary_box,
+    output_dir,
+    tiling,
+    zoom_level,
+    tile_output_dir,
+    dry_run=False,
+    **_,
 ):
     """
     Preparer for the ERA5 weather source: download, preprocess and (optionally) tile the
-    given ERA5 CDS variables.
+    given ERA5 CDS variables. With ``dry_run``, only print what would be downloaded.
 
     Returns
     -------
@@ -160,17 +168,28 @@ def _prepare_era5(
         (``.../<ZOOM>/<X-TILE>/<Y-TILE>``) when ``tiling`` is True.
     """
     tile_out = tile_output_dir or os.path.join(output_dir, "tiles")
-    era5_path = rk.prepare_era5(
-        start_date=start_date,
-        end_date=end_date,
-        boundary_box=boundary_box,
-        output_dir=output_dir,
-        variables=variables,
-        tiling=tiling,
-        zoom_level=zoom_level,
-        tile_output_dir=tile_out,
-        raw_variables=rk.weather.Era5Source.raw_passthrough_variables(variables),
-    )
+    if dry_run:
+        era5_prepare = rk.weather.era5_source.era5_prepare
+        start, end = era5_prepare._era5_day(start_date), era5_prepare._era5_day(end_date)
+        raw_file = era5_prepare._era5_raw_file(start, end, boundary_box, output_dir)
+        if os.path.exists(raw_file):
+            how = f"already downloaded to {raw_file}, would only be processed"
+        else:
+            how = f"would be downloaded in {len(era5_prepare._era5_download_jobs(start, end))} CDS request(s)"
+        print(f"ERA5 ({how}): {', '.join(variables)}")
+        era5_path = tile_out if tiling else os.path.join(output_dir, "processed")
+    else:
+        era5_path = rk.prepare_era5(
+            start_date=start_date,
+            end_date=end_date,
+            boundary_box=boundary_box,
+            output_dir=output_dir,
+            variables=variables,
+            tiling=tiling,
+            zoom_level=zoom_level,
+            tile_output_dir=tile_out,
+            raw_variables=rk.weather.Era5Source.raw_passthrough_variables(variables),
+        )
     if tiling:
         # return a path template for weather_tile.get_tilepath()
         era5_path = os.path.join(era5_path, "<ZOOM>", "<X-TILE>", "<Y-TILE>")
@@ -227,19 +246,21 @@ _SOURCE_PREPARERS = {
 ############### PRE-DOWNLOAD CHECKS ###################
 #######################################################
 
-# The first day of ERA5, and how far it lags behind real time
-_ERA5_FIRST_DAY = pd.Timestamp("1940-01-01")
-_ERA5_DELAY = pd.Timedelta(days=5)
+
+def _writable_dir_problem(name, directory):
+    """Why ``directory`` cannot be created or written to, or None. Missing parents are created later."""
+    existing = os.path.abspath(directory)
+    while not os.path.exists(existing):
+        parent = os.path.dirname(existing)
+        if parent == existing:  # a root which does not exist, e.g. an unmounted drive
+            return f"{name} {directory} cannot be written: {existing} does not exist"
+        existing = parent
+    if not os.path.isdir(existing) or not os.access(existing, os.W_OK):
+        return f"{name} {directory} cannot be written: {existing} is not a writable directory"
+    return None
 
 
-def _cds_credentials_configured():
-    """Whether cdsapi finds an API key: in its environment variables or in the file it reads."""
-    if os.environ.get("CDSAPI_URL") and os.environ.get("CDSAPI_KEY"):
-        return True
-    return os.path.isfile(os.environ.get("CDSAPI_RC", os.path.expanduser("~/.cdsapirc")))
-
-
-def _check_download_inputs(required_sources, start_date, end_date, boundary_box, output_dir):
+def _check_download_inputs(required_sources, start_date, end_date, boundary_box, output_dir, tiling, tile_output_dir):
     """
     Raise every problem which would make the download fail, together and before anything
     is downloaded. Otherwise, e.g. an invalid boundary box is rejected only once the CDS
@@ -251,66 +272,20 @@ def _check_download_inputs(required_sources, start_date, end_date, boundary_box,
         Listing all problems found.
     """
     problems = []
-
-    try:
-        start, end = pd.Timestamp(start_date), pd.Timestamp(end_date)
-    except (TypeError, ValueError) as error:
-        problems.append(f"the dates cannot be read: {error}")
-    else:
-        if end < start:
-            problems.append(f"end_date {end_date} is before start_date {start_date}")
-        if "ERA5" in required_sources:
-            if start < _ERA5_FIRST_DAY:
-                problems.append(f"ERA5 starts on {_ERA5_FIRST_DAY.date()}, but start_date is {start_date}")
-            if end > pd.Timestamp.now().normalize() - _ERA5_DELAY:
-                problems.append(
-                    f"ERA5 is available until about {_ERA5_DELAY.days} days before today, but end_date is {end_date}"
-                )
-
-    sides = ("north", "south", "west", "east")
-    missing = [side for side in sides if side not in boundary_box]
-    if missing:
-        problems.append(f"boundary_box lacks {', '.join(missing)}")
-    else:
-        try:
-            north, south, west, east = (float(boundary_box[side]) for side in sides)
-        except (TypeError, ValueError):
-            problems.append(f"boundary_box values must be numbers, got {boundary_box}")
-        else:
-            if not -90 <= south < north <= 90:
-                problems.append(f"boundary_box needs -90 <= south < north <= 90, got south={south}, north={north}")
-            if not (-180 <= west <= 360 and -180 <= east <= 360) or west == east:
-                problems.append(
-                    f"boundary_box needs two different longitudes between -180 and 360, got west={west}, east={east}"
-                )
-
-    # output_dir is created by the preparers, so its nearest existing parent must be writable
-    existing = os.path.abspath(output_dir)
-    while not os.path.exists(existing):
-        existing = os.path.dirname(existing)
-    if not os.path.isdir(existing) or not os.access(existing, os.W_OK):
-        problems.append(f"output_dir {output_dir} cannot be written: {existing} is not a writable directory")
-
-    if "ERA5" in required_sources and not _cds_credentials_configured():
-        problems.append(
-            "no CDS API key found for the ERA5 download; save it in ~/.cdsapirc, "
-            "see https://cds.climate.copernicus.eu/how-to-api"
+    if "ERA5" in required_sources:
+        problems += rk.weather.era5_source.era5_prepare._era5_request_problems(
+            start_date, end_date, boundary_box, output_dir
         )
+    directories = {"output_dir": output_dir}
+    if tiling and tile_output_dir:
+        directories["tile_output_dir"] = tile_output_dir
+    for name, directory in directories.items():
+        problem = _writable_dir_problem(name, directory)
+        if problem:
+            problems.append(problem)
 
     if problems:
         raise ValueError("Cannot prepare the weather data:\n" + "\n".join(f"  - {p}" for p in problems))
-
-
-def _print_plan(required_sources, start_date, end_date, boundary_box, output_dir):
-    """Print what download_and_process would download, see its 'dry_run'."""
-    print(f"Weather data from {start_date} to {end_date} in {boundary_box}, into {output_dir}:")
-    for source, variables in required_sources.items():
-        if source == "ERA5":
-            requests = len(rk.weather.era5_source.era5_prepare._era5_download_jobs(start_date, end_date))
-            how = f"download in {requests} CDS request(s)"
-        else:
-            how = "no automated download, provide it manually"
-        print(f"  {source} ({how}): {', '.join(variables)}")
 
 
 #######################################################
@@ -361,13 +336,13 @@ def download_and_process(
         Override for the tile output directory (defaults to ``<output_dir>/tiles``).
     dry_run : bool, optional
         If True, only run the checks and print which variables of which source would be
-        downloaded, without downloading or writing anything. By default False.
+        downloaded, without downloading or writing anything. The result holds the paths a
+        real run would return. By default False.
 
     Returns
     -------
     dict
-        Merged outputs of the workflows' sources' preparers. With ``dry_run=True``, the
-        ``{source: [variables]}`` which would be prepared instead.
+        Merged outputs of the workflows' sources' preparers.
 
     Raises
     ------
@@ -376,10 +351,9 @@ def download_and_process(
     """
     workflows = [workflows] if isinstance(workflows, str) else list(workflows)
     required_sources = _merge_dependencies(workflows)
-    _check_download_inputs(required_sources, start_date, end_date, boundary_box, output_dir)
+    _check_download_inputs(required_sources, start_date, end_date, boundary_box, output_dir, tiling, tile_output_dir)
     if dry_run:
-        _print_plan(required_sources, start_date, end_date, boundary_box, output_dir)
-        return required_sources
+        print(f"Dry run, weather data from {start_date} to {end_date} in {boundary_box}, into {output_dir}:")
 
     context = dict(
         start_date=start_date,
@@ -389,6 +363,7 @@ def download_and_process(
         tiling=tiling,
         zoom_level=zoom_level,
         tile_output_dir=tile_output_dir,
+        dry_run=dry_run,
     )
 
     result = {}

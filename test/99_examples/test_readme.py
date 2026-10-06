@@ -74,7 +74,7 @@ def test_readme_calls_match_the_public_signatures():
     assert checked >= 2, "The README calls which the test knows about were not found."
 
 
-def test_readme_download_and_process_example_runs(monkeypatch, capsys):
+def test_readme_download_and_process_example_runs(monkeypatch, capsys, tmp_path):
     # replace the preparers, the example must not contact a provider
     recorded = {}
 
@@ -88,10 +88,13 @@ def test_readme_download_and_process_example_runs(monkeypatch, capsys):
 
     monkeypatch.setitem(input_preparation._SOURCE_PREPARERS, "ERA5", _fake_era5)
     monkeypatch.setitem(input_preparation._SOURCE_PREPARERS, "GWA4", _fake_gwa4)
-    # the example's output_dir is a placeholder, and CI has no CDS API key
-    monkeypatch.setattr(input_preparation, "_check_download_inputs", lambda *args: None)
-
+    # CI has no CDS API key, and the example's output_dir is a placeholder
+    monkeypatch.setenv("CDSAPI_URL", "https://cds.example")
+    monkeypatch.setenv("CDSAPI_KEY", "key")
+    placeholder = '"/path/to/your/weather_data"'
     block = next(block for block in _python_blocks() if "download_and_process" in block)
+    assert placeholder in block
+    block = block.replace(placeholder, repr(str(tmp_path / "weather_data")))
     exec(compile(block, "README.md:download_and_process", "exec"), {})
 
     # the example prints result["era5_path"], so the key must exist
