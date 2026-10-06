@@ -180,6 +180,26 @@ workflow arguments, staging and verification, with links to the shared
 configuration and bundle procedures. Cache and catalogue administration use
 `ethos-data`.
 
+### Checking the inputs before a run
+
+`rk.validate_inputs` takes the same arguments as a workflow and checks them without running
+the simulation: the placement columns, that every weather source opens, provides the variables
+the workflow reads, covers the placements and the requested `time_slice`, that every input file
+exists and every raster has values at the placements, and that output files can be written.
+It reads only metadata and the raster values at the placements, so it takes seconds.
+
+```python
+report = rk.validate_inputs(
+    "wind_era5_PenaSanchezDunkelWinklerEtAl2025",
+    placements,
+    era5_path=inputs["era5"],
+    gwa_100m_path=inputs["gwa_100m"],
+    height_scaling_data={50: inputs["gwa_50m"], 200: inputs["gwa_200m"]},
+)
+print(report)  # all errors and warnings at once
+report.raise_if_errors()
+```
+
 ### Reading ERA5 from Zarr
 
 ETHOS.RESKit can read ERA5 directly from regular latitude/longitude Zarr stores while keeping the existing `source_type="ERA5"` workflow API. The current implementation is intended for stores such as the [Earth Data Hub ERA5 single-level dataset](https://earthdatahub.destine.eu/collections/era5/datasets/reanalysis-era5-single-levels):

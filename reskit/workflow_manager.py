@@ -252,34 +252,7 @@ class WorkflowManager:
             ]
 
         if is_path_like(source) and source_type != "user":
-            source = as_path_string(source)
-            storage_format = kwargs.pop("storage_format", None)
-            is_zarr = storage_format == "zarr" or source.endswith(".zarr") or source.startswith("gs://")
-            if source_type == "ERA5":
-                source_constructor = rk_weather.Era5ZarrSource if is_zarr else rk_weather.Era5Source
-            elif source_type == "SARAH":
-                source_constructor = rk_weather.SarahSource
-            elif source_type == "MERRA":
-                source_constructor = rk_weather.MerraSource
-            elif source_type == "ICON-LAM":
-                source_constructor = rk_weather.IconlamSource
-            else:
-                raise RuntimeError("Unknown source_type")
-
-            if source_type == "ERA5":
-                time_slice = kwargs.pop("time_slice", None)
-                era5_kwargs = dict(kwargs)
-                if time_slice is not None:
-                    if not is_zarr:
-                        raise RuntimeError(
-                            "'time_slice' is only supported for Zarr-backed ERA5 sources; support for "
-                            "netCDF4-backed ERA5 sources is planned. Until then, restrict the time span "
-                            "of netCDF4 ERA5 data by selecting the corresponding files instead."
-                        )
-                    era5_kwargs["time_slice"] = time_slice
-                source = source_constructor(source, bounds=self.ext, time_index_from=time_index_from, **era5_kwargs)
-            else:
-                source = source_constructor(source, bounds=self.ext, **kwargs)
+            source = self._open_source(source_type, source, time_index_from=time_index_from, **kwargs)
 
             # Load the requested variables
             source.sload(*variables)
@@ -322,6 +295,41 @@ class WorkflowManager:
         return self
 
         # Stage 3: Weather data adjusting & other intermediate steps
+
+    def _open_source(self, source_type: str, source, time_index_from=None, **kwargs):
+        """Opens the weather source of the given type at the given path for the extent of the
+        placements, without loading any variables. See read() for the parameters.
+        """
+        source = as_path_string(source)
+        storage_format = kwargs.pop("storage_format", None)
+        is_zarr = storage_format == "zarr" or source.endswith(".zarr") or source.startswith("gs://")
+        if source_type == "ERA5":
+            source_constructor = rk_weather.Era5ZarrSource if is_zarr else rk_weather.Era5Source
+        elif source_type == "SARAH":
+            source_constructor = rk_weather.SarahSource
+        elif source_type == "MERRA":
+            source_constructor = rk_weather.MerraSource
+        elif source_type == "ICON-LAM":
+            source_constructor = rk_weather.IconlamSource
+        else:
+            raise RuntimeError("Unknown source_type")
+
+        if source_type == "ERA5":
+            time_slice = kwargs.pop("time_slice", None)
+            era5_kwargs = dict(kwargs)
+            if time_slice is not None:
+                if not is_zarr:
+                    raise RuntimeError(
+                        "'time_slice' is only supported for Zarr-backed ERA5 sources; support for "
+                        "netCDF4-backed ERA5 sources is planned. Until then, restrict the time span "
+                        "of netCDF4 ERA5 data by selecting the corresponding files instead."
+                    )
+                era5_kwargs["time_slice"] = time_slice
+            source = source_constructor(source, bounds=self.ext, time_index_from=time_index_from, **era5_kwargs)
+        else:
+            source = source_constructor(source, bounds=self.ext, **kwargs)
+
+        return source
 
     def get_scalar_values_from_raster(self, fp, spatial_interpolation, points=None):
         """
