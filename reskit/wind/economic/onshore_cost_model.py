@@ -1,8 +1,10 @@
+import functools
 import warnings
 
 import numpy as np
 from wisdem.nrelcsm.nrel_csm_mass_2015 import nrel_csm_2015
 import openmdao.api as om
+from openmdao.utils.units import unit_conversion
 
 from reskit.parameters.parameters import OnshoreParameters
 
@@ -61,6 +63,9 @@ def onshore_turbine_capex(
 
     Notes
     -----
+        Pass many designs as arrays in one call: they are evaluated together (~10 ms for 1000
+        designs), while every call also loads the baseline parameters and costs the baseline turbine.
+
         The expected turbine cost shares by Stehly et al. [3] are claimed to be derived from real cost data and valid until 10 MW capacity.
 
     Sources
@@ -140,13 +145,18 @@ def onshore_tcc(cp, hh, rd, gdp_escalator=None, blade_material_escalator=None, b
         DEPRECATED: Use ``blade_number`` instead.
         This argument will be removed in a coming release.
     **kwargs
-        Keyword arguments will be passed on to _onshore_tcc_scalar() as
-        subfunction kwargs. See _onshore_tcc_scalar() for details.
+        Inputs of WISDEM's nrel_csm_2015() model, scalars or arrays broadcastable to the
+        designs. See _onshore_tcc_scalar() for details.
 
     Returns
     -------
     numeric or array-like
         Turbine's turbine capital cost (TCC) in USD_2015.
+
+    Notes
+    -----
+        All designs are evaluated in one pass of the model's components, so passing many designs
+        as arrays is much faster than calling this function once per design.
 
     References
     ----------
@@ -195,41 +205,151 @@ def onshore_tcc(cp, hh, rd, gdp_escalator=None, blade_material_escalator=None, b
             stacklevel=2,
         )
 
-    if cp.shape == ():
-        turbineCapitalCost = _onshore_tcc_scalar(
-            cp=cp.item(),
-            hh=hh.item(),
-            rd=rd.item(),
-            **kwargs,
-        )
-    else:
-        turbineCapitalCost = np.empty(cp.shape, dtype=float)
-        for idx in np.ndindex(cp.shape):
-            turbineCapitalCost[idx] = _onshore_tcc_scalar(
-                cp=cp[idx],
-                hh=hh[idx],
-                rd=rd[idx],
-                **_select_scalar_kwargs(kwargs, idx),
-            )
+    if cp.size == 0:
+        return np.empty(cp.shape, dtype=float)
 
-    return turbineCapitalCost
-
-
-def _select_scalar_kwargs(kwargs, idx):
-    scalar_kwargs = {}
+    # all designs at once: the same parameters as _onshore_tcc_scalar() sets, one value per design
+    params = {
+        "machine_rating": cp.astype(float).ravel(),
+        "rotor_diameter": rd.astype(float).ravel(),
+        "tower_length": hh.astype(float).ravel(),
+        "turbine_class": 2,
+        "main_bearing_number": 2,
+        "blade_number": 3,
+        "max_tip_speed": 80,
+        "max_efficiency": 0.90,
+    }
     for k, v in kwargs.items():
         value = np.asarray(v)
-        if value.shape == ():
-            scalar_kwargs[k] = value.item()
-        else:
-            scalar_kwargs[k] = value[idx]
-    return scalar_kwargs
+        params[k] = v if value.shape == () else np.broadcast_to(value, cp.shape).ravel()
+    turbine_cost_kW = _run_nrel_csm_2015(params, size=cp.size)["turbine_cost_kW"]
+    # previous functions expect absolute cost
+    turbineCapitalCost = np.broadcast_to(turbine_cost_kW, cp.size).reshape(cp.shape) * cp
+
+    return turbineCapitalCost if cp.shape else turbineCapitalCost.item()
+
+
+@functools.lru_cache(maxsize=None)
+def _nrel_csm_2015_model():
+    """
+    Sets up WISDEM's NREL CSM 2015 model once and returns what _run_nrel_csm_2015() needs to
+    evaluate its components without OpenMDAO: setting up an OpenMDAO problem takes ~15 ms, its
+    components compute in microseconds.
+
+    Returns
+    -------
+    steps : list of tuple
+        Per component in execution order: (component, continuous inputs as (name, promoted
+        name, unit conversion factor, offset), discrete inputs as (name, promoted name),
+        outputs as (name, promoted name)).
+    defaults : dict
+        Default value of every input not computed by a component, by promoted name, in the
+        units of the inputs it feeds (as OpenMDAO takes values set with prob[name] = value).
+    """
+    prob = om.Problem(reports=False)
+    prob.model = nrel_csm_2015()
+    prob.setup()
+    prob.final_setup()
+
+    def _io(comp, iotype):
+        # by the names the component's compute() uses
+        return list(comp.get_io_metadata(iotypes=iotype, metadata_keys=["units"], get_remote=False).items())
+
+    components = [
+        comp
+        for comp in prob.model.system_iter(recurse=True, typ=om.ExplicitComponent)
+        if not isinstance(comp, om.IndepVarComp)  # the automatic one holding the inputs
+    ]
+    output_units = {m["prom_name"]: m["units"] for comp in components for _, m in _io(comp, "output")}
+    steps, defaults, input_units = [], {}, {}
+    for comp in components:
+        inputs, discrete_inputs = [], []
+        for name, m in _io(comp, "input"):
+            prom_name = m["prom_name"]
+            if m["discrete"]:
+                discrete_inputs.append((name, prom_name))
+                if prom_name not in output_units:
+                    defaults[prom_name] = prob.get_val(prom_name)
+                continue
+            if prom_name in output_units:  # connected to an output, converted to this input's units
+                factor, offset = unit_conversion(output_units[prom_name], m["units"])
+            else:
+                factor, offset = 1.0, 0.0
+                if input_units.setdefault(prom_name, m["units"]) != m["units"]:
+                    raise NotImplementedError(f"NREL CSM input '{prom_name}' has inputs in different units")
+                defaults[prom_name] = np.array(prob.get_val(prom_name), dtype=float)
+            inputs.append((name, prom_name, factor, offset))
+        outputs = [(name, m["prom_name"]) for name, m in _io(comp, "output")]
+        if any(m["discrete"] for _, m in _io(comp, "output")):
+            raise NotImplementedError(f"NREL CSM component '{comp.pathname}' has discrete outputs")
+        steps.append((comp, inputs, discrete_inputs, outputs))
+    return steps, defaults
+
+
+def _run_nrel_csm_2015(params, size):
+    """
+    Evaluates WISDEM's NREL CSM 2015 model (nrel_csm_2015) for `size` designs at once by calling
+    its components' compute() on arrays, in the order and with the unit conversions OpenMDAO
+    uses. Components that branch on a value (e.g. `if tower_cost == 0`) are computed one design
+    at a time.
+
+    Parameters
+    ----------
+    params : dict
+        Model inputs by promoted name, as for prob[name] = value; scalars or arrays of length
+        `size`.
+    size : int
+        Number of designs.
+
+    Returns
+    -------
+    dict
+        All model inputs and outputs by promoted name, arrays of length 1 or `size`.
+    """
+    steps, defaults = _nrel_csm_2015_model()
+    unknown = set(params) - set(defaults) - {prom for step in steps for _, prom in step[3]}
+    if unknown:
+        raise KeyError(f"Not inputs of WISDEM's NREL CSM 2015 model: {sorted(unknown)}")
+    values = dict(defaults)
+    for k, v in params.items():
+        values[k] = np.atleast_1d(np.asarray(v, dtype=float)) if k in defaults and np.ndim(defaults[k]) else v
+
+    for comp, inputs, discrete_inputs, outputs in steps:
+        ins = {name: (values[prom] + offset) * factor for name, prom, factor, offset in inputs}
+        discrete_ins = {name: values[prom] for name, prom in discrete_inputs}
+        try:
+            outs = _compute(comp, ins, discrete_ins)
+        except ValueError:  # truth value of an array is ambiguous: one design at a time
+            per_design = [
+                _compute(
+                    comp,
+                    {k: np.broadcast_to(v, size)[i : i + 1] for k, v in ins.items()},
+                    {k: v[i].item() if np.ndim(v) else v for k, v in discrete_ins.items()},
+                )
+                for i in range(size)
+            ]
+            outs = {name: np.concatenate([o[name] for o in per_design]) for name, _ in outputs}
+        values.update((prom, outs[name]) for name, prom in outputs)
+    return values
+
+
+def _compute(comp, inputs, discrete_inputs):
+    """Calls comp.compute() as OpenMDAO does, with plain dicts; returns the outputs."""
+    outputs = {}
+    if discrete_inputs:
+        comp.compute(inputs, outputs, discrete_inputs, {})
+    else:
+        comp.compute(inputs, outputs)
+    return {k: np.atleast_1d(np.asarray(v, dtype=float)) for k, v in outputs.items()}
 
 
 def _onshore_tcc_scalar(cp, hh, rd, **kwargs):
     """
     Calculates the absolute turbine capital cost in USD according to
     https://wisdem.readthedocs.io/en/master/examples/01_nrelcsm/tutorial.html
+
+    This is the reference implementation, setting up and running an OpenMDAO problem for a
+    single design; onshore_tcc() evaluates the same model for many designs at once.
 
     Parameters
     ----------
