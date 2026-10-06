@@ -147,18 +147,18 @@ def test_Era5ZarrSource_solar_fallbacks(pt_Era5ZarrSource):
     with pytest.warns(UserWarning, match="computing on the fly from raw 'fdir'"):
         pt_Era5ZarrSource.sload("direct_horizontal_irradiance")
 
-    # On-the-fly processing: adj[i] = raw[i-1] / 3600. At the actual
-    # beginning of a store, no preceding accumulation is available.
-    assert np.isnan(pt_Era5ZarrSource.data["global_horizontal_irradiance"][0, 4, 2])
-    assert np.isnan(pt_Era5ZarrSource.data["direct_horizontal_irradiance"][0, 4, 2])
-    # At step 1 the value equals raw step 0 / 3600
-    # raw ssrd[0, lat=51.0, lon=6.25] = 500 + 0 + 51.0 + 6.25 = 557.25
-    assert np.allclose(pt_Era5ZarrSource.data["global_horizontal_irradiance"][1, 4, 2], 557.25 / 3600)
-    # raw fdir[0, lat=51.0, lon=6.25] = 200 + 0 + 51.0 + 6.25 = 257.25
-    assert np.allclose(pt_Era5ZarrSource.data["direct_horizontal_irradiance"][1, 4, 2], 257.25 / 3600)
+    # On-the-fly processing: adj[i] = raw[i] / 3600, on the timestamp of the accumulation
+    # raw ssrd[i, lat=51.0, lon=6.25] = 500 + i + 51.0 + 6.25
+    assert np.allclose(
+        pt_Era5ZarrSource.data["global_horizontal_irradiance"][:, 4, 2], [x / 3600 for x in (557.25, 558.25, 559.25)]
+    )
+    # raw fdir[i, lat=51.0, lon=6.25] = 200 + i + 51.0 + 6.25
+    assert np.allclose(
+        pt_Era5ZarrSource.data["direct_horizontal_irradiance"][:, 4, 2], [x / 3600 for x in (257.25, 258.25, 259.25)]
+    )
 
 
-def test_Era5ZarrSource_solar_fallback_preserves_slice_boundary(era5_zarr_store):
+def test_Era5ZarrSource_solar_fallback_follows_the_time_slice(era5_zarr_store):
     src = Era5ZarrSource(
         str(era5_zarr_store),
         time_slice=slice("2020-01-01 00:30:00", "2020-01-01 01:30:00"),
@@ -172,9 +172,8 @@ def test_Era5ZarrSource_solar_fallback_preserves_slice_boundary(era5_zarr_store)
         pd.Timestamp("2020-01-01 00:30:00"),
         pd.Timestamp("2020-01-01 01:30:00"),
     ]
-    # The first requested value comes from raw step 0, outside the selected
-    # output range, rather than being replaced with zero.
-    assert np.allclose(src.data["global_horizontal_irradiance"][0, 4, 2], 557.25 / 3600)
+    # The selected time steps hold the accumulations of their own timestamps, raw steps 1 and 2
+    assert np.allclose(src.data["global_horizontal_irradiance"][:, 4, 2], [558.25 / 3600, 559.25 / 3600])
 
 
 @pytest.mark.parametrize("time_index_from", [None, "direct_horizontal_irradiance", "elevated_wind_speed"])
@@ -194,8 +193,8 @@ def test_Era5ZarrSource_time_index_from_does_not_shift_data(era5_zarr_store, tim
     ]
     # instantaneous variable: sp[valid_time=1, lat=51.0, lon=6.25] = 100000 + 1 + 51.0 + 12.5
     assert np.allclose(src.data["surface_pressure"][1, 4, 2], 100064.5)
-    # accumulated variable: adj[i] = raw[i-1] / 3600
-    assert np.allclose(src.data["direct_horizontal_irradiance"][1, 4, 2], 257.25 / 3600)
+    # accumulated variable: adj[i] = raw[i] / 3600
+    assert np.allclose(src.data["direct_horizontal_irradiance"][1, 4, 2], 258.25 / 3600)
 
 
 def test_Era5ZarrSource_marks_derived_variables(pt_Era5ZarrSource):
@@ -207,11 +206,24 @@ def test_Era5ZarrSource_marks_derived_variables(pt_Era5ZarrSource):
     assert pd.isna(variables.loc["sp", "derived_from"])
 
 
-def test_Era5ZarrSource_warns_on_nan_first_timestep(pt_Era5ZarrSource):
-    with pytest.warns(UserWarning, match="first timestep of 'global_horizontal_irradiance'"):
+def test_Era5ZarrSource_derives_radiation_without_reading_the_store(era5_zarr_store):
+    """Deriving the solar variables reads nothing; on a cloud store that would be all of it."""
+    source = Era5ZarrSource(str(era5_zarr_store), bounds=(6.0, 50.5, 6.25, 50.75), index_pad=0, verbose=False)
+
+    assert not source._dataset["ssrd"].variable._in_memory
+    assert not source._dataset["ssrd_t_adj"].variable._in_memory
+
+    source.load("ssrd_t_adj")
+    raw = source._dataset["ssrd"].values[:, ::-1, :]
+    assert np.allclose(source.data["ssrd_t_adj"], raw / 3600.0)
+
+
+def test_Era5ZarrSource_derived_radiation_has_no_missing_first_timestep(pt_Era5ZarrSource):
+    """Each derived value comes from the accumulation of its own timestamp, so none is missing."""
+    with pytest.warns(UserWarning, match="computing on the fly from raw 'ssrd'"):
         pt_Era5ZarrSource.sload("global_horizontal_irradiance")
 
-    assert np.isnan(pt_Era5ZarrSource.data["global_horizontal_irradiance"][0, 4, 2])
+    assert not np.isnan(pt_Era5ZarrSource.data["global_horizontal_irradiance"]).any()
 
 
 def test_Era5ZarrSource_missing_variable_raises(era5_zarr_store):

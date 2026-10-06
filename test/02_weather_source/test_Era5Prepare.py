@@ -267,7 +267,7 @@ def test_preprocess_wind_speed_matches_sqrt_and_sets_attrs(tmp_path):
         assert out["ws100"].long_name == "100 metre wind speed"
 
 
-def test_preprocess_solar_converts_units_shifts_time_and_preserves_encoding(tmp_path):
+def test_preprocess_solar_converts_units_keeps_time_and_preserves_encoding(tmp_path):
     raw = tmp_path / "raw.nc"
     ds = _make_era5_raw(
         raw,
@@ -289,9 +289,9 @@ def test_preprocess_solar_converts_units_shifts_time_and_preserves_encoding(tmp_
         assert out["ssrd_t_adj"].units == "W m**-2"
         # original descriptive attrs carried through the rename
         assert out["ssrd_t_adj"].long_name == "Surface solar radiation downwards"
-        # time shifted +1h, encoding preserved for the netCDF4 consumer
+        # time kept on the timestamps of the accumulations, encoding preserved for the netCDF4 consumer
         times = nc4.num2date(out["time"][:], out["time"].units, out["time"].calendar)
-        assert times[0].isoformat() == "2015-01-01T01:00:00"
+        assert times[0].isoformat() == "2015-01-01T00:00:00"
         # hour granularity + integer dtype preserved (xarray canonicalises the trailing
         # "00:00:00.0", which num2date parses identically)
         assert out["time"].units.startswith("hours since 1900-01-01")

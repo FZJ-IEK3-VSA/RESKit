@@ -1008,7 +1008,7 @@ class WindWorkflowManager(WorkflowManager):
         else:
             correction_factors = [correction_factors] * len(self.locs)
 
-        # write to attribute
-        self.correction_factors = np.array(correction_factors)
+        # write to attribute, at least 1-d: geokit returns a scalar for a single location
+        self.correction_factors = np.atleast_1d(np.array(correction_factors))
 
         return self

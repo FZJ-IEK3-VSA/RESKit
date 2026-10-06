@@ -1,10 +1,9 @@
-import glob
 import inspect
-from os.path import join
 
 import numpy as np
 import pandas as pd
 import pytest
+from era5_encoding import assert_matches_encoding
 
 pytest.importorskip("zarr")
 
@@ -14,24 +13,8 @@ from reskit.solar.workflows.workflows import openfield_pv_era5
 from reskit.wind.workflows.workflows import wind_era5_PenaSanchezDunkelWinklerEtAl2025
 
 
-@pytest.fixture(scope="module")
-def era5_like_zarr_store(tmp_path_factory):
-    """The 'era5-like' netCDF4 test data, merged into a single Zarr store.
-
-    Both weather sources therefore see bit-identical data, so any difference in the
-    results has to come from the source implementations themselves.
-    """
-    import xarray as xr
-
-    datasets = [xr.open_dataset(path) for path in sorted(glob.glob(join(TEST_DATA["era5-like"], "*.nc")))]
-    ds = xr.merge(datasets)
-
-    store = tmp_path_factory.mktemp("era5_like_zarr") / "era5-like.zarr"
-    ds.to_zarr(store)
-    for dataset in datasets:
-        dataset.close()
-
-    return store
+# The 140 hours of the 'era5' netCDF4 fixtures, on RESKit's time index
+ERA5_HOURS = slice("2014-12-31 23:30", "2015-01-06 18:30")
 
 
 @pytest.fixture
@@ -73,18 +56,21 @@ def _read_era5(placements, source, **kwargs):
     return man
 
 
-def test_era5_netcdf_and_zarr_read_identically(pt_placements, era5_like_zarr_store):
-    """WorkflowManager.read() must give the same data for both ERA5 source types."""
+def test_era5_netcdf_and_zarr_read_alike(pt_placements):
+    """WorkflowManager.read() gives from a real online Zarr store what it gives from the netCDF4 fixtures.
+
+    era5.zarr covers the same box and hours as the 'era5' fixtures. Not to the bit --
+    the netCDF4 fixtures are packed to 16 bit integers, the Zarr data is bit-rounded -- but
+    up to what both encodings round away, see test/era5_encoding.py. Bilinear interpolation
+    averages neighbouring cells, so it cannot make the difference larger.
+    """
     netcdf_man = _read_era5(pt_placements, TEST_DATA["era5-like"])
-    zarr_man = _read_era5(pt_placements, era5_like_zarr_store)
+    zarr_man = _read_era5(pt_placements, TEST_DATA["era5.zarr"], time_slice=ERA5_HOURS)
 
     assert zarr_man.time_index.equals(netcdf_man.time_index)
 
     for variable in ERA5_COMPARISON_VARIABLES:
-        netcdf_data = netcdf_man.sim_data[variable]
-        zarr_data = zarr_man.sim_data[variable]
-        assert zarr_data.shape == netcdf_data.shape, variable
-        assert np.allclose(zarr_data, netcdf_data, equal_nan=True), variable
+        assert_matches_encoding(zarr_man.sim_data[variable], netcdf_man.sim_data[variable], variable)
 
     assert zarr_man.elevated_wind_speed_height == netcdf_man.elevated_wind_speed_height
     assert zarr_man.surface_wind_speed_height == netcdf_man.surface_wind_speed_height

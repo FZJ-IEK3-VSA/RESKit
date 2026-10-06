@@ -15,6 +15,11 @@ reads the same files by catalogue key.
                                    TEST_DATA["gwa100-like.tif"]
 * a provenance directory name::    TEST_DATA["era5"]
 
+A Zarr store is registered like a file, under its relative path and bare name
+(``TEST_DATA["era5.zarr"]``), and the files inside it are not registered at all.
+``era5-zarr/era5.zarr`` is real ERA5 data from an online Zarr store for the box and
+hours of ``era5/``, cut once by ``scripts/make_era5_zarr_test_data.py``.
+
 Three filenames appear in both ``era5/`` and ``era5-csp/``
 (``2m_temperature.nc``, ``10m_wind_speed.processed.nc`` and
 ``total_sky_direct_solar_radiation_at_surface.processed.t_adjusted.nc``). They
@@ -67,6 +72,10 @@ TEST_DATA = _TestData()
 _by_basename: dict[str, list[str]] = {}
 for _dirpath, _dirnames, _filenames in walk(_ROOT):
     _dirnames[:] = [d for d in _dirnames if d not in _SKIP_DIRS]
+    # A Zarr store is one fixture, not the files it is made of
+    for _name in [d for d in _dirnames if d.endswith(".zarr")]:
+        _dirnames.remove(_name)
+        _filenames.append(_name)
     for _name in _filenames:
         if _name in _SKIP_FILES:
             continue
