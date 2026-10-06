@@ -6,8 +6,10 @@ import pandas as pd
 
 from ...util.relative_humidity import calculate_relative_humidity
 from .dac_workflow_manager import DACWorkflowManager
+from reskit.util.provenance import record_provenance
 
 
+@record_provenance
 def lt_dac_era5_wenzel2025(
     placements: pd.DataFrame,
     era5_path: str,
@@ -78,6 +80,7 @@ def lt_dac_era5_wenzel2025(
     )
 
 
+@record_provenance
 def ht_dac_era5_wenzel2025(
     placements: pd.DataFrame,
     era5_path: str,

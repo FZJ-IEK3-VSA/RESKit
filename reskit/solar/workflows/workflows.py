@@ -8,8 +8,10 @@ from ... import util as rk_util
 # import othert modules
 from ... import weather as rk_weather
 from .solar_workflow_manager import SolarWorkflowManager
+from reskit.util.provenance import record_provenance
 
 
+@record_provenance
 def openfield_pv_merra_ryberg2019(
     placements,
     merra_path,
@@ -144,6 +146,7 @@ def openfield_pv_merra_ryberg2019(
     return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
 
+@record_provenance
 def openfield_pv_era5(
     placements,
     era5_path,
@@ -376,6 +379,7 @@ def openfield_pv_era5(
     return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
 
+@record_provenance
 def openfield_pv_sarah_unvalidated(
     placements,
     sarah_path,
@@ -516,6 +520,7 @@ def openfield_pv_sarah_unvalidated(
     return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
 
 
+@record_provenance
 def openfield_pv_iconlam(
     placements,
     icon_lam_path,

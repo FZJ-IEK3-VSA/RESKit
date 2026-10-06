@@ -11,8 +11,10 @@ from reskit import workflow_manager
 from ... import weather as rk_weather
 from .csp_workflow_manager import PTRWorkflowManager
 from .dataset_handler import DatasetHandler
+from reskit.util.provenance import record_provenance
 
 
+@record_provenance
 def csp_ptr_era5(
     placements,
     era5_path,
@@ -231,6 +233,7 @@ def csp_ptr_era5(
         return output
 
 
+@record_provenance
 def csp_ptr_era5_specific_dataset(
     placements,
     era5_path,
