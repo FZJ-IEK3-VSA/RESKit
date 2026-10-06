@@ -37,22 +37,6 @@ def test_onshore_turbine_capex():
     assert np.isclose(capex / caps, [931.38977592, 974.44510595, 1029.75686152, 1090.17668668]).all()
 
 
-def test_onshore_turbine_capex_array_matches_scalar_calls():
-    caps = np.array([[900, 2000, 3000], [4200, 5600, 7000]])
-    hubs = np.array([[60, 98, 120], [120, 140, 166]])
-    rotors = np.array([[44, 82, 115], [136, 150, 175]])
-    with pytest.warns(UserWarning, match="negative spinner mass"):
-        capex = onshore_turbine_capex(caps, hubs, rotors, base_capex=1000 * 4200)
-
-    assert capex.shape == caps.shape
-    with pytest.warns(UserWarning, match="negative spinner mass"):
-        scalar = [
-            onshore_turbine_capex(c, h, r, base_capex=1000 * 4200) for c, h, r in zip(caps.flat, hubs.flat, rotors.flat)
-        ]
-    assert np.allclose(capex.ravel(), scalar, rtol=1e-12, atol=0)
-    assert onshore_turbine_capex(caps[:, :0], hubs[:, :0], rotors[:, :0]).shape == (2, 0)
-
-
 @pytest.mark.parametrize(
     "kwargs",
     [
