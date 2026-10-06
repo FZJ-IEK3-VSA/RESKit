@@ -1,6 +1,7 @@
 import numpy as np
+import pytest
 
-from reskit.wind.economic.onshore_cost_model import onshore_turbine_capex
+from reskit.wind.economic.onshore_cost_model import _onshore_tcc_scalar, onshore_tcc, onshore_turbine_capex
 
 
 def test_onshore_turbine_capex():
@@ -34,3 +35,28 @@ def test_onshore_turbine_capex():
     )
 
     assert np.isclose(capex / caps, [931.38977592, 974.44510595, 1029.75686152, 1090.17668668]).all()
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {},
+        {"turbine_class": 1, "blade_has_carbon": True, "crane": True},
+        {"tower_cost_external": 5e5, "gearbox_torque_density": 150.0, "max_tip_speed": 90},
+        # one value per design, also for a discrete input
+        {"turbine_class": np.array([1, 2, 1]), "tower_mass_coeff": np.array([15.0, 20.0, 25.0])},
+    ],
+)
+def test_onshore_tcc_matches_openmdao_reference(kwargs):
+    caps, hubs, rotors = np.array([2000, 4200, 6000]), np.array([98, 120, 150]), np.array([82, 136, 160])
+
+    tcc = onshore_tcc(caps, hubs, rotors, **kwargs)
+
+    reference = [
+        _onshore_tcc_scalar(
+            caps[i], hubs[i], rotors[i], **{k: v[i].item() if np.ndim(v) else v for k, v in kwargs.items()}
+        )
+        for i in range(3)
+    ]
+    assert np.allclose(tcc, reference, rtol=1e-12, atol=0)
+    assert isinstance(onshore_tcc(4200, 120, 136, **{k: v for k, v in kwargs.items() if np.ndim(v) == 0}), float)
