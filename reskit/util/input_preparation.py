@@ -1,5 +1,8 @@
 import os
 import warnings
+
+import pandas as pd
+
 import reskit as rk
 
 #######################################################
@@ -221,6 +224,96 @@ _SOURCE_PREPARERS = {
 }
 
 #######################################################
+############### PRE-DOWNLOAD CHECKS ###################
+#######################################################
+
+# The first day of ERA5, and how far it lags behind real time
+_ERA5_FIRST_DAY = pd.Timestamp("1940-01-01")
+_ERA5_DELAY = pd.Timedelta(days=5)
+
+
+def _cds_credentials_configured():
+    """Whether cdsapi finds an API key: in its environment variables or in the file it reads."""
+    if os.environ.get("CDSAPI_URL") and os.environ.get("CDSAPI_KEY"):
+        return True
+    return os.path.isfile(os.environ.get("CDSAPI_RC", os.path.expanduser("~/.cdsapirc")))
+
+
+def _check_download_inputs(required_sources, start_date, end_date, boundary_box, output_dir):
+    """
+    Raise every problem which would make the download fail, together and before anything
+    is downloaded. Otherwise, e.g. an invalid boundary box is rejected only once the CDS
+    request leaves the queue, and missing credentials only after earlier sources are done.
+
+    Raises
+    ------
+    ValueError
+        Listing all problems found.
+    """
+    problems = []
+
+    try:
+        start, end = pd.Timestamp(start_date), pd.Timestamp(end_date)
+    except (TypeError, ValueError) as error:
+        problems.append(f"the dates cannot be read: {error}")
+    else:
+        if end < start:
+            problems.append(f"end_date {end_date} is before start_date {start_date}")
+        if "ERA5" in required_sources:
+            if start < _ERA5_FIRST_DAY:
+                problems.append(f"ERA5 starts on {_ERA5_FIRST_DAY.date()}, but start_date is {start_date}")
+            if end > pd.Timestamp.now().normalize() - _ERA5_DELAY:
+                problems.append(
+                    f"ERA5 is available until about {_ERA5_DELAY.days} days before today, but end_date is {end_date}"
+                )
+
+    sides = ("north", "south", "west", "east")
+    missing = [side for side in sides if side not in boundary_box]
+    if missing:
+        problems.append(f"boundary_box lacks {', '.join(missing)}")
+    else:
+        try:
+            north, south, west, east = (float(boundary_box[side]) for side in sides)
+        except (TypeError, ValueError):
+            problems.append(f"boundary_box values must be numbers, got {boundary_box}")
+        else:
+            if not -90 <= south < north <= 90:
+                problems.append(f"boundary_box needs -90 <= south < north <= 90, got south={south}, north={north}")
+            if not (-180 <= west <= 360 and -180 <= east <= 360) or west == east:
+                problems.append(
+                    f"boundary_box needs two different longitudes between -180 and 360, got west={west}, east={east}"
+                )
+
+    # output_dir is created by the preparers, so its nearest existing parent must be writable
+    existing = os.path.abspath(output_dir)
+    while not os.path.exists(existing):
+        existing = os.path.dirname(existing)
+    if not os.path.isdir(existing) or not os.access(existing, os.W_OK):
+        problems.append(f"output_dir {output_dir} cannot be written: {existing} is not a writable directory")
+
+    if "ERA5" in required_sources and not _cds_credentials_configured():
+        problems.append(
+            "no CDS API key found for the ERA5 download; save it in ~/.cdsapirc, "
+            "see https://cds.climate.copernicus.eu/how-to-api"
+        )
+
+    if problems:
+        raise ValueError("Cannot prepare the weather data:\n" + "\n".join(f"  - {p}" for p in problems))
+
+
+def _print_plan(required_sources, start_date, end_date, boundary_box, output_dir):
+    """Print what download_and_process would download, see its 'dry_run'."""
+    print(f"Weather data from {start_date} to {end_date} in {boundary_box}, into {output_dir}:")
+    for source, variables in required_sources.items():
+        if source == "ERA5":
+            requests = len(rk.weather.era5_source.era5_prepare._era5_download_jobs(start_date, end_date))
+            how = f"download in {requests} CDS request(s)"
+        else:
+            how = "no automated download, provide it manually"
+        print(f"  {source} ({how}): {', '.join(variables)}")
+
+
+#######################################################
 ############### USER FUNCTIONS ########################
 #######################################################
 
@@ -234,9 +327,13 @@ def download_and_process(
     tiling=False,
     zoom_level=4,
     tile_output_dir=None,
+    dry_run=False,
 ):
     """
     Download and process the weather data one or more RESKit workflows need.
+
+    Before anything is downloaded, the dates, the boundary box, the output directory and,
+    for ERA5, the CDS API key are checked, and all problems are raised together.
 
     A workflow may depend on several weather sources (see ``depends_on``); each is prepared
     by its own registered preparer (see ``_SOURCE_PREPARERS``) and contributes its outputs to
@@ -262,19 +359,28 @@ def download_and_process(
         Web-Mercator tiling zoom level, by default 4.
     tile_output_dir : str, optional
         Override for the tile output directory (defaults to ``<output_dir>/tiles``).
+    dry_run : bool, optional
+        If True, only run the checks and print which variables of which source would be
+        downloaded, without downloading or writing anything. By default False.
 
     Returns
     -------
     dict
-        Merged outputs of the workflows' sources' preparers.
+        Merged outputs of the workflows' sources' preparers. With ``dry_run=True``, the
+        ``{source: [variables]}`` which would be prepared instead.
 
     Raises
     ------
     ValueError
-        If any given workflow name is unknown.
+        If any given workflow name is unknown, or if the checks find a problem.
     """
     workflows = [workflows] if isinstance(workflows, str) else list(workflows)
     required_sources = _merge_dependencies(workflows)
+    _check_download_inputs(required_sources, start_date, end_date, boundary_box, output_dir)
+    if dry_run:
+        _print_plan(required_sources, start_date, end_date, boundary_box, output_dir)
+        return required_sources
+
     context = dict(
         start_date=start_date,
         end_date=end_date,

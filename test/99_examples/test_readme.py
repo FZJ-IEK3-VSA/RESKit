@@ -88,6 +88,8 @@ def test_readme_download_and_process_example_runs(monkeypatch, capsys):
 
     monkeypatch.setitem(input_preparation._SOURCE_PREPARERS, "ERA5", _fake_era5)
     monkeypatch.setitem(input_preparation._SOURCE_PREPARERS, "GWA4", _fake_gwa4)
+    # the example's output_dir is a placeholder, and CI has no CDS API key
+    monkeypatch.setattr(input_preparation, "_check_download_inputs", lambda *args: None)
 
     block = next(block for block in _python_blocks() if "download_and_process" in block)
     exec(compile(block, "README.md:download_and_process", "exec"), {})

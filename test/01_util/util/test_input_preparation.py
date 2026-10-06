@@ -269,3 +269,38 @@ def test_every_era5_dependency_has_a_tile_label(workflow):
     """Every raw ERA5 variable of a workflow must have a tile label."""
     for nc_name in Era5Source.raw_passthrough_variables(depends_on[workflow]["ERA5"]):
         assert nc_name in _ERA5_NC_TO_TILE_LABEL
+
+
+def test_download_and_process_raises_all_problems_before_downloading(monkeypatch, tmp_path):
+    monkeypatch.delenv("CDSAPI_URL", raising=False)
+    monkeypatch.setenv("CDSAPI_RC", str(tmp_path / "missing_cdsapirc"))
+    output_dir = tmp_path / "out"
+
+    with pytest.raises(ValueError) as error:
+        download_and_process(
+            "wind_era5_PenaSanchezDunkelWinklerEtAl2025",
+            start_date="2000-02-01",
+            end_date="2000-01-01",
+            boundary_box={"north": 0, "south": 10, "west": 0, "east": 1},
+            output_dir=str(output_dir),
+        )
+
+    message = str(error.value)
+    assert "end_date 2000-01-01 is before start_date 2000-02-01" in message
+    assert "south < north" in message
+    assert "no CDS API key" in message
+    assert not output_dir.exists()
+
+
+def test_download_and_process_dry_run_downloads_nothing(monkeypatch, tmp_path, capsys):
+    monkeypatch.setenv("CDSAPI_URL", "https://cds.example")
+    monkeypatch.setenv("CDSAPI_KEY", "key")
+    output_dir = tmp_path / "out"
+
+    plan = download_and_process(
+        "wind_era5_PenaSanchezDunkelWinklerEtAl2025", **{**_DUMMY_KWARGS, "output_dir": str(output_dir)}, dry_run=True
+    )
+
+    assert plan == _merge_dependencies(["wind_era5_PenaSanchezDunkelWinklerEtAl2025"])
+    assert "ERA5 (download in 1 CDS request(s))" in capsys.readouterr().out
+    assert not output_dir.exists()
