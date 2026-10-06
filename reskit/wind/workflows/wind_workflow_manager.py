@@ -694,8 +694,9 @@ class WindWorkflowManager(WorkflowManager):
                     ),
                     3,
                 )
-                # set values < 0 to zero. Prevents negative values
-                _gen[_gen < 0] = 0
+            # set values < 0 to zero. Prevents negative values. Once after the loop, not per power
+            # curve: the whole batch per curve made fleets with many turbine designs slow
+            _gen[_gen < 0] = 0
 
             return _gen
 
