@@ -3,6 +3,7 @@ from logging import warning
 
 from reskit.csp.data.database_loader import load_dataset
 from reskit.solar.workflows.solar_workflow_manager import SolarWorkflowManager
+from reskit.workflow_manager import _any_column_problems
 from ... import weather as rk_weather
 import numpy as np
 import pandas as pd
@@ -35,6 +36,14 @@ def _warn_deprecated_area_column(column_name: str):
 
 
 class PTRWorkflowManager(SolarWorkflowManager):
+    @classmethod
+    def placement_problems(cls, placements):
+        """See WorkflowManager.placement_problems; the plants need a land or aperture area."""
+        # "area" and "area_m2" are deprecated. determine_area() gives the warning.
+        return super().placement_problems(placements) + _any_column_problems(
+            placements, "land_area_m2", "aperture_area_m2", "area", "area_m2"
+        )
+
     def __init__(self, placements):
         """
 
@@ -59,21 +68,6 @@ class PTRWorkflowManager(SolarWorkflowManager):
         self._time_index_ = None
         # self.module = None
         self.sim_data_daily = dict()
-
-        self.check_placements()
-
-    def check_placements(self):
-        assert hasattr(self, "placements")
-        assert isinstance(self.placements, pd.DataFrame)
-        assert "lat" in self.placements.columns or "latitude" in self.placements.columns
-        assert "lon" in self.placements.columns or "longitude" in self.placements.columns
-        assert (
-            "land_area_m2" in self.placements.columns
-            or "aperture_area_m2" in self.placements.columns
-            # "area" and "area_m2" are deprecated. determine_area() gives the warning.
-            or "area" in self.placements.columns
-            or "area_m2" in self.placements.columns
-        )
 
     def loadPTRdata(self, datasetname: str):
         """Loads the dataset with the name datasetname.

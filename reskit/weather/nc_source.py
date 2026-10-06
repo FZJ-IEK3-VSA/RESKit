@@ -117,6 +117,9 @@ class NCSource(object):
     MAX_LON_DIFFERENCE = None
     MAX_LAT_DIFFERENCE = None
 
+    # True while unavailable_variables runs the loaders, see there
+    _probing = False
+
     def __init__(
         self,
         source,
@@ -643,6 +646,9 @@ class NCSource(object):
                 f"The variable '{variable}' is not in this weather source. "
                 f"The source contains: {', '.join(sorted(str(v) for v in self.variables.index))}"
             )
+        if self._probing:
+            self._probe(variable, name)
+            return
         ds = nc.Dataset(self.variables["path"][variable], keepweakref=True)
         var = ds[variable]
 
@@ -686,6 +692,47 @@ class NCSource(object):
 
         # Clean up
         ds.close()
+
+    def unavailable_variables(self, *variables):
+        """Finds the standard variables which this source cannot provide, without reading data
+
+        The standard loaders (see sload) run as usual, so their choice of raw variables and
+        their fallbacks apply, but 'load' only checks that a raw variable exists and has the
+        time steps of the time axis.
+
+        Parameters
+        ----------
+        *variables : str
+            The standard variables to check, e.g. "elevated_wind_speed"
+
+        Returns
+        -------
+        dict
+            The reason why each unavailable variable cannot be loaded, empty if all can be
+        """
+        data, self.data, self._probing = self.data, OrderedDict(), True
+        unavailable = OrderedDict()
+        try:
+            for variable in variables:
+                try:
+                    self.sload(variable)
+                except (ResError, RuntimeError) as error:
+                    unavailable[variable] = str(error)
+        finally:
+            self.data, self._probing = data, False
+        return unavailable
+
+    def _probe(self, variable, name):
+        """'load' while unavailable_variables runs: check the time steps, store a placeholder"""
+        ds = nc.Dataset(self.variables["path"][self.time_name], keepweakref=True)
+        expected = ds[self.time_name].shape[0]
+        ds.close()
+        steps = self.variables["shape"][variable][0]
+        # 'load' forward fills a single missing last step
+        if steps != expected and not (self.fill and steps == expected - 1):
+            raise ResError(f"The variable '{variable}' has {steps} time steps, the time axis has {expected}")
+        # the loaders combine and index the data, e.g. data[0], which a 3D array supports
+        self.data[name or variable] = np.zeros((1, 1, 1))
 
     @staticmethod
     def _loc_to_index_rect(lat_step, lon_step):

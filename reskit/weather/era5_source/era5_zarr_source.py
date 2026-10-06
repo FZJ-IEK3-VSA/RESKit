@@ -528,6 +528,10 @@ class Era5ZarrSource(Era5Source):
 
         if variable not in self.variables.index:
             raise ResError(f"Variable '{variable}' not found in ERA5 Zarr store")
+        if self._probing:
+            # see NCSource.unavailable_variables; a Zarr store has a single time axis
+            self.data[name] = np.zeros((1, 1, 1))
+            return
 
         data = self._dataset[variable]
 

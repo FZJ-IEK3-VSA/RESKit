@@ -27,7 +27,7 @@ from reskit.util.weather_tile import get_location_specific_weather_paths
 _MIN_EXTENT_HALF_WIDTH = 1e-5
 
 
-def _check_coordinate_range(placements, column, minimum, maximum):
+def _coordinate_range_problem(placements, column, minimum, maximum):
     """Check that every coordinate of a placements column is finite and in range.
 
     Parameters
@@ -41,20 +41,57 @@ def _check_coordinate_range(placements, column, minimum, maximum):
     minimum, maximum : float
         The inclusive limits of the valid range.
 
-    Raises
-    ------
-    ValueError
-        If one or more values are outside the range, or are NaN, or are infinite.
+    Returns
+    -------
+    str or None
+        The problem if one or more values are outside the range, or are NaN, or are
+        infinite, else None.
     """
     values = pd.to_numeric(placements[column], errors="coerce")
     invalid = ~values.between(minimum, maximum, inclusive="both")
-    if invalid.any():
-        offenders = ", ".join(f"{index}: {value}" for index, value in values[invalid].head(10).items())
-        raise ValueError(
-            f"All '{column}' values must be finite and between {minimum} and {maximum}. "
-            f"{int(invalid.sum())} of {len(values)} placements are invalid "
-            f"(index: value): {offenders}"
-        )
+    if not invalid.any():
+        return None
+    offenders = ", ".join(f"{index}: {value}" for index, value in values[invalid].head(10).items())
+    return (
+        f"All '{column}' values must be finite and between {minimum} and {maximum}. "
+        f"{int(invalid.sum())} of {len(values)} placements are invalid "
+        f"(index: value): {offenders}"
+    )
+
+
+def _check_coordinate_range(placements, column, minimum, maximum):
+    """Raise a ValueError if _coordinate_range_problem finds a problem."""
+    problem = _coordinate_range_problem(placements, column, minimum, maximum)
+    if problem is not None:
+        raise ValueError(problem)
+
+
+def _numeric_column_problems(placements, *columns):
+    """The problems if the placements lack one of the columns, or if it is not numeric or has
+    missing values. Used by the placement_problems() of the workflow managers.
+    """
+    if not isinstance(placements, pd.DataFrame):
+        return []
+    problems = []
+    for column in columns:
+        if column not in placements.columns:
+            problems.append(f"placements need the column '{column}'")
+        elif not is_numeric_dtype(placements[column]):
+            problems.append(f"placements column '{column}' must be numeric, not {placements[column].dtype}")
+        elif placements[column].isna().any():
+            problems.append(f"{placements[column].isna().sum()} placements have no '{column}'")
+    return problems
+
+
+def _any_column_problems(placements, *columns):
+    """The problem if the placements have none of the columns."""
+    if not isinstance(placements, pd.DataFrame) or any(column in placements.columns for column in columns):
+        return []
+    return [f"placements need one of the columns {', '.join(repr(column) for column in columns)}"]
+
+
+def _has_point_geometries(placements):
+    return "geom" in placements.columns and placements["geom"].iloc[0].GetGeometryName() == "POINT"
 
 
 def _expand_degenerate_bound(value):
@@ -101,16 +138,17 @@ class WorkflowManager:
     """
 
     def __init__(self, placements: pd.DataFrame):
+        problems = self.placement_problems(placements)
+        if problems:
+            raise ValueError("Invalid placements:\n" + "\n".join(f"  - {problem}" for problem in problems))
+
         # arrange placements, locs, and extent
-        assert isinstance(placements, pd.DataFrame)
         self.placements = placements.copy()
         self.locs = None
 
         # Check if input file contains a geometry column
-        ispoint = False
+        ispoint = len(placements) > 0 and _has_point_geometries(placements)
         if "geom" in placements.columns:
-            if self.placements["geom"].iloc[0].GetGeometryName() == "POINT":
-                ispoint = True
             _srs = placements.geom.iloc[0].GetSpatialReference()
         else:
             # assume lat/lon values in EPSG:4326
@@ -121,13 +159,6 @@ class WorkflowManager:
             self.placements["lon"] = self.locs.lons
             self.placements["lat"] = self.locs.lats
             del self.placements["geom"]
-        else:
-            assert "lon" in self.placements.columns, (
-                "if geom are not point geometries, dataframe must contain lon columns"
-            )
-            assert "lat" in self.placements.columns, (
-                "if geom are not point geometries, dataframe must contain lat columns"
-            )
 
         if self.locs is None:
             self.locs = gk.LocationSet(self.placements[["lon", "lat"]].values)
@@ -151,6 +182,36 @@ class WorkflowManager:
         self.sim_data = OrderedDict()
         self.time_index = None
         self.workflow_parameters = OrderedDict()
+
+    @classmethod
+    def placement_problems(cls, placements) -> List[str]:
+        """Finds the problems which make the placements unusable for this workflow manager.
+
+        The base class checks the locations; a specialized workflow manager adds the columns
+        it needs. The constructor raises a ValueError listing all problems, and
+        reskit.validate_inputs reports them before a workflow runs.
+
+        Parameters
+        ----------
+        placements : pandas.DataFrame
+            The placements to check
+
+        Returns
+        -------
+        list of str
+            The problems found, empty if the placements are usable
+        """
+        if not isinstance(placements, pd.DataFrame):
+            return [f"placements must be a pandas DataFrame, not {type(placements).__name__}"]
+        if len(placements) > 0 and _has_point_geometries(placements):
+            return []
+        if "lon" not in placements.columns or "lat" not in placements.columns:
+            return ["placements need point geometries in the column 'geom', or the columns 'lon' and 'lat'"]
+        problems = [
+            _coordinate_range_problem(placements, "lon", -180, 180),
+            _coordinate_range_problem(placements, "lat", -90, 90),
+        ]
+        return [problem for problem in problems if problem is not None]
 
     # STAGE 2: weather data reading and adjusting
 
@@ -252,34 +313,7 @@ class WorkflowManager:
             ]
 
         if is_path_like(source) and source_type != "user":
-            source = as_path_string(source)
-            storage_format = kwargs.pop("storage_format", None)
-            is_zarr = storage_format == "zarr" or source.endswith(".zarr") or source.startswith("gs://")
-            if source_type == "ERA5":
-                source_constructor = rk_weather.Era5ZarrSource if is_zarr else rk_weather.Era5Source
-            elif source_type == "SARAH":
-                source_constructor = rk_weather.SarahSource
-            elif source_type == "MERRA":
-                source_constructor = rk_weather.MerraSource
-            elif source_type == "ICON-LAM":
-                source_constructor = rk_weather.IconlamSource
-            else:
-                raise RuntimeError("Unknown source_type")
-
-            if source_type == "ERA5":
-                time_slice = kwargs.pop("time_slice", None)
-                era5_kwargs = dict(kwargs)
-                if time_slice is not None:
-                    if not is_zarr:
-                        raise RuntimeError(
-                            "'time_slice' is only supported for Zarr-backed ERA5 sources; support for "
-                            "netCDF4-backed ERA5 sources is planned. Until then, restrict the time span "
-                            "of netCDF4 ERA5 data by selecting the corresponding files instead."
-                        )
-                    era5_kwargs["time_slice"] = time_slice
-                source = source_constructor(source, bounds=self.ext, time_index_from=time_index_from, **era5_kwargs)
-            else:
-                source = source_constructor(source, bounds=self.ext, **kwargs)
+            source = self._open_source(source_type, source, time_index_from=time_index_from, **kwargs)
 
             # Load the requested variables
             source.sload(*variables)
@@ -322,6 +356,41 @@ class WorkflowManager:
         return self
 
         # Stage 3: Weather data adjusting & other intermediate steps
+
+    def _open_source(self, source_type: str, source, time_index_from=None, **kwargs):
+        """Opens the weather source of the given type at the given path for the extent of the
+        placements, without loading any variables. See read() for the parameters.
+        """
+        source = as_path_string(source)
+        storage_format = kwargs.pop("storage_format", None)
+        is_zarr = storage_format == "zarr" or source.endswith(".zarr") or source.startswith("gs://")
+        if source_type == "ERA5":
+            source_constructor = rk_weather.Era5ZarrSource if is_zarr else rk_weather.Era5Source
+        elif source_type == "SARAH":
+            source_constructor = rk_weather.SarahSource
+        elif source_type == "MERRA":
+            source_constructor = rk_weather.MerraSource
+        elif source_type == "ICON-LAM":
+            source_constructor = rk_weather.IconlamSource
+        else:
+            raise RuntimeError("Unknown source_type")
+
+        if source_type == "ERA5":
+            time_slice = kwargs.pop("time_slice", None)
+            era5_kwargs = dict(kwargs)
+            if time_slice is not None:
+                if not is_zarr:
+                    raise RuntimeError(
+                        "'time_slice' is only supported for Zarr-backed ERA5 sources; support for "
+                        "netCDF4-backed ERA5 sources is planned. Until then, restrict the time span "
+                        "of netCDF4 ERA5 data by selecting the corresponding files instead."
+                    )
+                era5_kwargs["time_slice"] = time_slice
+            source = source_constructor(source, bounds=self.ext, time_index_from=time_index_from, **era5_kwargs)
+        else:
+            source = source_constructor(source, bounds=self.ext, **kwargs)
+
+        return source
 
     def get_scalar_values_from_raster(self, fp, spatial_interpolation, points=None):
         """

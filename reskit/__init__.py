@@ -10,6 +10,7 @@ from reskit.workflow_manager import (
 )
 from reskit.weather.era5_source.era5_prepare import prepare_era5
 from reskit.util.input_preparation import download_and_process
+from reskit.util.input_validation import validate_inputs
 
 # The pre-0.6.0 CamelCase module paths, kept importable until RESKit 1.0.0.
 from reskit import _deprecated_modules as _deprecated_modules

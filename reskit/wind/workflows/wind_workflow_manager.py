@@ -12,7 +12,7 @@ import pandas as pd
 import windpowerlib
 
 from ...util.paths import as_path_string, is_path_like
-from ...workflow_manager import WorkflowManager
+from ...workflow_manager import WorkflowManager, _any_column_problems, _numeric_column_problems
 from .. import core as rk_wind_core
 
 
@@ -45,6 +45,14 @@ class WindWorkflowManager(WorkflowManager):
 
     """
 
+    @classmethod
+    def placement_problems(cls, placements):
+        """See WorkflowManager.placement_problems; wind needs 'capacity', 'hub_height', and 'rotor_diam' or 'powerCurve'."""
+        return super().placement_problems(placements) + (
+            _numeric_column_problems(placements, "capacity", "hub_height")
+            + _any_column_problems(placements, "rotor_diam", "powerCurve")
+        )
+
     def __init__(
         self,
         placements,
@@ -53,10 +61,6 @@ class WindWorkflowManager(WorkflowManager):
     ):
         # Do basic workflow construction
         super().__init__(placements)
-
-        # Check for basics
-        assert "capacity" in self.placements.columns, "Placement dataframe needs 'capacity' column"
-        assert "hub_height" in self.placements.columns, "Placement dataframe needs 'hub_height' column"
 
         # Check for power curve. If not found, make it!
         self.powerCurveLibrary = dict()
@@ -96,9 +100,6 @@ class WindWorkflowManager(WorkflowManager):
             self.placements.loc[placements_wo_PC.index, "powerCurve"] = powerCurve
 
         if not "powerCurve" in self.placements.columns:
-            assert "rotor_diam" in self.placements.columns, (
-                "Placement dataframe needs 'rotor_diam' or 'powerCurve' column"
-            )
             self.placements["powerCurve"] = None
         generate_missing_synthetic_power_curves(self)
 

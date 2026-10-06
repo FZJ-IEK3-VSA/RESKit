@@ -5,7 +5,7 @@ import xarray as xr
 from collections import OrderedDict
 from scipy.interpolate import interp1d
 
-from ...workflow_manager import WorkflowManager
+from ...workflow_manager import WorkflowManager, _numeric_column_problems
 from ...util.specific_humidity import calculate_specific_humidity
 
 
@@ -17,6 +17,11 @@ Importing required packages.
 
 
 class CoolingHeatingWorkflowManager(WorkflowManager):
+    @classmethod
+    def placement_problems(cls, placements):
+        """See WorkflowManager.placement_problems; the plants need a 'capacity'."""
+        return super().placement_problems(placements) + _numeric_column_problems(placements, "capacity")
+
     def __init__(self, placements):
         """
 
@@ -41,9 +46,6 @@ class CoolingHeatingWorkflowManager(WorkflowManager):
 
         """
         # Do basic workflow construction
-        assert all([a in placements.columns for a in ["lon", "lat", "capacity"]]), (
-            "Placements must contain the columns lon,lat and capacity"
-        )
         super().__init__(placements)
 
         # Set thermodynamic data [1] for air density, [2] for air heat capacity

@@ -194,5 +194,6 @@ nav:
 
     - How-to guides:
           - Get input data from the ETHOS.Data catalogue: how_to/get_input_data.md
+          - Check the inputs of a workflow: how_to/validate_inputs.md
     - API Reference: reference/
     - Code of Conduct: CODE_OF_CONDUCT.md
