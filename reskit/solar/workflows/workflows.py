@@ -10,6 +10,21 @@ from ... import weather as rk_weather
 from .solar_workflow_manager import SolarWorkflowManager
 
 
+# The variables which the steps after the plane of array irradiance read: the irradiance and
+# the solar position are no longer needed then, see WorkflowManager.release_sim_data()
+_NEEDED_AFTER_POA = [
+    "angle_of_incidence",
+    "poa_global",
+    "poa_direct",
+    "poa_diffuse",
+    "poa_sky_diffuse",
+    "poa_ground_diffuse",
+    "system_tilt",
+    "surface_air_temperature",
+    "surface_wind_speed",
+]
+
+
 def openfield_pv_merra_ryberg2019(
     placements,
     merra_path,
@@ -126,12 +141,7 @@ def openfield_pv_merra_ryberg2019(
 
     wf.determine_angle_of_incidence()
     wf.estimate_plane_of_array_irradiances(transposition_model="perez")
-    # irradiance and solar position are no longer needed once the plane of array irradiance is known
-    wf.release_sim_data(
-        ["angle_of_incidence", "poa_global", "poa_direct", "poa_diffuse", "poa_sky_diffuse", "poa_ground_diffuse"]
-        + ["system_tilt", "surface_air_temperature", "surface_wind_speed"],
-        output_variables,
-    )
+    wf.release_sim_data(_NEEDED_AFTER_POA, output_variables)
 
     wf.apply_angle_of_incidence_losses_to_poa()
 
@@ -145,6 +155,7 @@ def openfield_pv_merra_ryberg2019(
 
     if inverter is not None:
         wf.apply_inverter_losses(inverter=inverter, **inverter_kwargs)
+
     wf.release_sim_data(["capacity_factor", "total_system_generation"], output_variables)
 
     variables = [_var for _var in ["capacity_factor", "total_system_generation"] if _var in wf.sim_data.keys()]
@@ -366,12 +377,7 @@ def openfield_pv_era5(
 
     wf.determine_angle_of_incidence()
     wf.estimate_plane_of_array_irradiances(transposition_model="perez")
-    # irradiance and solar position are no longer needed once the plane of array irradiance is known
-    wf.release_sim_data(
-        ["angle_of_incidence", "poa_global", "poa_direct", "poa_diffuse", "poa_sky_diffuse", "poa_ground_diffuse"]
-        + ["system_tilt", "surface_air_temperature", "surface_wind_speed"],
-        output_variables,
-    )
+    wf.release_sim_data(_NEEDED_AFTER_POA, output_variables)
 
     wf.apply_angle_of_incidence_losses_to_poa()
 
@@ -385,6 +391,7 @@ def openfield_pv_era5(
 
     if inverter is not None:
         wf.apply_inverter_losses(inverter=inverter, **inverter_kwargs)
+
     wf.release_sim_data(["capacity_factor", "total_system_generation"], output_variables)
 
     loss_factor = 0.115  # validation by d.franzmann, 2022/01/13
@@ -516,12 +523,7 @@ def openfield_pv_sarah_unvalidated(
 
     wf.determine_angle_of_incidence()
     wf.estimate_plane_of_array_irradiances(transposition_model="perez")
-    # irradiance and solar position are no longer needed once the plane of array irradiance is known
-    wf.release_sim_data(
-        ["angle_of_incidence", "poa_global", "poa_direct", "poa_diffuse", "poa_sky_diffuse", "poa_ground_diffuse"]
-        + ["system_tilt", "surface_air_temperature", "surface_wind_speed"],
-        output_variables,
-    )
+    wf.release_sim_data(_NEEDED_AFTER_POA, output_variables)
 
     wf.apply_angle_of_incidence_losses_to_poa()
 
@@ -535,6 +537,7 @@ def openfield_pv_sarah_unvalidated(
 
     if inverter is not None:
         wf.apply_inverter_losses(inverter=inverter, **inverter_kwargs)
+
     wf.release_sim_data(["capacity_factor", "total_system_generation"], output_variables)
 
     variables = [_var for _var in ["capacity_factor", "total_system_generation"] if _var in wf.sim_data.keys()]
@@ -651,12 +654,7 @@ def openfield_pv_iconlam(
 
     wf.determine_angle_of_incidence()
     wf.estimate_plane_of_array_irradiances(transposition_model="perez")
-    # irradiance and solar position are no longer needed once the plane of array irradiance is known
-    wf.release_sim_data(
-        ["angle_of_incidence", "poa_global", "poa_direct", "poa_diffuse", "poa_sky_diffuse", "poa_ground_diffuse"]
-        + ["system_tilt", "surface_air_temperature", "surface_wind_speed"],
-        output_variables,
-    )
+    wf.release_sim_data(_NEEDED_AFTER_POA, output_variables)
 
     wf.apply_angle_of_incidence_losses_to_poa()
 
@@ -670,6 +668,7 @@ def openfield_pv_iconlam(
 
     if inverter is not None:
         wf.apply_inverter_losses(inverter=inverter, **inverter_kwargs)
+
     wf.release_sim_data(["capacity_factor", "total_system_generation"], output_variables)
 
     # this loss_factor was particularly tuned for ERA5GSA RESKit solar workflow

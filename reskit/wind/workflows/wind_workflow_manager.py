@@ -302,7 +302,6 @@ class WindWorkflowManager(WorkflowManager):
         # Case 2: EH <= PBLH & HH > PBLH -> TH = PBLH (set PBLH as upper target height limit)
         # Case 4: PBLH < EH & PBLH > HH -> TH = HH, EH -> PBLH (scaling relative to PBLH since ws(EH) == ws(PBLH))
         # Note: Case 4 also requires adjusting the elevated_wind_speed_height, but that's handled in the calling function
-        # (built in place, a few full (time, location) temporaries add up for many placements)
         target_height = np.minimum(pbl_height, hub_height, dtype=float)
 
         # Case 3: PBLH < EH & PBLH <= HH -> TH = EH (all heights are outside of planetary influence, use (constant) ws(EH))
@@ -310,7 +309,8 @@ class WindWorkflowManager(WorkflowManager):
         target_height[case3] = np.broadcast_to(elevated_height, target_height.shape)[case3]
 
         # NaN heights fall into none of the cases
-        assert not np.isnan(target_height).any() and not np.isnan(elevated_height).any()
+        assert not np.isnan(target_height).any()
+        assert not np.isnan(elevated_height).any()
 
         return target_height
 
@@ -428,8 +428,10 @@ class WindWorkflowManager(WorkflowManager):
             lower = np.clip(idx - 1, 0, n_heights - 1)
             upper = np.clip(idx, 0, n_heights - 1)
             # cover edge cases when both ref heights are the same
-            upper[(lower == upper) & (lower == 0)] = 1  # set to second lowest value
-            lower[(lower == upper) & (upper == n_heights - 1)] = n_heights - 2  # set to 2nd highest value
+            both_lowest = (lower == upper) & (lower == 0)
+            upper[both_lowest] = 1  # set to second lowest value
+            both_highest = (lower == upper) & (upper == n_heights - 1)
+            lower[both_highest] = n_heights - 2  # set to 2nd highest value
             return lower, upper
 
         # The long-run average wind speeds depend on the location and the reference height
@@ -482,17 +484,22 @@ class WindWorkflowManager(WorkflowManager):
             lower, upper = _bracket(th)
 
             # calculate the interpolated LRA ws at target height
-            delta = heights[upper] - heights[lower]
+            height_lower = heights[lower]
+            height_upper = heights[upper]
+            delta = height_upper - height_lower
             fraction = np.divide(
-                th - heights[lower],
+                th - height_lower,
                 delta,
                 out=np.zeros_like(delta, dtype=float),
                 where=delta != 0,  # avoid division by zero
             )
-            target_ws = ref_ws[lower, columns] + fraction * (ref_ws[upper, columns] - ref_ws[lower, columns])
+            ws_lower = ref_ws[lower, columns]
+            ws_upper = ref_ws[upper, columns]
+            target_ws = ws_lower + fraction * (ws_upper - ws_lower)
 
             # scale hourly ws to the new target hub height, relative to the default LRA height
-            projected[:, b] = target_ws / real_lra[b] * ws[:, b]
+            scale = target_ws / real_lra[b]
+            projected[:, b] = scale * ws[:, b]
         self.sim_data["elevated_wind_speed"] = projected
 
         self.elevated_wind_speed_height = self.placements["hub_height"].values
@@ -520,11 +527,12 @@ class WindWorkflowManager(WorkflowManager):
         in_place = ws.flags.writeable and ws.dtype == np.result_type(ws, float)
         corrected = ws if in_place else np.empty(ws.shape, dtype=np.result_type(ws, float))
         for b in location_blocks(*ws.shape):
+            b_height = height[..., b] if np.ndim(height) else height
             corrected[:, b] = rk_wind_core.air_density_adjustment.apply_air_density_adjustment(
                 ws[:, b],
                 pressure=self.sim_data["surface_pressure"][:, b],
                 temperature=self.sim_data["surface_air_temperature"][:, b],
-                height=height[..., b] if np.ndim(height) else height,
+                height=b_height,
             )
         self.sim_data["elevated_wind_speed"] = corrected
 

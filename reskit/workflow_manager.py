@@ -391,9 +391,10 @@ class WorkflowManager:
             for var in variables:
                 source.sload(var)
                 frame = source.get(var, locs, interpolation=spatial_interpolation_mode, force_as_data_frame=True)
+                region_values = frame.to_numpy()
                 if var not in values:
-                    values[var] = np.empty((len(frame), self.locs.count), dtype=frame.to_numpy().dtype)
-                values[var][:, members] = frame.to_numpy()
+                    values[var] = np.empty((len(frame), self.locs.count), dtype=region_values.dtype)
+                values[var][:, members] = region_values
                 # free this variable's rectangle (and e.g. the u and v of a wind speed) before the next
                 source.data.clear()
             first = first or source
@@ -869,7 +870,7 @@ class WorkflowManager:
                 tmp = np.full(shape, 0.0, dtype=float)
                 tmp[self._time_sel_, :] = self.sim_data[key]
             if release:
-                # one variable at a time, so that only one copy is alive at once
+                # right away, so that at most one variable exists twice at a time
                 del self.sim_data[key]
 
             xds[key] = xarray.DataArray(

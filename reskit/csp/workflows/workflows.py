@@ -497,11 +497,15 @@ def csp_ptr_era5_specific_dataset(
 
     if not return_self:
         # what plant sizing, electrical output, LCOE and capacity factors still read
-        wf.release_sim_data(
-            ["HeattoPlant_W", "P_heating_W", "Parasitics_W_el", "solar_zenith_degree", "direct_normal_irradiance"]
-            + ["annuity"],
-            output_variables,
-        )
+        still_needed = [
+            "HeattoPlant_W",
+            "P_heating_W",
+            "Parasitics_W_el",
+            "solar_zenith_degree",
+            "direct_normal_irradiance",
+            "annuity",
+        ]
+        wf.release_sim_data(still_needed, output_variables)
 
     if verbose:
         tic_sf_sim = time.time()

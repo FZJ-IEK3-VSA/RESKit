@@ -97,9 +97,10 @@ def _solar_position(times, lat, lon, elev, pressure, temperature, first, inverse
         b_zenith = spa.topocentric_zenith_angle(spa.topocentric_elevation_angle(e0, delta_e))
         b_azimuth = spa.topocentric_azimuth_angle(spa.topocentric_astronomers_azimuth(H_prime, delta_prime, b_lat))
         # every placement at one of these locations
-        members = np.flatnonzero((inverse >= b.start) & (inverse < b.start + b_lat.shape[1]))
-        zenith[:, members] = b_zenith[:, inverse[members] - b.start]
-        azimuth[:, members] = b_azimuth[:, inverse[members] - b.start]
+        members = np.flatnonzero((inverse >= b.start) & (inverse < b.stop))
+        b_columns = inverse[members] - b.start
+        zenith[:, members] = b_zenith[:, b_columns]
+        azimuth[:, members] = b_azimuth[:, b_columns]
     return azimuth, zenith
 
 
@@ -308,14 +309,12 @@ class SolarWorkflowManager(WorkflowManager):
         temperature = self.sim_data["surface_air_temperature"]
 
         # make sure that no input is nan to avoid very hard-to-understand errors later on
-        assert not any(np.isnan(x).any() for x in (lat, lon, elev)), "Arguments for the solar position may not be NaN."
-        assert not any(np.isnan(x).any(axis=0)[first].any() for x in (pressure, temperature)), (
+        assert not any(np.isnan(x).any() for x in (lat, lon, elev, pressure, temperature)), (
             "Arguments for the solar position may not be NaN."
         )
 
-        azimuth, zenith = _solar_position(
-            self.time_index, lat, lon, elev, pressure, temperature, first, np.ravel(inverse)
-        )
+        inverse = np.ravel(inverse)
+        azimuth, zenith = _solar_position(self.time_index, lat, lon, elev, pressure, temperature, first, inverse)
         self.sim_data["solar_azimuth"] = azimuth
         self.sim_data["apparent_solar_zenith"] = zenith
 
@@ -797,7 +796,9 @@ class SolarWorkflowManager(WorkflowManager):
 
         # block by block: the transposition models create many temporaries of the size of their inputs
         shape = self.sim_data["apparent_solar_zenith"].shape
+        poa_values = {}
         for b in location_blocks(*shape):
+            b_albedo = albedo[..., b] if np.ndim(albedo) else albedo
             poa = pvlib.irradiance.get_total_irradiance(
                 surface_tilt=tilt[..., b],
                 surface_azimuth=azimuth[..., b],
@@ -808,7 +809,7 @@ class SolarWorkflowManager(WorkflowManager):
                 dhi=self.sim_data["diffuse_horizontal_irradiance"][:, b],
                 dni_extra=self.sim_data["extra_terrestrial_irradiance"][:, b],
                 airmass=self.sim_data["air_mass"][:, b],
-                albedo=albedo[..., b] if np.ndim(albedo) else albedo,
+                albedo=b_albedo,
                 model=transposition_model,
                 **kwargs,
             )
@@ -819,9 +820,11 @@ class SolarWorkflowManager(WorkflowManager):
                 tmp = poa[key]
                 tmp[np.isnan(tmp)] = 0
 
-                if b.start == 0:
-                    self.sim_data[key] = np.empty(shape, dtype=tmp.dtype)
-                self.sim_data[key][:, b] = tmp
+                if key not in poa_values:
+                    poa_values[key] = np.empty(shape, dtype=tmp.dtype)
+                poa_values[key][:, b] = tmp
+
+        self.sim_data.update(poa_values)
 
         self._fix_bad_plane_of_array_values()
 

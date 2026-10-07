@@ -19,15 +19,14 @@ def _manager(time_sel=None) -> WorkflowManager:
     return man
 
 
-def test_release_sim_data_keeps_everything_without_output_variables():
-    man = _manager()
-    man.release_sim_data([], None)
-    assert list(man.sim_data) == ["a", "b"]
-
-
 def test_release_sim_data_keeps_needed_and_requested_variables():
     man = _manager()
     man.sim_data["c"] = np.zeros((4, 2))
+
+    # without output_variables, everything is part of the output
+    man.release_sim_data([], None)
+    assert list(man.sim_data) == ["a", "b", "c"]
+
     man.release_sim_data(["a"], output_variables="c")
     assert list(man.sim_data) == ["a", "c"]
 
