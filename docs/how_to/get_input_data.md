@@ -9,7 +9,7 @@ Install RESKit and ETHOS.Data in the same environment. In a development checkout
 `pip install -e . --no-deps` installs the `reskit-data` console script.
 See [ETHOS.Data installation](https://ethos-data.readthedocs.io/en/latest/installation/)
 for the shared dependency. The `reskit-test-data` fixtures ship with RESKit as a
-verified bundle and are read from it by default; every other dataset needs network
+verified bundle and are read from it, offline; every other dataset needs network
 access for catalogue metadata and uncached files.
 
 ## Get the inputs a workflow needs
@@ -34,10 +34,19 @@ result = rk.wind.wind_era5_PenaSanchezDunkelWinklerEtAl2025(
 
 Here `test=True` uses the small fixtures shipped with RESKit, so input resolution
 works offline. Both variants offer the same input names, and omitting `test=True`
-selects the full variant. **The pinned public catalogue currently has no full
-ERA5 dataset**, so this workflow's full variant raises `UnknownDataset`. Select
-a catalogue containing the required full inputs before using it; removing the
-flag alone is not enough.
+selects the full variant. **No catalogue holds a full ERA5 dataset yet**, so this
+workflow's full variant raises `UnknownDataset`. The workflows whose full inputs
+are not catalogued at all -- the MERRA-2, SARAH and other ERA5 workflows -- have a
+`test` variant only, and asking for their full variant raises a `CollectionError`
+that says so.
+
+The examples take their placements from the `example_placements` collection:
+
+```python
+import pandas as pd
+
+placements = pd.read_csv(data.paths("example_placements")["turbines"])
+```
 
 ### Optional command-line access
 
@@ -53,104 +62,101 @@ reskit-data fetch wind_era5_PenaSanchezDunkelWinklerEtAl2025 --test --paths
 `show` describes the collection and its named inputs and downloads nothing.
 `fetch` transfers data; `--plan` previews the transfer instead of running it.
 `--paths` prints one `handle<TAB>absolute path` line per input once the files are
-there. Add `--files` to `show` for the full file list.
-
-The CLI uses the catalogue and shared cache even for test fixtures; the Python
-example above reads the bundled copy by default. To preview the full variant:
+there. Add `--files` to `show` for the full file list. `show` and `fetch --paths`
+answer a test variant from the bundled copy, like the Python call; `fetch --plan`
+and `verify` read the catalogue. To preview the full variant:
 
 ```bash
 reskit-data fetch wind_era5_PenaSanchezDunkelWinklerEtAl2025 --plan
 ```
 
-An `[unresolvable]` row means the selected catalogue or collection definition
-needs attention before that variant can run.
+An `[unresolvable]` row in `reskit-data show` means the selected catalogue or the
+collection definition needs attention before that variant can run.
 
 ## The bundled test fixtures
 
-RESKit carries its copy of the `reskit-test-data` family in `reskit/data/test_cache`
-as an [ETHOS.Data bundle](https://ethos-data.readthedocs.io/en/latest/how-to/keep-test-data-in-a-repository/):
-`bundle.json` records every file with the size and SHA-256 the pinned catalogue
-declares, the files sit under `data/<dataset>/<path>`, and `datasets/` archives
-the licences. `paths`, `fetch`, `path` and `directory` answer from that copy
-whenever it holds what was asked for, checked against those hashes once per
-process and never downloaded, so the examples and the test suite run offline.
-Everything the bundle does not hold comes from the catalogue as described below.
+RESKit carries the `reskit-test-data` family in `reskit/data/test_cache` as an
+[ETHOS.Data bundle](https://ethos-data.readthedocs.io/en/latest/how-to/package-maintainers/keep-data-in-the-repository/):
 
-To fetch the fixtures from the catalogue's store instead, into the shared cache
-like any other dataset, pass `download=True` or set `RESKIT_DATA_DOWNLOAD=1`:
+| Path | Content |
+| --- | --- |
+| `bundle.json` | each dataset's alignment with the catalogue, and every file's size and SHA-256 |
+| `data/reskit-test-data/<member>/` | the fixtures |
+| `datasets/reskit-test-data/<member>/` | each member's description, `dataset.yaml`, and its licence documents |
+
+`reskit.data` lists the bundle when it builds its ETHOS.Data handle, so ETHOS.Data
+reads it before the catalogue: the files are checked against `bundle.json` once per
+process, never downloaded, and a collection the bundle holds whole reads no
+catalogue index at all. That is what lets the examples' test variants and the test
+suite run offline. The tests name their fixtures through the `test_suite`
+collection:
 
 ```python
-era5_dir = data.directory("reskit-test-data/era5", download=True)
-inputs = data.paths("wind_era5_PenaSanchezDunkelWinklerEtAl2025", test=True, download=True)
+from reskit import data
+
+FIXTURES = data.paths("test_suite")
+source = rk.weather.Era5Source(FIXTURES["era5"])
 ```
+
+A bundled file that is missing, or changed without `reskit-data bundle update`
+recording it, is an error, never a reason to download. To read the fixtures
+through the catalogue's store and the shared cache instead, for example to test
+the download, set the switch every ETHOS.Data package honours:
 
 === "Bash"
 
     ```bash
-    export RESKIT_DATA_DOWNLOAD=1
+    export ETHOS_DATA_DOWNLOAD=1
     ```
 
 === "PowerShell"
 
     ```powershell
-    $env:RESKIT_DATA_DOWNLOAD = "1"
+    $env:ETHOS_DATA_DOWNLOAD = "1"
     ```
 
-The argument wins over the variable. A bundled file that is missing or altered
-is an error, never a reason to download: the copy in a checkout is what the
-tests run on. `reskit-data fetch`, `show` and `verify` always work through the
-catalogue, as do `reskit.data.plan()` and `describe()`; `reskit-data bundle`
-works on the copy:
+Check the bundle offline:
 
 ```bash
-reskit-data bundle verify reskit/data/test_cache test_suite   # the bundled copy
-reskit-data fetch test_suite --plan                            # what the catalogue route would transfer
+reskit-data bundle verify reskit/data/test_cache
 ```
 
-### Refresh the bundle
+It reports every file, description and licence document as `ok`, `modified`,
+`missing` or `unrecorded`, and each dataset's alignment.
 
-Regenerate the bundle whenever the catalogue pin in `collections.yaml` moves or
-a fixture changes. Export runs against the catalogue named with `--catalog` (pass
-the pin explicitly, so a machine-wide catalogue setting cannot leak into the
-manifest), takes the existing files as verified input, and refuses a target that
-exists; so export beside the bundle and move the manifest over:
+The bundle is currently ahead of the catalogue in `reskit-test-data/placements`:
+it holds the two `_cityBulawayoInZimbabwa_2025` tables of the ICON-LAM regression
+tests, which the catalogue does not hold yet, so every process that reads the
+bundle warns once with `ethos_data.BundleAlignmentWarning` until the catalogue
+takes them in (see [Change a fixture](#change-a-fixture)).
 
-=== "Bash"
+### Change a fixture
 
-    ```bash
-    pin=$(sed -n 's/^catalog: *//p' reskit/data/collections.yaml)
-    roots=""
-    for m in $(ls reskit/data/test_cache/data/reskit-test-data); do
-      roots="$roots --source-root reskit-test-data/$m=reskit/data/test_cache/data/reskit-test-data/$m"
-    done
-    reskit-data --catalog "$pin" bundle export reskit/data/test_cache-next test_suite test_suite_public \
-      --source-revision "$pin" $roots
-    mv reskit/data/test_cache-next/bundle.json reskit/data/test_cache/
-    rm -rf reskit/data/test_cache/datasets && mv reskit/data/test_cache-next/datasets reskit/data/test_cache/
-    rm -rf reskit/data/test_cache-next
-    reskit-data bundle verify reskit/data/test_cache test_suite
-    ```
+Edit the files under `data/`, then record the change:
 
-=== "PowerShell"
+```bash
+reskit-data bundle update reskit/data/test_cache
+```
 
-    ```powershell
-    $pin = (Select-String '^catalog:\s*(\S+)' reskit/data/collections.yaml).Matches[0].Groups[1].Value
-    $roots = Get-ChildItem reskit/data/test_cache/data/reskit-test-data -Directory |
-      ForEach-Object { "--source-root"; "reskit-test-data/$($_.Name)=reskit/data/test_cache/data/reskit-test-data/$($_.Name)" }
-    reskit-data --catalog $pin bundle export reskit/data/test_cache-next test_suite test_suite_public `
-      --source-revision $pin @roots
-    Move-Item reskit/data/test_cache-next/bundle.json reskit/data/test_cache/ -Force
-    Remove-Item reskit/data/test_cache/datasets -Recurse -Force -ErrorAction SilentlyContinue
-    Move-Item reskit/data/test_cache-next/datasets reskit/data/test_cache/
-    Remove-Item reskit/data/test_cache-next -Recurse -Force
-    reskit-data bundle verify reskit/data/test_cache test_suite
-    ```
+The bundle is then ahead of the catalogue: it is read as recorded, and every
+process that reads it warns once with `ethos_data.BundleAlignmentWarning` until it
+is realigned. Realign it one of two ways:
 
-Export fails if a file in the repository differs from the catalogue, or if the
-catalogue's own metadata is inconsistent, for instance a licence document that
-does not match its recorded hash. Fix the source; never edit the manifest.
-Commit `bundle.json`, `datasets/` and any changed fixture together with the pin.
-`--source-revision` is a provenance label; the pin selects the revision.
+- **The catalogue takes the bundle's version.** `reskit-data propose
+  reskit/data/test_cache` drafts the proposal for the datasets that are ahead; the
+  catalogue maintainers take it in with `ethos-data catalog add-bundle` and release.
+  Then run `reskit-data bundle update reskit/data/test_cache` with that catalogue
+  selected to record the new alignment.
+- **The bundle takes the catalogue's version**, to drop a change or to catch up
+  with a later revision of a member:
+
+  ```bash
+  reskit-data bundle update reskit/data/test_cache --from-catalog reskit-test-data/era5
+  ```
+
+A bundle holds public data with settled licensing only. Commit `bundle.json`,
+`data/` and `datasets/` together. `.gitattributes` forbids line-ending conversion
+for the whole bundle, since a converted file no longer matches its SHA-256.
 
 ## Select the catalogue
 
@@ -161,8 +167,8 @@ reskit-data show
 
 `config show` reports shared configuration and origins offline. `show` prints
 the actual catalogue selected by RESKit and its collections. RESKit uses, in order:
-`--catalog`, `RESKIT_DATA_CATALOG`, shared environment/configuration, then the pin
-in `reskit/data/collections.yaml`.
+`--catalog`, `RESKIT_DATA_CATALOG`, then `ETHOS_DATA_CATALOG` or the catalogue in
+the shared settings file, then the public catalogue.
 
 For a RESKit-specific override:
 
@@ -180,9 +186,14 @@ For a RESKit-specific override:
 
 For one invocation, put `--catalog LOCATION` before the subcommand. To configure
 all ETHOS packages, follow
-[shared machine setup](https://ethos-data.readthedocs.io/en/latest/how-to/set-up-your-machine/).
-If the pin cannot be read or lacks an input, select a complete catalogue version
-provided by the maintainer.
+[shared machine setup](https://ethos-data.readthedocs.io/en/latest/how-to/data-users/set-up-your-machine/).
+Inside ICE-2, select the institute's internal catalogue: several datasets the
+examples read are not in the public one yet.
+
+`reskit/data/collections.yaml` does not bound the catalogue release yet. During
+the beta no catalogue records a release, and ETHOS.Data refuses any catalogue that
+records none once a collections file declares bounds; the file says what to add
+with the first release.
 
 ## Access a catalogue key
 
@@ -199,12 +210,14 @@ and prints its local path; shapefiles include sidecars. In Python, through
 RESKit's own catalogue selection:
 
 ```python
-era5_dir = data.directory("reskit-test-data/era5")
-gwa_100m = data.path("reskit-test-data/global-wind-atlas/gwa100-like.tif")
+gwa_100m = data.catalog_path("global-wind-atlas-v4/wind_speed_cog_100m.tif")
 ```
 
-The Python calls use RESKit's selected catalogue; `ethos-data` uses the shared
-settings, so pass the same `--catalog` when comparing results.
+`catalog_path` reads the catalogue index even for a key the bundle holds, so it is
+for trying a dataset before a collection names it; workflows, examples and tests
+take their inputs from `data.paths()`. The Python call uses RESKit's selected
+catalogue; `ethos-data` uses the shared settings, so pass the same `--catalog`
+when comparing results.
 
 ## Location rasters and the turbine library
 
@@ -214,7 +227,7 @@ catalogue:
 
 | Input | Function | Default | Collection |
 | --- | --- | --- | --- |
-| Water depth raster (GEBCO) | `water_depth_from_location(..., waterDepthFilePath=)` | the `water_depth` handle of `offshore_siting`, fetched on first use | `offshore_siting` |
+| Water depth raster (GEBCO 2025) | `water_depth_from_location(..., waterDepthFilePath=)` | the `water_depth` handle of `offshore_siting`, fetched on first use | `offshore_siting` |
 | Distance-to-coast raster | `distance_to_coastline(..., distancetoCoastFilePath=)` | the `coast_distance` handle of `offshore_siting`, fetched on first use | `offshore_siting` |
 | Turbine library | `rk.wind.turbine_library(path=)` | the 124 turbines RESKit ships | `turbine_library` (licensed) |
 
@@ -236,24 +249,33 @@ rk.wind.turbine_library(data.paths("turbine_library")["turbines"])  # the licens
 rk.wind.turbine_library("/path/to/my/turbines")  # or any directory of turbine CSVs
 ```
 
+The full variant of `offshore_siting` is GEBCO 2025 as one global raster
+(`gebco-2025-combined`) and NASA's distance-to-coast grid (`dist2coast`), about
+5 GB together.
+
 A directory given to `turbine_library` becomes the library for the rest of the
 process, so workflows that name a power curve resolve it there too. The
-`turbine_library` collection is restricted data, read from the restricted cache
-and never downloaded; outside the institute the call raises an access error and
-the shipped library stays in use.
+`turbine_library` collection is restricted data, read from a restricted cache and
+never downloaded; outside the institute the call raises an access error that says
+how to obtain it, and the shipped library stays in use.
 
-To read a private copy of a catalogued dataset, for instance GEBCO tiles already
-on your disk, tell ETHOS.Data where it lies instead of passing the path to every
-call:
+To use a copy of a catalogued dataset that is already on your disk, for instance
+the GEBCO raster, register it with ETHOS.Data instead of passing the path to every
+call. `link` makes the dataset's cache entry a link to the copy, which is then
+read in place; `reskit-data verify offshore_siting --deep` checks it against the
+catalogue:
 
 ```bash
-ethos-data config set-root gebco-2024 /data/gebco
+ethos-data link gebco-2025-combined /data/gebco-2025-combined
 ```
 
-Until the maintainers catalogue GEBCO and publish `dist2coast`, the full variant
-of `offshore_siting` is `[unresolvable]` and the two functions need an explicit
-path; `reskit-data show offshore_siting` reports the state, and the
-`TODO(maintainer)` note in `collections.yaml` says what to change.
+A restricted dataset is registered the same way, in a restricted cache your
+settings list:
+
+```bash
+reskit-data config add-restricted-cache /path/to/my-restricted-cache
+ethos-data link reskit-turbine-library /path/to/turbines
+```
 
 ## Develop against unpublished data
 
@@ -287,7 +309,15 @@ entry is a snapshot; source edits need restaging. The root is shared across ETHO
 packages, and restricted datasets are never shadowed. Registration works offline;
 collection resolution still needs a readable catalogue index.
 
-After the candidate is accepted and RESKit's pin/selection is updated:
+Staging is also how the long-run-average example reads ERA5 until ERA5 is
+catalogued: it reads the processed ERA5 archive as the dataset `era5`. On a
+machine that holds the archive:
+
+```bash
+reskit-data staging add era5 /path/to/ERA5_global_processed_V2022.02
+```
+
+After a candidate is accepted into the catalogue:
 
 ```bash
 reskit-data staging remove trial-weather --force
@@ -295,7 +325,7 @@ reskit-data staging remove trial-weather --force
 
 This deletes the staged copy and leaves the source directory intact. Remove
 `--force` for linked entries. The
-[development/proposal guide](https://ethos-data.readthedocs.io/en/latest/how-to/propose-a-dataset/)
+[development/proposal guide](https://ethos-data.readthedocs.io/en/latest/how-to/package-maintainers/propose-a-dataset/)
 covers review and adoption; the
 [staging reference](https://ethos-data.readthedocs.io/en/latest/reference/cli/package-data/#staging)
 lists all options.
@@ -307,15 +337,16 @@ reskit-data verify wind_era5_PenaSanchezDunkelWinklerEtAl2025 --test --deep
 ```
 
 Expect matching files and exit status `0`. For a damaged downloaded copy,
-preview with `reskit-data verify wind_era5_PenaSanchezDunkelWinklerEtAl2025 --test --deep --repair --dry-run`,
+preview with `reskit-data verify <collection> --deep --repair --dry-run`,
 then remove `--dry-run` to repair. In-place and restricted data need correction
-at their source; staged files are unverifiable.
+at their source; staged files are unverifiable. The bundled fixtures are checked
+with `reskit-data bundle verify reskit/data/test_cache`.
 
 Detailed procedures have one home in ETHOS.Data:
 
-- [Configuration and cache locations](https://ethos-data.readthedocs.io/en/latest/how-to/set-up-your-machine/).
-- [Integrity checking and repair](https://ethos-data.readthedocs.io/en/latest/how-to/verify-and-repair/).
-- [Exporting and refreshing repository test bundles](https://ethos-data.readthedocs.io/en/latest/how-to/keep-test-data-in-a-repository/).
+- [Configuration and cache locations](https://ethos-data.readthedocs.io/en/latest/how-to/data-users/set-up-your-machine/).
+- [Integrity checking and repair](https://ethos-data.readthedocs.io/en/latest/how-to/data-users/verify-and-repair/).
+- [Keeping data in the repository](https://ethos-data.readthedocs.io/en/latest/how-to/package-maintainers/keep-data-in-the-repository/).
 - [Package command options](https://ethos-data.readthedocs.io/en/latest/reference/cli/package-data/).
 
 Shared cache administration uses `ethos-data link`, `unlink` and `materialize`;

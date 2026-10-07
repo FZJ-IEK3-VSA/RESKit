@@ -5,6 +5,9 @@ import pytest
 
 import reskit as rk
 from reskit.solar import SolarWorkflowManager
+from reskit import data
+
+FIXTURES = data.paths("test_suite")
 
 
 def print_testresults(variable):
@@ -152,9 +155,7 @@ def test_SolarWorkflowManager_apply_elevation(pt_SolarWorkflowManager_initialize
     ]
     man2 = SolarWorkflowManager(placements2)
 
-    man2.apply_elevation(
-        elev=rk.TEST_DATA["clc-aachen_clipped.tif"], fallback_elev=fallback_elev
-    )  # not an elevation file, but still a raster
+    man2.apply_elevation(elev=FIXTURES["clc"], fallback_elev=fallback_elev)  # not an elevation file, but still a raster
     # must yield raster values, with fallback value for those placements outside the actual file coverage
     assert np.isclose(
         man2.placements["elev"],
@@ -185,9 +186,7 @@ def test_SolarWorkflowManager_apply_elevation(pt_SolarWorkflowManager_initialize
     ]
     man2 = SolarWorkflowManager(placements3)
 
-    man2.apply_elevation(
-        elev=rk.TEST_DATA["clc-aachen_clipped.tif"], fallback_elev=fallback_elev
-    )  # not an elevation file, but still a raster
+    man2.apply_elevation(elev=FIXTURES["clc"], fallback_elev=fallback_elev)  # not an elevation file, but still a raster
     # must yield raster values, with fallback value for those placements outside the actual file coverage
     assert np.isclose(
         man2.placements["elev"],
@@ -218,7 +217,7 @@ def pt_SolarWorkflowManager_loaded(
             "surface_dew_temperature",
         ],
         source_type="ERA5",
-        source=rk.TEST_DATA["era5-like"],
+        source=FIXTURES["era5"],
         set_time_index=True,
         verbose=False,
     )

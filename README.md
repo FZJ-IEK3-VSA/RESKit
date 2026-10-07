@@ -159,15 +159,15 @@ one `handle<TAB>path` line per input, `reskit-data show` lists every collection,
 and `reskit-data --help` every command.
 
 Both variants use the same input handles. The full variant is selected when
-`test=True` is omitted, but the pinned public catalogue currently lacks its ERA5
-dataset. To run that variant, select a catalogue containing the required full
-inputs; removing `test=True` alone will currently raise `UnknownDataset`.
+`test=True` is omitted, but no catalogue holds a full ERA5 dataset yet, so
+removing `test=True` alone raises `UnknownDataset`. A workflow whose full inputs
+are not catalogued at all has a `test` variant only.
 
 The `reskit-test-data` fixtures ship with RESKit as a verified
-[ETHOS.Data bundle](https://ethos-data.readthedocs.io/en/latest/how-to/keep-test-data-in-a-repository/)
+[ETHOS.Data bundle](https://ethos-data.readthedocs.io/en/latest/how-to/package-maintainers/keep-data-in-the-repository/)
 in `reskit/data/test_cache`, so `test=True`, the examples and the test suite read
-them offline. Pass `download=True`, or set `RESKIT_DATA_DOWNLOAD=1`, to fetch them
-from the catalogue's store into the shared cache instead.
+them offline, without reading any catalogue. Set `ETHOS_DATA_DOWNLOAD=1` to read
+them through the catalogue's store and the shared cache instead.
 
 Install ETHOS.Data in the same environment. In a development checkout, reinstall
 RESKit with `pip install -e . --no-deps` to register its console script.

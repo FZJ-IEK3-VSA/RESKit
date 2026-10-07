@@ -1,11 +1,9 @@
-from pathlib import Path
-
 import geokit as gk
 import numpy as np
 import pandas as pd
 import pytest
 
-from reskit import TEST_DATA
+from reskit import data
 from reskit.solar.workflows.workflows import (
     openfield_pv_era5,
     openfield_pv_iconlam,
@@ -13,10 +11,12 @@ from reskit.solar.workflows.workflows import (
     openfield_pv_sarah_unvalidated,
 )
 
+FIXTURES = data.paths("test_suite")
+
 
 @pytest.fixture
 def pt_pv_placements() -> pd.DataFrame:
-    df = gk.vector.extractFeatures(TEST_DATA["turbinePlacements.shp"])
+    df = gk.vector.extractFeatures(FIXTURES["turbine_placements_shp"])
     df["capacity"] = 2000
     return df
 
@@ -24,8 +24,9 @@ def pt_pv_placements() -> pd.DataFrame:
 @pytest.fixture
 def pt_pv_placements_Zimbabwe() -> pd.DataFrame:
     # Keep numerical regression inputs independent of administrative boundary updates.
-    # See data/bulawayo/README.md for their provenance.
-    df = pd.read_csv(Path(__file__).parents[1] / "data" / "bulawayo" / "pv_placements.csv")
+    # The 2025 tables: their provenance is in the bundled description of
+    # reskit-test-data/placements.
+    df = pd.read_csv(FIXTURES["module_placements_bulawayo"])
 
     return df
 
@@ -33,7 +34,7 @@ def pt_pv_placements_Zimbabwe() -> pd.DataFrame:
 def test_openfield_pv_iconlam(pt_pv_placements_Zimbabwe):
     gen = openfield_pv_iconlam(
         placements=pt_pv_placements_Zimbabwe,
-        icon_lam_path=TEST_DATA["iconlam-like"],
+        icon_lam_path=FIXTURES["icon_lam"],
         module="WINAICO WSx-240P6",
         elev=300,
         tracking="fixed",
@@ -112,9 +113,9 @@ def test_openfield_pv_iconlam(pt_pv_placements_Zimbabwe):
 def test_openfield_pv_era5(pt_pv_placements):
     gen = openfield_pv_era5(
         placements=pt_pv_placements,
-        era5_path=TEST_DATA["era5-like"],
-        global_solar_atlas_ghi_path=TEST_DATA["gsa-ghi-like.tif"],
-        global_solar_atlas_dni_path=TEST_DATA["gsa-dni-like.tif"],
+        era5_path=FIXTURES["era5"],
+        global_solar_atlas_ghi_path=FIXTURES["gsa_ghi"],
+        global_solar_atlas_dni_path=FIXTURES["gsa_dni"],
         module="WINAICO WSx-240P6",
         elev=300,
         tracking="fixed",
@@ -192,8 +193,8 @@ def test_openfield_pv_era5(pt_pv_placements):
 def test_openfield_pv_merra_ryberg2019(pt_pv_placements):
     gen = openfield_pv_merra_ryberg2019(
         placements=pt_pv_placements,
-        merra_path=TEST_DATA["merra-like"],
-        global_solar_atlas_ghi_path=TEST_DATA["gsa-ghi-like.tif"],
+        merra_path=FIXTURES["merra"],
+        global_solar_atlas_ghi_path=FIXTURES["gsa_ghi"],
         module="WINAICO WSx-240P6",
         elev=300,
         tracking="fixed",
@@ -288,8 +289,8 @@ def test_openfield_pv_merra_ryberg2019(pt_pv_placements):
 def test_openfield_pv_sarah_unvalidated(pt_pv_placements):
     gen = openfield_pv_sarah_unvalidated(
         placements=pt_pv_placements,
-        sarah_path=TEST_DATA["sarah-like"],
-        era5_path=TEST_DATA["era5-like"],
+        sarah_path=FIXTURES["sarah"],
+        era5_path=FIXTURES["era5"],
         module="WINAICO WSx-240P6",
         elev=300,
         tracking="fixed",

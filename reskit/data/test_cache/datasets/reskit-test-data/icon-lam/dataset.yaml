@@ -1,0 +1,100 @@
+title: RESKit ICON-LAM test fixtures (FZJ ICON-LAM, southern Africa, clipped)
+description: 'Nine variables of kilometre-scale ICON-LAM output over Bulawayo, Zimbabwe:
+  14 x 11 cells of the 0.033 deg grid and 144 quarter-hourly steps, 2019-03-01 00:00
+  to 2019-03-02 11:45. Cut from the same regridded simulation as icon-lam-southern-africa
+  (Chen et al. 2024), produced at Forschungszentrum Julich.'
+ethos:exclude:
+- '**/__init__.py'
+ethos:remote_prefix: reskit-test-data/icon-lam
+ethos:access: public
+ethos:visibility: public
+ethos:origin: derived
+ethos:derivation: 'ICON-NWP v2.6.4 in limited-area mode (ICON-LAM), 3.3 km native
+  grid over the SASSCAL southern Africa domain, driven by DWD''s 13 km global ICON
+  analysis, run on JSC JUWELS under project cjibg36. Per-variable processing and the
+  conservative remap (cdo remapcon) to a regular 0.033 deg lon/lat grid are the same
+  as for icon-lam-southern-africa -- see its ethos:derivation -- including the 10
+  m wind speed from the components, sqrt(u_10m^2 + v_10m^2), and the power-law 100
+  m wind speed. Taken from the untiled 2017-2019 files, not from the tiles.
+
+  Then, as recorded in the CF history: cdo -L selyear,2019 -selmonth,3 (2023-07-28);
+  cdo seltimestep,1/144 (2025-03-10); and a clip to 14 x 11 cells over Bulawayo, cell
+  centres 28.328-28.757 E by 19.983-20.313 S. The clip is not in the history -- no
+  CDO step for it -- so the window is given here from the coordinates.
+
+  Variables are renamed to RESKit''s ERA5 convention -- blh, d2m, fdir, fsr, sp, ssrd,
+  t2m, ws10, ws100 -- which is why these files look like ERA5 at a glance. They are
+  not.
+
+  The time axis is "days since 2017-01-01" and starts at 789.0, which is 2019-03-01
+  00:00, so it agrees with the 2019-03 in the filenames. An earlier version of this
+  note called that an oddity; it is not one.'
+ethos:additional_variables:
+  blh: Planetary boundary-layer height [m], diagnosed offline by the bulk Richardson
+    number method from 3D u, v, virtual potential temperature and model-level heights.
+  d2m: 2 m dew-point temperature [K], ICON td_2m.
+  fdir: 'Direct horizontal irradiance [W m-2]: downward minus diffuse downward shortwave,
+    sob_s + sou_s - sodifd_s.'
+  fsr: Surface roughness length [m], ICON gz0.
+  sp: Surface pressure [Pa], ICON pres_sfc.
+contributors:
+- title: Shuying Chen
+  roles:
+  - author
+  organization: Forschungszentrum Julich, IBG-3 and ICE-2 (formerly IEK-3)
+  path: https://orcid.org/0000-0002-0986-0950
+- title: ICE-2 RESKit maintainers
+  roles:
+  - maintainer
+sources:
+- title: 'Chen, S., Poll, S., Hendricks Franssen, H.-J., Heinrichs, H., Vereecken,
+    H., Goergen, K. (2024): Convection-permitting ICON-LAM Simulations for Renewable
+    Energy Potential Estimates over Southern Africa [dataset]. Julich DATA, V1'
+  path: https://doi.org/10.26165/JUELICH-DATA/JYGQ65
+- title: 'Chen, S., Poll, S., Hendricks Franssen, H.-J., Heinrichs, H., Vereecken,
+    H., Goergen, K. (2024): Convection-permitting ICON-LAM simulations for renewable
+    energy potential estimates over southern Africa. JGR Atmospheres'
+  path: https://doi.org/10.1029/2023JD039569
+- title: Chen, S., Goergen, K., Hendricks Franssen, H.-J., Winkler, C., Poll, S.,
+    Houssoukri Zounogo Wahabou, Y., ... & Heinrichs, H. (2024). Higher onshore wind
+    energy potentials revealed by kilometer-scale atmospheric modeling. Geophysical
+    Research Letters 51(19), e2024GL110122
+  path: https://doi.org/10.1029/2024GL110122
+licenses:
+- name: CC-BY-4.0
+  title: Creative Commons Attribution 4.0 International
+  path: https://creativecommons.org/licenses/by/4.0/
+  ethos:document: licenses/CC-BY-4.0-legalcode.txt
+  ethos:document_sha256: 9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411
+ethos:retrieved: '2025-03-10'
+name: reskit-test-data/icon-lam
+homepage: https://github.com/FZJ-IEK3-VSA/RESKit
+ethos:contact: ICE-2 RESKit maintainers
+ethos:attribution: 'ALL FILES IN THIS DATASET HAVE BEEN MODIFIED: every one is a spatial
+  and/or temporal subset of the product named in its member descriptor, and several
+  have been resampled. None is suitable for any purpose other than exercising RESKit''s
+  code paths.
+
+  Contains modified Copernicus Climate Change Service information (ERA5 and ERA5-Land,
+  2015); neither the European Commission nor ECMWF is responsible for any use of this
+  data. EUMETSAT CM SAF: copyright 2017 EUMETSAT; Pfeifroth, U., Kothe, S., Mueller,
+  R., Trentmann, J., Hollmann, R., Fuchs, P., Werscheck, M. (2017), doi:10.5676/EUM_SAF_CM/SARAH/V002.
+  Contains MERRA-2 data provided by the NASA Global Modeling and Assimilation Office,
+  and SRTM data provided by NASA/USGS. Data obtained from the Global Wind Atlas 3.0,
+  developed, owned and operated by the Technical University of Denmark in partnership
+  with the World Bank Group, utilizing data provided by Vortex, with funding from
+  ESMAP. Solar resource data (c) 2023 Solargis; (c) The World Bank, Source: Global
+  Solar Atlas 2.0. (c) European Union, Copernicus Land Monitoring Service 2018, European
+  Environment Agency. Contains ESA Climate Change Initiative Land Cover data; users
+  must acknowledge the ESA Climate Change Initiative and its Land Cover project together
+  with the individual data providers, and cite ESA Land Cover CCI project team; Defourny,
+  P. (2019): ESA Land Cover Climate Change Initiative (Land_Cover_cci): Global Land
+  Cover Maps, Version 2.0.7, Centre for Environmental Data Analysis, https://catalogue.ceda.ac.uk/uuid/b382ebe6679d44b8b0e68ea4ef4b701c.
+  GEBCO Bathymetric Compilation Group: The GEBCO Grid. Distance-to-coast data from
+  the NASA Ocean Biology Processing Group. Administrative boundaries: (c) GeoBasis-DE
+  / BKG, dl-de/by-2-0, and OCHA/ZIMSTAT under CC BY 3.0 IGO. ICON-LAM: contains modified
+  data from Chen, S., Poll, S., Hendricks Franssen, H.-J., Heinrichs, H., Vereecken,
+  H., Goergen, K. (2024): Convection-permitting ICON-LAM simulations for renewable
+  energy potential estimates over southern Africa, Journal of Geophysical Research:
+  Atmospheres, https://doi.org/10.1029/2023JD039569, dataset https://doi.org/10.26165/JUELICH-DATA/JYGQ65,
+  licensed under CC BY 4.0.'
