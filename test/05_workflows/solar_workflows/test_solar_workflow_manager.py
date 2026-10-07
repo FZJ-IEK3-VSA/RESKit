@@ -756,3 +756,45 @@ def test_SolarWorkflowManager_nan_values_tilt_azimuth_elev___init__() -> SolarWo
     assert ~man.placements["tilt"].isna().any()
     assert ~man.placements["azimuth"].isna().any()
     assert ~man.placements["elev"].isna().any()
+
+
+def _irradiance_chain() -> dict:
+    man = _make_SolarWorkflowManager()
+    man.apply_elevation([100, 120, 140, 160, 2000])
+    man.read(
+        variables=["global_horizontal_irradiance", "direct_horizontal_irradiance", "surface_pressure"]
+        + ["surface_air_temperature"],
+        source_type="ERA5",
+        source=rk.TEST_DATA["era5-like"],
+        set_time_index=True,
+        verbose=False,
+    )
+    man.determine_solar_position()
+    man.filter_positive_solar_elevation()
+    man.direct_normal_irradiance_from_trigonometry()
+    man.determine_extra_terrestrial_irradiance(model="spencer", solar_constant=1370)
+    man.determine_air_mass(model="kastenyoung1989")
+    man.diffuse_horizontal_irradiance_from_trigonometry()
+    man.determine_angle_of_incidence()
+    man.estimate_plane_of_array_irradiances(transposition_model="perez")
+    man.apply_angle_of_incidence_losses_to_poa()
+    return man.sim_data
+
+
+def test_SolarWorkflowManager_irradiance_steps_are_independent_of_the_blocks(monkeypatch):
+    # the solar position, the plane of array irradiance and the angle of incidence losses go
+    # through the locations in blocks to bound their memory
+    expected = _irradiance_chain()
+
+    from reskit.solar.workflows import solar_workflow_manager
+
+    monkeypatch.setattr(
+        solar_workflow_manager,
+        "location_blocks",
+        lambda n_times, n_locations: [slice(i, i + 1) for i in range(n_locations)],
+    )
+    result = _irradiance_chain()
+
+    assert result.keys() == expected.keys()
+    for key in expected:
+        np.testing.assert_array_equal(result[key], expected[key], err_msg=key)

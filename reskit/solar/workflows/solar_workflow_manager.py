@@ -13,7 +13,7 @@ import numpy as np
 import pandas as pd
 from scipy.interpolate import RectBivariateSpline
 
-from ...workflow_manager import WorkflowManager
+from ...workflow_manager import WorkflowManager, location_blocks
 
 # from reskit import solarpower
 from .. import core as rk_solar_core
@@ -42,18 +42,19 @@ class LazyLoader:
 pvlib = LazyLoader("pvlib")
 
 
-def _solar_position(times, lat, lon, elev, pressure, temperature, block_size=256):
-    """Azimuth and apparent zenith, in degrees, as (time, location) arrays.
+def _solar_position(times, lat, lon, elev, pressure, temperature, first, inverse):
+    """Azimuth and apparent zenith, in degrees, as (time, placement) arrays.
 
     The same result as pvlib.solarposition.spa_python() with its defaults (delta_t=67 s,
     atmos_refract=0.5667) called location by location, but the SPA's time-only part --
     Earth's heliocentric position, nutation, the Sun's right ascension and declination,
     sidereal time, i.e. nearly all of its cost -- is computed once instead of once per
     location. pvlib.spa's own functions are used for both parts, broadcast over
-    (time, location); locations go in blocks of `block_size` to bound memory.
+    (time, location); locations go in blocks (see location_blocks()) to bound memory.
 
-    pressure [Pa] and temperature [degC] are (time, location) arrays; lat, lon and elev
-    [m] have one value per location.
+    lat, lon and elev [m] have one value per distinct location. pressure [Pa] and
+    temperature [degC] are (time, placement) arrays; location i uses the weather of
+    placement first[i], and placement j gets the solar position of location inverse[j].
     """
     spa = importlib.import_module("pvlib.spa")
     if spa.USE_NUMBA:
@@ -66,7 +67,6 @@ def _solar_position(times, lat, lon, elev, pressure, temperature, block_size=256
         finally:
             del os.environ["PVLIB_USE_NUMBA"]
     delta_t, atmos_refract = 67.0, 0.5667
-    pressure = np.asarray(pressure) / 100  # SPA wants millibars
 
     # the time-only part, as columns to broadcast against the locations
     if times.tz is not None:
@@ -81,9 +81,10 @@ def _solar_position(times, lat, lon, elev, pressure, temperature, block_size=256
 
     # the location-dependent part, as in pvlib.spa.solar_position_numpy
     azimuth, zenith = np.empty(pressure.shape), np.empty(pressure.shape)
-    for start in range(0, len(lat), block_size):
-        b = slice(start, start + block_size)
+    for b in location_blocks(len(times), len(lat)):
         b_lat, b_lon, b_elev = lat[None, b], lon[None, b], elev[None, b]
+        b_pressure = pressure[:, first[b]] / 100  # SPA wants millibars
+        b_temperature = temperature[:, first[b]]
         H = spa.local_hour_angle(v, b_lon, alpha)
         u = spa.uterm(b_lat)
         x = spa.xterm(u, b_lat, b_elev)
@@ -92,9 +93,13 @@ def _solar_position(times, lat, lon, elev, pressure, temperature, block_size=256
         delta_prime = spa.topocentric_sun_declination(delta, x, y, xi, delta_alpha, H)
         H_prime = spa.topocentric_local_hour_angle(H, delta_alpha)
         e0 = spa.topocentric_elevation_angle_without_atmosphere(b_lat, delta_prime, H_prime)
-        delta_e = spa.atmospheric_refraction_correction(pressure[:, b], temperature[:, b], e0, atmos_refract)
-        zenith[:, b] = spa.topocentric_zenith_angle(spa.topocentric_elevation_angle(e0, delta_e))
-        azimuth[:, b] = spa.topocentric_azimuth_angle(spa.topocentric_astronomers_azimuth(H_prime, delta_prime, b_lat))
+        delta_e = spa.atmospheric_refraction_correction(b_pressure, b_temperature, e0, atmos_refract)
+        b_zenith = spa.topocentric_zenith_angle(spa.topocentric_elevation_angle(e0, delta_e))
+        b_azimuth = spa.topocentric_azimuth_angle(spa.topocentric_astronomers_azimuth(H_prime, delta_prime, b_lat))
+        # every placement at one of these locations
+        members = np.flatnonzero((inverse >= b.start) & (inverse < b.start + b_lat.shape[1]))
+        zenith[:, members] = b_zenith[:, inverse[members] - b.start]
+        azimuth[:, members] = b_azimuth[:, inverse[members] - b.start]
     return azimuth, zenith
 
 
@@ -299,18 +304,20 @@ class SolarWorkflowManager(WorkflowManager):
         # one solar position per distinct rounded location, with the weather of its first placement
         unique_locs, first, inverse = np.unique(rounded_locs, axis=0, return_index=True, return_inverse=True)
         lon, lat, elev = unique_locs.T
-        pressure = self.sim_data["surface_pressure"][:, first]
-        temperature = self.sim_data["surface_air_temperature"][:, first]
+        pressure = self.sim_data["surface_pressure"]
+        temperature = self.sim_data["surface_air_temperature"]
 
         # make sure that no input is nan to avoid very hard-to-understand errors later on
-        assert not any(np.isnan(x).any() for x in (lat, lon, elev, pressure, temperature)), (
+        assert not any(np.isnan(x).any() for x in (lat, lon, elev)), "Arguments for the solar position may not be NaN."
+        assert not any(np.isnan(x).any(axis=0)[first].any() for x in (pressure, temperature)), (
             "Arguments for the solar position may not be NaN."
         )
 
-        azimuth, zenith = _solar_position(self.time_index, lat, lon, elev, pressure, temperature)
-        inverse = np.ravel(inverse)
-        self.sim_data["solar_azimuth"] = azimuth[:, inverse]
-        self.sim_data["apparent_solar_zenith"] = zenith[:, inverse]
+        azimuth, zenith = _solar_position(
+            self.time_index, lat, lon, elev, pressure, temperature, first, np.ravel(inverse)
+        )
+        self.sim_data["solar_azimuth"] = azimuth
+        self.sim_data["apparent_solar_zenith"] = zenith
 
         assert not np.isnan(self.sim_data["solar_azimuth"]).any()
         assert not np.isnan(self.sim_data["apparent_solar_zenith"]).any()
@@ -788,28 +795,33 @@ class SolarWorkflowManager(WorkflowManager):
         azimuth = self.sim_data.get("system_azimuth", self.placements["azimuth"].values)
         tilt = self.sim_data.get("system_tilt", self.placements["tilt"].values)
 
-        poa = pvlib.irradiance.get_total_irradiance(
-            surface_tilt=tilt,
-            surface_azimuth=azimuth,
-            solar_zenith=self.sim_data["apparent_solar_zenith"],
-            solar_azimuth=self.sim_data["solar_azimuth"],
-            dni=self.sim_data["direct_normal_irradiance"],
-            ghi=self.sim_data["global_horizontal_irradiance"],
-            dhi=self.sim_data["diffuse_horizontal_irradiance"],
-            dni_extra=self.sim_data["extra_terrestrial_irradiance"],
-            airmass=self.sim_data["air_mass"],
-            albedo=albedo,
-            model=transposition_model,
-            **kwargs,
-        )
+        # block by block: the transposition models create many temporaries of the size of their inputs
+        shape = self.sim_data["apparent_solar_zenith"].shape
+        for b in location_blocks(*shape):
+            poa = pvlib.irradiance.get_total_irradiance(
+                surface_tilt=tilt[..., b],
+                surface_azimuth=azimuth[..., b],
+                solar_zenith=self.sim_data["apparent_solar_zenith"][:, b],
+                solar_azimuth=self.sim_data["solar_azimuth"][:, b],
+                dni=self.sim_data["direct_normal_irradiance"][:, b],
+                ghi=self.sim_data["global_horizontal_irradiance"][:, b],
+                dhi=self.sim_data["diffuse_horizontal_irradiance"][:, b],
+                dni_extra=self.sim_data["extra_terrestrial_irradiance"][:, b],
+                airmass=self.sim_data["air_mass"][:, b],
+                albedo=albedo[..., b] if np.ndim(albedo) else albedo,
+                model=transposition_model,
+                **kwargs,
+            )
 
-        for key in poa.keys():
-            # This should set: 'poa_global', 'poa_direct', 'poa_diffuse', 'poa_sky_diffuse', and 'poa_ground_diffuse'
+            for key in poa.keys():
+                # This should set: 'poa_global', 'poa_direct', 'poa_diffuse', 'poa_sky_diffuse', and 'poa_ground_diffuse'
 
-            tmp = poa[key]
-            tmp[np.isnan(tmp)] = 0
+                tmp = poa[key]
+                tmp[np.isnan(tmp)] = 0
 
-            self.sim_data[key] = tmp
+                if b.start == 0:
+                    self.sim_data[key] = np.empty(shape, dtype=tmp.dtype)
+                self.sim_data[key][:, b] = tmp
 
         self._fix_bad_plane_of_array_values()
 
@@ -820,11 +832,8 @@ class SolarWorkflowManager(WorkflowManager):
         if (bad_poa).any():
             # POA is super big, but this only happens when elevation angles are approximately
             # zero (sin effect), so it should be okay to just set the POA to zero as well
-            self.sim_data["poa_global"] = np.where(bad_poa, 0, self.sim_data["poa_global"])
-            self.sim_data["poa_direct"] = np.where(bad_poa, 0, self.sim_data["poa_direct"])
-            self.sim_data["poa_diffuse"] = np.where(bad_poa, 0, self.sim_data["poa_diffuse"])
-            self.sim_data["poa_sky_diffuse"] = np.where(bad_poa, 0, self.sim_data["poa_sky_diffuse"])
-            self.sim_data["poa_ground_diffuse"] = np.where(bad_poa, 0, self.sim_data["poa_ground_diffuse"])
+            for key in ("poa_global", "poa_direct", "poa_diffuse", "poa_sky_diffuse", "poa_ground_diffuse"):
+                self.sim_data[key][bad_poa] = 0
 
     def cell_temperature_from_sapm(self, mounting="glass_open_rack"):
         """
@@ -915,30 +924,38 @@ class SolarWorkflowManager(WorkflowManager):
 
         tilt = self.sim_data.get("system_tilt", self.placements["tilt"].values)
 
-        self.sim_data["poa_direct"] *= pvlib.pvsystem.iam.physical(
-            aoi=self.sim_data["angle_of_incidence"],
-            n=1.526,  # PVLIB v0.7.2 default
-            K=4.0,  # PVLIB v0.7.2 default
-            L=0.002,  # PVLIB v0.7.2 default
-        )
+        # block by block: iam.physical creates several temporaries of the size of its input
+        for b in location_blocks(*self.sim_data["poa_direct"].shape):
+            b_tilt = tilt[..., b]
+            self.sim_data["poa_direct"][:, b] *= pvlib.pvsystem.iam.physical(
+                aoi=self.sim_data["angle_of_incidence"][:, b],
+                n=1.526,  # PVLIB v0.7.2 default
+                K=4.0,  # PVLIB v0.7.2 default
+                L=0.002,  # PVLIB v0.7.2 default
+            )
 
-        # Effective angle of incidence values from "Solar-Engineering-of-Thermal-Processes-4th-Edition"
-        self.sim_data["poa_ground_diffuse"] *= pvlib.pvsystem.iam.physical(
-            aoi=(90 - 0.5788 * tilt + 0.002693 * np.power(tilt, 2)),
-            n=1.526,  # PVLIB v0.7.2 default
-            K=4.0,  # PVLIB v0.7.2 default
-            L=0.002,  # PVLIB v0.7.2 default
-        )
+            # Effective angle of incidence values from "Solar-Engineering-of-Thermal-Processes-4th-Edition"
+            self.sim_data["poa_ground_diffuse"][:, b] *= pvlib.pvsystem.iam.physical(
+                aoi=(90 - 0.5788 * b_tilt + 0.002693 * np.power(b_tilt, 2)),
+                n=1.526,  # PVLIB v0.7.2 default
+                K=4.0,  # PVLIB v0.7.2 default
+                L=0.002,  # PVLIB v0.7.2 default
+            )
 
-        self.sim_data["poa_sky_diffuse"] *= pvlib.pvsystem.iam.physical(
-            aoi=(59.7 - 0.1388 * tilt + 0.001497 * np.power(tilt, 2)),
-            n=1.526,  # PVLIB v0.7.2 default
-            K=4.0,  # PVLIB v0.7.2 default
-            L=0.002,  # PVLIB v0.7.2 default
-        )
+            self.sim_data["poa_sky_diffuse"][:, b] *= pvlib.pvsystem.iam.physical(
+                aoi=(59.7 - 0.1388 * b_tilt + 0.001497 * np.power(b_tilt, 2)),
+                n=1.526,  # PVLIB v0.7.2 default
+                K=4.0,  # PVLIB v0.7.2 default
+                L=0.002,  # PVLIB v0.7.2 default
+            )
 
-        self.sim_data["poa_diffuse"] = self.sim_data["poa_ground_diffuse"] + self.sim_data["poa_sky_diffuse"]
-        self.sim_data["poa_global"] = self.sim_data["poa_direct"] + self.sim_data["poa_diffuse"]
+        # into the existing arrays (as written by estimate_plane_of_array_irradiances()), if any
+        self.sim_data["poa_diffuse"] = np.add(
+            self.sim_data["poa_ground_diffuse"], self.sim_data["poa_sky_diffuse"], out=self.sim_data.get("poa_diffuse")
+        )
+        self.sim_data["poa_global"] = np.add(
+            self.sim_data["poa_direct"], self.sim_data["poa_diffuse"], out=self.sim_data.get("poa_global")
+        )
 
         assert (self.sim_data["poa_global"] < 1600).all(), "POA is too large"
 

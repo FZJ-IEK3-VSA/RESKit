@@ -93,12 +93,13 @@ def _expand_degenerate_bound(value):
     return value - half_width, value + half_width
 
 
-def location_blocks(n_times, n_locations, max_elements=2**20):
+def location_blocks(n_times, n_locations, max_elements=2**18):
     """Split the locations into blocks of at most about `max_elements` (time, location) values.
 
     Steps which create several temporary (time, location) arrays go through the locations
     block by block, so that the memory of their temporaries is bounded instead of growing
-    with the number of placements. 2**20 values are 8 MiB per float64 array.
+    with the number of placements. 2**18 values are 2 MiB per float64 array; smaller blocks
+    save little more but call e.g. pvlib more often.
 
     Parameters
     ----------
