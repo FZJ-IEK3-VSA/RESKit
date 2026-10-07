@@ -370,7 +370,7 @@ class WorkflowManager:
         which all regions share) and per variable a DataFrame with a column per placement, in the
         order of `.locs`.
         """
-        first, columns = None, {var: [None] * self.locs.count for var in variables}
+        first, values = None, {}
         for members in regions:
             locs = gk.LocationSet([self.locs[i] for i in members])
             bounds = list(locs.getBounds())
@@ -383,11 +383,13 @@ class WorkflowManager:
             source.sload(*variables)
             for var in variables:
                 frame = source.get(var, locs, interpolation=spatial_interpolation_mode, force_as_data_frame=True)
-                for column, i in enumerate(members):
-                    columns[var][i] = frame.iloc[:, column].to_numpy()
+                if var not in values:
+                    values[var] = np.empty((len(frame), self.locs.count), dtype=frame.to_numpy().dtype)
+                values[var][:, members] = frame.to_numpy()
+            # the weather of this region's rectangle is no longer needed, free it before the next
+            source.data.clear()
             first = first or source
-        index = first.time_index
-        frames = {var: pd.DataFrame(np.column_stack(columns[var]), index=index) for var in variables}
+        frames = {var: pd.DataFrame(values[var], index=first.time_index, copy=False) for var in variables}
         return first, frames
 
     def _store_read_variables(self, source, frames, set_time_index, temporal_reindex_method):
