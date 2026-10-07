@@ -2,6 +2,7 @@
 import importlib
 import json
 import numbers
+import os
 import warnings
 from collections import OrderedDict
 from os.path import isfile
@@ -40,6 +41,62 @@ class LazyLoader:
 
 
 pvlib = LazyLoader("pvlib")
+
+
+def _solar_position(times, lat, lon, elev, pressure, temperature, block_size=256):
+    """Azimuth and apparent zenith, in degrees, as (time, location) arrays.
+
+    The same result as pvlib.solarposition.spa_python() with its defaults (delta_t=67 s,
+    atmos_refract=0.5667) called location by location, but the SPA's time-only part --
+    Earth's heliocentric position, nutation, the Sun's right ascension and declination,
+    sidereal time, i.e. nearly all of its cost -- is computed once instead of once per
+    location. pvlib.spa's own functions are used for both parts, broadcast over
+    (time, location); locations go in blocks of `block_size` to bound memory.
+
+    pressure [Pa] and temperature [degC] are (time, location) arrays; lat, lon and elev
+    [m] have one value per location.
+    """
+    spa = importlib.import_module("pvlib.spa")
+    if spa.USE_NUMBA:
+        # Something (e.g. get_solarposition(method="nrel_numba") in the CSP workflow) has
+        # recompiled pvlib.spa with numba, whose functions take scalars only. Reload it as
+        # numpy, as spa_python(how="numpy") does.
+        os.environ["PVLIB_USE_NUMBA"] = "0"
+        try:
+            spa = importlib.reload(spa)
+        finally:
+            del os.environ["PVLIB_USE_NUMBA"]
+    delta_t, atmos_refract = 67.0, 0.5667
+    pressure = np.asarray(pressure) / 100  # SPA wants millibars
+
+    # the time-only part, as columns to broadcast against the locations
+    if times.tz is not None:
+        epoch = pd.Timestamp("1970-01-01", tz="UTC").tz_convert(times.tz)
+    else:
+        epoch = pd.Timestamp("1970-01-01")
+    unixtime = np.asarray((times - epoch) / pd.Timedelta("1s"))
+    (R,) = spa.solar_position_numpy(unixtime, 0, 0, 0, 0, 0, delta_t, atmos_refract, 1, esd=True)
+    v, alpha, delta = spa.solar_position_numpy(unixtime, 0, 0, 0, 0, 0, delta_t, atmos_refract, 1, sst=True)
+    R, v, alpha, delta = (np.asarray(x)[:, None] for x in (R, v, alpha, delta))
+    xi = spa.equatorial_horizontal_parallax(R)
+
+    # the location-dependent part, as in pvlib.spa.solar_position_numpy
+    azimuth, zenith = np.empty(pressure.shape), np.empty(pressure.shape)
+    for start in range(0, len(lat), block_size):
+        b = slice(start, start + block_size)
+        b_lat, b_lon, b_elev = lat[None, b], lon[None, b], elev[None, b]
+        H = spa.local_hour_angle(v, b_lon, alpha)
+        u = spa.uterm(b_lat)
+        x = spa.xterm(u, b_lat, b_elev)
+        y = spa.yterm(u, b_lat, b_elev)
+        delta_alpha = spa.parallax_sun_right_ascension(x, xi, H, delta)
+        delta_prime = spa.topocentric_sun_declination(delta, x, y, xi, delta_alpha, H)
+        H_prime = spa.topocentric_local_hour_angle(H, delta_alpha)
+        e0 = spa.topocentric_elevation_angle_without_atmosphere(b_lat, delta_prime, H_prime)
+        delta_e = spa.atmospheric_refraction_correction(pressure[:, b], temperature[:, b], e0, atmos_refract)
+        zenith[:, b] = spa.topocentric_zenith_angle(spa.topocentric_elevation_angle(e0, delta_e))
+        azimuth[:, b] = spa.topocentric_azimuth_angle(spa.topocentric_astronomers_azimuth(H_prime, delta_prime, b_lat))
+    return azimuth, zenith
 
 
 class SolarWorkflowManager(WorkflowManager):
@@ -181,8 +238,14 @@ class SolarWorkflowManager(WorkflowManager):
 
         determine_solar_position(self, lon_rounding=1, lat_rounding=1, elev_rounding=-2)
 
-        Calculates azimuth and apparent zenith for each location using the pvlib function pvlib.solarposition.spa_python() [1].
+        Calculates azimuth and apparent zenith for each location with NREL's Solar Position
+        Algorithm (SPA), as pvlib.solarposition.spa_python() [1] does.
         Adds azimuth and apparent zenit to the sim_data dictionary.
+
+        Locations are rounded, and locations that round to the same point share one solar
+        position, computed with the surface pressure and air temperature of the first of them.
+        The part of the algorithm that depends only on time is computed once for all locations;
+        see _solar_position().
 
 
         Parameters
@@ -227,53 +290,31 @@ class SolarWorkflowManager(WorkflowManager):
         assert "surface_pressure" in self.sim_data
         assert "surface_air_temperature" in self.sim_data
 
-        rounded_locs = pd.DataFrame()
-        rounded_locs["lon"] = np.round(self.placements["lon"].values, lon_rounding)
-        rounded_locs["lat"] = np.round(self.placements["lat"].values, lat_rounding)
-        rounded_locs["elev"] = np.round(self.placements["elev"].values, elev_rounding)
+        rounded_locs = np.column_stack(
+            [
+                np.round(self.placements["lon"].values.astype(float), lon_rounding),
+                np.round(self.placements["lat"].values.astype(float), lat_rounding),
+                np.round(self.placements["elev"].values.astype(float), elev_rounding),
+            ]
+        )
+        # one solar position per distinct rounded location, with the weather of its first placement
+        unique_locs, first, inverse = np.unique(rounded_locs, axis=0, return_index=True, return_inverse=True)
+        lon, lat, elev = unique_locs.T
+        pressure = self.sim_data["surface_pressure"][:, first]
+        temperature = self.sim_data["surface_air_temperature"][:, first]
 
-        solar_position_library = dict()
+        # make sure that no input is nan to avoid very hard-to-understand errors later on
+        assert not any(np.isnan(x).any() for x in (lat, lon, elev, pressure, temperature)), (
+            "Arguments for the solar position may not be NaN."
+        )
 
-        # pd.DataFrame(np.nan, index=self.time_index, columns=self.locs)
-        self.sim_data["solar_azimuth"] = np.full_like(self.sim_data["surface_pressure"], np.nan)
-        # pd.DataFrame(np.nan, index=self.time_index, columns=self.locs)
-        self.sim_data["apparent_solar_zenith"] = np.full_like(self.sim_data["surface_pressure"], np.nan)
-        # self.sim_data['apparent_solar_elevation'] = np.full_like(self.sim_data['surface_pressure'], np.nan)  # pd.DataFrame(np.nan, index=self.time_index, columns=self.locs)
-
-        for loc, row in enumerate(rounded_locs.itertuples()):
-            key = (row.lon, row.lat, row.elev)
-            if key in solar_position_library:
-                _solpos_ = solar_position_library[key]
-            else:
-                # make sure that no input is nan to avoid very hard-to-understand errors later on
-                _req = [
-                    self.time_index,
-                    row.lat,
-                    row.lon,
-                    row.elev,
-                    self.sim_data["surface_pressure"][:, loc],
-                    self.sim_data["surface_air_temperature"][:, loc],
-                ]
-                assert not any([np.isnan(x).any() if hasattr(x, "__iter__") else np.isnan(x) for x in _req]), (
-                    f"Arguments for pvlib.solarposition.spa_python() may not be NaN."
-                )
-                _solpos_ = pvlib.solarposition.spa_python(
-                    self.time_index,
-                    latitude=row.lat,
-                    longitude=row.lon,
-                    altitude=row.elev,
-                    pressure=self.sim_data["surface_pressure"][:, loc],
-                    temperature=self.sim_data["surface_air_temperature"][:, loc],
-                )
-                solar_position_library[key] = _solpos_
-
-            self.sim_data["solar_azimuth"][:, loc] = _solpos_["azimuth"]
-            self.sim_data["apparent_solar_zenith"][:, loc] = _solpos_["apparent_zenith"]
-            # self.sim_data['apparent_solar_elevation'][:, loc] = _solpos_["apparent_elevation"]
+        azimuth, zenith = _solar_position(self.time_index, lat, lon, elev, pressure, temperature)
+        inverse = np.ravel(inverse)
+        self.sim_data["solar_azimuth"] = azimuth[:, inverse]
+        self.sim_data["apparent_solar_zenith"] = zenith[:, inverse]
 
         assert not np.isnan(self.sim_data["solar_azimuth"]).any()
         assert not np.isnan(self.sim_data["apparent_solar_zenith"]).any()
-        # assert not np.isnan(self.sim_data['apparent_solar_elevation']).any()
 
         return self
 
