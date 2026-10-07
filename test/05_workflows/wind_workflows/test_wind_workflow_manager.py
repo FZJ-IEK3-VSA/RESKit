@@ -166,6 +166,34 @@ def test_WindWorkflowManager_wind_shear_projection_of_wind_speeds_to_hub_height(
     assert np.isclose(man.sim_data["elevated_wind_speed"].std(), 3.0918568121980496)
 
 
+def test_WindWorkflowManager_wind_shear_projection_is_independent_of_the_blocks(
+    pt_WindWorkflowManager_loaded, monkeypatch
+):
+    # the projection goes through the locations in blocks to bound its memory
+    man = pt_WindWorkflowManager_loaded
+    man.real_lra = np.array([5.64914904, 5.42147512, 5.65448952, 5.75908499, 5.94873524])
+    ws, height = man.sim_data["elevated_wind_speed"].copy(), man.elevated_wind_speed_height
+
+    man.wind_shear_projection_of_wind_speeds_to_hub_height(
+        alternative_wind_speed_rasters=alternative_wind_speed_rasters
+    )
+    expected = man.sim_data["elevated_wind_speed"]
+
+    from reskit.wind.workflows import wind_workflow_manager
+
+    monkeypatch.setattr(
+        wind_workflow_manager,
+        "location_blocks",
+        lambda n_times, n_locations: [slice(i, i + 1) for i in range(n_locations)],
+    )
+    man.sim_data["elevated_wind_speed"], man.elevated_wind_speed_height = ws, height
+    man.wind_shear_projection_of_wind_speeds_to_hub_height(
+        alternative_wind_speed_rasters=alternative_wind_speed_rasters
+    )
+
+    np.testing.assert_array_equal(man.sim_data["elevated_wind_speed"], expected)
+
+
 def test_WindWorkflowManager_project_windspeeds_to_hub_height(
     pt_WindWorkflowManager_loaded,
 ):

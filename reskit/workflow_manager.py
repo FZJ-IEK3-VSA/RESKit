@@ -93,6 +93,29 @@ def _expand_degenerate_bound(value):
     return value - half_width, value + half_width
 
 
+def location_blocks(n_times, n_locations, max_elements=2**20):
+    """Split the locations into blocks of at most about `max_elements` (time, location) values.
+
+    Steps which create several temporary (time, location) arrays go through the locations
+    block by block, so that the memory of their temporaries is bounded instead of growing
+    with the number of placements. 2**20 values are 8 MiB per float64 array.
+
+    Parameters
+    ----------
+    n_times : int
+        The number of time steps
+    n_locations : int
+        The number of locations
+
+    Returns
+    -------
+    list of slice
+        Consecutive slices covering all locations
+    """
+    step = max(1, max_elements // max(1, n_times))
+    return [slice(start, start + step) for start in range(0, n_locations, step)]
+
+
 class WorkflowManager:
     """
     The WorkflowManager class assists with the construction of more specialized WorkflowManagers,
