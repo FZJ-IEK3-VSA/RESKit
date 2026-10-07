@@ -91,6 +91,7 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
         True.
     output_variables : str, optional
         Restrict the output variables to these variables, by default None
+        Interim variables which are not listed are dropped as soon as the workflow no longer needs them, which lowers its memory use.
     max_batch_size: int
         The maximum number of locations to be simulated simultaneously,
         else multiple batches will be simulated iteratively. Helps
@@ -172,6 +173,7 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
     wf.apply_air_density_correction_to_wind_speeds()
     # do wake reduction
     wf.apply_wake_correction_of_wind_speeds(wake_curve=wake_curve)
+    wf.release_sim_data(["elevated_wind_speed"], output_variables)
     # gaussian convolution of the power curve to account for statistical events in wind speed
     wf.convolute_power_curves(
         scaling=0.01,  # standard deviation of gaussian equals scaling*v + base
@@ -187,11 +189,12 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
         max_batch_size=max_batch_size,
         **simulate_kwargs,
     )
+    wf.release_sim_data(["capacity_factor"], output_variables)
 
     # apply availability factor
     wf.apply_availability_factor(availability_factor=availability_factor)
 
-    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
+    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables, release=True)
 
 
 def onshore_wind_merra_ryberg2019_europe(
@@ -221,6 +224,7 @@ def onshore_wind_merra_ryberg2019_europe(
         Path to a directory to put the output files, by default None
     output_variables : str, optional
         Restrict the output variables to these variables, by default None
+        Interim variables which are not listed are dropped as soon as the workflow no longer needs them, which lowers its memory use.
     max_batch_size: int
         The maximum number of locations to be simulated simultaneously, else multiple batches will be simulated
         iteratively. Helps limiting RAM requirements but may affect runtime. By default 25 000. Roughly 7GB RAM per 10k locations.
@@ -263,13 +267,15 @@ def onshore_wind_merra_ryberg2019_europe(
 
     wf.apply_air_density_correction_to_wind_speeds()
 
+    wf.release_sim_data(["elevated_wind_speed"], output_variables)
     wf.convolute_power_curves(scaling=0.06, base=0.1)
 
     wf.simulate(max_batch_size=max_batch_size)
+    wf.release_sim_data(["capacity_factor"], output_variables)
 
     wf.apply_loss_factor(loss=lambda x: rk_util.low_generation_loss(x, base=0.0, sharpness=5.0))
 
-    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
+    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables, release=True)
 
 
 def offshore_wind_merra_caglayan2019(
@@ -292,6 +298,7 @@ def offshore_wind_merra_caglayan2019(
         Path to a directory to put the output files, by default None
     output_variables : str, optional
         Restrict the output variables to these variables, by default None
+        Interim variables which are not listed are dropped as soon as the workflow no longer needs them, which lowers its memory use.
     max_batch_size: int
         The maximum number of locations to be simulated simultaneously, else multiple batches will be simulated
         iteratively. Helps limiting RAM requirements but may affect runtime. By default 25 000. Roughly 7GB RAM per 10k locations.
@@ -322,18 +329,20 @@ def offshore_wind_merra_caglayan2019(
 
     wf.logarithmic_projection_of_wind_speeds_to_hub_height()
 
+    wf.release_sim_data(["elevated_wind_speed"], output_variables)
     wf.convolute_power_curves(
         scaling=0.04,  # TODO: Check values with Dil
         base=0.5,  # TODO: Check values with Dil
     )
 
     wf.simulate(max_batch_size=max_batch_size)
+    wf.release_sim_data(["capacity_factor"], output_variables)
 
     wf.apply_loss_factor(
         loss=lambda x: rk_util.low_generation_loss(x, base=0.1, sharpness=3.5)  # TODO: Check values with Dil
     )
 
-    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
+    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables, release=True)
 
 
 def onshore_wind_iconlam_2023(
@@ -363,6 +372,7 @@ def onshore_wind_iconlam_2023(
         Path to a directory to put the output files, by default None
     output_variables : str, optional
         Restrict the output variables to these variables, by default None
+        Interim variables which are not listed are dropped as soon as the workflow no longer needs them, which lowers its memory use.
     max_batch_size: int
         The maximum number of locations to be simulated simultaneously, else multiple batches will be simulated
         iteratively. Helps limiting RAM requirements but may affect runtime. By default 20 000.
@@ -410,14 +420,16 @@ def onshore_wind_iconlam_2023(
     # Apply density correction
     wf.apply_air_density_correction_to_wind_speeds()
 
+    wf.release_sim_data(["elevated_wind_speed"], output_variables)
     # Power curve convolution
     # Ryberg, 2019, Energy: scaling factor of 0.06 and base value of 0.1, by default
     wf.convolute_power_curves(scaling=0.01, base=0.00)
 
     # simulate wind power
     wf.simulate(max_batch_size=max_batch_size)
+    wf.release_sim_data(["capacity_factor"], output_variables)
 
-    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
+    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables, release=True)
 
 
 def wind_config(
@@ -558,6 +570,7 @@ def wind_config(
         By default {}.
     output_variables : str, optional
         Restrict the output variables to these variables, by default None
+        Interim variables which are not listed are dropped as soon as the workflow no longer needs them, which lowers its memory use.
     max_batch_size: int
         The maximum number of locations to be simulated simultaneously, else multiple batches will be simulated
         iteratively. Helps limiting RAM requirements but may affect runtime. By default 25 000. Roughly 7GB RAM per 10k locations.
@@ -641,6 +654,7 @@ def wind_config(
         print("Using provided elevated_wind_speed")
         wf.sim_data["elevated_wind_speed"] = elevated_wind_speed
 
+    wf.release_sim_data(["elevated_wind_speed"], output_variables)
     # gaussian convolution of the power curve to account for statistical events in wind speed
     wf.convolute_power_curves(
         scaling=power_curve_scaling,
@@ -650,6 +664,7 @@ def wind_config(
 
     # do simulation
     wf.simulate(cf_correction_factor=cf_correction_factor, max_batch_size=max_batch_size)
+    wf.release_sim_data(["capacity_factor"], output_variables)
 
     if loss_factor_args != {}:
         wf.apply_loss_factor(loss=lambda x: rk_util.low_generation_loss(x, **loss_factor_args))
@@ -657,7 +672,7 @@ def wind_config(
     # apply availability factor
     wf.apply_availability_factor(availability_factor=availability_factor)
 
-    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
+    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables, release=True)
 
 
 ########################

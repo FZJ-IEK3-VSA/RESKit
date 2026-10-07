@@ -87,6 +87,7 @@ def csp_ptr_era5(
     output_variables: list of {str, number}, optional
         Output variables of the simulation that you want to save.
         If None, includes all suitable variables from placements, workflow parameters, simulation data, and time index.
+        Interim variables which are not listed are dropped as soon as the workflow no longer needs them, which lowers its memory use.
 
     return_self: bool, optional
         If True, returns the workflow manager object.
@@ -293,6 +294,7 @@ def csp_ptr_era5_specific_dataset(
     output_variables: list of {str, number}, optional
         Output variables of the simulation that you want to save.
         If None, includes all suitable variables from placements, workflow parameters, simulation data, and time index.
+        Interim variables which are not listed are dropped as soon as the workflow no longer needs them, which lowers its memory use.
 
     return_self: bool, optional
         If True, returns the workflow manager object.
@@ -493,6 +495,14 @@ def csp_ptr_era5_specific_dataset(
         },
     )
 
+    if not return_self:
+        # what plant sizing, electrical output, LCOE and capacity factors still read
+        wf.release_sim_data(
+            ["HeattoPlant_W", "P_heating_W", "Parasitics_W_el", "solar_zenith_degree", "direct_normal_irradiance"]
+            + ["annuity"],
+            output_variables,
+        )
+
     if verbose:
         tic_sf_sim = time.time()
         print(
@@ -528,7 +538,7 @@ def csp_ptr_era5_specific_dataset(
     if return_self == True:
         return wf
     else:
-        return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
+        return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables, release=True)
 
 
 ##########################

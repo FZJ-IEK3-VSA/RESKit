@@ -697,11 +697,45 @@ class WorkflowManager:
         """
         self.workflow_parameters[key] = value
 
+    def release_sim_data(self, still_needed: List[str], output_variables: Union[str, List[str]] = None):
+        """Drop the variables from `.sim_data` which are neither needed later on nor requested as output
+
+        Every time series in `.sim_data` takes (time steps x placements) floats, so the interim
+        variables of a workflow can take many times the memory of its result. Workflows call
+        this once interim variables are no longer needed.
+
+        Parameters
+        ----------
+        still_needed : List[str]
+            The variables which later steps of the workflow still read
+
+        output_variables : str or List[str], optional
+            The variables the user requested as output, see `to_xarray()`
+            - If None, all variables are part of the output and nothing is dropped
+            - By default None
+
+        Returns
+        -------
+        WorkflowManager
+            Returns the invoking WorkflowManager (for chaining)
+        """
+        if output_variables is None:
+            return self
+        if isinstance(output_variables, str):
+            output_variables = [output_variables]
+
+        keep = set(still_needed) | set(output_variables)
+        for key in [key for key in self.sim_data if key not in keep]:
+            del self.sim_data[key]
+
+        return self
+
     def to_xarray(
         self,
         output_netcdf_path: str = None,
         output_variables: List[str] = None,
         custom_attributes: dict = None,
+        release: bool = False,
         _intermediate_dict=False,
     ) -> xarray.Dataset:
         """Generates an XArray dataset from the data currently contained in the WorkflowManager
@@ -729,6 +763,12 @@ class WorkflowManager:
             If given, adds the key-value pairs as attributes to the XArray dataset
             - These will be added in addition to the workflow_parameters
             - By default None
+
+        release : bool, optional
+            If True, the time series are moved from `.sim_data` into the dataset instead of
+            being copied, and `.sim_data` is empty afterwards. This roughly halves the peak
+            memory of the export; workflows use it since they discard the WorkflowManager anyway
+            - By default False
 
         Returns
         -------
@@ -776,15 +816,27 @@ class WorkflowManager:
                 coords=dict(location=location_coords),
             )
 
+        if release:
+            # drop what is not exported before the export allocates anything
+            self.release_sim_data([], output_variables)
+
         # write sim_data
-        for key in self.sim_data.keys():
+        shape = (len(self.time_index), self.locs.count)
+        for key in list(self.sim_data.keys()):
             # check if key in requestet output_variables
             if output_variables is not None:
                 if key not in output_variables:
                     continue
 
-            tmp = np.full((len(self.time_index), self.locs.count), 0.0, dtype=float)
-            tmp[self._time_sel_, :] = self.sim_data[key]
+            if release and self._time_sel_ is None and np.shape(self.sim_data[key]) == shape:
+                # move, converting to float like the copy below does
+                tmp = np.asarray(self.sim_data[key], dtype=float)
+            else:
+                tmp = np.full(shape, 0.0, dtype=float)
+                tmp[self._time_sel_, :] = self.sim_data[key]
+            if release:
+                # one variable at a time, so that only one copy is alive at once
+                del self.sim_data[key]
 
             xds[key] = xarray.DataArray(
                 tmp,
