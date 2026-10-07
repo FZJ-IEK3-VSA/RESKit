@@ -357,6 +357,89 @@ collections:
       - dataset: goutorbe-global-heat-flow-2011
       - dataset: nasa-power-geothermal-climatology
 
+  # The inputs of examples/3_wind/3_8_lcoe_of_windturbines_north_sea.ipynb: the four
+  # zoom-4 ERA5 tiles that hold its placements in 2018, and the wind speed atlases.
+  # `gwa_100m` feeds gwa_100m_path: the GWA blend that extends GWA 4.0 past its
+  # near-shore edge with the ERA5 long-run average, so that far-offshore placements
+  # have a value. The `height_scaling_<h>m` handles feed height_scaling_data: GWA 4.0
+  # itself at each height.
+  #
+  # TODO(maintainer): no ERA5 dataset is catalogued yet, so this collection does not
+  # resolve today. Until it is, stage the processed ERA5 archive under the name the
+  # collections use, on a machine that holds it:
+  #   reskit-data staging add era5 <ERA5_global_processed_V2022.02>
+  # `paths.era5` is the root of its <zoom>/<x>/<y>/<year>/ tile tree.
+  example_north_sea_offshore_wind:
+    title: Inputs for the North Sea offshore wind LCOE example
+    include:
+      - dataset: era5
+        files:
+          - "4/7/4/2018/*"
+          - "4/7/5/2018/*"
+          - "4/8/4/2018/*"
+          - "4/8/5/2018/*"
+      - dataset: global-wind-atlas-era5-expanded
+      - dataset: global-wind-atlas-v4
+        files: ["wind_speed_cog_*m.tif"]
+    paths:
+      era5: era5
+      gwa_100m: global-wind-atlas-era5-expanded/wind_speed_cog_100m_expanded_by_ERA5_100m_wind_speed.processed_2008_2017_mean_global.tif
+      height_scaling_10m: global-wind-atlas-v4/wind_speed_cog_10m.tif
+      height_scaling_50m: global-wind-atlas-v4/wind_speed_cog_50m.tif
+      height_scaling_100m: global-wind-atlas-v4/wind_speed_cog_100m.tif
+      height_scaling_150m: global-wind-atlas-v4/wind_speed_cog_150m.tif
+      height_scaling_200m: global-wind-atlas-v4/wind_speed_cog_200m.tif
+
+  # The inputs of examples/7_software_publication_example/northern_germany_north_sea.py.
+  # Most of these datasets are not in the public catalogue yet, so select the
+  # institute's internal one (ETHOS_DATA_CATALOG or `reskit-data config set-catalog`).
+  # Two need a step on each machine:
+  #   - era5-reskit-tiles-northern-germany-2018 is not catalogued at all. Stage it:
+  #       reskit-data staging add era5-reskit-tiles-northern-germany-2018 <dir>
+  #     where <dir> holds the 4/8/{4,5}/2018/ tiles of ERA5_global_processed_V2022.02.
+  #   - gadm-3.6 is restricted: GADM forbids redistribution, so it is read in place
+  #     from the restricted cache (ICE-2 cluster) and never downloaded.
+  example_northern_germany_north_sea:
+    title: Inputs for the northern Germany and German North Sea example
+    include:
+      - dataset: gadm-3.6
+        files: ["gadm36_1.*"]
+      - dataset: reskit-example-northern-germany-north-sea/german-eez-marine-regions-v12
+      - dataset: trep-db
+        files:
+          - "WindOnshore/S2_Expansive/Municipalities/Capacities.csv"
+          - "WindOffshore/S1_Expansive/EEZ/Capacities.csv"
+          - "OpenfieldPV/S3_Combination/Municipalities/Capacities.csv"
+      - dataset: geothermal-egs-placements
+      - dataset: era5-reskit-tiles-northern-germany-2018
+      - dataset: global-wind-atlas-v4
+        files: ["wind_speed_cog_*m.tif"]
+      - dataset: global-solar-atlas-v2.9
+        files:
+          - "World_GHI_GISdata_LTAy_AvgDailyTotals_GlobalSolarAtlas-v2_GEOTIFF/GHI.tif"
+          - "World_DNI_GISdata_LTAy_AvgDailyTotals_GlobalSolarAtlas-v2_GEOTIFF/DNI.tif"
+      - dataset: gebco-2025-combined
+        files: ["gebco_2025/combined/gebco_2025_n90.0_s-90.0_w-180.0_e180.0.tif"]
+      - dataset: dist2coast
+        files: ["GMT_intermediate_coast_distance_01d.tif"]
+    paths:
+      gadm_level1: gadm-3.6/gadm36_1.shp
+      eez: reskit-example-northern-germany-north-sea/german-eez-marine-regions-v12/eez_v12_DEU.shp
+      onshore_wind_placements: trep-db/WindOnshore/S2_Expansive/Municipalities/Capacities.csv
+      offshore_wind_placements: trep-db/WindOffshore/S1_Expansive/EEZ/Capacities.csv
+      openfield_pv_placements: trep-db/OpenfieldPV/S3_Combination/Municipalities/Capacities.csv
+      geothermal_placements: geothermal-egs-placements/04_allPlacements.csv.gz
+      era5: era5-reskit-tiles-northern-germany-2018
+      gwa_10m: global-wind-atlas-v4/wind_speed_cog_10m.tif
+      gwa_50m: global-wind-atlas-v4/wind_speed_cog_50m.tif
+      gwa_100m: global-wind-atlas-v4/wind_speed_cog_100m.tif
+      gwa_150m: global-wind-atlas-v4/wind_speed_cog_150m.tif
+      gwa_200m: global-wind-atlas-v4/wind_speed_cog_200m.tif
+      gsa_ghi: global-solar-atlas-v2.9/World_GHI_GISdata_LTAy_AvgDailyTotals_GlobalSolarAtlas-v2_GEOTIFF/GHI.tif
+      gsa_dni: global-solar-atlas-v2.9/World_DNI_GISdata_LTAy_AvgDailyTotals_GlobalSolarAtlas-v2_GEOTIFF/DNI.tif
+      water_depth: gebco-2025-combined/gebco_2025/combined/gebco_2025_n90.0_s-90.0_w-180.0_e180.0.tif
+      coast_distance: dist2coast/GMT_intermediate_coast_distance_01d.tif
+
   all:
     title: Every dataset RESKit can use
     include:

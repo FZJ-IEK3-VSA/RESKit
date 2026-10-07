@@ -29,6 +29,7 @@ from matplotlib.colors import Normalize
 from shapely.ops import unary_union
 
 import reskit as rk
+from reskit import data
 from reskit.util.local_values import distance_to_coastline, water_depth_from_location
 
 ########################################################################
@@ -36,10 +37,17 @@ from reskit.util.local_values import distance_to_coastline, water_depth_from_loc
 ########################################################################
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-INPUT_DIR = os.path.join(os.path.dirname(HERE), "input_data")
 OUTPUT_DIR = os.path.join(HERE, "output")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
+# All inputs come from the ETHOS.Data catalogue. The RESKit collection
+# "example_northern_germany_north_sea" (reskit/data/collections.yaml) names each
+# input once, and data.paths() returns {handle: local path}. See README.md for the
+# one-time setup: the internal catalogue, the staged ERA5 tiles and access to the
+# restricted GADM data.
+INPUTS = data.paths("example_northern_germany_north_sea")
+
+# The staged ERA5 tiles hold this weather year only.
 WEATHER_YEAR = 2018
 
 # The maximum number of placements for each technology. The example takes a
@@ -61,52 +69,25 @@ NORTHERN_GERMAN_STATES = [
 NORTH_SEA_MAX_LON = 10.0
 
 # Geographic data.
-PATH_EEZ = (
-    "/projects4/2021-p-dunkel-phd/44_shared/forMuhammad/europe_EEZ/"
-    "reproject_european_eez_clipped_new.shp"
-)  # Marine Regions World EEZ, clipped to Europe
-PATH_GADM_LEVEL1 = (
-    "/fast/central/shared_data/2026_modelBuilder/regions/"
-    "gadm36_GID1(0)_EastWest_and_largeRegion_split_epsg4326_withUnion_v2_1.shp"
-)
-PATH_WATER_DEPTH = (
-    "/fast/central/shared_data/GEBCO_GeneralBathymetricChartOfTheOceans_GEBCO_2025/"
-    "gebco_2025/combined/gebco_2025_n90.0_s-90.0_w-180.0_e180.0.tif"
-)
-PATH_COAST_DISTANCE = (
-    "/fast/central/shared_data/NASA_DistanceToNearestCoast_v200906/"
-    "GMT_intermediate_coast_distance_01d.tif"
-)
+PATH_EEZ = str(INPUTS["eez"])  # Marine Regions World EEZ v12, the German EEZ
+PATH_GADM_LEVEL1 = str(INPUTS["gadm_level1"])  # GADM 3.6 level 1
+PATH_WATER_DEPTH = str(INPUTS["water_depth"])  # GEBCO 2025
+PATH_COAST_DISTANCE = str(INPUTS["coast_distance"])  # NASA distance to coast
 
-# Weather and long-run-average data.
-PATH_ERA5 = (
-    "/fast/central/shared_data/weather_data/processed_weather_data/"
-    "ERA5_global_processed_V2022.02/4/<X-TILE>/<Y-TILE>/"
-    f"{WEATHER_YEAR}/reanalysis-era5-single-levels.z4.x<X-TILE>.y<Y-TILE>"
-    f".y{WEATHER_YEAR}.*.nc"
+# Weather and long-run-average data. RESKit replaces <X-TILE> and <Y-TILE> with
+# the zoom-4 weather tile of each placement.
+PATH_ERA5 = os.path.join(
+    str(INPUTS["era5"]),
+    "4",
+    "<X-TILE>",
+    "<Y-TILE>",
+    str(WEATHER_YEAR),
+    f"reanalysis-era5-single-levels.z4.x<X-TILE>.y<Y-TILE>.y{WEATHER_YEAR}.*.nc",
 )
-PATH_GWA_100M = (
-    "/benchtop/internal/home/c-winkler/Research/01_Dissertation/03_RESkit/"
-    "01_preprocessing/01_expand_GWA_to_EEZ/"
-    "01_avg_annual_windspeed_100m_GWA_ERA5_interpolated.tif"
-)
-GWA_HEIGHT_SCALING_DATA = {
-    10: "/fast/central/shared_data/Global_Wind_Atlas/GWA_4.0/wind_speed_cog_10m.tif",
-    50: "/fast/central/shared_data/Global_Wind_Atlas/GWA_4.0/wind_speed_cog_50m.tif",
-    100: "/fast/central/shared_data/Global_Wind_Atlas/GWA_4.0/wind_speed_cog_100m.tif",
-    150: "/fast/central/shared_data/Global_Wind_Atlas/GWA_4.0/wind_speed_cog_150m.tif",
-    200: "/fast/central/shared_data/Global_Wind_Atlas/GWA_4.0/wind_speed_cog_200m.tif",
-}
-PATH_GSA_GHI = (
-    "/fast/central/shared_data/2023_gears/geography/irradiance/"
-    "global_solar_atlas_v2.9/World_GHI_GISdata_LTAy_AvgDailyTotals_"
-    "GlobalSolarAtlas-v2_GEOTIFF/GHI.tif"
-)
-PATH_GSA_DNI = (
-    "/fast/central/shared_data/2023_gears/geography/irradiance/"
-    "global_solar_atlas_v2.9/World_DNI_GISdata_LTAy_AvgDailyTotals_"
-    "GlobalSolarAtlas-v2_GEOTIFF/DNI.tif"
-)
+PATH_GWA_100M = str(INPUTS["gwa_100m"])  # Global Wind Atlas 4.0
+GWA_HEIGHT_SCALING_DATA = {height: str(INPUTS[f"gwa_{height}m"]) for height in (10, 50, 100, 150, 200)}
+PATH_GSA_GHI = str(INPUTS["gsa_ghi"])  # Global Solar Atlas 2.9
+PATH_GSA_DNI = str(INPUTS["gsa_dni"])
 
 # Economic assumptions. RESKit gives a cost model for wind only. The example
 # uses a specific CAPEX for PV. The geothermal workflow gives the LCOE directly.
@@ -249,23 +230,12 @@ def read_geothermal_placements(path, bounds, chunksize=500_000):
 
 placements = {}
 
-placements["onshore_wind"] = clip_placements(
-    pd.read_csv(os.path.join(INPUT_DIR, "trep-db/WindOnshore/S2_Expansive/Municipalities/Capacities.csv")),
-    area,
-)
-placements["offshore_wind"] = clip_placements(
-    pd.read_csv(os.path.join(INPUT_DIR, "trep-db/WindOffshore/S1_Expansive/EEZ/Capacities.csv")),
-    area,
-)
-placements["openfield_pv"] = clip_placements(
-    pd.read_csv(os.path.join(INPUT_DIR, "trep-db/OpenfieldPV/S3_Combination/Municipalities/Capacities.csv")),
-    area,
-)
+placements["onshore_wind"] = clip_placements(pd.read_csv(INPUTS["onshore_wind_placements"]), area)
+placements["offshore_wind"] = clip_placements(pd.read_csv(INPUTS["offshore_wind_placements"]), area)
+placements["openfield_pv"] = clip_placements(pd.read_csv(INPUTS["openfield_pv_placements"]), area)
+# The geothermal placements are a gzip-compressed CSV; pandas reads it directly.
 placements["geothermal"] = clip_placements(
-    read_geothermal_placements(
-        os.path.join(INPUT_DIR, "geothermal/04_allPlacements.csv"),
-        bounds=area.total_bounds,
-    ),
+    read_geothermal_placements(INPUTS["geothermal_placements"], bounds=area.total_bounds),
     area,
 )
 

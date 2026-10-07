@@ -6,9 +6,8 @@ This example shows the full RESKit chain for four technologies in one region.
 
 1. **Build the simulation area.** The area has two parts:
    * Northern Germany: Schleswig-Holstein, Hamburg, Bremen, Niedersachsen and
-     Mecklenburg-Vorpommern, read from the GADM level-1 shapefile.
-   * The German North Sea EEZ, read from the Marine Regions World EEZ
-     shapefile.
+     Mecklenburg-Vorpommern, read from GADM 3.6 level 1.
+   * The German North Sea EEZ, read from Marine Regions World EEZ v12.
 
    The German EEZ holds the North Sea and the Baltic Sea in one polygon. The
    example first removes all land from the EEZ. The Jutland peninsula splits
@@ -38,13 +37,61 @@ each placement. The example reads both from rasters with
 
 RESKit has no PV cost model. The example uses the constant `PV_SPECIFIC_CAPEX`.
 
+## Input data
+
+The example takes every input from the ETHOS.Data catalogue. The collection
+`example_northern_germany_north_sea` in `reskit/data/collections.yaml` names
+each input once, and `reskit.data.paths()` returns the local path of each.
+
+| Handle | Catalogue entry | Content |
+| --- | --- | --- |
+| `gadm_level1` | `gadm-3.6` (restricted) | GADM 3.6 level 1 |
+| `eez` | `reskit-example-northern-germany-north-sea/german-eez-marine-regions-v12` | the German EEZ from Marine Regions World EEZ v12 |
+| `onshore_wind_placements`, `offshore_wind_placements`, `openfield_pv_placements` | `trep-db` | TREP-DB 1.1.0 placements |
+| `geothermal_placements` | `geothermal-egs-placements` | EGS placements, Franzmann et al. (2025) |
+| `era5` | `era5-reskit-tiles-northern-germany-2018` (staged) | ERA5 2018, zoom-4 tiles x8/y4 and x8/y5 |
+| `gwa_10m` ... `gwa_200m` | `global-wind-atlas-v4` | Global Wind Atlas 4.0 mean wind speed |
+| `gsa_ghi`, `gsa_dni` | `global-solar-atlas-v2.9` | Global Solar Atlas 2.9 GHI and DNI |
+| `water_depth` | `gebco-2025-combined` | GEBCO 2025 bathymetry |
+| `coast_distance` | `dist2coast` | NASA distance to the nearest coast |
+
+### One-time setup
+
+1. Select the institute's internal catalogue. The public catalogue does not
+   hold these datasets yet:
+
+   ```bash
+   reskit-data config set-catalog /fast/central/shared_data/ethos-data-catalog-internal/datacatalog.json
+   ```
+
+2. Stage the ERA5 tiles. They are not catalogued yet, so each machine registers
+   them as development data:
+
+   ```bash
+   reskit-data staging add era5-reskit-tiles-northern-germany-2018 \
+       /fast/central/shared_data/RESKit_example_northern_germany_north_sea/era5-reskit-tiles-northern-germany-2018
+   ```
+
+   The directory holds the tiles 4/8/4/2018 and 4/8/5/2018 of the processed
+   ERA5 archive `ERA5_global_processed_V2022.02`. `reskit-data staging list`
+   shows the entry.
+
+3. GADM is restricted: its licence forbids redistribution, so `gadm-3.6` is
+   never downloaded. It is read in place from the restricted cache on the ICE-2
+   cluster. Outside the cluster, download `gadm36_levels_shp.zip` from
+   <https://gadm.org/download_world36.html> under GADM's terms, unpack it, and
+   register the copy in a restricted cache of your own:
+
+   ```bash
+   reskit-data config add-restricted-cache /path/to/my-restricted-cache
+   ethos-data link gadm-3.6 /path/to/gadm36_levels_shp
+   ```
+
 ## Run the example
 
 ```bash
-cd <this directory>/..
-PROJ_DATA=/fast/home/p-dunkel/playground/RESKit_HA/.pixi/envs/default/share/proj \
-  /fast/home/p-dunkel/playground/RESKit_HA/.pixi/envs/default/bin/python \
-  example/northern_germany_north_sea.py
+cd <this directory>
+python northern_germany_north_sea.py
 ```
 
 You can also run the cells one by one in an editor. Each `# %%` marker starts a
@@ -54,7 +101,7 @@ new cell.
 
 Change these constants at the top of `northern_germany_north_sea.py`:
 
-* `WEATHER_YEAR` - the ERA5 weather year.
+* `WEATHER_YEAR` - the ERA5 weather year. The staged ERA5 tiles hold 2018 only.
 * `MAX_PLACEMENTS` - the maximum number of placements for each technology.
   Set it to `None` to simulate all placements in the area. A value of 300 keeps
   the runtime at a few minutes.

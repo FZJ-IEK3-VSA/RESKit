@@ -68,9 +68,13 @@ def test_the_skip_list_agrees_with_the_documentation_build():
     """The skipped notebooks must be the notebooks which the docs build also excludes.
 
     The docs build uses nbclient, which does not honor the NBVAL_SKIP marker, therefore
-    it excludes 3_8 as well. These tests remove the marked cells, therefore 3_8 runs.
+    it excludes the two 3_8 notebooks as well. These tests remove the marked cells,
+    therefore the rest of both runs.
     """
-    assert NOTEBOOKS_WITHOUT_LOCAL_DATA == _docs_excluded_notebooks() - {"3_8_use_workflows_with_zarr"}
+    assert NOTEBOOKS_WITHOUT_LOCAL_DATA == _docs_excluded_notebooks() - {
+        "3_8_use_workflows_with_zarr",
+        "3_8_lcoe_of_windturbines_north_sea",
+    }
 
 
 def test_the_example_notebooks_are_collected():

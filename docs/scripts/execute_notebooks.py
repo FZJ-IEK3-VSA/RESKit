@@ -62,6 +62,7 @@ from nbclient.exceptions import CellExecutionError
 DEFAULT_EXCLUDED = [
     "1_3_1_process_power_curves_from_thewindpower_net.ipynb",
     "1_4_1_how_to_create_LRA_datasets.ipynb",
+    "3_8_lcoe_of_windturbines_north_sea.ipynb",
     "3_8_use_workflows_with_zarr.ipynb",
 ]
 

@@ -309,9 +309,11 @@ entry is a snapshot; source edits need restaging. The root is shared across ETHO
 packages, and restricted datasets are never shadowed. Registration works offline;
 collection resolution still needs a readable catalogue index.
 
-Staging is also how the long-run-average example reads ERA5 until ERA5 is
-catalogued: it reads the processed ERA5 archive as the dataset `era5`. On a
-machine that holds the archive:
+Staging is also how the examples that need ERA5 run until ERA5 is catalogued: the
+long-run-average example and the `example_north_sea_offshore_wind` collection read
+the processed ERA5 archive as the dataset `era5`, and
+`example_northern_germany_north_sea` reads two of its tiles as
+`era5-reskit-tiles-northern-germany-2018`. On a machine that holds the archive:
 
 ```bash
 reskit-data staging add era5 /path/to/ERA5_global_processed_V2022.02
