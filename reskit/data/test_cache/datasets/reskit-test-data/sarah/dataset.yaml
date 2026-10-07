@@ -17,11 +17,8 @@ ethos:derivation: 'Ordered from the CM SAF web interface -- the CF history carri
 contributors:
 - title: Severin Ryberg
   roles:
-  - author
+  - modifier
   organization: Forschungszentrum Julich, ICE-2
-- title: ICE-2 RESKit maintainers
-  roles:
-  - maintainer
 sources:
 - title: Surface Solar Radiation Data Set - Heliosat (SARAH), Edition 2 (EUMETSAT
     CM SAF)

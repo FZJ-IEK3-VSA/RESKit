@@ -21,15 +21,15 @@ ethos:derivation: 'Downloaded from the Copernicus Climate Data Store with grib_t
 contributors:
 - title: Severin Ryberg
   roles:
-  - author
+  - modifier
   organization: Forschungszentrum Julich, ICE-2
 - title: Shuying Chen
   roles:
-  - author
+  - modifier
   organization: Forschungszentrum Julich, ICE-2
-- title: ICE-2 RESKit maintainers
+- title: David Franzmann
   roles:
-  - maintainer
+  - modifier
 sources:
 - title: ERA5 hourly data on single levels from 1940 to present (Copernicus CDS)
   path: https://doi.org/10.24381/cds.adbb2d47

@@ -19,11 +19,8 @@ ethos:derivation: 'Collections M2T1NXRAD and M2T1NXSLV v5.12.4, pulled through t
 contributors:
 - title: Severin Ryberg
   roles:
-  - author
+  - modifier
   organization: Forschungszentrum Julich, ICE-2
-- title: ICE-2 RESKit maintainers
-  roles:
-  - maintainer
 sources:
 - title: MERRA-2 tavg1_2d_rad_Nx and tavg1_2d_slv_Nx, v5.12.4 (NASA GMAO / GES DISC)
   path: https://doi.org/10.5067/Q9QMY5PBNV1T

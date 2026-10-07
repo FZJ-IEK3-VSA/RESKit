@@ -15,9 +15,6 @@ contributors:
   roles:
   - author
   organization: Forschungszentrum Julich, ICE-2
-- title: ICE-2 RESKit maintainers
-  roles:
-  - maintainer
 sources:
 - title: RESKit - Renewable Energy Simulation toolkit for Python
   path: https://github.com/FZJ-IEK3-VSA/RESKit

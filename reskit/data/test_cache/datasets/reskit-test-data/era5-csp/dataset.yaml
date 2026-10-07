@@ -14,13 +14,13 @@ ethos:derivation: '`cdo sellonlatbox,-24.5,2.0,19.94,42.98` over the ERA5 downlo
   in a subdirectory because RESKit''s NCSource globs a directory non-recursively,
   and a 2 x 2 file beside the 5 x 7 ones would be swept into the same scan.'
 contributors:
-- title: K. Okosun
+- title: Kenneth Okosun
   roles:
-  - author
+  - modifier
   organization: Forschungszentrum Julich, ICE-2
-- title: ICE-2 RESKit maintainers
+- title: Hendrik Wenzel
   roles:
-  - maintainer
+  - modifier
 sources:
 - title: ERA5 hourly data on single levels from 1940 to present (Copernicus CDS)
   path: https://doi.org/10.24381/cds.adbb2d47

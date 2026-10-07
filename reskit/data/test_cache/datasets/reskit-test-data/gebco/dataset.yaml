@@ -14,11 +14,11 @@ ethos:derivation: 'Resampled from a GEBCO grid to 0.01 degree. The product famil
 contributors:
 - title: M. Stargardt
   roles:
-  - author
+  - modifier
   organization: Forschungszentrum Julich, ICE-2
-- title: ICE-2 RESKit maintainers
+- title: Drin Marmullaku
   roles:
-  - maintainer
+  - modifier
 sources:
 - title: The GEBCO Grid - global terrain model for ocean and land
   path: https://www.gebco.net/data-products/gridded-bathymetry-data

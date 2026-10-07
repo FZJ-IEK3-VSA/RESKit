@@ -15,11 +15,8 @@ ethos:derivation: 'SRTM 1 arc-second resampled to 1/96 degree (37.5 arcsec). Ide
 contributors:
 - title: Severin Ryberg
   roles:
-  - author
+  - modifier
   organization: Forschungszentrum Julich, ICE-2
-- title: ICE-2 RESKit maintainers
-  roles:
-  - maintainer
 sources:
 - title: NASA Shuttle Radar Topography Mission Global 1 arc second (SRTMGL1 v003)
   path: https://doi.org/10.5067/MEaSUREs/SRTM/SRTMGL1.003

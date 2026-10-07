@@ -16,15 +16,12 @@ ethos:derivation: 'Clipped from the Global Solar Atlas. gsa-ghi-like.tif and gsa
 contributors:
 - title: Severin Ryberg
   roles:
-  - author
+  - modifier
   organization: Forschungszentrum Julich, ICE-2
 - title: K. Okosun
   roles:
-  - author
+  - modifier
   organization: Forschungszentrum Julich, ICE-2
-- title: ICE-2 RESKit maintainers
-  roles:
-  - maintainer
 sources:
 - title: Global Solar Atlas (Solargis / World Bank ESMAP)
   path: https://globalsolaratlas.info

@@ -35,13 +35,9 @@ contributors:
   roles:
   - author
   organization: Universite catholique de Louvain
-- title: Centre for Environmental Data Analysis (CEDA)
-  roles:
-  - publisher
-  path: https://catalogue.ceda.ac.uk/uuid/b382ebe6679d44b8b0e68ea4ef4b701c
 - title: ICE-2 RESKit maintainers
   roles:
-  - maintainer
+  - modifier
 sources:
 - title: 'ESA Land Cover Climate Change Initiative (Land_Cover_cci): Global Land Cover
     Maps, Version 2.0.7 (CEDA Archive)'

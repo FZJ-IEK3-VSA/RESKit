@@ -16,15 +16,12 @@ ethos:derivation: 'Global Wind Atlas 3.0 resampled to the 0.01 degree test grid.
 contributors:
 - title: Severin Ryberg
   roles:
-  - author
+  - modifier
   organization: Forschungszentrum Julich, ICE-2
 - title: Christoph Winkler
   roles:
-  - author
+  - modifier
   organization: Forschungszentrum Julich, ICE-2
-- title: ICE-2 RESKit maintainers
-  roles:
-  - maintainer
 sources:
 - title: Global Wind Atlas 3.0 (DTU / World Bank Group)
   path: https://globalwindatlas.info

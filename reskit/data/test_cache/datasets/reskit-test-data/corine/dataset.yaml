@@ -10,11 +10,8 @@ ethos:derivation: Clipped from CORINE Land Cover 2018. 100 m in ETRS89/LAEA is C
 contributors:
 - title: Severin Ryberg
   roles:
-  - author
+  - modifier
   organization: Forschungszentrum Julich, ICE-2
-- title: ICE-2 RESKit maintainers
-  roles:
-  - maintainer
 sources:
 - title: CORINE Land Cover 2018 (Copernicus Land Monitoring Service / EEA)
   path: https://land.copernicus.eu/en/products/corine-land-cover

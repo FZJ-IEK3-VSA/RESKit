@@ -1,7 +1,7 @@
 title: RESKit administrative boundary test fixtures
 description: 'The two administrative polygons the test fixtures are built around:
   Staedteregion Aachen and the city of Bulawayo, Zimbabwe. Both replaced GADM originals
-  on 2026-09-09; see ethos:license_note.'
+  on 2026-09-09.'
 ethos:remote_prefix: reskit-test-data/boundaries
 ethos:access: public
 ethos:visibility: public
@@ -19,8 +19,7 @@ ethos:derivation: 'aachenShapefile.* is the Kreis with AGS 05334 from BKG VG250,
 contributors:
 - title: ICE-2 RESKit maintainers
   roles:
-  - author
-  - maintainer
+  - modifier
   organization: Forschungszentrum Julich, ICE-2
 sources:
 - title: BKG VG250 -- Verwaltungsgebiete 1:250 000

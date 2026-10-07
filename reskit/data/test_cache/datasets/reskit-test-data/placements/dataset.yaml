@@ -16,8 +16,7 @@ ethos:derivation: 'turbinePlacements.shp is 560 points; turbine_placements.csv a
   that a change of the tables above cannot move the expected values. Like the rest of
   this member they are under CC BY 4.0.
 
-  The coordinates are ICE-2''s; what they were sampled inside is the question this
-  member had to answer -- see ethos:license_note.
+  The coordinates are ICE-2''s.
 
   Line endings: every table is stored with LF since 2026-09-18. The two _cityBulawayoInZimbabwa
   tables had been CRLF and were converted without changing a value, so their checksums
@@ -34,7 +33,7 @@ contributors:
   organization: Forschungszentrum Julich, ICE-2
 - title: ICE-2 RESKit maintainers
   roles:
-  - maintainer
+  - modifier
 sources:
 - title: RESKit - Renewable Energy Simulation toolkit for Python
   path: https://github.com/FZJ-IEK3-VSA/RESKit

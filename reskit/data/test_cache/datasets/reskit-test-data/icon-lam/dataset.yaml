@@ -41,11 +41,9 @@ contributors:
 - title: Shuying Chen
   roles:
   - author
+  - modifier
   organization: Forschungszentrum Julich, IBG-3 and ICE-2 (formerly IEK-3)
   path: https://orcid.org/0000-0002-0986-0950
-- title: ICE-2 RESKit maintainers
-  roles:
-  - maintainer
 sources:
 - title: 'Chen, S., Poll, S., Hendricks Franssen, H.-J., Heinrichs, H., Vereecken,
     H., Goergen, K. (2024): Convection-permitting ICON-LAM Simulations for Renewable

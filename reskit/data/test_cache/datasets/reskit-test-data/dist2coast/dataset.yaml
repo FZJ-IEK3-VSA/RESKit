@@ -12,11 +12,11 @@ ethos:derivation: Cut from the 0.01 degree grid catalogued as `dist2coast`, whic
 contributors:
 - title: M. Stargardt
   roles:
-  - author
+  - modifier
   organization: Forschungszentrum Julich, ICE-2
-- title: ICE-2 RESKit maintainers
+- title: Drin Marmullaku
   roles:
-  - maintainer
+  - modifier
 sources:
 - title: Distance to Nearest Coastline, 0.01-Degree Grid -- PacIOOS metadata record
   path: https://www.pacioos.hawaii.edu/metadata/dist2coast_1deg.html
