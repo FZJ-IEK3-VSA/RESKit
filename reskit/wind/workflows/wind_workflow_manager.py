@@ -513,12 +513,20 @@ class WindWorkflowManager(WorkflowManager):
         assert "surface_pressure" in self.sim_data, "surface_pressure has not been read from a source"
         assert hasattr(self, "elevated_wind_speed_height")
 
-        self.sim_data["elevated_wind_speed"] = rk_wind_core.air_density_adjustment.apply_air_density_adjustment(
-            self.sim_data["elevated_wind_speed"],
-            pressure=self.sim_data["surface_pressure"],
-            temperature=self.sim_data["surface_air_temperature"],
-            height=self.elevated_wind_speed_height,
-        )
+        ws = self.sim_data["elevated_wind_speed"]
+        height = self.elevated_wind_speed_height
+        # in place if possible, and block by block: the adjustment creates several temporaries
+        # of the size of its input
+        in_place = ws.flags.writeable and ws.dtype == np.result_type(ws, float)
+        corrected = ws if in_place else np.empty(ws.shape, dtype=np.result_type(ws, float))
+        for b in location_blocks(*ws.shape):
+            corrected[:, b] = rk_wind_core.air_density_adjustment.apply_air_density_adjustment(
+                ws[:, b],
+                pressure=self.sim_data["surface_pressure"][:, b],
+                temperature=self.sim_data["surface_air_temperature"][:, b],
+                height=height[..., b] if np.ndim(height) else height,
+            )
+        self.sim_data["elevated_wind_speed"] = corrected
 
         return self
 
@@ -581,13 +589,15 @@ class WindWorkflowManager(WorkflowManager):
             wake_curves = np.array([wake_curve] * len(self.placements))
 
         # iterate over the possibly different wake reduction curves that are not NaN
+        ws = self.sim_data["elevated_wind_speed"]
         for wake_curve_i in set(wake_curves[np.array([not ((pd.isnull(x)) or (x == "None")) for x in wake_curves])]):
-            self.sim_data["elevated_wind_speed"][:, wake_curves == wake_curve_i] = (
-                windpowerlib.wake_losses.reduce_wind_speed(
-                    self.sim_data["elevated_wind_speed"][:, wake_curves == wake_curve_i],
-                    wind_efficiency_curve_name=wake_curve_i,
-                )
-            )
+            # block by block, selecting the columns copies them
+            for b in location_blocks(*ws.shape):
+                columns = b.start + np.flatnonzero(wake_curves[b] == wake_curve_i)
+                if columns.size:
+                    ws[:, columns] = windpowerlib.wake_losses.reduce_wind_speed(
+                        ws[:, columns], wind_efficiency_curve_name=wake_curve_i
+                    )
 
         return self
 

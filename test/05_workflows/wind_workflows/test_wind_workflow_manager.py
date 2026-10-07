@@ -238,6 +238,36 @@ def test_WindWorkflowManager_apply_air_density_correction_to_wind_speeds(
     assert np.isclose(man.sim_data["elevated_wind_speed"].std(), 2.822941278260297)
 
 
+def _corrected_wind_speeds() -> np.ndarray:
+    man = _make_WindWorkflowManager()
+    man.read(
+        variables=["elevated_wind_speed", "surface_pressure", "surface_air_temperature"],
+        source_type="ERA5",
+        source=rk.TEST_DATA["era5-like"],
+        set_time_index=True,
+        verbose=False,
+    )
+    man.apply_air_density_correction_to_wind_speeds()
+    man.placements["wake_curve"] = ["dena_mean", None, "knorr_mean", "dena_mean", None]
+    man.apply_wake_correction_of_wind_speeds(wake_curve=None)
+    return man.sim_data["elevated_wind_speed"]
+
+
+def test_WindWorkflowManager_wind_speed_corrections_are_independent_of_the_blocks(monkeypatch):
+    # the air density and wake corrections go through the locations in blocks to bound their memory
+    expected = _corrected_wind_speeds()
+
+    from reskit.wind.workflows import wind_workflow_manager
+
+    monkeypatch.setattr(
+        wind_workflow_manager,
+        "location_blocks",
+        lambda n_times, n_locations: [slice(i, i + 1) for i in range(n_locations)],
+    )
+
+    np.testing.assert_array_equal(_corrected_wind_speeds(), expected)
+
+
 def test_WindWorkflowManager_convolute_power_curves(pt_WindWorkflowManager_initialized):
     man = pt_WindWorkflowManager_initialized
     man.convolute_power_curves(scaling=0.06, base=0.1)
