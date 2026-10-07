@@ -1,7 +1,9 @@
 import functools
 import warnings
+from typing import NamedTuple
 
 import numpy as np
+from numpy.typing import ArrayLike
 from wisdem.nrelcsm.nrel_csm_mass_2015 import nrel_csm_2015
 import openmdao.api as om
 from openmdao.utils.units import unit_conversion
@@ -205,142 +207,240 @@ def onshore_tcc(cp, hh, rd, gdp_escalator=None, blade_material_escalator=None, b
             stacklevel=2,
         )
 
-    if cp.size == 0:
-        return np.empty(cp.shape, dtype=float)
+    design_shape = cp.shape
+    design_count = cp.size
+    if design_count == 0:
+        return np.empty(design_shape, dtype=float)
 
-    # all designs at once: the same parameters as _onshore_tcc_scalar() sets, one value per design
-    params = {
-        "machine_rating": cp.astype(float).ravel(),
-        "rotor_diameter": rd.astype(float).ravel(),
-        "tower_length": hh.astype(float).ravel(),
+    # all designs at once: the same inputs as _onshore_tcc_scalar() sets, one value per design
+    # (_run_nrel_csm_2015() converts the continuous inputs to float)
+    model_inputs = {
+        "machine_rating": cp.ravel(),
+        "rotor_diameter": rd.ravel(),
+        "tower_length": hh.ravel(),
         "turbine_class": 2,
         "main_bearing_number": 2,
         "blade_number": 3,
         "max_tip_speed": 80,
         "max_efficiency": 0.90,
     }
-    for k, v in kwargs.items():
-        value = np.asarray(v)
-        params[k] = v if value.shape == () else np.broadcast_to(value, cp.shape).ravel()
-    turbine_cost_kW = _run_nrel_csm_2015(params, size=cp.size)["turbine_cost_kW"]
-    # previous functions expect absolute cost
-    turbineCapitalCost = np.broadcast_to(turbine_cost_kW, cp.size).reshape(cp.shape) * cp
+    for input_name, input_value in kwargs.items():
+        if np.ndim(input_value) == 0:  # the same value for all designs
+            model_inputs[input_name] = input_value
+        else:
+            value_per_design = np.broadcast_to(input_value, design_shape)
+            model_inputs[input_name] = value_per_design.ravel()
 
-    return turbineCapitalCost if cp.shape else turbineCapitalCost.item()
+    model_values = _run_nrel_csm_2015(model_inputs, design_count=design_count)
+    specific_turbine_cost = model_values["turbine_cost_kW"]  # in USD_2015/kW
+    specific_turbine_cost = np.broadcast_to(specific_turbine_cost, design_count)
+    specific_turbine_cost = specific_turbine_cost.reshape(design_shape)
+    # previous functions expect absolute cost
+    turbineCapitalCost = specific_turbine_cost * cp
+
+    if design_shape == ():
+        return turbineCapitalCost.item()
+    return turbineCapitalCost
+
+
+class _ModelStep(NamedTuple):
+    """One component of WISDEM's NREL CSM 2015 model, as _run_nrel_csm_2015() computes it."""
+
+    component: om.ExplicitComponent
+    # (name in compute(), promoted name, unit conversion factor, unit conversion offset)
+    continuous_inputs: list[tuple[str, str, float, float]]
+    # (name in compute(), promoted name)
+    discrete_inputs: list[tuple[str, str]]
+    # (name in compute(), promoted name)
+    outputs: list[tuple[str, str]]
 
 
 @functools.lru_cache(maxsize=None)
-def _nrel_csm_2015_model():
+def _nrel_csm_2015_model() -> tuple[list[_ModelStep], dict[str, ArrayLike]]:
     """
     Sets up WISDEM's NREL CSM 2015 model once and returns what _run_nrel_csm_2015() needs to
-    evaluate its components without OpenMDAO: setting up an OpenMDAO problem takes ~15 ms, its
-    components compute in microseconds.
+    evaluate its components without OpenMDAO: setting up an OpenMDAO problem takes tens of
+    milliseconds, its components compute in microseconds.
 
     Returns
     -------
-    steps : list of tuple
-        Per component in execution order: (component, continuous inputs as (name, promoted
-        name, unit conversion factor, offset), discrete inputs as (name, promoted name),
-        outputs as (name, promoted name)).
+    steps : list of _ModelStep
+        One per component, in execution order.
     defaults : dict
         Default value of every input not computed by a component, by promoted name, in the
-        units of the inputs it feeds (as OpenMDAO takes values set with prob[name] = value).
+        units of the inputs it feeds (as OpenMDAO takes values set with prob[name] = value):
+        float arrays for continuous inputs, plain values (e.g. int or bool) for discrete inputs.
     """
-    prob = om.Problem(reports=False)
-    prob.model = nrel_csm_2015()
-    prob.setup()
-    prob.final_setup()
+    problem = om.Problem(reports=False)
+    problem.model = nrel_csm_2015()
+    problem.setup()
+    problem.final_setup()
 
-    def _io(comp, iotype):
-        # by the names the component's compute() uses
-        return list(comp.get_io_metadata(iotypes=iotype, metadata_keys=["units"], get_remote=False).items())
+    def _variables(component, io_type):
+        # (name in the component's compute(), metadata) of each of its inputs or outputs
+        metadata_by_name = component.get_io_metadata(iotypes=io_type, metadata_keys=["units"], get_remote=False)
+        return metadata_by_name.items()
 
-    components = [
-        comp
-        for comp in prob.model.system_iter(recurse=True, typ=om.ExplicitComponent)
-        if not isinstance(comp, om.IndepVarComp)  # the automatic one holding the inputs
-    ]
-    output_units = {m["prom_name"]: m["units"] for comp in components for _, m in _io(comp, "output")}
-    steps, defaults, input_units = [], {}, {}
-    for comp in components:
-        inputs, discrete_inputs = [], []
-        for name, m in _io(comp, "input"):
-            prom_name = m["prom_name"]
-            if m["discrete"]:
-                discrete_inputs.append((name, prom_name))
-                if prom_name not in output_units:
-                    defaults[prom_name] = prob.get_val(prom_name)
+    components = []
+    for component in problem.model.system_iter(recurse=True, typ=om.ExplicitComponent):
+        if isinstance(component, om.IndepVarComp):
+            continue  # the automatic one holding the inputs
+        components.append(component)
+
+    output_units = {}  # by promoted name
+    for component in components:
+        for _, metadata in _variables(component, "output"):
+            output_units[metadata["prom_name"]] = metadata["units"]
+
+    steps = []
+    defaults = {}
+    input_units = {}  # of the inputs not computed by a component, by promoted name
+    for component in components:
+        continuous_inputs = []
+        discrete_inputs = []
+        for name, metadata in _variables(component, "input"):
+            promoted_name = metadata["prom_name"]
+            is_computed = promoted_name in output_units
+            if metadata["discrete"]:
+                discrete_inputs.append((name, promoted_name))
+                if not is_computed:
+                    defaults[promoted_name] = problem.get_val(promoted_name)
                 continue
-            if prom_name in output_units:  # connected to an output, converted to this input's units
-                factor, offset = unit_conversion(output_units[prom_name], m["units"])
+            if is_computed:
+                # converted from the output's units to this input's units
+                unit_factor, unit_offset = unit_conversion(output_units[promoted_name], metadata["units"])
             else:
-                factor, offset = 1.0, 0.0
-                if input_units.setdefault(prom_name, m["units"]) != m["units"]:
-                    raise NotImplementedError(f"NREL CSM input '{prom_name}' has inputs in different units")
-                defaults[prom_name] = np.array(prob.get_val(prom_name), dtype=float)
-            inputs.append((name, prom_name, factor, offset))
-        outputs = [(name, m["prom_name"]) for name, m in _io(comp, "output")]
-        if any(m["discrete"] for _, m in _io(comp, "output")):
-            raise NotImplementedError(f"NREL CSM component '{comp.pathname}' has discrete outputs")
-        steps.append((comp, inputs, discrete_inputs, outputs))
+                unit_factor = 1.0
+                unit_offset = 0.0
+                first_units = input_units.setdefault(promoted_name, metadata["units"])
+                if first_units != metadata["units"]:
+                    raise NotImplementedError(f"NREL CSM input '{promoted_name}' has inputs in different units")
+                default_value = problem.get_val(promoted_name)
+                defaults[promoted_name] = np.array(default_value, dtype=float)
+            continuous_inputs.append((name, promoted_name, unit_factor, unit_offset))
+
+        outputs = []
+        for name, metadata in _variables(component, "output"):
+            if metadata["discrete"]:
+                raise NotImplementedError(f"NREL CSM component '{component.pathname}' has discrete outputs")
+            outputs.append((name, metadata["prom_name"]))
+
+        steps.append(_ModelStep(component, continuous_inputs, discrete_inputs, outputs))
     return steps, defaults
 
 
-def _run_nrel_csm_2015(params, size):
+def _run_nrel_csm_2015(model_inputs: dict[str, ArrayLike], design_count: int) -> dict[str, ArrayLike]:
     """
-    Evaluates WISDEM's NREL CSM 2015 model (nrel_csm_2015) for `size` designs at once by calling
-    its components' compute() on arrays, in the order and with the unit conversions OpenMDAO
-    uses. Components that branch on a value (e.g. `if tower_cost == 0`) are computed one design
-    at a time.
+    Evaluates WISDEM's NREL CSM 2015 model (nrel_csm_2015) for `design_count` designs at once by
+    calling its components' compute() on arrays, in the order and with the unit conversions
+    OpenMDAO uses. Components that branch on a value differing between the designs (e.g.
+    TowerCost2015 on `outputs["tower_parts_cost"] == 0.0`) are computed one design at a time.
 
     Parameters
     ----------
-    params : dict
+    model_inputs : dict
         Model inputs by promoted name, as for prob[name] = value; scalars or arrays of length
-        `size`.
-    size : int
+        `design_count`.
+    design_count : int
         Number of designs.
 
     Returns
     -------
     dict
-        All model inputs and outputs by promoted name, arrays of length 1 or `size`.
+        All model inputs and outputs by promoted name: float arrays of length 1 or
+        `design_count`, except for discrete inputs, which are as given or their default.
     """
     steps, defaults = _nrel_csm_2015_model()
-    unknown = set(params) - set(defaults) - {prom for step in steps for _, prom in step[3]}
-    if unknown:
-        raise KeyError(f"Not inputs of WISDEM's NREL CSM 2015 model: {sorted(unknown)}")
-    values = dict(defaults)
-    for k, v in params.items():
-        values[k] = np.atleast_1d(np.asarray(v, dtype=float)) if k in defaults and np.ndim(defaults[k]) else v
 
-    for comp, inputs, discrete_inputs, outputs in steps:
-        ins = {name: (values[prom] + offset) * factor for name, prom, factor, offset in inputs}
-        discrete_ins = {name: values[prom] for name, prom in discrete_inputs}
+    computed_names = set()
+    for step in steps:
+        for _, promoted_name in step.outputs:
+            computed_names.add(promoted_name)
+    unknown_names = [name for name in model_inputs if name not in defaults and name not in computed_names]
+    if unknown_names:
+        raise KeyError(f"Not inputs of WISDEM's NREL CSM 2015 model: {sorted(unknown_names)}")
+
+    model_values = dict(defaults)  # by promoted name
+    for name, value in model_inputs.items():
+        # continuous inputs have array defaults, discrete inputs scalar ones
+        is_continuous_input = name in defaults and np.ndim(defaults[name]) > 0
+        if is_continuous_input:
+            float_value = np.asarray(value, dtype=float)
+            model_values[name] = np.atleast_1d(float_value)
+        else:
+            model_values[name] = value
+
+    for component, continuous_inputs, discrete_inputs, outputs in steps:
+        component_inputs = {}
+        for name, promoted_name, unit_factor, unit_offset in continuous_inputs:
+            value = model_values[promoted_name]
+            component_inputs[name] = (value + unit_offset) * unit_factor
+
+        component_discrete_inputs = {}
+        for name, promoted_name in discrete_inputs:
+            component_discrete_inputs[name] = model_values[promoted_name]
+
         try:
-            outs = _compute(comp, ins, discrete_ins)
-        except ValueError:  # truth value of an array is ambiguous: one design at a time
-            per_design = [
-                _compute(
-                    comp,
-                    {k: np.broadcast_to(v, size)[i : i + 1] for k, v in ins.items()},
-                    {k: v[i].item() if np.ndim(v) else v for k, v in discrete_ins.items()},
-                )
-                for i in range(size)
-            ]
-            outs = {name: np.concatenate([o[name] for o in per_design]) for name, _ in outputs}
-        values.update((prom, outs[name]) for name, prom in outputs)
-    return values
+            component_outputs = _compute(component, component_inputs, component_discrete_inputs)
+        except ValueError:  # the truth value of an array is ambiguous
+            component_outputs = _compute_one_design_at_a_time(
+                component, component_inputs, component_discrete_inputs, design_count
+            )
+
+        for name, promoted_name in outputs:
+            model_values[promoted_name] = component_outputs[name]
+    return model_values
 
 
-def _compute(comp, inputs, discrete_inputs):
-    """Calls comp.compute() as OpenMDAO does, with plain dicts; returns the outputs."""
+def _compute_one_design_at_a_time(component, inputs, discrete_inputs, design_count):
+    """
+    Calls _compute() once per design, for components that branch on a value differing between
+    the designs; returns the outputs of all designs, concatenated.
+    """
+    input_per_design = {}
+    for name, value in inputs.items():
+        input_per_design[name] = np.broadcast_to(value, design_count)
+
+    outputs_per_design = []
+    for design in range(design_count):
+        design_inputs = {}
+        for name, value_per_design in input_per_design.items():
+            design_inputs[name] = value_per_design[design : design + 1]
+
+        design_discrete_inputs = {}
+        for name, value in discrete_inputs.items():
+            if np.ndim(value) == 0:  # the same value for all designs
+                design_discrete_inputs[name] = value
+            else:
+                design_discrete_inputs[name] = value[design].item()
+
+        design_outputs = _compute(component, design_inputs, design_discrete_inputs)
+        outputs_per_design.append(design_outputs)
+
+    outputs = {}
+    for name in outputs_per_design[0]:
+        values_per_design = [design_outputs[name] for design_outputs in outputs_per_design]
+        outputs[name] = np.concatenate(values_per_design)
+    return outputs
+
+
+def _compute(component, inputs, discrete_inputs):
+    """
+    Calls component.compute() as OpenMDAO does, with plain dicts; returns the outputs as float
+    arrays of at least one dimension.
+    """
     outputs = {}
     if discrete_inputs:
-        comp.compute(inputs, outputs, discrete_inputs, {})
+        discrete_outputs = {}
+        component.compute(inputs, outputs, discrete_inputs, discrete_outputs)
     else:
-        comp.compute(inputs, outputs)
-    return {k: np.atleast_1d(np.asarray(v, dtype=float)) for k, v in outputs.items()}
+        component.compute(inputs, outputs)
+
+    float_outputs = {}
+    for name, value in outputs.items():
+        float_value = np.asarray(value, dtype=float)
+        float_outputs[name] = np.atleast_1d(float_value)
+    return float_outputs
 
 
 def _onshore_tcc_scalar(cp, hh, rd, **kwargs):
