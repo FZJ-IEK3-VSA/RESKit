@@ -342,8 +342,16 @@ class WorkflowManager:
             else:
                 source = source_constructor(source, bounds=self.ext, **kwargs)
 
-            # Load the requested variables
-            source.sload(*variables)
+            # Load the requested variables one by one, freeing each variable's rectangle (and e.g.
+            # the u and v of a wind speed) once its values at the placements are extracted
+            frames = {}
+            for var in variables:
+                source.sload(var)
+                frames[var] = source.get(
+                    var, self.locs, interpolation=spatial_interpolation_mode, force_as_data_frame=True
+                )
+                source.data.clear()
+            return self._store_read_variables(source, frames, set_time_index, temporal_reindex_method)
 
         else:  # Assume source is already an initialized NCSource-like object
             missing_variables = [var for var in variables if var not in source.data]
@@ -380,14 +388,14 @@ class WorkflowManager:
                 bounds[1], bounds[3] = _expand_degenerate_bound(bounds[1])
             # a shallow copy: the source adds its derived variables to the dataset it is given
             source = source_constructor(dataset.copy(), bounds=gk.Extent(bounds, srs=4326), **kwargs)
-            source.sload(*variables)
             for var in variables:
+                source.sload(var)
                 frame = source.get(var, locs, interpolation=spatial_interpolation_mode, force_as_data_frame=True)
                 if var not in values:
                     values[var] = np.empty((len(frame), self.locs.count), dtype=frame.to_numpy().dtype)
                 values[var][:, members] = frame.to_numpy()
-            # the weather of this region's rectangle is no longer needed, free it before the next
-            source.data.clear()
+                # free this variable's rectangle (and e.g. the u and v of a wind speed) before the next
+                source.data.clear()
             first = first or source
         frames = {var: pd.DataFrame(values[var], index=first.time_index, copy=False) for var in variables}
         return first, frames
