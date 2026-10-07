@@ -98,42 +98,28 @@ pip install -e .
 
 ## Getting Started
 
-### Preparing Weather Data
+### Reading ERA5 from Zarr
 
-ETHOS.RESKit workflows are driven by gridded weather data. ETHOS.RESKit ships a single
-high-level helper, `rk.download_and_process`, that downloads exactly the variables a
-given workflow needs from the relevant data provider, preprocesses them (e.g. wind
-speed from u/v components, solar unit and time-shift corrections), and optionally
-tiles them into the `<zoom>/<x>/<y>/<year>/` directory structure expected by the
-weather sources.
+ETHOS.RESKit workflows are driven by gridded weather data. ERA5 is read directly from regular latitude/longitude Zarr stores with the existing `source_type="ERA5"` workflow API. The current implementation is intended for stores such as the [Earth Data Hub ERA5 single-level dataset](https://earthdatahub.destine.eu/collections/era5/datasets/reanalysis-era5-single-levels):
 
-ERA5 reanalysis from the Copernicus Climate Data Store (CDS) is currently the
-supported source; additional weather data sources are planned.
+Earth Data Hub requires authentication. Follow the credential instructions on the linked dataset page and save the generated credentials as `~/.netrc` (not in a directory on `PATH`). On shared systems, restrict access with `chmod 600 ~/.netrc`. The HTTPS backend will use those credentials automatically.
 
 ```python
-import reskit as rk
-
-result = rk.download_and_process(
-    workflows="wind_era5_PenaSanchezDunkelWinklerEtAl2025",
-    start_date="2000-01-01",
-    end_date="2000-12-31",
-    boundary_box={"north": 55, "south": 47, "west": 6, "east": 15},  # Germany
-    output_dir="/path/to/your/weather_data",
-    tiling=True,
+wf.read(
+    variables=["surface_pressure", "surface_air_temperature", "elevated_wind_speed"],
+    source_type="ERA5",
+    source="https://data.earthdatahub.destine.eu/era5/reanalysis-era5-single-levels-v0.zarr",
+    chunks={"valid_time": 48},
+    time_slice=slice("2020-01-01", "2020-01-31 23:00:00"),
+    set_time_index=True,
 )
-print(result["era5_path"])
 ```
 
-To prepare data for several workflows in a single call, pass a list of workflow names
-as `workflows`; the union of their variable requirements is downloaded and processed at
-once, e.g. `workflows=["openfield_pv_era5", "CSP_PTR_ERA5"]`. A CDS account with a
-configured `~/.cdsapirc` API key is required for ERA5
-(see https://cds.climate.copernicus.eu/how-to-api).
+Current limitations:
+- The implementation only supports regular `(time|valid_time, latitude, longitude)` Zarr layouts, not flattened `values`-based ERA5 archives.
+- If the Zarr store does not ship ETHOS.RESKit's processed `ssrd_t_adj` and `fdir_t_adj` fields,  `global_horizontal_irradiance` and `direct_horizontal_irradiance` fall back to processing the raw `ssrd` and `fdir` on the fly.
 
-Note that some workflows also rely on data whose automated download is not yet
-implemented — solar/CSP workflows on Global Solar Atlas rasters and wind workflows
-on Global Wind Atlas rasters. `download_and_process` prints a notice for these and
-you must supply the rasters manually.
+The example notebook [3_8_use_workflows_with_zarr.ipynb](examples/3_wind/3_8_use_workflows_with_zarr.ipynb) runs the ETHOS.RESKit.Wind workflow on the Earth Data Hub store.
 
 ### Input data from the ETHOS.Data catalogue
 
@@ -179,37 +165,6 @@ The [input-data guide](docs/how_to/get_input_data.md) covers catalogue selection
 workflow arguments, staging and verification, with links to the shared
 configuration and bundle procedures. Cache and catalogue administration use
 `ethos-data`.
-
-### Reading ERA5 from Zarr
-
-ETHOS.RESKit can read ERA5 directly from regular latitude/longitude Zarr stores while keeping the existing `source_type="ERA5"` workflow API. The current implementation is intended for stores such as the [Earth Data Hub ERA5 single-level dataset](https://earthdatahub.destine.eu/collections/era5/datasets/reanalysis-era5-single-levels):
-
-Earth Data Hub requires authentication. Follow the credential instructions on the linked dataset page and save the generated credentials as `~/.netrc` (not in a directory on `PATH`). On shared systems, restrict access with `chmod 600 ~/.netrc`. The HTTPS backend will use those credentials automatically.
-
-```python
-wf.read(
-    variables=["surface_pressure", "surface_air_temperature", "elevated_wind_speed"],
-    source_type="ERA5",
-    source="https://data.earthdatahub.destine.eu/era5/reanalysis-era5-single-levels-v0.zarr",
-    chunks={"valid_time": 48},
-    time_slice=slice("2020-01-01", "2020-01-31 23:00:00"),
-    set_time_index=True,
-)
-```
-
-Current limitations:
-- The implementation only supports regular `(time|valid_time, latitude, longitude)` Zarr layouts, not flattened `values`-based ERA5 archives.
-- If the Zarr store does not ship ETHOS.RESKit's processed `ssrd_t_adj` and `fdir_t_adj` fields,  `global_horizontal_irradiance` and `direct_horizontal_irradiance` fall back to processing the raw `ssrd` and `fdir` on the fly.
-
-### Example notebooks
-
-End-to-end examples live in [examples/1_load_input_data/](https://github.com/FZJ-IEK3-VSA/RESKit/tree/dev/examples/1_load_input_data):
-- [1_1_3_prepare_era5_for_wind_workflow.ipynb](examples/1_load_input_data/1_1_3_prepare_era5_for_wind_workflow.ipynb)
-- [1_1_4_prepare_era5_for_solar_workflow.ipynb](examples/1_load_input_data/1_1_4_prepare_era5_for_solar_workflow.ipynb)
-
-For full manual control over the raw ERA5/CDS download (variables, area, and
-timeframe), see the lower-level example notebook
-[1_1_1_how_to_download_era5_data.ipynb](examples/1_load_input_data/1_1_1_how_to_download_era5_data.ipynb).
 
 ## Citation
 
