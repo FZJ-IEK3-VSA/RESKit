@@ -10,11 +10,10 @@ when testing a prepared dataset before catalogue acceptance.
 
 ## Time resolved Weather data
 
-1. ERA5 Dataset https://doi.org/10.24381/cds.adbb2d47. ERA5 is an abbreviation for ECMWF Reanalysis v5, which stands for the European Centre for Medium-Range Weather Forecasts (ECMWF) Reanalysis version 5. RESKit supports two datatypes for ERA5 zar  and netcf4. Zar is reommended due to supperiror read speeds and simple cloud access. 
+1. ERA5 Dataset https://doi.org/10.24381/cds.adbb2d47. ERA5 is an abbreviation for ECMWF Reanalysis v5, which stands for the European Centre for Medium-Range Weather Forecasts (ECMWF) Reanalysis version 5. RESKit supports two datatypes for ERA5, zarr and netcf4. We recommend Zarr because it enables efficient chunk-based access to large ERA5 datasets, especially for remote and multi-user access, without requiring users to download or open entire files. 
 
-# Zar Data
-   1.  [Read ERA5 from a Zarr store](../examples/3_wind/3_8_use_workflows_with_zarr.ipynb), such as the [Earth Data Hub ERA5 single-level dataset](https://earthdatahub.destine.eu/collections/era5/datasets/reanalysis-era5-single-levels)
-
+# Zarr Data
+   1.  [Read ERA5 from a Zarr store](../examples/3_wind/3_8_use_workflows_with_zarr.ipynb), such as the [Earth Data Hub ERA5 single-level dataset](https://earthdatahub.destine.eu/collections/era5/datasets/reanalysis-era5-single-levels). 
 
 # Netcdf4 Data
    2.  [Download the ERA 5 Data](../examples/1_load_input_data/1_1_1_how_to_download_era5_data.ipynb)
