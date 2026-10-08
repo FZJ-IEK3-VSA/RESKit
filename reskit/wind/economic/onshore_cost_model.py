@@ -424,11 +424,15 @@ def _run_nrel_csm_2015(model_inputs: dict[str, ArrayLike], design_count: int) ->
         for name, promoted_name in discrete_inputs:
             component_discrete_inputs[name] = model_values[promoted_name]
 
-        # Computes all designs at once where possible. If a component implements an `if` on a value that is an
-        # array of several designs raises, and is computed one design at a time instead
+        # Computes all designs at once where possible. A component with an `if` on a value that is an array of
+        # several designs raises a ValueError, and is computed one design at a time instead.
         try:
             component_outputs = _compute(component, component_inputs, component_discrete_inputs)
-        except ValueError:  # the truth value of an array is ambiguous
+        except ValueError as error:
+            # re-raises any other ValueError, which computing one design at a time would not fix
+            is_array_in_if = "truth value of an array with more than one element is ambiguous" in str(error)
+            if not is_array_in_if:
+                raise
             component_outputs = _compute_one_design_at_a_time(
                 component, component_inputs, component_discrete_inputs, design_count
             )
