@@ -165,11 +165,13 @@ def test_WorkflowManager_reads_placements_far_apart_region_by_region(pt_placemen
     for placements on two continents would load everything between them.
     """
     from reskit import weather as rk_weather
+    from reskit import workflow_manager
 
     store = ERA5_ZARR
     together = _read_era5(pt_placements, store)
-    # 0.1 degree regions: the placements, 0.1 degree apart, fall into separate regions
-    monkeypatch.setattr(rk_weather.Era5ZarrSource, "spatial_chunk_degrees", staticmethod(lambda dataset: 0.1))
+    # regions of one 0.25 degree cell: the placements, 0.1 degree apart, fall into separate regions
+    monkeypatch.setattr(rk_weather.Era5ZarrSource, "spatial_chunk_cells", staticmethod(lambda dataset: (1, 1)))
+    monkeypatch.setattr(workflow_manager, "_MIN_REGION_SIZE_DEGREES", 0.0)
     regions = []
     read_by_region = WorkflowManager._read_by_region
     monkeypatch.setattr(
@@ -188,13 +190,88 @@ def test_WorkflowManager_reads_placements_far_apart_region_by_region(pt_placemen
         np.testing.assert_allclose(apart.sim_data[var], together.sim_data[var], rtol=1e-6, err_msg=var)
 
 
-def test_Era5ZarrSource_spatial_chunk_degrees():
+def test_Era5ZarrSource_spatial_chunk_cells():
     import xarray as xr
 
     from reskit import weather as rk_weather
 
     store = xr.open_dataset(ERA5_ZARR, engine="zarr")
     lat_chunk = store["u100"].encoding["chunks"][store["u100"].dims.index("latitude")]
+    lon_chunk = store["u100"].encoding["chunks"][store["u100"].dims.index("longitude")]
 
-    assert rk_weather.Era5ZarrSource.spatial_chunk_degrees(store) == pytest.approx(max(1.0, lat_chunk * 0.25))
-    assert rk_weather.Era5ZarrSource.spatial_chunk_degrees(store.load().drop_encoding()) is None
+    assert rk_weather.Era5ZarrSource.spatial_chunk_cells(store) == (lat_chunk, lon_chunk)
+    assert rk_weather.Era5ZarrSource.spatial_chunk_cells(store.load().drop_encoding()) == (None, None)
+
+
+def _chunked_grid(latitudes, longitudes, chunks):
+    """An in-memory store on the given grid, whose variable reports the given chunk sizes."""
+    import xarray as xr
+
+    values = np.zeros((latitudes.size, longitudes.size))
+    coords = {"latitude": latitudes, "longitude": longitudes}
+    store = xr.Dataset({"u100": (("latitude", "longitude"), values)}, coords=coords)
+    store["u100"].encoding["chunks"] = chunks
+    return store
+
+
+def _region_sets(locations, store):
+    """The regions of _zarr_regions() as sets of location positions, independent of their order."""
+    import geokit as gk
+
+    from reskit.workflow_manager import _zarr_regions
+
+    regions = _zarr_regions(gk.LocationSet(locations), store)
+    return {frozenset(region.tolist()) for region in regions}
+
+
+def test_Era5ZarrSource_spatial_chunk_cells_differ_per_axis():
+    from reskit import weather as rk_weather
+
+    latitudes = np.arange(60.0, 40.0, -0.25)
+    longitudes = np.arange(0.0, 40.0, 0.25)
+    store = _chunked_grid(latitudes, longitudes, chunks=(8, 40))
+
+    assert rk_weather.Era5ZarrSource.spatial_chunk_cells(store) == (8, 40)
+
+
+def test_zarr_regions_are_counted_from_the_first_grid_point_of_the_store():
+    """A regional store starting at 72N, 25W with 60 cell (15 degree) chunks: its chunk edges are
+    at 57N and 10W, not at the 15 degree multiples counted from 90S and 180W.
+    """
+    latitudes = 72.0 - 0.25 * np.arange(100)
+    longitudes = -25.0 + 0.25 * np.arange(200)
+    store = _chunked_grid(latitudes, longitudes, chunks=(60, 60))
+
+    # the first two are in the first chunk (cells 0..59 along both axes), the third is in the
+    # chunk south of it (nearest cell 60 along latitude)
+    locations = [(-24.0, 71.9), (-11.0, 57.5), (-11.0, 56.9)]
+
+    assert _region_sets(locations, store) == {frozenset({0, 1}), frozenset({2})}
+
+
+def test_zarr_regions_wrap_longitudes_around_the_store():
+    """A store running from 0 to 360 degrees with 100 cell (25 degree) chunks keeps 10W and 1W in
+    its last chunk (350E to 360E), and 11W in the chunk before it.
+    """
+    latitudes = np.array([50.0, 49.75])
+    longitudes = 0.25 * np.arange(1440)
+    store = _chunked_grid(latitudes, longitudes, chunks=(2, 100))
+
+    locations = [(-10.0, 50.0), (-1.0, 50.0), (-11.0, 50.0)]
+
+    assert _region_sets(locations, store) == {frozenset({0, 1}), frozenset({2})}
+
+
+def test_zarr_region_index_spans_whole_chunks():
+    """Chunks of 3 cells (0.75 degrees) are below the 1 degree minimum: a region spans two chunks."""
+    from reskit.workflow_manager import _zarr_region_index
+
+    latitudes = np.arange(10.0, 0.0, -0.25)
+    longitudes = np.arange(0.0, 10.0, 0.25)
+    store = _chunked_grid(latitudes, longitudes, chunks=(3, 3))
+
+    # cells 0, 5 and 6 along longitude
+    location_longitudes = np.array([0.0, 1.25, 1.5])
+    region_index = _zarr_region_index(location_longitudes, store, "longitude", 3, wrap_around_globe=True)
+
+    assert region_index.tolist() == [0, 0, 1]
