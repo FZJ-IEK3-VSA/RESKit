@@ -62,3 +62,4 @@ jobs:
       dependency_position_env_file: ${{ matrix.dependency_position_env_file }}
       multiprocessing_pytest_string: "-n auto"
       multiprocessing_example_string: "-n 2"
+      pip_no_build_isolation: true

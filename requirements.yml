@@ -31,6 +31,9 @@ dependencies:
   - wombat
   - ethos_data >=0.3.0
   # dev
+  - setuptools >=64.0.0
+  - setuptools-scm >=8.0
+  - wheel
   - nbval <=0.11.0
   - ruff =0.14.1
   - pytest <=9.1.1

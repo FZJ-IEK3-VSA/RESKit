@@ -31,6 +31,7 @@ jobs:
       dependency_position_env_file: ${{ needs.extract-python-versions.outputs.dependency_position }}
       multiprocessing_pytest_string: "-n auto"
       multiprocessing_example_string: "-n 2"
+      pip_no_build_isolation: true
       cache_environment: true
 
   extract-min-versions:
@@ -60,3 +61,4 @@ jobs:
       dependency_position_env_file: ${{ matrix.dependencies.yaml_position }}
       multiprocessing_pytest_string: "-n auto"
       multiprocessing_example_string: "-n 2"
+      pip_no_build_isolation: true

@@ -30,3 +30,4 @@ jobs:
             library_name: ${{ matrix.dependencies.library_name }}
             multiprocessing_pytest_string: "-n auto"
             multiprocessing_example_string: "-n 2"
+            pip_no_build_isolation: true
