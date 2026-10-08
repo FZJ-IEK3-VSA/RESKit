@@ -286,7 +286,6 @@ def test_WorkflowManager_read_time_slice_rejects_initialized_source(
         )
 
 
-
 @pytest.fixture
 def pt_WorkflowManager_loaded(
     pt_WorkflowManager_initialized: WorkflowManager,
