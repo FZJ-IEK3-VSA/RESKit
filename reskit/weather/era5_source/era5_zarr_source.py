@@ -304,11 +304,10 @@ class Era5ZarrSource(Era5Source):
     def _derive_solar_variables(cls, ds: xr.Dataset) -> tuple[xr.Dataset, dict]:
         """Add the processed solar variables to stores that only provide the raw accumulations.
 
-        adj[i] = raw[i] / 3600 (J/m² per hour -> W/m²), without any time shift. ERA5 labels
+        adj[i] = raw[i] / 3600 (J/m² per hour -> W/m²). ERA5 labels
         an accumulation with the end of the hour it covers, and RESKit's time index puts it
         at the middle of that hour (TIME_OFFSET), so the mean flux of the hour already sits
-        at the right time. This matches the '*_t_adj' variables of the ERA5 netCDF4 archive
-        Era5Source reads, which hold raw / 3600 at the timestamp of each accumulation.
+        at the right time.
 
         Parameters
         ----------
