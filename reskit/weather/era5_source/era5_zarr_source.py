@@ -306,6 +306,7 @@ class Era5ZarrSource(Era5Source):
         an accumulation with the end of the hour it covers, and RESKit's time index puts it
         at the middle of that hour (TIME_OFFSET), so the mean flux of the hour already sits
         at the right time.
+        
         Parameters
         ----------
         ds : xarray.Dataset
