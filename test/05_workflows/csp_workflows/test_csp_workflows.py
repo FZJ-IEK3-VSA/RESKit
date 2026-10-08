@@ -3,7 +3,9 @@ import pandas as pd
 import pytest
 
 import reskit as rk
-from reskit import TEST_DATA
+from reskit import data
+
+FIXTURES = data.paths("test_suite")
 
 
 @pytest.fixture
@@ -32,9 +34,9 @@ def pt_pv_placements() -> pd.DataFrame:
 def test_CSP_PTR_ERA5(pt_pv_placements):
     out = rk.csp.csp_ptr_era5(
         placements=pt_pv_placements,
-        era5_path=rk.TEST_DATA["csp-era5-like"],
-        global_solar_atlas_dni_path=rk.TEST_DATA["csp-gsa-dni-like.tif"],
-        global_solar_atlas_tamb_path=rk.TEST_DATA["csp-gsa-temp-like.tif"],
+        era5_path=FIXTURES["era5_csp"],
+        global_solar_atlas_dni_path=FIXTURES["csp_gsa_dni"],
+        global_solar_atlas_tamb_path=FIXTURES["csp_gsa_temp"],
         verbose=True,
         cost_year=2030,
         JITaccelerate=False,

@@ -186,6 +186,7 @@ class WorkflowManager:
         spatial_interpolation_mode: str = "bilinear",
         temporal_reindex_method: str = "nearest",
         time_index_from=None,
+        time_slice: slice | None = None,
         **kwargs,
     ):
         """Reads the specified variables from the NetCDF4-style weather dataset, and then extracts
@@ -231,6 +232,13 @@ class WorkflowManager:
             - Can be, for example, "nearest", "ffill", "bfill", "interpolate"
             - By default "nearest"
 
+        time_slice : slice, optional
+            Restricts the simulation to the time steps between `time_slice.start` and
+            `time_slice.stop`, both inclusive, e.g. slice("2015-03-01", "2015-03-31 23:30")
+            - Only these time steps are read from the weather source
+            - Not available for an already initialized source; pass it to its constructor
+            - By default None, i.e. all time steps of the source
+
         Returns
         -------
         WorkflowManager
@@ -267,24 +275,21 @@ class WorkflowManager:
                 raise RuntimeError("Unknown source_type")
 
             if source_type == "ERA5":
-                time_slice = kwargs.pop("time_slice", None)
-                era5_kwargs = dict(kwargs)
-                if time_slice is not None:
-                    if not is_zarr:
-                        raise RuntimeError(
-                            "'time_slice' is only supported for Zarr-backed ERA5 sources; support for "
-                            "netCDF4-backed ERA5 sources is planned. Until then, restrict the time span "
-                            "of netCDF4 ERA5 data by selecting the corresponding files instead."
-                        )
-                    era5_kwargs["time_slice"] = time_slice
-                source = source_constructor(source, bounds=self.ext, time_index_from=time_index_from, **era5_kwargs)
+                source = source_constructor(
+                    source, bounds=self.ext, time_index_from=time_index_from, time_slice=time_slice, **kwargs
+                )
             else:
-                source = source_constructor(source, bounds=self.ext, **kwargs)
+                source = source_constructor(source, bounds=self.ext, time_slice=time_slice, **kwargs)
 
             # Load the requested variables
             source.sload(*variables)
 
         else:  # Assume source is already an initialized NCSource-like object
+            if time_slice is not None:
+                raise ValueError(
+                    "'time_slice' cannot be applied to an already initialized source. "
+                    "Pass it to the constructor of the source instead."
+                )
             missing_variables = [var for var in variables if var not in source.data]
             if missing_variables:
                 if hasattr(source, "sload"):
@@ -1106,9 +1111,14 @@ def execute_workflow_iteratively(
         if weather_path_varname in cont:
             weather_path = cont.pop(weather_path_varname)
             break
-    assert isinstance(weather_path, str) or (
-        isinstance(weather_path, (list, tuple, np.ndarray, pd.Series)) and all(isinstance(x, str) for x in weather_path)
+    assert is_path_like(weather_path) or (
+        isinstance(weather_path, (list, tuple, np.ndarray, pd.Series)) and all(is_path_like(x) for x in weather_path)
     ), "weather_path must be a str or an ordered iterable of str."
+    # Strings from here on: the tile spacers in them are completed by string replacement.
+    if is_path_like(weather_path):
+        weather_path = as_path_string(weather_path)
+    else:
+        weather_path = [as_path_string(x) for x in weather_path]
     # broadcast it to one value per location if not provided as such
     try:
         weather_paths = np.broadcast_to(

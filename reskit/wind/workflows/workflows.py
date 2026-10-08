@@ -25,7 +25,7 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
     cf_correction=True,
     output_variables=None,
     max_batch_size=15000,
-    time_slice=None,
+    time_slice: slice | None = None,
     **simulate_kwargs,
 ):
     """
@@ -98,10 +98,10 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
         adapted to individual computation system (roughly 7GB RAM per
         10k locations), by default 25 000.
     time_slice : slice, optional
-        Limit the time span loaded from the ERA5 source. Only supported for
-        Zarr-backed ERA5 sources, where it is strongly recommended to avoid
-        loading whole multi-year cloud stores. Raises for netCDF4-backed ERA5
-        sources; support for those is planned.
+        Simulate only the time steps between time_slice.start and time_slice.stop, both
+        inclusive, e.g. slice("2015-03-01", "2015-03-31 23:30"). Only these time steps
+        are read from the weather source, which is strongly recommended for multi-year
+        Zarr cloud stores. By default None, i.e. all time steps.
     simulate_kwargs : optional
         Will be passed on to simulate().
 
@@ -202,6 +202,7 @@ def onshore_wind_merra_ryberg2019_europe(
     output_netcdf_path=None,
     output_variables=None,
     max_batch_size=25000,
+    time_slice: slice | None = None,
 ):
     # TODO: Add range limitation over Europe by checking placements
     """
@@ -225,6 +226,11 @@ def onshore_wind_merra_ryberg2019_europe(
         The maximum number of locations to be simulated simultaneously, else multiple batches will be simulated
         iteratively. Helps limiting RAM requirements but may affect runtime. By default 25 000. Roughly 7GB RAM per 10k locations.
 
+    time_slice : slice, optional
+        Simulate only the time steps between time_slice.start and time_slice.stop, both
+        inclusive, e.g. slice("2015-03-01", "2015-03-31 23:30"). Only these time steps
+        are read from the weather source. By default None, i.e. all time steps.
+
     Returns
     -------
     xarray.Dataset
@@ -247,6 +253,7 @@ def onshore_wind_merra_ryberg2019_europe(
         ],
         source_type="MERRA",
         source=merra_path,
+        time_slice=time_slice,
         set_time_index=True,
         verbose=False,
     )
@@ -278,6 +285,7 @@ def offshore_wind_merra_caglayan2019(
     output_netcdf_path=None,
     output_variables=None,
     max_batch_size=25000,
+    time_slice: slice | None = None,
 ):
     """
     Simulates offshore wind generation using NASA's MERRA2 database [1].
@@ -295,6 +303,11 @@ def offshore_wind_merra_caglayan2019(
     max_batch_size: int
         The maximum number of locations to be simulated simultaneously, else multiple batches will be simulated
         iteratively. Helps limiting RAM requirements but may affect runtime. By default 25 000. Roughly 7GB RAM per 10k locations.
+
+    time_slice : slice, optional
+        Simulate only the time steps between time_slice.start and time_slice.stop, both
+        inclusive, e.g. slice("2015-03-01", "2015-03-31 23:30"). Only these time steps
+        are read from the weather source. By default None, i.e. all time steps.
 
     Returns
     -------
@@ -314,6 +327,7 @@ def offshore_wind_merra_caglayan2019(
         ],
         source_type="MERRA",
         source=merra_path,
+        time_slice=time_slice,
         set_time_index=True,
         verbose=False,
     )
@@ -343,6 +357,7 @@ def onshore_wind_iconlam_2023(
     output_netcdf_path=None,
     output_variables=None,
     max_batch_size=25000,
+    time_slice: slice | None = None,
 ):
     """
     Simulates onshore wind generation using high-resolution dynamically downscaled dataset ICON-LAM over southern Africa.
@@ -367,6 +382,11 @@ def onshore_wind_iconlam_2023(
         The maximum number of locations to be simulated simultaneously, else multiple batches will be simulated
         iteratively. Helps limiting RAM requirements but may affect runtime. By default 20 000.
 
+
+    time_slice : slice, optional
+        Simulate only the time steps between time_slice.start and time_slice.stop, both
+        inclusive, e.g. slice("2015-03-01", "2015-03-31 23:30"). Only these time steps
+        are read from the weather source. By default None, i.e. all time steps.
 
     Returns
     -------
@@ -393,6 +413,7 @@ def onshore_wind_iconlam_2023(
         ],
         source_type="ICON-LAM",
         source=icon_lam_path,
+        time_slice=time_slice,
         set_time_index=True,
         spatial_interpolation_mode="near",
         verbose=False,
@@ -446,6 +467,7 @@ def wind_config(
     max_batch_size=25000,
     output_netcdf_path=None,
     elevated_wind_speed=None,
+    time_slice: slice | None = None,
 ):
     """
     A generic configuration workflow for wind simulations that allows
@@ -564,6 +586,11 @@ def wind_config(
     output_netcdf_path : str, optional
         Path to a directory to put the output files, by default None
 
+    time_slice : slice, optional
+        Simulate only the time steps between time_slice.start and time_slice.stop, both
+        inclusive, e.g. slice("2015-03-01", "2015-03-31 23:30"). Only these time steps
+        are read from the weather source. By default None, i.e. all time steps.
+
     Returns
     -------
     xarray.Dataset
@@ -604,6 +631,7 @@ def wind_config(
         ],
         source_type=weather_source_type,
         source=weather_path,
+        time_slice=time_slice,
         set_time_index=True,
         verbose=False,
     )
