@@ -1,6 +1,7 @@
 import functools
 import warnings
-from typing import NamedTuple
+from collections.abc import ItemsView
+from typing import Any, Literal, NamedTuple
 
 import numpy as np
 from numpy.typing import ArrayLike
@@ -12,16 +13,16 @@ from reskit.parameters.parameters import OnshoreParameters
 
 
 def onshore_turbine_capex(
-    capacity,
-    hub_height,
-    rotor_diam,
-    base_capex=None,
-    base_capacity=None,
-    base_hub_height=None,
-    base_rotor_diam=None,
-    tcc_share=None,
-    bos_share=None,
-):
+    capacity: ArrayLike,
+    hub_height: ArrayLike,
+    rotor_diam: ArrayLike,
+    base_capex: float | None = None,
+    base_capacity: float | None = None,
+    base_hub_height: float | None = None,
+    base_rotor_diam: float | None = None,
+    tcc_share: float | None = None,
+    bos_share: float | None = None,
+) -> float | np.ndarray:
     """
     A cost and scaling model (CSM) to calculate the total cost of a 3-bladed, direct drive onshore wind turbine according to Fingersh et al. [1] and Maples et al. [2].
     A CSM normalization is done such that a chosen baseline turbine, with a capacity of 4200 kW, hub height of 120 m, and rotor diameter of 136 m, corresponds to a expected typical specific cost of 1100 Eur/kW in a 2050 European context according to Ryberg et al. [4]
@@ -30,25 +31,25 @@ def onshore_turbine_capex(
 
     Parameters
     ----------
-    capacity : numeric or array-like
+    capacity : ArrayLike
         Turbine's nominal capacity in kW.
 
-    hub_height : numeric or array-like
+    hub_height : ArrayLike
         Turbine's hub height in m.
 
-    rotor_diam : numeric or array-like
-        Turbine's hub height in m.
+    rotor_diam : ArrayLike
+        Turbine's rotor diameter in m.
 
-    base_capex : numeric, optional
+    base_capex : float, optional
         The baseline turbine's capital costs in €, by default 1100*4200 [€/kW * kW]
 
-    base_capacity : int, optional
+    base_capacity : float, optional
         The baseline turbine's capacity in kW, by default 4200
 
-    base_hub_height : int, optional
+    base_hub_height : float, optional
         The baseline turbine's hub height in m, by default 120
 
-    base_rotor_diam : int, optional
+    base_rotor_diam : float, optional
         The baseline turbine's rotor diameter in m, by default 136
 
     tcc_share : float, optional
@@ -59,8 +60,8 @@ def onshore_turbine_capex(
 
     Returns
     -------
-    numeric or array-like
-        Onshore turbine total cost
+    float | np.ndarray
+        Onshore turbine total cost; a float for scalar inputs, else an array of their broadcast shape.
 
 
     Notes
@@ -113,26 +114,31 @@ def onshore_turbine_capex(
     )
     bos = onshore_bos(cp=cp, hh=hh, rd=rd) * bos_scaling
 
-    # print(tcc_scaling, bos_scaling)
 
     total_costs = (tcc + bos) / (OnshoreParams.tcc_share + OnshoreParams.bos_share)
-
-    # other_costs = total_costs * (1 - OnshoreParams.tcc_share - OnshoreParams.bos_share)
 
     return total_costs
 
 
-def onshore_tcc(cp, hh, rd, gdp_escalator=None, blade_material_escalator=None, blades=None, **kwargs):
+def onshore_tcc(
+    cp: ArrayLike,
+    hh: ArrayLike,
+    rd: ArrayLike,
+    gdp_escalator: int | None = None,
+    blade_material_escalator: int | None = None,
+    blades: int | None = None,
+    **kwargs: ArrayLike,
+) -> float | np.ndarray:
     """
     A function to determine the turbine capital cost (TCC) of a 3 blade standard onshore wind turbine based capacity, hub height and rotor diameter values according to the cost model by Fingersh et al. [1].
 
     Parameters
     ----------
-    cp : numeric or array-like
+    cp : ArrayLike
         Turbine's capacity in kW
-    hh : numeric or array-like
+    hh : ArrayLike
         Turbine's hub height in m
-    rd : numeric or array-like
+    rd : ArrayLike
         Turbine's rotor diameter in m
     gdp_escalator : int, optional
         Labor cost escalator, by default 1
@@ -146,7 +152,7 @@ def onshore_tcc(cp, hh, rd, gdp_escalator=None, blade_material_escalator=None, b
         Number of blades, by default 3
         DEPRECATED: Use ``blade_number`` instead.
         This argument will be removed in a coming release.
-    **kwargs
+    **kwargs : ArrayLike
         Inputs of WISDEM's nrel_csm_2015() model, scalars or arrays broadcastable to the
         designs, see https://wisdem.readthedocs.io/en/master/examples/01_nrelcsm/tutorial.html
         Default values in addition to nrel_csm_2015() are:
@@ -158,8 +164,9 @@ def onshore_tcc(cp, hh, rd, gdp_escalator=None, blade_material_escalator=None, b
 
     Returns
     -------
-    numeric or array-like
-        Turbine's turbine capital cost (TCC) in USD_2015.
+    float | np.ndarray
+        Turbine's turbine capital cost (TCC) in USD_2015; a float for scalar cp, hh and rd, else
+        an array of their broadcast shape.
 
     Notes
     -----
@@ -292,7 +299,9 @@ def _nrel_csm_2015_model() -> tuple[list[_ModelStep], dict[str, ArrayLike]]:
     problem.setup()
     problem.final_setup()
 
-    def _variables(component, io_type):
+    def _variables(
+        component: om.ExplicitComponent, io_type: Literal["input", "output"]
+    ) -> ItemsView[str, dict[str, Any]]:
         # (name in the component's compute(), metadata) of each of its inputs or outputs
         metadata_by_name = component.get_io_metadata(iotypes=io_type, metadata_keys=["units"], get_remote=False)
         return metadata_by_name.items()
@@ -379,8 +388,8 @@ def _run_nrel_csm_2015(model_inputs: dict[str, ArrayLike], design_count: int) ->
     """
     steps, defaults = _nrel_csm_2015_model()
 
-    # names prob[name] = value accepts; any other one would be silently ignored here, e.g. a
-    # misspelled keyword argument of onshore_tcc(), while OpenMDAO raises an error
+    # Checks the keys of model_inputs and rejects those that are neither inputs nor outputs of the OpenMDAO model,
+    # otherwise a misspelled keyword argument of onshore_tcc() would silently get its default
     computed_names = set()
     for step in steps:
         for _, promoted_name in step.outputs:
@@ -389,7 +398,7 @@ def _run_nrel_csm_2015(model_inputs: dict[str, ArrayLike], design_count: int) ->
     if unknown_names:
         raise KeyError(f"Not inputs of WISDEM's NREL CSM 2015 model: {sorted(unknown_names)}")
 
-    # the given inputs replace the defaults, the components' outputs are added as computed
+    # Replaces the defaults with the inputs from model_inputs in the OPENMdaro components.
     model_values = dict(defaults)  # by promoted name
     for name, value in model_inputs.items():
         # continuous inputs have array defaults, discrete inputs scalar ones
@@ -415,7 +424,7 @@ def _run_nrel_csm_2015(model_inputs: dict[str, ArrayLike], design_count: int) ->
         for name, promoted_name in discrete_inputs:
             component_discrete_inputs[name] = model_values[promoted_name]
 
-        # all designs at once where possible; a component with an `if` on a value that is an
+        # Computes all designs at once where possible. If a component implements an `if` on a value that is an
         # array of several designs raises, and is computed one design at a time instead
         try:
             component_outputs = _compute(component, component_inputs, component_discrete_inputs)
@@ -430,10 +439,33 @@ def _run_nrel_csm_2015(model_inputs: dict[str, ArrayLike], design_count: int) ->
     return model_values
 
 
-def _compute_one_design_at_a_time(component, inputs, discrete_inputs, design_count):
+def _compute_one_design_at_a_time(
+    component: om.ExplicitComponent,
+    inputs: dict[str, np.ndarray],
+    discrete_inputs: dict[str, ArrayLike],
+    design_count: int,
+) -> dict[str, np.ndarray]:
     """
     Calls _compute() once per design, for components that branch on a value differing between
-    the designs; returns the outputs of all designs, concatenated.
+    the designs.
+
+    Parameters
+    ----------
+    component : om.ExplicitComponent
+        The component to compute.
+    inputs : dict
+        Continuous inputs by name in compute(): float arrays of length 1 or `design_count`.
+    discrete_inputs : dict
+        Discrete inputs by name in compute(): plain values (e.g. int or bool) or arrays of
+        length `design_count`.
+    design_count : int
+        Number of designs, at least 1.
+
+    Returns
+    -------
+    dict
+        Outputs by name in compute(): float arrays of length `design_count`, the outputs of all
+        designs concatenated.
     """
     # inputs not differing between the designs have length 1, so they can be indexed per design
     input_per_design = {}
@@ -466,10 +498,27 @@ def _compute_one_design_at_a_time(component, inputs, discrete_inputs, design_cou
     return outputs
 
 
-def _compute(component, inputs, discrete_inputs):
+def _compute(
+    component: om.ExplicitComponent,
+    inputs: dict[str, np.ndarray],
+    discrete_inputs: dict[str, ArrayLike],
+) -> dict[str, np.ndarray]:
     """
-    Calls component.compute() as OpenMDAO does, with plain dicts; returns the outputs as float
-    arrays of at least one dimension.
+    Calls component.compute() as OpenMDAO does, with plain dicts.
+
+    Parameters
+    ----------
+    component : om.ExplicitComponent
+        The component to compute.
+    inputs : dict
+        Continuous inputs by name in compute(): float arrays.
+    discrete_inputs : dict
+        Discrete inputs by name in compute(); empty if the component has none.
+
+    Returns
+    -------
+    dict
+        Outputs by name in compute(): float arrays of at least one dimension.
     """
     outputs = {}
     if discrete_inputs:
@@ -488,24 +537,29 @@ def _compute(component, inputs, discrete_inputs):
     return float_outputs
 
 
-def onshore_bos(cp, hh, rd):
+def onshore_bos(
+    cp: float | np.ndarray,
+    hh: float | np.ndarray,
+    rd: float | np.ndarray,
+) -> float | np.ndarray:
     """
 
     A function to determine the balance of the system cost (BOS) of an onshore turbine based on the capacity, hub height and rotor diameter values according to Fingersh et al. [1].
 
     Parameters
     ----------
-    cp : numeric or array-like
+    cp : float | np.ndarray
         Turbine's capacity in kW
-    hh : numeric or array-like
+    hh : float | np.ndarray
         Turbine's hub height in m
-    rd : numeric or array-like
+    rd : float | np.ndarray
         Turbine's rotor diameter in m
 
     Returns
     -------
-    numeric or array-like
-        Turbine's balance of system costs (BOS) in monetary units.
+    float | np.ndarray
+        Turbine's balance of system costs (BOS) in monetary units, of the broadcast shape of
+        cp, hh and rd.
 
     References
     ----------
