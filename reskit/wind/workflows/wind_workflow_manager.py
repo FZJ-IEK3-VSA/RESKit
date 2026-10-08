@@ -989,14 +989,15 @@ class WindWorkflowManager(WorkflowManager):
 
         Parameters
         ----------
-        correction_factors : str, float
+        correction_factors : str, pathlib.Path, float
             correction factor as float or path to the correction factor raster file
 
         Return
         --------
             A reference to the invoking WindWorkflowManager
         """
-        if isinstance(correction_factors, str):
+        if is_path_like(correction_factors):
+            correction_factors = as_path_string(correction_factors)
             if not isfile(correction_factors):
                 raise FileNotFoundError(
                     f"correction_factors was passed as str but is not an existing file: {correction_factors}"
@@ -1009,7 +1010,7 @@ class WindWorkflowManager(WorkflowManager):
             correction_factors = gk.raster.interpolateValues(correction_factors, self.locs, mode="near")
             assert not np.isnan(correction_factors).any(), f"correction_factors extracted from raster must not be nan"
         elif not isinstance(correction_factors, (float, int)):
-            raise TypeError(f"correction_factors must either be a str formatted raster filepath or a float value")
+            raise TypeError(f"correction_factors must either be a raster filepath or a float value")
         else:
             correction_factors = [correction_factors] * len(self.locs)
 

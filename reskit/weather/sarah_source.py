@@ -35,7 +35,7 @@ class SarahSource(NCSource):
     MAX_LON_DIFFERENCE = 0.06
     MAX_LAT_DIFFERENCE = 0.06
 
-    def __init__(self, source, bounds=None, index_pad=5, **kwargs):
+    def __init__(self, source, bounds=None, index_pad=5, time_slice: slice | None = None, **kwargs):
         """Initialize a SARAH style netCDF4 file source
 
         Compared to the generic NCSource object, the following parameters are automatically set:
@@ -77,6 +77,11 @@ class SarahSource(NCSource):
             * Generally, there should be no missing data at all. This option is only intended to
                 catch the rare scenarios where one or two timesteps are missing
 
+        time_slice : slice, optional
+            Restricts the source to the time steps between `time_slice.start` and
+            `time_slice.stop`, both inclusive. Only these time steps are read from disk
+            * See NCSource for details
+
         See Also
         --------
         MerraSource
@@ -93,6 +98,7 @@ class SarahSource(NCSource):
             _max_lon_diff=self.MAX_LON_DIFFERENCE,
             _max_lat_diff=self.MAX_LAT_DIFFERENCE,
             tz=None,
+            time_slice=time_slice,
             **kwargs,
         )
 

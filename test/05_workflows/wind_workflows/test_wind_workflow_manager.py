@@ -7,12 +7,14 @@ import pandas as pd
 import pytest
 
 import reskit as rk
-from reskit import TEST_DATA
+from reskit import data
 from reskit.wind import PowerCurve, WindWorkflowManager
 
+FIXTURES = data.paths("test_suite")
+
 alternative_wind_speed_rasters = {
-    50: TEST_DATA["gwa50-like.tif"],
-    200: TEST_DATA["gwa200-like.tif"],
+    50: FIXTURES["gwa_50m"],
+    200: FIXTURES["gwa_200m"],
 }
 
 
@@ -110,7 +112,7 @@ def test_WindWorkflowManager_estimate_roughness_from_land_cover(
     raster_input,
 ):
     man = pt_WindWorkflowManager_initialized
-    man.estimate_roughness_from_land_cover(raster_input(rk.TEST_DATA["clc-aachen_clipped.tif"]), source_type="clc")
+    man.estimate_roughness_from_land_cover(raster_input(FIXTURES["clc"]), source_type="clc")
     assert (man.placements["roughness"] == [0.5, 0.0005, 0.03, 0.03, 0.3]).all()
 
 
@@ -127,7 +129,7 @@ def pt_WindWorkflowManager_loaded(
             "surface_air_temperature",
         ],
         source_type="ERA5",
-        source=rk.TEST_DATA["era5-like"],
+        source=FIXTURES["era5"],
         set_time_index=True,
         verbose=False,
     )
@@ -219,7 +221,7 @@ def test_WindWorkflowManager_project_windspeeds_to_hub_height(
 
     man.project_windspeeds_to_hub_height(
         height_scaling_method=("log", "cci"),
-        height_scaling_data=TEST_DATA["ESA_CCI_2015_clip.tif"],
+        height_scaling_data=FIXTURES["esa_cci"],
         consider_boundary_layer_height=False,
     )
 
@@ -243,7 +245,7 @@ def _corrected_wind_speeds() -> np.ndarray:
     man.read(
         variables=["elevated_wind_speed", "surface_pressure", "surface_air_temperature"],
         source_type="ERA5",
-        source=rk.TEST_DATA["era5-like"],
+        source=FIXTURES["era5"],
         set_time_index=True,
         verbose=False,
     )
@@ -341,7 +343,7 @@ def test_WindWorkflowManager_simulate(pt_WindWorkflowManager_loaded):
     )
 
     # repeat with correction factor raster
-    correction_raster = TEST_DATA["dummy_correction_factors.tif"]  # abuse GSA raster for correction (mean ~2.9)
+    correction_raster = FIXTURES["cf_correction_factors"]  # abuse GSA raster for correction (mean ~2.9)
     man.simulate(cf_correction_factor=correction_raster, tolerance=tolerance)
 
     avg_corr_factor = 0.8348340150085444  # from dummy data

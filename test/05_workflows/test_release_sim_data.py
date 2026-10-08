@@ -3,10 +3,12 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from reskit import TEST_DATA, WorkflowManager, data
+from reskit import WorkflowManager, data
 from reskit.csp.workflows.workflows import csp_ptr_era5_specific_dataset
 from reskit.solar.workflows.workflows import openfield_pv_era5
 from reskit.wind.workflows.workflows import wind_era5_PenaSanchezDunkelWinklerEtAl2025
+
+FIXTURES = data.paths("test_suite")
 
 
 def _manager(time_sel=None) -> WorkflowManager:
@@ -44,19 +46,19 @@ def test_to_xarray_release_gives_the_same_result(time_sel, output_variables):
 
 
 def _run_pv(output_variables):
-    placements = gk.vector.extractFeatures(TEST_DATA["turbinePlacements.shp"]).iloc[:20]
+    placements = gk.vector.extractFeatures(FIXTURES["turbine_placements_shp"]).iloc[:20]
     placements["capacity"] = 2000
     return openfield_pv_era5(
         placements=placements,
-        era5_path=TEST_DATA["era5-like"],
-        global_solar_atlas_ghi_path=TEST_DATA["gsa-ghi-like.tif"],
-        global_solar_atlas_dni_path=TEST_DATA["gsa-dni-like.tif"],
+        era5_path=FIXTURES["era5"],
+        global_solar_atlas_ghi_path=FIXTURES["gsa_ghi"],
+        global_solar_atlas_dni_path=FIXTURES["gsa_dni"],
         output_variables=output_variables,
     )
 
 
 def _run_wind(output_variables):
-    placements = gk.vector.extractFeatures(TEST_DATA["turbinePlacements.shp"]).iloc[:20]
+    placements = gk.vector.extractFeatures(FIXTURES["turbine_placements_shp"]).iloc[:20]
     placements["hub_height"] = 120
     placements["capacity"] = 3000
     placements["rotor_diam"] = 150
@@ -73,8 +75,8 @@ def _run_wind(output_variables):
 def _run_csp(output_variables):
     return csp_ptr_era5_specific_dataset(
         placements=pd.DataFrame({"lon": [-6.8, -6.8], "lat": [31.0, 31.4], "land_area_m2": [1e6, 5e6]}),
-        era5_path=TEST_DATA["csp-era5-like"],
-        global_solar_atlas_dni_path=TEST_DATA["csp-gsa-dni-like.tif"],
+        era5_path=FIXTURES["era5_csp"],
+        global_solar_atlas_dni_path=FIXTURES["csp_gsa_dni"],
         datasetname="Dataset_SolarSalt_2030",
         JITaccelerate=False,
         return_self=False,

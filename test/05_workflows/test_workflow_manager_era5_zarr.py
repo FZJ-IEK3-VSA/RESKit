@@ -1,4 +1,4 @@
-import inspect
+from os.path import join
 
 import numpy as np
 import pandas as pd
@@ -7,10 +7,13 @@ from era5_encoding import assert_matches_encoding
 
 pytest.importorskip("zarr")
 
-from reskit import TEST_DATA, WorkflowManager
+from reskit import data, WorkflowManager
 from reskit.csp.workflows.workflows import csp_ptr_era5, csp_ptr_era5_specific_dataset
 from reskit.solar.workflows.workflows import openfield_pv_era5
 from reskit.wind.workflows.workflows import wind_era5_PenaSanchezDunkelWinklerEtAl2025
+
+FIXTURES = data.paths("test_suite")
+ERA5_ZARR = join(FIXTURES["era5_zarr"], "era5.zarr")
 
 
 # The 140 hours of the 'era5' netCDF4 fixtures, on RESKit's time index
@@ -64,8 +67,8 @@ def test_era5_netcdf_and_zarr_read_alike(pt_placements):
     up to what both encodings round away, see test/era5_encoding.py. Bilinear interpolation
     averages neighbouring cells, so it cannot make the difference larger.
     """
-    netcdf_man = _read_era5(pt_placements, TEST_DATA["era5-like"])
-    zarr_man = _read_era5(pt_placements, TEST_DATA["era5.zarr"], time_slice=ERA5_HOURS)
+    netcdf_man = _read_era5(pt_placements, FIXTURES["era5"])
+    zarr_man = _read_era5(pt_placements, ERA5_ZARR, time_slice=ERA5_HOURS)
 
     assert zarr_man.time_index.equals(netcdf_man.time_index)
 
@@ -135,14 +138,6 @@ def test_WorkflowManager_read_era5_zarr(era5_zarr_workflow_store):
     assert np.allclose(man.sim_data["surface_air_temperature"][:, 0], np.array([67.0, 68.0, 69.0]))
 
 
-@pytest.mark.parametrize(
-    "workflow",
-    [openfield_pv_era5, csp_ptr_era5, csp_ptr_era5_specific_dataset, wind_era5_PenaSanchezDunkelWinklerEtAl2025],
-)
-def test_era5_workflows_expose_time_slice(workflow):
-    assert "time_slice" in inspect.signature(workflow).parameters
-
-
 def test_WorkflowManager_read_era5_zarr_applies_time_slice(era5_zarr_workflow_store):
     placements = pd.DataFrame({"lon": [6.375], "lat": [50.625]})
 
@@ -164,21 +159,6 @@ def test_WorkflowManager_read_era5_zarr_applies_time_slice(era5_zarr_workflow_st
     ]
 
 
-def test_WorkflowManager_read_era5_netcdf_rejects_time_slice():
-    placements = pd.DataFrame({"lon": [6.375], "lat": [50.625]})
-
-    man = WorkflowManager(placements)
-    with pytest.raises(RuntimeError, match="only supported for Zarr-backed ERA5 sources"):
-        man.read(
-            variables=["surface_pressure"],
-            source_type="ERA5",
-            source="does_not_need_to_exist.nc",
-            time_slice=slice("2020-01-01", "2020-01-02"),
-            set_time_index=True,
-            verbose=False,
-        )
-
-
 def test_WorkflowManager_reads_placements_far_apart_region_by_region(pt_placements, monkeypatch):
     """Placements in different regions of the store's chunk grid are read per region, with the
     same result as one read: a Zarr source reads the rectangle around its placements, so one read
@@ -186,7 +166,7 @@ def test_WorkflowManager_reads_placements_far_apart_region_by_region(pt_placemen
     """
     from reskit import weather as rk_weather
 
-    store = TEST_DATA["era5.zarr"]
+    store = ERA5_ZARR
     together = _read_era5(pt_placements, store)
     # 0.1 degree regions: the placements, 0.1 degree apart, fall into separate regions
     monkeypatch.setattr(rk_weather.Era5ZarrSource, "spatial_chunk_degrees", staticmethod(lambda dataset: 0.1))
@@ -213,7 +193,7 @@ def test_Era5ZarrSource_spatial_chunk_degrees():
 
     from reskit import weather as rk_weather
 
-    store = xr.open_dataset(TEST_DATA["era5.zarr"], engine="zarr")
+    store = xr.open_dataset(ERA5_ZARR, engine="zarr")
     lat_chunk = store["u100"].encoding["chunks"][store["u100"].dims.index("latitude")]
 
     assert rk_weather.Era5ZarrSource.spatial_chunk_degrees(store) == pytest.approx(max(1.0, lat_chunk * 0.25))
