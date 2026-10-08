@@ -208,6 +208,54 @@ workflow arguments, staging and verification, with links to the shared
 configuration and bundle procedures. Cache and catalogue administration use
 `ethos-data`.
 
+### Simulating a shorter period
+
+By default a workflow simulates every time step of its weather data. Pass `time_slice` to simulate
+only part of it; both bounds are inclusive, and only the selected time steps are read from the
+weather source, which saves reading and simulation time:
+
+```python
+rk.wind.wind_era5_PenaSanchezDunkelWinklerEtAl2025(
+    ...,
+    time_slice=slice("2015-03-01", "2015-03-31 23:30"),
+)
+```
+
+All workflows which read weather data accept `time_slice`, for every weather source (ERA5 as
+netCDF4 or Zarr, MERRA, SARAH and ICON-LAM). The bounds refer to the time index of the workflow
+result, e.g. ERA5 time steps lie at half past the hour.
+
+### Reading ERA5 from Zarr
+
+ETHOS.RESKit can read ERA5 directly from regular latitude/longitude Zarr stores while keeping the existing `source_type="ERA5"` workflow API. The current implementation is intended for stores such as the [Earth Data Hub ERA5 single-level dataset](https://earthdatahub.destine.eu/collections/era5/datasets/reanalysis-era5-single-levels):
+
+Earth Data Hub requires authentication. Follow the credential instructions on the linked dataset page and save the generated credentials as `~/.netrc` (not in a directory on `PATH`). On shared systems, restrict access with `chmod 600 ~/.netrc`. The HTTPS backend will use those credentials automatically.
+
+```python
+wf.read(
+    variables=["surface_pressure", "surface_air_temperature", "elevated_wind_speed"],
+    source_type="ERA5",
+    source="https://data.earthdatahub.destine.eu/era5/reanalysis-era5-single-levels-v0.zarr",
+    chunks={"valid_time": 48},
+    time_slice=slice("2020-01-01", "2020-01-31 23:00:00"),
+    set_time_index=True,
+)
+```
+
+Current limitations:
+- The implementation only supports regular `(time|valid_time, latitude, longitude)` Zarr layouts, not flattened `values`-based ERA5 archives.
+- If the Zarr store does not ship ETHOS.RESKit's processed `ssrd_t_adj` and `fdir_t_adj` fields,  `global_horizontal_irradiance` and `direct_horizontal_irradiance` fall back to processing the raw `ssrd` and `fdir` on the fly.
+
+### Example notebooks
+
+End-to-end examples live in [examples/1_load_input_data/](https://github.com/FZJ-IEK3-VSA/RESKit/tree/dev/examples/1_load_input_data):
+- [1_1_3_prepare_era5_for_wind_workflow.ipynb](examples/1_load_input_data/1_1_3_prepare_era5_for_wind_workflow.ipynb)
+- [1_1_4_prepare_era5_for_solar_workflow.ipynb](examples/1_load_input_data/1_1_4_prepare_era5_for_solar_workflow.ipynb)
+
+For full manual control over the raw ERA5/CDS download (variables, area, and
+timeframe), see the lower-level example notebook
+[1_1_1_how_to_download_era5_data.ipynb](examples/1_load_input_data/1_1_1_how_to_download_era5_data.ipynb).
+
 ## Citation
 
 If you decide to use ETHOS.RESKit anywhere in a published work related to wind energy, please kindly cite us using the following publications.
