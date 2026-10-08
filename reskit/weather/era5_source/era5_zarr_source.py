@@ -308,10 +308,23 @@ class Era5ZarrSource(Era5Source):
     def _derive_solar_variables(cls, ds: xr.Dataset) -> tuple[xr.Dataset, dict]:
         """Add the processed solar variables to stores that only provide the raw accumulations.
 
-        adj[i] = raw[i] / 3600 (J/m² per hour -> W/m²). ERA5 labels
-        an accumulation with the end of the hour it covers, and RESKit's time index puts it
-        at the middle of that hour (TIME_OFFSET), so the mean flux of the hour already sits
-        at the right time.
+        The solar flux variables (W/m²) are computed from the accumulated values (J/m² per
+        hour) by dividing them by 3600 (DERIVED_SCALE). Each one is only derived if its raw
+        variable is present in the store and the processed variable is not:
+
+        - 'ssrd_t_adj' (surface solar radiation downwards) from the accumulated 'ssrd'
+        - 'fdir_t_adj' (total sky direct solar radiation at surface) from the accumulated 'fdir'
+
+        The division by 3600 is intentionally not applied here. The returned variables are
+        only lazy aliases of the raw accumulations, because arithmetic on the lazily opened
+        store would read all of it, i.e. the full globe and time span of a cloud store.
+        load() divides by DERIVED_SCALE once the requested subset has been read. Until then
+        the values of the derived variables are still accumulations in J/m², although their
+        'units' attribute already states W m**-2.
+
+        ERA5 labels an accumulation with the end of the hour it covers, and RESKit's time
+        index puts it at the middle of that hour (TIME_OFFSET), so the mean flux of the hour
+        already sits at the right time.
 
         Parameters
         ----------
@@ -328,9 +341,6 @@ class Era5ZarrSource(Era5Source):
         derived = {}
         for raw_name, adjusted_name in (("ssrd", "ssrd_t_adj"), ("fdir", "fdir_t_adj")):
             if raw_name in ds.data_vars and adjusted_name not in ds.data_vars:
-                # Only an alias of the raw accumulation: arithmetic on the lazily opened store
-                # would read all of it, i.e. the full globe and time span of a cloud store.
-                # load() divides by DERIVED_SCALE once the subset has been read.
                 adjusted = ds[raw_name].copy(deep=False)
                 adjusted.attrs = {"units": "W m**-2", "long_name": f"Derived on the fly from '{raw_name}'"}
                 ds[adjusted_name] = adjusted
