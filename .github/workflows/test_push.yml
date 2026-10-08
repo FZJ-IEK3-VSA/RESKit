@@ -10,7 +10,7 @@ jobs:
       fail-fast: false
       matrix:
         runner_tag: ["self-hosted"]
-    uses: FZJ-IEK3-VSA/.github/.github/workflows/run_conda_forge_test.yml@v1
+    uses: FZJ-IEK3-VSA/.github/.github/workflows/run_conda_forge_test.yml@v1.1
     secrets: inherit
     with:
       runner_tag: ${{ matrix.runner_tag }}
@@ -20,3 +20,4 @@ jobs:
       multiprocessing_example_string: "-n 2"
       coverage: true
       coverage_package_name: "reskit"
+      cache_environment: true

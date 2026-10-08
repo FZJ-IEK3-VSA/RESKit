@@ -51,7 +51,7 @@ jobs:
       fail-fast: false
       matrix:
         include: ${{ fromJSON(needs.query-versions.outputs.matrix_json) }}
-    uses: FZJ-IEK3-VSA/.github/.github/workflows/run_conda_forge_test.yml@v1
+    uses: FZJ-IEK3-VSA/.github/.github/workflows/run_conda_forge_test.yml@v1.1
     secrets: inherit
     with:
       runner_tag: ${{ inputs.runner_tag }}

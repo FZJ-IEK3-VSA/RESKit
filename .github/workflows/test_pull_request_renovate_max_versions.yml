@@ -29,7 +29,7 @@ jobs:
       matrix:
         runner_tag: ["self-hosted"]
         dependencies: ${{ fromJSON(needs.extract-versions.outputs.matrix) }}
-    uses: FZJ-IEK3-VSA/.github/.github/workflows/run_conda_forge_test.yml@v1
+    uses: FZJ-IEK3-VSA/.github/.github/workflows/run_conda_forge_test.yml@v1.1
     secrets: inherit
     with:
       runner_tag: ${{ matrix.runner_tag }}
