@@ -3,12 +3,14 @@
 import pandas as pd
 import pytest
 
-from reskit import TEST_DATA
+from reskit import data
 from reskit.parameters.parameters import OnshoreParameters
+
+FIXTURES = data.paths("test_suite")
 
 
 def _dummy_frame():
-    return pd.read_csv(TEST_DATA["baseline_turbine_testdummy.csv"])
+    return pd.read_csv(FIXTURES["baseline_turbine"])
 
 
 def test_unknown_column_raises(tmp_path):

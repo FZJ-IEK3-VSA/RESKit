@@ -23,6 +23,7 @@ def openfield_pv_merra_ryberg2019(
     output_netcdf_path=None,
     output_variables=None,
     tech_year=2050,
+    time_slice: slice | None = None,
 ):
     """
 
@@ -76,6 +77,11 @@ def openfield_pv_merra_ryberg2019(
                 Will be ignored when non-projected existing module names or specific parameters
                 are given, can then be None. By default 2050.
 
+    time_slice : slice, optional
+        Simulate only the time steps between time_slice.start and time_slice.stop, both
+        inclusive, e.g. slice("2015-03-01", "2015-03-31 23:30"). Only these time steps
+        are read from the weather source. By default None, i.e. all time steps.
+
     Returns
     -------
     A xarray dataset including all the output variables you defined as your output_variables.
@@ -102,6 +108,7 @@ def openfield_pv_merra_ryberg2019(
         ],
         source_type="MERRA",
         source=merra_path,
+        time_slice=time_slice,
         set_time_index=True,
         verbose=False,
     )
@@ -163,7 +170,7 @@ def openfield_pv_era5(
     output_variables=None,
     gsa_nodata_fallback="source",
     tech_year=2050,
-    time_slice=None,
+    time_slice: slice | None = None,
 ):
     """
     Simulation of an openfield  PV openfield system based on ERA5 Data.
@@ -255,10 +262,10 @@ def openfield_pv_era5(
                 are given, can then be None. By default 2050.
 
     time_slice : slice, optional
-            Limit the time span loaded from the ERA5 source. Only supported for
-            Zarr-backed ERA5 sources, where it is strongly recommended to avoid
-            loading whole multi-year cloud stores. Raises for netCDF4-backed ERA5
-            sources; support for those is planned.
+            Simulate only the time steps between time_slice.start and time_slice.stop, both
+            inclusive, e.g. slice("2015-03-01", "2015-03-31 23:30"). Only these time steps
+            are read from the weather source, which is strongly recommended for multi-year
+            Zarr cloud stores. By default None, i.e. all time steps.
 
     Returns
     -------
@@ -389,6 +396,7 @@ def openfield_pv_sarah_unvalidated(
     output_netcdf_path=None,
     output_variables=None,
     tech_year=2050,
+    time_slice: slice | None = None,
 ):
     """
 
@@ -443,6 +451,11 @@ def openfield_pv_sarah_unvalidated(
                 Will be ignored when non-projected existing module names or specific parameters
                 are given, can then be None. By default 2050.
 
+    time_slice : slice, optional
+        Simulate only the time steps between time_slice.start and time_slice.stop, both
+        inclusive, e.g. slice("2015-03-01", "2015-03-31 23:30"). Only these time steps
+        are read from the weather source. By default None, i.e. all time steps.
+
     Returns
     -------
     A xarray dataset including all the output variables you defined as your output_variables.
@@ -467,6 +480,7 @@ def openfield_pv_sarah_unvalidated(
         variables=["direct_normal_irradiance", "global_horizontal_irradiance"],
         source_type="SARAH",
         source=sarah_path,
+        time_slice=time_slice,
         set_time_index=True,
         verbose=False,
     )
@@ -480,6 +494,7 @@ def openfield_pv_sarah_unvalidated(
         ],
         source_type="ERA5",
         source=era5_path,
+        time_slice=time_slice,
         set_time_index=False,
         time_index_from="direct_horizontal_irradiance",
         verbose=False,
@@ -528,6 +543,7 @@ def openfield_pv_iconlam(
     output_netcdf_path=None,
     output_variables=None,
     tech_year=2050,
+    time_slice: slice | None = None,
 ):
     """
     Simulation of an openfield  PV openfield system based on ICON-LAM Data.
@@ -575,6 +591,11 @@ def openfield_pv_iconlam(
                 Will be ignored when non-projected existing module names or specific parameters
                 are given, can then be None. By default 2050.
 
+    time_slice : slice, optional
+        Simulate only the time steps between time_slice.start and time_slice.stop, both
+        inclusive, e.g. slice("2015-03-01", "2015-03-31 23:30"). Only these time steps
+        are read from the weather source. By default None, i.e. all time steps.
+
     Returns
     -------
     A xarray dataset including all the output variables you defined as your output_variables.
@@ -602,6 +623,7 @@ def openfield_pv_iconlam(
         ],
         source_type="ICON-LAM",
         source=icon_lam_path,
+        time_slice=time_slice,
         set_time_index=True,
         time_index_from="direct_horizontal_irradiance",
         spatial_interpolation_mode="near",

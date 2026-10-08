@@ -36,6 +36,10 @@ Requires EDH credentials in ~/.netrc:
 Usage (from the repository root):
 
     python scripts/make_era5_zarr_test_data.py
+
+The store is the bundle member reskit-test-data/era5-zarr, so record a new cut with
+
+    reskit-data bundle update reskit/data/test_cache
 """
 
 import argparse
