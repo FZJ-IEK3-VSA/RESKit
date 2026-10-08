@@ -56,7 +56,7 @@ class Era5ZarrSource(Era5Source):
         bounds=None,
         index_pad=5,
         time_index_from=None,
-        time_slice=None,
+        time_slice: slice | None = None,
         chunks=None,
         consolidated=True,
         storage_options=None,

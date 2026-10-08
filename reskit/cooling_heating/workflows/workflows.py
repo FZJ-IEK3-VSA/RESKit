@@ -98,7 +98,7 @@ def air_cooling_wenzel2025(
     pressureDropWater: int | float = 200000,
     output_netcdf_path: str = None,
     output_variables: List[str] = None,
-    time_slice=None,
+    time_slice: slice | None = None,
 ):
     """
     Simulate an air-cooling system based on ERA5 weather data.
@@ -249,7 +249,7 @@ def air_source_heat_pump(
     secondLawEfficiency: int | float = 0.5,
     output_netcdf_path: str = None,
     output_variables: List[str] = None,
-    time_slice=None,
+    time_slice: slice | None = None,
 ):
     """
     Simulate an air-source heat pump based on ERA5 weather data.
@@ -336,7 +336,7 @@ def evaporative_cooling_wortmann2025(
     typical_cycles_blowdown: int = 5,
     output_netcdf_path: str = None,
     output_variables: List[str] = None,
-    time_slice=None,
+    time_slice: slice | None = None,
 ):
     """
     Simulate an evaporative-cooling system based on ERA5 weather data.

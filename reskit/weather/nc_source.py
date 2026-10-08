@@ -134,7 +134,7 @@ class NCSource(object):
         flip_lon=False,
         time_offset_minutes=None,
         time_index_from=None,
-        time_slice=None,
+        time_slice: slice | None = None,
     ):
         """Initialize a generic netCDF4 file source
 

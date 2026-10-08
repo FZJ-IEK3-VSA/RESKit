@@ -82,7 +82,7 @@ class MerraSource(NCSource):
     MAX_LON_DIFFERENCE = 0.625
     MAX_LAT_DIFFERENCE = 0.5
 
-    def __init__(self, source, bounds=None, index_pad=5, **kwargs):
+    def __init__(self, source, bounds=None, index_pad=5, time_slice: slice | None = None, **kwargs):
         """Initialize a MERRA2 style netCDF4 file source
 
         Compared to the generic NCSource object, the following parameters are automatically set:
@@ -145,6 +145,7 @@ class MerraSource(NCSource):
             _max_lon_diff=self.MAX_LON_DIFFERENCE,
             _max_lat_diff=self.MAX_LAT_DIFFERENCE,
             tz="GMT",
+            time_slice=time_slice,
             **kwargs,
         )
 

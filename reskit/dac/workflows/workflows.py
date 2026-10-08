@@ -15,7 +15,7 @@ def lt_dac_era5_wenzel2025(
     output_variables: List[str] = None,
     model: str = "LT_jajjawi",
     fillMethod: str = "nearest",
-    time_slice=None,
+    time_slice: slice | None = None,
 ):
     """
     Simulate LT-DAC plants using ERA5 weather data.
@@ -91,7 +91,7 @@ def ht_dac_era5_wenzel2025(
     output_netcdf_path: str = None,
     output_variables: List[str] = None,
     model: str = "HT_okosun",
-    time_slice=None,
+    time_slice: slice | None = None,
 ):
     """
     Simulate HT-DAC plants using ERA5 weather data.

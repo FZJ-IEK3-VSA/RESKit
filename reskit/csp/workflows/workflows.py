@@ -32,7 +32,7 @@ def csp_ptr_era5(
     onlynightuse=True,
     fullvariation=False,
     _validation=False,
-    time_slice=None,
+    time_slice: slice | None = None,
 ):
     """
     This function is the overall workflow for the csp simulation and calls all subfunctions.
@@ -247,7 +247,7 @@ def csp_ptr_era5_specific_dataset(
     onlynightuse=True,
     fullvariation=False,
     _validation=False,
-    time_slice=None,
+    time_slice: slice | None = None,
 ):
     """
     Calculates the heat output from the solar field based on parabolic trough technology (PTC).

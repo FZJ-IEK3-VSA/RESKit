@@ -25,7 +25,7 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
     cf_correction=True,
     output_variables=None,
     max_batch_size=15000,
-    time_slice=None,
+    time_slice: slice | None = None,
     **simulate_kwargs,
 ):
     """
@@ -202,7 +202,7 @@ def onshore_wind_merra_ryberg2019_europe(
     output_netcdf_path=None,
     output_variables=None,
     max_batch_size=25000,
-    time_slice=None,
+    time_slice: slice | None = None,
 ):
     # TODO: Add range limitation over Europe by checking placements
     """
@@ -285,7 +285,7 @@ def offshore_wind_merra_caglayan2019(
     output_netcdf_path=None,
     output_variables=None,
     max_batch_size=25000,
-    time_slice=None,
+    time_slice: slice | None = None,
 ):
     """
     Simulates offshore wind generation using NASA's MERRA2 database [1].
@@ -357,7 +357,7 @@ def onshore_wind_iconlam_2023(
     output_netcdf_path=None,
     output_variables=None,
     max_batch_size=25000,
-    time_slice=None,
+    time_slice: slice | None = None,
 ):
     """
     Simulates onshore wind generation using high-resolution dynamically downscaled dataset ICON-LAM over southern Africa.
@@ -467,7 +467,7 @@ def wind_config(
     max_batch_size=25000,
     output_netcdf_path=None,
     elevated_wind_speed=None,
-    time_slice=None,
+    time_slice: slice | None = None,
 ):
     """
     A generic configuration workflow for wind simulations that allows

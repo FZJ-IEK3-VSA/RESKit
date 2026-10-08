@@ -202,7 +202,15 @@ class Era5Source(NCSource):
             if cds_name in cls.CDS_TO_NC_NAME and cls.CDS_TO_NC_NAME[cds_name] not in cls.PREPROCESSED_NC_NAMES
         ]
 
-    def __init__(self, source, bounds=None, index_pad=5, time_index_from=None, **kwargs):
+    def __init__(
+        self,
+        source,
+        bounds=None,
+        index_pad=5,
+        time_index_from=None,
+        time_slice: slice | None = None,
+        **kwargs,
+    ):
         """Initialize a ERA5 style netCDF4 file source
 
         Compared to the generic NCSource object, the following parameters are automatically set:
@@ -286,6 +294,7 @@ class Era5Source(NCSource):
             flip_lat=True,
             time_offset_minutes=-30,  # time convention -30
             time_index_from=time_index_from,
+            time_slice=time_slice,
             **kwargs,
         )
 
