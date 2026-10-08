@@ -56,7 +56,7 @@ class Era5ZarrSource(Era5Source):
         bounds=None,
         index_pad=5,
         time_index_from=None,
-        time_slice=None,
+        time_slice: slice | None = None,
         chunks=None,
         consolidated=True,
         storage_options=None,
@@ -203,6 +203,8 @@ class Era5ZarrSource(Era5Source):
         )
 
         timeindex = pd.DatetimeIndex(pd.to_datetime(self._dataset[self.time_name].values)) + self.TIME_OFFSET
+        # time steps of the store, shifted by TIME_OFFSET and already restricted to time_slice;
+        # without time zone, so both indexes are the same
         self._timeindex_raw = timeindex
         self.time_index = timeindex
         self.data = OrderedDict()

@@ -32,7 +32,7 @@ def csp_ptr_era5(
     onlynightuse=True,
     fullvariation=False,
     _validation=False,
-    time_slice=None,
+    time_slice: slice | None = None,
 ):
     """
     This function is the overall workflow for the csp simulation and calls all subfunctions.
@@ -119,10 +119,10 @@ def csp_ptr_era5(
         Defaults to False.
 
     time_slice : slice, optional
-        Limit the time span loaded from the ERA5 source. Only supported for
-        Zarr-backed ERA5 sources, where it is strongly recommended to avoid
-        loading whole multi-year cloud stores. Raises for netCDF4-backed ERA5
-        sources; support for those is planned.
+        Simulate only the time steps between time_slice.start and time_slice.stop, both
+        inclusive, e.g. slice("2015-03-01", "2015-03-31 23:30"). Only these time steps
+        are read from the weather source, which is strongly recommended for multi-year
+        Zarr cloud stores. By default None, i.e. all time steps.
 
     Returns
     -------
@@ -247,7 +247,7 @@ def csp_ptr_era5_specific_dataset(
     onlynightuse=True,
     fullvariation=False,
     _validation=False,
-    time_slice=None,
+    time_slice: slice | None = None,
 ):
     """
     Calculates the heat output from the solar field based on parabolic trough technology (PTC).
@@ -325,10 +325,10 @@ def csp_ptr_era5_specific_dataset(
         Defaults to False.
 
     time_slice : slice, optional
-        Limit the time span loaded from the ERA5 source. Only supported for
-        Zarr-backed ERA5 sources, where it is strongly recommended to avoid
-        loading whole multi-year cloud stores. Raises for netCDF4-backed ERA5
-        sources; support for those is planned.
+        Simulate only the time steps between time_slice.start and time_slice.stop, both
+        inclusive, e.g. slice("2015-03-01", "2015-03-31 23:30"). Only these time steps
+        are read from the weather source, which is strongly recommended for multi-year
+        Zarr cloud stores. By default None, i.e. all time steps.
 
     Returns
     -------

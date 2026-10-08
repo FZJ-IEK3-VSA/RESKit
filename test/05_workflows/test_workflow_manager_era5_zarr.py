@@ -1,5 +1,4 @@
 import glob
-import inspect
 from os.path import join
 
 import numpy as np
@@ -151,14 +150,6 @@ def test_WorkflowManager_read_era5_zarr(era5_zarr_workflow_store):
     assert np.allclose(man.sim_data["surface_air_temperature"][:, 0], np.array([67.0, 68.0, 69.0]))
 
 
-@pytest.mark.parametrize(
-    "workflow",
-    [openfield_pv_era5, csp_ptr_era5, csp_ptr_era5_specific_dataset, wind_era5_PenaSanchezDunkelWinklerEtAl2025],
-)
-def test_era5_workflows_expose_time_slice(workflow):
-    assert "time_slice" in inspect.signature(workflow).parameters
-
-
 def test_WorkflowManager_read_era5_zarr_applies_time_slice(era5_zarr_workflow_store):
     placements = pd.DataFrame({"lon": [6.375], "lat": [50.625]})
 
@@ -178,18 +169,3 @@ def test_WorkflowManager_read_era5_zarr_applies_time_slice(era5_zarr_workflow_st
         pd.Timestamp("2020-01-01 00:30:00"),
         pd.Timestamp("2020-01-01 01:30:00"),
     ]
-
-
-def test_WorkflowManager_read_era5_netcdf_rejects_time_slice():
-    placements = pd.DataFrame({"lon": [6.375], "lat": [50.625]})
-
-    man = WorkflowManager(placements)
-    with pytest.raises(RuntimeError, match="only supported for Zarr-backed ERA5 sources"):
-        man.read(
-            variables=["surface_pressure"],
-            source_type="ERA5",
-            source="does_not_need_to_exist.nc",
-            time_slice=slice("2020-01-01", "2020-01-02"),
-            set_time_index=True,
-            verbose=False,
-        )

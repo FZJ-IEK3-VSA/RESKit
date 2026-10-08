@@ -1,3 +1,5 @@
+import inspect
+
 import geokit as gk
 import numpy as np
 import osgeo
@@ -248,16 +250,39 @@ def test_WorkflowManager_read_without_time_index(
         )
 
 
-def test_WorkflowManager_read_time_slice_requires_zarr(
-    pt_WorkflowManager_initialized: WorkflowManager,
-):
-    with pytest.raises(RuntimeError, match="only supported for Zarr-backed ERA5 sources"):
-        pt_WorkflowManager_initialized.read(
-            variables=["elevated_wind_speed"],
+def test_WorkflowManager_read_time_slice_equals_cropped_full_read():
+    def read(**kwargs):
+        man = _make_WorkflowManager()
+        man.read(
+            variables=["elevated_wind_speed", "global_horizontal_irradiance"],
             source_type="ERA5",
             source=FIXTURES["era5"],
             set_time_index=True,
-            time_slice=slice("2015-01-01", "2015-01-02"),
+            verbose=False,
+            **kwargs,
+        )
+        return man
+
+    full = read()
+    sliced = read(time_slice=slice("2015-01-02 00:30", "2015-01-03 23:30"))
+
+    window = (full.time_index >= "2015-01-02 00:30") & (full.time_index <= "2015-01-03 23:30")
+    assert sliced.time_index.equals(full.time_index[window])
+    for var in full.sim_data:
+        np.testing.assert_array_equal(sliced.sim_data[var], full.sim_data[var][window])
+
+
+def test_WorkflowManager_read_time_slice_rejects_initialized_source(
+    pt_WorkflowManager_initialized: WorkflowManager,
+    pt_era5_source: rk.weather.Era5Source,
+):
+    with pytest.raises(ValueError, match="already initialized source"):
+        pt_WorkflowManager_initialized.read(
+            variables=["elevated_wind_speed"],
+            source_type="user",
+            source=pt_era5_source,
+            set_time_index=True,
+            time_slice=slice("2015-01-02", "2015-01-03"),
         )
 
 
