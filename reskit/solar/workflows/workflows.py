@@ -23,7 +23,7 @@ def openfield_pv_merra_ryberg2019(
     output_netcdf_path=None,
     output_variables=None,
     tech_year=2050,
-    time_slice=None,
+    time_slice: slice | None = None,
 ):
     """
 
@@ -170,7 +170,7 @@ def openfield_pv_era5(
     output_variables=None,
     gsa_nodata_fallback="source",
     tech_year=2050,
-    time_slice=None,
+    time_slice: slice | None = None,
 ):
     """
     Simulation of an openfield  PV openfield system based on ERA5 Data.
@@ -396,7 +396,7 @@ def openfield_pv_sarah_unvalidated(
     output_netcdf_path=None,
     output_variables=None,
     tech_year=2050,
-    time_slice=None,
+    time_slice: slice | None = None,
 ):
     """
 
@@ -543,7 +543,7 @@ def openfield_pv_iconlam(
     output_netcdf_path=None,
     output_variables=None,
     tech_year=2050,
-    time_slice=None,
+    time_slice: slice | None = None,
 ):
     """
     Simulation of an openfield  PV openfield system based on ICON-LAM Data.

@@ -134,7 +134,7 @@ class NCSource(object):
         flip_lon=False,
         time_offset_minutes=None,
         time_index_from=None,
-        time_slice=None,
+        time_slice: slice | None = None,
     ):
         """Initialize a generic netCDF4 file source
 
@@ -465,15 +465,17 @@ class NCSource(object):
 
             timeindex = [t + timedelta(minutes=time_offset_minutes) for t in timeindex]
 
+        # time steps of the files, shifted by time_offset_minutes, without time zone
         self._timeindex_raw = pd.DatetimeIndex(timeindex)
+        # public time index: _timeindex_raw, localized to tz if given
         if not tz is None:
             self.time_index = self._timeindex_raw.tz_localize(tz)
         else:
             self.time_index = self._timeindex_raw
 
         # restrict the time steps to read; 'load' reads the rows _time_rows of every file
-        self._timeindex_full = self._timeindex_raw
-        self._time_rows = slice(0, len(self._timeindex_raw))
+        self._timeindex_full = self._timeindex_raw  # all time steps of the files, before time_slice
+        self._time_rows = slice(0, len(self._timeindex_raw))  # rows of the files that time_slice selects
         if time_slice is not None:
             if not isinstance(time_slice, slice) or time_slice.step is not None:
                 raise ResError(f"'time_slice' must be a slice of two timestamps without a step, not {time_slice!r}")
@@ -483,6 +485,7 @@ class NCSource(object):
                     f"The 'time_slice' {time_slice.start} to {time_slice.stop} selects no time steps. "
                     f"The source covers {self.time_index[0]} to {self.time_index[-1]}."
                 )
+            # from here on, _timeindex_raw and time_index hold only the selected time steps
             self._timeindex_raw = self._timeindex_raw[self._time_rows]
             self.time_index = self.time_index[self._time_rows]
 

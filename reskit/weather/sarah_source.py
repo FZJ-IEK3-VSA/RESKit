@@ -35,7 +35,7 @@ class SarahSource(NCSource):
     MAX_LON_DIFFERENCE = 0.06
     MAX_LAT_DIFFERENCE = 0.06
 
-    def __init__(self, source, bounds=None, index_pad=5, **kwargs):
+    def __init__(self, source, bounds=None, index_pad=5, time_slice: slice | None = None, **kwargs):
         """Initialize a SARAH style netCDF4 file source
 
         Compared to the generic NCSource object, the following parameters are automatically set:
@@ -98,6 +98,7 @@ class SarahSource(NCSource):
             _max_lon_diff=self.MAX_LON_DIFFERENCE,
             _max_lat_diff=self.MAX_LAT_DIFFERENCE,
             tz=None,
+            time_slice=time_slice,
             **kwargs,
         )
 

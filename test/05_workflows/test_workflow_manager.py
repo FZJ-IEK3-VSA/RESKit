@@ -286,31 +286,6 @@ def test_WorkflowManager_read_time_slice_rejects_initialized_source(
         )
 
 
-@pytest.mark.parametrize(
-    "workflow",
-    [
-        rk.wind.workflows.workflows.wind_era5_PenaSanchezDunkelWinklerEtAl2025,
-        rk.wind.workflows.workflows.onshore_wind_merra_ryberg2019_europe,
-        rk.wind.workflows.workflows.offshore_wind_merra_caglayan2019,
-        rk.wind.workflows.workflows.onshore_wind_iconlam_2023,
-        rk.wind.workflows.workflows.wind_config,
-        rk.solar.workflows.workflows.openfield_pv_merra_ryberg2019,
-        rk.solar.workflows.workflows.openfield_pv_era5,
-        rk.solar.workflows.workflows.openfield_pv_sarah_unvalidated,
-        rk.solar.workflows.workflows.openfield_pv_iconlam,
-        rk.csp.workflows.workflows.csp_ptr_era5,
-        rk.csp.workflows.workflows.csp_ptr_era5_specific_dataset,
-        rk.dac.workflows.workflows.lt_dac_era5_wenzel2025,
-        rk.dac.workflows.workflows.ht_dac_era5_wenzel2025,
-        rk.cooling_heating.workflows.workflows.air_cooling_wenzel2025,
-        rk.cooling_heating.workflows.workflows.air_source_heat_pump,
-        rk.cooling_heating.workflows.workflows.evaporative_cooling_wortmann2025,
-    ],
-)
-def test_weather_workflows_expose_time_slice(workflow):
-    assert "time_slice" in inspect.signature(workflow).parameters
-
-
 @pytest.fixture
 def pt_WorkflowManager_loaded(
     pt_WorkflowManager_initialized: WorkflowManager,

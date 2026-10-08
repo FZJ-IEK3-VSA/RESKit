@@ -97,7 +97,7 @@ class IconlamSource(NCSource):
     MAX_LON_DIFFERENCE = 0.034  # 0.26 SChen
     MAX_LAT_DIFFERENCE = 0.034  # 0.26 SChen
 
-    def __init__(self, source, bounds=None, index_pad=5, **kwargs):
+    def __init__(self, source, bounds=None, index_pad=5, time_slice: slice | None = None, **kwargs):
         """Initialize a ERA5 style netCDF4 file source
 
         Compared to the generic NCSource object, the following parameters are automatically set:
@@ -162,6 +162,7 @@ class IconlamSource(NCSource):
             tz=None,
             flip_lat=True,
             time_offset_minutes=0,  # 30 SChen
+            time_slice=time_slice,
             **kwargs,
         )
 

@@ -186,6 +186,7 @@ class WorkflowManager:
         spatial_interpolation_mode: str = "bilinear",
         temporal_reindex_method: str = "nearest",
         time_index_from=None,
+        time_slice: slice | None = None,
         **kwargs,
     ):
         """Reads the specified variables from the NetCDF4-style weather dataset, and then extracts
@@ -274,15 +275,17 @@ class WorkflowManager:
                 raise RuntimeError("Unknown source_type")
 
             if source_type == "ERA5":
-                source = source_constructor(source, bounds=self.ext, time_index_from=time_index_from, **kwargs)
+                source = source_constructor(
+                    source, bounds=self.ext, time_index_from=time_index_from, time_slice=time_slice, **kwargs
+                )
             else:
-                source = source_constructor(source, bounds=self.ext, **kwargs)
+                source = source_constructor(source, bounds=self.ext, time_slice=time_slice, **kwargs)
 
             # Load the requested variables
             source.sload(*variables)
 
         else:  # Assume source is already an initialized NCSource-like object
-            if kwargs.get("time_slice") is not None:
+            if time_slice is not None:
                 raise ValueError(
                     "'time_slice' cannot be applied to an already initialized source. "
                     "Pass it to the constructor of the source instead."
