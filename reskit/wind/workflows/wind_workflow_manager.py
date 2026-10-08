@@ -4,6 +4,7 @@ import warnings
 from collections import OrderedDict, namedtuple
 from os import environ, mkdir
 from os.path import isdir, isfile, join
+from os import PathLike
 from types import FunctionType
 
 import geokit as gk
@@ -270,7 +271,7 @@ class WindWorkflowManager(WorkflowManager):
         )
         return self
 
-    def consider_boundary_height(self):
+    def consider_boundary_height(self) -> np.ndarray:
         """
         Corrects the given target heights for locations by planetary boundary
         layer (PBL) effects, by limiting the target height either to the PBL
@@ -305,8 +306,11 @@ class WindWorkflowManager(WorkflowManager):
         target_height = np.minimum(pbl_height, hub_height, dtype=float)
 
         # Case 3: PBLH < EH & PBLH <= HH -> TH = EH (all heights are outside of planetary influence, use (constant) ws(EH))
-        case3 = (pbl_height < elevated_height) & (pbl_height <= hub_height)
-        target_height[case3] = np.broadcast_to(elevated_height, target_height.shape)[case3]
+        pbl_below_elevated_height = pbl_height < elevated_height
+        pbl_not_above_hub_height = pbl_height <= hub_height
+        case3 = pbl_below_elevated_height & pbl_not_above_hub_height
+        elevated_height_everywhere = np.broadcast_to(elevated_height, target_height.shape)
+        target_height[case3] = elevated_height_everywhere[case3]
 
         # NaN heights fall into none of the cases
         assert not np.isnan(target_height).any()
@@ -351,10 +355,10 @@ class WindWorkflowManager(WorkflowManager):
 
     def wind_shear_projection_of_wind_speeds_to_hub_height(
         self,
-        alternative_wind_speed_rasters,
-        consider_boundary_layer_height=False,
-        allow_extrapolation=True,
-    ):
+        alternative_wind_speed_rasters: dict[float, str | PathLike],
+        consider_boundary_layer_height: bool = False,
+        allow_extrapolation: bool = True,
+    ) -> "WindWorkflowManager":
         """
         Projects the wind speed values to the hub height.
 
@@ -418,95 +422,112 @@ class WindWorkflowManager(WorkflowManager):
                     f"data contains target heights above elevated wind speed height and allow_extrapolation is False. alternative_wind_speed_rasters must contain key >= {target_height.max()}"
                 )
 
-        n_heights, n_locations = len(ref_heights), len(self.placements)
+        reference_height_count = len(ref_heights)
+        location_count = len(self.placements)
 
-        def _bracket(heights):
+        def _bracket(heights: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
             """Indices of the reference heights below and above the given target heights."""
             # bin the target heights to reference spacing binds
-            idx = np.searchsorted(ref_heights, heights, side="left")
+            insertion_index = np.searchsorted(ref_heights, heights, side="left")
             # get the indices of the respective lower and higher reference heights
-            lower = np.clip(idx - 1, 0, n_heights - 1)
-            upper = np.clip(idx, 0, n_heights - 1)
+            lower_index = np.clip(insertion_index - 1, 0, reference_height_count - 1)
+            upper_index = np.clip(insertion_index, 0, reference_height_count - 1)
             # cover edge cases when both ref heights are the same
-            both_lowest = (lower == upper) & (lower == 0)
-            upper[both_lowest] = 1  # set to second lowest value
-            both_highest = (lower == upper) & (upper == n_heights - 1)
-            lower[both_highest] = n_heights - 2  # set to 2nd highest value
-            return lower, upper
+            same_height = lower_index == upper_index
+            at_lowest_height = lower_index == 0
+            both_lowest = same_height & at_lowest_height
+            upper_index[both_lowest] = 1  # set to second lowest value
+            same_height = lower_index == upper_index
+            at_highest_height = upper_index == reference_height_count - 1
+            both_highest = same_height & at_highest_height
+            lower_index[both_highest] = reference_height_count - 2  # set to 2nd highest value
+            return lower_index, upper_index
 
         # The long-run average wind speeds depend on the location and the reference height
         # only, so they form a small (reference height, location) table. Only the
         # interpolation between two reference heights varies in time; it goes block by
         # block, as several full (time, location) temporaries add up for many placements.
-        blocks = location_blocks(target_height.shape[0], n_locations)
+        time_step_count = target_height.shape[0]
+        location_slices = location_blocks(time_step_count, location_count)
 
         # which locations need which reference height at any time
-        needed = np.zeros((n_heights, n_locations), dtype=bool)
-        for b in blocks:
-            lower, upper = _bracket(target_height[:, b])
-            for k in range(n_heights):
-                needed[k, b] = ((lower == k) | (upper == k)).any(axis=0)
+        reference_height_needed = np.zeros((reference_height_count, location_count), dtype=bool)
+        for location_slice in location_slices:
+            block_target_height = target_height[:, location_slice]
+            lower_index, upper_index = _bracket(block_target_height)
+            for height_position in range(reference_height_count):
+                uses_as_lower = lower_index == height_position
+                uses_as_upper = upper_index == height_position
+                uses_height = uses_as_lower | uses_as_upper
+                reference_height_needed[height_position, location_slice] = uses_height.any(axis=0)
 
-        real_lra = np.broadcast_to(self.real_lra, (n_locations,))
-        ref_ws = np.full((n_heights, n_locations), np.nan)
-        for k, _height in enumerate(ref_heights):
-            if _height == self.elevated_wind_speed_height:
-                ref_ws[k] = real_lra  # the previously extracted LRA at the default reference height
+        real_lra = np.broadcast_to(self.real_lra, (location_count,))
+        reference_wind_speed = np.full((reference_height_count, location_count), np.nan)
+        for height_position, reference_height in enumerate(ref_heights):
+            if reference_height == self.elevated_wind_speed_height:
+                # the previously extracted LRA at the default reference height
+                reference_wind_speed[height_position] = real_lra
                 continue
-            if not needed[k].any():
+            needing_locations = reference_height_needed[height_position]
+            if not needing_locations.any():
                 continue
 
             # get and check filepath from alternative LRA ws height rasters
-            fp = alternative_wind_speed_rasters[_height]
-            if not (is_path_like(fp) and isfile(fp)):
+            raster_path = alternative_wind_speed_rasters[reference_height]
+            if not (is_path_like(raster_path) and isfile(raster_path)):
                 raise FileNotFoundError(
-                    f"value of alternative_wind_speed_rasters[{_height}] must be a path to an existing file: {fp}"
+                    f"value of alternative_wind_speed_rasters[{reference_height}] must be a path to an existing file: {raster_path}"
                 )
 
             # extract ws only for the locations which need this height
-            ref_ws[k, needed[k]] = self.get_scalar_values_from_raster(
-                fp=fp,
+            needing_placements = self.placements.loc[needing_locations]
+            raster_points = list(zip(needing_placements["lon"], needing_placements["lat"]))
+            raster_wind_speed = self.get_scalar_values_from_raster(
+                fp=raster_path,
                 spatial_interpolation="linear-spline",
-                points=list(
-                    zip(
-                        self.placements.loc[needed[k], "lon"],
-                        self.placements.loc[needed[k], "lat"],
-                    )
-                ),
+                points=raster_points,
             )
+            reference_wind_speed[height_position, needing_locations] = raster_wind_speed
 
-        heights = np.array(ref_heights)
-        ws = self.sim_data["elevated_wind_speed"]
-        projected = np.empty(ws.shape, dtype=np.result_type(ws, float))
-        for b in blocks:
-            columns = np.arange(n_locations)[b]
-            th = target_height[:, b]
-            lower, upper = _bracket(th)
+        reference_heights_array = np.array(ref_heights)
+        wind_speed = self.sim_data["elevated_wind_speed"]
+        projected_dtype = np.result_type(wind_speed, float)
+        projected_wind_speed = np.empty(wind_speed.shape, dtype=projected_dtype)
+        all_columns = np.arange(location_count)
+        for location_slice in location_slices:
+            block_columns = all_columns[location_slice]
+            block_target_height = target_height[:, location_slice]
+            lower_index, upper_index = _bracket(block_target_height)
 
             # calculate the interpolated LRA ws at target height
-            height_lower = heights[lower]
-            height_upper = heights[upper]
-            delta = height_upper - height_lower
-            fraction = np.divide(
-                th - height_lower,
-                delta,
-                out=np.zeros_like(delta, dtype=float),
-                where=delta != 0,  # avoid division by zero
+            lower_height = reference_heights_array[lower_index]
+            upper_height = reference_heights_array[upper_index]
+            height_difference = upper_height - lower_height
+            height_above_lower = block_target_height - lower_height
+            interpolation_fraction = np.divide(
+                height_above_lower,
+                height_difference,
+                out=np.zeros_like(height_difference, dtype=float),
+                where=height_difference != 0,  # avoid division by zero
             )
-            ws_lower = ref_ws[lower, columns]
-            ws_upper = ref_ws[upper, columns]
-            target_ws = ws_lower + fraction * (ws_upper - ws_lower)
+            lower_wind_speed = reference_wind_speed[lower_index, block_columns]
+            upper_wind_speed = reference_wind_speed[upper_index, block_columns]
+            wind_speed_difference = upper_wind_speed - lower_wind_speed
+            interpolation_step = interpolation_fraction * wind_speed_difference
+            target_wind_speed = lower_wind_speed + interpolation_step
 
             # scale hourly ws to the new target hub height, relative to the default LRA height
-            scale = target_ws / real_lra[b]
-            projected[:, b] = scale * ws[:, b]
-        self.sim_data["elevated_wind_speed"] = projected
+            block_real_lra = real_lra[location_slice]
+            scale = target_wind_speed / block_real_lra
+            block_wind_speed = wind_speed[:, location_slice]
+            projected_wind_speed[:, location_slice] = scale * block_wind_speed
+        self.sim_data["elevated_wind_speed"] = projected_wind_speed
 
         self.elevated_wind_speed_height = self.placements["hub_height"].values
 
         return self
 
-    def apply_air_density_correction_to_wind_speeds(self):
+    def apply_air_density_correction_to_wind_speeds(self) -> "WindWorkflowManager":
         """
         Applies air density corrections to the wind speeds at the hub height.
 
@@ -520,28 +541,45 @@ class WindWorkflowManager(WorkflowManager):
         assert "surface_pressure" in self.sim_data, "surface_pressure has not been read from a source"
         assert hasattr(self, "elevated_wind_speed_height")
 
-        ws = self.sim_data["elevated_wind_speed"]
+        wind_speed = self.sim_data["elevated_wind_speed"]
+        pressure = self.sim_data["surface_pressure"]
+        temperature = self.sim_data["surface_air_temperature"]
         height = self.elevated_wind_speed_height
+
         # in place if possible, and block by block: the adjustment creates several temporaries
         # of the size of its input
-        in_place = ws.flags.writeable and ws.dtype == np.result_type(ws, float)
-        corrected = ws if in_place else np.empty(ws.shape, dtype=np.result_type(ws, float))
-        for b in location_blocks(*ws.shape):
-            b_height = height[..., b] if np.ndim(height) else height
-            corrected[:, b] = rk_wind_core.air_density_adjustment.apply_air_density_adjustment(
-                ws[:, b],
-                pressure=self.sim_data["surface_pressure"][:, b],
-                temperature=self.sim_data["surface_air_temperature"][:, b],
-                height=b_height,
+        float_dtype = np.result_type(wind_speed, float)
+        is_writeable = wind_speed.flags.writeable
+        has_float_dtype = wind_speed.dtype == float_dtype
+        in_place = is_writeable and has_float_dtype
+        if in_place:
+            corrected_wind_speed = wind_speed
+        else:
+            corrected_wind_speed = np.empty(wind_speed.shape, dtype=float_dtype)
+
+        for location_block in location_blocks(*wind_speed.shape):
+            if np.ndim(height):
+                block_height = height[..., location_block]
+            else:
+                block_height = height
+            block_wind_speed = wind_speed[:, location_block]
+            block_pressure = pressure[:, location_block]
+            block_temperature = temperature[:, location_block]
+            block_corrected = rk_wind_core.air_density_adjustment.apply_air_density_adjustment(
+                block_wind_speed,
+                pressure=block_pressure,
+                temperature=block_temperature,
+                height=block_height,
             )
-        self.sim_data["elevated_wind_speed"] = corrected
+            corrected_wind_speed[:, location_block] = block_corrected
+        self.sim_data["elevated_wind_speed"] = corrected_wind_speed
 
         return self
 
     def apply_wake_correction_of_wind_speeds(
         self,
-        wake_curve="dena_mean",
-    ):
+        wake_curve: str | None = "dena_mean",
+    ) -> "WindWorkflowManager":
         """
         Applies a wind-speed dependent reduction factor to the wind speeds at elevated height,
         based on
@@ -597,15 +635,21 @@ class WindWorkflowManager(WorkflowManager):
             wake_curves = np.array([wake_curve] * len(self.placements))
 
         # iterate over the possibly different wake reduction curves that are not NaN
-        ws = self.sim_data["elevated_wind_speed"]
+        wind_speed = self.sim_data["elevated_wind_speed"]
         for wake_curve_i in set(wake_curves[np.array([not ((pd.isnull(x)) or (x == "None")) for x in wake_curves])]):
             # block by block, selecting the columns copies them
-            for b in location_blocks(*ws.shape):
-                columns = b.start + np.flatnonzero(wake_curves[b] == wake_curve_i)
-                if columns.size:
-                    ws[:, columns] = windpowerlib.wake_losses.reduce_wind_speed(
-                        ws[:, columns], wind_efficiency_curve_name=wake_curve_i
+            for location_block in location_blocks(*wind_speed.shape):
+                block_wake_curves = wake_curves[location_block]
+                uses_wake_curve = block_wake_curves == wake_curve_i
+                block_columns = np.flatnonzero(uses_wake_curve)
+                wake_columns = location_block.start + block_columns
+                if wake_columns.size:
+                    wake_wind_speed = wind_speed[:, wake_columns]
+                    reduced_wind_speed = windpowerlib.wake_losses.reduce_wind_speed(
+                        wake_wind_speed,
+                        wind_efficiency_curve_name=wake_curve_i,
                     )
+                    wind_speed[:, wake_columns] = reduced_wind_speed
 
         return self
 

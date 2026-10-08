@@ -1,8 +1,10 @@
 import time
 import warnings
 from logging import warning
+from os import PathLike
 
 import numpy as np
+import pandas as pd
 import xarray as xr
 from numpy.lib.arraysetops import isin
 
@@ -15,25 +17,25 @@ from .dataset_handler import DatasetHandler
 
 
 def csp_ptr_era5(
-    placements,
-    era5_path,
-    global_solar_atlas_dni_path,
-    global_solar_atlas_tamb_path=None,
-    datasets=None,
-    cost_year=2050,
-    HTF_sel=["Heliosol", "SolarSalt", "Therminol"],
-    elev_path=None,
-    output_netcdf_path=None,
-    output_variables=None,
-    return_self=True,
-    JITaccelerate=False,
-    verbose=False,
-    debug_vars=False,
-    onlynightuse=True,
-    fullvariation=False,
-    _validation=False,
+    placements: pd.DataFrame,
+    era5_path: str | PathLike | rk_weather.NCSource,
+    global_solar_atlas_dni_path: str | float | np.ndarray,
+    global_solar_atlas_tamb_path: str | PathLike | None = None,
+    datasets: str | list[str] | None = None,
+    cost_year: int = 2050,
+    HTF_sel: list[str] = ["Heliosol", "SolarSalt", "Therminol"],
+    elev_path: str | PathLike | list[float] | None = None,
+    output_netcdf_path: str | None = None,
+    output_variables: str | list[str] | None = None,
+    return_self: bool = True,
+    JITaccelerate: bool = False,
+    verbose: bool = False,
+    debug_vars: bool = False,
+    onlynightuse: bool = True,
+    fullvariation: bool = False,
+    _validation: bool = False,
     time_slice: slice | None = None,
-):
+) -> PTRWorkflowManager | xr.Dataset | str:
     """
     This function is the overall workflow for the csp simulation and calls all subfunctions.
     It is a wrapper around the function "csp_ptr_era5_specific_dataset" below, to include the case of multiple datasets.
@@ -234,20 +236,20 @@ def csp_ptr_era5(
 
 
 def csp_ptr_era5_specific_dataset(
-    placements,
-    era5_path,
-    global_solar_atlas_dni_path,
-    datasetname="Validation 10",
-    elev_path=None,
-    output_netcdf_path=None,
-    output_variables=None,
-    return_self=True,
-    JITaccelerate=False,
-    verbose=False,
-    debug_vars=False,
-    onlynightuse=True,
-    fullvariation=False,
-    _validation=False,
+    placements: pd.DataFrame,
+    era5_path: str | PathLike | rk_weather.NCSource,
+    global_solar_atlas_dni_path: str | float | np.ndarray,
+    datasetname: str = "Validation 10",
+    elev_path: str | PathLike | list[float] | None = None,
+    output_netcdf_path: str | None = None,
+    output_variables: str | list[str] | None = None,
+    return_self: bool = True,
+    JITaccelerate: bool = False,
+    verbose: bool = False,
+    debug_vars: bool = False,
+    onlynightuse: bool = True,
+    fullvariation: bool = False,
+    _validation: bool = False,
     time_slice: slice | None = None,
 ):
     """

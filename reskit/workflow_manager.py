@@ -1,8 +1,9 @@
 # import base packages
 import datetime
+import os
 import warnings
 from collections import OrderedDict
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from glob import glob
 from itertools import compress
 from os.path import basename, isdir, isfile, join
@@ -202,7 +203,7 @@ def _expand_degenerate_bound(value):
     return value - half_width, value + half_width
 
 
-def location_blocks(n_times, n_locations, max_elements=2**18):
+def location_blocks(n_times: int, n_locations: int, max_elements: int = 2**18) -> list[slice]:
     """Split the locations into blocks of at most about `max_elements` (time, location) values.
 
     Steps which create several temporary (time, location) arrays go through the locations
@@ -216,14 +217,18 @@ def location_blocks(n_times, n_locations, max_elements=2**18):
         The number of time steps
     n_locations : int
         The number of locations
+    max_elements : int, optional
+        The number of (time, location) values a block holds at most, by default 2**18
 
     Returns
     -------
     list of slice
         Consecutive slices covering all locations
     """
-    step = max(1, max_elements // max(1, n_times))
-    return [slice(start, start + step) for start in range(0, n_locations, step)]
+    time_step_count = max(1, n_times)
+    locations_per_block = max(1, max_elements // time_step_count)
+    block_starts = range(0, n_locations, locations_per_block)
+    return [slice(block_start, block_start + locations_per_block) for block_start in block_starts]
 
 
 class WorkflowManager:
@@ -329,14 +334,14 @@ class WorkflowManager:
         self,
         variables: Union[str, List[str]],
         source_type: str,
-        source: str,
+        source: str | os.PathLike | rk_weather.NCSource,
         set_time_index: bool = False,
         spatial_interpolation_mode: str = "bilinear",
         temporal_reindex_method: str = "nearest",
-        time_index_from=None,
+        time_index_from: str | None = None,
         time_slice: slice | None = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> "WorkflowManager":
         """Reads the specified variables from the NetCDF4-style weather dataset, and then extracts
         those variables for each of the coordinates configured in `.placements`. The resulting
         data is then available in `.sim_data`.
@@ -456,11 +461,14 @@ class WorkflowManager:
 
             # Load the requested variables one by one, freeing each variable's rectangle (and e.g.
             # the u and v of a wind speed) once its values at the placements are extracted
-            frames = {}
-            for var in variables:
-                source.sload(var)
-                frames[var] = source.get(
-                    var, self.locs, interpolation=spatial_interpolation_mode, force_as_data_frame=True
+            frames: dict[str, pd.DataFrame] = {}
+            for variable in variables:
+                source.sload(variable)
+                frames[variable] = source.get(
+                    variable,
+                    self.locs,
+                    interpolation=spatial_interpolation_mode,
+                    force_as_data_frame=True,
                 )
                 source.data.clear()
             return self._store_read_variables(source, frames, set_time_index, temporal_reindex_method)
@@ -684,7 +692,7 @@ class WorkflowManager:
         real_long_run_average: Union[str, float, np.ndarray],
         real_lra_scaling: float = 1,
         spatial_interpolation: str = "linear-spline",
-        nodata_fallback: str = "nan",
+        nodata_fallback: Union[float, str, os.PathLike, Callable, None] = "nan",
         nodata_fallback_scaling: float = 1,
         allow_nans: bool = True,
     ):
@@ -944,7 +952,11 @@ class WorkflowManager:
         """
         self.workflow_parameters[key] = value
 
-    def release_sim_data(self, still_needed: List[str], output_variables: Union[str, List[str]] = None):
+    def release_sim_data(
+        self,
+        still_needed: list[str],
+        output_variables: str | list[str] | None = None,
+    ) -> "WorkflowManager":
         """Drop the variables from `.sim_data` which are neither needed later on nor requested as output
 
         Every time series in `.sim_data` takes (time steps x placements) floats, so the interim
@@ -971,20 +983,23 @@ class WorkflowManager:
         if isinstance(output_variables, str):
             output_variables = [output_variables]
 
-        keep = set(still_needed) | set(output_variables)
-        for key in [key for key in self.sim_data if key not in keep]:
-            del self.sim_data[key]
+        variables_to_keep = set(still_needed)
+        variables_to_keep.update(output_variables)
+
+        variables_to_drop = [variable for variable in self.sim_data if variable not in variables_to_keep]
+        for variable in variables_to_drop:
+            del self.sim_data[variable]
 
         return self
 
     def to_xarray(
         self,
-        output_netcdf_path: str = None,
-        output_variables: List[str] = None,
-        custom_attributes: dict = None,
+        output_netcdf_path: str | None = None,
+        output_variables: str | list[str] | None = None,
+        custom_attributes: dict | None = None,
         release: bool = False,
-        _intermediate_dict=False,
-    ) -> xarray.Dataset:
+        _intermediate_dict: bool = False,
+    ) -> xarray.Dataset | str:
         """Generates an XArray dataset from the data currently contained in the WorkflowManager
 
         Note:
@@ -1068,29 +1083,33 @@ class WorkflowManager:
             self.release_sim_data([], output_variables)
 
         # write sim_data
-        shape = (len(self.time_index), self.locs.count)
-        for key in list(self.sim_data.keys()):
-            # check if key in requestet output_variables
+        time_series_shape = (len(self.time_index), self.locs.count)
+        for variable_name in list(self.sim_data.keys()):
+            # check if variable_name in requestet output_variables
             if output_variables is not None:
-                if key not in output_variables:
+                if variable_name not in output_variables:
                     continue
 
-            if release and self._time_sel_ is None and np.shape(self.sim_data[key]) == shape:
+            stored_shape = np.shape(self.sim_data[variable_name])
+            has_full_shape = stored_shape == time_series_shape
+            covers_all_time_steps = self._time_sel_ is None
+            can_move_values = release and covers_all_time_steps and has_full_shape
+            if can_move_values:
                 # move, converting to float like the copy below does
-                tmp = np.asarray(self.sim_data[key], dtype=float)
+                time_series = np.asarray(self.sim_data[variable_name], dtype=float)
             else:
-                tmp = np.full(shape, 0.0, dtype=float)
-                tmp[self._time_sel_, :] = self.sim_data[key]
+                time_series = np.full(time_series_shape, 0.0, dtype=float)
+                time_series[self._time_sel_, :] = self.sim_data[variable_name]
             if release:
                 # right away, so that at most one variable exists twice at a time
-                del self.sim_data[key]
+                del self.sim_data[variable_name]
 
-            xds[key] = xarray.DataArray(
-                tmp,
+            xds[variable_name] = xarray.DataArray(
+                time_series,
                 dims=["time", "location"],
                 coords=dict(time=times, location=location_coords),
             )
-            encoding[key] = dict(zlib=True)
+            encoding[variable_name] = dict(zlib=True)
 
         # write sim_data_daily, only if exists
         if hasattr(self, "sim_data_daily"):

@@ -1,7 +1,12 @@
 # import primary packages
 import warnings
+from collections.abc import Callable, Iterable
+from os import PathLike
+from typing import Any
 
 import numpy as np
+import pandas as pd
+import xarray
 
 from ... import util as rk_util
 
@@ -26,20 +31,20 @@ _NEEDED_AFTER_POA = [
 
 
 def openfield_pv_merra_ryberg2019(
-    placements,
-    merra_path,
-    global_solar_atlas_ghi_path,
-    module="WINAICO WSx-240P6",
-    elev=300,
-    tracking="fixed",
-    inverter=None,
-    inverter_kwargs={},
-    tracking_args={},
-    output_netcdf_path=None,
-    output_variables=None,
-    tech_year=2050,
+    placements: pd.DataFrame,
+    merra_path: str | PathLike,
+    global_solar_atlas_ghi_path: str,
+    module: str | dict[str, Any] = "WINAICO WSx-240P6",
+    elev: float | str | PathLike | Iterable[float] = 300,
+    tracking: str = "fixed",
+    inverter: str | None = None,
+    inverter_kwargs: dict[str, Any] = {},
+    tracking_args: dict[str, Any] = {},
+    output_netcdf_path: str | None = None,
+    output_variables: str | list[str] | None = None,
+    tech_year: int | None = 2050,
     time_slice: slice | None = None,
-):
+) -> xarray.Dataset | str:
     """
 
     openfield_pv_merra_ryberg2019(placements, merra_path, global_solar_atlas_ghi_path, module="WINAICO WSx-240P6", elev=300, tracking="fixed",
@@ -172,26 +177,26 @@ def openfield_pv_merra_ryberg2019(
 
 
 def openfield_pv_era5(
-    placements,
-    era5_path,
-    global_solar_atlas_ghi_path,
-    global_solar_atlas_dni_path,
-    module="WINAICO WSx-240P6",
-    elev=300,
-    tracking="fixed",
-    inverter=None,
-    inverter_kwargs={},
-    tracking_args={},
-    DNI_nodata_fallback=1.0,
-    DNI_nodata_fallback_scaling=1.0,
-    GHI_nodata_fallback=1.0,
-    GHI_nodata_fallback_scaling=1.0,
-    output_netcdf_path=None,
-    output_variables=None,
-    gsa_nodata_fallback="source",
-    tech_year=2050,
+    placements: pd.DataFrame,
+    era5_path: str | PathLike,
+    global_solar_atlas_ghi_path: str,
+    global_solar_atlas_dni_path: str,
+    module: str | dict[str, Any] = "WINAICO WSx-240P6",
+    elev: float | str | PathLike | Iterable[float] = 300,
+    tracking: str = "fixed",
+    inverter: str | None = None,
+    inverter_kwargs: dict[str, Any] = {},
+    tracking_args: dict[str, Any] = {},
+    DNI_nodata_fallback: float | str | PathLike | Callable | None = 1.0,
+    DNI_nodata_fallback_scaling: float = 1.0,
+    GHI_nodata_fallback: float | str | PathLike | Callable | None = 1.0,
+    GHI_nodata_fallback_scaling: float = 1.0,
+    output_netcdf_path: str | None = None,
+    output_variables: str | list[str] | None = None,
+    gsa_nodata_fallback: str = "source",
+    tech_year: int | None = 2050,
     time_slice: slice | None = None,
-):
+) -> xarray.Dataset | str:
     """
     Simulation of an openfield  PV openfield system based on ERA5 Data.
 
@@ -409,20 +414,20 @@ def openfield_pv_era5(
 
 
 def openfield_pv_sarah_unvalidated(
-    placements,
-    sarah_path,
-    era5_path,
-    module="WINAICO WSx-240P6",
-    elev=300,
-    tracking="fixed",
-    inverter=None,
-    inverter_kwargs={},
-    tracking_args={},
-    output_netcdf_path=None,
-    output_variables=None,
-    tech_year=2050,
+    placements: pd.DataFrame,
+    sarah_path: str | PathLike,
+    era5_path: str | PathLike,
+    module: str | dict[str, Any] = "WINAICO WSx-240P6",
+    elev: float | str | PathLike | Iterable[float] = 300,
+    tracking: str = "fixed",
+    inverter: str | None = None,
+    inverter_kwargs: dict[str, Any] = {},
+    tracking_args: dict[str, Any] = {},
+    output_netcdf_path: str | None = None,
+    output_variables: str | list[str] | None = None,
+    tech_year: int | None = 2050,
     time_slice: slice | None = None,
-):
+) -> xarray.Dataset | str:
     """
 
     openfield_pv_sarah_unvalidated(placements, sarah_path, era5_path, module="WINAICO WSx-240P6", elev=300, tracking="fixed", inverter=None, inverter_kwargs={}, tracking_args={}, output_netcdf_path=None, output_variables=None)
@@ -562,19 +567,19 @@ def openfield_pv_sarah_unvalidated(
 
 
 def openfield_pv_iconlam(
-    placements,
-    icon_lam_path,
-    module="WINAICO WSx-240P6",
-    elev=300,
-    tracking="fixed",
-    inverter=None,
-    inverter_kwargs={},
-    tracking_args={},
-    output_netcdf_path=None,
-    output_variables=None,
-    tech_year=2050,
+    placements: pd.DataFrame,
+    icon_lam_path: str | PathLike,
+    module: str | dict[str, Any] = "WINAICO WSx-240P6",
+    elev: float | str | PathLike | Iterable[float] = 300,
+    tracking: str = "fixed",
+    inverter: str | None = None,
+    inverter_kwargs: dict[str, Any] = {},
+    tracking_args: dict[str, Any] = {},
+    output_netcdf_path: str | None = None,
+    output_variables: str | list[str] | None = None,
+    tech_year: int | None = 2050,
     time_slice: slice | None = None,
-):
+) -> xarray.Dataset | str:
     """
     Simulation of an openfield  PV openfield system based on ICON-LAM Data.
 

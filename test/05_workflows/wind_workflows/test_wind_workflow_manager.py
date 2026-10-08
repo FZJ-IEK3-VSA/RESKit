@@ -168,32 +168,35 @@ def test_WindWorkflowManager_wind_shear_projection_of_wind_speeds_to_hub_height(
     assert np.isclose(man.sim_data["elevated_wind_speed"].std(), 3.0918568121980496)
 
 
-def test_WindWorkflowManager_wind_shear_projection_is_independent_of_the_blocks(
-    pt_WindWorkflowManager_loaded, monkeypatch
-):
-    # the projection goes through the locations in blocks to bound its memory
-    man = pt_WindWorkflowManager_loaded
-    man.real_lra = np.array([5.64914904, 5.42147512, 5.65448952, 5.75908499, 5.94873524])
-    ws, height = man.sim_data["elevated_wind_speed"].copy(), man.elevated_wind_speed_height
+def _one_location_per_block(n_times: int, n_locations: int) -> list[slice]:
+    return [slice(location, location + 1) for location in range(n_locations)]
 
-    man.wind_shear_projection_of_wind_speeds_to_hub_height(
+
+def test_WindWorkflowManager_wind_shear_projection_is_independent_of_the_blocks(
+    pt_WindWorkflowManager_loaded: WindWorkflowManager,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # the projection goes through the locations in blocks to bound its memory
+    manager = pt_WindWorkflowManager_loaded
+    manager.real_lra = np.array([5.64914904, 5.42147512, 5.65448952, 5.75908499, 5.94873524])
+    original_wind_speed = manager.sim_data["elevated_wind_speed"].copy()
+    original_height = manager.elevated_wind_speed_height
+
+    manager.wind_shear_projection_of_wind_speeds_to_hub_height(
         alternative_wind_speed_rasters=alternative_wind_speed_rasters
     )
-    expected = man.sim_data["elevated_wind_speed"]
+    expected = manager.sim_data["elevated_wind_speed"]
 
     from reskit.wind.workflows import wind_workflow_manager
 
-    monkeypatch.setattr(
-        wind_workflow_manager,
-        "location_blocks",
-        lambda n_times, n_locations: [slice(i, i + 1) for i in range(n_locations)],
-    )
-    man.sim_data["elevated_wind_speed"], man.elevated_wind_speed_height = ws, height
-    man.wind_shear_projection_of_wind_speeds_to_hub_height(
+    monkeypatch.setattr(wind_workflow_manager, "location_blocks", _one_location_per_block)
+    manager.sim_data["elevated_wind_speed"] = original_wind_speed
+    manager.elevated_wind_speed_height = original_height
+    manager.wind_shear_projection_of_wind_speeds_to_hub_height(
         alternative_wind_speed_rasters=alternative_wind_speed_rasters
     )
 
-    np.testing.assert_array_equal(man.sim_data["elevated_wind_speed"], expected)
+    np.testing.assert_array_equal(manager.sim_data["elevated_wind_speed"], expected)
 
 
 def test_WindWorkflowManager_project_windspeeds_to_hub_height(
@@ -241,33 +244,32 @@ def test_WindWorkflowManager_apply_air_density_correction_to_wind_speeds(
 
 
 def _corrected_wind_speeds() -> np.ndarray:
-    man = _make_WindWorkflowManager()
-    man.read(
+    manager = _make_WindWorkflowManager()
+    manager.read(
         variables=["elevated_wind_speed", "surface_pressure", "surface_air_temperature"],
         source_type="ERA5",
         source=FIXTURES["era5"],
         set_time_index=True,
         verbose=False,
     )
-    man.apply_air_density_correction_to_wind_speeds()
-    man.placements["wake_curve"] = ["dena_mean", None, "knorr_mean", "dena_mean", None]
-    man.apply_wake_correction_of_wind_speeds(wake_curve=None)
-    return man.sim_data["elevated_wind_speed"]
+    manager.apply_air_density_correction_to_wind_speeds()
+    manager.placements["wake_curve"] = ["dena_mean", None, "knorr_mean", "dena_mean", None]
+    manager.apply_wake_correction_of_wind_speeds(wake_curve=None)
+    return manager.sim_data["elevated_wind_speed"]
 
 
-def test_WindWorkflowManager_wind_speed_corrections_are_independent_of_the_blocks(monkeypatch):
+def test_WindWorkflowManager_wind_speed_corrections_are_independent_of_the_blocks(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     # the air density and wake corrections go through the locations in blocks to bound their memory
     expected = _corrected_wind_speeds()
 
     from reskit.wind.workflows import wind_workflow_manager
 
-    monkeypatch.setattr(
-        wind_workflow_manager,
-        "location_blocks",
-        lambda n_times, n_locations: [slice(i, i + 1) for i in range(n_locations)],
-    )
+    monkeypatch.setattr(wind_workflow_manager, "location_blocks", _one_location_per_block)
+    result = _corrected_wind_speeds()
 
-    np.testing.assert_array_equal(_corrected_wind_speeds(), expected)
+    np.testing.assert_array_equal(result, expected)
 
 
 def test_WindWorkflowManager_convolute_power_curves(pt_WindWorkflowManager_initialized):
