@@ -149,13 +149,18 @@ def test_Era5ZarrSource_solar_fallbacks(pt_Era5ZarrSource):
 
     # On-the-fly processing: adj[i] = raw[i] / 3600, on the timestamp of the accumulation
     # raw ssrd[i, lat=51.0, lon=6.25] = 500 + i + 51.0 + 6.25
-    assert np.allclose(
-        pt_Era5ZarrSource.data["global_horizontal_irradiance"][:, 4, 2], [x / 3600 for x in (557.25, 558.25, 559.25)]
-    )
+    raw_ssrd = np.array([557.25, 558.25, 559.25])  # J/m² accumulated over the hour, for i = 0, 1, 2
+    expected_global_irradiance = raw_ssrd / 3600  # mean W/m² of the hour, without a time shift
+    global_irradiance_grid = pt_Era5ZarrSource.data["global_horizontal_irradiance"]  # dimensions (time, lat, lon)
+    read_global_irradiance = global_irradiance_grid[:, 4, 2]  # all time steps at lat=51.0, lon=6.25
+    assert np.allclose(read_global_irradiance, expected_global_irradiance)
+
     # raw fdir[i, lat=51.0, lon=6.25] = 200 + i + 51.0 + 6.25
-    assert np.allclose(
-        pt_Era5ZarrSource.data["direct_horizontal_irradiance"][:, 4, 2], [x / 3600 for x in (257.25, 258.25, 259.25)]
-    )
+    raw_fdir = np.array([257.25, 258.25, 259.25])  # J/m² accumulated over the hour, for i = 0, 1, 2
+    expected_direct_irradiance = raw_fdir / 3600  # mean W/m² of the hour, without a time shift
+    direct_irradiance_grid = pt_Era5ZarrSource.data["direct_horizontal_irradiance"]  # dimensions (time, lat, lon)
+    read_direct_irradiance = direct_irradiance_grid[:, 4, 2]  # all time steps at lat=51.0, lon=6.25
+    assert np.allclose(read_direct_irradiance, expected_direct_irradiance)
 
 
 def test_Era5ZarrSource_solar_fallback_follows_the_time_slice(era5_zarr_store):
@@ -211,6 +216,7 @@ def test_Era5ZarrSource_derived_radiation_has_no_missing_first_timestep(pt_Era5Z
     with pytest.warns(UserWarning, match="computing on the fly from raw 'ssrd'"):
         pt_Era5ZarrSource.sload("global_horizontal_irradiance")
 
+    # Test that the derived variable has no NaN values, which would indicate a missing timestep
     assert not np.isnan(pt_Era5ZarrSource.data["global_horizontal_irradiance"]).any()
 
 
