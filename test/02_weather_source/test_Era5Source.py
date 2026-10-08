@@ -533,4 +533,4 @@ def test_bounds_which_miss_the_data_raise():
 )
 def test_invalid_time_slice_raises(time_slice, message):
     with pytest.raises(ResError, match=message):
-        Era5Source(TEST_DATA["era5-like"], time_slice=time_slice, verbose=False)
+        Era5Source(FIXTURES["era5"], time_slice=time_slice, verbose=False)
