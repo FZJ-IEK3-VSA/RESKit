@@ -6,20 +6,22 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from reskit import TEST_DATA
+from reskit import data
 from reskit.util import ResError
 from reskit.weather import Era5Source
+
+FIXTURES = data.paths("test_suite")
 
 
 @pytest.fixture
 def pt_Era5Source():
-    return Era5Source(TEST_DATA["era5-like"], verbose=False)
+    return Era5Source(FIXTURES["era5"], verbose=False)
 
 
 @pytest.fixture
 def pt_BoundedEra5Source():
-    aachenExt = gk.Extent.fromVector(gk._test_data_["aachenShapefile.shp"])
-    return Era5Source(TEST_DATA["era5-like"], bounds=aachenExt, index_pad=1, verbose=False)
+    aachenExt = gk.Extent.fromVector(FIXTURES["aachen"])
+    return Era5Source(FIXTURES["era5"], bounds=aachenExt, index_pad=1, verbose=False)
 
 
 def test_load_an_absent_variable_raises(pt_Era5Source):
@@ -31,7 +33,7 @@ def test_load_an_absent_variable_raises(pt_Era5Source):
 
 
 def test_Era5Source___init__():
-    raw = nc.Dataset(join(TEST_DATA["era5-like"], "surface_pressure.nc"), mode="r")
+    raw = nc.Dataset(join(FIXTURES["era5"], "surface_pressure.nc"), mode="r")
     rawLats = raw["latitude"][::-1]
     rawLons = raw["longitude"][:]
     rawTimes = pd.DatetimeIndex(
@@ -44,7 +46,7 @@ def test_Era5Source___init__():
     ) - pd.Timedelta(minutes=30)
 
     # Unbounded source
-    ms = Era5Source(TEST_DATA["era5-like"], verbose=False)
+    ms = Era5Source(FIXTURES["era5"], verbose=False)
 
     # ensure lats, lons and times are okay
     assert (ms.lats == rawLats).all()
@@ -52,9 +54,9 @@ def test_Era5Source___init__():
     assert (ms.time_index == rawTimes).all()
 
     # Initialize a Era5Source with Aachen boundaries
-    aachenExt = gk.Extent.fromVector(gk._test_data_["aachenShapefile.shp"]).pad(0.5).fit(0.01)
+    aachenExt = gk.Extent.fromVector(FIXTURES["aachen"]).pad(0.5).fit(0.01)
 
-    ms = Era5Source(TEST_DATA["era5-like"], bounds=aachenExt, index_pad=1, verbose=False)
+    ms = Era5Source(FIXTURES["era5"], bounds=aachenExt, index_pad=1, verbose=False)
 
     # ensure lats, lons and times are okay
     assert np.isclose(ms.lats[0], 49.5)
@@ -503,8 +505,8 @@ def test_Era5Source_reads_a_cf_compliant_file(tmp_path):
 )
 def test_bounds_covering_the_whole_extent_keep_the_whole_grid(bounds):
     """Bounds with every cell inside them must not be cut down to a corner of the grid."""
-    unbounded = Era5Source(TEST_DATA["era5-like"], verbose=False)
-    source = Era5Source(TEST_DATA["era5-like"], bounds=gk.Extent(*bounds, srs=gk.srs.EPSG4326), verbose=False)
+    unbounded = Era5Source(FIXTURES["era5"], verbose=False)
+    source = Era5Source(FIXTURES["era5"], bounds=gk.Extent(*bounds, srs=gk.srs.EPSG4326), verbose=False)
 
     assert (source.lats == unbounded.lats).all()
     assert (source.lons == unbounded.lons).all()
@@ -516,6 +518,6 @@ def test_bounds_covering_the_whole_extent_keep_the_whole_grid(bounds):
 def test_bounds_which_miss_the_data_raise():
     """Bounds that do not overlap the data at all are a mistake, not an empty selection."""
     with pytest.raises(ResError) as error:
-        Era5Source(TEST_DATA["era5-like"], bounds=gk.Extent(20.0, 49.0, 22.0, 52.0, srs=gk.srs.EPSG4326), verbose=False)
+        Era5Source(FIXTURES["era5"], bounds=gk.Extent(20.0, 49.0, 22.0, 52.0, srs=gk.srs.EPSG4326), verbose=False)
 
     assert "do not overlap" in str(error.value)

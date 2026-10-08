@@ -7,6 +7,7 @@ import xarray as xr
 from numpy.lib.arraysetops import isin
 
 from reskit import workflow_manager
+from reskit.util.paths import is_path_like
 
 from ... import weather as rk_weather
 from .csp_workflow_manager import PTRWorkflowManager
@@ -150,7 +151,7 @@ def csp_ptr_era5(
         raise TypeError(f"datasets got unknown datatype")
 
     if not single_dataset:
-        assert isinstance(global_solar_atlas_tamb_path, str)
+        assert is_path_like(global_solar_atlas_tamb_path)
 
     if single_dataset:  # only one dataset given
         output = csp_ptr_era5_specific_dataset(

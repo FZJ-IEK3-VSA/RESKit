@@ -1,4 +1,3 @@
-# from reskit import TEST_DATA
 from reskit.wind.core.design_turbine import onshore_turbine_from_avg_wind_speed, turbine_design_from_avg_wind_speed
 from reskit.wind.core.data import DATAFOLDER
 

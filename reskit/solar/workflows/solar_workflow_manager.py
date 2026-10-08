@@ -13,6 +13,7 @@ import numpy as np
 import pandas as pd
 from scipy.interpolate import RectBivariateSpline
 
+from ...util.paths import as_path_string, is_path_like
 from ...workflow_manager import WorkflowManager
 
 # from reskit import solarpower
@@ -179,8 +180,8 @@ class SolarWorkflowManager(WorkflowManager):
 
         Parameters
         ----------
-        elev: str, int, iterable
-            If a string is given it must be a path to a rasterfile including the elevations.
+        elev: str, pathlib.Path, int, iterable
+            If a string or a Path is given it must be a path to a rasterfile including the elevations.
             If an iterable is given it has to include the elevations at each location and be
             of equal length to self.placements dataframe.
             If an integer is given, it will be applied to all locations equally.
@@ -203,9 +204,9 @@ class SolarWorkflowManager(WorkflowManager):
             # we don't have given elevation info, neither as elev arg nor in placements dataframe column
             # set all values to fallback
             self.placements["elev"] = np.array([fallback_elev] * len(self.locs))
-        elif isinstance(elev, str):
-            # assume we have a str formatted elevation raster path
-            clipped_elev = self.ext.pad(0.5).rasterMosaic(elev)
+        elif is_path_like(elev):
+            # assume we have an elevation raster path
+            clipped_elev = self.ext.pad(0.5).rasterMosaic(as_path_string(elev))
             if clipped_elev is None:
                 _elevs = np.array([np.nan] * len(self.locs))
             else:
