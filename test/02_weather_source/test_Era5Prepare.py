@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 import pytest
-from reskit import TEST_DATA
+from reskit import data
 from reskit.weather.era5_source.era5_prepare import (
     _ERA5_NC_TO_TILE_LABEL,
     _align_longitudes_to_source_convention,
@@ -27,6 +27,8 @@ from reskit.weather.era5_source.era5_prepare import (
     era5_tiler,
     preprocess_era5_data,
 )
+
+FIXTURES = data.paths("test_suite")
 
 # era5-like test data: lat=[49,52], lon=[5,7.5], year=2015
 # At zoom 4, this falls entirely within tile (x=8, y=5)
@@ -47,7 +49,7 @@ def era5_like_tile_input(tmp_path):
     """Temp dir with era5-like files renamed to match era5_tiler's expected naming.
     Returns (processed_dir, raw_nc_path).
     """
-    era5_like = TEST_DATA["era5-like"]
+    era5_like = FIXTURES["era5"]
     processed_dir = tmp_path / "processed"
     processed_dir.mkdir()
     shutil.copy(

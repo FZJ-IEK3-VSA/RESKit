@@ -1108,9 +1108,14 @@ def execute_workflow_iteratively(
         if weather_path_varname in cont:
             weather_path = cont.pop(weather_path_varname)
             break
-    assert isinstance(weather_path, str) or (
-        isinstance(weather_path, (list, tuple, np.ndarray, pd.Series)) and all(isinstance(x, str) for x in weather_path)
+    assert is_path_like(weather_path) or (
+        isinstance(weather_path, (list, tuple, np.ndarray, pd.Series)) and all(is_path_like(x) for x in weather_path)
     ), "weather_path must be a str or an ordered iterable of str."
+    # Strings from here on: the tile spacers in them are completed by string replacement.
+    if is_path_like(weather_path):
+        weather_path = as_path_string(weather_path)
+    else:
+        weather_path = [as_path_string(x) for x in weather_path]
     # broadcast it to one value per location if not provided as such
     try:
         weather_paths = np.broadcast_to(
