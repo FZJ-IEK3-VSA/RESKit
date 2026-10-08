@@ -8,10 +8,12 @@ import pytest
 
 pytest.importorskip("zarr")
 
-from reskit import TEST_DATA, WorkflowManager
+from reskit import data, WorkflowManager
 from reskit.csp.workflows.workflows import csp_ptr_era5, csp_ptr_era5_specific_dataset
 from reskit.solar.workflows.workflows import openfield_pv_era5
 from reskit.wind.workflows.workflows import wind_era5_PenaSanchezDunkelWinklerEtAl2025
+
+FIXTURES = data.paths("test_suite")
 
 
 @pytest.fixture(scope="module")
@@ -23,7 +25,7 @@ def era5_like_zarr_store(tmp_path_factory):
     """
     import xarray as xr
 
-    datasets = [xr.open_dataset(path) for path in sorted(glob.glob(join(TEST_DATA["era5-like"], "*.nc")))]
+    datasets = [xr.open_dataset(path) for path in sorted(glob.glob(join(FIXTURES["era5"], "*.nc")))]
     ds = xr.merge(datasets)
 
     store = tmp_path_factory.mktemp("era5_like_zarr") / "era5-like.zarr"
@@ -75,7 +77,7 @@ def _read_era5(placements, source, **kwargs):
 
 def test_era5_netcdf_and_zarr_read_identically(pt_placements, era5_like_zarr_store):
     """WorkflowManager.read() must give the same data for both ERA5 source types."""
-    netcdf_man = _read_era5(pt_placements, TEST_DATA["era5-like"])
+    netcdf_man = _read_era5(pt_placements, FIXTURES["era5"])
     zarr_man = _read_era5(pt_placements, era5_like_zarr_store)
 
     assert zarr_man.time_index.equals(netcdf_man.time_index)
