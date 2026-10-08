@@ -1,9 +1,9 @@
 """Create the ERA5 Zarr test data subset (era5-zarr/era5.zarr) from an online ERA5 store.
 
 This script was used to cut the subset once from the ERA5 single-levels Zarr store of
-the Earth Data Hub (https://data.earthdatahub.destine.eu/era5/era5-single-levels-atmosphere-v0.zarr). 
-The subset holds the raw ERA5 variables RESKit reads (Era5Source.CDS_TO_NC_NAME) for the 
-box of the 'era5' fixtures (49-52 N, 5-7.5 E) and their 140 hours 
+the Earth Data Hub (https://data.earthdatahub.destine.eu/era5/era5-single-levels-atmosphere-v0.zarr).
+The subset holds the raw ERA5 variables RESKit reads (Era5Source.CDS_TO_NC_NAME) for the
+box of the 'era5' fixtures (49-52 N, 5-7.5 E) and their 140 hours
 (2015-01-01 00:00 to 2015-01-06 19:00), plus the hour before. It keeps
 the layout and values of the source ('valid_time' axis, longitudes on [0, 360),
 descending latitudes, float32), so that the tests read real online data the way users
