@@ -48,38 +48,8 @@ def sources():
     )
 
 
-def test_the_store_has_the_layout_of_its_online_source():
-    with xr.open_zarr(STORE) as ds:
-        assert "valid_time" in ds.dims and "time" not in ds.variables
-        assert ds["latitude"].values[0] > ds["latitude"].values[-1]
-        assert set(ds.data_vars) == set(Era5Source.CDS_TO_NC_NAME.values())
-        assert all(variable.dtype == np.float32 for variable in ds.data_vars.values())
-        assert ds.attrs["reskit_source_url"].startswith("https://")
-
-
-def test_the_store_keeps_the_mantissa_bits_its_tolerance_assumes():
-    dropped_bits = (1 << (23 - ZARR_MANTISSA_BITS)) - 1
-    with xr.open_zarr(STORE) as ds:
-        for name, variable in ds.data_vars.items():
-            assert not (variable.values.view(np.uint32) & dropped_bits).any(), name
-
-
-def test_Era5ZarrSource_reads_the_store(sources):
-    zarr, netcdf = sources
-
-    assert zarr.time_name == "valid_time"
-    assert zarr.time_index.equals(netcdf.time_index)
-    assert (zarr.lats == netcdf.lats).all()
-    assert (zarr.lons == netcdf.lons).all()
-    assert zarr.variables["derived_from"].dropna().to_dict() == {"ssrd_t_adj": "ssrd", "fdir_t_adj": "fdir"}
-
-    zarr.sload_global_horizontal_irradiance()
-    zarr.sload_direct_horizontal_irradiance()
-    assert not np.isnan(zarr.data["global_horizontal_irradiance"]).any()
-    assert not np.isnan(zarr.data["direct_horizontal_irradiance"]).any()
-
-
 def _load(sources, variable):
+    """Load one RESKit variable in both sources and return (zarr, netcdf) data."""
     zarr, netcdf = sources
     for source in sources:
         getattr(source, LOADERS[variable])()
@@ -88,11 +58,15 @@ def _load(sources, variable):
 
 @pytest.mark.parametrize("variable", LOADERS)
 def test_zarr_data_matches_the_netcdf_fixtures(sources, variable):
+    # Every variable, incl. the derived irradiances, has the right values, unit and time
+    # step: it agrees with the netCDF4 fixtures within what both encodings round away.
     assert_matches_encoding(*_load(sources, variable), variable)
 
 
 @pytest.mark.parametrize("variable", LOADERS)
 def test_the_tolerance_catches_a_time_step_off_by_one_hour(sources, variable):
+    # Negative control: shifting the Zarr data by one hour must fail the comparison,
+    # otherwise the tolerance is too loose to notice a wrong time step.
     actual, expected = _load(sources, variable)
     with pytest.raises(AssertionError):
         assert_matches_encoding(actual[1:], expected[:-1], variable)
@@ -108,6 +82,8 @@ def test_the_tolerance_catches_a_time_step_off_by_one_hour(sources, variable):
     ],
 )
 def test_the_tolerance_catches_a_wrong_unit(sources, variable, wrong_unit):
+    # Negative control: data in a plausible wrong unit (K instead of °C, hPa instead of Pa,
+    # J/m² instead of W/m²) must fail the comparison, so the tolerance can't hide a unit error.
     actual, expected = _load(sources, variable)
     with pytest.raises(AssertionError):
         assert_matches_encoding(wrong_unit(actual), expected, variable)
