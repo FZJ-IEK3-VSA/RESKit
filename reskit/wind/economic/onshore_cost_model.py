@@ -114,7 +114,6 @@ def onshore_turbine_capex(
     )
     bos = onshore_bos(cp=cp, hh=hh, rd=rd) * bos_scaling
 
-
     total_costs = (tcc + bos) / (OnshoreParams.tcc_share + OnshoreParams.bos_share)
 
     return total_costs
