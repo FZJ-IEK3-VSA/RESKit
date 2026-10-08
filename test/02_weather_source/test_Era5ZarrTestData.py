@@ -12,7 +12,6 @@ what both encodings round away, see test/era5_encoding.py. A wrong unit or time
 step exceeds that, which the negative controls below make sure of.
 """
 
-from os import sep
 from os.path import join
 
 import numpy as np
@@ -20,10 +19,11 @@ import pytest
 import xarray as xr
 from era5_encoding import ZARR_MANTISSA_BITS, assert_matches_encoding
 
-from reskit import TEST_DATA
+from reskit import data
 from reskit.weather import Era5Source, Era5ZarrSource
 
-STORE = TEST_DATA["era5.zarr"]
+FIXTURES = data.paths("test_suite")
+STORE = join(FIXTURES["era5_zarr"], "era5.zarr")
 # The 140 hours of the 'era5' netCDF4 fixtures, on RESKit's time index
 ERA5_HOURS = slice("2014-12-31 23:30", "2015-01-06 18:30")
 LOADERS = {
@@ -44,7 +44,7 @@ def sources():
     """Both sources over the same 140 hours: the store via Era5ZarrSource, 'era5' via Era5Source."""
     return (
         Era5ZarrSource(STORE, time_slice=ERA5_HOURS, verbose=False),
-        Era5Source(TEST_DATA["era5"], verbose=False),
+        Era5Source(FIXTURES["era5"], verbose=False),
     )
 
 
@@ -111,11 +111,3 @@ def test_the_tolerance_catches_a_wrong_unit(sources, variable, wrong_unit):
     actual, expected = _load(sources, variable)
     with pytest.raises(AssertionError):
         assert_matches_encoding(wrong_unit(actual), expected, variable)
-
-
-def test_the_store_is_registered_as_a_single_fixture():
-    """Under its relative path and its bare name, while the files inside it are not."""
-    assert (
-        TEST_DATA["era5.zarr"] == TEST_DATA[join("era5-zarr", "era5.zarr")] == join(TEST_DATA["era5-zarr"], "era5.zarr")
-    )
-    assert not [key for key in TEST_DATA if ".zarr" + sep in key]
