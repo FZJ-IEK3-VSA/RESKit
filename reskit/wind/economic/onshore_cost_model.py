@@ -148,7 +148,13 @@ def onshore_tcc(cp, hh, rd, gdp_escalator=None, blade_material_escalator=None, b
         This argument will be removed in a coming release.
     **kwargs
         Inputs of WISDEM's nrel_csm_2015() model, scalars or arrays broadcastable to the
-        designs. See _onshore_tcc_scalar() for details.
+        designs, see https://wisdem.readthedocs.io/en/master/examples/01_nrelcsm/tutorial.html
+        Default values in addition to nrel_csm_2015() are:
+        "turbine_class": 2
+        "main_bearing_number": 2
+        "blade_number": 3
+        "max_tip_speed": 80
+        "max_efficiency": 0.90
 
     Returns
     -------
@@ -214,7 +220,8 @@ def onshore_tcc(cp, hh, rd, gdp_escalator=None, blade_material_escalator=None, b
         # nothing to compute, and computing one design at a time needs at least one
         return np.empty(design_shape, dtype=float)
 
-    # all designs at once: the same inputs as _onshore_tcc_scalar() sets, one value per design
+    # all designs at once, one value per design; defaults taken from
+    # https://wisdem.readthedocs.io/en/master/examples/01_nrelcsm/tutorial.html
     # (_run_nrel_csm_2015() converts the continuous inputs to float)
     model_inputs = {
         "machine_rating": cp.ravel(),
@@ -479,67 +486,6 @@ def _compute(component, inputs, discrete_inputs):
         float_value = np.asarray(value, dtype=float)
         float_outputs[name] = np.atleast_1d(float_value)
     return float_outputs
-
-
-def _onshore_tcc_scalar(cp, hh, rd, **kwargs):
-    """
-    Calculates the absolute turbine capital cost in USD according to
-    https://wisdem.readthedocs.io/en/master/examples/01_nrelcsm/tutorial.html
-
-    This is the reference implementation, setting up and running an OpenMDAO problem for a
-    single design; onshore_tcc() evaluates the same model for many designs at once.
-
-    Parameters
-    ----------
-    cp : int | float
-        Capacity in kW.
-    hh : int | float
-        Hub height in meters.
-    rd : int | float
-        Rotor diamater in meters.
-    **kwargs
-        Will be set as attributes of nrel_csm_2015() model.
-        Default values in addition to nrel_csm_2015() are:
-        "machine_rating": cp
-        "rotor_diameter": rd
-        "tower_length": hh
-        "turbine_class": 2
-        "main_bearing_number": 2
-        "blade_number": 3
-        "max_tip_speed": 80
-        "max_efficiency": 0.90
-
-    Returns
-    -------
-    float
-        Absolute CAPEX in USD_2015.
-    """
-    prob = om.Problem(reports=False)
-    prob.model = nrel_csm_2015()
-    prob.setup()
-    prob.model.turbine_costs.options["verbosity"] = False
-    # ensure or set all mandatory args
-    # defaults are taken from https://wisdem.readthedocs.io/en/master/examples/01_nrelcsm/tutorial.html
-    params = {
-        "machine_rating": cp,
-        "rotor_diameter": rd,
-        "tower_length": hh,
-        "turbine_class": 2,
-        "main_bearing_number": 2,
-        "blade_number": 3,
-        "max_tip_speed": 80,
-        "max_efficiency": 0.90,
-    }
-    params.update(kwargs)  # update default params with kwargs where parameters are missing
-    # set all kwarg + default parameters
-    for k, v in params.items():
-        prob[k] = v
-
-    # run and evaluate the model
-    prob.run_model()
-    return (
-        prob.get_val("turbine_costs.turbine_c.turbine_cost_kW").item() * cp
-    )  # previous functions expect absolute cost
 
 
 def onshore_bos(cp, hh, rd):
