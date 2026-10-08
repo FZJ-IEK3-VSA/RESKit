@@ -20,7 +20,7 @@ from os.path import join
 import numpy as np
 import xarray as xr
 
-from reskit import TEST_DATA
+from reskit import data
 
 ZARR_MANTISSA_BITS = 10
 MARGIN = 2
@@ -38,7 +38,7 @@ STORED_AS = {
 }
 
 
-def netcdf_scale_factor(nc_variable, folder=TEST_DATA["era5"]):
+def netcdf_scale_factor(nc_variable, folder=data.paths("test_suite")["era5"]):
     """The packing step of a variable of the netCDF4 fixtures."""
     for path in sorted(glob(join(folder, "*.nc"))):
         with xr.open_dataset(path, mask_and_scale=False) as ds:

@@ -16,10 +16,10 @@ sufficient — the GIL is not the bottleneck. Notebooks run in their own
 directory (``cwd = notebook.parent``) so relative paths inside cells behave
 the same as in Jupyter Lab.
 
-Some notebooks are excluded by default (``DEFAULT_EXCLUDED``): they need CDS or
-Earth Data Hub credentials, a large ERA5 download, or a purchased
-thewindpower.net dataset, and one is a recipe whose paths are placeholders — so
-they cannot run in CI. They are rendered from whatever is committed, i.e. mostly
+Some notebooks are excluded by default (``DEFAULT_EXCLUDED``): they need Earth
+Data Hub credentials, ERA5 data the ETHOS.Data catalogue does not hold yet, or a
+purchased thewindpower.net dataset, and one is a recipe whose paths are
+placeholders — so they cannot run in CI. They are rendered from whatever is committed, i.e. mostly
 as source without outputs, which is how the previous Jupyter Book build treated
 them (``_config.yml``'s ``execute.exclude_patterns``).
 
@@ -49,10 +49,6 @@ from nbclient import NotebookClient
 from nbclient.exceptions import CellExecutionError
 
 # Notebooks that cannot be executed in CI, by filename:
-#   1_1_1  downloads ERA5 from the CDS (needs a ~/.cdsapirc API key)
-#   1_1_2  operates on the full ERA5 wind-vector download from 1_1_1
-#   1_1_3  calls rk.download_and_process() -> CDS download (needs ~/.cdsapirc)
-#   1_1_4  same as 1_1_3, for the ERA5-based solar workflows
 #   1_3_1  processes power curves from a purchased thewindpower.net dataset
 #   1_4_1  a recipe notebook: its paths are placeholders ("path_to_ERA5_data",
 #          "some_path"), so it is not runnable anywhere, CI or otherwise
@@ -64,10 +60,6 @@ from nbclient.exceptions import CellExecutionError
 # `examples_to_execute`, plus 3_8, which they run only because nbval skips its
 # network cells. The excluded notebooks are rendered from whatever is committed.
 DEFAULT_EXCLUDED = [
-    "1_1_1_how_to_download_era5_data.ipynb",
-    "1_1_2_wind_speed_from_vectors_in_era5.ipynb",
-    "1_1_3_prepare_era5_for_wind_workflow.ipynb",
-    "1_1_4_prepare_era5_for_solar_workflow.ipynb",
     "1_3_1_process_power_curves_from_thewindpower_net.ipynb",
     "1_4_1_how_to_create_LRA_datasets.ipynb",
     "3_8_use_workflows_with_zarr.ipynb",

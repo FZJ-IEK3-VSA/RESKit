@@ -79,9 +79,9 @@ plugins:
           # Notebooks are NOT executed by mkdocs-jupyter. They are pre-executed
           # in parallel by docs/scripts/execute_notebooks.py (a docs pre-build
           # step; see .readthedocs.yaml) and rendered here from those outputs.
-          # Some notebooks are never executed in CI — they need CDS or Earth Data
-          # Hub credentials, a large ERA5 download, or a purchased dataset, and one
-          # is a recipe with placeholder paths. Those render from whatever outputs
+          # Some notebooks are never executed in CI — they need Earth Data Hub
+          # credentials, ERA5 data the ETHOS.Data catalogue does not hold yet, or a
+          # purchased dataset, and one is a recipe with placeholder paths. Those render from whatever outputs
           # are committed, which for most of them is none; see DEFAULT_EXCLUDED in
           # that script for the current list.
           execute: false
@@ -149,10 +149,6 @@ nav:
 
           - Download and Load Input Data:
                 - Overview: example_articles/1_download_input_data.md
-                - Download ERA5 Data: examples/1_load_input_data/1_1_1_how_to_download_era5_data.ipynb
-                - Wind Speed from ERA5 Vectors: examples/1_load_input_data/1_1_2_wind_speed_from_vectors_in_era5.ipynb
-                - Prepare ERA5 for Wind Workflow: examples/1_load_input_data/1_1_3_prepare_era5_for_wind_workflow.ipynb
-                - Prepare ERA5 for Solar Workflow: examples/1_load_input_data/1_1_4_prepare_era5_for_solar_workflow.ipynb
                 - Reading MERRA Weather Data: examples/1_load_input_data/1_2_1_reading_merra_weather_data.ipynb
                 - Project Wind Speed from MERRA: examples/1_load_input_data/1_2_2_vertically_project_wind_speed_from_merra.ipynb
                 - Power Curves from thewindpower.net: examples/1_load_input_data/1_3_1_process_power_curves_from_thewindpower_net.ipynb

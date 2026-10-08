@@ -465,9 +465,7 @@ def preprocess_era5_data(focus_nc: str, processed_dir: Optional[str] = None):
     average power flux (W m⁻²) over that hour. The time axis is kept as it is: RESKit's
     ERA5 time index puts each timestamp at the middle of the hour before it (see
     Era5Source), which is exactly the hour this mean covers. This is also how the ERA5
-    netCDF4 archive RESKit reads holds the '*_t_adj' variables. Shifting the timestamps
-    forward by one hour would make every solar workflow, which takes its time index from
-    'direct_horizontal_irradiance', see the sun one hour late.
+    netCDF4 archive RESKit reads holds the '*_t_adj' variables.
 
     Parameters
     ----------

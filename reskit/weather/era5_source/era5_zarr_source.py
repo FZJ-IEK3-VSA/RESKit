@@ -60,7 +60,7 @@ class Era5ZarrSource(Era5Source):
         bounds=None,
         index_pad=5,
         time_index_from=None,
-        time_slice=None,
+        time_slice: slice | None = None,
         chunks=None,
         consolidated=True,
         storage_options=None,
@@ -207,6 +207,8 @@ class Era5ZarrSource(Era5Source):
         )
 
         timeindex = pd.DatetimeIndex(pd.to_datetime(self._dataset[self.time_name].values)) + self.TIME_OFFSET
+        # time steps of the store, shifted by TIME_OFFSET and already restricted to time_slice;
+        # without time zone, so both indexes are the same
         self._timeindex_raw = timeindex
         self.time_index = timeindex
         self.data = OrderedDict()
@@ -337,11 +339,10 @@ class Era5ZarrSource(Era5Source):
     def _derive_solar_variables(cls, ds: xr.Dataset) -> tuple[xr.Dataset, dict]:
         """Add the processed solar variables to stores that only provide the raw accumulations.
 
-        adj[i] = raw[i] / 3600 (J/m² per hour -> W/m²), without any time shift. ERA5 labels
+        adj[i] = raw[i] / 3600 (J/m² per hour -> W/m²). ERA5 labels
         an accumulation with the end of the hour it covers, and RESKit's time index puts it
         at the middle of that hour (TIME_OFFSET), so the mean flux of the hour already sits
-        at the right time. This matches the '*_t_adj' variables of the ERA5 netCDF4 archive
-        Era5Source reads, which hold raw / 3600 at the timestamp of each accumulation.
+        at the right time.
 
         Parameters
         ----------
