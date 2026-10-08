@@ -98,7 +98,34 @@ pip install -e .
 
 ## Getting Started
 
-### Preparing Weather Data
+You can use ERA5 Data from Zarr or netcdf4 
+### Reading ERA5 from Zarr
+
+ETHOS.RESKit workflows are driven by gridded weather data. ERA5 is read directly from regular latitude/longitude Zarr stores with the existing `source_type="ERA5"` workflow API. The current implementation is intended for stores such as the [Earth Data Hub ERA5 single-level dataset](https://earthdatahub.destine.eu/collections/era5/datasets/reanalysis-era5-single-levels):
+
+Earth Data Hub requires authentication. Follow the credential instructions on the linked dataset page and save the generated credentials as `~/.netrc` (not in a directory on `PATH`). On shared systems, restrict access with `chmod 600 ~/.netrc`. The HTTPS backend will use those credentials automatically.
+
+```python
+from reskit.wind.workflows.wind_workflow_manager import WindWorkflowManager
+wf = WindWorkflowManager(placements)
+ 
+wf.read(
+    variables=["surface_pressure", "surface_air_temperature", "elevated_wind_speed"],
+    source_type="ERA5",
+    source="https://data.earthdatahub.destine.eu/era5/reanalysis-era5-single-levels-v0.zarr",
+    chunks={"valid_time": 48},
+    time_slice=slice("2020-01-01", "2020-01-31 23:00:00"),
+    set_time_index=True,
+)
+```
+
+Current limitations:
+- The implementation only supports regular `(time|valid_time, latitude, longitude)` Zarr layouts, not flattened `values`-based ERA5 archives.
+- If the Zarr store does not ship ETHOS.RESKit's processed `ssrd_t_adj` and `fdir_t_adj` fields,  `global_horizontal_irradiance` and `direct_horizontal_irradiance` fall back to processing the raw `ssrd` and `fdir` on the fly.
+
+The example notebook [3_8_use_workflows_with_zarr.ipynb](examples/3_wind/3_8_use_workflows_with_zarr.ipynb) runs the ETHOS.RESKit.Wind workflow on the Earth Data Hub store.
+
+## Preparing netcdf4 Weather Data
 
 ETHOS.RESKit workflows are driven by gridded weather data. ETHOS.RESKit ships a single
 high-level helper, `rk.download_and_process`, that downloads exactly the variables a
@@ -135,6 +162,7 @@ implemented — solar/CSP workflows on Global Solar Atlas rasters and wind workf
 on Global Wind Atlas rasters. `download_and_process` prints a notice for these and
 you must supply the rasters manually.
 
+
 ### Input data from the ETHOS.Data catalogue
 
 RESKit names each workflow's input collection after the workflow in
@@ -159,15 +187,15 @@ one `handle<TAB>path` line per input, `reskit-data show` lists every collection,
 and `reskit-data --help` every command.
 
 Both variants use the same input handles. The full variant is selected when
-`test=True` is omitted, but the pinned public catalogue currently lacks its ERA5
-dataset. To run that variant, select a catalogue containing the required full
-inputs; removing `test=True` alone will currently raise `UnknownDataset`.
+`test=True` is omitted, but no catalogue holds a full ERA5 dataset yet, so
+removing `test=True` alone raises `UnknownDataset`. A workflow whose full inputs
+are not catalogued at all has a `test` variant only.
 
 The `reskit-test-data` fixtures ship with RESKit as a verified
-[ETHOS.Data bundle](https://ethos-data.readthedocs.io/en/latest/how-to/keep-test-data-in-a-repository/)
+[ETHOS.Data bundle](https://ethos-data.readthedocs.io/en/latest/how-to/package-maintainers/keep-data-in-the-repository/)
 in `reskit/data/test_cache`, so `test=True`, the examples and the test suite read
-them offline. Pass `download=True`, or set `RESKIT_DATA_DOWNLOAD=1`, to fetch them
-from the catalogue's store into the shared cache instead.
+them offline, without reading any catalogue. Set `ETHOS_DATA_DOWNLOAD=1` to read
+them through the catalogue's store and the shared cache instead.
 
 Install ETHOS.Data in the same environment. In a development checkout, reinstall
 RESKit with `pip install -e . --no-deps` to register its console script.

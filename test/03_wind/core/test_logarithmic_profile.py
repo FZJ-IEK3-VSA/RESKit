@@ -4,7 +4,7 @@ import geokit as gk
 import numpy as np
 import pytest
 
-from reskit import TEST_DATA
+from reskit import data
 from reskit.wind.core.logarithmic_profile import (
     apply_logarithmic_profile_projection,
     roughness_from_clc,
@@ -12,6 +12,8 @@ from reskit.wind.core.logarithmic_profile import (
     roughness_from_land_cover_source,
     roughness_from_levels,
 )
+
+FIXTURES = data.paths("test_suite")
 
 
 def test_apply_logarithmic_profile_projection():
@@ -56,7 +58,7 @@ def test_roughness_from_clc(raster_input):
     # LCCS 190 (urban areas) -> rough: 1.2
     loc3 = gk.Location(lat=50.59082, lon=5.86483)
 
-    clc_path = raster_input(TEST_DATA["clc-aachen_clipped.tif"])
+    clc_path = raster_input(FIXTURES["clc"])
     r = roughness_from_clc(clc_path=clc_path, loc=loc1)
     assert np.isclose(r, 0.75)
 
@@ -92,7 +94,7 @@ def test_roughness_from_land_cover_source(raster_input):
     # LCCS 190 (urban areas) -> rough: 1.2
     loc3 = gk.Location(lat=50.59082, lon=5.86483)
 
-    source = raster_input(TEST_DATA["ESA_CCI_2015_clip.tif"])
+    source = raster_input(FIXTURES["esa_cci"])
     r = roughness_from_land_cover_source(source=source, loc=loc1, land_cover_type="cci")
     assert np.isclose(r, 0.75)
 
