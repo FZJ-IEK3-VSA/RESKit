@@ -14,8 +14,10 @@ from reskit.util.paths import is_path_like
 from ... import weather as rk_weather
 from .csp_workflow_manager import PTRWorkflowManager
 from .dataset_handler import DatasetHandler
+from reskit.util.provenance import record_provenance
 
 
+@record_provenance
 def csp_ptr_era5(
     placements: pd.DataFrame,
     era5_path: str | PathLike | rk_weather.NCSource,
@@ -235,6 +237,7 @@ def csp_ptr_era5(
         return output
 
 
+@record_provenance
 def csp_ptr_era5_specific_dataset(
     placements: pd.DataFrame,
     era5_path: str | PathLike | rk_weather.NCSource,

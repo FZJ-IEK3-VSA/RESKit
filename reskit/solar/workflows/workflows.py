@@ -13,6 +13,7 @@ from ... import util as rk_util
 # import othert modules
 from ... import weather as rk_weather
 from .solar_workflow_manager import SolarWorkflowManager
+from reskit.util.provenance import record_provenance
 
 
 # The variables which the steps after the plane of array irradiance read: the irradiance and
@@ -30,6 +31,7 @@ _NEEDED_AFTER_POA = [
 ]
 
 
+@record_provenance
 def openfield_pv_merra_ryberg2019(
     placements: pd.DataFrame,
     merra_path: str | PathLike,
@@ -176,6 +178,7 @@ def openfield_pv_merra_ryberg2019(
     return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables, release=True)
 
 
+@record_provenance
 def openfield_pv_era5(
     placements: pd.DataFrame,
     era5_path: str | PathLike,
@@ -413,6 +416,7 @@ def openfield_pv_era5(
     return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables, release=True)
 
 
+@record_provenance
 def openfield_pv_sarah_unvalidated(
     placements: pd.DataFrame,
     sarah_path: str | PathLike,
@@ -566,6 +570,7 @@ def openfield_pv_sarah_unvalidated(
     return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables, release=True)
 
 
+@record_provenance
 def openfield_pv_iconlam(
     placements: pd.DataFrame,
     icon_lam_path: str | PathLike,

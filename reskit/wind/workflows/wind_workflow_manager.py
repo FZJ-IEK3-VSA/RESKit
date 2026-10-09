@@ -1078,6 +1078,7 @@ class WindWorkflowManager(WorkflowManager):
                     datetime.datetime.now(),
                     f"Now extracting correction factors for a total of {len(self.locs)} placements from {correction_factors}:",
                 )
+            self.record_input_file("cf_correction", correction_factors)
             correction_factors = gk.raster.interpolateValues(correction_factors, self.locs, mode="near")
             assert not np.isnan(correction_factors).any(), f"correction_factors extracted from raster must not be nan"
         elif not isinstance(correction_factors, (float, int)):

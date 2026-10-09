@@ -16,8 +16,10 @@ import reskit.weather as rk_weather
 from reskit.wind.core.data import DATAFOLDER
 from reskit.wind.core.windspeed_correction import build_ws_correction_function
 from reskit.wind.workflows.wind_workflow_manager import WindWorkflowManager
+from reskit.util.provenance import record_provenance
 
 
+@record_provenance
 def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
     placements: pd.DataFrame,
     era5_path: str | PathLike,
@@ -201,6 +203,7 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
     return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables, release=True)
 
 
+@record_provenance
 def onshore_wind_merra_ryberg2019_europe(
     placements: pd.DataFrame,
     merra_path: str | PathLike,
@@ -289,6 +292,7 @@ def onshore_wind_merra_ryberg2019_europe(
     return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables, release=True)
 
 
+@record_provenance
 def offshore_wind_merra_caglayan2019(
     placements: pd.DataFrame,
     merra_path: str | PathLike,
@@ -363,6 +367,7 @@ def offshore_wind_merra_caglayan2019(
     return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables, release=True)
 
 
+@record_provenance
 def onshore_wind_iconlam_2023(
     placements: pd.DataFrame,
     icon_lam_path: str | PathLike,
@@ -457,6 +462,7 @@ def onshore_wind_iconlam_2023(
     return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables, release=True)
 
 
+@record_provenance
 def wind_config(
     placements: pd.DataFrame,
     weather_path: str | PathLike,

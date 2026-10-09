@@ -8,8 +8,10 @@ import pandas as pd
 from .cooling_heating_workflow_manager import CoolingHeatingWorkflowManager
 from ...util.relative_humidity import calculate_relative_humidity
 from ...util.wet_bulb_temperature import calculate_wet_bulb_temperature
+from reskit.util.provenance import record_provenance
 
 
+@record_provenance
 def evaporative_cooling_wortmann2025(
     placements: pd.DataFrame,
     era5_path: str,
@@ -86,6 +88,7 @@ def evaporative_cooling_wortmann2025(
     wf = CoolingHeatingWorkflowManager(placements)
 
 
+@record_provenance
 def air_cooling_wenzel2025(
     placements: pd.DataFrame,
     era5_path: str,
@@ -242,6 +245,7 @@ def air_cooling_wenzel2025(
     )
 
 
+@record_provenance
 def air_source_heat_pump(
     placements: pd.DataFrame,
     era5_path: str,
@@ -326,6 +330,7 @@ def air_source_heat_pump(
     )
 
 
+@record_provenance
 def evaporative_cooling_wortmann2025(
     placements: pd.DataFrame,
     era5_path: str,

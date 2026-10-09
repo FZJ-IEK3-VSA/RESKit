@@ -21,6 +21,7 @@ from reskit import weather as rk_weather
 
 # import other modules
 from reskit.util.paths import as_path_string, is_path_like
+from reskit.util.provenance import provenance_attributes
 from reskit.util.weather_tile import get_location_specific_weather_paths
 
 
@@ -306,6 +307,10 @@ class WorkflowManager:
         self.time_index = None
         self.workflow_parameters = OrderedDict()
 
+        # Provenance, see reskit.util.provenance
+        self.weather_sources = []
+        self.input_files = []
+
     # STAGE 2: weather data reading and adjusting
 
     def set_time_index(self, times: pd.DatetimeIndex):
@@ -329,6 +334,8 @@ class WorkflowManager:
 
     def extract_raster_values_at_placements(self, raster, **kwargs):
         """Extracts pixel values at each of the configured placements from the specified raster file"""
+        if is_path_like(raster):
+            self.record_input_file("raster", raster)
         return gk.raster.interpolateValues(raster, points=self.locs, **kwargs)
 
     def read(
@@ -415,6 +422,7 @@ class WorkflowManager:
 
         if is_path_like(source) and source_type != "user":
             source = as_path_string(source)
+            self.weather_sources.append(dict(source_type=source_type, path=source, variables=variables))
             storage_format = kwargs.pop("storage_format", None)
             is_zarr = storage_format == "zarr" or source.endswith(".zarr") or source.startswith("gs://")
             if source_type == "ERA5":
@@ -491,6 +499,9 @@ class WorkflowManager:
                         "The given source has no '.sload()' method and is missing the variable(s): "
                         + ", ".join(missing_variables)
                     )
+            self.weather_sources.append(
+                dict(source_type=source_type, source=type(source).__name__, variables=variables)
+            )
 
         frames = {
             var: source.get(var, self.locs, interpolation=spatial_interpolation_mode, force_as_data_frame=True)
@@ -656,6 +667,7 @@ class WorkflowManager:
         # returns) would be handed back unopened and fail inside rasterInfo().
         fp = as_path_string(fp)
         assert isfile(fp), f"File '{fp}' in adjust_variable_to_long_run_average() does not exist."
+        self.record_input_file("raster", fp)
         # execute with warnings filter since values outside of source data would trigger geokit UserWarning every time
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
@@ -942,6 +954,21 @@ class WorkflowManager:
 
         return self
 
+    def record_input_file(self, role: str, path: str):
+        """Records a file the simulation read, e.g. correction data, in the output's provenance
+
+        Workflow arguments and weather sources read with `.read()` are recorded automatically.
+
+        Parameters
+        ----------
+        role : str
+            What the file is used for, e.g. "raster" or "cf_correction"
+
+        path : str
+            The path of the file
+        """
+        self.input_files.append((role, as_path_string(path)))
+
     def register_workflow_parameter(self, key: str, value: Union[str, float]):
         """Add a parameter to the WorkflowManager which will be included in the output XArray dataset
 
@@ -1010,6 +1037,8 @@ class WorkflowManager:
         - The `workflow_parameters` data is automatically added as dimensionless variables
         - The `.sim_data` is automatically added along the dimensions (time, locations)
         - The `.time_index` is automatically added along the dimension 'time'
+        - Provenance attributes ("reskit_version", "reskit_workflow", ...) are added, see
+          `reskit.util.provenance`
 
         Parameters
         ----------
@@ -1137,6 +1166,9 @@ class WorkflowManager:
 
         xds = xarray.Dataset(xds)
 
+        weather_sources = [dict(source, **self._time_span()) for source in self.weather_sources]
+        xds.attrs.update(provenance_attributes(weather_sources=weather_sources, input_files=self.input_files))
+
         for k, v in self.workflow_parameters.items():
             xds.attrs[k] = v
 
@@ -1150,6 +1182,15 @@ class WorkflowManager:
             return output_netcdf_path
         else:
             return xds
+
+    def _time_span(self):
+        if self.time_index is None or len(self.time_index) == 0:
+            return {}
+        return dict(
+            time_start=self.time_index[0].isoformat(),
+            time_end=self.time_index[-1].isoformat(),
+            time_steps=len(self.time_index),
+        )
 
     def to_netcdf(
         self,

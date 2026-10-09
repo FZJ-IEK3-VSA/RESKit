@@ -246,6 +246,20 @@ Current limitations:
 - The implementation only supports regular `(time|valid_time, latitude, longitude)` Zarr layouts, not flattened `values`-based ERA5 archives.
 - If the Zarr store does not ship ETHOS.RESKit's processed `ssrd_t_adj` and `fdir_t_adj` fields,  `global_horizontal_irradiance` and `direct_horizontal_irradiance` fall back to processing the raw `ssrd` and `fdir` on the fly.
 
+### Provenance of results
+
+Every result of a workflow records how it was made, in the dataset attributes, so it is kept in the netCDF file as well: the RESKit version and git commit, the workflow and its arguments, the versions of the main dependencies, the weather sources with variables and time span, and every input and correction file with size, modification time and SHA-256 (up to 64 MiB). Values netCDF cannot store as attributes are JSON strings; `read_provenance` decodes them:
+
+```python
+from reskit.util.provenance import read_provenance
+
+result = rk.wind.wind_era5_PenaSanchezDunkelWinklerEtAl2025(placements, **inputs)
+provenance = read_provenance(result)
+provenance["workflow"], provenance["git_commit"], provenance["input_files"]
+```
+
+Custom workflows get the same by decorating the function with `reskit.util.provenance.record_provenance`; files read outside `WorkflowManager.read` can be added with `wf.record_input_file(role, path)`.
+
 ### Example notebooks
 
 End-to-end examples live in [examples/1_load_input_data/](https://github.com/FZJ-IEK3-VSA/RESKit/tree/dev/examples/1_load_input_data):
