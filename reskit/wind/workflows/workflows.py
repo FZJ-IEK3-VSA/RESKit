@@ -1,9 +1,13 @@
 # import primary packages
 import os
 import warnings
+from collections.abc import Callable
+from os import PathLike
+from typing import Any
 
 import numpy as np
 import pandas as pd
+import xarray
 
 import reskit.util as rk_util
 
@@ -15,19 +19,19 @@ from reskit.wind.workflows.wind_workflow_manager import WindWorkflowManager
 
 
 def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
-    placements,
-    era5_path,
-    gwa_100m_path,
-    height_scaling_data,
-    height_scaling_method=("lra", "linear"),
-    gwa_nodata_fallback=1.0,
-    output_netcdf_path=None,
-    cf_correction=True,
-    output_variables=None,
-    max_batch_size=15000,
+    placements: pd.DataFrame,
+    era5_path: str | PathLike,
+    gwa_100m_path: str | PathLike,
+    height_scaling_data: dict[float, str | PathLike] | str | PathLike,
+    height_scaling_method: tuple[str, str] | list[str] | None = ("lra", "linear"),
+    gwa_nodata_fallback: float | str | PathLike | Callable | None = 1.0,
+    output_netcdf_path: str | None = None,
+    cf_correction: bool = True,
+    output_variables: str | list[str] | None = None,
+    max_batch_size: int = 15000,
     time_slice: slice | None = None,
-    **simulate_kwargs,
-):
+    **simulate_kwargs: Any,
+) -> xarray.Dataset | str:
     """
     Simulates wind turbine locations onshore and offshore using ECMWF's
     ERA5 database [1], with an optional correction loop to ensure that
@@ -91,6 +95,7 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
         True.
     output_variables : str, optional
         Restrict the output variables to these variables, by default None
+        Interim variables which are not listed are dropped as soon as the workflow no longer needs them, which lowers its memory use.
     max_batch_size: int
         The maximum number of locations to be simulated simultaneously,
         else multiple batches will be simulated iteratively. Helps
@@ -172,6 +177,7 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
     wf.apply_air_density_correction_to_wind_speeds()
     # do wake reduction
     wf.apply_wake_correction_of_wind_speeds(wake_curve=wake_curve)
+    wf.release_sim_data(["elevated_wind_speed"], output_variables)
     # gaussian convolution of the power curve to account for statistical events in wind speed
     wf.convolute_power_curves(
         scaling=0.01,  # standard deviation of gaussian equals scaling*v + base
@@ -187,23 +193,24 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
         max_batch_size=max_batch_size,
         **simulate_kwargs,
     )
+    wf.release_sim_data(["capacity_factor"], output_variables)
 
     # apply availability factor
     wf.apply_availability_factor(availability_factor=availability_factor)
 
-    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
+    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables, release=True)
 
 
 def onshore_wind_merra_ryberg2019_europe(
-    placements,
-    merra_path,
-    gwa_50m_path,
-    clc2012_path,
-    output_netcdf_path=None,
-    output_variables=None,
-    max_batch_size=25000,
+    placements: pd.DataFrame,
+    merra_path: str | PathLike,
+    gwa_50m_path: str | PathLike,
+    clc2012_path: str | PathLike,
+    output_netcdf_path: str | None = None,
+    output_variables: str | list[str] | None = None,
+    max_batch_size: int = 25000,
     time_slice: slice | None = None,
-):
+) -> xarray.Dataset | str:
     # TODO: Add range limitation over Europe by checking placements
     """
     Simulates onshore wind generation in Europe using NASA's MERRA2 database [1].
@@ -222,6 +229,7 @@ def onshore_wind_merra_ryberg2019_europe(
         Path to a directory to put the output files, by default None
     output_variables : str, optional
         Restrict the output variables to these variables, by default None
+        Interim variables which are not listed are dropped as soon as the workflow no longer needs them, which lowers its memory use.
     max_batch_size: int
         The maximum number of locations to be simulated simultaneously, else multiple batches will be simulated
         iteratively. Helps limiting RAM requirements but may affect runtime. By default 25 000. Roughly 7GB RAM per 10k locations.
@@ -270,23 +278,25 @@ def onshore_wind_merra_ryberg2019_europe(
 
     wf.apply_air_density_correction_to_wind_speeds()
 
+    wf.release_sim_data(["elevated_wind_speed"], output_variables)
     wf.convolute_power_curves(scaling=0.06, base=0.1)
 
     wf.simulate(max_batch_size=max_batch_size)
+    wf.release_sim_data(["capacity_factor"], output_variables)
 
     wf.apply_loss_factor(loss=lambda x: rk_util.low_generation_loss(x, base=0.0, sharpness=5.0))
 
-    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
+    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables, release=True)
 
 
 def offshore_wind_merra_caglayan2019(
-    placements,
-    merra_path,
-    output_netcdf_path=None,
-    output_variables=None,
-    max_batch_size=25000,
+    placements: pd.DataFrame,
+    merra_path: str | PathLike,
+    output_netcdf_path: str | None = None,
+    output_variables: str | list[str] | None = None,
+    max_batch_size: int = 25000,
     time_slice: slice | None = None,
-):
+) -> xarray.Dataset | str:
     """
     Simulates offshore wind generation using NASA's MERRA2 database [1].
 
@@ -300,6 +310,7 @@ def offshore_wind_merra_caglayan2019(
         Path to a directory to put the output files, by default None
     output_variables : str, optional
         Restrict the output variables to these variables, by default None
+        Interim variables which are not listed are dropped as soon as the workflow no longer needs them, which lowers its memory use.
     max_batch_size: int
         The maximum number of locations to be simulated simultaneously, else multiple batches will be simulated
         iteratively. Helps limiting RAM requirements but may affect runtime. By default 25 000. Roughly 7GB RAM per 10k locations.
@@ -336,29 +347,31 @@ def offshore_wind_merra_caglayan2019(
 
     wf.logarithmic_projection_of_wind_speeds_to_hub_height()
 
+    wf.release_sim_data(["elevated_wind_speed"], output_variables)
     wf.convolute_power_curves(
         scaling=0.04,  # TODO: Check values with Dil
         base=0.5,  # TODO: Check values with Dil
     )
 
     wf.simulate(max_batch_size=max_batch_size)
+    wf.release_sim_data(["capacity_factor"], output_variables)
 
     wf.apply_loss_factor(
         loss=lambda x: rk_util.low_generation_loss(x, base=0.1, sharpness=3.5)  # TODO: Check values with Dil
     )
 
-    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
+    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables, release=True)
 
 
 def onshore_wind_iconlam_2023(
-    placements,
-    icon_lam_path,
-    esa_cci_path,
-    output_netcdf_path=None,
-    output_variables=None,
-    max_batch_size=25000,
+    placements: pd.DataFrame,
+    icon_lam_path: str | PathLike,
+    esa_cci_path: str | PathLike,
+    output_netcdf_path: str | None = None,
+    output_variables: str | list[str] | None = None,
+    max_batch_size: int = 25000,
     time_slice: slice | None = None,
-):
+) -> xarray.Dataset | str:
     """
     Simulates onshore wind generation using high-resolution dynamically downscaled dataset ICON-LAM over southern Africa.
     This workflow was used in the publicaiton [1].
@@ -378,6 +391,7 @@ def onshore_wind_iconlam_2023(
         Path to a directory to put the output files, by default None
     output_variables : str, optional
         Restrict the output variables to these variables, by default None
+        Interim variables which are not listed are dropped as soon as the workflow no longer needs them, which lowers its memory use.
     max_batch_size: int
         The maximum number of locations to be simulated simultaneously, else multiple batches will be simulated
         iteratively. Helps limiting RAM requirements but may affect runtime. By default 20 000.
@@ -431,44 +445,46 @@ def onshore_wind_iconlam_2023(
     # Apply density correction
     wf.apply_air_density_correction_to_wind_speeds()
 
+    wf.release_sim_data(["elevated_wind_speed"], output_variables)
     # Power curve convolution
     # Ryberg, 2019, Energy: scaling factor of 0.06 and base value of 0.1, by default
     wf.convolute_power_curves(scaling=0.01, base=0.00)
 
     # simulate wind power
     wf.simulate(max_batch_size=max_batch_size)
+    wf.release_sim_data(["capacity_factor"], output_variables)
 
-    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
+    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables, release=True)
 
 
 def wind_config(
-    placements,
-    weather_path,
-    weather_source_type,
-    weather_lra_ws_path,
-    enable_lra_adjustment,
-    real_lra_ws_path,
-    real_lra_ws_scaling,
-    real_lra_ws_spatial_interpolation,
-    real_lra_ws_nodata_fallback,
-    height_scaling_method,
-    height_scaling_data,
-    ws_correction_func,
-    cf_correction_factor,
-    wake_curve,
-    availability_factor,
-    consider_boundary_layer_height,
-    allow_height_extrapolation,
-    power_curve_scaling,
-    power_curve_base,
-    convolute_power_curves_args={},
-    loss_factor_args={},
-    output_variables=None,
-    max_batch_size=25000,
-    output_netcdf_path=None,
-    elevated_wind_speed=None,
+    placements: pd.DataFrame,
+    weather_path: str | PathLike,
+    weather_source_type: str,
+    weather_lra_ws_path: str | PathLike,
+    enable_lra_adjustment: bool,
+    real_lra_ws_path: float | str | PathLike,
+    real_lra_ws_scaling: float,
+    real_lra_ws_spatial_interpolation: str,
+    real_lra_ws_nodata_fallback: float | str | PathLike | Callable | None,
+    height_scaling_method: tuple[str, str] | list[str] | None,
+    height_scaling_data: dict[float, str | PathLike] | str | PathLike,
+    ws_correction_func: float | Callable | tuple | list,
+    cf_correction_factor: float | str | PathLike,
+    wake_curve: str | None,
+    availability_factor: float,
+    consider_boundary_layer_height: bool,
+    allow_height_extrapolation: bool,
+    power_curve_scaling: float,
+    power_curve_base: float,
+    convolute_power_curves_args: dict[str, Any] = {},
+    loss_factor_args: dict[str, Any] = {},
+    output_variables: str | list[str] | None = None,
+    max_batch_size: int = 25000,
+    output_netcdf_path: str | None = None,
+    elevated_wind_speed: np.ndarray | None = None,
     time_slice: slice | None = None,
-):
+) -> xarray.Dataset | str:
     """
     A generic configuration workflow for wind simulations that allows
     flexible calibration of all arguments used in the workflow.
@@ -580,6 +596,7 @@ def wind_config(
         By default {}.
     output_variables : str, optional
         Restrict the output variables to these variables, by default None
+        Interim variables which are not listed are dropped as soon as the workflow no longer needs them, which lowers its memory use.
     max_batch_size: int
         The maximum number of locations to be simulated simultaneously, else multiple batches will be simulated
         iteratively. Helps limiting RAM requirements but may affect runtime. By default 25 000. Roughly 7GB RAM per 10k locations.
@@ -669,6 +686,7 @@ def wind_config(
         print("Using provided elevated_wind_speed")
         wf.sim_data["elevated_wind_speed"] = elevated_wind_speed
 
+    wf.release_sim_data(["elevated_wind_speed"], output_variables)
     # gaussian convolution of the power curve to account for statistical events in wind speed
     wf.convolute_power_curves(
         scaling=power_curve_scaling,
@@ -678,6 +696,7 @@ def wind_config(
 
     # do simulation
     wf.simulate(cf_correction_factor=cf_correction_factor, max_batch_size=max_batch_size)
+    wf.release_sim_data(["capacity_factor"], output_variables)
 
     if loss_factor_args != {}:
         wf.apply_loss_factor(loss=lambda x: rk_util.low_generation_loss(x, **loss_factor_args))
@@ -685,7 +704,7 @@ def wind_config(
     # apply availability factor
     wf.apply_availability_factor(availability_factor=availability_factor)
 
-    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
+    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables, release=True)
 
 
 ########################

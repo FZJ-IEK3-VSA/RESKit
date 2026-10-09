@@ -287,6 +287,41 @@ def test_SolarWorkflowManager_determine_solar_position_shares_rounded_locations(
         np.testing.assert_array_equal(man.sim_data[key], np.repeat(man.sim_data[key][:, :1], 5, axis=1))
 
 
+def test_SolarWorkflowManager_determine_solar_position_shares_interleaved_locations(
+    pt_SolarWorkflowManager_loaded: SolarWorkflowManager,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Placements at index 0, 2, 4 and 1, 3 share a location each, so the placements of a location are
+    # not next to each other. With one location per block and one time step per copy (the
+    # smallest blocks), every placement must still get the solar position of its own location.
+    import pvlib
+
+    from reskit.solar.workflows import solar_workflow_manager
+
+    monkeypatch.setattr(solar_workflow_manager, "location_blocks", _one_location_per_block)
+    man = pt_SolarWorkflowManager_loaded
+    man.placements["elev"] = [100, 2000, 100, 2000, 100]
+    man.determine_solar_position(lon_rounding=-1, lat_rounding=-1, elev_rounding=-2)
+
+    for first_placement, placements_at_location in [(0, [0, 2, 4]), (1, [1, 3])]:
+        first_placement_row = man.placements.iloc[first_placement]
+        expected = pvlib.solarposition.spa_python(
+            man.time_index,
+            latitude=np.round(first_placement_row["lat"], -1),
+            longitude=np.round(first_placement_row["lon"], -1),
+            altitude=first_placement_row["elev"],
+            pressure=man.sim_data["surface_pressure"][:, first_placement],
+            temperature=man.sim_data["surface_air_temperature"][:, first_placement],
+        )
+        for placement in placements_at_location:
+            np.testing.assert_allclose(
+                man.sim_data["solar_azimuth"][:, placement], expected["azimuth"], rtol=0, atol=1e-9
+            )
+            np.testing.assert_allclose(
+                man.sim_data["apparent_solar_zenith"][:, placement], expected["apparent_zenith"], rtol=0, atol=1e-9
+            )
+
+
 def test_SolarWorkflowManager_determine_solar_position_after_numba_spa(
     pt_SolarWorkflowManager_loaded: SolarWorkflowManager,
 ):
@@ -755,3 +790,48 @@ def test_SolarWorkflowManager_nan_values_tilt_azimuth_elev___init__() -> SolarWo
     assert ~man.placements["tilt"].isna().any()
     assert ~man.placements["azimuth"].isna().any()
     assert ~man.placements["elev"].isna().any()
+
+
+def _irradiance_chain() -> dict[str, np.ndarray]:
+    # Runs the steps from the solar position to the angle of incidence losses, returns sim_data.
+    manager = _make_SolarWorkflowManager()
+    manager.apply_elevation([100, 120, 140, 160, 2000])
+    manager.read(
+        variables=["global_horizontal_irradiance", "direct_horizontal_irradiance", "surface_pressure"]
+        + ["surface_air_temperature"],
+        source_type="ERA5",
+        source=FIXTURES["era5"],
+        set_time_index=True,
+        verbose=False,
+    )
+    manager.determine_solar_position()
+    manager.filter_positive_solar_elevation()
+    manager.direct_normal_irradiance_from_trigonometry()
+    manager.determine_extra_terrestrial_irradiance(model="spencer", solar_constant=1370)
+    manager.determine_air_mass(model="kastenyoung1989")
+    manager.diffuse_horizontal_irradiance_from_trigonometry()
+    manager.determine_angle_of_incidence()
+    manager.estimate_plane_of_array_irradiances(transposition_model="perez")
+    manager.apply_angle_of_incidence_losses_to_poa()
+    return manager.sim_data
+
+
+def _one_location_per_block(n_times: int, n_locations: int) -> list[slice]:
+    # Stand-in for location_blocks() with the smallest blocks possible, so that every block border is used.
+    return [slice(location, location + 1) for location in range(n_locations)]
+
+
+def test_SolarWorkflowManager_irradiance_steps_are_independent_of_the_blocks(monkeypatch: pytest.MonkeyPatch) -> None:
+    # The solar position, the plane of array irradiance and the angle of incidence losses go
+    # through the locations in blocks to bound their memory. The blocks must not change the
+    # result: one location per block has to give exactly what the default blocks give.
+    expected = _irradiance_chain()
+
+    from reskit.solar.workflows import solar_workflow_manager
+
+    monkeypatch.setattr(solar_workflow_manager, "location_blocks", _one_location_per_block)
+    result = _irradiance_chain()
+
+    assert result.keys() == expected.keys()
+    for variable_name in expected:
+        np.testing.assert_array_equal(result[variable_name], expected[variable_name], err_msg=variable_name)
