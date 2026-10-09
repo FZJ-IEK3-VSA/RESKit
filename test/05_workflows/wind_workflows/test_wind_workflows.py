@@ -116,6 +116,23 @@ def test_wind_era5_PenaSanchezDunkelWinklerEtAl2025(pt_wind_placements: pd.DataF
     assert np.isclose(gen.capacity_factor.std(), 0.29513281)
 
 
+def test_wind_era5_PenaSanchezDunkelWinklerEtAl2025_single_placement(pt_wind_placements: pd.DataFrame):
+    """A single placement simulates as the same placement does within a fleet."""
+    inputs = data.paths("wind_era5_PenaSanchezDunkelWinklerEtAl2025", test=True)
+    arguments = dict(
+        era5_path=inputs["era5"],
+        gwa_100m_path=inputs["gwa_100m"],
+        height_scaling_data={50: inputs["gwa_50m"], 200: inputs["gwa_200m"]},
+        output_netcdf_path=None,
+        cf_correction=True,
+    )
+    fleet = wind_era5_PenaSanchezDunkelWinklerEtAl2025(placements=pt_wind_placements, **arguments)
+    single = wind_era5_PenaSanchezDunkelWinklerEtAl2025(placements=pt_wind_placements.iloc[:1], **arguments)
+
+    assert single.capacity_factor.shape == (140, 1)
+    assert np.allclose(single.capacity_factor[:, 0], fleet.capacity_factor[:, 0])
+
+
 def test_wind_era5_PenaSanchezDunkelWinklerEtAl2025_on_zarr_data(pt_wind_placements: pd.DataFrame):
     """Real ERA5 data from an online Zarr store gives what the netCDF4 fixtures of the same hours give.
 
