@@ -273,16 +273,37 @@ class WindWorkflowManager(WorkflowManager):
 
     def consider_boundary_height(self) -> np.ndarray:
         """
-        Corrects the given target heights for locations by planetary boundary
-        layer (PBL) effects, by limiting the target height either to the PBL
-        height when elevated (starting) height < PBL < target height or avoiding
-        scaling altogether when PBL <= elevated (startig) height (by setting
-        target height to elevated starting height).
+        Determines a valid target height for each time step and location, at
+        which the wind speed is selected to simulate a wind power plant with a
+        given turbine hub height.
+
+        Above the planetary boundary layer (PBL), the wind speed is assumed to
+        be constant, so the wind speed is not scaled beyond the PBL height. The
+        hub height is therefore limited to the PBL height. Where the PBL lies
+        below both the elevated wind speed height and the hub height, the
+        elevated wind speed height is used, so the wind speed is not scaled.
+
+        Notes
+        -----
+        The abbreviations are the ones used in the comments of the code.
+        HH : numpy.ndarray
+            Hub height of each turbine in m, from placements["hub_height"].
+            Shape: (locations,).
+        EH : float or numpy.ndarray
+            Elevated wind speed height in m, the height of the wind speed in
+            the weather data (e.g. 100 m for ERA5). A scalar, or one value per
+            location once the wind speed was projected to the hub height.
+        PBLH : numpy.ndarray
+            Planetary boundary layer height in m, from
+            sim_data["boundary_layer_height"]. Shape: (time steps, locations).
+        TH : numpy.ndarray
+            Target height in m, the returned height at which the wind speed is
+            selected. Shape: (time steps, locations).
 
         Return
         ------
-        numpy array
-            The adapted target heights.
+        numpy.ndarray
+            The target heights in m. Shape: (time steps, locations).
         """
         assert hasattr(self, "elevated_wind_speed_height")
         assert "hub_height" in self.placements.columns
@@ -291,28 +312,34 @@ class WindWorkflowManager(WorkflowManager):
         # 1) EH <= PBLH & HH <= PBLH -> TH = HH (no influence of PBL)
         # 2) EH <= PBLH & HH > PBLH -> TH = PBLH (set PBLH as upper target height limit)
         # 3) PBLH < EH & PBLH <= HH -> TH = EH (all heights are outside of planetary influence, use (constant) ws(EH))
-        # 4) PBLH < EH & PBLH > HH -> TH = HH, EH -> PBLH (scaling relative to PBLH since ws(EH) == ws(PBLH)
+        # 4) PBLH < EH & PBLH > HH -> TH = HH, EH -> PBLH (scaling relative to PBLH since ws(EH) == ws(PBLH))
 
         # Get the relevant variables
-        pbl_height = self.sim_data["boundary_layer_height"]
-        hub_height = self.placements["hub_height"].values
-        elevated_height = self.elevated_wind_speed_height
+        pbl_height: np.ndarray = self.sim_data["boundary_layer_height"]
+        hub_height: np.ndarray = self.placements["hub_height"].to_numpy()
+        elevated_height: np.ndarray = np.asarray(self.elevated_wind_speed_height, dtype=float)
 
-        # Cases 1, 2 and 4 all give min(HH, PBLH):
-        # Case 1: EH <= PBLH & HH <= PBLH -> TH = HH (no influence of PBL)
-        # Case 2: EH <= PBLH & HH > PBLH -> TH = PBLH (set PBLH as upper target height limit)
-        # Case 4: PBLH < EH & PBLH > HH -> TH = HH, EH -> PBLH (scaling relative to PBLH since ws(EH) == ws(PBLH))
-        # Note: Case 4 also requires adjusting the elevated_wind_speed_height, but that's handled in the calling function
-        target_height = np.minimum(pbl_height, hub_height, dtype=float)
+        # Cases 1, 2 and 4 in one operation: their TH is min(HH, PBLH), whatever EH is
+        # Case 1: HH <= PBLH -> min gives HH
+        # Case 2: HH > PBLH -> min gives PBLH
+        # Case 4: HH < PBLH -> min gives HH
+        # In case 3, min gives PBLH (as PBLH <= HH), which is replaced by EH below.
+        # Note: Case 4 also requires adjusting the elevated_wind_speed_height, but that's handled in logarithmic_projection_of_wind_speeds_to_hub_height()
+        target_height: np.ndarray = np.minimum(pbl_height, hub_height, dtype=float)
 
-        # Case 3: PBLH < EH & PBLH <= HH -> TH = EH (all heights are outside of planetary influence, use (constant) ws(EH))
+        # Case 3: set TH = EH where PBLH < EH & PBLH <= HH
+        # first condition of case 3: PBLH < EH
         pbl_below_elevated_height = pbl_height < elevated_height
+        # second condition of case 3: PBLH <= HH
         pbl_not_above_hub_height = pbl_height <= hub_height
+        # both conditions: the time steps and locations of case 3
         case3 = pbl_below_elevated_height & pbl_not_above_hub_height
+        # EH for every time step and location (a view, EH is not copied)
         elevated_height_everywhere = np.broadcast_to(elevated_height, target_height.shape)
+        # TH = EH for case 3
         target_height[case3] = elevated_height_everywhere[case3]
 
-        # NaN heights fall into none of the cases
+        # NaN heights fall into none of the cases (every comparison with NaN is False)
         assert not np.isnan(target_height).any()
         assert not np.isnan(elevated_height).any()
 
