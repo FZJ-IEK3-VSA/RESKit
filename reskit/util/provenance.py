@@ -29,12 +29,19 @@ import json
 import os
 import platform
 import subprocess
+from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
 from datetime import datetime, timezone
 from importlib import metadata
 from pathlib import Path
+from typing import Any, ParamSpec, TypeVar
 
 import numpy as np
 import pandas as pd
+import xarray as xr
+
+P = ParamSpec("P")
+R = TypeVar("R")
+StrPath = str | os.PathLike[str]
 
 ATTRIBUTE_PREFIX = "reskit_"
 JSON_ATTRIBUTES = ("dependencies", "parameters", "weather_sources", "input_files")
@@ -56,26 +63,38 @@ DEPENDENCIES = (
     "ethos-data",
 )
 
-_current_workflow = contextvars.ContextVar("reskit_current_workflow", default=None)
+_current_workflow: contextvars.ContextVar[dict[str, Any] | None] = contextvars.ContextVar(
+    "reskit_current_workflow", default=None
+)
 
 
-def record_provenance(workflow):
+def record_provenance(workflow: Callable[P, R]) -> Callable[P, R]:
     """Decorates a workflow function so that its results name the workflow and its arguments.
 
     The WorkflowManager the workflow creates reads them in ``to_xarray``. When workflows are
     nested, the outermost one, i.e. the one the user called, is recorded.
+
+    Parameters
+    ----------
+    workflow : callable
+        The workflow function to decorate
+
+    Returns
+    -------
+    callable
+        A function with the signature and docstring of ``workflow``
     """
     signature = inspect.signature(workflow)
-    name = f"{workflow.__module__}.{workflow.__qualname__}"
+    name = f"{workflow.__module__}.{workflow.__qualname__}"  # type: ignore[attr-defined]
 
     @functools.wraps(workflow)
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
         if _current_workflow.get() is not None:
             return workflow(*args, **kwargs)
 
         bound = signature.bind(*args, **kwargs)
         bound.apply_defaults()
-        arguments = {}
+        arguments: dict[str, Any] = {}
         for key, value in bound.arguments.items():
             parameter = signature.parameters[key]
             if key == "placements":
@@ -97,17 +116,25 @@ def record_provenance(workflow):
     return wrapper
 
 
-def provenance_attributes(weather_sources=(), input_files=()):
+def provenance_attributes(
+    weather_sources: Sequence[Mapping[str, Any]] = (),
+    input_files: Iterable[tuple[str, StrPath]] = (),
+) -> dict[str, str]:
     """Returns the provenance attributes for a dataset made now.
 
     Parameters
     ----------
-    weather_sources : iterable of dict
+    weather_sources : sequence of dict
         The weather sources read, as recorded by the WorkflowManager
     input_files : iterable of (role, path)
         Further files read, e.g. correction rasters
+
+    Returns
+    -------
+    dict
+        The attributes to store in the dataset, with the "reskit_" prefix and the JSON values encoded
     """
-    attributes = {"version": metadata.version("reskit")}
+    attributes: dict[str, Any] = {"version": metadata.version("reskit")}
     commit = _git_commit()
     if commit is not None:
         attributes["git_commit"] = commit
@@ -122,9 +149,10 @@ def provenance_attributes(weather_sources=(), input_files=()):
     attributes["python"] = f"{platform.python_version()} ({platform.platform()})"
     attributes["dependencies"] = _dependency_versions()
 
-    files = {}
+    files: dict[str, dict[str, Any]] = {}
 
-    def add_file(role, path):
+    def add_file(role: str, path: StrPath) -> None:
+        """Adds the file under the given role, or the role to the file if it is already listed."""
         path = os.fspath(path)
         if path not in files:
             files[path] = {"path": path, "roles": [], **_fingerprint(path)}
@@ -154,7 +182,7 @@ def provenance_attributes(weather_sources=(), input_files=()):
     }
 
 
-def read_provenance(dataset):
+def read_provenance(dataset: xr.Dataset) -> dict[str, Any]:
     """Returns the provenance attributes of a RESKit result, with the JSON values decoded.
 
     Parameters
@@ -167,7 +195,7 @@ def read_provenance(dataset):
     dict
         The provenance, keyed without the "reskit_" prefix
     """
-    provenance = {}
+    provenance: dict[str, Any] = {}
     for key, value in dataset.attrs.items():
         if not key.startswith(ATTRIBUTE_PREFIX):
             continue
@@ -176,7 +204,8 @@ def read_provenance(dataset):
     return provenance
 
 
-def _is_path(value):
+def _is_path(value: Any) -> bool:
+    """Tells whether a value is a path or URL: a PathLike, an existing local path or a remote URL string."""
     if isinstance(value, os.PathLike):
         return True
     if not isinstance(value, str) or value == "":
@@ -184,7 +213,7 @@ def _is_path(value):
     return value.startswith(("gs://", "s3://", "http://", "https://")) or os.path.exists(value)
 
 
-def _paths_in(value):
+def _paths_in(value: Any) -> Iterator[StrPath]:
     """Yields every path in a (nested) argument value."""
     if _is_path(value):
         yield value
@@ -196,7 +225,8 @@ def _paths_in(value):
             yield from _paths_in(item)
 
 
-def _fingerprint(path):
+def _fingerprint(path: str) -> dict[str, Any]:
+    """Describes a file, directory or URL by its kind and, for files, size, modification time and SHA-256."""
     if "://" in path:
         return {"kind": "url"}
     if os.path.isdir(path):
@@ -215,8 +245,8 @@ def _fingerprint(path):
 
 
 @functools.lru_cache(maxsize=None)
-def _sha256(path, size, mtime_ns):
-    # size and mtime_ns are part of the cache key, a changed file is hashed again
+def _sha256(path: str, size: int, mtime_ns: int) -> str:
+    """Returns the SHA-256 of a file; size and mtime_ns are part of the cache key, so a changed file is rehashed."""
     digest = hashlib.sha256()
     with open(path, "rb") as file:
         for block in iter(lambda: file.read(1024**2), b""):
@@ -224,8 +254,11 @@ def _sha256(path, size, mtime_ns):
     return digest.hexdigest()
 
 
-def _to_json(value):
-    """Converts a workflow argument into something JSON can hold."""
+def _to_json(value: Any) -> Any:
+    """Converts a workflow argument into something JSON can hold.
+
+    Arrays and tables are replaced by their shape and a hash, other unknown objects by their type.
+    """
     if value is None or isinstance(value, (bool, int, str)):
         return value
     if isinstance(value, float):
@@ -261,8 +294,9 @@ def _to_json(value):
 
 
 @functools.lru_cache(maxsize=None)
-def _dependency_versions():
-    versions = {}
+def _dependency_versions() -> dict[str, str]:
+    """Returns the installed versions of the :data:`DEPENDENCIES`, skipping those which are not installed."""
+    versions: dict[str, str] = {}
     for name in DEPENDENCIES:
         try:
             versions[name] = metadata.version(name)
@@ -272,8 +306,11 @@ def _dependency_versions():
 
 
 @functools.lru_cache(maxsize=None)
-def _git_commit():
-    """Returns the commit of the RESKit checkout, or None if RESKit is not run from one."""
+def _git_commit() -> str | None:
+    """Returns the commit of the RESKit checkout, or None if RESKit is not run from one.
+
+    The commit has the suffix "-dirty" if tracked files have local changes.
+    """
     root = Path(__file__).resolve().parents[2]
     if not (root / ".git").exists():
         return None
