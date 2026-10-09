@@ -51,23 +51,73 @@ def _solar_position(
     elev: np.ndarray,
     pressure: np.ndarray,
     temperature: np.ndarray,
-    first_placement_of_location: np.ndarray,
-    location_of_placement: np.ndarray,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Azimuth and apparent zenith, in degrees, as (time, placement) arrays.
 
     The same result as pvlib.solarposition.spa_python() with its defaults (delta_t=67 s,
-    atmos_refract=0.5667) called location by location, but the SPA's time-only part --
-    Earth's heliocentric position, nutation, the Sun's right ascension and declination,
-    sidereal time, i.e. nearly all of its cost -- is computed once instead of once per
-    location. pvlib.spa's own functions are used for both parts, broadcast over
-    (time, location); locations go in blocks (see location_blocks()) to bound memory.
+    atmos_refract=0.5667) called placement by placement, but with far less computation:
 
-    lat, lon and elev [m] have one value per distinct location. pressure [Pa] and
-    temperature [degC] are (time, placement) arrays; location i uses the weather of
-    placement first_placement_of_location[i], and placement j gets the solar position of
-    location location_of_placement[j].
+    - The SPA's time-only part -- Earth's heliocentric position, nutation, the Sun's right
+      ascension and declination, sidereal time, i.e. nearly all of its cost -- is computed
+      once instead of once per placement.
+    - Placements at the same location, i.e. with equal lat, lon and elev, share one solar
+      position. It is computed with the pressure and temperature of the first of them.
+      Round the coordinates beforehand to let nearby placements share it.
+
+    pvlib.spa's own functions are used for both parts, broadcast over (time, location).
+    The locations go in blocks, and each block's solar position is copied to its placements
+    in blocks of time steps (both from location_blocks()), so that the temporary arrays stay
+    small however many placements share a location.
+
+    Parameters
+    ----------
+    times : pd.DatetimeIndex
+        The time steps. Timezone-aware times are converted correctly; naive times are
+        taken to be UTC, as pvlib does.
+    lat : np.ndarray
+        Latitude of each placement in degrees, shape (n_placements,)
+    lon : np.ndarray
+        Longitude of each placement in degrees (east positive), shape (n_placements,)
+    elev : np.ndarray
+        Elevation of each placement above sea level in m, shape (n_placements,)
+    pressure : np.ndarray
+        Surface air pressure in Pa, shape (n_times, n_placements)
+    temperature : np.ndarray
+        Surface air temperature in degC, shape (n_times, n_placements)
+
+    Returns
+    -------
+    azimuth : np.ndarray
+        Topocentric azimuth of the Sun in degrees, measured eastward from north,
+        shape (n_times, n_placements)
+    zenith : np.ndarray
+        Apparent (refraction-corrected) zenith angle of the Sun in degrees,
+        shape (n_times, n_placements)
+
+    Notes
+    -----
+    pvlib.spa is reloaded without numba if it was compiled with it, since the numba
+    versions of its functions accept scalars only. This is a side effect on the imported
+    module, and it is not undone afterwards.
+
+    The pressure and temperature only enter through the atmospheric refraction correction,
+    so using the weather of a single placement for all placements at one location changes
+    the result very little.
     """
+    # one solar position per location, with the weather of the first placement at it
+    coordinates = np.column_stack([lat, lon, elev])
+    unique_coordinates, first_placement_of_location, location_of_placement = np.unique(
+        coordinates, axis=0, return_index=True, return_inverse=True
+    )
+    location_lat, location_lon, location_elev = unique_coordinates.T
+    # numpy 2.0.0 returns the inverse as a column for axis=0
+    location_of_placement = np.ravel(location_of_placement)
+
+    # the placements ordered by location, so that the placements at a block of locations
+    # are one contiguous run, found by a binary search instead of a pass over all placements
+    placement_order = np.argsort(location_of_placement, kind="stable")
+    sorted_location_of_placement = location_of_placement[placement_order]
+
     spa = importlib.import_module("pvlib.spa")
     if spa.USE_NUMBA:
         # Something (e.g. get_solarposition(method="nrel_numba") in the CSP workflow) has
@@ -95,11 +145,11 @@ def _solar_position(
     azimuth = np.empty(pressure.shape)
     zenith = np.empty(pressure.shape)
     time_step_count = len(times)
-    location_count = len(lat)
+    location_count = len(unique_coordinates)
     for location_block in location_blocks(time_step_count, location_count):
-        block_lat = lat[None, location_block]
-        block_lon = lon[None, location_block]
-        block_elev = elev[None, location_block]
+        block_lat = location_lat[None, location_block]
+        block_lon = location_lon[None, location_block]
+        block_elev = location_elev[None, location_block]
 
         # the weather of the first placement of each location in the block
         block_weather_placements = first_placement_of_location[location_block]
@@ -122,14 +172,19 @@ def _solar_position(
         block_azimuth = spa.topocentric_azimuth_angle(astronomers_azimuth)
 
         # every placement at one of the locations in the block
-        at_or_after_block_start = location_of_placement >= location_block.start
-        before_block_stop = location_of_placement < location_block.stop
-        in_block = at_or_after_block_start & before_block_stop
-        placements_in_block = np.flatnonzero(in_block)
-        locations_of_placements_in_block = location_of_placement[placements_in_block]
+        block_bounds = [location_block.start, location_block.stop]
+        run_start, run_stop = np.searchsorted(sorted_location_of_placement, block_bounds)
+        placements_in_block = placement_order[run_start:run_stop]
+        locations_of_placements_in_block = sorted_location_of_placement[run_start:run_stop]
         block_columns = locations_of_placements_in_block - location_block.start
-        zenith[:, placements_in_block] = block_zenith[:, block_columns]
-        azimuth[:, placements_in_block] = block_azimuth[:, block_columns]
+        # The copy makes a temporary (time, placement) array, which would be as large as the
+        # output if many placements share the block's locations, so it goes in blocks of time
+        # steps (location_blocks() splits its second argument). Whole rows are also faster
+        # to write than blocks of columns.
+        placement_count_in_block = len(placements_in_block)
+        for time_block in location_blocks(placement_count_in_block, time_step_count):
+            zenith[time_block, placements_in_block] = block_zenith[time_block, block_columns]
+            azimuth[time_block, placements_in_block] = block_azimuth[time_block, block_columns]
     return azimuth, zenith
 
 
@@ -329,18 +384,10 @@ class SolarWorkflowManager(WorkflowManager):
         assert "surface_pressure" in self.sim_data
         assert "surface_air_temperature" in self.sim_data
 
-        rounded_locs = np.column_stack(
-            [
-                np.round(self.placements["lon"].values.astype(float), lon_rounding),
-                np.round(self.placements["lat"].values.astype(float), lat_rounding),
-                np.round(self.placements["elev"].values.astype(float), elev_rounding),
-            ]
-        )
-        # one solar position per distinct rounded location, with the weather of its first placement
-        unique_locs, first_placement_of_location, location_of_placement = np.unique(
-            rounded_locs, axis=0, return_index=True, return_inverse=True
-        )
-        lon, lat, elev = unique_locs.T
+        # placements that round to the same location share one solar position
+        lon = np.round(self.placements["lon"].values.astype(float), lon_rounding)
+        lat = np.round(self.placements["lat"].values.astype(float), lat_rounding)
+        elev = np.round(self.placements["elev"].values.astype(float), elev_rounding)
         pressure = self.sim_data["surface_pressure"]
         temperature = self.sim_data["surface_air_temperature"]
 
@@ -349,17 +396,7 @@ class SolarWorkflowManager(WorkflowManager):
             "Arguments for the solar position may not be NaN."
         )
 
-        location_of_placement = np.ravel(location_of_placement)
-        azimuth, zenith = _solar_position(
-            self.time_index,
-            lat,
-            lon,
-            elev,
-            pressure,
-            temperature,
-            first_placement_of_location,
-            location_of_placement,
-        )
+        azimuth, zenith = _solar_position(self.time_index, lat, lon, elev, pressure, temperature)
         self.sim_data["solar_azimuth"] = azimuth
         self.sim_data["apparent_solar_zenith"] = zenith
 

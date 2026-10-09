@@ -287,6 +287,41 @@ def test_SolarWorkflowManager_determine_solar_position_shares_rounded_locations(
         np.testing.assert_array_equal(man.sim_data[key], np.repeat(man.sim_data[key][:, :1], 5, axis=1))
 
 
+def test_SolarWorkflowManager_determine_solar_position_shares_interleaved_locations(
+    pt_SolarWorkflowManager_loaded: SolarWorkflowManager,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Placements 0, 2, 4 and 1, 3 share a location each. With one location per block and
+    # one time step per copy, every placement must still get the solar position of its own
+    # location.
+    import pvlib
+
+    from reskit.solar.workflows import solar_workflow_manager
+
+    monkeypatch.setattr(solar_workflow_manager, "location_blocks", _one_location_per_block)
+    man = pt_SolarWorkflowManager_loaded
+    man.placements["elev"] = [100, 2000, 100, 2000, 100]
+    man.determine_solar_position(lon_rounding=-1, lat_rounding=-1, elev_rounding=-2)
+
+    for first_placement, placements_at_location in [(0, [0, 2, 4]), (1, [1, 3])]:
+        first_placement_row = man.placements.iloc[first_placement]
+        expected = pvlib.solarposition.spa_python(
+            man.time_index,
+            latitude=np.round(first_placement_row["lat"], -1),
+            longitude=np.round(first_placement_row["lon"], -1),
+            altitude=first_placement_row["elev"],
+            pressure=man.sim_data["surface_pressure"][:, first_placement],
+            temperature=man.sim_data["surface_air_temperature"][:, first_placement],
+        )
+        for placement in placements_at_location:
+            np.testing.assert_allclose(
+                man.sim_data["solar_azimuth"][:, placement], expected["azimuth"], rtol=0, atol=1e-9
+            )
+            np.testing.assert_allclose(
+                man.sim_data["apparent_solar_zenith"][:, placement], expected["apparent_zenith"], rtol=0, atol=1e-9
+            )
+
+
 def test_SolarWorkflowManager_determine_solar_position_after_numba_spa(
     pt_SolarWorkflowManager_loaded: SolarWorkflowManager,
 ):
