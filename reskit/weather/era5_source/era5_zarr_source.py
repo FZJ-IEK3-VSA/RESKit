@@ -100,8 +100,6 @@ class Era5ZarrSource(Era5Source):
         time_slice : slice, optional
             Limit the time span which is loaded from the store, given in the time convention of
             RESKit, i.e. at half hours. Strongly recommended for multi-year cloud stores.
-            * The first requested timestep of derived solar variables still uses the
-              accumulation preceding it in the store
 
         chunks : dict, optional
             The chunk sizes to load the store with, e.g. {"valid_time": 48}. Passed on to
@@ -144,7 +142,7 @@ class Era5ZarrSource(Era5Source):
         )
 
         self.time_name, ds = self._normalise_time_axis(ds)
-        ds, self._derived_variables = self._derive_solar_variables(ds, self.time_name)
+        ds, self._derived_variables = self._derive_solar_variables(ds)
 
         # Clear names may map onto several store conventions; the first entry is the
         # canonical name and is used when none of the candidates exist.
@@ -303,25 +301,19 @@ class Era5ZarrSource(Era5Source):
         return time_dim, ds.assign_coords({time_dim: np.asarray(ds[datetime_coordinate].values)})
 
     @classmethod
-    def _derive_solar_variables(cls, ds: xr.Dataset, time_name: str) -> tuple[xr.Dataset, dict]:
+    def _derive_solar_variables(cls, ds: xr.Dataset) -> tuple[xr.Dataset, dict]:
         """Add the processed solar variables to stores that only provide the raw accumulations.
 
-        Mirrors the CDO pipeline ``-divc,3600 -shifttime,+1hour`` which produces the
-        '*_t_adj' variables: adj[i] = raw[i-1] / 3600 (J/m² per hour -> W/m²). This is done
-        lazily on the full dataset before any time slice is applied, so that the first
-        requested timestep can still use the accumulation preceding it in the store.
-
-        Note that the very first timestep of the store itself is NaN in the derived
-        variables, because the accumulation preceding it does not exist -- users are warned
-        about this in _load_with_fallback.
+        adj[i] = raw[i] / 3600 (J/m² per hour -> W/m²). ERA5 labels
+        an accumulation with the end of the hour it covers, and RESKit's time index puts it
+        at the middle of that hour (TIME_OFFSET), so the mean flux of the hour already sits
+        at the right time.
 
         Parameters
         ----------
         ds : xarray.Dataset
             The dataset to supplement. Variables which the store already provides in their
             processed form are never overwritten.
-        time_name : str
-            The name of the temporal dimension, see _normalise_time_axis
 
         Returns
         -------
@@ -332,7 +324,7 @@ class Era5ZarrSource(Era5Source):
         derived = {}
         for raw_name, adjusted_name in (("ssrd", "ssrd_t_adj"), ("fdir", "fdir_t_adj")):
             if raw_name in ds.data_vars and adjusted_name not in ds.data_vars:
-                ds[adjusted_name] = ds[raw_name].shift({time_name: 1}) / 3600.0
+                ds[adjusted_name] = ds[raw_name] / 3600.0
                 ds[adjusted_name].attrs.update(units="W m**-2", long_name=f"Derived on the fly from '{raw_name}'")
                 derived[adjusted_name] = raw_name
         return ds, derived
@@ -575,7 +567,7 @@ class Era5ZarrSource(Era5Source):
         ERA5 Zarr stores differ in the names they use for the same quantity (e.g. 'blh' vs.
         'boundary_layer_height'), and the processed solar variables may have been derived on
         the fly rather than being part of the store. This resolves both cases and warns
-        about the caveats of the derived variables.
+        when a variable is derived.
 
         Parameters
         ----------
@@ -600,13 +592,6 @@ class Era5ZarrSource(Era5Source):
             if variable in self._derived_variables and derived_warning is not None:
                 warnings.warn(derived_warning, stacklevel=2)
             self.load(variable, name=target_name)
-            if variable in self._derived_variables and np.all(np.isnan(self.data[target_name][0])):
-                warnings.warn(
-                    f"The first timestep of '{target_name}' ({self.time_index[0]}) is NaN because the raw "
-                    f"accumulation preceding the start of the store is not available. Drop or fill this "
-                    f"timestep, or start the requested 'time_slice' one hour later.",
-                    stacklevel=2,
-                )
             return
         raise RuntimeError(
             f"Cannot load {target_name}: neither '{preferred_variable}' nor '{fallback_variable}' exist in the ERA5 Zarr store"
@@ -636,7 +621,7 @@ class Era5ZarrSource(Era5Source):
             target_name="direct_horizontal_irradiance",
             derived_warning=(
                 "Processed ERA5 direct horizontal irradiance ('fdir_t_adj') is not available in this Zarr store; "
-                "computing on the fly from raw 'fdir' (J/m² → W/m², time-shifted +1 h)."
+                "computing on the fly from raw 'fdir' (J/m² → W/m²)."
             ),
         )
 
@@ -652,7 +637,7 @@ class Era5ZarrSource(Era5Source):
             target_name="global_horizontal_irradiance",
             derived_warning=(
                 "Processed ERA5 global horizontal irradiance ('ssrd_t_adj') is not available in this Zarr store; "
-                "computing on the fly from raw 'ssrd' (J/m² → W/m², time-shifted +1 h)."
+                "computing on the fly from raw 'ssrd' (J/m² → W/m²)."
             ),
         )
 
