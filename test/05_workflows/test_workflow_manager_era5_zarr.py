@@ -203,6 +203,18 @@ def test_Era5ZarrSource_spatial_chunk_cells():
     assert rk_weather.Era5ZarrSource.spatial_chunk_cells(store.load().drop_encoding()) == (None, None)
 
 
+def test_Era5ZarrSource_spatial_chunk_cells_from_dask_chunks():
+    """Without the stored chunks in the encoding (e.g. after arithmetic), the dask chunks count."""
+    pytest.importorskip("dask")
+    import xarray as xr
+
+    from reskit import weather as rk_weather
+
+    store = xr.open_dataset(ERA5_ZARR, engine="zarr").drop_encoding().chunk({"latitude": 4, "longitude": 3})
+
+    assert rk_weather.Era5ZarrSource.spatial_chunk_cells(store) == (4, 3)
+
+
 def _chunked_grid(latitudes, longitudes, chunks):
     """An in-memory store on the given grid, whose variable reports the given chunk sizes."""
     import xarray as xr
@@ -260,6 +272,17 @@ def test_zarr_regions_wrap_longitudes_around_the_store():
     locations = [(-10.0, 50.0), (-1.0, 50.0), (-11.0, 50.0)]
 
     assert _region_sets(locations, store) == {frozenset({0, 1}), frozenset({2})}
+
+
+def test_zarr_regions_do_not_split_data_in_memory():
+    """Without known chunk sizes, i.e. for data in memory, all locations are read together."""
+    latitudes = np.arange(60.0, -60.0, -0.25)
+    longitudes = np.arange(-60.0, 60.0, 0.25)
+    store = _chunked_grid(latitudes, longitudes, chunks=None)
+
+    locations = [(-50.0, 50.0), (0.0, 0.0), (50.0, -50.0)]
+
+    assert _region_sets(locations, store) == {frozenset({0, 1, 2})}
 
 
 def test_zarr_region_index_spans_whole_chunks():

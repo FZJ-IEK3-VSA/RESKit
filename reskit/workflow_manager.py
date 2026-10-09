@@ -26,9 +26,6 @@ from reskit.util.weather_tile import get_location_specific_weather_paths
 # The smallest half width, in SRS units, which is added to a zero-width extent.
 _MIN_EXTENT_HALF_WIDTH = 1e-5
 
-# The size of the regions in which locations are read from a Zarr store, if its chunks are unknown.
-_DEFAULT_REGION_SIZE_DEGREES = 10.0
-
 # The smallest size of a region in which locations are read from a Zarr store.
 _MIN_REGION_SIZE_DEGREES = 1.0
 
@@ -124,8 +121,7 @@ def _zarr_region_index(
     Each location is assigned the grid cell nearest to it, counted from the first grid point of
     the store in the direction of its coordinates (e.g. north to south for ERA5 latitudes), as
     the chunks of the store are. The cells are then grouped into regions of whole chunks: one
-    chunk, or as many chunks as needed for a region of at least _MIN_REGION_SIZE_DEGREES. If
-    the chunk size is unknown, a region has _DEFAULT_REGION_SIZE_DEGREES instead.
+    chunk, or as many chunks as needed for a region of at least _MIN_REGION_SIZE_DEGREES.
 
     Parameters
     ----------
@@ -140,7 +136,8 @@ def _zarr_region_index(
 
     chunk_cells : int or None
         The number of cells in one chunk along the dimension, see
-        Era5ZarrSource.spatial_chunk_cells().
+        Era5ZarrSource.spatial_chunk_cells(). None if it is unknown, i.e. for data in memory,
+        which is then not split along the dimension.
 
     wrap_around_globe : bool
         Whether the dimension wraps around the globe, i.e. for longitude. The cells are then
@@ -151,9 +148,10 @@ def _zarr_region_index(
     -------
     numpy.ndarray
         The index of the region of each location along the dimension. All locations are in
-        region 0 if the store has fewer than two coordinates along the dimension.
+        region 0 if the chunk size is unknown or the store has fewer than two coordinates along
+        the dimension.
     """
-    if dimension not in dataset.coords or dataset[dimension].size < 2:
+    if chunk_cells is None or dimension not in dataset.coords or dataset[dimension].size < 2:
         return np.zeros(location_coordinates.shape, dtype=int)
 
     grid_coordinates = dataset[dimension]
@@ -161,15 +159,11 @@ def _zarr_region_index(
     coordinate_step = float(grid_coordinates[1] - grid_coordinates[0])
     resolution = abs(coordinate_step)
 
-    if chunk_cells is None:
-        default_region_cells = round(_DEFAULT_REGION_SIZE_DEGREES / resolution)
-        region_cells = max(1, default_region_cells)
-    else:
-        # round before the ceiling, so that e.g. 1.0 / 0.1 = 10.000000000000002 cells count as 10
-        min_region_cells = _MIN_REGION_SIZE_DEGREES / resolution
-        min_chunks_per_region = round(min_region_cells / chunk_cells, 6)
-        chunks_per_region = max(1, int(np.ceil(min_chunks_per_region)))
-        region_cells = chunks_per_region * chunk_cells
+    # round before the ceiling, so that e.g. 1.0 / 0.1 = 10.000000000000002 cells count as 10
+    min_region_cells = _MIN_REGION_SIZE_DEGREES / resolution
+    min_chunks_per_region = round(min_region_cells / chunk_cells, 6)
+    chunks_per_region = max(1, int(np.ceil(min_chunks_per_region)))
+    region_cells = chunks_per_region * chunk_cells
 
     # dividing by the signed step counts the cells in the direction of the store's coordinates
     offset_cells = (location_coordinates - first_coordinate) / coordinate_step
