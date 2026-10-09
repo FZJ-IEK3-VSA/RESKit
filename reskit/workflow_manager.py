@@ -77,8 +77,10 @@ def _zarr_regions(locs: gk.LocationSet, dataset: xarray.Dataset, index_pad: int)
         Era5ZarrSource.spatial_chunk_cells().
 
     index_pad : int
-        The number of cells each region reads beyond its locations on every side, see
-        Era5ZarrSource. A region spans at least twice as many cells, see _zarr_region_index().
+        The number of cells each region reads beyond its locations on every side, i.e. the
+        index_pad of the Era5ZarrSource reading it (by default
+        Era5ZarrSource.DEFAULT_INDEX_PAD). A region spans at least twice as many cells, see
+        _zarr_region_index().
 
     Returns
     -------
@@ -407,6 +409,7 @@ class WorkflowManager:
                         kwargs.get("consolidated", True),
                         kwargs.get("storage_options"),
                     )
+                    # the padding the sources of the regions read with: as passed, or their default
                     index_pad = kwargs.get("index_pad", rk_weather.Era5ZarrSource.DEFAULT_INDEX_PAD)
                     regions = _zarr_regions(self.locs, dataset, index_pad)
                     if len(regions) > 1:

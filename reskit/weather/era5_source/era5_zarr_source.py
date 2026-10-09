@@ -54,7 +54,9 @@ class Era5ZarrSource(Era5Source):
     # _derive_solar_variables.
     DERIVED_SCALE = 3600.0
 
-    # The number of cells read beyond the bounds on every side, for the interpolation.
+    # The number of cells read beyond the bounds on every side, for the interpolation: the
+    # default index_pad of the other weather sources (e.g. Era5Source). WorkflowManager.read()
+    # also sizes the regions in which it reads distant placements by it, see _zarr_regions().
     DEFAULT_INDEX_PAD = 5
 
     def __init__(
@@ -96,7 +98,7 @@ class Era5ZarrSource(Era5Source):
               * If None, the full spatial extent of the store is used
 
         index_pad : int, optional
-            The padding to apply to the boundaries
+            The padding to apply to the boundaries, by default DEFAULT_INDEX_PAD
               * Useful in case of interpolation
 
         time_index_from : str, optional
