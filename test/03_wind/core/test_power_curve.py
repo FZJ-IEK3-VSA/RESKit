@@ -3,6 +3,7 @@ import pandas as pd
 import pytest
 
 from reskit import TEST_DATA
+from reskit.util import ResError
 from reskit.wind.core.power_curve import PowerCurve, compute_specific_power
 
 

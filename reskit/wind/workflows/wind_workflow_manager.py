@@ -614,6 +614,9 @@ class WindWorkflowManager(WorkflowManager):
             scaling factor, by default 0.06
         base : float, optional
             base value, by default 0.1
+        **kwargs
+            Further arguments passed to PowerCurve.convolute_by_gaussian(),
+            e.g. _steps or _output_stride.
 
         Return
         ------
