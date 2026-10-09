@@ -1,3 +1,5 @@
+import inspect
+
 import geokit as gk
 import numpy as np
 import osgeo
@@ -7,17 +9,19 @@ import xarray
 
 import reskit as rk
 from reskit import (
-    TEST_DATA,
     WorkflowManager,
     WorkflowQueue,
+    data,
     distribute_workflow,
     execute_workflow_iteratively,
 )
 
+FIXTURES = data.paths("test_suite")
+
 
 @pytest.fixture
 def pt_wind_placements() -> pd.DataFrame:
-    df = gk.vector.extractFeatures(TEST_DATA["turbinePlacements.shp"])
+    df = gk.vector.extractFeatures(FIXTURES["turbine_placements_shp"])
     df["hub_height"] = np.linspace(100, 130, df.shape[0])
     df["capacity"] = 3000
     df["rotor_diam"] = 170
@@ -103,7 +107,7 @@ def test_WorkflowManager_read(
             "surface_air_temperature",
         ],
         source_type="ERA5",
-        source=rk.TEST_DATA["era5-like"],
+        source=FIXTURES["era5"],
         set_time_index=True,
         verbose=False,
         spatial_interpolation_mode="bilinear",
@@ -137,7 +141,7 @@ def pt_era5_source(
     pt_WorkflowManager_initialized: WorkflowManager,
 ) -> rk.weather.Era5Source:
     source = rk.weather.Era5Source(
-        rk.TEST_DATA["era5-like"],
+        FIXTURES["era5"],
         bounds=pt_WorkflowManager_initialized.ext,
     )
     source.sload("elevated_wind_speed")
@@ -214,7 +218,7 @@ def test_WorkflowManager_read_single_variable_from_path(
     man.read(
         variables="elevated_wind_speed",
         source_type="ERA5",
-        source=rk.TEST_DATA["era5-like"],
+        source=FIXTURES["era5"],
         set_time_index=True,
     )
 
@@ -229,7 +233,7 @@ def test_WorkflowManager_read_unknown_source_type(
         pt_WorkflowManager_initialized.read(
             variables=["elevated_wind_speed"],
             source_type="NOT-A-SOURCE",
-            source=rk.TEST_DATA["era5-like"],
+            source=FIXTURES["era5"],
             set_time_index=True,
         )
 
@@ -241,21 +245,44 @@ def test_WorkflowManager_read_without_time_index(
         pt_WorkflowManager_initialized.read(
             variables=["elevated_wind_speed"],
             source_type="ERA5",
-            source=rk.TEST_DATA["era5-like"],
+            source=FIXTURES["era5"],
             set_time_index=False,
         )
 
 
-def test_WorkflowManager_read_time_slice_requires_zarr(
+def test_WorkflowManager_read_time_slice_equals_cropped_full_read():
+    def read(**kwargs):
+        man = _make_WorkflowManager()
+        man.read(
+            variables=["elevated_wind_speed", "global_horizontal_irradiance"],
+            source_type="ERA5",
+            source=FIXTURES["era5"],
+            set_time_index=True,
+            verbose=False,
+            **kwargs,
+        )
+        return man
+
+    full = read()
+    sliced = read(time_slice=slice("2015-01-02 00:30", "2015-01-03 23:30"))
+
+    window = (full.time_index >= "2015-01-02 00:30") & (full.time_index <= "2015-01-03 23:30")
+    assert sliced.time_index.equals(full.time_index[window])
+    for var in full.sim_data:
+        np.testing.assert_array_equal(sliced.sim_data[var], full.sim_data[var][window])
+
+
+def test_WorkflowManager_read_time_slice_rejects_initialized_source(
     pt_WorkflowManager_initialized: WorkflowManager,
+    pt_era5_source: rk.weather.Era5Source,
 ):
-    with pytest.raises(RuntimeError, match="only supported for Zarr-backed ERA5 sources"):
+    with pytest.raises(ValueError, match="already initialized source"):
         pt_WorkflowManager_initialized.read(
             variables=["elevated_wind_speed"],
-            source_type="ERA5",
-            source=rk.TEST_DATA["era5-like"],
+            source_type="user",
+            source=pt_era5_source,
             set_time_index=True,
-            time_slice=slice("2015-01-01", "2015-01-02"),
+            time_slice=slice("2015-01-02", "2015-01-03"),
         )
 
 
@@ -272,7 +299,7 @@ def pt_WorkflowManager_loaded(
             "surface_air_temperature",
         ],
         source_type="ERA5",
-        source=rk.TEST_DATA["era5-like"],
+        source=FIXTURES["era5"],
         set_time_index=True,
         verbose=False,
         spatial_interpolation_mode="bilinear",
@@ -293,7 +320,7 @@ def test_WorkflowManager_spatial_disagregation(
             "direct_horizontal_irradiance",
         ],
         source_type="ERA5",
-        source=rk.TEST_DATA["era5-like"],
+        source=FIXTURES["era5"],
         set_time_index=True,
         verbose=False,
         spatial_interpolation_mode="bilinear",
@@ -302,12 +329,12 @@ def test_WorkflowManager_spatial_disagregation(
 
     man.spatial_disaggregation(
         variable="global_horizontal_irradiance",
-        source_high_resolution=TEST_DATA["gsa-ghi-like.tif"],
+        source_high_resolution=FIXTURES["gsa_ghi"],
         source_low_resolution=rk.weather.GSAmeanSource.GHI_with_ERA5_pixel,
     )
     man.spatial_disaggregation(
         variable="direct_horizontal_irradiance",
-        source_high_resolution=TEST_DATA["gsa-ghi-like.tif"],
+        source_high_resolution=FIXTURES["gsa_ghi"],
         source_low_resolution=rk.weather.GSAmeanSource.GHI_with_ERA5_pixel,
     )
 
@@ -319,7 +346,7 @@ def test_WorkflowManager_adjust_variable_to_long_run_average(
     man.adjust_variable_to_long_run_average(
         "elevated_wind_speed",
         source_long_run_average=rk.weather.Era5Source.LONG_RUN_AVERAGE_WINDSPEED_2020_03,
-        real_long_run_average=TEST_DATA["gwa100-like.tif"],
+        real_long_run_average=FIXTURES["gwa_100m"],
         real_lra_scaling=1,
         spatial_interpolation="linear-spline",
     )
@@ -349,7 +376,7 @@ def test_WorkflowManager_adjust_variable_to_long_run_average_() -> WorkflowManag
     wf.adjust_variable_to_long_run_average(
         variable="test_nearest",
         source_long_run_average=rk.weather.Era5Source.LONG_RUN_AVERAGE_GHI_2020_03,
-        real_long_run_average=TEST_DATA["gsa-ghi-like.tif"],
+        real_long_run_average=FIXTURES["gsa_ghi"],
         real_lra_scaling=1000 / 24,  # cast to hourly average kWh
         nodata_fallback=np.nan,
         spatial_interpolation="near",
@@ -363,7 +390,7 @@ def test_WorkflowManager_adjust_variable_to_long_run_average_() -> WorkflowManag
     wf.adjust_variable_to_long_run_average(
         variable="test_source",
         source_long_run_average=rk.weather.Era5Source.LONG_RUN_AVERAGE_GHI_2020_03,
-        real_long_run_average=TEST_DATA["gsa-ghi-like.tif"],
+        real_long_run_average=FIXTURES["gsa_ghi"],
         real_lra_scaling=1000 / 24,  # cast to hourly average kWh
         nodata_fallback=1.0,  # 1.0 means 1.0 x source data (no real_lra_scaling)
         spatial_interpolation="near",
@@ -380,7 +407,7 @@ def test_WorkflowManager_adjust_variable_to_long_run_average_() -> WorkflowManag
     wf.adjust_variable_to_long_run_average(
         variable="test_source_deprecated",
         source_long_run_average=rk.weather.Era5Source.LONG_RUN_AVERAGE_GHI_2020_03,
-        real_long_run_average=TEST_DATA["gsa-ghi-like.tif"],
+        real_long_run_average=FIXTURES["gsa_ghi"],
         real_lra_scaling=1000 / 24,  # cast to hourly average kWh
         nodata_fallback="source",  # deprecated, but must yield the same result
         spatial_interpolation="near",
@@ -398,7 +425,7 @@ def test_WorkflowManager_adjust_variable_to_long_run_average_() -> WorkflowManag
     wf.adjust_variable_to_long_run_average(
         variable="test_callable",
         source_long_run_average=rk.weather.Era5Source.LONG_RUN_AVERAGE_GHI_2020_03,
-        real_long_run_average=TEST_DATA["gsa-ghi-like.tif"],
+        real_long_run_average=FIXTURES["gsa_ghi"],
         real_lra_scaling=1000 / 24,  # cast to hourly average kWh
         nodata_fallback=my_test_function,  # should yield 2 x source data (no real_lra_scaling)
         spatial_interpolation="near",
@@ -425,9 +452,9 @@ def test_WorkflowManager_adjust_variable_to_long_run_average_() -> WorkflowManag
     wf2.adjust_variable_to_long_run_average(
         variable="test_raster",
         source_long_run_average=rk.weather.Era5Source.LONG_RUN_AVERAGE_GHI_2020_03,
-        real_long_run_average=TEST_DATA["clc-aachen_clipped.tif"],
+        real_long_run_average=FIXTURES["clc"],
         real_lra_scaling=1000 / 24,  # cast to hourly average kWh
-        nodata_fallback=TEST_DATA["gsa-ghi-like.tif"],
+        nodata_fallback=FIXTURES["gsa_ghi"],
         spatial_interpolation="near",
     )
     assert np.isclose(wf2.sim_data["test_raster"][0][0], 8.032722363091741)
@@ -550,8 +577,8 @@ def simple_workflow(placements, era5_path, var1, var2):
 def test_distribute_workflow():
     xds = distribute_workflow(
         workflow_function=simple_workflow,
-        placements=pd.read_csv(TEST_DATA["turbine_placements.csv"]),
-        era5_path=TEST_DATA["era5-like"],
+        placements=pd.read_csv(FIXTURES["turbine_placements"]),
+        era5_path=FIXTURES["era5"],
         var1=0.5,
         var2="pants",
         jobs=2,
@@ -587,11 +614,11 @@ def test_WorkflowQueue():
     # Create a queue
     queue = WorkflowQueue(
         workflow=simple_workflow,
-        era5_path=TEST_DATA["era5-like"],
+        era5_path=FIXTURES["era5"],
     )
 
     # append jobs to queue
-    placements = pd.read_csv(TEST_DATA["turbine_placements.csv"])
+    placements = pd.read_csv(FIXTURES["turbine_placements"])
 
     queue.append(
         key="run_1",
@@ -648,9 +675,9 @@ def test_execute_workflow_iteratively(pt_wind_placements):
         zoom=None,
         # workflow_args:
         placements=pt_wind_placements,
-        merra_path=TEST_DATA["merra-like"],
-        gwa_50m_path=TEST_DATA["gwa50-like.tif"],
-        clc2012_path=TEST_DATA["clc-aachen_clipped.tif"],
+        merra_path=FIXTURES["merra"],
+        gwa_50m_path=FIXTURES["gwa_50m"],
+        clc2012_path=FIXTURES["clc"],
     )
 
     assert gen.roughness.shape == (560,)

@@ -1,3 +1,5 @@
+import warnings
+
 import geokit as gk
 import numpy as np
 import pandas as pd
@@ -5,6 +7,9 @@ import pytest
 
 import reskit as rk
 from reskit.solar import SolarWorkflowManager
+from reskit import data
+
+FIXTURES = data.paths("test_suite")
 
 
 def print_testresults(variable):
@@ -152,9 +157,7 @@ def test_SolarWorkflowManager_apply_elevation(pt_SolarWorkflowManager_initialize
     ]
     man2 = SolarWorkflowManager(placements2)
 
-    man2.apply_elevation(
-        elev=rk.TEST_DATA["clc-aachen_clipped.tif"], fallback_elev=fallback_elev
-    )  # not an elevation file, but still a raster
+    man2.apply_elevation(elev=FIXTURES["clc"], fallback_elev=fallback_elev)  # not an elevation file, but still a raster
     # must yield raster values, with fallback value for those placements outside the actual file coverage
     assert np.isclose(
         man2.placements["elev"],
@@ -185,9 +188,7 @@ def test_SolarWorkflowManager_apply_elevation(pt_SolarWorkflowManager_initialize
     ]
     man2 = SolarWorkflowManager(placements3)
 
-    man2.apply_elevation(
-        elev=rk.TEST_DATA["clc-aachen_clipped.tif"], fallback_elev=fallback_elev
-    )  # not an elevation file, but still a raster
+    man2.apply_elevation(elev=FIXTURES["clc"], fallback_elev=fallback_elev)  # not an elevation file, but still a raster
     # must yield raster values, with fallback value for those placements outside the actual file coverage
     assert np.isclose(
         man2.placements["elev"],
@@ -218,7 +219,7 @@ def pt_SolarWorkflowManager_loaded(
             "surface_dew_temperature",
         ],
         source_type="ERA5",
-        source=rk.TEST_DATA["era5-like"],
+        source=FIXTURES["era5"],
         set_time_index=True,
         verbose=False,
     )
@@ -249,6 +250,94 @@ def test_SolarWorkflowManager_determine_solar_position(
     assert np.isclose(man.sim_data["apparent_solar_zenith"].std(), 26.914599770957278)
     assert np.isclose(man.sim_data["apparent_solar_zenith"].min(), 72.98977919840057)
     assert np.isclose(man.sim_data["apparent_solar_zenith"].max(), 152.49005970814673)
+
+
+def test_SolarWorkflowManager_determine_solar_position_matches_spa_python(
+    pt_SolarWorkflowManager_loaded: SolarWorkflowManager,
+):
+    # The vectorised SPA must give what pvlib's spa_python gives for each (rounded) location.
+    import pvlib
+
+    man = pt_SolarWorkflowManager_loaded
+    man.determine_solar_position(lon_rounding=1, lat_rounding=1, elev_rounding=-2)
+
+    for i, placement in enumerate(man.placements.itertuples()):
+        expected = pvlib.solarposition.spa_python(
+            man.time_index,
+            latitude=np.round(placement.lat, 1),
+            longitude=np.round(placement.lon, 1),
+            altitude=np.round(placement.elev, -2),
+            pressure=man.sim_data["surface_pressure"][:, i],
+            temperature=man.sim_data["surface_air_temperature"][:, i],
+        )
+        np.testing.assert_allclose(man.sim_data["solar_azimuth"][:, i], expected["azimuth"], rtol=0, atol=1e-9)
+        np.testing.assert_allclose(
+            man.sim_data["apparent_solar_zenith"][:, i], expected["apparent_zenith"], rtol=0, atol=1e-9
+        )
+
+
+def test_SolarWorkflowManager_determine_solar_position_shares_rounded_locations(
+    pt_SolarWorkflowManager_loaded: SolarWorkflowManager,
+):
+    # Locations that round to the same point share the solar position of the first of them.
+    man = pt_SolarWorkflowManager_loaded
+    man.determine_solar_position(lon_rounding=-1, lat_rounding=-1, elev_rounding=-4)  # all in one cell
+
+    for key in ("solar_azimuth", "apparent_solar_zenith"):
+        np.testing.assert_array_equal(man.sim_data[key], np.repeat(man.sim_data[key][:, :1], 5, axis=1))
+
+
+def test_SolarWorkflowManager_determine_solar_position_shares_interleaved_locations(
+    pt_SolarWorkflowManager_loaded: SolarWorkflowManager,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Placements at index 0, 2, 4 and 1, 3 share a location each, so the placements of a location are
+    # not next to each other. With one location per block and one time step per copy (the
+    # smallest blocks), every placement must still get the solar position of its own location.
+    import pvlib
+
+    from reskit.solar.workflows import solar_workflow_manager
+
+    monkeypatch.setattr(solar_workflow_manager, "location_blocks", _one_location_per_block)
+    man = pt_SolarWorkflowManager_loaded
+    man.placements["elev"] = [100, 2000, 100, 2000, 100]
+    man.determine_solar_position(lon_rounding=-1, lat_rounding=-1, elev_rounding=-2)
+
+    for first_placement, placements_at_location in [(0, [0, 2, 4]), (1, [1, 3])]:
+        first_placement_row = man.placements.iloc[first_placement]
+        expected = pvlib.solarposition.spa_python(
+            man.time_index,
+            latitude=np.round(first_placement_row["lat"], -1),
+            longitude=np.round(first_placement_row["lon"], -1),
+            altitude=first_placement_row["elev"],
+            pressure=man.sim_data["surface_pressure"][:, first_placement],
+            temperature=man.sim_data["surface_air_temperature"][:, first_placement],
+        )
+        for placement in placements_at_location:
+            np.testing.assert_allclose(
+                man.sim_data["solar_azimuth"][:, placement], expected["azimuth"], rtol=0, atol=1e-9
+            )
+            np.testing.assert_allclose(
+                man.sim_data["apparent_solar_zenith"][:, placement], expected["apparent_zenith"], rtol=0, atol=1e-9
+            )
+
+
+def test_SolarWorkflowManager_determine_solar_position_after_numba_spa(
+    pt_SolarWorkflowManager_loaded: SolarWorkflowManager,
+):
+    # The CSP workflow's get_solarposition(method="nrel_numba") recompiles the shared pvlib.spa
+    # module with numba, whose functions cannot broadcast; the solar position must still work.
+    import pvlib
+
+    with warnings.catch_warnings():  # pvlib announces the reload, unless spa is in numba mode already
+        warnings.simplefilter("ignore")
+        pvlib.solarposition.get_solarposition(
+            pd.DatetimeIndex(["2020-06-21 12:00"], tz="UTC"), 50, 6, method="nrel_numba"
+        )
+    man = pt_SolarWorkflowManager_loaded
+    man.determine_solar_position()
+
+    assert not np.isnan(man.sim_data["solar_azimuth"]).any()
 
 
 @pytest.fixture
@@ -701,3 +790,48 @@ def test_SolarWorkflowManager_nan_values_tilt_azimuth_elev___init__() -> SolarWo
     assert ~man.placements["tilt"].isna().any()
     assert ~man.placements["azimuth"].isna().any()
     assert ~man.placements["elev"].isna().any()
+
+
+def _irradiance_chain() -> dict[str, np.ndarray]:
+    # Runs the steps from the solar position to the angle of incidence losses, returns sim_data.
+    manager = _make_SolarWorkflowManager()
+    manager.apply_elevation([100, 120, 140, 160, 2000])
+    manager.read(
+        variables=["global_horizontal_irradiance", "direct_horizontal_irradiance", "surface_pressure"]
+        + ["surface_air_temperature"],
+        source_type="ERA5",
+        source=FIXTURES["era5"],
+        set_time_index=True,
+        verbose=False,
+    )
+    manager.determine_solar_position()
+    manager.filter_positive_solar_elevation()
+    manager.direct_normal_irradiance_from_trigonometry()
+    manager.determine_extra_terrestrial_irradiance(model="spencer", solar_constant=1370)
+    manager.determine_air_mass(model="kastenyoung1989")
+    manager.diffuse_horizontal_irradiance_from_trigonometry()
+    manager.determine_angle_of_incidence()
+    manager.estimate_plane_of_array_irradiances(transposition_model="perez")
+    manager.apply_angle_of_incidence_losses_to_poa()
+    return manager.sim_data
+
+
+def _one_location_per_block(n_times: int, n_locations: int) -> list[slice]:
+    # Stand-in for location_blocks() with the smallest blocks possible, so that every block border is used.
+    return [slice(location, location + 1) for location in range(n_locations)]
+
+
+def test_SolarWorkflowManager_irradiance_steps_are_independent_of_the_blocks(monkeypatch: pytest.MonkeyPatch) -> None:
+    # The solar position, the plane of array irradiance and the angle of incidence losses go
+    # through the locations in blocks to bound their memory. The blocks must not change the
+    # result: one location per block has to give exactly what the default blocks give.
+    expected = _irradiance_chain()
+
+    from reskit.solar.workflows import solar_workflow_manager
+
+    monkeypatch.setattr(solar_workflow_manager, "location_blocks", _one_location_per_block)
+    result = _irradiance_chain()
+
+    assert result.keys() == expected.keys()
+    for variable_name in expected:
+        np.testing.assert_array_equal(result[variable_name], expected[variable_name], err_msg=variable_name)

@@ -461,19 +461,11 @@ def preprocess_era5_data(focus_nc: str, processed_dir: Optional[str] = None):
     Ssrd and fdir are hourly backward accumulated quantities in ERA5 with the unit: J m⁻².
     Each value at time t represents the accumulated energy over the previous hour.
 
-    When you divide it by 3600 seconds, you convert the accumulated energy (J m⁻²)
-    into an average power flux (W m⁻²) over that hour.
-
-    However, in solar observation and other models,
-    this value represents the instantaneous mean over the next hour.
-    This matches:
-        PV modeling conventions
-        Many energy system models
-        atlite / PyPSA conventions
-
-    So, we need to do two things:
-    1. Convert the accumulated quantity to an average power flux by dividing by 3600
-    2. Shift the time axis forward by one hour to represent the average over the next hour.
+    Dividing it by 3600 seconds converts the accumulated energy (J m⁻²) into the
+    average power flux (W m⁻²) over that hour. The time axis is kept as it is: RESKit's
+    ERA5 time index puts each timestamp at the middle of the hour before it (see
+    Era5Source), which is exactly the hour this mean covers. This is also how the ERA5
+    netCDF4 archive RESKit reads holds the '*_t_adj' variables.
 
     Parameters
     ----------
@@ -499,11 +491,10 @@ def preprocess_era5_data(focus_nc: str, processed_dir: Optional[str] = None):
         if solar_vars:
             out_names = [f"{v}_t_adj" for v in solar_vars]
             if not _nc_file_has_vars(solar_t_out, out_names):
-                # 1. accumulated J m**-2 -> mean power flux W m**-2 (divide by 3600s)
-                # 2. shift time axis +1h so each value is the mean over the *next* hour
+                # accumulated J m**-2 -> mean power flux W m**-2 over the hour (divide by 3600s),
+                # on the timestamps of the accumulations
                 time_encoding = dict(ds["time"].encoding)
                 out = ds[solar_vars] / 3600.0
-                out = out.assign_coords(time=out["time"] + pd.Timedelta(hours=1))
                 out["time"].encoding = time_encoding
                 out = out.rename({v: f"{v}_t_adj" for v in solar_vars})
                 for v in solar_vars:

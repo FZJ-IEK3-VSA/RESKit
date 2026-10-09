@@ -1,0 +1,61 @@
+title: RESKit GEBCO bathymetry test fixture, German Bight
+description: Water depth over a 24 x 24 cell, 0.01 degree box in the German Bight,
+  used by the offshore wind cost model.
+ethos:remote_prefix: reskit-test-data/gebco
+ethos:access: public
+ethos:visibility: public
+ethos:origin: derived
+ethos:derivation: 'Resampled from a GEBCO grid to 0.01 degree. The product family
+  is certain from the SeaDataNet vocabulary the file carries -- sdn_parameter_urn
+  SDN:P01::BATHHGHT, sdn_uom_urn SDN:P06::ULAA -- and RESKit''s own docstring names
+  gebco.net as the source. The release is NOT pinned: GEBCO_2020 does not reproduce
+  the values (RMSE about 1 m under every resampling method tried), so this came from
+  some other release. Public domain in every release, so nothing turns on it.'
+contributors:
+- title: M. Stargardt
+  roles:
+  - modifier
+  organization: Forschungszentrum Julich, ICE-2
+- title: Drin Marmullaku
+  roles:
+  - modifier
+sources:
+- title: The GEBCO Grid - global terrain model for ocean and land
+  path: https://www.gebco.net/data-products/gridded-bathymetry-data
+licenses:
+- title: GEBCO Grid terms of use -- public domain
+  path: https://www.gebco.net/data-products/gridded-bathymetry-data
+  ethos:document: licenses/gebco-terms-of-use.html
+  ethos:document_sha256: 7b2c9c45fdf4012aadc2c6205b3da86200f5e4dca6779691509e4d27e92adcd9
+ethos:retrieved: '2026-09-09'
+name: reskit-test-data/gebco
+homepage: https://github.com/FZJ-IEK3-VSA/RESKit
+ethos:contact: ICE-2 RESKit maintainers
+ethos:attribution: 'ALL FILES IN THIS DATASET HAVE BEEN MODIFIED: every one is a spatial
+  and/or temporal subset of the product named in its member descriptor, and several
+  have been resampled. None is suitable for any purpose other than exercising RESKit''s
+  code paths.
+
+  Contains modified Copernicus Climate Change Service information (ERA5 and ERA5-Land,
+  2015); neither the European Commission nor ECMWF is responsible for any use of this
+  data. EUMETSAT CM SAF: copyright 2017 EUMETSAT; Pfeifroth, U., Kothe, S., Mueller,
+  R., Trentmann, J., Hollmann, R., Fuchs, P., Werscheck, M. (2017), doi:10.5676/EUM_SAF_CM/SARAH/V002.
+  Contains MERRA-2 data provided by the NASA Global Modeling and Assimilation Office,
+  and SRTM data provided by NASA/USGS. Data obtained from the Global Wind Atlas 3.0,
+  developed, owned and operated by the Technical University of Denmark in partnership
+  with the World Bank Group, utilizing data provided by Vortex, with funding from
+  ESMAP. Solar resource data (c) 2023 Solargis; (c) The World Bank, Source: Global
+  Solar Atlas 2.0. (c) European Union, Copernicus Land Monitoring Service 2018, European
+  Environment Agency. Contains ESA Climate Change Initiative Land Cover data; users
+  must acknowledge the ESA Climate Change Initiative and its Land Cover project together
+  with the individual data providers, and cite ESA Land Cover CCI project team; Defourny,
+  P. (2019): ESA Land Cover Climate Change Initiative (Land_Cover_cci): Global Land
+  Cover Maps, Version 2.0.7, Centre for Environmental Data Analysis, https://catalogue.ceda.ac.uk/uuid/b382ebe6679d44b8b0e68ea4ef4b701c.
+  GEBCO Bathymetric Compilation Group: The GEBCO Grid. Distance-to-coast data from
+  the NASA Ocean Biology Processing Group. Administrative boundaries: (c) GeoBasis-DE
+  / BKG, dl-de/by-2-0, and OCHA/ZIMSTAT under CC BY 3.0 IGO. ICON-LAM: contains modified
+  data from Chen, S., Poll, S., Hendricks Franssen, H.-J., Heinrichs, H., Vereecken,
+  H., Goergen, K. (2024): Convection-permitting ICON-LAM simulations for renewable
+  energy potential estimates over southern Africa, Journal of Geophysical Research:
+  Atmospheres, https://doi.org/10.1029/2023JD039569, dataset https://doi.org/10.26165/JUELICH-DATA/JYGQ65,
+  licensed under CC BY 4.0.'
