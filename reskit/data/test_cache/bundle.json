@@ -480,6 +480,395 @@
       ],
       "selection": "all"
     },
+    "reskit-test-data/era5-zarr": {
+      "alignment": null,
+      "changes": [],
+      "documents": [
+        {
+          "bytes": 2477,
+          "hash": "sha256:61afc0170027b268ec63e5e3be1f19b419f78257fbffc4c2783f6a4295e78383",
+          "path": "dataset.yaml"
+        },
+        {
+          "bytes": 18657,
+          "hash": "sha256:9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411",
+          "path": "licenses/CC-BY-4.0-legalcode.txt"
+        }
+      ],
+      "resources": [
+        {
+          "bytes": 23635,
+          "ethos:revision": null,
+          "ethos:sidecars": [],
+          "hash": "sha256:e606221274f15a5eff651aa1ff1dcb7bb6b0688c62c86c7383375803bf9ff014",
+          "licenses": null,
+          "mediatype": "application/octet-stream",
+          "name": "era5.zarr-asn-c-0-0-0",
+          "path": "era5.zarr/asn/c/0/0/0"
+        },
+        {
+          "bytes": 1988,
+          "ethos:revision": null,
+          "ethos:sidecars": [],
+          "hash": "sha256:159ad81161a2e27d728c1df72e9cb223e39afe929c83e19a939c4427b447fb05",
+          "licenses": null,
+          "mediatype": "application/json",
+          "name": "era5.zarr-asn-zarr.json",
+          "path": "era5.zarr/asn/zarr.json"
+        },
+        {
+          "bytes": 41231,
+          "ethos:revision": null,
+          "ethos:sidecars": [],
+          "hash": "sha256:718321fa36d7b96513495c6292672b9a6d5ec5c9d72e5907baec6d08372ceebb",
+          "licenses": null,
+          "mediatype": "application/octet-stream",
+          "name": "era5.zarr-blh-c-0-0-0",
+          "path": "era5.zarr/blh/c/0/0/0"
+        },
+        {
+          "bytes": 1997,
+          "ethos:revision": null,
+          "ethos:sidecars": [],
+          "hash": "sha256:8b6ebde8e98a0f5895694fab42227876e80554fab570a5105163dec3151bf6a0",
+          "licenses": null,
+          "mediatype": "application/json",
+          "name": "era5.zarr-blh-zarr.json",
+          "path": "era5.zarr/blh/zarr.json"
+        },
+        {
+          "bytes": 11663,
+          "ethos:revision": null,
+          "ethos:sidecars": [],
+          "hash": "sha256:25807b656d3d2c6683b0dde46b71ea3c529145f9dbe93b44969ae14717cd986d",
+          "licenses": null,
+          "mediatype": "application/octet-stream",
+          "name": "era5.zarr-d2m-c-0-0-0",
+          "path": "era5.zarr/d2m/c/0/0/0"
+        },
+        {
+          "bytes": 2010,
+          "ethos:revision": null,
+          "ethos:sidecars": [],
+          "hash": "sha256:adbe79e95f8bcfdc1dfe02da8ece6466a79643b7a01278c817b525f6b1c7727a",
+          "licenses": null,
+          "mediatype": "application/json",
+          "name": "era5.zarr-d2m-zarr.json",
+          "path": "era5.zarr/d2m/zarr.json"
+        },
+        {
+          "bytes": 13062,
+          "ethos:revision": null,
+          "ethos:sidecars": [],
+          "hash": "sha256:5c3a2e6cb78147dc69859b3a2c6f492ef35bdf7e7a181373782ff5d0ee4e7f9d",
+          "licenses": null,
+          "mediatype": "application/octet-stream",
+          "name": "era5.zarr-fdir-c-0-0-0",
+          "path": "era5.zarr/fdir/c/0/0/0"
+        },
+        {
+          "bytes": 2056,
+          "ethos:revision": null,
+          "ethos:sidecars": [],
+          "hash": "sha256:c39eb88ccd94b47aa0b2b4c5befb687bf625afd5bf878f41da7b94a951c25c06",
+          "licenses": null,
+          "mediatype": "application/json",
+          "name": "era5.zarr-fdir-zarr.json",
+          "path": "era5.zarr/fdir/zarr.json"
+        },
+        {
+          "bytes": 15646,
+          "ethos:revision": null,
+          "ethos:sidecars": [],
+          "hash": "sha256:0f85a68d70d2c6362ad6e1369942c69aff1c9cba53ee3d783f4e9bdc56e98a9a",
+          "licenses": null,
+          "mediatype": "application/octet-stream",
+          "name": "era5.zarr-fsr-c-0-0-0",
+          "path": "era5.zarr/fsr/c/0/0/0"
+        },
+        {
+          "bytes": 2007,
+          "ethos:revision": null,
+          "ethos:sidecars": [],
+          "hash": "sha256:c2414fe0894f6a1a9212ef62b087e729a31e9cf0525e3dc284354087c9f2d471",
+          "licenses": null,
+          "mediatype": "application/json",
+          "name": "era5.zarr-fsr-zarr.json",
+          "path": "era5.zarr/fsr/zarr.json"
+        },
+        {
+          "bytes": 120,
+          "ethos:revision": null,
+          "ethos:sidecars": [],
+          "hash": "sha256:94ce2b0f3f2c6b95bc1aed4a19600fe707e0aeb06249ccd8d378e2a7b7bcd73f",
+          "licenses": null,
+          "mediatype": "application/octet-stream",
+          "name": "era5.zarr-latitude-c-0",
+          "path": "era5.zarr/latitude/c/0"
+        },
+        {
+          "bytes": 907,
+          "ethos:revision": null,
+          "ethos:sidecars": [],
+          "hash": "sha256:a424462fe544cb1c16d7850028d7e0b07b284e5b685bab0c29884f038f002174",
+          "licenses": null,
+          "mediatype": "application/json",
+          "name": "era5.zarr-latitude-zarr.json",
+          "path": "era5.zarr/latitude/zarr.json"
+        },
+        {
+          "bytes": 104,
+          "ethos:revision": null,
+          "ethos:sidecars": [],
+          "hash": "sha256:50832515db63b2445b8ab3310b25864868c85f5f0ff1806455e91e0c0e5ce97c",
+          "licenses": null,
+          "mediatype": "application/octet-stream",
+          "name": "era5.zarr-longitude-c-0",
+          "path": "era5.zarr/longitude/c/0"
+        },
+        {
+          "bytes": 871,
+          "ethos:revision": null,
+          "ethos:sidecars": [],
+          "hash": "sha256:62b679c3f409e53e21d1ff3166ed77af70473950bc09ce12f7f86298172afe42",
+          "licenses": null,
+          "mediatype": "application/json",
+          "name": "era5.zarr-longitude-zarr.json",
+          "path": "era5.zarr/longitude/zarr.json"
+        },
+        {
+          "bytes": 19152,
+          "ethos:revision": null,
+          "ethos:sidecars": [],
+          "hash": "sha256:367500f64b86b68e457dba30d785c2cbdd9b083e02f02deb740cf3ef060151bf",
+          "licenses": null,
+          "mediatype": "application/octet-stream",
+          "name": "era5.zarr-rsn-c-0-0-0",
+          "path": "era5.zarr/rsn/c/0/0/0"
+        },
+        {
+          "bytes": 1992,
+          "ethos:revision": null,
+          "ethos:sidecars": [],
+          "hash": "sha256:b565087c4b6d42b4530b9d5f686730aaf6f6029e931f99fa36b7899b8e10f912",
+          "licenses": null,
+          "mediatype": "application/json",
+          "name": "era5.zarr-rsn-zarr.json",
+          "path": "era5.zarr/rsn/zarr.json"
+        },
+        {
+          "bytes": 31027,
+          "ethos:revision": null,
+          "ethos:sidecars": [],
+          "hash": "sha256:c99d5fab1c02290a1efcfdd536b405df65865c4174f1f3e2939ba05c7733e064",
+          "licenses": null,
+          "mediatype": "application/octet-stream",
+          "name": "era5.zarr-sd-c-0-0-0",
+          "path": "era5.zarr/sd/c/0/0/0"
+        },
+        {
+          "bytes": 2071,
+          "ethos:revision": null,
+          "ethos:sidecars": [],
+          "hash": "sha256:c97bbc365ff17a01510f6d31698a5a90d51f07ca3f3fec89bc55a25598dd3aea",
+          "licenses": null,
+          "mediatype": "application/json",
+          "name": "era5.zarr-sd-zarr.json",
+          "path": "era5.zarr/sd/zarr.json"
+        },
+        {
+          "bytes": 7787,
+          "ethos:revision": null,
+          "ethos:sidecars": [],
+          "hash": "sha256:ece9afa166aee37393a9b140b170331bd8b2116ef6a21fb6a16bf55fe68465d4",
+          "licenses": null,
+          "mediatype": "application/octet-stream",
+          "name": "era5.zarr-sf-c-0-0-0",
+          "path": "era5.zarr/sf/c/0/0/0"
+        },
+        {
+          "bytes": 2057,
+          "ethos:revision": null,
+          "ethos:sidecars": [],
+          "hash": "sha256:3bb58bb9f8fc11ff5c47a260d2ddc15647be931bbab0a59cfad907fdce759fbc",
+          "licenses": null,
+          "mediatype": "application/json",
+          "name": "era5.zarr-sf-zarr.json",
+          "path": "era5.zarr/sf/zarr.json"
+        },
+        {
+          "bytes": 14948,
+          "ethos:revision": null,
+          "ethos:sidecars": [],
+          "hash": "sha256:89df557115ceea983ed6f6e284b2665f1b7937c3b80dc7d7d38890851e7b366b",
+          "licenses": null,
+          "mediatype": "application/octet-stream",
+          "name": "era5.zarr-sp-c-0-0-0",
+          "path": "era5.zarr/sp/c/0/0/0"
+        },
+        {
+          "bytes": 2013,
+          "ethos:revision": null,
+          "ethos:sidecars": [],
+          "hash": "sha256:b0681db66f516e7bb7bfdc6a7a15c49b9ccf8e783d43e1e3c803d47b5dce449e",
+          "licenses": null,
+          "mediatype": "application/json",
+          "name": "era5.zarr-sp-zarr.json",
+          "path": "era5.zarr/sp/zarr.json"
+        },
+        {
+          "bytes": 16293,
+          "ethos:revision": null,
+          "ethos:sidecars": [],
+          "hash": "sha256:56c97bffe18cd811b31438e7edaa3fadaab6a64e19593855d2455c1b0d9d0332",
+          "licenses": null,
+          "mediatype": "application/octet-stream",
+          "name": "era5.zarr-ssrd-c-0-0-0",
+          "path": "era5.zarr/ssrd/c/0/0/0"
+        },
+        {
+          "bytes": 2127,
+          "ethos:revision": null,
+          "ethos:sidecars": [],
+          "hash": "sha256:af8ea91fa4156e0b9b58e1dc582c997bd0df91747013922cd21b5c5055e28228",
+          "licenses": null,
+          "mediatype": "application/json",
+          "name": "era5.zarr-ssrd-zarr.json",
+          "path": "era5.zarr/ssrd/zarr.json"
+        },
+        {
+          "bytes": 12488,
+          "ethos:revision": null,
+          "ethos:sidecars": [],
+          "hash": "sha256:49b3f3ca708e22a110e14d71027a63ac7a80f05f88922d133d9dc0368ff5b095",
+          "licenses": null,
+          "mediatype": "application/octet-stream",
+          "name": "era5.zarr-t2m-c-0-0-0",
+          "path": "era5.zarr/t2m/c/0/0/0"
+        },
+        {
+          "bytes": 1992,
+          "ethos:revision": null,
+          "ethos:sidecars": [],
+          "hash": "sha256:a0e028ce8af6a947c01a2ad3715b38de1ef2d2433e04aad653432a6bcfb2ded4",
+          "licenses": null,
+          "mediatype": "application/json",
+          "name": "era5.zarr-t2m-zarr.json",
+          "path": "era5.zarr/t2m/zarr.json"
+        },
+        {
+          "bytes": 43089,
+          "ethos:revision": null,
+          "ethos:sidecars": [],
+          "hash": "sha256:9488ecc7e59c2f9ba92111cbb93c28ac3c44ae3c590dce4f3330e825bb4c3cf6",
+          "licenses": null,
+          "mediatype": "application/octet-stream",
+          "name": "era5.zarr-u10-c-0-0-0",
+          "path": "era5.zarr/u10/c/0/0/0"
+        },
+        {
+          "bytes": 2017,
+          "ethos:revision": null,
+          "ethos:sidecars": [],
+          "hash": "sha256:08e3e22b5e5b7171fe25b537922af4ba2f2cdc1ab017ae5cf5797c9e56f69125",
+          "licenses": null,
+          "mediatype": "application/json",
+          "name": "era5.zarr-u10-zarr.json",
+          "path": "era5.zarr/u10/zarr.json"
+        },
+        {
+          "bytes": 42212,
+          "ethos:revision": null,
+          "ethos:sidecars": [],
+          "hash": "sha256:794baeaae78c492d42bed24d18fc1adf3ee0b0484a89f50f3afeef4361436812",
+          "licenses": null,
+          "mediatype": "application/octet-stream",
+          "name": "era5.zarr-u100-c-0-0-0",
+          "path": "era5.zarr/u100/c/0/0/0"
+        },
+        {
+          "bytes": 2024,
+          "ethos:revision": null,
+          "ethos:sidecars": [],
+          "hash": "sha256:c7341ecbe6cfd885c7c72b2de0545d035add06ae5d10b10a9ab49233c82b4610",
+          "licenses": null,
+          "mediatype": "application/json",
+          "name": "era5.zarr-u100-zarr.json",
+          "path": "era5.zarr/u100/zarr.json"
+        },
+        {
+          "bytes": 43547,
+          "ethos:revision": null,
+          "ethos:sidecars": [],
+          "hash": "sha256:cf7633e8349b1d1a2b695155e7a595f57ae3e17e0d8ab1482e95f6647a0f72c0",
+          "licenses": null,
+          "mediatype": "application/octet-stream",
+          "name": "era5.zarr-v10-c-0-0-0",
+          "path": "era5.zarr/v10/c/0/0/0"
+        },
+        {
+          "bytes": 2017,
+          "ethos:revision": null,
+          "ethos:sidecars": [],
+          "hash": "sha256:474c1047ac8dd7d6ea0b4e58baed3f09cb70781d7b0c906647c10099f01da5ff",
+          "licenses": null,
+          "mediatype": "application/json",
+          "name": "era5.zarr-v10-zarr.json",
+          "path": "era5.zarr/v10/zarr.json"
+        },
+        {
+          "bytes": 42949,
+          "ethos:revision": null,
+          "ethos:sidecars": [],
+          "hash": "sha256:4084a8f12483fe36871a813f70d54aa069294ec908d3ecd10458e3ebc51a90c4",
+          "licenses": null,
+          "mediatype": "application/octet-stream",
+          "name": "era5.zarr-v100-c-0-0-0",
+          "path": "era5.zarr/v100/c/0/0/0"
+        },
+        {
+          "bytes": 2024,
+          "ethos:revision": null,
+          "ethos:sidecars": [],
+          "hash": "sha256:7ebf2445de096ac3527f51e8139ab7473deead22cf00ca05f3e54d29c031a465",
+          "licenses": null,
+          "mediatype": "application/json",
+          "name": "era5.zarr-v100-zarr.json",
+          "path": "era5.zarr/v100/zarr.json"
+        },
+        {
+          "bytes": 206,
+          "ethos:revision": null,
+          "ethos:sidecars": [],
+          "hash": "sha256:2c1a33ccf7aa726b5608fb1fcdac8b979efa65ef695cbc28ed32c228096cdd90",
+          "licenses": null,
+          "mediatype": "application/octet-stream",
+          "name": "era5.zarr-valid_time-c-0",
+          "path": "era5.zarr/valid_time/c/0"
+        },
+        {
+          "bytes": 819,
+          "ethos:revision": null,
+          "ethos:sidecars": [],
+          "hash": "sha256:e15a51e80d1d398c2d4c70a9d319be143ded11d3e9578b99cf3ca3f5112cae5b",
+          "licenses": null,
+          "mediatype": "application/json",
+          "name": "era5.zarr-valid_time-zarr.json",
+          "path": "era5.zarr/valid_time/zarr.json"
+        },
+        {
+          "bytes": 42851,
+          "ethos:revision": null,
+          "ethos:sidecars": [],
+          "hash": "sha256:17675d0c765e5f34a823df380deba66aa6d708711d1f8414cc5190982ae625bf",
+          "licenses": null,
+          "mediatype": "application/json",
+          "name": "era5.zarr-zarr.json",
+          "path": "era5.zarr/zarr.json"
+        }
+      ],
+      "selection": "all"
+    },
     "reskit-test-data/esa-cci-landcover": {
       "alignment": {
         "release": "v1.0.0",
@@ -1319,6 +1708,11 @@
           "bytes": 18657,
           "hash": "sha256:9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411",
           "path": "era5-csp/licenses/CC-BY-4.0-legalcode.txt"
+        },
+        {
+          "bytes": 18657,
+          "hash": "sha256:9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411",
+          "path": "era5-zarr/licenses/CC-BY-4.0-legalcode.txt"
         },
         {
           "bytes": 190552,

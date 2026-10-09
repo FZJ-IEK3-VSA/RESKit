@@ -1,3 +1,5 @@
+from os.path import join
+
 import geokit as gk
 import numpy as np
 import pandas as pd
@@ -188,6 +190,40 @@ def test_openfield_pv_era5(pt_pv_placements):
     assert np.isclose(float(gen["module_dc_voltage_at_mpp"].fillna(0).mean()), 14.348350493615033)
     assert np.isclose(float(gen["capacity_factor"].fillna(0).mean()), 0.08039702336301864)
     assert np.isclose(float(gen["total_system_generation"].fillna(0).mean()), 160.79404672603732)
+
+
+def test_openfield_pv_era5_on_zarr_data(pt_pv_placements):
+    """Real ERA5 data from an online Zarr store gives what the netCDF4 fixtures of the same hours give.
+
+    Not to the bit: the netCDF4 fixtures are packed to 16 bit integers, the Zarr data is
+    bit-rounded. The tolerances are about twice the largest difference measured.
+    """
+    arguments = dict(
+        placements=pt_pv_placements,
+        global_solar_atlas_ghi_path=FIXTURES["gsa_ghi"],
+        global_solar_atlas_dni_path=FIXTURES["gsa_dni"],
+        module="WINAICO WSx-240P6",
+        elev=300,
+        tracking="fixed",
+        inverter=None,
+        inverter_kwargs={},
+        tracking_args={},
+        output_netcdf_path=None,
+        output_variables=None,
+    )
+    netcdf = openfield_pv_era5(era5_path=FIXTURES["era5"], **arguments)
+    zarr = openfield_pv_era5(
+        era5_path=join(FIXTURES["era5_zarr"], "era5.zarr"),
+        time_slice=slice("2014-12-31 23:30", "2015-01-06 18:30"),
+        **arguments,
+    )
+
+    netcdf_cf = netcdf["capacity_factor"].fillna(0)
+    zarr_cf = zarr["capacity_factor"].fillna(0)
+    assert zarr_cf.shape == netcdf_cf.shape
+    assert (zarr.time.values == netcdf.time.values).all()
+    assert np.abs(zarr_cf - netcdf_cf).max() < 0.05
+    assert np.isclose(zarr_cf.mean(), netcdf_cf.mean(), rtol=1e-3)
 
 
 def test_openfield_pv_merra_ryberg2019(pt_pv_placements):

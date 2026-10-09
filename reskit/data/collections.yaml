@@ -81,6 +81,8 @@ collections:
       # Weather, one directory per source, as the weather sources read it.
       era5: reskit-test-data/era5
       era5_csp: reskit-test-data/era5-csp
+      # The real online Zarr store, as one directory: open era5_zarr/era5.zarr.
+      era5_zarr: reskit-test-data/era5-zarr
       merra: reskit-test-data/merra2
       merra_merged: reskit-test-data/merra2/merged/merra-like.nc4
       sarah: reskit-test-data/sarah
@@ -120,6 +122,7 @@ collections:
       - dataset: reskit-test-data/dist2coast
       - dataset: reskit-test-data/era5
       - dataset: reskit-test-data/era5-csp
+      - dataset: reskit-test-data/era5-zarr
       - dataset: reskit-test-data/esa-cci-landcover
       - dataset: reskit-test-data/gebco
       - dataset: reskit-test-data/global-solar-atlas
