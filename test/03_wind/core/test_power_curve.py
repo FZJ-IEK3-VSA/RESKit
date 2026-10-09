@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from reskit.util import ResError
 from reskit.wind.core.power_curve import PowerCurve, compute_specific_power
 
 

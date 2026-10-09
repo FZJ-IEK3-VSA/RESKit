@@ -690,6 +690,9 @@ class WindWorkflowManager(WorkflowManager):
             scaling factor, by default 0.06
         base : float, optional
             base value, by default 0.1
+        **kwargs
+            Further arguments passed to PowerCurve.convolute_by_gaussian(),
+            e.g. _steps or _output_stride.
 
         Return
         ------
@@ -770,8 +773,9 @@ class WindWorkflowManager(WorkflowManager):
                     ),
                     3,
                 )
-                # set values < 0 to zero. Prevents negative values
-                _gen[_gen < 0] = 0
+            # set values < 0 to zero. Prevents negative values. Once after the loop, not per power
+            # curve: the whole batch per curve made fleets with many turbine designs slow
+            _gen[_gen < 0] = 0
 
             return _gen
 
