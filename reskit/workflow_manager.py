@@ -27,12 +27,6 @@ from reskit.util.weather_tile import get_location_specific_weather_paths
 # The smallest half width, in SRS units, which is added to a zero-width extent.
 _MIN_EXTENT_HALF_WIDTH = 1e-5
 
-# The size of the regions in which locations are read from a Zarr store, if its chunks are unknown.
-_DEFAULT_REGION_SIZE_DEGREES = 10.0
-
-# The smallest size of a region in which locations are read from a Zarr store.
-_MIN_REGION_SIZE_DEGREES = 1.0
-
 
 def _check_coordinate_range(placements, column, minimum, maximum):
     """Check that every coordinate of a placements column is finite and in range.
@@ -64,7 +58,7 @@ def _check_coordinate_range(placements, column, minimum, maximum):
         )
 
 
-def _zarr_regions(locs: gk.LocationSet, dataset: xarray.Dataset) -> list[np.ndarray]:
+def _zarr_regions(locs: gk.LocationSet, dataset: xarray.Dataset, index_pad: int) -> list[np.ndarray]:
     """Group the locations by the regions of the spatial chunk grid of a Zarr store.
 
     A Zarr source reads the rectangle around the locations it is given, so locations far apart
@@ -83,6 +77,12 @@ def _zarr_regions(locs: gk.LocationSet, dataset: xarray.Dataset) -> list[np.ndar
         The opened store, which determines the grid and the size of a region, see
         Era5ZarrSource.spatial_chunk_cells().
 
+    index_pad : int
+        The number of cells each region reads beyond its locations on every side, i.e. the
+        index_pad of the Era5ZarrSource reading it (by default
+        Era5ZarrSource.DEFAULT_INDEX_PAD). A region spans at least twice as many cells, see
+        _zarr_region_index().
+
     Returns
     -------
     list of numpy.ndarray
@@ -93,11 +93,12 @@ def _zarr_regions(locs: gk.LocationSet, dataset: xarray.Dataset) -> list[np.ndar
     longitudes = np.asarray(locs.lons)
     latitudes = np.asarray(locs.lats)
 
+    min_region_cells = 2 * index_pad
     longitude_region_index = _zarr_region_index(
-        longitudes, dataset, "longitude", longitude_chunk_cells, wrap_around_globe=True
+        longitudes, dataset, "longitude", longitude_chunk_cells, min_region_cells, wrap_around_globe=True
     )
     latitude_region_index = _zarr_region_index(
-        latitudes, dataset, "latitude", latitude_chunk_cells, wrap_around_globe=False
+        latitudes, dataset, "latitude", latitude_chunk_cells, min_region_cells, wrap_around_globe=False
     )
     region_index_per_axis = np.stack([longitude_region_index, latitude_region_index])
 
@@ -118,6 +119,7 @@ def _zarr_region_index(
     dataset: xarray.Dataset,
     dimension: str,
     chunk_cells: int | None,
+    min_region_cells: int,
     wrap_around_globe: bool,
 ) -> np.ndarray:
     """Determine the region of each location along one spatial dimension of a Zarr store.
@@ -125,8 +127,7 @@ def _zarr_region_index(
     Each location is assigned the grid cell nearest to it, counted from the first grid point of
     the store in the direction of its coordinates (e.g. north to south for ERA5 latitudes), as
     the chunks of the store are. The cells are then grouped into regions of whole chunks: one
-    chunk, or as many chunks as needed for a region of at least _MIN_REGION_SIZE_DEGREES. If
-    the chunk size is unknown, a region has _DEFAULT_REGION_SIZE_DEGREES instead.
+    chunk, or as many chunks as needed for a region of at least min_region_cells.
 
     Parameters
     ----------
@@ -141,7 +142,13 @@ def _zarr_region_index(
 
     chunk_cells : int or None
         The number of cells in one chunk along the dimension, see
-        Era5ZarrSource.spatial_chunk_cells().
+        Era5ZarrSource.spatial_chunk_cells(). None if it is unknown, i.e. for data in memory,
+        which is then not split along the dimension.
+
+    min_region_cells : int
+        The smallest number of cells in a region. Each region reads some cells beyond its
+        locations, see _zarr_regions(): regions smaller than twice that padding would read
+        mostly the same chunks as their neighbours.
 
     wrap_around_globe : bool
         Whether the dimension wraps around the globe, i.e. for longitude. The cells are then
@@ -152,9 +159,10 @@ def _zarr_region_index(
     -------
     numpy.ndarray
         The index of the region of each location along the dimension. All locations are in
-        region 0 if the store has fewer than two coordinates along the dimension.
+        region 0 if the chunk size is unknown or the store has fewer than two coordinates along
+        the dimension.
     """
-    if dimension not in dataset.coords or dataset[dimension].size < 2:
+    if chunk_cells is None or dimension not in dataset.coords or dataset[dimension].size < 2:
         return np.zeros(location_coordinates.shape, dtype=int)
 
     grid_coordinates = dataset[dimension]
@@ -162,15 +170,8 @@ def _zarr_region_index(
     coordinate_step = float(grid_coordinates[1] - grid_coordinates[0])
     resolution = abs(coordinate_step)
 
-    if chunk_cells is None:
-        default_region_cells = round(_DEFAULT_REGION_SIZE_DEGREES / resolution)
-        region_cells = max(1, default_region_cells)
-    else:
-        # round before the ceiling, so that e.g. 1.0 / 0.1 = 10.000000000000002 cells count as 10
-        min_region_cells = _MIN_REGION_SIZE_DEGREES / resolution
-        min_chunks_per_region = round(min_region_cells / chunk_cells, 6)
-        chunks_per_region = max(1, int(np.ceil(min_chunks_per_region)))
-        region_cells = chunks_per_region * chunk_cells
+    chunks_per_region = max(1, -(-min_region_cells // chunk_cells))  # the ceiling of the division
+    region_cells = chunks_per_region * chunk_cells
 
     # dividing by the signed step counts the cells in the direction of the store's coordinates
     offset_cells = (location_coordinates - first_coordinate) / coordinate_step
@@ -437,7 +438,9 @@ class WorkflowManager:
                         kwargs.get("consolidated", True),
                         kwargs.get("storage_options"),
                     )
-                    regions = _zarr_regions(self.locs, dataset)
+                    # the padding the sources of the regions read with: as passed, or their default
+                    index_pad = kwargs.get("index_pad", rk_weather.Era5ZarrSource.DEFAULT_INDEX_PAD)
+                    regions = _zarr_regions(self.locs, dataset, index_pad)
                     if len(regions) > 1:
                         first_cutout_source, frames = self._read_by_region(
                             source_constructor,

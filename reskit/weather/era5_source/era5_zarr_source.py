@@ -54,11 +54,16 @@ class Era5ZarrSource(Era5Source):
     # _derive_solar_variables.
     DERIVED_SCALE = 3600.0
 
+    # The number of cells read beyond the bounds on every side, for the interpolation: the
+    # default index_pad of the other weather sources (e.g. Era5Source). WorkflowManager.read()
+    # also sizes the regions in which it reads distant placements by it, see _zarr_regions().
+    DEFAULT_INDEX_PAD = 5
+
     def __init__(
         self,
         source: str | xr.Dataset,
         bounds: Any = None,
-        index_pad: int = 5,
+        index_pad: int = DEFAULT_INDEX_PAD,
         time_index_from: str | None = None,
         time_slice: slice | None = None,
         chunks: dict[str, int] | None = None,
@@ -93,7 +98,7 @@ class Era5ZarrSource(Era5Source):
               * If None, the full spatial extent of the store is used
 
         index_pad : int, optional
-            The padding to apply to the boundaries
+            The padding to apply to the boundaries, by default DEFAULT_INDEX_PAD
               * Useful in case of interpolation
 
         time_index_from : str, optional
@@ -232,7 +237,7 @@ class Era5ZarrSource(Era5Source):
         ----------
         dataset : xarray.Dataset
             The opened store, see _open_dataset(). The chunk sizes are read from the encoding
-            of its variables, i.e. they are only known for a dataset opened from a store.
+            or the dask chunks of its variables, i.e. they are unknown for data in memory.
 
         Returns
         -------
@@ -249,7 +254,8 @@ class Era5ZarrSource(Era5Source):
         """Determine the size of one chunk of the store along one spatial dimension, in grid cells.
 
         The size is taken from the first data variable which has the dimension and a known chunk
-        size along it.
+        size along it: the chunks stored in its encoding or, if that was dropped (e.g. by
+        arithmetic on the dataset), its dask chunks.
 
         Parameters
         ----------
@@ -263,7 +269,8 @@ class Era5ZarrSource(Era5Source):
         -------
         int or None
             The number of cells in one chunk. None if no data variable provides a chunk size
-            along the dimension (e.g. for an in-memory dataset without encoding).
+            along the dimension, i.e. for data in memory, for which the size of the read
+            rectangle does not matter.
         """
         for variable in dataset.data_vars.values():
             if dimension not in variable.dims:
@@ -278,6 +285,9 @@ class Era5ZarrSource(Era5Source):
             elif chunks is not None and len(chunks) == variable.ndim:
                 dimension_axis = variable.dims.index(dimension)
                 chunk_cells = chunks[dimension_axis]
+            elif variable.chunks is not None:
+                # the first dask chunk, as the others are as large except for the last
+                chunk_cells = variable.chunksizes[dimension][0]
             else:
                 continue
 
