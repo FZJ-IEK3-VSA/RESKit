@@ -291,9 +291,9 @@ def test_SolarWorkflowManager_determine_solar_position_shares_interleaved_locati
     pt_SolarWorkflowManager_loaded: SolarWorkflowManager,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    # Placements 0, 2, 4 and 1, 3 share a location each. With one location per block and
-    # one time step per copy, every placement must still get the solar position of its own
-    # location.
+    # Placements at index 0, 2, 4 and 1, 3 share a location each, so the placements of a location are
+    # not next to each other. With one location per block and one time step per copy (the
+    # smallest blocks), every placement must still get the solar position of its own location.
     import pvlib
 
     from reskit.solar.workflows import solar_workflow_manager
@@ -793,6 +793,7 @@ def test_SolarWorkflowManager_nan_values_tilt_azimuth_elev___init__() -> SolarWo
 
 
 def _irradiance_chain() -> dict[str, np.ndarray]:
+    # Runs the steps from the solar position to the angle of incidence losses, returns sim_data.
     manager = _make_SolarWorkflowManager()
     manager.apply_elevation([100, 120, 140, 160, 2000])
     manager.read(
@@ -816,12 +817,14 @@ def _irradiance_chain() -> dict[str, np.ndarray]:
 
 
 def _one_location_per_block(n_times: int, n_locations: int) -> list[slice]:
+    # Stand-in for location_blocks() with the smallest blocks possible, so that every block border is used.
     return [slice(location, location + 1) for location in range(n_locations)]
 
 
 def test_SolarWorkflowManager_irradiance_steps_are_independent_of_the_blocks(monkeypatch: pytest.MonkeyPatch) -> None:
-    # the solar position, the plane of array irradiance and the angle of incidence losses go
-    # through the locations in blocks to bound their memory
+    # The solar position, the plane of array irradiance and the angle of incidence losses go
+    # through the locations in blocks to bound their memory. The blocks must not change the
+    # result: one location per block has to give exactly what the default blocks give.
     expected = _irradiance_chain()
 
     from reskit.solar.workflows import solar_workflow_manager

@@ -169,6 +169,7 @@ def test_WindWorkflowManager_wind_shear_projection_of_wind_speeds_to_hub_height(
 
 
 def _one_location_per_block(n_times: int, n_locations: int) -> list[slice]:
+    # Stand-in for location_blocks() with the smallest blocks possible, so that every block border is used.
     return [slice(location, location + 1) for location in range(n_locations)]
 
 
@@ -176,7 +177,9 @@ def test_WindWorkflowManager_wind_shear_projection_is_independent_of_the_blocks(
     pt_WindWorkflowManager_loaded: WindWorkflowManager,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    # the projection goes through the locations in blocks to bound its memory
+    # The wind shear projection goes through the locations in blocks to bound its memory. The
+    # blocks must not change the result: one location per block has to give exactly what the
+    # default blocks give, from the same starting wind speeds and height.
     manager = pt_WindWorkflowManager_loaded
     manager.real_lra = np.array([5.64914904, 5.42147512, 5.65448952, 5.75908499, 5.94873524])
     original_wind_speed = manager.sim_data["elevated_wind_speed"].copy()
@@ -244,6 +247,7 @@ def test_WindWorkflowManager_apply_air_density_correction_to_wind_speeds(
 
 
 def _corrected_wind_speeds() -> np.ndarray:
+    # Wind speeds after the air density correction and the wake correction (with a wake curve for some placements).
     manager = _make_WindWorkflowManager()
     manager.read(
         variables=["elevated_wind_speed", "surface_pressure", "surface_air_temperature"],
@@ -261,7 +265,9 @@ def _corrected_wind_speeds() -> np.ndarray:
 def test_WindWorkflowManager_wind_speed_corrections_are_independent_of_the_blocks(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    # the air density and wake corrections go through the locations in blocks to bound their memory
+    # The air density and wake corrections go through the locations in blocks to bound their
+    # memory. The blocks must not change the result: one location per block has to give
+    # exactly what the default blocks give.
     expected = _corrected_wind_speeds()
 
     from reskit.wind.workflows import wind_workflow_manager
@@ -401,13 +407,16 @@ def test_WindWorkflowManager_mixed_values___init___():
 
 @pytest.mark.parametrize("max_batch_size", [0, -1, -10])
 def test_WindWorkflowManager_simulate_rejects_a_non_positive_batch_size(pt_WindWorkflowManager_loaded, max_batch_size):
-    # an integer zero passed the old check and later caused a division by zero
+    # max_batch_size must be a positive integer. An integer zero passed the old check and
+    # later caused a division by zero.
     with pytest.raises(ValueError):
         pt_WindWorkflowManager_loaded.simulate(max_batch_size=max_batch_size)
 
 
 @pytest.mark.parametrize("max_batch_size", [1.5, "3", True, False, [3]])
 def test_WindWorkflowManager_simulate_rejects_a_wrong_batch_size_type(pt_WindWorkflowManager_loaded, max_batch_size):
+    # max_batch_size must be an integer: floats, strings and lists are rejected, and so are
+    # booleans, although bool is a subclass of int.
     with pytest.raises(TypeError):
         pt_WindWorkflowManager_loaded.simulate(max_batch_size=max_batch_size)
 
@@ -415,7 +424,8 @@ def test_WindWorkflowManager_simulate_rejects_a_wrong_batch_size_type(pt_WindWor
 def test_WindWorkflowManager_simulate_accepts_a_batch_size_above_the_placement_count(
     pt_WindWorkflowManager_loaded,
 ):
-    # a batch size above the placement count is limited to the placement count
+    # A batch size above the placement count is limited to the placement count, which gives
+    # the same capacity factors as the unbatched simulation (see test_WindWorkflowManager_simulate).
     man = pt_WindWorkflowManager_loaded
     man.simulate(max_batch_size=1000)
 
