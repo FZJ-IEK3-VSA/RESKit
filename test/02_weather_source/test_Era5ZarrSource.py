@@ -211,6 +211,18 @@ def test_Era5ZarrSource_marks_derived_variables(pt_Era5ZarrSource):
     assert pd.isna(variables.loc["sp", "derived_from"])
 
 
+def test_Era5ZarrSource_derives_radiation_without_reading_the_store(era5_zarr_store):
+    """Deriving the solar variables reads nothing; on a cloud store that would be all of it."""
+    source = Era5ZarrSource(str(era5_zarr_store), bounds=(6.0, 50.5, 6.25, 50.75), index_pad=0, verbose=False)
+
+    assert not source._dataset["ssrd"].variable._in_memory
+    assert not source._dataset["ssrd_t_adj"].variable._in_memory
+
+    source.load("ssrd_t_adj")
+    raw = source._dataset["ssrd"].values[:, ::-1, :]
+    assert np.allclose(source.data["ssrd_t_adj"], raw / 3600.0)
+
+
 def test_Era5ZarrSource_derived_radiation_has_no_missing_first_timestep(pt_Era5ZarrSource):
     """Each derived value comes from the accumulation of its own timestamp, so none is missing."""
     with pytest.warns(UserWarning, match="computing on the fly from raw 'ssrd'"):
