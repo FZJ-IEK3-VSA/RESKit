@@ -92,7 +92,17 @@ def test_offshore_wind_merra_caglayan2019(pt_wind_placements):
     assert np.isclose(gen.capacity_factor.std(), 0.29063037)
 
 
-def test_wind_era5_PenaSanchezDunkelWinklerEtAl2025(pt_wind_placements: pd.DataFrame):
+# with output_variables, the workflow drops interim variables as soon as later steps no
+# longer need them; dropping one too early would raise or change the requested outputs
+@pytest.mark.parametrize(
+    "output_variables",
+    [None, ["capacity_factor"]],
+    ids=["all_variables", "release_interim_variables"],
+)
+def test_wind_era5_PenaSanchezDunkelWinklerEtAl2025(
+    pt_wind_placements: pd.DataFrame,
+    output_variables: list[str] | None,
+) -> None:
     inputs = data.paths("wind_era5_PenaSanchezDunkelWinklerEtAl2025", test=True)
     gen = wind_era5_PenaSanchezDunkelWinklerEtAl2025(
         placements=pt_wind_placements,
@@ -100,14 +110,16 @@ def test_wind_era5_PenaSanchezDunkelWinklerEtAl2025(pt_wind_placements: pd.DataF
         gwa_100m_path=inputs["gwa_100m"],
         height_scaling_data={50: inputs["gwa_50m"], 200: inputs["gwa_200m"]},
         output_netcdf_path=None,
+        output_variables=output_variables,
         cf_correction=True,
     )
 
-    assert gen.elevated_wind_speed.shape == (140, 560)
-    assert np.isclose(gen.elevated_wind_speed.mean(), 6.41365879)
-    assert np.isclose(gen.elevated_wind_speed.min(), 0.34054053)
-    assert np.isclose(gen.elevated_wind_speed.max(), 14.51362788)
-    assert np.isclose(gen.elevated_wind_speed.std(), 2.39538268)
+    if output_variables is None:
+        assert gen.elevated_wind_speed.shape == (140, 560)
+        assert np.isclose(gen.elevated_wind_speed.mean(), 6.41365879)
+        assert np.isclose(gen.elevated_wind_speed.min(), 0.34054053)
+        assert np.isclose(gen.elevated_wind_speed.max(), 14.51362788)
+        assert np.isclose(gen.elevated_wind_speed.std(), 2.39538268)
 
     assert gen.capacity_factor.shape == (140, 560)
     assert np.isclose(gen.capacity_factor.mean(), 0.35877319)
