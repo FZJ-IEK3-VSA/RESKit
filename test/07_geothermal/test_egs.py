@@ -54,5 +54,5 @@ def test_lcoe_gr(egs_output):
 
 def test_lcoe_su(egs_output):
     """Validate LCOE_SU_EUR_per_kWh values."""
-    expected = [51.79376029, 28.61874858, 7.62909725, 20.23294058]
+    expected = [51.81435227, 28.62905446, 7.63056424, 20.2406851]
     assert allclose(egs_output.LCOE_SU_EUR_per_kWh, expected), "LCOE_SU values do not match!"

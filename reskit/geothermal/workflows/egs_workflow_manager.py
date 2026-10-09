@@ -331,7 +331,18 @@ class EGSWorkflowManager:
         self.sim_data["P_Plant_nom_UNITHERE"] = self.sim_data["Global_EGS_PowerTech"] * 1 / self.data["CF"]
 
     def VolumeMethod(self):
-        """Calculate the enthalpy from the temperature"""
+        """Volume method: heat in place cooled by dT_drawdown over the lifetime.
+
+        Adds to ``self.sim_data_VM`` (depth x placements):
+        Total_thermal_energy_PJ, Qdot_out_VM_MW, P_out_VM_MW,
+        mdot_water_VM_kg_per_s, mdot_water_VM_kg_per_s_per_well,
+        dT_active_res_VM_K, dT_total_res_VM_K, recovery_fac_amb_VM_1,
+        resourceUseTime_VM_a, temperature_VM_degC, T_Rock_abandon_VM_degC,
+        T_Water_out_VM_degC.
+
+        See :func:`reskit.geothermal.workflows.workflows.egs_workflow` for the
+        meaning and units of the output variables.
+        """
         self.sim_data_VM = {}
         # define rock properties
         rho_rock = 2550  # kg/m^3
@@ -386,7 +397,7 @@ class EGSWorkflowManager:
         self.sim_data_VM["T_Rock_abandon_VM_degC"] = (
             self.sim_data["temperature"] - self.sim_data_VM["dT_total_res_VM_K"]
         )
-        self.sim_data_VM["T_Water_out_VM_degC"] = self.sim_data_VM["temperature_VM_degC"]
+        self.sim_data_VM["T_Water_out_VM_degC"] = T_out
         pass
 
     def GringartenMethodFixedT(self):
@@ -424,7 +435,17 @@ class EGSWorkflowManager:
         pass
 
     def GringartenMethodFixeVdot(self):
-        """Calculates the Gringarten solution for a given fracture configuration"""
+        """Gringarten method: heat extraction from parallel fractures with fixed volume flow.
+
+        Adds to ``self.sim_data_GR`` (depth x placements):
+        Qdot_out_GR_MW, P_out_GR_MW, mdot_water_GR_kg_per_s,
+        mdot_water_GR_kg_per_s_per_well, dT_active_res_GR_K, dT_total_res_GR_K,
+        recovery_fac_amb_GR_1, T_Rock_abandon_GR_degC, T_Water_out_GR_degC,
+        resourceUseTime_GR_a, temperature_GR_degC.
+
+        See :func:`reskit.geothermal.workflows.workflows.egs_workflow` for the
+        meaning and units of the output variables.
+        """
         assert self.data["lifetime_a"] % 1 == 0  # check if its a natural number
 
         Vdot_total = self.data["Vdot_total_m3_per_s"]  # m^3/s = 1E-3 l/s
@@ -474,6 +495,17 @@ class EGSWorkflowManager:
         self.sim_data_GR["temperature_GR_degC"] = self.sim_data["temperature"]
 
     def SustainableHeat(self):
+        """Sustainable method: extract only the heat replenished by the sustainable heat flow.
+
+        Adds to ``self.sim_data_SU`` (depth x placements):
+        Qdot_out_SU_MW, P_out_SU_MW, mdot_water_SU_kg_per_s,
+        mdot_water_SU_kg_per_s_per_well, dT_active_res_SU_K, dT_total_res_SU_K,
+        recovery_fac_amb_SU_1, T_Rock_abandon_SU_degC, T_Water_out_SU_degC,
+        resourceUseTime_SU_a, temperature_SU_degC.
+
+        See :func:`reskit.geothermal.workflows.workflows.egs_workflow` for the
+        meaning and units of the output variables.
+        """
         assert "qdot_sust_W_per_m2" in self.placements.columns
 
         qdot_sust_W_per_m2 = self.placements["qdot_sust_W_per_m2"].values
@@ -494,7 +526,7 @@ class EGSWorkflowManager:
         P_el_MW = Qdot_sust_W * 1e-6 * eta_plant
 
         # get water mass flow
-        mdot_water_kg_per_s = Qdot_sust_W / (self.rho_water * self.cp_water * (T_water_out - self.data["T_inj"]))
+        mdot_water_kg_per_s = Qdot_sust_W / (self.cp_water * (T_water_out - self.data["T_inj"]))
         mdot_water_kg_per_s_per_well = mdot_water_kg_per_s / self.data["n_production_wells_1"]
 
         # save vars
@@ -517,14 +549,18 @@ class EGSWorkflowManager:
         self.sim_data_SU["temperature_SU_degC"] = self.sim_data["temperature"]
 
     def calculatePumpLosses(self, method="default", techMethod=None):
-        """[summary]
+        """Calculate the pumping power of all production wells and the net power.
 
         Parameters
         ----------
         method : str, optional
-            [description], by default 'default'
-        techMethod : [type], optional
-            [description], by default None
+            Currently unused, by default 'default'
+        techMethod : str
+            Name of the method container, e.g. 'sim_data_VM'
+
+        Adds P_Pump_{M}_MW and P_out_net_{M}_MW to the method container.
+        See :func:`reskit.geothermal.workflows.workflows.egs_workflow` for the
+        meaning and units of the output variables.
         """
         # get the data from self
         sim_data_techmethod = getattr(self, techMethod)
@@ -536,8 +572,8 @@ class EGSWorkflowManager:
         productivity_m3_per_s_per_Pa = self.data["productivity_(l_per_s)/bar"] * 1e-3 / 1e5  # Pa/(m^3/s)
         detaP = Vdot_m3_per_s_per_well / productivity_m3_per_s_per_Pa  # Pa
 
-        P_pump = detaP * Vdot_m3_per_s_per_well / self.data["eta_pump_1"]
-        P_pump_MW = P_pump / 1e6
+        P_pump_per_well = detaP * Vdot_m3_per_s_per_well / self.data["eta_pump_1"]
+        P_pump_MW = P_pump_per_well * self.data["n_production_wells_1"] / 1e6
 
         sim_data_techmethod[f"P_Pump_{tech_method_short}_MW"] = P_pump_MW
         sim_data_techmethod[f"P_out_net_{tech_method_short}_MW"] = (
@@ -545,7 +581,12 @@ class EGSWorkflowManager:
         )
 
     def calculateCosts(self, method="default", techMethod=None):
-        """Calculate the CAPEX cost for the plant"""
+        """Calculate the annual total cost of the plant.
+
+        Adds TOTEX_MUSD_{M}_per_a to the method container.
+        See :func:`reskit.geothermal.workflows.workflows.egs_workflow` for the
+        meaning and units of the output variables.
+        """
         # get the data from self
         sim_data_techmethod = getattr(self, techMethod)
         tech_method_short = self._getTechMethodShort(techMethod)
@@ -589,9 +630,7 @@ class EGSWorkflowManager:
             CAPEX_Plant_MUSD = 1560 * P_nom / 1e3  # 1560 EUR/kW from 2006_Heidinger-et-al
             # Other
             CAPEX_Stim_MUSD = 2.5
-            CAPEX_Pump_MUSD = (
-                1720 * sim_data_techmethod[f"P_Pump_{tech_method_short}_MW"] * self.data["n_production_wells_1"] / 1e3
-            )
+            CAPEX_Pump_MUSD = 1720 * sim_data_techmethod[f"P_Pump_{tech_method_short}_MW"] / 1e3
             CAPEX_Expl_MUSD = 1.85
             # add up
             CAPEX_Total_MUSD = (
@@ -620,6 +659,12 @@ class EGSWorkflowManager:
         pass
 
     def calculateLCOE(self, techMethod):
+        """Calculate the gross and net levelized cost of electricity.
+
+        Adds LCOE_gross_{M}_EUR_per_kWh and LCOE_{M}_EUR_per_kWh to the method
+        container. See :func:`reskit.geothermal.workflows.workflows.egs_workflow`
+        for the meaning and units of the output variables.
+        """
         sim_data_techmethod = getattr(self, techMethod)
         tech_method_short = self._getTechMethodShort(techMethod)
 
@@ -638,7 +683,13 @@ class EGSWorkflowManager:
         )
 
     def getOptDepth(self, techMethod):
-        """Gets the optimal depth value based on the lowest LCOE"""
+        """Get the optimal depth per placement based on the lowest net LCOE.
+
+        Adds opt_depth_{M}_m to the method container, plus the internal helper
+        values argmin_opt_depth_{M}_m and notEligible_{M}, which are not part of
+        the output. See :func:`reskit.geothermal.workflows.workflows.egs_workflow`
+        for the meaning and units of the output variables.
+        """
         sim_data_techmethod = getattr(self, techMethod)
         tech_method_short = self._getTechMethodShort(techMethod)
 
@@ -717,6 +768,12 @@ class EGSWorkflowManager:
                 self.placements[varname] = var
 
     def getRegenerationTime(self, techMethod):
+        """Calculate the time the sustainable heat flow needs to replenish the extracted heat.
+
+        Adds regeneration_time_{M}_a to the method container.
+        See :func:`reskit.geothermal.workflows.workflows.egs_workflow` for the
+        meaning and units of the output variables.
+        """
         sim_data_techmethod = getattr(self, techMethod)
         tech_method_short = self._getTechMethodShort(techMethod)
 
