@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 import pytest
-from reskit import TEST_DATA
+from reskit import data
 from reskit.weather.era5_source.era5_prepare import (
     _ERA5_NC_TO_TILE_LABEL,
     _align_longitudes_to_source_convention,
@@ -27,6 +27,8 @@ from reskit.weather.era5_source.era5_prepare import (
     era5_tiler,
     preprocess_era5_data,
 )
+
+FIXTURES = data.paths("test_suite")
 
 # era5-like test data: lat=[49,52], lon=[5,7.5], year=2015
 # At zoom 4, this falls entirely within tile (x=8, y=5)
@@ -47,7 +49,7 @@ def era5_like_tile_input(tmp_path):
     """Temp dir with era5-like files renamed to match era5_tiler's expected naming.
     Returns (processed_dir, raw_nc_path).
     """
-    era5_like = TEST_DATA["era5-like"]
+    era5_like = FIXTURES["era5"]
     processed_dir = tmp_path / "processed"
     processed_dir.mkdir()
     shutil.copy(
@@ -267,7 +269,7 @@ def test_preprocess_wind_speed_matches_sqrt_and_sets_attrs(tmp_path):
         assert out["ws100"].long_name == "100 metre wind speed"
 
 
-def test_preprocess_solar_converts_units_shifts_time_and_preserves_encoding(tmp_path):
+def test_preprocess_solar_converts_units_keeps_time_and_preserves_encoding(tmp_path):
     raw = tmp_path / "raw.nc"
     ds = _make_era5_raw(
         raw,
@@ -289,9 +291,9 @@ def test_preprocess_solar_converts_units_shifts_time_and_preserves_encoding(tmp_
         assert out["ssrd_t_adj"].units == "W m**-2"
         # original descriptive attrs carried through the rename
         assert out["ssrd_t_adj"].long_name == "Surface solar radiation downwards"
-        # time shifted +1h, encoding preserved for the netCDF4 consumer
+        # time kept on the timestamps of the accumulations, encoding preserved for the netCDF4 consumer
         times = nc4.num2date(out["time"][:], out["time"].units, out["time"].calendar)
-        assert times[0].isoformat() == "2015-01-01T01:00:00"
+        assert times[0].isoformat() == "2015-01-01T00:00:00"
         # hour granularity + integer dtype preserved (xarray canonicalises the trailing
         # "00:00:00.0", which num2date parses identically)
         assert out["time"].units.startswith("hours since 1900-01-01")

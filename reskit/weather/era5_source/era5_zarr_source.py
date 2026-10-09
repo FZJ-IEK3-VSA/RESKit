@@ -50,20 +50,29 @@ class Era5ZarrSource(Era5Source):
     # are shifted by this amount to obtain the time index.
     TIME_OFFSET = timedelta(minutes=-30)
 
+    # Hourly accumulations (J/m²) are converted to mean fluxes (W/m²) by this divisor, see
+    # _derive_solar_variables.
+    DERIVED_SCALE = 3600.0
+
+    # The number of cells read beyond the bounds on every side, for the interpolation: the
+    # default index_pad of the other weather sources (e.g. Era5Source). WorkflowManager.read()
+    # also sizes the regions in which it reads distant placements by it, see _zarr_regions().
+    DEFAULT_INDEX_PAD = 5
+
     def __init__(
         self,
-        source,
-        bounds=None,
-        index_pad=5,
-        time_index_from=None,
-        time_slice=None,
-        chunks=None,
-        consolidated=True,
-        storage_options=None,
-        verbose=True,
-        forward_fill=True,
-        **kwargs,
-    ):
+        source: str | xr.Dataset,
+        bounds: Any = None,
+        index_pad: int = DEFAULT_INDEX_PAD,
+        time_index_from: str | None = None,
+        time_slice: slice | None = None,
+        chunks: dict[str, int] | None = None,
+        consolidated: bool = True,
+        storage_options: dict[str, Any] | None = None,
+        verbose: bool = True,
+        forward_fill: bool = True,
+        **kwargs: Any,
+    ) -> None:
         """Initialize an ERA5 source from a regular latitude/longitude Zarr store.
 
         Compared to Era5Source, the data is not read from netCDF4 files but from a local or
@@ -89,7 +98,7 @@ class Era5ZarrSource(Era5Source):
               * If None, the full spatial extent of the store is used
 
         index_pad : int, optional
-            The padding to apply to the boundaries
+            The padding to apply to the boundaries, by default DEFAULT_INDEX_PAD
               * Useful in case of interpolation
 
         time_index_from : str, optional
@@ -100,8 +109,6 @@ class Era5ZarrSource(Era5Source):
         time_slice : slice, optional
             Limit the time span which is loaded from the store, given in the time convention of
             RESKit, i.e. at half hours. Strongly recommended for multi-year cloud stores.
-            * The first requested timestep of derived solar variables still uses the
-              accumulation preceding it in the store
 
         chunks : dict, optional
             The chunk sizes to load the store with, e.g. {"valid_time": 48}. Passed on to
@@ -142,9 +149,14 @@ class Era5ZarrSource(Era5Source):
             consolidated=consolidated,
             storage_options=storage_options,
         )
+        # name the source by its store in messages and the variables table, not by its repr
+        if isinstance(source, xr.Dataset):
+            source_description = source.encoding.get("source", "an opened xarray.Dataset")
+        else:
+            source_description = source
 
         self.time_name, ds = self._normalise_time_axis(ds)
-        ds, self._derived_variables = self._derive_solar_variables(ds, self.time_name)
+        ds, self._derived_variables = self._derive_solar_variables(ds)
 
         # Clear names may map onto several store conventions; the first entry is the
         # canonical name and is used when none of the candidates exist.
@@ -160,7 +172,7 @@ class Era5ZarrSource(Era5Source):
 
         if time_index_from is not None and time_index_from not in ds.data_vars:
             raise ResError(
-                f"ERA5 key '{time_index_from}' not known. Check variable 'time_index_from' and store {source}"
+                f"ERA5 key '{time_index_from}' not known. Check variable 'time_index_from' and store {source_description}"
             )
 
         if time_slice is not None:
@@ -183,7 +195,7 @@ class Era5ZarrSource(Era5Source):
             )
 
         self._dataset = ds
-        self.variables = self._build_variable_table(ds, source, self._derived_variables)
+        self.variables = self._build_variable_table(ds, source_description, self._derived_variables)
 
         self._allLats = np.asarray(ds["latitude"].values)
         self._allLons = np.asarray(ds["longitude"].values)
@@ -203,12 +215,86 @@ class Era5ZarrSource(Era5Source):
         )
 
         timeindex = pd.DatetimeIndex(pd.to_datetime(self._dataset[self.time_name].values)) + self.TIME_OFFSET
+        # time steps of the store, shifted by TIME_OFFSET and already restricted to time_slice;
+        # without time zone, so both indexes are the same
         self._timeindex_raw = timeindex
         self.time_index = timeindex
         self.data = OrderedDict()
 
         if verbose:
-            print(f"Opened ERA5 Zarr source: {source}")
+            print(f"Opened ERA5 Zarr source: {source_description}")
+
+    @staticmethod
+    def spatial_chunk_cells(dataset: xr.Dataset) -> tuple[int | None, int | None]:
+        """Determine the size of one spatial chunk of the store, in grid cells.
+
+        Used to group locations by the chunks of the store they fall into, so that locations
+        sharing a chunk are read together and distant ones are not. The two sizes are determined
+        separately, as a store may be chunked differently along latitude and longitude (e.g. a
+        store with one global field per chunk has 721 by 1440 cells), see _chunk_cells().
+
+        Parameters
+        ----------
+        dataset : xarray.Dataset
+            The opened store, see _open_dataset(). The chunk sizes are read from the encoding
+            or the dask chunks of its variables, i.e. they are unknown for data in memory.
+
+        Returns
+        -------
+        tuple of (int or None, int or None)
+            The number of latitude and of longitude cells in one chunk. A size is None if it
+            cannot be determined, see _chunk_cells().
+        """
+        latitude_chunk_cells = Era5ZarrSource._chunk_cells(dataset, "latitude")
+        longitude_chunk_cells = Era5ZarrSource._chunk_cells(dataset, "longitude")
+        return latitude_chunk_cells, longitude_chunk_cells
+
+    @staticmethod
+    def _chunk_cells(dataset: xr.Dataset, dimension: str) -> int | None:
+        """Determine the size of one chunk of the store along one spatial dimension, in grid cells.
+
+        The size is taken from the first data variable which has the dimension and a known chunk
+        size along it: the chunks stored in its encoding or, if that was dropped (e.g. by
+        arithmetic on the dataset), its dask chunks.
+
+        Parameters
+        ----------
+        dataset : xarray.Dataset
+            The opened store, see spatial_chunk_cells().
+
+        dimension : str
+            The spatial dimension, i.e. 'latitude' or 'longitude'.
+
+        Returns
+        -------
+        int or None
+            The number of cells in one chunk. None if no data variable provides a chunk size
+            along the dimension, i.e. for data in memory, for which the size of the read
+            rectangle does not matter.
+        """
+        for variable in dataset.data_vars.values():
+            if dimension not in variable.dims:
+                continue
+
+            stored_chunks = variable.encoding.get("chunks")
+            preferred_chunks = variable.encoding.get("preferred_chunks")
+            chunks = stored_chunks or preferred_chunks
+
+            if isinstance(chunks, dict):
+                chunk_cells = chunks.get(dimension)
+            elif chunks is not None and len(chunks) == variable.ndim:
+                dimension_axis = variable.dims.index(dimension)
+                chunk_cells = chunks[dimension_axis]
+            elif variable.chunks is not None:
+                # the first dask chunk, as the others are as large except for the last
+                chunk_cells = variable.chunksizes[dimension][0]
+            else:
+                continue
+
+            if chunk_cells:
+                return int(chunk_cells)
+
+        return None
 
     @staticmethod
     def _open_dataset(source, chunks, consolidated, storage_options):
@@ -301,25 +387,32 @@ class Era5ZarrSource(Era5Source):
         return time_dim, ds.assign_coords({time_dim: np.asarray(ds[datetime_coordinate].values)})
 
     @classmethod
-    def _derive_solar_variables(cls, ds: xr.Dataset, time_name: str) -> tuple[xr.Dataset, dict]:
+    def _derive_solar_variables(cls, ds: xr.Dataset) -> tuple[xr.Dataset, dict]:
         """Add the processed solar variables to stores that only provide the raw accumulations.
 
-        Mirrors the CDO pipeline ``-divc,3600 -shifttime,+1hour`` which produces the
-        '*_t_adj' variables: adj[i] = raw[i-1] / 3600 (J/m² per hour -> W/m²). This is done
-        lazily on the full dataset before any time slice is applied, so that the first
-        requested timestep can still use the accumulation preceding it in the store.
+        The solar flux variables (W/m²) are computed from the accumulated values (J/m² per
+        hour) by dividing them by 3600 (DERIVED_SCALE). Each one is only derived if its raw
+        variable is present in the store and the processed variable is not:
 
-        Note that the very first timestep of the store itself is NaN in the derived
-        variables, because the accumulation preceding it does not exist -- users are warned
-        about this in _load_with_fallback.
+        - 'ssrd_t_adj' (surface solar radiation downwards) from the accumulated 'ssrd'
+        - 'fdir_t_adj' (total sky direct solar radiation at surface) from the accumulated 'fdir'
+
+        The division by 3600 is intentionally not applied here. The returned variables are
+        only lazy aliases of the raw accumulations, because arithmetic on the lazily opened
+        store would read all of it, i.e. the full globe and time span of a cloud store.
+        load() divides by DERIVED_SCALE once the requested subset has been read. Until then
+        the values of the derived variables are still accumulations in J/m², although their
+        'units' attribute already states W m**-2.
+
+        ERA5 labels an accumulation with the end of the hour it covers, and RESKit's time
+        index puts it at the middle of that hour (TIME_OFFSET), so the mean flux of the hour
+        already sits at the right time.
 
         Parameters
         ----------
         ds : xarray.Dataset
             The dataset to supplement. Variables which the store already provides in their
             processed form are never overwritten.
-        time_name : str
-            The name of the temporal dimension, see _normalise_time_axis
 
         Returns
         -------
@@ -330,8 +423,9 @@ class Era5ZarrSource(Era5Source):
         derived = {}
         for raw_name, adjusted_name in (("ssrd", "ssrd_t_adj"), ("fdir", "fdir_t_adj")):
             if raw_name in ds.data_vars and adjusted_name not in ds.data_vars:
-                ds[adjusted_name] = ds[raw_name].shift({time_name: 1}) / 3600.0
-                ds[adjusted_name].attrs.update(units="W m**-2", long_name=f"Derived on the fly from '{raw_name}'")
+                adjusted = ds[raw_name].copy(deep=False)
+                adjusted.attrs = {"units": "W m**-2", "long_name": f"Derived on the fly from '{raw_name}'"}
+                ds[adjusted_name] = adjusted
                 derived[adjusted_name] = raw_name
         return ds, derived
 
@@ -548,6 +642,9 @@ class Era5ZarrSource(Era5Source):
 
         tmp = np.asarray(data.values)
 
+        if variable in self._derived_variables:
+            tmp = tmp / self.DERIVED_SCALE
+
         if processor is not None:
             tmp = processor(tmp)
 
@@ -573,7 +670,7 @@ class Era5ZarrSource(Era5Source):
         ERA5 Zarr stores differ in the names they use for the same quantity (e.g. 'blh' vs.
         'boundary_layer_height'), and the processed solar variables may have been derived on
         the fly rather than being part of the store. This resolves both cases and warns
-        about the caveats of the derived variables.
+        when a variable is derived.
 
         Parameters
         ----------
@@ -598,13 +695,6 @@ class Era5ZarrSource(Era5Source):
             if variable in self._derived_variables and derived_warning is not None:
                 warnings.warn(derived_warning, stacklevel=2)
             self.load(variable, name=target_name)
-            if variable in self._derived_variables and np.all(np.isnan(self.data[target_name][0])):
-                warnings.warn(
-                    f"The first timestep of '{target_name}' ({self.time_index[0]}) is NaN because the raw "
-                    f"accumulation preceding the start of the store is not available. Drop or fill this "
-                    f"timestep, or start the requested 'time_slice' one hour later.",
-                    stacklevel=2,
-                )
             return
         raise RuntimeError(
             f"Cannot load {target_name}: neither '{preferred_variable}' nor '{fallback_variable}' exist in the ERA5 Zarr store"
@@ -634,7 +724,7 @@ class Era5ZarrSource(Era5Source):
             target_name="direct_horizontal_irradiance",
             derived_warning=(
                 "Processed ERA5 direct horizontal irradiance ('fdir_t_adj') is not available in this Zarr store; "
-                "computing on the fly from raw 'fdir' (J/m² → W/m², time-shifted +1 h)."
+                "computing on the fly from raw 'fdir' (J/m² → W/m²)."
             ),
         )
 
@@ -650,7 +740,7 @@ class Era5ZarrSource(Era5Source):
             target_name="global_horizontal_irradiance",
             derived_warning=(
                 "Processed ERA5 global horizontal irradiance ('ssrd_t_adj') is not available in this Zarr store; "
-                "computing on the fly from raw 'ssrd' (J/m² → W/m², time-shifted +1 h)."
+                "computing on the fly from raw 'ssrd' (J/m² → W/m²)."
             ),
         )
 

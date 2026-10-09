@@ -2,11 +2,13 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from reskit import TEST_DATA
+from reskit import data
 from reskit.dac.workflows.workflows import (
     ht_dac_era5_wenzel2025,
     lt_dac_era5_wenzel2025,
 )
+
+FIXTURES = data.paths("test_suite")
 
 
 @pytest.fixture
@@ -22,7 +24,7 @@ def dac_placements() -> pd.DataFrame:
 
 
 def test_lt_dac_era5_wenzel2025(dac_placements: pd.DataFrame):
-    gen = lt_dac_era5_wenzel2025(placements=dac_placements, era5_path=TEST_DATA["era5-like"], model="LT_jajjawi")
+    gen = lt_dac_era5_wenzel2025(placements=dac_placements, era5_path=FIXTURES["era5"], model="LT_jajjawi")
     assert np.all(
         np.isclose(
             gen.capacity_factor.mean(dim="time"),
@@ -50,7 +52,7 @@ def test_lt_dac_era5_wenzel2025(dac_placements: pd.DataFrame):
 
 
 def test_ht_dac_era5_wenzel2025(dac_placements: pd.DataFrame):
-    gen = ht_dac_era5_wenzel2025(placements=dac_placements, era5_path=TEST_DATA["era5-like"], model="HT_okosun")
+    gen = ht_dac_era5_wenzel2025(placements=dac_placements, era5_path=FIXTURES["era5"], model="HT_okosun")
     assert np.all(
         np.isclose(
             gen.capacity_factor.mean(dim="time"),
@@ -82,7 +84,7 @@ def test_lt_dac_rejects_an_unknown_fill_method(dac_placements: pd.DataFrame):
     with pytest.raises(NotImplementedError, match="bogus"):
         lt_dac_era5_wenzel2025(
             placements=dac_placements,
-            era5_path=TEST_DATA["era5-like"],
+            era5_path=FIXTURES["era5"],
             model="LT_jajjawi",
             fillMethod="bogus",
         )
@@ -92,7 +94,7 @@ def test_lt_dac_rejects_an_unknown_fill_method(dac_placements: pd.DataFrame):
 def test_lt_dac_accepts_the_supported_fill_methods(dac_placements: pd.DataFrame, fill_method):
     gen = lt_dac_era5_wenzel2025(
         placements=dac_placements,
-        era5_path=TEST_DATA["era5-like"],
+        era5_path=FIXTURES["era5"],
         model="LT_jajjawi",
         fillMethod=fill_method,
     )
@@ -104,6 +106,6 @@ def test_ht_dac_rejects_an_unknown_model(dac_placements: pd.DataFrame):
     with pytest.raises(NotImplementedError, match="bogus"):
         ht_dac_era5_wenzel2025(
             placements=dac_placements,
-            era5_path=TEST_DATA["era5-like"],
+            era5_path=FIXTURES["era5"],
             model="bogus",
         )

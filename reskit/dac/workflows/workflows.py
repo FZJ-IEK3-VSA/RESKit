@@ -6,8 +6,10 @@ import pandas as pd
 
 from ...util.relative_humidity import calculate_relative_humidity
 from .dac_workflow_manager import DACWorkflowManager
+from reskit.util.provenance import record_provenance
 
 
+@record_provenance
 def lt_dac_era5_wenzel2025(
     placements: pd.DataFrame,
     era5_path: str,
@@ -15,6 +17,7 @@ def lt_dac_era5_wenzel2025(
     output_variables: List[str] = None,
     model: str = "LT_jajjawi",
     fillMethod: str = "nearest",
+    time_slice: slice | None = None,
 ):
     """
     Simulate LT-DAC plants using ERA5 weather data.
@@ -41,6 +44,11 @@ def lt_dac_era5_wenzel2025(
         - "nearest" : use the nearest available datapoint (default)
         - "offTmin" : cut off for temperatures outside the model range, nearest for relative humidity
 
+    time_slice : slice, optional
+        Simulate only the time steps between time_slice.start and time_slice.stop, both
+        inclusive, e.g. slice("2015-03-01", "2015-03-31 23:30"). Only these time steps
+        are read from the weather source. By default None, i.e. all time steps.
+
     Returns
     -------
     xarray.Dataset
@@ -60,6 +68,7 @@ def lt_dac_era5_wenzel2025(
         variables=["surface_air_temperature", "surface_dew_temperature"],
         source_type="ERA5",
         source=era5_path,
+        time_slice=time_slice,
         set_time_index=True,
         verbose=False,
     )
@@ -78,12 +87,14 @@ def lt_dac_era5_wenzel2025(
     )
 
 
+@record_provenance
 def ht_dac_era5_wenzel2025(
     placements: pd.DataFrame,
     era5_path: str,
     output_netcdf_path: str = None,
     output_variables: List[str] = None,
     model: str = "HT_okosun",
+    time_slice: slice | None = None,
 ):
     """
     Simulate HT-DAC plants using ERA5 weather data.
@@ -105,6 +116,11 @@ def ht_dac_era5_wenzel2025(
         If None, all available variables are included. Default is None.
     model : str, optional
         DAC model to use. Currently, only "HT_okosun" is implemented. Default is "HT_okosun".
+
+    time_slice : slice, optional
+        Simulate only the time steps between time_slice.start and time_slice.stop, both
+        inclusive, e.g. slice("2015-03-01", "2015-03-31 23:30"). Only these time steps
+        are read from the weather source. By default None, i.e. all time steps.
 
     Returns
     -------
@@ -135,6 +151,7 @@ def ht_dac_era5_wenzel2025(
         variables=["surface_air_temperature", "surface_dew_temperature"],
         source_type="ERA5",
         source=era5_path,
+        time_slice=time_slice,
         set_time_index=True,
         verbose=False,
     )

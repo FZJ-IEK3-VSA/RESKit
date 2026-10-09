@@ -4,6 +4,9 @@ import pytest
 
 import reskit as rk
 from reskit.csp.workflows.csp_workflow_manager import PTRWorkflowManager
+from reskit import data
+
+FIXTURES = data.paths("test_suite")
 
 # %% Test Init
 
@@ -20,9 +23,9 @@ def funct():
 
     datasetname = "Initial"
     verbose = False
-    era5_path = rk.TEST_DATA["era5-like"]
-    elev_path = rk.TEST_DATA["DEM-like.tif"]
-    global_solar_atlas_dni_path = rk.TEST_DATA["gsa-dni-like.tif"]
+    era5_path = FIXTURES["era5"]
+    elev_path = FIXTURES["dem"]
+    global_solar_atlas_dni_path = FIXTURES["gsa_dni"]
     JITaccelerate = False
 
     wf = PTRWorkflowManager(placements)
@@ -274,13 +277,13 @@ def test_apply_elevation(pt_PTRWorkflowManager_initialized):
     wfm = pt_PTRWorkflowManager_initialized
 
     # load from file
-    wfm.apply_elevation(rk.TEST_DATA["DEM-like.tif"])
+    wfm.apply_elevation(FIXTURES["dem"])
 
     assert np.isclose(wfm.placements["elev"].tolist(), [185, 22, 118]).all()
 
     # prevent reload
     wfm.placements["elev"] = [1, 2, 4]
-    wfm.apply_elevation(rk.TEST_DATA["DEM-like.tif"])
+    wfm.apply_elevation(FIXTURES["dem"])
 
     assert np.isclose(wfm.placements["elev"].tolist(), [1, 2, 4]).all()
 
@@ -332,7 +335,7 @@ def test_read_ERA5(pt_PTRWorkflowManager_initialized):
             "surface_wind_speed",
         ],
         source_type="ERA5",
-        source=rk.TEST_DATA["era5-like"],
+        source=FIXTURES["era5"],
         set_time_index=True,
         verbose=False,
     )
@@ -361,7 +364,7 @@ def pt_PTRWorkflowManager_loaded(
             "surface_wind_speed",
         ],
         source_type="ERA5",
-        source=rk.TEST_DATA["era5-like"],
+        source=FIXTURES["era5"],
         set_time_index=True,
         verbose=False,
     )
@@ -519,7 +522,7 @@ def test_adjust_variable_to_long_run_average(pt_PTRWorkflowManager_solarpos):
     wfm.adjust_variable_to_long_run_average(
         variable="direct_horizontal_irradiance",
         source_long_run_average=rk.weather.Era5Source.LONG_RUN_AVERAGE_DNI_2020_03,
-        real_long_run_average=rk.TEST_DATA["gsa-dni-like.tif"],
+        real_long_run_average=FIXTURES["gsa_dni"],
         real_lra_scaling=1000 / 24,  # cast to hourly average kWh
     )
 
@@ -701,8 +704,8 @@ def pt_PTRWorkflowManager_heat_loss() -> PTRWorkflowManager:
 
     datasetname = "Initial"
     verbose = False
-    era5_path = rk.TEST_DATA["era5-like"]
-    elev_path = rk.TEST_DATA["DEM-like.tif"]
+    era5_path = FIXTURES["era5"]
+    elev_path = FIXTURES["dem"]
 
     wf = PTRWorkflowManager(placements)
 
@@ -1259,11 +1262,11 @@ def test_calculateCapacityFactors(pt_PTRWorkflowManager_calcCFs):
 #                 "surface_air_temperature",
 #                 "surface_wind_speed"],
 #     source_type="ERA5",
-#     source=rk.TEST_DATA['era5-like'],
+#     source=FIXTURES["era5"],
 #     set_time_index=True,
 #     verbose=False)
 # wfm.get_timesteps()
-# wfm.apply_elevation(rk.TEST_DATA['DEM-like.tif'])
+# wfm.apply_elevation(FIXTURES["dem"])
 # wfm.calculateSolarPosition()
 # wfm.calculateCosineLossesParabolicTrough(orientation='northsouth')
 # wfm.calculateIAM()

@@ -1,11 +1,11 @@
-from pathlib import Path
+from os.path import join
 
 import geokit as gk
 import numpy as np
 import pandas as pd
 import pytest
 
-from reskit import TEST_DATA
+from reskit import data
 from reskit.solar.workflows.workflows import (
     openfield_pv_era5,
     openfield_pv_iconlam,
@@ -13,10 +13,12 @@ from reskit.solar.workflows.workflows import (
     openfield_pv_sarah_unvalidated,
 )
 
+FIXTURES = data.paths("test_suite")
+
 
 @pytest.fixture
 def pt_pv_placements() -> pd.DataFrame:
-    df = gk.vector.extractFeatures(TEST_DATA["turbinePlacements.shp"])
+    df = gk.vector.extractFeatures(FIXTURES["turbine_placements_shp"])
     df["capacity"] = 2000
     return df
 
@@ -24,8 +26,9 @@ def pt_pv_placements() -> pd.DataFrame:
 @pytest.fixture
 def pt_pv_placements_Zimbabwe() -> pd.DataFrame:
     # Keep numerical regression inputs independent of administrative boundary updates.
-    # See data/bulawayo/README.md for their provenance.
-    df = pd.read_csv(Path(__file__).parents[1] / "data" / "bulawayo" / "pv_placements.csv")
+    # The 2025 tables: their provenance is in the bundled description of
+    # reskit-test-data/placements.
+    df = pd.read_csv(FIXTURES["module_placements_bulawayo"])
 
     return df
 
@@ -33,7 +36,7 @@ def pt_pv_placements_Zimbabwe() -> pd.DataFrame:
 def test_openfield_pv_iconlam(pt_pv_placements_Zimbabwe):
     gen = openfield_pv_iconlam(
         placements=pt_pv_placements_Zimbabwe,
-        icon_lam_path=TEST_DATA["iconlam-like"],
+        icon_lam_path=FIXTURES["icon_lam"],
         module="WINAICO WSx-240P6",
         elev=300,
         tracking="fixed",
@@ -109,12 +112,105 @@ def test_openfield_pv_iconlam(pt_pv_placements_Zimbabwe):
     assert np.isclose(float(gen["total_system_generation"].fillna(0).mean()), 5082.177954576783)
 
 
-def test_openfield_pv_era5(pt_pv_placements):
+# with output_variables, the workflow drops interim variables as soon as later steps no
+# longer need them; dropping one too early would raise or change the requested outputs
+@pytest.mark.parametrize(
+    "output_variables",
+    [None, ["capacity_factor", "total_system_generation"]],
+    ids=["all_variables", "release_interim_variables"],
+)
+def test_openfield_pv_era5(pt_pv_placements: pd.DataFrame, output_variables: list[str] | None) -> None:
     gen = openfield_pv_era5(
         placements=pt_pv_placements,
-        era5_path=TEST_DATA["era5-like"],
-        global_solar_atlas_ghi_path=TEST_DATA["gsa-ghi-like.tif"],
-        global_solar_atlas_dni_path=TEST_DATA["gsa-dni-like.tif"],
+        era5_path=FIXTURES["era5"],
+        global_solar_atlas_ghi_path=FIXTURES["gsa_ghi"],
+        global_solar_atlas_dni_path=FIXTURES["gsa_dni"],
+        module="WINAICO WSx-240P6",
+        elev=300,
+        tracking="fixed",
+        inverter=None,
+        inverter_kwargs={},
+        tracking_args={},
+        output_netcdf_path=None,
+        output_variables=output_variables,
+    )
+
+    if output_variables is None:
+        assert gen["location"].shape == (560,)
+        assert gen["capacity"].shape == (560,)
+        assert gen["lon"].shape == (560,)
+        assert gen["lat"].shape == (560,)
+        assert gen["tilt"].shape == (560,)
+        assert gen["azimuth"].shape == (560,)
+        assert gen["elev"].shape == (560,)
+        assert gen["time"].shape == (140,)
+        assert gen["global_horizontal_irradiance"].shape == (140, 560)
+        assert gen["direct_horizontal_irradiance"].shape == (140, 560)
+        assert gen["surface_wind_speed"].shape == (140, 560)
+        assert gen["surface_pressure"].shape == (140, 560)
+        assert gen["surface_air_temperature"].shape == (140, 560)
+        assert gen["surface_dew_temperature"].shape == (140, 560)
+        assert gen["solar_azimuth"].shape == (140, 560)
+        assert gen["apparent_solar_zenith"].shape == (140, 560)
+        assert gen["direct_normal_irradiance"].shape == (140, 560)
+        assert gen["extra_terrestrial_irradiance"].shape == (140, 560)
+        assert gen["air_mass"].shape == (140, 560)
+        assert gen["diffuse_horizontal_irradiance"].shape == (140, 560)
+        assert gen["angle_of_incidence"].shape == (140, 560)
+        assert gen["poa_global"].shape == (140, 560)
+        assert gen["poa_direct"].shape == (140, 560)
+        assert gen["poa_diffuse"].shape == (140, 560)
+        assert gen["poa_sky_diffuse"].shape == (140, 560)
+        assert gen["poa_ground_diffuse"].shape == (140, 560)
+        assert gen["cell_temperature"].shape == (140, 560)
+        assert gen["module_dc_power_at_mpp"].shape == (140, 560)
+        assert gen["module_dc_voltage_at_mpp"].shape == (140, 560)
+
+        assert np.isclose(float(gen["location"].fillna(0).mean()), 279.5)
+        assert np.isclose(float(gen["capacity"].fillna(0).mean()), 2000.0)
+        assert np.isclose(float(gen["lon"].fillna(0).mean()), 6.16945196229404)
+        assert np.isclose(float(gen["lat"].fillna(0).mean()), 50.80320853112445)
+        assert np.isclose(float(gen["tilt"].fillna(0).mean()), 39.19976325987092)
+        assert np.isclose(float(gen["azimuth"].fillna(0).mean()), 180.0)
+        assert np.isclose(float(gen["elev"].fillna(0).mean()), 300.0)
+        assert np.isclose(float(gen["global_horizontal_irradiance"].fillna(0).mean()), 32.90016155215698)
+        assert np.isclose(float(gen["direct_horizontal_irradiance"].fillna(0).mean()), 15.501608137870793)
+        assert np.isclose(float(gen["surface_wind_speed"].fillna(0).mean()), 1.6521243123091525)
+        assert np.isclose(float(gen["surface_pressure"].fillna(0).mean()), 38644.083559948376)
+        assert np.isclose(float(gen["surface_air_temperature"].fillna(0).mean()), 1.0433187770747245)
+        assert np.isclose(float(gen["surface_dew_temperature"].fillna(0).mean()), 0.014244860844314216)
+        assert np.isclose(float(gen["solar_azimuth"].fillna(0).mean()), 68.6008947378997)
+        assert np.isclose(float(gen["apparent_solar_zenith"].fillna(0).mean()), 31.143327387439044)
+        assert np.isclose(float(gen["direct_normal_irradiance"].fillna(0).mean()), 51.12686118675332)
+        assert np.isclose(float(gen["extra_terrestrial_irradiance"].fillna(0).mean()), 546.9559617849145)
+        assert np.isclose(float(gen["air_mass"].fillna(0).mean()), 3.9097505883982726)
+        assert np.isclose(float(gen["diffuse_horizontal_irradiance"].fillna(0).mean()), 20.956699894906208)
+        assert np.isclose(float(gen["angle_of_incidence"].fillna(0).mean()), 19.148843582996513)
+        assert np.isclose(float(gen["poa_global"].fillna(0).mean()), 67.12122204692297)
+        assert np.isclose(float(gen["poa_direct"].fillna(0).mean()), 37.85854851365722)
+        assert np.isclose(float(gen["poa_diffuse"].fillna(0).mean()), 29.262673533265747)
+        assert np.isclose(float(gen["poa_sky_diffuse"].fillna(0).mean()), 28.486171553638698)
+        assert np.isclose(float(gen["poa_ground_diffuse"].fillna(0).mean()), 0.7765019796270453)
+        assert np.isclose(float(gen["cell_temperature"].fillna(0).mean()), 2.9012114282159733)
+        assert np.isclose(float(gen["module_dc_power_at_mpp"].fillna(0).mean()), 21.83819349184495)
+        assert np.isclose(float(gen["module_dc_voltage_at_mpp"].fillna(0).mean()), 14.348350493615033)
+
+    assert gen["capacity_factor"].shape == (140, 560)
+    assert gen["total_system_generation"].shape == (140, 560)
+    assert np.isclose(float(gen["capacity_factor"].fillna(0).mean()), 0.08039702336301864)
+    assert np.isclose(float(gen["total_system_generation"].fillna(0).mean()), 160.79404672603732)
+
+
+def test_openfield_pv_era5_on_zarr_data(pt_pv_placements):
+    """Real ERA5 data from an online Zarr store gives what the netCDF4 fixtures of the same hours give.
+
+    Not to the bit: the netCDF4 fixtures are packed to 16 bit integers, the Zarr data is
+    bit-rounded. The tolerances are about twice the largest difference measured.
+    """
+    arguments = dict(
+        placements=pt_pv_placements,
+        global_solar_atlas_ghi_path=FIXTURES["gsa_ghi"],
+        global_solar_atlas_dni_path=FIXTURES["gsa_dni"],
         module="WINAICO WSx-240P6",
         elev=300,
         tracking="fixed",
@@ -124,76 +220,26 @@ def test_openfield_pv_era5(pt_pv_placements):
         output_netcdf_path=None,
         output_variables=None,
     )
+    netcdf = openfield_pv_era5(era5_path=FIXTURES["era5"], **arguments)
+    zarr = openfield_pv_era5(
+        era5_path=join(FIXTURES["era5_zarr"], "era5.zarr"),
+        time_slice=slice("2014-12-31 23:30", "2015-01-06 18:30"),
+        **arguments,
+    )
 
-    assert gen["location"].shape == (560,)
-    assert gen["capacity"].shape == (560,)
-    assert gen["lon"].shape == (560,)
-    assert gen["lat"].shape == (560,)
-    assert gen["tilt"].shape == (560,)
-    assert gen["azimuth"].shape == (560,)
-    assert gen["elev"].shape == (560,)
-    assert gen["time"].shape == (140,)
-    assert gen["global_horizontal_irradiance"].shape == (140, 560)
-    assert gen["direct_horizontal_irradiance"].shape == (140, 560)
-    assert gen["surface_wind_speed"].shape == (140, 560)
-    assert gen["surface_pressure"].shape == (140, 560)
-    assert gen["surface_air_temperature"].shape == (140, 560)
-    assert gen["surface_dew_temperature"].shape == (140, 560)
-    assert gen["solar_azimuth"].shape == (140, 560)
-    assert gen["apparent_solar_zenith"].shape == (140, 560)
-    assert gen["direct_normal_irradiance"].shape == (140, 560)
-    assert gen["extra_terrestrial_irradiance"].shape == (140, 560)
-    assert gen["air_mass"].shape == (140, 560)
-    assert gen["diffuse_horizontal_irradiance"].shape == (140, 560)
-    assert gen["angle_of_incidence"].shape == (140, 560)
-    assert gen["poa_global"].shape == (140, 560)
-    assert gen["poa_direct"].shape == (140, 560)
-    assert gen["poa_diffuse"].shape == (140, 560)
-    assert gen["poa_sky_diffuse"].shape == (140, 560)
-    assert gen["poa_ground_diffuse"].shape == (140, 560)
-    assert gen["cell_temperature"].shape == (140, 560)
-    assert gen["module_dc_power_at_mpp"].shape == (140, 560)
-    assert gen["module_dc_voltage_at_mpp"].shape == (140, 560)
-    assert gen["capacity_factor"].shape == (140, 560)
-    assert gen["total_system_generation"].shape == (140, 560)
-
-    assert np.isclose(float(gen["location"].fillna(0).mean()), 279.5)
-    assert np.isclose(float(gen["capacity"].fillna(0).mean()), 2000.0)
-    assert np.isclose(float(gen["lon"].fillna(0).mean()), 6.16945196229404)
-    assert np.isclose(float(gen["lat"].fillna(0).mean()), 50.80320853112445)
-    assert np.isclose(float(gen["tilt"].fillna(0).mean()), 39.19976325987092)
-    assert np.isclose(float(gen["azimuth"].fillna(0).mean()), 180.0)
-    assert np.isclose(float(gen["elev"].fillna(0).mean()), 300.0)
-    assert np.isclose(float(gen["global_horizontal_irradiance"].fillna(0).mean()), 32.90016155215698)
-    assert np.isclose(float(gen["direct_horizontal_irradiance"].fillna(0).mean()), 15.501608137870793)
-    assert np.isclose(float(gen["surface_wind_speed"].fillna(0).mean()), 1.6521243123091525)
-    assert np.isclose(float(gen["surface_pressure"].fillna(0).mean()), 38644.083559948376)
-    assert np.isclose(float(gen["surface_air_temperature"].fillna(0).mean()), 1.0433187770747245)
-    assert np.isclose(float(gen["surface_dew_temperature"].fillna(0).mean()), 0.014244860844314216)
-    assert np.isclose(float(gen["solar_azimuth"].fillna(0).mean()), 68.6008947378997)
-    assert np.isclose(float(gen["apparent_solar_zenith"].fillna(0).mean()), 31.143327387439044)
-    assert np.isclose(float(gen["direct_normal_irradiance"].fillna(0).mean()), 51.12686118675332)
-    assert np.isclose(float(gen["extra_terrestrial_irradiance"].fillna(0).mean()), 546.9559617849145)
-    assert np.isclose(float(gen["air_mass"].fillna(0).mean()), 3.9097505883982726)
-    assert np.isclose(float(gen["diffuse_horizontal_irradiance"].fillna(0).mean()), 20.956699894906208)
-    assert np.isclose(float(gen["angle_of_incidence"].fillna(0).mean()), 19.148843582996513)
-    assert np.isclose(float(gen["poa_global"].fillna(0).mean()), 67.12122204692297)
-    assert np.isclose(float(gen["poa_direct"].fillna(0).mean()), 37.85854851365722)
-    assert np.isclose(float(gen["poa_diffuse"].fillna(0).mean()), 29.262673533265747)
-    assert np.isclose(float(gen["poa_sky_diffuse"].fillna(0).mean()), 28.486171553638698)
-    assert np.isclose(float(gen["poa_ground_diffuse"].fillna(0).mean()), 0.7765019796270453)
-    assert np.isclose(float(gen["cell_temperature"].fillna(0).mean()), 2.9012114282159733)
-    assert np.isclose(float(gen["module_dc_power_at_mpp"].fillna(0).mean()), 21.83819349184495)
-    assert np.isclose(float(gen["module_dc_voltage_at_mpp"].fillna(0).mean()), 14.348350493615033)
-    assert np.isclose(float(gen["capacity_factor"].fillna(0).mean()), 0.08039702336301864)
-    assert np.isclose(float(gen["total_system_generation"].fillna(0).mean()), 160.79404672603732)
+    netcdf_cf = netcdf["capacity_factor"].fillna(0)
+    zarr_cf = zarr["capacity_factor"].fillna(0)
+    assert zarr_cf.shape == netcdf_cf.shape
+    assert (zarr.time.values == netcdf.time.values).all()
+    assert np.abs(zarr_cf - netcdf_cf).max() < 0.05
+    assert np.isclose(zarr_cf.mean(), netcdf_cf.mean(), rtol=1e-3)
 
 
 def test_openfield_pv_merra_ryberg2019(pt_pv_placements):
     gen = openfield_pv_merra_ryberg2019(
         placements=pt_pv_placements,
-        merra_path=TEST_DATA["merra-like"],
-        global_solar_atlas_ghi_path=TEST_DATA["gsa-ghi-like.tif"],
+        merra_path=FIXTURES["merra"],
+        global_solar_atlas_ghi_path=FIXTURES["gsa_ghi"],
         module="WINAICO WSx-240P6",
         elev=300,
         tracking="fixed",
@@ -288,8 +334,8 @@ def test_openfield_pv_merra_ryberg2019(pt_pv_placements):
 def test_openfield_pv_sarah_unvalidated(pt_pv_placements):
     gen = openfield_pv_sarah_unvalidated(
         placements=pt_pv_placements,
-        sarah_path=TEST_DATA["sarah-like"],
-        era5_path=TEST_DATA["era5-like"],
+        sarah_path=FIXTURES["sarah"],
+        era5_path=FIXTURES["era5"],
         module="WINAICO WSx-240P6",
         elev=300,
         tracking="fixed",
