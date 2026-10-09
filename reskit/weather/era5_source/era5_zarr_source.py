@@ -54,11 +54,14 @@ class Era5ZarrSource(Era5Source):
     # _derive_solar_variables.
     DERIVED_SCALE = 3600.0
 
+    # The number of cells read beyond the bounds on every side, for the interpolation.
+    DEFAULT_INDEX_PAD = 5
+
     def __init__(
         self,
         source: str | xr.Dataset,
         bounds: Any = None,
-        index_pad: int = 5,
+        index_pad: int = DEFAULT_INDEX_PAD,
         time_index_from: str | None = None,
         time_slice: slice | None = None,
         chunks: dict[str, int] | None = None,

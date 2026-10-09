@@ -170,8 +170,12 @@ def test_WorkflowManager_reads_placements_far_apart_region_by_region(pt_placemen
     store = ERA5_ZARR
     together = _read_era5(pt_placements, store)
     # regions of one 0.25 degree cell: the placements, 0.1 degree apart, fall into separate regions
+    # (without a minimum region size, which the padding of the reads would otherwise set)
     monkeypatch.setattr(rk_weather.Era5ZarrSource, "spatial_chunk_cells", staticmethod(lambda dataset: (1, 1)))
-    monkeypatch.setattr(workflow_manager, "_MIN_REGION_SIZE_DEGREES", 0.0)
+    zarr_regions = workflow_manager._zarr_regions
+    monkeypatch.setattr(
+        workflow_manager, "_zarr_regions", lambda locs, dataset, index_pad: zarr_regions(locs, dataset, 0)
+    )
     regions = []
     read_by_region = WorkflowManager._read_by_region
     monkeypatch.setattr(
@@ -226,13 +230,13 @@ def _chunked_grid(latitudes, longitudes, chunks):
     return store
 
 
-def _region_sets(locations, store):
+def _region_sets(locations, store, index_pad=5):
     """The regions of _zarr_regions() as sets of location positions, independent of their order."""
     import geokit as gk
 
     from reskit.workflow_manager import _zarr_regions
 
-    regions = _zarr_regions(gk.LocationSet(locations), store)
+    regions = _zarr_regions(gk.LocationSet(locations), store, index_pad)
     return {frozenset(region.tolist()) for region in regions}
 
 
@@ -274,6 +278,21 @@ def test_zarr_regions_wrap_longitudes_around_the_store():
     assert _region_sets(locations, store) == {frozenset({0, 1}), frozenset({2})}
 
 
+def test_zarr_regions_span_twice_the_padding_of_the_reads():
+    """Chunks of one cell, reads padded by 5 cells: a region spans 10 cells (2.5 degrees), as
+    smaller regions would read mostly the same chunks as their neighbours.
+    """
+    latitudes = np.array([50.0, 49.75])
+    longitudes = 0.25 * np.arange(40)
+    store = _chunked_grid(latitudes, longitudes, chunks=(1, 1))
+
+    # cells 0, 9 and 10 along longitude
+    locations = [(0.0, 50.0), (2.25, 50.0), (2.5, 50.0)]
+
+    assert _region_sets(locations, store, index_pad=5) == {frozenset({0, 1}), frozenset({2})}
+    assert _region_sets(locations, store, index_pad=0) == {frozenset({0}), frozenset({1}), frozenset({2})}
+
+
 def test_zarr_regions_do_not_split_data_in_memory():
     """Without known chunk sizes, i.e. for data in memory, all locations are read together."""
     latitudes = np.arange(60.0, -60.0, -0.25)
@@ -286,7 +305,7 @@ def test_zarr_regions_do_not_split_data_in_memory():
 
 
 def test_zarr_region_index_spans_whole_chunks():
-    """Chunks of 3 cells (0.75 degrees) are below the 1 degree minimum: a region spans two chunks."""
+    """Chunks of 3 cells are below a minimum of 4 cells: a region spans two chunks."""
     from reskit.workflow_manager import _zarr_region_index
 
     latitudes = np.arange(10.0, 0.0, -0.25)
@@ -295,6 +314,6 @@ def test_zarr_region_index_spans_whole_chunks():
 
     # cells 0, 5 and 6 along longitude
     location_longitudes = np.array([0.0, 1.25, 1.5])
-    region_index = _zarr_region_index(location_longitudes, store, "longitude", 3, wrap_around_globe=True)
+    region_index = _zarr_region_index(location_longitudes, store, "longitude", 3, 4, wrap_around_globe=True)
 
     assert region_index.tolist() == [0, 0, 1]
