@@ -54,20 +54,25 @@ class Era5ZarrSource(Era5Source):
     # _derive_solar_variables.
     DERIVED_SCALE = 3600.0
 
+    # The number of cells read beyond the bounds on every side, for the interpolation: the
+    # default index_pad of the other weather sources (e.g. Era5Source). WorkflowManager.read()
+    # also sizes the regions in which it reads distant placements by it, see _zarr_regions().
+    DEFAULT_INDEX_PAD = 5
+
     def __init__(
         self,
-        source,
-        bounds=None,
-        index_pad=5,
-        time_index_from=None,
+        source: str | xr.Dataset,
+        bounds: Any = None,
+        index_pad: int = DEFAULT_INDEX_PAD,
+        time_index_from: str | None = None,
         time_slice: slice | None = None,
-        chunks=None,
-        consolidated=True,
-        storage_options=None,
-        verbose=True,
-        forward_fill=True,
-        **kwargs,
-    ):
+        chunks: dict[str, int] | None = None,
+        consolidated: bool = True,
+        storage_options: dict[str, Any] | None = None,
+        verbose: bool = True,
+        forward_fill: bool = True,
+        **kwargs: Any,
+    ) -> None:
         """Initialize an ERA5 source from a regular latitude/longitude Zarr store.
 
         Compared to Era5Source, the data is not read from netCDF4 files but from a local or
@@ -93,7 +98,7 @@ class Era5ZarrSource(Era5Source):
               * If None, the full spatial extent of the store is used
 
         index_pad : int, optional
-            The padding to apply to the boundaries
+            The padding to apply to the boundaries, by default DEFAULT_INDEX_PAD
               * Useful in case of interpolation
 
         time_index_from : str, optional
@@ -144,6 +149,11 @@ class Era5ZarrSource(Era5Source):
             consolidated=consolidated,
             storage_options=storage_options,
         )
+        # name the source by its store in messages and the variables table, not by its repr
+        if isinstance(source, xr.Dataset):
+            source_description = source.encoding.get("source", "an opened xarray.Dataset")
+        else:
+            source_description = source
 
         self.time_name, ds = self._normalise_time_axis(ds)
         ds, self._derived_variables = self._derive_solar_variables(ds)
@@ -162,7 +172,7 @@ class Era5ZarrSource(Era5Source):
 
         if time_index_from is not None and time_index_from not in ds.data_vars:
             raise ResError(
-                f"ERA5 key '{time_index_from}' not known. Check variable 'time_index_from' and store {source}"
+                f"ERA5 key '{time_index_from}' not known. Check variable 'time_index_from' and store {source_description}"
             )
 
         if time_slice is not None:
@@ -185,7 +195,7 @@ class Era5ZarrSource(Era5Source):
             )
 
         self._dataset = ds
-        self.variables = self._build_variable_table(ds, source, self._derived_variables)
+        self.variables = self._build_variable_table(ds, source_description, self._derived_variables)
 
         self._allLats = np.asarray(ds["latitude"].values)
         self._allLons = np.asarray(ds["longitude"].values)
@@ -212,7 +222,79 @@ class Era5ZarrSource(Era5Source):
         self.data = OrderedDict()
 
         if verbose:
-            print(f"Opened ERA5 Zarr source: {source}")
+            print(f"Opened ERA5 Zarr source: {source_description}")
+
+    @staticmethod
+    def spatial_chunk_cells(dataset: xr.Dataset) -> tuple[int | None, int | None]:
+        """Determine the size of one spatial chunk of the store, in grid cells.
+
+        Used to group locations by the chunks of the store they fall into, so that locations
+        sharing a chunk are read together and distant ones are not. The two sizes are determined
+        separately, as a store may be chunked differently along latitude and longitude (e.g. a
+        store with one global field per chunk has 721 by 1440 cells), see _chunk_cells().
+
+        Parameters
+        ----------
+        dataset : xarray.Dataset
+            The opened store, see _open_dataset(). The chunk sizes are read from the encoding
+            or the dask chunks of its variables, i.e. they are unknown for data in memory.
+
+        Returns
+        -------
+        tuple of (int or None, int or None)
+            The number of latitude and of longitude cells in one chunk. A size is None if it
+            cannot be determined, see _chunk_cells().
+        """
+        latitude_chunk_cells = Era5ZarrSource._chunk_cells(dataset, "latitude")
+        longitude_chunk_cells = Era5ZarrSource._chunk_cells(dataset, "longitude")
+        return latitude_chunk_cells, longitude_chunk_cells
+
+    @staticmethod
+    def _chunk_cells(dataset: xr.Dataset, dimension: str) -> int | None:
+        """Determine the size of one chunk of the store along one spatial dimension, in grid cells.
+
+        The size is taken from the first data variable which has the dimension and a known chunk
+        size along it: the chunks stored in its encoding or, if that was dropped (e.g. by
+        arithmetic on the dataset), its dask chunks.
+
+        Parameters
+        ----------
+        dataset : xarray.Dataset
+            The opened store, see spatial_chunk_cells().
+
+        dimension : str
+            The spatial dimension, i.e. 'latitude' or 'longitude'.
+
+        Returns
+        -------
+        int or None
+            The number of cells in one chunk. None if no data variable provides a chunk size
+            along the dimension, i.e. for data in memory, for which the size of the read
+            rectangle does not matter.
+        """
+        for variable in dataset.data_vars.values():
+            if dimension not in variable.dims:
+                continue
+
+            stored_chunks = variable.encoding.get("chunks")
+            preferred_chunks = variable.encoding.get("preferred_chunks")
+            chunks = stored_chunks or preferred_chunks
+
+            if isinstance(chunks, dict):
+                chunk_cells = chunks.get(dimension)
+            elif chunks is not None and len(chunks) == variable.ndim:
+                dimension_axis = variable.dims.index(dimension)
+                chunk_cells = chunks[dimension_axis]
+            elif variable.chunks is not None:
+                # the first dask chunk, as the others are as large except for the last
+                chunk_cells = variable.chunksizes[dimension][0]
+            else:
+                continue
+
+            if chunk_cells:
+                return int(chunk_cells)
+
+        return None
 
     @staticmethod
     def _open_dataset(source, chunks, consolidated, storage_options):

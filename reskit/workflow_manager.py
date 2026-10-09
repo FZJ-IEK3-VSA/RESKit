@@ -7,7 +7,7 @@ from glob import glob
 from itertools import compress
 from os.path import basename, isdir, isfile, join
 from types import FunctionType
-from typing import List, Union
+from typing import Any, List, Union
 
 # import third party packages
 import geokit as gk
@@ -55,6 +55,131 @@ def _check_coordinate_range(placements, column, minimum, maximum):
             f"{int(invalid.sum())} of {len(values)} placements are invalid "
             f"(index: value): {offenders}"
         )
+
+
+def _zarr_regions(locs: gk.LocationSet, dataset: xarray.Dataset, index_pad: int) -> list[np.ndarray]:
+    """Group the locations by the regions of the spatial chunk grid of a Zarr store.
+
+    A Zarr source reads the rectangle around the locations it is given, so locations far apart
+    read everything between them -- most of the globe for one location per continent. Grouping
+    them by chunk-sized regions (Earth Data Hub: 60 cells = 15 degrees) keeps each read to the
+    chunks around its own locations, while locations in one region still share their reads.
+    The regions are counted from the first grid point of the store, like its chunks, so that
+    each region covers whole chunks, see _zarr_region_index().
+
+    Parameters
+    ----------
+    locs : geokit.LocationSet
+        The locations to group.
+
+    dataset : xarray.Dataset
+        The opened store, which determines the grid and the size of a region, see
+        Era5ZarrSource.spatial_chunk_cells().
+
+    index_pad : int
+        The number of cells each region reads beyond its locations on every side, i.e. the
+        index_pad of the Era5ZarrSource reading it (by default
+        Era5ZarrSource.DEFAULT_INDEX_PAD). A region spans at least twice as many cells, see
+        _zarr_region_index().
+
+    Returns
+    -------
+    list of numpy.ndarray
+        One array per region, holding the positions of its locations in `locs`.
+    """
+    latitude_chunk_cells, longitude_chunk_cells = rk_weather.Era5ZarrSource.spatial_chunk_cells(dataset)
+
+    longitudes = np.asarray(locs.lons)
+    latitudes = np.asarray(locs.lats)
+
+    min_region_cells = 2 * index_pad
+    longitude_region_index = _zarr_region_index(
+        longitudes, dataset, "longitude", longitude_chunk_cells, min_region_cells, wrap_around_globe=True
+    )
+    latitude_region_index = _zarr_region_index(
+        latitudes, dataset, "latitude", latitude_chunk_cells, min_region_cells, wrap_around_globe=False
+    )
+    region_index_per_axis = np.stack([longitude_region_index, latitude_region_index])
+
+    _, region_of_each_location = np.unique(region_index_per_axis, axis=1, return_inverse=True)
+    region_of_each_location = np.asarray(region_of_each_location).ravel()
+
+    region_count = region_of_each_location.max() + 1
+    positions_per_region = []
+    for region in range(region_count):
+        positions_in_region = np.flatnonzero(region_of_each_location == region)
+        positions_per_region.append(positions_in_region)
+
+    return positions_per_region
+
+
+def _zarr_region_index(
+    location_coordinates: np.ndarray,
+    dataset: xarray.Dataset,
+    dimension: str,
+    chunk_cells: int | None,
+    min_region_cells: int,
+    wrap_around_globe: bool,
+) -> np.ndarray:
+    """Determine the region of each location along one spatial dimension of a Zarr store.
+
+    Each location is assigned the grid cell nearest to it, counted from the first grid point of
+    the store in the direction of its coordinates (e.g. north to south for ERA5 latitudes), as
+    the chunks of the store are. The cells are then grouped into regions of whole chunks: one
+    chunk, or as many chunks as needed for a region of at least min_region_cells.
+
+    Parameters
+    ----------
+    location_coordinates : numpy.ndarray
+        The coordinates of the locations along the dimension, in degrees.
+
+    dataset : xarray.Dataset
+        The opened store, see _zarr_regions().
+
+    dimension : str
+        The spatial dimension, i.e. 'latitude' or 'longitude'.
+
+    chunk_cells : int or None
+        The number of cells in one chunk along the dimension, see
+        Era5ZarrSource.spatial_chunk_cells(). None if it is unknown, i.e. for data in memory,
+        which is then not split along the dimension.
+
+    min_region_cells : int
+        The smallest number of cells in a region. Each region reads some cells beyond its
+        locations, see _zarr_regions(): regions smaller than twice that padding would read
+        mostly the same chunks as their neighbours.
+
+    wrap_around_globe : bool
+        Whether the dimension wraps around the globe, i.e. for longitude. The cells are then
+        counted modulo one full circle, so that e.g. a location at -10 degrees falls into the
+        last cells of a store running from 0 to 360 degrees.
+
+    Returns
+    -------
+    numpy.ndarray
+        The index of the region of each location along the dimension. All locations are in
+        region 0 if the chunk size is unknown or the store has fewer than two coordinates along
+        the dimension.
+    """
+    if chunk_cells is None or dimension not in dataset.coords or dataset[dimension].size < 2:
+        return np.zeros(location_coordinates.shape, dtype=int)
+
+    grid_coordinates = dataset[dimension]
+    first_coordinate = float(grid_coordinates[0])
+    coordinate_step = float(grid_coordinates[1] - grid_coordinates[0])
+    resolution = abs(coordinate_step)
+
+    chunks_per_region = max(1, -(-min_region_cells // chunk_cells))  # the ceiling of the division
+    region_cells = chunks_per_region * chunk_cells
+
+    # dividing by the signed step counts the cells in the direction of the store's coordinates
+    offset_cells = (location_coordinates - first_coordinate) / coordinate_step
+    nearest_cell = np.round(offset_cells).astype(int)
+    if wrap_around_globe:
+        cells_around_globe = round(360 / resolution)
+        nearest_cell = nearest_cell % cells_around_globe
+
+    return nearest_cell // region_cells
 
 
 def _expand_degenerate_bound(value):
@@ -275,6 +400,33 @@ class WorkflowManager:
                 raise RuntimeError("Unknown source_type")
 
             if source_type == "ERA5":
+                if is_zarr:
+                    # A Zarr source reads the rectangle around all placements: read placements far
+                    # apart (e.g. on other continents) region by region instead, see _read_by_region()
+                    dataset = rk_weather.Era5ZarrSource._open_dataset(
+                        source,
+                        kwargs.get("chunks"),
+                        kwargs.get("consolidated", True),
+                        kwargs.get("storage_options"),
+                    )
+                    # the padding the sources of the regions read with: as passed, or their default
+                    index_pad = kwargs.get("index_pad", rk_weather.Era5ZarrSource.DEFAULT_INDEX_PAD)
+                    regions = _zarr_regions(self.locs, dataset, index_pad)
+                    if len(regions) > 1:
+                        first_cutout_source, frames = self._read_by_region(
+                            source_constructor,
+                            dataset,
+                            regions,
+                            variables,
+                            spatial_interpolation_mode,
+                            time_index_from=time_index_from,
+                            time_slice=time_slice,
+                            **kwargs,
+                        )
+                        return self._store_read_variables(
+                            first_cutout_source, frames, set_time_index, temporal_reindex_method
+                        )
+                    source = dataset  # opened once
                 source = source_constructor(
                     source, bounds=self.ext, time_index_from=time_index_from, time_slice=time_slice, **kwargs
                 )
@@ -300,28 +452,150 @@ class WorkflowManager:
                         + ", ".join(missing_variables)
                     )
 
+        frames = {
+            var: source.get(var, self.locs, interpolation=spatial_interpolation_mode, force_as_data_frame=True)
+            for var in variables
+        }
+        return self._store_read_variables(source, frames, set_time_index, temporal_reindex_method)
+
+    def _read_by_region(
+        self,
+        source_constructor: type[rk_weather.NCSource],
+        dataset: xarray.Dataset,
+        regions: list[np.ndarray],
+        variables: list[str],
+        spatial_interpolation_mode: str,
+        **source_kwargs: Any,
+    ) -> tuple[rk_weather.NCSource, dict[str, pd.DataFrame]]:
+        """Read the variables region by region.
+
+        For each region one source is created, a cutout of the store, which reads only the
+        rectangle around the placements in the region.
+
+        Parameters
+        ----------
+        source_constructor : type
+            The class of the source to create as the cutout of each region. It has to accept an
+            opened dataset as its source, i.e. Era5ZarrSource.
+
+        dataset : xarray.Dataset
+            The opened store, which is shared by all regions.
+
+        regions : list of numpy.ndarray
+            The positions of the placements in `.locs` per region, see _zarr_regions().
+
+        variables : list of str
+            The variables to read.
+
+        spatial_interpolation_mode : str
+            The spatial interpolation mode to use at each of the placement coordinates.
+
+        **source_kwargs
+            Passed on to `source_constructor`.
+
+        Returns
+        -------
+        tuple
+            The source of the first cutout, which provides the time index and the wind speed
+            heights that all cutouts share, and per variable a DataFrame with a column per
+            placement, in the order of `.locs`.
+        """
+        first_cutout_source: rk_weather.NCSource | None = None
+        placement_count = self.locs.count
+
+        # one entry per placement, which is filled in as soon as the region of the placement is read
+        columns_per_variable: dict[str, list[Any]] = {variable: [None] * placement_count for variable in variables}
+
+        for placement_positions in regions:
+            region_placements = [self.locs[position] for position in placement_positions]
+            region_locs = gk.LocationSet(region_placements)
+
+            lon_min, lat_min, lon_max, lat_max = region_locs.getBounds()
+            if lon_min == lon_max:
+                lon_min, lon_max = _expand_degenerate_bound(lon_min)
+            if lat_min == lat_max:
+                lat_min, lat_max = _expand_degenerate_bound(lat_min)
+            cutout_bounds = [lon_min, lat_min, lon_max, lat_max]
+            cutout_extent = gk.Extent(cutout_bounds, srs=4326)
+
+            # a shallow copy: the source adds its derived variables to the dataset it is given
+            dataset_copy = dataset.copy()
+            cutout_source = source_constructor(dataset_copy, bounds=cutout_extent, **source_kwargs)
+            cutout_source.sload(*variables)
+
+            for variable in variables:
+                region_frame = cutout_source.get(
+                    variable,
+                    region_locs,
+                    interpolation=spatial_interpolation_mode,
+                    force_as_data_frame=True,
+                )
+                for column_position, placement_position in enumerate(placement_positions):
+                    placement_column = region_frame.iloc[:, column_position]
+                    placement_values = placement_column.to_numpy()
+                    columns_per_variable[variable][placement_position] = placement_values
+
+            if first_cutout_source is None:
+                first_cutout_source = cutout_source
+
+        if first_cutout_source is None:
+            raise ValueError("'regions' must contain at least one region.")
+
+        time_index = first_cutout_source.time_index
+        frames = {}
+        for variable in variables:
+            values_per_placement = np.column_stack(columns_per_variable[variable])
+            frames[variable] = pd.DataFrame(values_per_placement, index=time_index)
+
+        return first_cutout_source, frames
+
+    def _store_read_variables(
+        self,
+        source: rk_weather.NCSource,
+        frames: dict[str, pd.DataFrame],
+        set_time_index: bool,
+        temporal_reindex_method: str,
+    ) -> "WorkflowManager":
+        """Put the read variables into `.sim_data`.
+
+        Parameters
+        ----------
+        source : rk_weather.NCSource
+            The source which the variables were read from. It provides the time index and the
+            wind speed heights.
+
+        frames : dict of str to pandas.DataFrame
+            The values per variable, with a column per placement.
+
+        set_time_index : bool
+            If True, the time index of the source is set as the time index of the workflow.
+            Otherwise the values are reindexed to the existing time index.
+
+        temporal_reindex_method : str
+            The method used to reindex the values to the time index of the workflow, e.g.
+            "nearest" or "ffill". Not used if `set_time_index` is True.
+
+        Returns
+        -------
+        WorkflowManager
+            Returns the invoking WorkflowManager (for chaining)
+        """
         if set_time_index:
             self.set_time_index(source.time_index)
 
-        # read variables
-        for var in variables:
-            self.sim_data[var] = source.get(
-                var,
-                self.locs,  # Manipulate locs here
-                interpolation=spatial_interpolation_mode,
-                force_as_data_frame=True,
-            )
+        for variable, frame in frames.items():
+            if set_time_index:
+                aligned_frame = frame
+            else:
+                aligned_frame = frame.reindex(self.time_index, method=temporal_reindex_method)
 
-            if not set_time_index:
-                self.sim_data[var] = self.sim_data[var].reindex(self.time_index, method=temporal_reindex_method)
-
-            self.sim_data[var] = self.sim_data[var].values
+            self.sim_data[variable] = aligned_frame.values
 
             # Special check for wind speed height
-            if var == "elevated_wind_speed":
+            if variable == "elevated_wind_speed":
                 self.elevated_wind_speed_height = source.ELEVATED_WIND_SPEED_HEIGHT
 
-            if var == "surface_wind_speed":
+            if variable == "surface_wind_speed":
                 self.surface_wind_speed_height = source.SURFACE_WIND_SPEED_HEIGHT
 
         return self
