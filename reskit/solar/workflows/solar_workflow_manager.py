@@ -299,7 +299,7 @@ class SolarWorkflowManager(WorkflowManager):
             value=gcr,
             allow_none=fallback is not None,
             replace_none=fallback,  # note that this replaces None etc. by fallback value already
-            assert_type=float,
+            assert_type=[float, str],
             force_cols=1,  # one per loc
             force_dims=1,
         )
