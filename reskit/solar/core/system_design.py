@@ -135,6 +135,8 @@ def location_to_module_tilt_and_gcr_winkler_2027(
     consider_snow: bool = True,
     bifacial: bool = True,
     optimal_period: str = "annual",
+    module_area_width : float = 3.3,
+    min_interrow_distance : float = 2.5,
 ):
     """
     Estimates the optimal fixed module tilt for one or multiple locations
@@ -195,6 +197,16 @@ def location_to_module_tilt_and_gcr_winkler_2027(
         ('annual' yield) or in the winter/low season ('min_month').
         For 'min_month', the annual model is used above 50° absolute latitude.
         By default 'annual'.
+
+    module_area_width : int | float | np.ndarray | pd.Series, optional
+        The width of the module area per each row in [m], measured along the
+        tilted edge. When a panel is e.g. 2m x 1m and mounted crosswise (1P), or
+        when 2 panels are mounted side by side laterally (2H), the value would
+        be 2 [m] in both cases, by default 3.3 [m] (2x 1.65m).
+
+    min_interrow_distance : int | float | np.ndarray | pd.Series, optional
+        The minimum distance to be kept between rows in [m] e.g. to allow for
+        maintenance trucks to pass. Set to 0.0 to ignore, by default 2.5 [m].
 
     Returns
     -------
@@ -378,8 +390,8 @@ def location_to_module_tilt_and_gcr_winkler_2027(
         module_tilts=module_tilts,
         north_slopes=features["north_slope"],
         solar_hour=12,
-        module_area_width=3.3,
-        min_interrow_distance=2.5,
+        module_area_width=module_area_width,
+        min_interrow_distance=min_interrow_distance,
     )
     if not (np.all(np.isfinite(gcrs)) & np.all(gcrs >= 0)):
         raise ValueError(
