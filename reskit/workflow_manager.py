@@ -33,8 +33,8 @@ _MIN_EXTENT_HALF_WIDTH = 1e-5
 _RESULT_DIMENSIONS = ("location", "time", "time_days")
 
 
-def _coordinate_range_problem(placements, column, minimum, maximum):
-    """Check that every coordinate of a placements column is finite and in range.
+def _coordinate_range_problem(placements: pd.DataFrame, column: str, minimum: float, maximum: float) -> str | None:
+    """The problem if a coordinate of a placements column is not finite or out of range.
 
     Parameters
     ----------
@@ -65,16 +65,18 @@ def _coordinate_range_problem(placements, column, minimum, maximum):
     )
 
 
-def _check_coordinate_range(placements, column, minimum, maximum):
-    """Raise a ValueError if _coordinate_range_problem finds a problem."""
+def _check_coordinate_range(placements: pd.DataFrame, column: str, minimum: float, maximum: float) -> None:
+    """Raises a ValueError if _coordinate_range_problem() finds a problem."""
     problem = _coordinate_range_problem(placements, column, minimum, maximum)
     if problem is not None:
         raise ValueError(problem)
 
 
-def _numeric_column_problems(placements, *columns):
+def _numeric_column_problems(placements: Any, *columns: str) -> list[str]:
     """The problems if the placements lack one of the columns, or if it is not numeric or has
-    missing values. Used by the placement_problems() of the workflow managers.
+    missing values. Used by the placement_problems() of the workflow managers. Placements
+    which are not a DataFrame have no problems here, WorkflowManager.placement_problems()
+    reports them.
     """
     if not isinstance(placements, pd.DataFrame):
         return []
@@ -89,8 +91,8 @@ def _numeric_column_problems(placements, *columns):
     return problems
 
 
-def _any_column_problems(placements, *columns):
-    """The problem if the placements have none of the columns."""
+def _any_column_problems(placements: Any, *columns: str) -> list[str]:
+    """The problem if the placements have none of the columns, see _numeric_column_problems()."""
     if not isinstance(placements, pd.DataFrame) or any(column in placements.columns for column in columns):
         return []
     return [f"placements need one of the columns {', '.join(repr(column) for column in columns)}"]
@@ -114,7 +116,10 @@ def _reserved_column_problems(placements: pd.DataFrame) -> list[str]:
     return problems
 
 
-def _has_point_geometries(placements):
+def _has_point_geometries(placements: pd.DataFrame) -> bool:
+    """True if the column 'geom' holds point geometries, judged by the first one. The
+    placements must not be empty.
+    """
     return "geom" in placements.columns and placements["geom"].iloc[0].GetGeometryName() == "POINT"
 
 
@@ -361,7 +366,21 @@ class WorkflowManager:
 
     """
 
-    def __init__(self, placements: pd.DataFrame):
+    def __init__(self, placements: pd.DataFrame) -> None:
+        """Arranges the placements, their locations and the extent around them.
+
+        Parameters
+        ----------
+        placements : pandas.DataFrame
+            The placements to simulate, with point geometries in the column 'geom', or the
+            columns 'lon' and 'lat'. A specialized workflow manager needs further columns, see
+            placement_problems().
+
+        Raises
+        ------
+        ValueError
+            If placement_problems() finds a problem, listing all problems found
+        """
         problems = self.placement_problems(placements)
         if problems:
             raise ValueError("Invalid placements:\n" + "\n".join(f"  - {problem}" for problem in problems))
@@ -412,7 +431,7 @@ class WorkflowManager:
         self.input_files = []
 
     @classmethod
-    def placement_problems(cls, placements) -> List[str]:
+    def placement_problems(cls, placements: Any) -> list[str]:
         """Finds the problems which make the placements unusable for this workflow manager.
 
         The base class checks the locations and that no column has the name of a dimension
@@ -423,7 +442,7 @@ class WorkflowManager:
         Parameters
         ----------
         placements : pandas.DataFrame
-            The placements to check
+            The placements to check. Any other object is reported as a problem.
 
         Returns
         -------
