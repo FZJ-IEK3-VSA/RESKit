@@ -6,23 +6,25 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from reskit import TEST_DATA
+from reskit import data
 from reskit.weather import SarahSource
+
+FIXTURES = data.paths("test_suite")
 
 
 @pytest.fixture
 def pt_SarahSource():
-    return SarahSource(TEST_DATA["sarah-like"], verbose=False)
+    return SarahSource(FIXTURES["sarah"], verbose=False)
 
 
 @pytest.fixture
 def pt_BoundedSarahSource():
-    aachenExt = gk.Extent.fromVector(gk._test_data_["aachenShapefile.shp"])
-    return SarahSource(TEST_DATA["sarah-like"], bounds=aachenExt, index_pad=1, verbose=False)
+    aachenExt = gk.Extent.fromVector(FIXTURES["aachen"])
+    return SarahSource(FIXTURES["sarah"], bounds=aachenExt, index_pad=1, verbose=False)
 
 
 def test_SarahSource___init__():
-    raw = nc.Dataset(join(TEST_DATA["sarah-like"], "SARAH-DNI.nc"), mode="r")
+    raw = nc.Dataset(join(FIXTURES["sarah"], "SARAH-DNI.nc"), mode="r")
     rawLats = raw["lat"][:]
     rawLons = raw["lon"][:]
     rawTimes = pd.DatetimeIndex(
@@ -35,7 +37,7 @@ def test_SarahSource___init__():
     )
 
     # Unbounded source
-    ms = SarahSource(TEST_DATA["sarah-like"], verbose=False)
+    ms = SarahSource(FIXTURES["sarah"], verbose=False)
 
     # ensure lats, lons and times are okay
     assert (ms.lats == rawLats).all()
@@ -43,9 +45,9 @@ def test_SarahSource___init__():
     assert (ms.time_index == rawTimes).all()
 
     # Initialize a SarahSource with Aachen boundaries
-    aachenExt = gk.Extent.fromVector(gk._test_data_["aachenShapefile.shp"]).pad(0.5).fit(0.01)
+    aachenExt = gk.Extent.fromVector(FIXTURES["aachen"]).pad(0.5).fit(0.01)
 
-    ms = SarahSource(TEST_DATA["sarah-like"], bounds=aachenExt, index_pad=1, verbose=False)
+    ms = SarahSource(FIXTURES["sarah"], bounds=aachenExt, index_pad=1, verbose=False)
 
     # ensure lats, lons and times are okay
     assert np.isclose(ms.lats[0], 49.9)

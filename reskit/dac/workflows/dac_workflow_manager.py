@@ -6,6 +6,7 @@ import pandas as pd
 from scipy.interpolate import RegularGridInterpolator
 
 from reskit.dac.data import DATAFOLDER
+from reskit.util.paths import is_path_like
 
 from ...workflow_manager import WorkflowManager
 
@@ -84,7 +85,7 @@ class DACWorkflowManager(WorkflowManager):
         model_path_dict = {"LT_sendi": "LT_sendi.csv", "LT_jajjawi": "LT_jajjawi.csv"}
 
         assert model in model_path_dict.keys() or (
-            isinstance(model, str) and model.endswith(".csv") and os.path.isfile(model)
+            is_path_like(model) and os.fspath(model).endswith(".csv") and os.path.isfile(model)
         ), (
             f"Invalid model: {model}. Not one of the base models (LT_jajjawi or LT_sendi) and no valid path to an existing csv with custom data."
         )

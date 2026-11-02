@@ -82,7 +82,7 @@ class MerraSource(NCSource):
     MAX_LON_DIFFERENCE = 0.625
     MAX_LAT_DIFFERENCE = 0.5
 
-    def __init__(self, source, bounds=None, index_pad=5, **kwargs):
+    def __init__(self, source, bounds=None, index_pad=5, time_slice: slice | None = None, **kwargs):
         """Initialize a MERRA2 style netCDF4 file source
 
         Compared to the generic NCSource object, the following parameters are automatically set:
@@ -124,6 +124,11 @@ class MerraSource(NCSource):
             * Generally, there should be no missing data at all. This option is only intended to
                 catch the rare scenarios where one or two timesteps are missing
 
+        time_slice : slice, optional
+            Restricts the source to the time steps between `time_slice.start` and
+            `time_slice.stop`, both inclusive. Only these time steps are read from disk
+            * See NCSource for details
+
         See Also
         --------
         MerraSource
@@ -140,6 +145,7 @@ class MerraSource(NCSource):
             _max_lon_diff=self.MAX_LON_DIFFERENCE,
             _max_lat_diff=self.MAX_LAT_DIFFERENCE,
             tz="GMT",
+            time_slice=time_slice,
             **kwargs,
         )
 

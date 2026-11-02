@@ -4,19 +4,21 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from reskit import TEST_DATA
+from reskit import data
 from reskit.weather import MerraSource
+
+FIXTURES = data.paths("test_suite")
 
 
 @pytest.fixture
 def pt_MerraSource():
-    return MerraSource(TEST_DATA["merra-like"], verbose=False)
+    return MerraSource(FIXTURES["merra"], verbose=False)
 
 
 @pytest.fixture
 def pt_BoundedMerraSource():
-    aachenExt = gk.Extent.fromVector(gk._test_data_["aachenShapefile.shp"])
-    return MerraSource(TEST_DATA["merra-like"], bounds=aachenExt, index_pad=0, verbose=False)
+    aachenExt = gk.Extent.fromVector(FIXTURES["aachen"])
+    return MerraSource(FIXTURES["merra"], bounds=aachenExt, index_pad=0, verbose=False)
 
 
 def test_constants():
@@ -25,7 +27,7 @@ def test_constants():
 
 
 def test_MerraSource___init__():
-    raw = nc.Dataset(TEST_DATA["merra-like.nc4"])
+    raw = nc.Dataset(FIXTURES["merra_merged"])
     rawLats = raw["lat"][:]
     rawLons = raw["lon"][:]
     rawTimes = pd.DatetimeIndex(
@@ -39,7 +41,7 @@ def test_MerraSource___init__():
     )
 
     # Unbounded source
-    ms = MerraSource(TEST_DATA["merra-like.nc4"], verbose=False)
+    ms = MerraSource(FIXTURES["merra_merged"], verbose=False)
 
     # ensure lats, lons and times are okay
     assert (ms.lats == rawLats).all()
@@ -47,12 +49,12 @@ def test_MerraSource___init__():
     assert (ms.time_index == rawTimes).all()
 
     # Initialize a MerraSource with Aachen boundaries
-    aachenExt = gk.Extent.fromVector(gk._test_data_["aachenShapefile.shp"]).pad(0.5).fit(0.01)
+    aachenExt = gk.Extent.fromVector(FIXTURES["aachen"]).pad(0.5).fit(0.01)
     aachenLats = np.array([50.0, 50.5, 51.0, 51.5])
     # every longitude of this file is inside the Aachen extent, which spans 5.47 to 6.92
     aachenLons = np.array([5.625, 6.250, 6.875])
 
-    ms = MerraSource(TEST_DATA["merra-like.nc4"], bounds=aachenExt, index_pad=1, verbose=False)
+    ms = MerraSource(FIXTURES["merra_merged"], bounds=aachenExt, index_pad=1, verbose=False)
 
     # ensure lats, lons and times are okay
     assert np.isclose(ms.lats, aachenLats).all()

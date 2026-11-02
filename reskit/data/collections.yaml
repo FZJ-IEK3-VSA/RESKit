@@ -16,24 +16,33 @@
 #                   the same handles so the same code runs on either. Full is the default:
 #                   silently running a real calculation on fixtures is worse than a large
 #                   but visible download, so test=True / --test is opt-in.
-
-# Pin a released tag so a given RESKit version always resolves to the same bytes.
-# To read another catalogue (the institute's internal one, say) set ETHOS_DATA_CATALOG
-# or run `reskit-data config set-catalog <path-or-url>` -- that is the ETHOS.Data-wide
-# switch, honoured by every tool. $RESKIT_DATA_CATALOG is a RESKit-only override that
-# wins over both when set.
 #
-# The public catalogue is generated from the institute's internal one by
-# `ethos-data catalog publish`, so a dataset appears below only once it has been
-# published. One collection still names a dataset that has not been -- see
-# `wind_era5_PenaSanchezDunkelWinklerEtAl2025 [full]`.
+# A workflow collection is named after the Python function it feeds, and its handles
+# after that function's arguments without `_path`: `era5` for `era5_path`. Where the
+# catalogue holds no full input yet, the collection has a `test` variant only, and
+# asking for its full variant is refused with "has no full variant"; the comment above
+# each such collection names the missing dataset.
 #
-# The `reskit-test-data` family below is also shipped with RESKit: `test_cache/` beside
-# this file is an ETHOS.Data bundle exported from the pinned catalogue (bundle.json,
-# the files under data/, the licences under datasets/), and reskit.data reads the
-# fixtures from it by default. Re-export it whenever this pin moves -- see
-# docs/how_to/get_input_data.md, "Refresh the bundle".
-catalog: https://raw.githubusercontent.com/FZJ-IEK3-VSA/ETHOS.Data-Catalogue/v2026.09/datacatalog.json
+# THE BUNDLE. Every file a `test` variant or `test_suite` selects is in a member of the
+# `reskit-test-data` family, and RESKit ships all of them as an ETHOS.Data bundle in
+# `test_cache/` beside this file (reskit.data.BUNDLES). ETHOS.Data reads the bundle
+# before the catalogue and opens no catalogue index for what it holds, so the test suite
+# and the examples' test variants run offline. docs/how_to/get_input_data.md, "The
+# bundled test fixtures", says how to change it.
+#
+# Which catalogue is read is a user setting (`reskit-data config set-catalog`,
+# $ETHOS_DATA_CATALOG, or the RESKit-only $RESKIT_DATA_CATALOG). This file can bound
+# the catalogue release RESKit works with:
+#
+#   catalog:
+#     min_version: v1.0.0
+#
+# TODO(maintainer): add that block with the first catalogue release. During the beta
+# neither catalogue records a release -- the internal checkout records none, and the
+# public one still serves the index ETHOS.Data 0.2 wrote -- and ETHOS.Data refuses every
+# catalogue that records no release as soon as a collections file declares bounds.
+# Declare `min_version` only: the next release is a minor one, and `max_version` or
+# `exact_version` would refuse it.
 
 # THE FIXTURE FAMILY. `reskit-test-data` is a namespace: naming it selects every
 # member beneath it, and a member can be named directly as `reskit-test-data/era5`.
@@ -50,13 +59,58 @@ catalog: https://raw.githubusercontent.com/FZJ-IEK3-VSA/ETHOS.Data-Catalogue/v20
 #   reskit-test-data/icon-lam            FZJ model output, release not yet agreed
 #     -- but the catalogue now marks this member public with no licence note.
 #        Confirm which is right before adding it to test_suite_public.
+#
+# The bundle is ahead of the catalogue in reskit-test-data/placements: it holds the two
+# _cityBulawayoInZimbabwa_2025 tables, the inputs of the ICON-LAM regression tests,
+# which the catalogue does not hold yet. Every process that reads the bundle warns
+# once (ethos_data.BundleAlignmentWarning) until the catalogue takes them in:
+#   reskit-data propose reskit/data/test_cache
+# and, after the catalogue release that holds them, with that catalogue selected:
+#   reskit-data bundle update reskit/data/test_cache
 
 collections:
 
+  # The fixtures the pytest suite reads, by handle: a test asks for
+  # `reskit.data.paths("test_suite")["era5"]` and never spells a file name. Selecting
+  # the whole family keeps this collection and the bundle in step.
   test_suite:
     title: Data required by the RESKit pytest suite
     include:
       - dataset: reskit-test-data
+    paths:
+      # Weather, one directory per source, as the weather sources read it.
+      era5: reskit-test-data/era5
+      era5_csp: reskit-test-data/era5-csp
+      # The real online Zarr store, as one directory: open era5_zarr/era5.zarr.
+      era5_zarr: reskit-test-data/era5-zarr
+      merra: reskit-test-data/merra2
+      merra_merged: reskit-test-data/merra2/merged/merra-like.nc4
+      sarah: reskit-test-data/sarah
+      icon_lam: reskit-test-data/icon-lam
+      # Long-run averages and correction factors.
+      gwa_50m: reskit-test-data/global-wind-atlas/gwa50-like.tif
+      gwa_100m: reskit-test-data/global-wind-atlas/gwa100-like.tif
+      gwa_200m: reskit-test-data/global-wind-atlas/gwa200-like.tif
+      cf_correction_factors: reskit-test-data/global-wind-atlas/dummy_correction_factors.tif
+      gsa_ghi: reskit-test-data/global-solar-atlas/gsa-ghi-like.tif
+      gsa_dni: reskit-test-data/global-solar-atlas/gsa-dni-like.tif
+      csp_gsa_dni: reskit-test-data/global-solar-atlas/csp-gsa-dni-like.tif
+      csp_gsa_temp: reskit-test-data/global-solar-atlas/csp-gsa-temp-like.tif
+      # Land cover, elevation and the offshore siting rasters.
+      clc: reskit-test-data/corine/clc-aachen_clipped.tif
+      esa_cci: reskit-test-data/esa-cci-landcover/ESA_CCI_2015_clip.tif
+      esa_cci_bulawayo: reskit-test-data/esa-cci-landcover/ESA_CCI_2015_clip_cityBulawayoInZimbabwa.tif
+      dem: reskit-test-data/srtm/DEM-like.tif
+      water_depth: reskit-test-data/gebco/water_depth_northsea.tif
+      coast_distance: reskit-test-data/dist2coast/coast_distance_northsea.tif
+      # Regions, placements and turbine parameters.
+      aachen: reskit-test-data/boundaries/aachenShapefile.shp
+      turbine_placements: reskit-test-data/placements/turbine_placements.csv
+      turbine_placements_shp: reskit-test-data/placements/turbinePlacements.shp
+      module_placements: reskit-test-data/placements/module_placements.csv
+      turbine_placements_bulawayo: reskit-test-data/placements/turbine_placements_cityBulawayoInZimbabwa_2025.csv
+      module_placements_bulawayo: reskit-test-data/placements/module_placements_cityBulawayoInZimbabwa_2025.csv
+      baseline_turbine: reskit-test-data/synthetic/baseline_turbine_testdummy.csv
 
   # The subset an external contributor can actually download: everything in the
   # family whose licence permits redistribution.
@@ -68,6 +122,7 @@ collections:
       - dataset: reskit-test-data/dist2coast
       - dataset: reskit-test-data/era5
       - dataset: reskit-test-data/era5-csp
+      - dataset: reskit-test-data/era5-zarr
       - dataset: reskit-test-data/esa-cci-landcover
       - dataset: reskit-test-data/gebco
       - dataset: reskit-test-data/global-solar-atlas
@@ -77,6 +132,18 @@ collections:
       - dataset: reskit-test-data/sarah
       - dataset: reskit-test-data/srtm
       - dataset: reskit-test-data/synthetic
+
+  # The placements the overview examples simulate around Aachen. A workflow takes its
+  # placements as an argument of its own rather than as catalogue data, so they are a
+  # collection of their own and not a handle of each workflow collection.
+  example_placements:
+    title: Turbine and PV module placements around Aachen, for the examples
+    include:
+      - dataset: reskit-test-data/placements
+        files: ["turbine_placements.csv", "module_placements.csv"]
+    paths:
+      turbines: reskit-test-data/placements/turbine_placements.csv
+      modules: reskit-test-data/placements/module_placements.csv
 
   # The inputs of wind_era5_PenaSanchezDunkelWinklerEtAl2025, in two sizes. The
   # handles match its arguments: era5 -> era5_path, gwa_100m -> gwa_100m_path,
@@ -135,17 +202,98 @@ collections:
         gwa_50m: global-wind-atlas-v4/wind_speed_cog_50m.tif
         gwa_200m: global-wind-atlas-v4/wind_speed_cog_200m.tif
 
-  solar:
-    title: Data for PV and CSP workflows
-    include:
-      - dataset: reskit-test-data/sarah
-      - dataset: reskit-test-data/global-solar-atlas
-      - dataset: reskit-test-data/era5-csp
-    paths:
-      sarah: reskit-test-data/sarah
-      gsa_ghi: reskit-test-data/global-solar-atlas/gsa-ghi-like.tif
-      gsa_dni: reskit-test-data/global-solar-atlas/gsa-dni-like.tif
-      era5_csp: reskit-test-data/era5-csp
+  # The MERRA-2 workflows. No MERRA-2 dataset is catalogued, so each has a test
+  # variant only. The MERRA-2 examples that read the weather source directly
+  # (examples/1_load_input_data/1_2_*, 3_6_2) use the onshore collection's fixtures.
+  onshore_wind_merra_ryberg2019_europe:
+    title: Inputs for onshore_wind_merra_ryberg2019_europe
+    test:
+      include:
+        - dataset: reskit-test-data/merra2
+          files: ["*.nc4"]
+        - dataset: reskit-test-data/global-wind-atlas
+          files: ["gwa50-like.tif"]
+        - dataset: reskit-test-data/corine
+      paths:
+        merra: reskit-test-data/merra2
+        gwa_50m: reskit-test-data/global-wind-atlas/gwa50-like.tif
+        clc2012: reskit-test-data/corine/clc-aachen_clipped.tif
+
+  offshore_wind_merra_caglayan2019:
+    title: Inputs for offshore_wind_merra_caglayan2019
+    test:
+      include:
+        - dataset: reskit-test-data/merra2
+          files: ["*.nc4"]
+      paths:
+        merra: reskit-test-data/merra2
+
+  openfield_pv_merra_ryberg2019:
+    title: Inputs for openfield_pv_merra_ryberg2019
+    test:
+      include:
+        - dataset: reskit-test-data/merra2
+          files: ["*.nc4"]
+        - dataset: reskit-test-data/global-solar-atlas
+          files: ["gsa-ghi-like.tif"]
+      paths:
+        merra: reskit-test-data/merra2
+        global_solar_atlas_ghi: reskit-test-data/global-solar-atlas/gsa-ghi-like.tif
+
+  # The ERA5 and SARAH workflows. Neither ERA5 nor SARAH is catalogued, so each has a
+  # test variant only. The full Global Solar Atlas is (global-solar-atlas-v2.9).
+  openfield_pv_sarah_unvalidated:
+    title: Inputs for openfield_pv_sarah_unvalidated
+    test:
+      include:
+        - dataset: reskit-test-data/sarah
+        - dataset: reskit-test-data/era5
+      paths:
+        sarah: reskit-test-data/sarah
+        era5: reskit-test-data/era5
+
+  openfield_pv_era5:
+    title: Inputs for openfield_pv_era5
+    test:
+      include:
+        - dataset: reskit-test-data/era5
+        - dataset: reskit-test-data/global-solar-atlas
+          files: ["gsa-ghi-like.tif", "gsa-dni-like.tif"]
+      paths:
+        era5: reskit-test-data/era5
+        global_solar_atlas_ghi: reskit-test-data/global-solar-atlas/gsa-ghi-like.tif
+        global_solar_atlas_dni: reskit-test-data/global-solar-atlas/gsa-dni-like.tif
+
+  lt_dac_era5_wenzel2025:
+    title: Inputs for lt_dac_era5_wenzel2025
+    test:
+      include:
+        - dataset: reskit-test-data/era5
+      paths:
+        era5: reskit-test-data/era5
+
+  ht_dac_era5_wenzel2025:
+    title: Inputs for ht_dac_era5_wenzel2025
+    test:
+      extends: [lt_dac_era5_wenzel2025]
+
+  air_cooling_wenzel2025:
+    title: Inputs for air_cooling_wenzel2025
+    test:
+      include:
+        - dataset: reskit-test-data/era5
+      paths:
+        era5: reskit-test-data/era5
+
+  evaporative_cooling_wortmann2025:
+    title: Inputs for evaporative_cooling_wortmann2025
+    test:
+      extends: [air_cooling_wenzel2025]
+
+  air_source_heat_pump:
+    title: Inputs for air_source_heat_pump
+    test:
+      extends: [air_cooling_wenzel2025]
 
   # The two rasters the offshore cost model reads per location, water depth and
   # distance to the nearest coast (reskit.util.local_values). The handles are the
@@ -166,12 +314,14 @@ collections:
         coast_distance: reskit-test-data/dist2coast/coast_distance_northsea.tif
     full:
       include:
-        - dataset: gebco-2024
-          files: ["*.tif"]
+        # GEBCO 2025 as one global raster. GEBCO 2024, which this variant named
+        # before, was never catalogued.
+        - dataset: gebco-2025-combined
+          files: ["gebco_2025/combined/gebco_2025_n90.0_s-90.0_w-180.0_e180.0.tif"]
         - dataset: dist2coast
           files: ["GMT_intermediate_coast_distance_01d.tif"]
       paths:
-        water_depth: gebco-2024
+        water_depth: gebco-2025-combined/gebco_2025/combined/gebco_2025_n90.0_s-90.0_w-180.0_e180.0.tif
         coast_distance: dist2coast/GMT_intermediate_coast_distance_01d.tif
 
   # RESKit ships a 124-turbine library (reskit/wind/core/data/turbines) that
@@ -188,6 +338,19 @@ collections:
       - dataset: reskit-turbine-library
     paths:
       turbines: reskit-turbine-library
+
+  # The two purchased thewindpower.net tables that
+  # examples/1_load_input_data/1_3_1_process_power_curves_from_thewindpower_net.ipynb
+  # turns into a turbine library -- the input of `turbine_library` above. Licensed,
+  # so restricted like it.
+  thewindpower:
+    title: thewindpower.net power curves and turbine table (licensed)
+    include:
+      - dataset: thewindpower-power-curves
+      - dataset: thewindpower-turbines
+    paths:
+      power_curves: thewindpower-power-curves/Power_curves_20250708.xls
+      turbines: thewindpower-turbines/Turbines_20250708.xls
 
   geothermal_preprocessing:
     title: Inputs for computing the geothermal resource

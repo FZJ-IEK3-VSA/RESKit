@@ -1,17 +1,19 @@
 import numpy as np
 import pytest
 
-from reskit import TEST_DATA
+from reskit import data
 from reskit.util.topography import visibility_from_topography
+
+FIXTURES = data.paths("test_suite")
 
 
 def test_visibility_from_topography():
-    output = visibility_from_topography(lon=6.0, lat=51, elevation_raster=TEST_DATA["DEM-like.tif"])
+    output = visibility_from_topography(lon=6.0, lat=51, elevation_raster=FIXTURES["dem"])
     assert np.isclose(
         output["visibility"].values.mean(), 0.27595238095238095
     )  # Changed due to bug in visibility_from_topography
 
-    output = visibility_from_topography(lon=6.0, lat=51, elevation_raster=TEST_DATA["DEM-like.tif"], eye_level=20)
+    output = visibility_from_topography(lon=6.0, lat=51, elevation_raster=FIXTURES["dem"], eye_level=20)
     assert np.isclose(output["visibility"].values.mean(), 0.5376190476190477)
 
 
@@ -19,7 +21,7 @@ def test_sample_longitudes_use_the_cosine_of_the_latitude():
     # An east-west arc of a given angular length spans a longitude difference of that
     # length divided by cos(latitude), not by sin(latitude).
     lat = 51.0
-    output = visibility_from_topography(lon=6.0, lat=lat, elevation_raster=TEST_DATA["DEM-like.tif"])
+    output = visibility_from_topography(lon=6.0, lat=lat, elevation_raster=FIXTURES["dem"])
 
     lon_span = output["longitude"].values.max() - 6.0
     lat_span = output["latitude"].values.max() - lat
@@ -33,7 +35,7 @@ def test_sample_points_at_the_equator_are_finite():
     output = visibility_from_topography(
         lon=0.0,
         lat=0.0,
-        elevation_raster=TEST_DATA["DEM-like.tif"],
+        elevation_raster=FIXTURES["dem"],
         base_elevation=100,
     )
 

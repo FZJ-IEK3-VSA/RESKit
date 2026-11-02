@@ -15,10 +15,9 @@ RESKit provides a feature-rich wind power simulation, as demonstrated by the fol
    3. Lastly, [it is demonstrated](../examples/3_wind/3_6_3_wind_automated_turbine_simulation_workflow.ipynb) how to use one of the predefined workflows provided by RESKit.
       1. To apply this workflow outside of the test example, you need the full ESA Land Cover Dataset. It can be downloaded here: https://cds.climate.copernicus.eu/datasets/satellite-land-cover?tab=download.
 7. [The final example](../examples/3_wind/3_7_example_ethos_reskit_wind_workflow.ipynb) shows how to apply the ETHOS.RESKit.Wind workflow.
-   1. This requires the ERA5 dataset, for which a download instructions can be found [here](../examples/1_load_input_data/1_1_1_how_to_download_era5_data.ipynb).
-   2. In order to use the workflow, the ERA5 dataset must be preprocessed to contain the absolute wind speeds, as shown [here](../examples/1_load_input_data/1_1_2_wind_speed_from_vectors_in_era5.ipynb).
-   3. To increase spatial resolution of the simulation and allow extrapolation of wind speeds to turbine hub height, the GWAv4 (Global Wind Atlas) is used. This example provides a small test data sample for demonstration purposes. For applications outside the test example, however, the full GWAv4 dataset is required, which can be downloaded here: https://globalwindatlas.info/en/download/gis-files.
-   4. (Optional) If you have purchased Power Curves from thewindpower.net, please use the following script to process them: [Process Power Curves](../examples/1_load_input_data/1_3_1_process_power_curves_from_thewindpower_net.ipynb)
+   1. Outside the test example, this requires the ERA5 dataset, which RESKit reads directly from a Zarr store, as shown [here](../examples/3_wind/3_8_use_workflows_with_zarr.ipynb).
+   2. To increase spatial resolution of the simulation and allow extrapolation of wind speeds to turbine hub height, the GWAv4 (Global Wind Atlas) is used. This example provides a small test data sample for demonstration purposes. For applications outside the test example, however, the full GWAv4 dataset is required, which can be downloaded here: https://globalwindatlas.info/en/download/gis-files.
+   3. (Optional) If you have purchased Power Curves from thewindpower.net, please use the following script to process them: [Process Power Curves](../examples/1_load_input_data/1_3_1_process_power_curves_from_thewindpower_net.ipynb)
 
 A custom turbine library is selected with `rk.wind.turbine_library(path)`, where
 `path` is a directory of turbine definition CSVs; the licensed 880-turbine library
