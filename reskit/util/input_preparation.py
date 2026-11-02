@@ -1,5 +1,6 @@
 import os
 import warnings
+from typing import Any, Dict, List, Optional, Union
 
 import reskit as rk
 
@@ -145,21 +146,43 @@ def _merge_dependencies(workflows):
 
 
 def _prepare_era5(
-    variables,
+    variables: List[str],
     *,
-    start_date,
-    end_date,
-    boundary_box,
-    output_dir,
-    tiling,
-    zoom_level,
-    tile_output_dir,
-    dry_run=False,
-    **_,
-):
+    start_date: str,
+    end_date: str,
+    boundary_box: dict,
+    output_dir: str,
+    tiling: bool,
+    zoom_level: int,
+    tile_output_dir: Optional[str],
+    dry_run: bool = False,
+    **_: Any,
+) -> Dict[str, str]:
     """
     Preparer for the ERA5 weather source: download, preprocess and (optionally) tile the
     given ERA5 CDS variables. With ``dry_run``, only print what would be downloaded.
+
+    Parameters
+    ----------
+    variables : list of str
+        The ERA5 CDS variable names to prepare.
+    start_date, end_date : str
+        Inclusive date range to download (``"YYYY-MM-DD"``).
+    boundary_box : dict
+        Bounding box ``{"north", "south", "west", "east"}`` in degrees.
+    output_dir : str
+        Directory to download/process into.
+    tiling : bool
+        If True, tile the processed data into the ``<zoom>/<x>/<y>/<year>/`` structure.
+    zoom_level : int
+        Web-Mercator tiling zoom level.
+    tile_output_dir : str or None
+        Override for the tile output directory (``<output_dir>/tiles`` if None).
+    dry_run : bool, optional
+        If True, print whether the raw ERA5 file is already downloaded or in how many CDS
+        requests it would be, and write nothing. By default False.
+    **_
+        The rest of the shared download context, which ERA5 does not use.
 
     Returns
     -------
@@ -247,8 +270,23 @@ _SOURCE_PREPARERS = {
 #######################################################
 
 
-def _writable_dir_problem(name, directory):
-    """Why ``directory`` cannot be created or written to, or None. Missing parents are created later."""
+def _writable_dir_problem(name: str, directory: str) -> Optional[str]:
+    """
+    Why ``directory`` cannot be created or written to, or None. Missing parents are created later.
+
+    Parameters
+    ----------
+    name : str
+        The argument which gives the directory, e.g. ``"output_dir"``, to name it in the problem.
+    directory : str
+        The directory to check. It need not exist, but its closest existing ancestor must be a
+        writable directory.
+
+    Returns
+    -------
+    str or None
+        The problem, or None if the directory can be created or written to.
+    """
     existing = os.path.abspath(directory)
     while not os.path.exists(existing):
         parent = os.path.dirname(existing)
@@ -260,11 +298,36 @@ def _writable_dir_problem(name, directory):
     return None
 
 
-def _check_download_inputs(required_sources, start_date, end_date, boundary_box, output_dir, tiling, tile_output_dir):
+def _check_download_inputs(
+    required_sources: Dict[str, List[str]],
+    start_date: str,
+    end_date: str,
+    boundary_box: dict,
+    output_dir: str,
+    tiling: bool,
+    tile_output_dir: Optional[str],
+) -> None:
     """
     Raise every problem which would make the download fail, together and before anything
     is downloaded. Otherwise, e.g. an invalid boundary box is rejected only once the CDS
     request leaves the queue, and missing credentials only after earlier sources are done.
+
+    Parameters
+    ----------
+    required_sources : dict
+        ``{source: [variables]}`` of the workflows (see ``_merge_dependencies``). The ERA5
+        request is checked only if ERA5 is one of the sources.
+    start_date, end_date : str
+        Inclusive date range to download (``"YYYY-MM-DD"``).
+    boundary_box : dict
+        Bounding box ``{"north", "south", "west", "east"}`` in degrees.
+    output_dir : str
+        Directory to download/process into.
+    tiling : bool
+        Whether the processed data will be tiled. ``tile_output_dir`` is checked only then.
+    tile_output_dir : str or None
+        Override for the tile output directory. If None, the tiles are written below
+        ``output_dir``, which is checked anyway.
 
     Raises
     ------
@@ -294,16 +357,16 @@ def _check_download_inputs(required_sources, start_date, end_date, boundary_box,
 
 
 def download_and_process(
-    workflows,
-    start_date,
-    end_date,
-    boundary_box,
-    output_dir,
-    tiling=False,
-    zoom_level=4,
-    tile_output_dir=None,
-    dry_run=False,
-):
+    workflows: Union[str, List[str]],
+    start_date: str,
+    end_date: str,
+    boundary_box: dict,
+    output_dir: str,
+    tiling: bool = False,
+    zoom_level: int = 4,
+    tile_output_dir: Optional[str] = None,
+    dry_run: bool = False,
+) -> Dict[str, str]:
     """
     Download and process the weather data one or more RESKit workflows need.
 

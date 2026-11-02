@@ -5,6 +5,8 @@ import shutil
 import tempfile
 import warnings
 import zipfile
+from pathlib import Path
+from typing import Optional
 import cdsapi
 import netCDF4 as nc4
 import numpy as np
@@ -214,14 +216,23 @@ _BOX = {"north": 1, "south": 0, "west": 0, "east": 1}
         ("1939-12-31", "2000-01-31", _BOX, "ERA5 starts on 1940-01-01"),
     ],
 )
-def test_era5_request_problems(monkeypatch, tmp_path, start_date, end_date, boundary_box, problem):
+def test_era5_request_problems(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    start_date: Optional[str],
+    end_date: str,
+    boundary_box: dict,
+    problem: Optional[str],
+) -> None:
+    """A valid request has no problems, and an invalid one reports the expected problem."""
     monkeypatch.setenv("CDSAPI_URL", "https://cds.example")
     monkeypatch.setenv("CDSAPI_KEY", "key")
     problems = _era5_request_problems(start_date, end_date, boundary_box, str(tmp_path))
     assert problems == [] if problem is None else any(problem in p for p in problems), problems
 
 
-def test_era5_request_problems_reports_an_incomplete_cdsapirc(monkeypatch, tmp_path):
+def test_era5_request_problems_reports_an_incomplete_cdsapirc(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """A ``.cdsapirc`` with a URL but no key is the only problem of an otherwise valid request."""
     monkeypatch.delenv("CDSAPI_URL", raising=False)
     monkeypatch.delenv("CDSAPI_KEY", raising=False)
     cdsapirc = tmp_path / "cdsapirc"
@@ -231,7 +242,8 @@ def test_era5_request_problems_reports_an_incomplete_cdsapirc(monkeypatch, tmp_p
     assert len(problems) == 1 and "no CDS API key" in problems[0]
 
 
-def test_prepare_era5_checks_the_request_before_writing(tmp_path):
+def test_prepare_era5_checks_the_request_before_writing(tmp_path: Path) -> None:
+    """prepare_era5 rejects an invalid boundary box before it creates ``output_dir``."""
     output_dir = tmp_path / "out"
     with pytest.raises(ValueError, match="south <= north"):
         prepare_era5("2000-01-01", "2000-01-31", {**_BOX, "south": 2}, str(output_dir))

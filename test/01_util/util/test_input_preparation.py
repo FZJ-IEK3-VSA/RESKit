@@ -2,6 +2,7 @@ import ast
 import inspect
 import sys
 import textwrap
+from pathlib import Path
 
 import pytest
 
@@ -271,7 +272,10 @@ def test_every_era5_dependency_has_a_tile_label(workflow):
         assert nc_name in _ERA5_NC_TO_TILE_LABEL
 
 
-def test_download_and_process_raises_all_problems_before_downloading(monkeypatch, tmp_path):
+def test_download_and_process_raises_all_problems_before_downloading(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """All problems are raised together, before ``output_dir`` is created."""
     monkeypatch.delenv("CDSAPI_URL", raising=False)
     monkeypatch.delenv("CDSAPI_KEY", raising=False)
     monkeypatch.setenv("CDSAPI_RC", str(tmp_path / "missing_cdsapirc"))
@@ -297,7 +301,10 @@ def test_download_and_process_raises_all_problems_before_downloading(monkeypatch
     assert not output_dir.exists()
 
 
-def test_download_and_process_dry_run_downloads_nothing(monkeypatch, tmp_path, capsys):
+def test_download_and_process_dry_run_downloads_nothing(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A dry run returns the paths of a real run and prints the CDS requests, but writes nothing."""
     monkeypatch.setenv("CDSAPI_URL", "https://cds.example")
     monkeypatch.setenv("CDSAPI_KEY", "key")
     output_dir = tmp_path / "out"
@@ -311,7 +318,10 @@ def test_download_and_process_dry_run_downloads_nothing(monkeypatch, tmp_path, c
     assert not output_dir.exists()
 
 
-def test_download_and_process_needs_no_cds_key_for_a_downloaded_raw_file(monkeypatch, tmp_path, capsys):
+def test_download_and_process_needs_no_cds_key_for_a_downloaded_raw_file(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Without a CDS API key, a request whose raw ERA5 file is already downloaded passes the checks."""
     monkeypatch.delenv("CDSAPI_URL", raising=False)
     monkeypatch.delenv("CDSAPI_KEY", raising=False)
     monkeypatch.setenv("CDSAPI_RC", str(tmp_path / "missing_cdsapirc"))
