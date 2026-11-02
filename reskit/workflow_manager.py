@@ -8,7 +8,7 @@ from glob import glob
 from itertools import compress
 from os.path import basename, isdir, isfile, join
 from types import FunctionType
-from typing import Any, List, Union
+from typing import Any, List, Literal, Union, assert_never, get_args
 
 # import third party packages
 import geokit as gk
@@ -118,17 +118,13 @@ def _has_point_geometries(placements):
     return "geom" in placements.columns and placements["geom"].iloc[0].GetGeometryName() == "POINT"
 
 
-# The source types which WorkflowManager.read() reads from a path, and the class of each
-# source. An ERA5 Zarr store is read with Era5ZarrSource instead, see _source_constructor().
-SOURCE_TYPES: dict[str, type[rk_weather.NCSource]] = {
-    "ERA5": rk_weather.Era5Source,
-    "SARAH": rk_weather.SarahSource,
-    "MERRA": rk_weather.MerraSource,
-    "ICON-LAM": rk_weather.IconlamSource,
-}
+# The source types which WorkflowManager.read() reads from a path. SOURCE_TYPES lists them
+# at runtime, and _source_constructor() gives the class of each.
+SourceType = Literal["ERA5", "SARAH", "MERRA", "ICON-LAM"]
+SOURCE_TYPES: tuple[SourceType, ...] = get_args(SourceType)
 
 
-def _source_constructor(source_type: str, path: str, storage_format: str | None) -> type[rk_weather.NCSource]:
+def _source_constructor(source_type: SourceType, path: str, storage_format: str | None) -> type[rk_weather.NCSource]:
     """The class of the weather source which reads the path as a source of the given type.
 
     Parameters
@@ -157,9 +153,16 @@ def _source_constructor(source_type: str, path: str, storage_format: str | None)
         known_types = ", ".join(repr(known_type) for known_type in SOURCE_TYPES)
         raise RuntimeError(f"Unknown source_type {source_type!r}, must be one of {known_types}")
     is_zarr = storage_format == "zarr" or path.endswith(".zarr") or path.startswith("gs://")
-    if source_type == "ERA5" and is_zarr:
-        return rk_weather.Era5ZarrSource
-    return SOURCE_TYPES[source_type]
+    if source_type == "ERA5":
+        return rk_weather.Era5ZarrSource if is_zarr else rk_weather.Era5Source
+    elif source_type == "SARAH":
+        return rk_weather.SarahSource
+    elif source_type == "MERRA":
+        return rk_weather.MerraSource
+    elif source_type == "ICON-LAM":
+        return rk_weather.IconlamSource
+    else:
+        assert_never(source_type)  # a type checker reports a SourceType without a class here
 
 
 def _zarr_regions(locs: gk.LocationSet, dataset: xarray.Dataset, index_pad: int) -> list[np.ndarray]:
@@ -471,7 +474,7 @@ class WorkflowManager:
     def read(
         self,
         variables: Union[str, List[str]],
-        source_type: str,
+        source_type: SourceType | Literal["user"],
         source: str | os.PathLike | rk_weather.NCSource,
         set_time_index: bool = False,
         spatial_interpolation_mode: str = "bilinear",

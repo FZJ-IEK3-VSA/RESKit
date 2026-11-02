@@ -74,7 +74,7 @@ def test_validate_inputs_reports_unavailable_weather_variable():
 
 def test_weather_input_rejects_an_unknown_source_type() -> None:
     with pytest.raises(ValueError, match="Unknown source_type 'era5', must be one of 'ERA5'"):
-        WeatherInput("era5", ("surface_air_temperature",))
+        WeatherInput("era5", ("surface_air_temperature",))  # type: ignore
 
 
 def test_validate_inputs_names_the_known_source_types_for_an_unknown_one() -> None:

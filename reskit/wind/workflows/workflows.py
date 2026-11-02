@@ -18,6 +18,7 @@ from reskit.wind.core.windspeed_correction import build_ws_correction_function
 from reskit.wind.workflows.wind_workflow_manager import WindWorkflowManager
 from reskit.util.input_validation import WeatherInput, declare_inputs
 from reskit.util.provenance import record_provenance
+from reskit.workflow_manager import SourceType
 
 
 @declare_inputs(
@@ -506,7 +507,7 @@ def onshore_wind_iconlam_2023(
 def wind_config(
     placements: pd.DataFrame,
     weather_path: str | PathLike,
-    weather_source_type: str,
+    weather_source_type: SourceType,
     weather_lra_ws_path: str | PathLike,
     enable_lra_adjustment: bool,
     real_lra_ws_path: float | str | PathLike,

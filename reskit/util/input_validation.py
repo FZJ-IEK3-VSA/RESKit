@@ -33,7 +33,7 @@ from reskit.util.errors import ResError
 from reskit.util.paths import as_path_string, is_path_like
 
 if TYPE_CHECKING:
-    from reskit.workflow_manager import WorkflowManager
+    from reskit.workflow_manager import SourceType, WorkflowManager
 
 # The return type of a workflow, which declare_inputs keeps
 R = TypeVar("R")
@@ -65,7 +65,7 @@ class WeatherInput:
         If source_type is not one of SOURCE_TYPES
     """
 
-    source_type: str | None = None
+    source_type: SourceType | None = None
     variables: tuple[str, ...] = ()
     source_type_argument: str | None = None
     time_index_from: str | None = None
