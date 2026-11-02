@@ -7,12 +7,14 @@ import pandas as pd
 import pytest
 
 import reskit as rk
-from reskit import TEST_DATA
+from reskit import data
 from reskit.wind import PowerCurve, WindWorkflowManager
 
+FIXTURES = data.paths("test_suite")
+
 alternative_wind_speed_rasters = {
-    50: TEST_DATA["gwa50-like.tif"],
-    200: TEST_DATA["gwa200-like.tif"],
+    50: FIXTURES["gwa_50m"],
+    200: FIXTURES["gwa_200m"],
 }
 
 
@@ -110,7 +112,7 @@ def test_WindWorkflowManager_estimate_roughness_from_land_cover(
     raster_input,
 ):
     man = pt_WindWorkflowManager_initialized
-    man.estimate_roughness_from_land_cover(raster_input(rk.TEST_DATA["clc-aachen_clipped.tif"]), source_type="clc")
+    man.estimate_roughness_from_land_cover(raster_input(FIXTURES["clc"]), source_type="clc")
     assert (man.placements["roughness"] == [0.5, 0.0005, 0.03, 0.03, 0.3]).all()
 
 
@@ -127,7 +129,7 @@ def pt_WindWorkflowManager_loaded(
             "surface_air_temperature",
         ],
         source_type="ERA5",
-        source=rk.TEST_DATA["era5-like"],
+        source=FIXTURES["era5"],
         set_time_index=True,
         verbose=False,
     )
@@ -166,6 +168,40 @@ def test_WindWorkflowManager_wind_shear_projection_of_wind_speeds_to_hub_height(
     assert np.isclose(man.sim_data["elevated_wind_speed"].std(), 3.0918568121980496)
 
 
+def _one_location_per_block(n_times: int, n_locations: int) -> list[slice]:
+    # Stand-in for location_blocks() with the smallest blocks possible, so that every block border is used.
+    return [slice(location, location + 1) for location in range(n_locations)]
+
+
+def test_WindWorkflowManager_wind_shear_projection_is_independent_of_the_blocks(
+    pt_WindWorkflowManager_loaded: WindWorkflowManager,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # The wind shear projection goes through the locations in blocks to bound its memory. The
+    # blocks must not change the result: one location per block has to give exactly what the
+    # default blocks give, from the same starting wind speeds and height.
+    manager = pt_WindWorkflowManager_loaded
+    manager.real_lra = np.array([5.64914904, 5.42147512, 5.65448952, 5.75908499, 5.94873524])
+    original_wind_speed = manager.sim_data["elevated_wind_speed"].copy()
+    original_height = manager.elevated_wind_speed_height
+
+    manager.wind_shear_projection_of_wind_speeds_to_hub_height(
+        alternative_wind_speed_rasters=alternative_wind_speed_rasters
+    )
+    expected = manager.sim_data["elevated_wind_speed"]
+
+    from reskit.wind.workflows import wind_workflow_manager
+
+    monkeypatch.setattr(wind_workflow_manager, "location_blocks", _one_location_per_block)
+    manager.sim_data["elevated_wind_speed"] = original_wind_speed
+    manager.elevated_wind_speed_height = original_height
+    manager.wind_shear_projection_of_wind_speeds_to_hub_height(
+        alternative_wind_speed_rasters=alternative_wind_speed_rasters
+    )
+
+    np.testing.assert_array_equal(manager.sim_data["elevated_wind_speed"], expected)
+
+
 def test_WindWorkflowManager_project_windspeeds_to_hub_height(
     pt_WindWorkflowManager_loaded,
 ):
@@ -191,7 +227,7 @@ def test_WindWorkflowManager_project_windspeeds_to_hub_height(
 
     man.project_windspeeds_to_hub_height(
         height_scaling_method=("log", "cci"),
-        height_scaling_data=TEST_DATA["ESA_CCI_2015_clip.tif"],
+        height_scaling_data=FIXTURES["esa_cci"],
         consider_boundary_layer_height=False,
     )
 
@@ -208,6 +244,38 @@ def test_WindWorkflowManager_apply_air_density_correction_to_wind_speeds(
 
     assert np.isclose(man.sim_data["elevated_wind_speed"].mean(), 7.8090427455556375)
     assert np.isclose(man.sim_data["elevated_wind_speed"].std(), 2.822941278260297)
+
+
+def _corrected_wind_speeds() -> np.ndarray:
+    # Wind speeds after the air density correction and the wake correction (with a wake curve for some placements).
+    manager = _make_WindWorkflowManager()
+    manager.read(
+        variables=["elevated_wind_speed", "surface_pressure", "surface_air_temperature"],
+        source_type="ERA5",
+        source=FIXTURES["era5"],
+        set_time_index=True,
+        verbose=False,
+    )
+    manager.apply_air_density_correction_to_wind_speeds()
+    manager.placements["wake_curve"] = ["dena_mean", None, "knorr_mean", "dena_mean", None]
+    manager.apply_wake_correction_of_wind_speeds(wake_curve=None)
+    return manager.sim_data["elevated_wind_speed"]
+
+
+def test_WindWorkflowManager_wind_speed_corrections_are_independent_of_the_blocks(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # The air density and wake corrections go through the locations in blocks to bound their
+    # memory. The blocks must not change the result: one location per block has to give
+    # exactly what the default blocks give.
+    expected = _corrected_wind_speeds()
+
+    from reskit.wind.workflows import wind_workflow_manager
+
+    monkeypatch.setattr(wind_workflow_manager, "location_blocks", _one_location_per_block)
+    result = _corrected_wind_speeds()
+
+    np.testing.assert_array_equal(result, expected)
 
 
 def test_WindWorkflowManager_convolute_power_curves(pt_WindWorkflowManager_initialized):
@@ -283,7 +351,7 @@ def test_WindWorkflowManager_simulate(pt_WindWorkflowManager_loaded):
     )
 
     # repeat with correction factor raster
-    correction_raster = TEST_DATA["dummy_correction_factors.tif"]  # abuse GSA raster for correction (mean ~2.9)
+    correction_raster = FIXTURES["cf_correction_factors"]  # abuse GSA raster for correction (mean ~2.9)
     man.simulate(cf_correction_factor=correction_raster, tolerance=tolerance)
 
     avg_corr_factor = 0.8348340150085444  # from dummy data
@@ -339,13 +407,16 @@ def test_WindWorkflowManager_mixed_values___init___():
 
 @pytest.mark.parametrize("max_batch_size", [0, -1, -10])
 def test_WindWorkflowManager_simulate_rejects_a_non_positive_batch_size(pt_WindWorkflowManager_loaded, max_batch_size):
-    # an integer zero passed the old check and later caused a division by zero
+    # max_batch_size must be a positive integer. An integer zero passed the old check and
+    # later caused a division by zero.
     with pytest.raises(ValueError):
         pt_WindWorkflowManager_loaded.simulate(max_batch_size=max_batch_size)
 
 
 @pytest.mark.parametrize("max_batch_size", [1.5, "3", True, False, [3]])
 def test_WindWorkflowManager_simulate_rejects_a_wrong_batch_size_type(pt_WindWorkflowManager_loaded, max_batch_size):
+    # max_batch_size must be an integer: floats, strings and lists are rejected, and so are
+    # booleans, although bool is a subclass of int.
     with pytest.raises(TypeError):
         pt_WindWorkflowManager_loaded.simulate(max_batch_size=max_batch_size)
 
@@ -353,7 +424,8 @@ def test_WindWorkflowManager_simulate_rejects_a_wrong_batch_size_type(pt_WindWor
 def test_WindWorkflowManager_simulate_accepts_a_batch_size_above_the_placement_count(
     pt_WindWorkflowManager_loaded,
 ):
-    # a batch size above the placement count is limited to the placement count
+    # A batch size above the placement count is limited to the placement count, which gives
+    # the same capacity factors as the unbatched simulation (see test_WindWorkflowManager_simulate).
     man = pt_WindWorkflowManager_loaded
     man.simulate(max_batch_size=1000)
 

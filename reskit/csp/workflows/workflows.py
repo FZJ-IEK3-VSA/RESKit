@@ -1,38 +1,43 @@
 import time
 import warnings
 from logging import warning
+from os import PathLike
 
 import numpy as np
+import pandas as pd
 import xarray as xr
 from numpy.lib.arraysetops import isin
 
 from reskit import workflow_manager
+from reskit.util.paths import is_path_like
 
 from ... import weather as rk_weather
 from .csp_workflow_manager import PTRWorkflowManager
 from .dataset_handler import DatasetHandler
+from reskit.util.provenance import record_provenance
 
 
+@record_provenance
 def csp_ptr_era5(
-    placements,
-    era5_path,
-    global_solar_atlas_dni_path,
-    global_solar_atlas_tamb_path=None,
-    datasets=None,
-    cost_year=2050,
-    HTF_sel=["Heliosol", "SolarSalt", "Therminol"],
-    elev_path=None,
-    output_netcdf_path=None,
-    output_variables=None,
-    return_self=True,
-    JITaccelerate=False,
-    verbose=False,
-    debug_vars=False,
-    onlynightuse=True,
-    fullvariation=False,
-    _validation=False,
-    time_slice=None,
-):
+    placements: pd.DataFrame,
+    era5_path: str | PathLike | rk_weather.NCSource,
+    global_solar_atlas_dni_path: str | float | np.ndarray,
+    global_solar_atlas_tamb_path: str | PathLike | None = None,
+    datasets: str | list[str] | None = None,
+    cost_year: int = 2050,
+    HTF_sel: list[str] = ["Heliosol", "SolarSalt", "Therminol"],
+    elev_path: str | PathLike | list[float] | None = None,
+    output_netcdf_path: str | None = None,
+    output_variables: str | list[str] | None = None,
+    return_self: bool = True,
+    JITaccelerate: bool = False,
+    verbose: bool = False,
+    debug_vars: bool = False,
+    onlynightuse: bool = True,
+    fullvariation: bool = False,
+    _validation: bool = False,
+    time_slice: slice | None = None,
+) -> PTRWorkflowManager | xr.Dataset | str:
     """
     This function is the overall workflow for the csp simulation and calls all subfunctions.
     It is a wrapper around the function "csp_ptr_era5_specific_dataset" below, to include the case of multiple datasets.
@@ -87,6 +92,7 @@ def csp_ptr_era5(
     output_variables: list of {str, number}, optional
         Output variables of the simulation that you want to save.
         If None, includes all suitable variables from placements, workflow parameters, simulation data, and time index.
+        Interim variables which are not listed are dropped as soon as the workflow no longer needs them, which lowers its memory use.
 
     return_self: bool, optional
         If True, returns the workflow manager object.
@@ -118,10 +124,10 @@ def csp_ptr_era5(
         Defaults to False.
 
     time_slice : slice, optional
-        Limit the time span loaded from the ERA5 source. Only supported for
-        Zarr-backed ERA5 sources, where it is strongly recommended to avoid
-        loading whole multi-year cloud stores. Raises for netCDF4-backed ERA5
-        sources; support for those is planned.
+        Simulate only the time steps between time_slice.start and time_slice.stop, both
+        inclusive, e.g. slice("2015-03-01", "2015-03-31 23:30"). Only these time steps
+        are read from the weather source, which is strongly recommended for multi-year
+        Zarr cloud stores. By default None, i.e. all time steps.
 
     Returns
     -------
@@ -150,7 +156,7 @@ def csp_ptr_era5(
         raise TypeError(f"datasets got unknown datatype")
 
     if not single_dataset:
-        assert isinstance(global_solar_atlas_tamb_path, str)
+        assert is_path_like(global_solar_atlas_tamb_path)
 
     if single_dataset:  # only one dataset given
         output = csp_ptr_era5_specific_dataset(
@@ -231,22 +237,23 @@ def csp_ptr_era5(
         return output
 
 
+@record_provenance
 def csp_ptr_era5_specific_dataset(
-    placements,
-    era5_path,
-    global_solar_atlas_dni_path,
-    datasetname="Validation 10",
-    elev_path=None,
-    output_netcdf_path=None,
-    output_variables=None,
-    return_self=True,
-    JITaccelerate=False,
-    verbose=False,
-    debug_vars=False,
-    onlynightuse=True,
-    fullvariation=False,
-    _validation=False,
-    time_slice=None,
+    placements: pd.DataFrame,
+    era5_path: str | PathLike | rk_weather.NCSource,
+    global_solar_atlas_dni_path: str | float | np.ndarray,
+    datasetname: str = "Validation 10",
+    elev_path: str | PathLike | list[float] | None = None,
+    output_netcdf_path: str | None = None,
+    output_variables: str | list[str] | None = None,
+    return_self: bool = True,
+    JITaccelerate: bool = False,
+    verbose: bool = False,
+    debug_vars: bool = False,
+    onlynightuse: bool = True,
+    fullvariation: bool = False,
+    _validation: bool = False,
+    time_slice: slice | None = None,
 ):
     """
     Calculates the heat output from the solar field based on parabolic trough technology (PTC).
@@ -293,6 +300,7 @@ def csp_ptr_era5_specific_dataset(
     output_variables: list of {str, number}, optional
         Output variables of the simulation that you want to save.
         If None, includes all suitable variables from placements, workflow parameters, simulation data, and time index.
+        Interim variables which are not listed are dropped as soon as the workflow no longer needs them, which lowers its memory use.
 
     return_self: bool, optional
         If True, returns the workflow manager object.
@@ -324,10 +332,10 @@ def csp_ptr_era5_specific_dataset(
         Defaults to False.
 
     time_slice : slice, optional
-        Limit the time span loaded from the ERA5 source. Only supported for
-        Zarr-backed ERA5 sources, where it is strongly recommended to avoid
-        loading whole multi-year cloud stores. Raises for netCDF4-backed ERA5
-        sources; support for those is planned.
+        Simulate only the time steps between time_slice.start and time_slice.stop, both
+        inclusive, e.g. slice("2015-03-01", "2015-03-31 23:30"). Only these time steps
+        are read from the weather source, which is strongly recommended for multi-year
+        Zarr cloud stores. By default None, i.e. all time steps.
 
     Returns
     -------
@@ -493,6 +501,18 @@ def csp_ptr_era5_specific_dataset(
         },
     )
 
+    if not return_self:
+        # what plant sizing, electrical output, LCOE and capacity factors still read
+        still_needed = [
+            "HeattoPlant_W",
+            "P_heating_W",
+            "Parasitics_W_el",
+            "solar_zenith_degree",
+            "direct_normal_irradiance",
+            "annuity",
+        ]
+        wf.release_sim_data(still_needed, output_variables)
+
     if verbose:
         tic_sf_sim = time.time()
         print(
@@ -528,7 +548,7 @@ def csp_ptr_era5_specific_dataset(
     if return_self == True:
         return wf
     else:
-        return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
+        return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables, release=True)
 
 
 ##########################

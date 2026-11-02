@@ -7,17 +7,20 @@ import yaml
 # import third packages
 from pandas import Interval
 
+from reskit.util.paths import as_path_string, is_path_like
+
 
 # helper function to generate the actual correction function
 def build_ws_correction_function(type, data_dict):
     """
     type: str
         type of correction function
-    data_dict: dict, str
+    data_dict: dict, str, pathlib.Path
         dictionary or json file containing the data needed to
         build the correction function
     """
-    if isinstance(data_dict, str):
+    if is_path_like(data_dict):
+        data_dict = as_path_string(data_dict)
         assert os.path.isfile(data_dict), f"data_dict is a str but not an existing file: {data_dict}"
         assert os.path.splitext(data_dict)[-1] in [
             ".yaml",

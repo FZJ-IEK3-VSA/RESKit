@@ -1,0 +1,86 @@
+{
+  "shape": [
+    141,
+    13,
+    11
+  ],
+  "data_type": "float32",
+  "chunk_grid": {
+    "name": "regular",
+    "configuration": {
+      "chunk_shape": [
+        141,
+        13,
+        11
+      ]
+    }
+  },
+  "chunk_key_encoding": {
+    "name": "default",
+    "configuration": {
+      "separator": "/"
+    }
+  },
+  "fill_value": "NaN",
+  "codecs": [
+    {
+      "name": "bytes",
+      "configuration": {
+        "endian": "little"
+      }
+    },
+    {
+      "name": "blosc",
+      "configuration": {
+        "typesize": 4,
+        "cname": "zstd",
+        "clevel": 5,
+        "shuffle": "shuffle",
+        "blocksize": 0
+      }
+    }
+  ],
+  "attributes": {
+    "GRIB_paramId": 169,
+    "GRIB_dataType": "fc",
+    "GRIB_numberOfPoints": 1038240,
+    "GRIB_typeOfLevel": "surface",
+    "GRIB_stepUnits": 1,
+    "GRIB_stepType": "accum",
+    "GRIB_gridType": "regular_ll",
+    "GRIB_uvRelativeToGrid": 0,
+    "GRIB_NV": 0,
+    "GRIB_Nx": 1440,
+    "GRIB_Ny": 721,
+    "GRIB_cfName": "surface_downwelling_shortwave_flux_in_air",
+    "GRIB_cfVarName": "ssrd",
+    "GRIB_gridDefinitionDescription": "Latitude/Longitude Grid",
+    "GRIB_iDirectionIncrementInDegrees": 0.25,
+    "GRIB_iScansNegatively": 0,
+    "GRIB_jDirectionIncrementInDegrees": 0.25,
+    "GRIB_jPointsAreConsecutive": 0,
+    "GRIB_jScansPositively": 0,
+    "GRIB_latitudeOfFirstGridPointInDegrees": 90.0,
+    "GRIB_latitudeOfLastGridPointInDegrees": -90.0,
+    "GRIB_longitudeOfFirstGridPointInDegrees": 0.0,
+    "GRIB_longitudeOfLastGridPointInDegrees": 359.75,
+    "GRIB_missingValue": 3.4028234663852886e+38,
+    "GRIB_name": "Surface short-wave (solar) radiation downwards",
+    "GRIB_shortName": "ssrd",
+    "GRIB_totalNumber": 0,
+    "GRIB_units": "J m**-2",
+    "long_name": "Surface short-wave (solar) radiation downwards",
+    "units": "J m**-2",
+    "standard_name": "surface_downwelling_shortwave_flux_in_air",
+    "last_ingested_valid_time_index": 760079,
+    "_FillValue": "AAAAAAAA+H8="
+  },
+  "dimension_names": [
+    "valid_time",
+    "latitude",
+    "longitude"
+  ],
+  "zarr_format": 3,
+  "node_type": "array",
+  "storage_transformers": []
+}

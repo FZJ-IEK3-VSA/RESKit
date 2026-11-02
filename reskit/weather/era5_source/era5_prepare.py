@@ -461,19 +461,11 @@ def preprocess_era5_data(focus_nc: str, processed_dir: Optional[str] = None):
     Ssrd and fdir are hourly backward accumulated quantities in ERA5 with the unit: J m⁻².
     Each value at time t represents the accumulated energy over the previous hour.
 
-    When you divide it by 3600 seconds, you convert the accumulated energy (J m⁻²)
-    into an average power flux (W m⁻²) over that hour.
-
-    However, in solar observation and other models,
-    this value represents the instantaneous mean over the next hour.
-    This matches:
-        PV modeling conventions
-        Many energy system models
-        atlite / PyPSA conventions
-
-    So, we need to do two things:
-    1. Convert the accumulated quantity to an average power flux by dividing by 3600
-    2. Shift the time axis forward by one hour to represent the average over the next hour.
+    Dividing it by 3600 seconds converts the accumulated energy (J m⁻²) into the
+    average power flux (W m⁻²) over that hour. The time axis is kept as it is: RESKit's
+    ERA5 time index puts each timestamp at the middle of the hour before it (see
+    Era5Source), which is exactly the hour this mean covers. This is also how the ERA5
+    netCDF4 archive RESKit reads holds the '*_t_adj' variables.
 
     Parameters
     ----------
@@ -499,11 +491,10 @@ def preprocess_era5_data(focus_nc: str, processed_dir: Optional[str] = None):
         if solar_vars:
             out_names = [f"{v}_t_adj" for v in solar_vars]
             if not _nc_file_has_vars(solar_t_out, out_names):
-                # 1. accumulated J m**-2 -> mean power flux W m**-2 (divide by 3600s)
-                # 2. shift time axis +1h so each value is the mean over the *next* hour
+                # accumulated J m**-2 -> mean power flux W m**-2 over the hour (divide by 3600s),
+                # on the timestamps of the accumulations
                 time_encoding = dict(ds["time"].encoding)
                 out = ds[solar_vars] / 3600.0
-                out = out.assign_coords(time=out["time"] + pd.Timedelta(hours=1))
                 out["time"].encoding = time_encoding
                 out = out.rename({v: f"{v}_t_adj" for v in solar_vars})
                 for v in solar_vars:
@@ -640,7 +631,150 @@ def era5_tiler(
     return tile_output_dir
 
 
-def _era5_download_jobs(start_date: str, end_date: str) -> List[Tuple[str, List[str], List[str]]]:
+# The first day of ERA5, and how far it lags behind real time
+_ERA5_FIRST_DAY = pd.Timestamp("1940-01-01")
+_ERA5_DELAY = pd.Timedelta(days=5)
+
+
+def _era5_day(date: Union[str, pd.Timestamp]) -> pd.Timestamp:
+    """Read a date as a timezone-naive UTC timestamp, the time base of ERA5.
+
+    Parameters
+    ----------
+    date : str or pandas.Timestamp
+        Any date pandas can read, e.g. ``"2000-01-01"``. A timezone-aware date is converted to UTC.
+
+    Returns
+    -------
+    pandas.Timestamp
+        The date as a timezone-naive UTC timestamp.
+
+    Raises
+    ------
+    ValueError
+        If the date is missing or cannot be read.
+    """
+    try:
+        day = pd.Timestamp(date)
+    except (TypeError, ValueError) as error:
+        raise ValueError(f"{date!r} cannot be read as a date: {error}") from None
+    if pd.isna(day):
+        raise ValueError(f"{date!r} is not a date")
+    if day.tzinfo is not None:
+        day = day.tz_convert("UTC").tz_localize(None)
+    return day
+
+
+def _era5_raw_file(start: pd.Timestamp, end: pd.Timestamp, boundary_box: dict, output_dir: str) -> str:
+    """The path prepare_era5 downloads the raw ERA5 data of this request to.
+
+    Parameters
+    ----------
+    start, end : pandas.Timestamp
+        Inclusive date range of the request. The file is named after their days.
+    boundary_box : dict
+        Bounding box ``{"north", "south", "west", "east"}`` in degrees.
+    output_dir : str
+        The ``output_dir`` of prepare_era5.
+
+    Returns
+    -------
+    str
+        ``<output_dir>/raw/reanalysis-era5-single-levels_<start>-<end>_N<north>_S<south>_W<west>_E<east>_raw.nc``,
+        with the days as ``YYYYMMDD``.
+    """
+    bbox_tag = f"N{boundary_box['north']}_S{boundary_box['south']}_W{boundary_box['west']}_E{boundary_box['east']}"
+    # name the file after the actual day-level extent it contains
+    date_tag = f"{start.strftime('%Y%m%d')}-{end.strftime('%Y%m%d')}"
+    return os.path.join(output_dir, "raw", f"{era5_dataset}_{date_tag}_{bbox_tag}_raw.nc")
+
+
+def _cds_credentials_problem() -> Optional[str]:
+    """Why cdsapi would find no complete API key, or None if it would.
+
+    cdsapi reads the URL and the key from ``CDSAPI_URL`` and ``CDSAPI_KEY``, and whatever of
+    them is missing there from the file ``CDSAPI_RC`` names, by default ``~/.cdsapirc``.
+
+    Returns
+    -------
+    str or None
+        The problem, with a link to the CDS API set-up, or None if the URL and the key are found.
+    """
+    try:
+        cdsapi.api.get_url_key_verify(None, None, None)
+    except Exception as error:  # cdsapi raises a plain Exception
+        return f"no CDS API key found ({error}); see https://cds.climate.copernicus.eu/how-to-api"
+    return None
+
+
+def _era5_request_problems(start_date: str, end_date: str, boundary_box: dict, output_dir: str) -> List[str]:
+    """List every problem which would make prepare_era5 fail, without downloading anything.
+
+    The ERA5 time span and the CDS API key are checked only if the raw file of this request
+    is not on disk yet, since prepare_era5 downloads nothing otherwise.
+
+    Parameters
+    ----------
+    start_date, end_date : str
+        Inclusive date range of the request (``"YYYY-MM-DD"``). A missing date, one which
+        cannot be read and an ``end_date`` before ``start_date`` are problems.
+    boundary_box : dict
+        Bounding box ``{"north", "south", "west", "east"}`` in degrees. A missing side, a value
+        which is not a number and a latitude or longitude out of range are problems.
+    output_dir : str
+        The ``output_dir`` of prepare_era5, in which the raw file is looked for.
+
+    Returns
+    -------
+    list of str
+        The problems, empty if the request can be prepared.
+    """
+    problems = []
+
+    days = {}
+    for name, date in (("start_date", start_date), ("end_date", end_date)):
+        try:
+            days[name] = _era5_day(date)
+        except ValueError as error:
+            problems.append(f"{name}: {error}")
+    start, end = days.get("start_date"), days.get("end_date")
+    if start is not None and end is not None and end < start:
+        problems.append(f"end_date {end_date} is before start_date {start_date}")
+
+    sides = ("north", "south", "west", "east")
+    missing = [side for side in sides if side not in boundary_box]
+    if missing:
+        problems.append(f"boundary_box lacks {', '.join(missing)}")
+    else:
+        try:
+            north, south, west, east = (float(boundary_box[side]) for side in sides)
+        except (TypeError, ValueError):
+            problems.append(f"boundary_box values must be numbers, got {boundary_box}")
+        else:
+            # south == north and west == east select a single grid cell
+            if not -90 <= south <= north <= 90:
+                problems.append(f"boundary_box needs -90 <= south <= north <= 90, got south={south}, north={north}")
+            if not (-180 <= west <= 360 and -180 <= east <= 360):
+                problems.append(f"boundary_box needs longitudes between -180 and 360, got west={west}, east={east}")
+
+    if not problems and os.path.exists(_era5_raw_file(start, end, boundary_box, output_dir)):
+        return problems
+
+    if start is not None and start < _ERA5_FIRST_DAY:
+        problems.append(f"ERA5 starts on {_ERA5_FIRST_DAY.date()}, but start_date is {start_date}")
+    if end is not None and end > pd.Timestamp.now().normalize() - _ERA5_DELAY:
+        problems.append(
+            f"ERA5 is available until about {_ERA5_DELAY.days} days before today, but end_date is {end_date}"
+        )
+    credentials_problem = _cds_credentials_problem()
+    if credentials_problem:
+        problems.append(credentials_problem)
+    return problems
+
+
+def _era5_download_jobs(
+    start_date: Union[str, pd.Timestamp], end_date: Union[str, pd.Timestamp]
+) -> List[Tuple[str, List[str], List[str]]]:
     """Split the inclusive ``[start_date, end_date]`` range into CDS download jobs.
 
     A CDS request selects data as the Cartesian product of its ``year`` x ``month`` x ``day``
@@ -651,8 +785,8 @@ def _era5_download_jobs(start_date: str, end_date: str) -> List[Tuple[str, List[
 
     Parameters
     ----------
-    start_date, end_date : str
-        Inclusive date bounds (``"YYYY-MM-DD"``). The whole ``end_date`` day is included.
+    start_date, end_date : str or pandas.Timestamp
+        Inclusive date bounds (e.g. ``"YYYY-MM-DD"``). The whole ``end_date`` day is included.
 
     Returns
     -------
@@ -690,7 +824,52 @@ def prepare_era5(
     zoom_level: int = 4,
     tile_output_dir: Optional[str] = None,
     raw_variables: Optional[List[str]] = None,
-):
+) -> str:
+    """
+    Download, preprocess and optionally tile ERA5 data for a date range and boundary box.
+
+    The request is checked before anything is downloaded or written. The raw data is
+    downloaded from the CDS into ``<output_dir>/raw/``, unless that file exists already,
+    preprocessed into ``<output_dir>/processed/`` (see ``preprocess_era5_data``) and, with
+    ``tiling``, tiled (see ``era5_tiler``).
+
+    Parameters
+    ----------
+    start_date, end_date : str
+        Inclusive date range to download (``"YYYY-MM-DD"``). The whole ``end_date`` day is included.
+    boundary_box : dict
+        Bounding box ``{"north", "south", "west", "east"}`` in degrees.
+    output_dir : str
+        Directory to download/process into.
+    variables : list of str, optional
+        ERA5 CDS variable names to download, by default ``era5_variables``.
+    tiling : bool, optional
+        If True, tile the processed data into the ``<zoom>/<x>/<y>/<year>/`` structure.
+        By default False.
+    zoom_level : int, optional
+        Web-Mercator tiling zoom level, by default 4.
+    tile_output_dir : str, optional
+        Override for the tile output directory (defaults to ``<output_dir>/tiles``).
+    raw_variables : list of str, optional
+        NC short names to tile unprocessed from the raw download (e.g. ``['t2m', 'sp']``),
+        see ``era5_tiler``.
+
+    Returns
+    -------
+    str
+        The tile output directory if ``tiling`` is True, else ``<output_dir>/processed``.
+
+    Raises
+    ------
+    ValueError
+        Listing all problems of the request (dates, boundary box, ERA5 time span, CDS API key).
+    """
+    # 0. check the request before anything is downloaded or written
+    problems = _era5_request_problems(start_date, end_date, boundary_box, output_dir)
+    if problems:
+        raise ValueError("Cannot prepare the ERA5 data:\n" + "\n".join(f"  - {p}" for p in problems))
+    start_date, end_date = _era5_day(start_date), _era5_day(end_date)
+
     # 1. download ERA5 data for the given date range and boundary box
     raw_dir = os.path.join(output_dir, "raw")
     os.makedirs(raw_dir, exist_ok=True)
@@ -709,9 +888,7 @@ def prepare_era5(
     )
 
     bbox_tag = f"N{boundary_box['north']}_S{boundary_box['south']}_W{boundary_box['west']}_E{boundary_box['east']}"
-    # name the file after the actual day-level extent it contains
-    date_tag = f"{pd.Timestamp(start_date).strftime('%Y%m%d')}-{pd.Timestamp(end_date).strftime('%Y%m%d')}"
-    output_file = os.path.join(raw_dir, f"{era5_dataset}_{date_tag}_{bbox_tag}_raw.nc")
+    output_file = _era5_raw_file(start_date, end_date, boundary_box, output_dir)
 
     if not os.path.exists(output_file):
         if len(jobs) == 1:
