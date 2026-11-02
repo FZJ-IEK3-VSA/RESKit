@@ -362,7 +362,7 @@ def test_WorkflowManager_get_scalar_values_from_raster_for_a_subset_of_points():
     """The fallbacks for missing values look up the given points, not all placements."""
     placements = pd.DataFrame({"lon": [6.1, 6.2, 9.0], "lat": [50.5, 50.6, 50.5], "capacity": 1.0})
     man = WorkflowManager(placements)
-    fp = TEST_DATA["gwa100-like.tif"]
+    fp = FIXTURES["gwa_100m"]
 
     subset = man.get_scalar_values_from_raster(fp, "linear-spline", points=[(6.2, 50.6), (9.0, 50.5)])
     every = man.get_scalar_values_from_raster(fp, "linear-spline")
