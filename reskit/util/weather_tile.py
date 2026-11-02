@@ -7,6 +7,8 @@ import re
 from smopy import deg2num
 import numpy as np
 
+from reskit.util.paths import as_path_string, is_path_like
+
 
 def get_tile_xy(zoom, lon=None, lat=None, geom=None):
     """
@@ -133,12 +135,14 @@ def get_location_specific_weather_paths(weather_paths, locs, zoom=None):
         locs = locs._locations
     if isinstance(locs, tuple) or isinstance(locs, str) or not hasattr(locs, "__iter__"):
         raise TypeError(f"weather_paths must be an iterable but not a str or tuple.")
-    if isinstance(weather_paths, str):
+    if is_path_like(weather_paths):
         weather_paths = [weather_paths] * len(locs)
     elif not isinstance(weather_paths, list):
         raise TypeError("weather_paths must be a list of str if not a str.")
-    if not all([isinstance(x, str) for x in weather_paths]):
+    if not all([is_path_like(x) for x in weather_paths]):
         raise TypeError("All values in weather_paths must be str.")
+    # Strings from here on: the spacers are completed by string replacement.
+    weather_paths = [as_path_string(x) for x in weather_paths]
     if not len(weather_paths) == len(locs):
         raise ValueError(f"weather_paths and locs must have the same length if weather_paths is given as a list.")
 

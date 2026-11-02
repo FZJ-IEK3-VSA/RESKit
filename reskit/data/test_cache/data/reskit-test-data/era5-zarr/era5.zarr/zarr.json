@@ -1,0 +1,1465 @@
+{
+  "attributes": {
+    "GRIB_edition": 1,
+    "GRIB_centre": "ecmf",
+    "GRIB_centreDescription": "European Centre for Medium-Range Weather Forecasts",
+    "GRIB_subCentre": 0,
+    "Conventions": "CF-1.7",
+    "institution": "European Centre for Medium-Range Weather Forecasts",
+    "history": "2026-08-19T13:34 GRIB to CDM+CF via cfgrib-0.9.15.1/ecCodes-2.45.1 with {\"source\": \".xarray-ecmwf-cache/3f7146eeea9baa741f157afbc27dd28d.grib\", \"filter_by_keys\": {}, \"encode_cf\": [\"parameter\", \"time\", \"geography\", \"vertical\"]}",
+    "reskit_source_url": "https://data.earthdatahub.destine.eu/era5/era5-single-levels-atmosphere-v0.zarr",
+    "reskit_retrieved": "2026-10-05",
+    "reskit_selection": "valid_time 2014-12-31 23:00 to 2015-01-06 19:00, latitude 52.0 to 49.0, longitude 5.0 to 7.5",
+    "reskit_created_by": "scripts/make_era5_zarr_test_data.py"
+  },
+  "zarr_format": 3,
+  "consolidated_metadata": {
+    "kind": "inline",
+    "must_understand": false,
+    "metadata": {
+      "asn": {
+        "shape": [
+          141,
+          13,
+          11
+        ],
+        "data_type": "float32",
+        "chunk_grid": {
+          "name": "regular",
+          "configuration": {
+            "chunk_shape": [
+              141,
+              13,
+              11
+            ]
+          }
+        },
+        "chunk_key_encoding": {
+          "name": "default",
+          "configuration": {
+            "separator": "/"
+          }
+        },
+        "fill_value": "NaN",
+        "codecs": [
+          {
+            "name": "bytes",
+            "configuration": {
+              "endian": "little"
+            }
+          },
+          {
+            "name": "blosc",
+            "configuration": {
+              "typesize": 4,
+              "cname": "zstd",
+              "clevel": 5,
+              "shuffle": "shuffle",
+              "blocksize": 0
+            }
+          }
+        ],
+        "attributes": {
+          "GRIB_paramId": 32,
+          "GRIB_dataType": "an",
+          "GRIB_numberOfPoints": 1038240,
+          "GRIB_typeOfLevel": "surface",
+          "GRIB_stepUnits": 1,
+          "GRIB_stepType": "instant",
+          "GRIB_gridType": "regular_ll",
+          "GRIB_uvRelativeToGrid": 0,
+          "GRIB_NV": 0,
+          "GRIB_Nx": 1440,
+          "GRIB_Ny": 721,
+          "GRIB_cfName": "unknown",
+          "GRIB_cfVarName": "asn",
+          "GRIB_gridDefinitionDescription": "Latitude/Longitude Grid",
+          "GRIB_iDirectionIncrementInDegrees": 0.25,
+          "GRIB_iScansNegatively": 0,
+          "GRIB_jDirectionIncrementInDegrees": 0.25,
+          "GRIB_jPointsAreConsecutive": 0,
+          "GRIB_jScansPositively": 0,
+          "GRIB_latitudeOfFirstGridPointInDegrees": 90.0,
+          "GRIB_latitudeOfLastGridPointInDegrees": -90.0,
+          "GRIB_longitudeOfFirstGridPointInDegrees": 0.0,
+          "GRIB_longitudeOfLastGridPointInDegrees": 359.75,
+          "GRIB_missingValue": 3.4028234663852886e+38,
+          "GRIB_name": "Snow albedo",
+          "GRIB_shortName": "asn",
+          "GRIB_totalNumber": 0,
+          "GRIB_units": "(0 - 1)",
+          "long_name": "Snow albedo",
+          "units": "(0 - 1)",
+          "standard_name": "unknown",
+          "last_ingested_valid_time_index": 760079,
+          "_FillValue": "AAAAAAAA+H8="
+        },
+        "dimension_names": [
+          "valid_time",
+          "latitude",
+          "longitude"
+        ],
+        "zarr_format": 3,
+        "node_type": "array",
+        "storage_transformers": []
+      },
+      "blh": {
+        "shape": [
+          141,
+          13,
+          11
+        ],
+        "data_type": "float32",
+        "chunk_grid": {
+          "name": "regular",
+          "configuration": {
+            "chunk_shape": [
+              141,
+              13,
+              11
+            ]
+          }
+        },
+        "chunk_key_encoding": {
+          "name": "default",
+          "configuration": {
+            "separator": "/"
+          }
+        },
+        "fill_value": "NaN",
+        "codecs": [
+          {
+            "name": "bytes",
+            "configuration": {
+              "endian": "little"
+            }
+          },
+          {
+            "name": "blosc",
+            "configuration": {
+              "typesize": 4,
+              "cname": "zstd",
+              "clevel": 5,
+              "shuffle": "shuffle",
+              "blocksize": 0
+            }
+          }
+        ],
+        "attributes": {
+          "GRIB_paramId": 159,
+          "GRIB_dataType": "an",
+          "GRIB_numberOfPoints": 1038240,
+          "GRIB_typeOfLevel": "surface",
+          "GRIB_stepUnits": 1,
+          "GRIB_stepType": "instant",
+          "GRIB_gridType": "regular_ll",
+          "GRIB_uvRelativeToGrid": 0,
+          "GRIB_NV": 0,
+          "GRIB_Nx": 1440,
+          "GRIB_Ny": 721,
+          "GRIB_cfName": "unknown",
+          "GRIB_cfVarName": "blh",
+          "GRIB_gridDefinitionDescription": "Latitude/Longitude Grid",
+          "GRIB_iDirectionIncrementInDegrees": 0.25,
+          "GRIB_iScansNegatively": 0,
+          "GRIB_jDirectionIncrementInDegrees": 0.25,
+          "GRIB_jPointsAreConsecutive": 0,
+          "GRIB_jScansPositively": 0,
+          "GRIB_latitudeOfFirstGridPointInDegrees": 90.0,
+          "GRIB_latitudeOfLastGridPointInDegrees": -90.0,
+          "GRIB_longitudeOfFirstGridPointInDegrees": 0.0,
+          "GRIB_longitudeOfLastGridPointInDegrees": 359.75,
+          "GRIB_missingValue": 3.4028234663852886e+38,
+          "GRIB_name": "Boundary layer height",
+          "GRIB_shortName": "blh",
+          "GRIB_totalNumber": 0,
+          "GRIB_units": "m",
+          "long_name": "Boundary layer height",
+          "units": "m",
+          "standard_name": "unknown",
+          "last_ingested_valid_time_index": 760079,
+          "_FillValue": "AAAAAAAA+H8="
+        },
+        "dimension_names": [
+          "valid_time",
+          "latitude",
+          "longitude"
+        ],
+        "zarr_format": 3,
+        "node_type": "array",
+        "storage_transformers": []
+      },
+      "d2m": {
+        "shape": [
+          141,
+          13,
+          11
+        ],
+        "data_type": "float32",
+        "chunk_grid": {
+          "name": "regular",
+          "configuration": {
+            "chunk_shape": [
+              141,
+              13,
+              11
+            ]
+          }
+        },
+        "chunk_key_encoding": {
+          "name": "default",
+          "configuration": {
+            "separator": "/"
+          }
+        },
+        "fill_value": "NaN",
+        "codecs": [
+          {
+            "name": "bytes",
+            "configuration": {
+              "endian": "little"
+            }
+          },
+          {
+            "name": "blosc",
+            "configuration": {
+              "typesize": 4,
+              "cname": "zstd",
+              "clevel": 5,
+              "shuffle": "shuffle",
+              "blocksize": 0
+            }
+          }
+        ],
+        "attributes": {
+          "GRIB_paramId": 168,
+          "GRIB_dataType": "an",
+          "GRIB_numberOfPoints": 1038240,
+          "GRIB_typeOfLevel": "surface",
+          "GRIB_stepUnits": 1,
+          "GRIB_stepType": "instant",
+          "GRIB_gridType": "regular_ll",
+          "GRIB_uvRelativeToGrid": 0,
+          "GRIB_NV": 0,
+          "GRIB_Nx": 1440,
+          "GRIB_Ny": 721,
+          "GRIB_cfName": "unknown",
+          "GRIB_cfVarName": "d2m",
+          "GRIB_gridDefinitionDescription": "Latitude/Longitude Grid",
+          "GRIB_iDirectionIncrementInDegrees": 0.25,
+          "GRIB_iScansNegatively": 0,
+          "GRIB_jDirectionIncrementInDegrees": 0.25,
+          "GRIB_jPointsAreConsecutive": 0,
+          "GRIB_jScansPositively": 0,
+          "GRIB_latitudeOfFirstGridPointInDegrees": 90.0,
+          "GRIB_latitudeOfLastGridPointInDegrees": -90.0,
+          "GRIB_longitudeOfFirstGridPointInDegrees": 0.0,
+          "GRIB_longitudeOfLastGridPointInDegrees": 359.75,
+          "GRIB_missingValue": 3.4028234663852886e+38,
+          "GRIB_name": "2 metre dewpoint temperature",
+          "GRIB_shortName": "2d",
+          "GRIB_totalNumber": 0,
+          "GRIB_units": "K",
+          "long_name": "2 metre dewpoint temperature",
+          "units": "K",
+          "standard_name": "unknown",
+          "last_ingested_valid_time_index": 760079,
+          "_FillValue": "AAAAAAAA+H8="
+        },
+        "dimension_names": [
+          "valid_time",
+          "latitude",
+          "longitude"
+        ],
+        "zarr_format": 3,
+        "node_type": "array",
+        "storage_transformers": []
+      },
+      "fdir": {
+        "shape": [
+          141,
+          13,
+          11
+        ],
+        "data_type": "float32",
+        "chunk_grid": {
+          "name": "regular",
+          "configuration": {
+            "chunk_shape": [
+              141,
+              13,
+              11
+            ]
+          }
+        },
+        "chunk_key_encoding": {
+          "name": "default",
+          "configuration": {
+            "separator": "/"
+          }
+        },
+        "fill_value": "NaN",
+        "codecs": [
+          {
+            "name": "bytes",
+            "configuration": {
+              "endian": "little"
+            }
+          },
+          {
+            "name": "blosc",
+            "configuration": {
+              "typesize": 4,
+              "cname": "zstd",
+              "clevel": 5,
+              "shuffle": "shuffle",
+              "blocksize": 0
+            }
+          }
+        ],
+        "attributes": {
+          "GRIB_paramId": 228021,
+          "GRIB_dataType": "fc",
+          "GRIB_numberOfPoints": 1038240,
+          "GRIB_typeOfLevel": "surface",
+          "GRIB_stepUnits": 1,
+          "GRIB_stepType": "accum",
+          "GRIB_gridType": "regular_ll",
+          "GRIB_uvRelativeToGrid": 0,
+          "GRIB_NV": 0,
+          "GRIB_Nx": 1440,
+          "GRIB_Ny": 721,
+          "GRIB_cfName": "unknown",
+          "GRIB_cfVarName": "fdir",
+          "GRIB_gridDefinitionDescription": "Latitude/Longitude Grid",
+          "GRIB_iDirectionIncrementInDegrees": 0.25,
+          "GRIB_iScansNegatively": 0,
+          "GRIB_jDirectionIncrementInDegrees": 0.25,
+          "GRIB_jPointsAreConsecutive": 0,
+          "GRIB_jScansPositively": 0,
+          "GRIB_latitudeOfFirstGridPointInDegrees": 90.0,
+          "GRIB_latitudeOfLastGridPointInDegrees": -90.0,
+          "GRIB_longitudeOfFirstGridPointInDegrees": 0.0,
+          "GRIB_longitudeOfLastGridPointInDegrees": 359.75,
+          "GRIB_missingValue": 3.4028234663852886e+38,
+          "GRIB_name": "Surface direct short-wave (solar) radiation",
+          "GRIB_shortName": "fdir",
+          "GRIB_totalNumber": 0,
+          "GRIB_units": "J m**-2",
+          "long_name": "Surface direct short-wave (solar) radiation",
+          "units": "J m**-2",
+          "standard_name": "unknown",
+          "last_ingested_valid_time_index": 760079,
+          "_FillValue": "AAAAAAAA+H8="
+        },
+        "dimension_names": [
+          "valid_time",
+          "latitude",
+          "longitude"
+        ],
+        "zarr_format": 3,
+        "node_type": "array",
+        "storage_transformers": []
+      },
+      "fsr": {
+        "shape": [
+          141,
+          13,
+          11
+        ],
+        "data_type": "float32",
+        "chunk_grid": {
+          "name": "regular",
+          "configuration": {
+            "chunk_shape": [
+              141,
+              13,
+              11
+            ]
+          }
+        },
+        "chunk_key_encoding": {
+          "name": "default",
+          "configuration": {
+            "separator": "/"
+          }
+        },
+        "fill_value": "NaN",
+        "codecs": [
+          {
+            "name": "bytes",
+            "configuration": {
+              "endian": "little"
+            }
+          },
+          {
+            "name": "blosc",
+            "configuration": {
+              "typesize": 4,
+              "cname": "zstd",
+              "clevel": 5,
+              "shuffle": "shuffle",
+              "blocksize": 0
+            }
+          }
+        ],
+        "attributes": {
+          "GRIB_paramId": 244,
+          "GRIB_dataType": "an",
+          "GRIB_numberOfPoints": 1038240,
+          "GRIB_typeOfLevel": "surface",
+          "GRIB_stepUnits": 1,
+          "GRIB_stepType": "instant",
+          "GRIB_gridType": "regular_ll",
+          "GRIB_uvRelativeToGrid": 0,
+          "GRIB_NV": 0,
+          "GRIB_Nx": 1440,
+          "GRIB_Ny": 721,
+          "GRIB_cfName": "unknown",
+          "GRIB_cfVarName": "fsr",
+          "GRIB_gridDefinitionDescription": "Latitude/Longitude Grid",
+          "GRIB_iDirectionIncrementInDegrees": 0.25,
+          "GRIB_iScansNegatively": 0,
+          "GRIB_jDirectionIncrementInDegrees": 0.25,
+          "GRIB_jPointsAreConsecutive": 0,
+          "GRIB_jScansPositively": 0,
+          "GRIB_latitudeOfFirstGridPointInDegrees": 90.0,
+          "GRIB_latitudeOfLastGridPointInDegrees": -90.0,
+          "GRIB_longitudeOfFirstGridPointInDegrees": 0.0,
+          "GRIB_longitudeOfLastGridPointInDegrees": 359.75,
+          "GRIB_missingValue": 3.4028234663852886e+38,
+          "GRIB_name": "Forecast surface roughness",
+          "GRIB_shortName": "fsr",
+          "GRIB_totalNumber": 0,
+          "GRIB_units": "m",
+          "long_name": "Forecast surface roughness",
+          "units": "m",
+          "standard_name": "unknown",
+          "last_ingested_valid_time_index": 760079,
+          "_FillValue": "AAAAAAAA+H8="
+        },
+        "dimension_names": [
+          "valid_time",
+          "latitude",
+          "longitude"
+        ],
+        "zarr_format": 3,
+        "node_type": "array",
+        "storage_transformers": []
+      },
+      "latitude": {
+        "shape": [
+          13
+        ],
+        "data_type": "float64",
+        "chunk_grid": {
+          "name": "regular",
+          "configuration": {
+            "chunk_shape": [
+              13
+            ]
+          }
+        },
+        "chunk_key_encoding": {
+          "name": "default",
+          "configuration": {
+            "separator": "/"
+          }
+        },
+        "fill_value": "NaN",
+        "codecs": [
+          {
+            "name": "bytes",
+            "configuration": {
+              "endian": "little"
+            }
+          },
+          {
+            "name": "blosc",
+            "configuration": {
+              "typesize": 8,
+              "cname": "zstd",
+              "clevel": 5,
+              "shuffle": "shuffle",
+              "blocksize": 0
+            }
+          }
+        ],
+        "attributes": {
+          "units": "degrees_north",
+          "standard_name": "latitude",
+          "long_name": "latitude",
+          "stored_direction": "decreasing",
+          "_FillValue": "AAAAAAAA+H8="
+        },
+        "dimension_names": [
+          "latitude"
+        ],
+        "zarr_format": 3,
+        "node_type": "array",
+        "storage_transformers": []
+      },
+      "longitude": {
+        "shape": [
+          11
+        ],
+        "data_type": "float64",
+        "chunk_grid": {
+          "name": "regular",
+          "configuration": {
+            "chunk_shape": [
+              11
+            ]
+          }
+        },
+        "chunk_key_encoding": {
+          "name": "default",
+          "configuration": {
+            "separator": "/"
+          }
+        },
+        "fill_value": "NaN",
+        "codecs": [
+          {
+            "name": "bytes",
+            "configuration": {
+              "endian": "little"
+            }
+          },
+          {
+            "name": "blosc",
+            "configuration": {
+              "typesize": 8,
+              "cname": "zstd",
+              "clevel": 5,
+              "shuffle": "shuffle",
+              "blocksize": 0
+            }
+          }
+        ],
+        "attributes": {
+          "units": "degrees_east",
+          "standard_name": "longitude",
+          "long_name": "longitude",
+          "_FillValue": "AAAAAAAA+H8="
+        },
+        "dimension_names": [
+          "longitude"
+        ],
+        "zarr_format": 3,
+        "node_type": "array",
+        "storage_transformers": []
+      },
+      "rsn": {
+        "shape": [
+          141,
+          13,
+          11
+        ],
+        "data_type": "float32",
+        "chunk_grid": {
+          "name": "regular",
+          "configuration": {
+            "chunk_shape": [
+              141,
+              13,
+              11
+            ]
+          }
+        },
+        "chunk_key_encoding": {
+          "name": "default",
+          "configuration": {
+            "separator": "/"
+          }
+        },
+        "fill_value": "NaN",
+        "codecs": [
+          {
+            "name": "bytes",
+            "configuration": {
+              "endian": "little"
+            }
+          },
+          {
+            "name": "blosc",
+            "configuration": {
+              "typesize": 4,
+              "cname": "zstd",
+              "clevel": 5,
+              "shuffle": "shuffle",
+              "blocksize": 0
+            }
+          }
+        ],
+        "attributes": {
+          "GRIB_paramId": 33,
+          "GRIB_dataType": "an",
+          "GRIB_numberOfPoints": 1038240,
+          "GRIB_typeOfLevel": "surface",
+          "GRIB_stepUnits": 1,
+          "GRIB_stepType": "instant",
+          "GRIB_gridType": "regular_ll",
+          "GRIB_uvRelativeToGrid": 0,
+          "GRIB_NV": 0,
+          "GRIB_Nx": 1440,
+          "GRIB_Ny": 721,
+          "GRIB_cfName": "unknown",
+          "GRIB_cfVarName": "rsn",
+          "GRIB_gridDefinitionDescription": "Latitude/Longitude Grid",
+          "GRIB_iDirectionIncrementInDegrees": 0.25,
+          "GRIB_iScansNegatively": 0,
+          "GRIB_jDirectionIncrementInDegrees": 0.25,
+          "GRIB_jPointsAreConsecutive": 0,
+          "GRIB_jScansPositively": 0,
+          "GRIB_latitudeOfFirstGridPointInDegrees": 90.0,
+          "GRIB_latitudeOfLastGridPointInDegrees": -90.0,
+          "GRIB_longitudeOfFirstGridPointInDegrees": 0.0,
+          "GRIB_longitudeOfLastGridPointInDegrees": 359.75,
+          "GRIB_missingValue": 3.4028234663852886e+38,
+          "GRIB_name": "Snow density",
+          "GRIB_shortName": "rsn",
+          "GRIB_totalNumber": 0,
+          "GRIB_units": "kg m**-3",
+          "long_name": "Snow density",
+          "units": "kg m**-3",
+          "standard_name": "unknown",
+          "last_ingested_valid_time_index": 760079,
+          "_FillValue": "AAAAAAAA+H8="
+        },
+        "dimension_names": [
+          "valid_time",
+          "latitude",
+          "longitude"
+        ],
+        "zarr_format": 3,
+        "node_type": "array",
+        "storage_transformers": []
+      },
+      "sd": {
+        "shape": [
+          141,
+          13,
+          11
+        ],
+        "data_type": "float32",
+        "chunk_grid": {
+          "name": "regular",
+          "configuration": {
+            "chunk_shape": [
+              141,
+              13,
+              11
+            ]
+          }
+        },
+        "chunk_key_encoding": {
+          "name": "default",
+          "configuration": {
+            "separator": "/"
+          }
+        },
+        "fill_value": "NaN",
+        "codecs": [
+          {
+            "name": "bytes",
+            "configuration": {
+              "endian": "little"
+            }
+          },
+          {
+            "name": "blosc",
+            "configuration": {
+              "typesize": 4,
+              "cname": "zstd",
+              "clevel": 5,
+              "shuffle": "shuffle",
+              "blocksize": 0
+            }
+          }
+        ],
+        "attributes": {
+          "GRIB_paramId": 141,
+          "GRIB_dataType": "an",
+          "GRIB_numberOfPoints": 1038240,
+          "GRIB_typeOfLevel": "surface",
+          "GRIB_stepUnits": 1,
+          "GRIB_stepType": "instant",
+          "GRIB_gridType": "regular_ll",
+          "GRIB_uvRelativeToGrid": 0,
+          "GRIB_NV": 0,
+          "GRIB_Nx": 1440,
+          "GRIB_Ny": 721,
+          "GRIB_cfName": "lwe_thickness_of_surface_snow_amount",
+          "GRIB_cfVarName": "sd",
+          "GRIB_gridDefinitionDescription": "Latitude/Longitude Grid",
+          "GRIB_iDirectionIncrementInDegrees": 0.25,
+          "GRIB_iScansNegatively": 0,
+          "GRIB_jDirectionIncrementInDegrees": 0.25,
+          "GRIB_jPointsAreConsecutive": 0,
+          "GRIB_jScansPositively": 0,
+          "GRIB_latitudeOfFirstGridPointInDegrees": 90.0,
+          "GRIB_latitudeOfLastGridPointInDegrees": -90.0,
+          "GRIB_longitudeOfFirstGridPointInDegrees": 0.0,
+          "GRIB_longitudeOfLastGridPointInDegrees": 359.75,
+          "GRIB_missingValue": 3.4028234663852886e+38,
+          "GRIB_name": "Snow depth",
+          "GRIB_shortName": "sd",
+          "GRIB_totalNumber": 0,
+          "GRIB_units": "m of water equivalent",
+          "long_name": "Snow depth",
+          "units": "m of water equivalent",
+          "standard_name": "lwe_thickness_of_surface_snow_amount",
+          "last_ingested_valid_time_index": 760079,
+          "_FillValue": "AAAAAAAA+H8="
+        },
+        "dimension_names": [
+          "valid_time",
+          "latitude",
+          "longitude"
+        ],
+        "zarr_format": 3,
+        "node_type": "array",
+        "storage_transformers": []
+      },
+      "sf": {
+        "shape": [
+          141,
+          13,
+          11
+        ],
+        "data_type": "float32",
+        "chunk_grid": {
+          "name": "regular",
+          "configuration": {
+            "chunk_shape": [
+              141,
+              13,
+              11
+            ]
+          }
+        },
+        "chunk_key_encoding": {
+          "name": "default",
+          "configuration": {
+            "separator": "/"
+          }
+        },
+        "fill_value": "NaN",
+        "codecs": [
+          {
+            "name": "bytes",
+            "configuration": {
+              "endian": "little"
+            }
+          },
+          {
+            "name": "blosc",
+            "configuration": {
+              "typesize": 4,
+              "cname": "zstd",
+              "clevel": 5,
+              "shuffle": "shuffle",
+              "blocksize": 0
+            }
+          }
+        ],
+        "attributes": {
+          "GRIB_paramId": 144,
+          "GRIB_dataType": "fc",
+          "GRIB_numberOfPoints": 1038240,
+          "GRIB_typeOfLevel": "surface",
+          "GRIB_stepUnits": 1,
+          "GRIB_stepType": "accum",
+          "GRIB_gridType": "regular_ll",
+          "GRIB_uvRelativeToGrid": 0,
+          "GRIB_NV": 0,
+          "GRIB_Nx": 1440,
+          "GRIB_Ny": 721,
+          "GRIB_cfName": "lwe_thickness_of_snowfall_amount",
+          "GRIB_cfVarName": "sf",
+          "GRIB_gridDefinitionDescription": "Latitude/Longitude Grid",
+          "GRIB_iDirectionIncrementInDegrees": 0.25,
+          "GRIB_iScansNegatively": 0,
+          "GRIB_jDirectionIncrementInDegrees": 0.25,
+          "GRIB_jPointsAreConsecutive": 0,
+          "GRIB_jScansPositively": 0,
+          "GRIB_latitudeOfFirstGridPointInDegrees": 90.0,
+          "GRIB_latitudeOfLastGridPointInDegrees": -90.0,
+          "GRIB_longitudeOfFirstGridPointInDegrees": 0.0,
+          "GRIB_longitudeOfLastGridPointInDegrees": 359.75,
+          "GRIB_missingValue": 3.4028234663852886e+38,
+          "GRIB_name": "Snowfall",
+          "GRIB_shortName": "sf",
+          "GRIB_totalNumber": 0,
+          "GRIB_units": "m of water equivalent",
+          "long_name": "Snowfall",
+          "units": "m of water equivalent",
+          "standard_name": "lwe_thickness_of_snowfall_amount",
+          "last_ingested_valid_time_index": 760079,
+          "_FillValue": "AAAAAAAA+H8="
+        },
+        "dimension_names": [
+          "valid_time",
+          "latitude",
+          "longitude"
+        ],
+        "zarr_format": 3,
+        "node_type": "array",
+        "storage_transformers": []
+      },
+      "sp": {
+        "shape": [
+          141,
+          13,
+          11
+        ],
+        "data_type": "float32",
+        "chunk_grid": {
+          "name": "regular",
+          "configuration": {
+            "chunk_shape": [
+              141,
+              13,
+              11
+            ]
+          }
+        },
+        "chunk_key_encoding": {
+          "name": "default",
+          "configuration": {
+            "separator": "/"
+          }
+        },
+        "fill_value": "NaN",
+        "codecs": [
+          {
+            "name": "bytes",
+            "configuration": {
+              "endian": "little"
+            }
+          },
+          {
+            "name": "blosc",
+            "configuration": {
+              "typesize": 4,
+              "cname": "zstd",
+              "clevel": 5,
+              "shuffle": "shuffle",
+              "blocksize": 0
+            }
+          }
+        ],
+        "attributes": {
+          "GRIB_paramId": 134,
+          "GRIB_dataType": "an",
+          "GRIB_numberOfPoints": 1038240,
+          "GRIB_typeOfLevel": "surface",
+          "GRIB_stepUnits": 1,
+          "GRIB_stepType": "instant",
+          "GRIB_gridType": "regular_ll",
+          "GRIB_uvRelativeToGrid": 0,
+          "GRIB_NV": 0,
+          "GRIB_Nx": 1440,
+          "GRIB_Ny": 721,
+          "GRIB_cfName": "surface_air_pressure",
+          "GRIB_cfVarName": "sp",
+          "GRIB_gridDefinitionDescription": "Latitude/Longitude Grid",
+          "GRIB_iDirectionIncrementInDegrees": 0.25,
+          "GRIB_iScansNegatively": 0,
+          "GRIB_jDirectionIncrementInDegrees": 0.25,
+          "GRIB_jPointsAreConsecutive": 0,
+          "GRIB_jScansPositively": 0,
+          "GRIB_latitudeOfFirstGridPointInDegrees": 90.0,
+          "GRIB_latitudeOfLastGridPointInDegrees": -90.0,
+          "GRIB_longitudeOfFirstGridPointInDegrees": 0.0,
+          "GRIB_longitudeOfLastGridPointInDegrees": 359.75,
+          "GRIB_missingValue": 3.4028234663852886e+38,
+          "GRIB_name": "Surface pressure",
+          "GRIB_shortName": "sp",
+          "GRIB_totalNumber": 0,
+          "GRIB_units": "Pa",
+          "long_name": "Surface pressure",
+          "units": "Pa",
+          "standard_name": "surface_air_pressure",
+          "last_ingested_valid_time_index": 760079,
+          "_FillValue": "AAAAAAAA+H8="
+        },
+        "dimension_names": [
+          "valid_time",
+          "latitude",
+          "longitude"
+        ],
+        "zarr_format": 3,
+        "node_type": "array",
+        "storage_transformers": []
+      },
+      "ssrd": {
+        "shape": [
+          141,
+          13,
+          11
+        ],
+        "data_type": "float32",
+        "chunk_grid": {
+          "name": "regular",
+          "configuration": {
+            "chunk_shape": [
+              141,
+              13,
+              11
+            ]
+          }
+        },
+        "chunk_key_encoding": {
+          "name": "default",
+          "configuration": {
+            "separator": "/"
+          }
+        },
+        "fill_value": "NaN",
+        "codecs": [
+          {
+            "name": "bytes",
+            "configuration": {
+              "endian": "little"
+            }
+          },
+          {
+            "name": "blosc",
+            "configuration": {
+              "typesize": 4,
+              "cname": "zstd",
+              "clevel": 5,
+              "shuffle": "shuffle",
+              "blocksize": 0
+            }
+          }
+        ],
+        "attributes": {
+          "GRIB_paramId": 169,
+          "GRIB_dataType": "fc",
+          "GRIB_numberOfPoints": 1038240,
+          "GRIB_typeOfLevel": "surface",
+          "GRIB_stepUnits": 1,
+          "GRIB_stepType": "accum",
+          "GRIB_gridType": "regular_ll",
+          "GRIB_uvRelativeToGrid": 0,
+          "GRIB_NV": 0,
+          "GRIB_Nx": 1440,
+          "GRIB_Ny": 721,
+          "GRIB_cfName": "surface_downwelling_shortwave_flux_in_air",
+          "GRIB_cfVarName": "ssrd",
+          "GRIB_gridDefinitionDescription": "Latitude/Longitude Grid",
+          "GRIB_iDirectionIncrementInDegrees": 0.25,
+          "GRIB_iScansNegatively": 0,
+          "GRIB_jDirectionIncrementInDegrees": 0.25,
+          "GRIB_jPointsAreConsecutive": 0,
+          "GRIB_jScansPositively": 0,
+          "GRIB_latitudeOfFirstGridPointInDegrees": 90.0,
+          "GRIB_latitudeOfLastGridPointInDegrees": -90.0,
+          "GRIB_longitudeOfFirstGridPointInDegrees": 0.0,
+          "GRIB_longitudeOfLastGridPointInDegrees": 359.75,
+          "GRIB_missingValue": 3.4028234663852886e+38,
+          "GRIB_name": "Surface short-wave (solar) radiation downwards",
+          "GRIB_shortName": "ssrd",
+          "GRIB_totalNumber": 0,
+          "GRIB_units": "J m**-2",
+          "long_name": "Surface short-wave (solar) radiation downwards",
+          "units": "J m**-2",
+          "standard_name": "surface_downwelling_shortwave_flux_in_air",
+          "last_ingested_valid_time_index": 760079,
+          "_FillValue": "AAAAAAAA+H8="
+        },
+        "dimension_names": [
+          "valid_time",
+          "latitude",
+          "longitude"
+        ],
+        "zarr_format": 3,
+        "node_type": "array",
+        "storage_transformers": []
+      },
+      "t2m": {
+        "shape": [
+          141,
+          13,
+          11
+        ],
+        "data_type": "float32",
+        "chunk_grid": {
+          "name": "regular",
+          "configuration": {
+            "chunk_shape": [
+              141,
+              13,
+              11
+            ]
+          }
+        },
+        "chunk_key_encoding": {
+          "name": "default",
+          "configuration": {
+            "separator": "/"
+          }
+        },
+        "fill_value": "NaN",
+        "codecs": [
+          {
+            "name": "bytes",
+            "configuration": {
+              "endian": "little"
+            }
+          },
+          {
+            "name": "blosc",
+            "configuration": {
+              "typesize": 4,
+              "cname": "zstd",
+              "clevel": 5,
+              "shuffle": "shuffle",
+              "blocksize": 0
+            }
+          }
+        ],
+        "attributes": {
+          "GRIB_paramId": 167,
+          "GRIB_dataType": "an",
+          "GRIB_numberOfPoints": 1038240,
+          "GRIB_typeOfLevel": "surface",
+          "GRIB_stepUnits": 1,
+          "GRIB_stepType": "instant",
+          "GRIB_gridType": "regular_ll",
+          "GRIB_uvRelativeToGrid": 0,
+          "GRIB_NV": 0,
+          "GRIB_Nx": 1440,
+          "GRIB_Ny": 721,
+          "GRIB_cfName": "unknown",
+          "GRIB_cfVarName": "t2m",
+          "GRIB_gridDefinitionDescription": "Latitude/Longitude Grid",
+          "GRIB_iDirectionIncrementInDegrees": 0.25,
+          "GRIB_iScansNegatively": 0,
+          "GRIB_jDirectionIncrementInDegrees": 0.25,
+          "GRIB_jPointsAreConsecutive": 0,
+          "GRIB_jScansPositively": 0,
+          "GRIB_latitudeOfFirstGridPointInDegrees": 90.0,
+          "GRIB_latitudeOfLastGridPointInDegrees": -90.0,
+          "GRIB_longitudeOfFirstGridPointInDegrees": 0.0,
+          "GRIB_longitudeOfLastGridPointInDegrees": 359.75,
+          "GRIB_missingValue": 3.4028234663852886e+38,
+          "GRIB_name": "2 metre temperature",
+          "GRIB_shortName": "2t",
+          "GRIB_totalNumber": 0,
+          "GRIB_units": "K",
+          "long_name": "2 metre temperature",
+          "units": "K",
+          "standard_name": "unknown",
+          "last_ingested_valid_time_index": 760079,
+          "_FillValue": "AAAAAAAA+H8="
+        },
+        "dimension_names": [
+          "valid_time",
+          "latitude",
+          "longitude"
+        ],
+        "zarr_format": 3,
+        "node_type": "array",
+        "storage_transformers": []
+      },
+      "u10": {
+        "shape": [
+          141,
+          13,
+          11
+        ],
+        "data_type": "float32",
+        "chunk_grid": {
+          "name": "regular",
+          "configuration": {
+            "chunk_shape": [
+              141,
+              13,
+              11
+            ]
+          }
+        },
+        "chunk_key_encoding": {
+          "name": "default",
+          "configuration": {
+            "separator": "/"
+          }
+        },
+        "fill_value": "NaN",
+        "codecs": [
+          {
+            "name": "bytes",
+            "configuration": {
+              "endian": "little"
+            }
+          },
+          {
+            "name": "blosc",
+            "configuration": {
+              "typesize": 4,
+              "cname": "zstd",
+              "clevel": 5,
+              "shuffle": "shuffle",
+              "blocksize": 0
+            }
+          }
+        ],
+        "attributes": {
+          "GRIB_paramId": 165,
+          "GRIB_dataType": "an",
+          "GRIB_numberOfPoints": 1038240,
+          "GRIB_typeOfLevel": "surface",
+          "GRIB_stepUnits": 1,
+          "GRIB_stepType": "instant",
+          "GRIB_gridType": "regular_ll",
+          "GRIB_uvRelativeToGrid": 0,
+          "GRIB_NV": 0,
+          "GRIB_Nx": 1440,
+          "GRIB_Ny": 721,
+          "GRIB_cfName": "unknown",
+          "GRIB_cfVarName": "u10",
+          "GRIB_gridDefinitionDescription": "Latitude/Longitude Grid",
+          "GRIB_iDirectionIncrementInDegrees": 0.25,
+          "GRIB_iScansNegatively": 0,
+          "GRIB_jDirectionIncrementInDegrees": 0.25,
+          "GRIB_jPointsAreConsecutive": 0,
+          "GRIB_jScansPositively": 0,
+          "GRIB_latitudeOfFirstGridPointInDegrees": 90.0,
+          "GRIB_latitudeOfLastGridPointInDegrees": -90.0,
+          "GRIB_longitudeOfFirstGridPointInDegrees": 0.0,
+          "GRIB_longitudeOfLastGridPointInDegrees": 359.75,
+          "GRIB_missingValue": 3.4028234663852886e+38,
+          "GRIB_name": "10 metre U wind component",
+          "GRIB_shortName": "10u",
+          "GRIB_totalNumber": 0,
+          "GRIB_units": "m s**-1",
+          "long_name": "10 metre U wind component",
+          "units": "m s**-1",
+          "standard_name": "unknown",
+          "last_ingested_valid_time_index": 760079,
+          "_FillValue": "AAAAAAAA+H8="
+        },
+        "dimension_names": [
+          "valid_time",
+          "latitude",
+          "longitude"
+        ],
+        "zarr_format": 3,
+        "node_type": "array",
+        "storage_transformers": []
+      },
+      "u100": {
+        "shape": [
+          141,
+          13,
+          11
+        ],
+        "data_type": "float32",
+        "chunk_grid": {
+          "name": "regular",
+          "configuration": {
+            "chunk_shape": [
+              141,
+              13,
+              11
+            ]
+          }
+        },
+        "chunk_key_encoding": {
+          "name": "default",
+          "configuration": {
+            "separator": "/"
+          }
+        },
+        "fill_value": "NaN",
+        "codecs": [
+          {
+            "name": "bytes",
+            "configuration": {
+              "endian": "little"
+            }
+          },
+          {
+            "name": "blosc",
+            "configuration": {
+              "typesize": 4,
+              "cname": "zstd",
+              "clevel": 5,
+              "shuffle": "shuffle",
+              "blocksize": 0
+            }
+          }
+        ],
+        "attributes": {
+          "GRIB_paramId": 228246,
+          "GRIB_dataType": "an",
+          "GRIB_numberOfPoints": 1038240,
+          "GRIB_typeOfLevel": "surface",
+          "GRIB_stepUnits": 1,
+          "GRIB_stepType": "instant",
+          "GRIB_gridType": "regular_ll",
+          "GRIB_uvRelativeToGrid": 0,
+          "GRIB_NV": 0,
+          "GRIB_Nx": 1440,
+          "GRIB_Ny": 721,
+          "GRIB_cfName": "unknown",
+          "GRIB_cfVarName": "u100",
+          "GRIB_gridDefinitionDescription": "Latitude/Longitude Grid",
+          "GRIB_iDirectionIncrementInDegrees": 0.25,
+          "GRIB_iScansNegatively": 0,
+          "GRIB_jDirectionIncrementInDegrees": 0.25,
+          "GRIB_jPointsAreConsecutive": 0,
+          "GRIB_jScansPositively": 0,
+          "GRIB_latitudeOfFirstGridPointInDegrees": 90.0,
+          "GRIB_latitudeOfLastGridPointInDegrees": -90.0,
+          "GRIB_longitudeOfFirstGridPointInDegrees": 0.0,
+          "GRIB_longitudeOfLastGridPointInDegrees": 359.75,
+          "GRIB_missingValue": 3.4028234663852886e+38,
+          "GRIB_name": "100 metre U wind component",
+          "GRIB_shortName": "100u",
+          "GRIB_totalNumber": 0,
+          "GRIB_units": "m s**-1",
+          "long_name": "100 metre U wind component",
+          "units": "m s**-1",
+          "standard_name": "unknown",
+          "last_ingested_valid_time_index": 760079,
+          "_FillValue": "AAAAAAAA+H8="
+        },
+        "dimension_names": [
+          "valid_time",
+          "latitude",
+          "longitude"
+        ],
+        "zarr_format": 3,
+        "node_type": "array",
+        "storage_transformers": []
+      },
+      "v10": {
+        "shape": [
+          141,
+          13,
+          11
+        ],
+        "data_type": "float32",
+        "chunk_grid": {
+          "name": "regular",
+          "configuration": {
+            "chunk_shape": [
+              141,
+              13,
+              11
+            ]
+          }
+        },
+        "chunk_key_encoding": {
+          "name": "default",
+          "configuration": {
+            "separator": "/"
+          }
+        },
+        "fill_value": "NaN",
+        "codecs": [
+          {
+            "name": "bytes",
+            "configuration": {
+              "endian": "little"
+            }
+          },
+          {
+            "name": "blosc",
+            "configuration": {
+              "typesize": 4,
+              "cname": "zstd",
+              "clevel": 5,
+              "shuffle": "shuffle",
+              "blocksize": 0
+            }
+          }
+        ],
+        "attributes": {
+          "GRIB_paramId": 166,
+          "GRIB_dataType": "an",
+          "GRIB_numberOfPoints": 1038240,
+          "GRIB_typeOfLevel": "surface",
+          "GRIB_stepUnits": 1,
+          "GRIB_stepType": "instant",
+          "GRIB_gridType": "regular_ll",
+          "GRIB_uvRelativeToGrid": 0,
+          "GRIB_NV": 0,
+          "GRIB_Nx": 1440,
+          "GRIB_Ny": 721,
+          "GRIB_cfName": "unknown",
+          "GRIB_cfVarName": "v10",
+          "GRIB_gridDefinitionDescription": "Latitude/Longitude Grid",
+          "GRIB_iDirectionIncrementInDegrees": 0.25,
+          "GRIB_iScansNegatively": 0,
+          "GRIB_jDirectionIncrementInDegrees": 0.25,
+          "GRIB_jPointsAreConsecutive": 0,
+          "GRIB_jScansPositively": 0,
+          "GRIB_latitudeOfFirstGridPointInDegrees": 90.0,
+          "GRIB_latitudeOfLastGridPointInDegrees": -90.0,
+          "GRIB_longitudeOfFirstGridPointInDegrees": 0.0,
+          "GRIB_longitudeOfLastGridPointInDegrees": 359.75,
+          "GRIB_missingValue": 3.4028234663852886e+38,
+          "GRIB_name": "10 metre V wind component",
+          "GRIB_shortName": "10v",
+          "GRIB_totalNumber": 0,
+          "GRIB_units": "m s**-1",
+          "long_name": "10 metre V wind component",
+          "units": "m s**-1",
+          "standard_name": "unknown",
+          "last_ingested_valid_time_index": 760079,
+          "_FillValue": "AAAAAAAA+H8="
+        },
+        "dimension_names": [
+          "valid_time",
+          "latitude",
+          "longitude"
+        ],
+        "zarr_format": 3,
+        "node_type": "array",
+        "storage_transformers": []
+      },
+      "v100": {
+        "shape": [
+          141,
+          13,
+          11
+        ],
+        "data_type": "float32",
+        "chunk_grid": {
+          "name": "regular",
+          "configuration": {
+            "chunk_shape": [
+              141,
+              13,
+              11
+            ]
+          }
+        },
+        "chunk_key_encoding": {
+          "name": "default",
+          "configuration": {
+            "separator": "/"
+          }
+        },
+        "fill_value": "NaN",
+        "codecs": [
+          {
+            "name": "bytes",
+            "configuration": {
+              "endian": "little"
+            }
+          },
+          {
+            "name": "blosc",
+            "configuration": {
+              "typesize": 4,
+              "cname": "zstd",
+              "clevel": 5,
+              "shuffle": "shuffle",
+              "blocksize": 0
+            }
+          }
+        ],
+        "attributes": {
+          "GRIB_paramId": 228247,
+          "GRIB_dataType": "an",
+          "GRIB_numberOfPoints": 1038240,
+          "GRIB_typeOfLevel": "surface",
+          "GRIB_stepUnits": 1,
+          "GRIB_stepType": "instant",
+          "GRIB_gridType": "regular_ll",
+          "GRIB_uvRelativeToGrid": 0,
+          "GRIB_NV": 0,
+          "GRIB_Nx": 1440,
+          "GRIB_Ny": 721,
+          "GRIB_cfName": "unknown",
+          "GRIB_cfVarName": "v100",
+          "GRIB_gridDefinitionDescription": "Latitude/Longitude Grid",
+          "GRIB_iDirectionIncrementInDegrees": 0.25,
+          "GRIB_iScansNegatively": 0,
+          "GRIB_jDirectionIncrementInDegrees": 0.25,
+          "GRIB_jPointsAreConsecutive": 0,
+          "GRIB_jScansPositively": 0,
+          "GRIB_latitudeOfFirstGridPointInDegrees": 90.0,
+          "GRIB_latitudeOfLastGridPointInDegrees": -90.0,
+          "GRIB_longitudeOfFirstGridPointInDegrees": 0.0,
+          "GRIB_longitudeOfLastGridPointInDegrees": 359.75,
+          "GRIB_missingValue": 3.4028234663852886e+38,
+          "GRIB_name": "100 metre V wind component",
+          "GRIB_shortName": "100v",
+          "GRIB_totalNumber": 0,
+          "GRIB_units": "m s**-1",
+          "long_name": "100 metre V wind component",
+          "units": "m s**-1",
+          "standard_name": "unknown",
+          "last_ingested_valid_time_index": 760079,
+          "_FillValue": "AAAAAAAA+H8="
+        },
+        "dimension_names": [
+          "valid_time",
+          "latitude",
+          "longitude"
+        ],
+        "zarr_format": 3,
+        "node_type": "array",
+        "storage_transformers": []
+      },
+      "valid_time": {
+        "shape": [
+          141
+        ],
+        "data_type": "int64",
+        "chunk_grid": {
+          "name": "regular",
+          "configuration": {
+            "chunk_shape": [
+              141
+            ]
+          }
+        },
+        "chunk_key_encoding": {
+          "name": "default",
+          "configuration": {
+            "separator": "/"
+          }
+        },
+        "fill_value": 0,
+        "codecs": [
+          {
+            "name": "bytes",
+            "configuration": {
+              "endian": "little"
+            }
+          },
+          {
+            "name": "blosc",
+            "configuration": {
+              "typesize": 8,
+              "cname": "zstd",
+              "clevel": 5,
+              "shuffle": "shuffle",
+              "blocksize": 0
+            }
+          }
+        ],
+        "attributes": {
+          "units": "hours since 1940-01-01",
+          "calendar": "proleptic_gregorian"
+        },
+        "dimension_names": [
+          "valid_time"
+        ],
+        "zarr_format": 3,
+        "node_type": "array",
+        "storage_transformers": []
+      }
+    }
+  },
+  "node_type": "group"
+}

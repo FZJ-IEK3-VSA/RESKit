@@ -300,6 +300,8 @@ def _validate(report, inputs, arguments):
 
 def _check_weather(report, manager, argument, weather, arguments):
     """Opens a weather source for its metadata only and checks it against the workflow."""
+    from reskit.workflow_manager import _source_constructor
+
     check = f"weather '{argument}'"
     path = arguments.get(argument)
     if path is None:
@@ -334,7 +336,8 @@ def _check_weather(report, manager, argument, weather, arguments):
         # e.g. the notes of Era5ZarrSource on variables it derives on the fly
         warnings.simplefilter("ignore")
         try:
-            source = manager._open_source(source_type, path, **options)
+            source_constructor = _source_constructor(source_type, path, None)
+            source = manager._open_source(source_constructor, path, **options)
         except (ResError, RuntimeError, OSError, ValueError, KeyError) as error:
             report._add("error", check, f"cannot be opened as {source_type} source: {error}")
             return

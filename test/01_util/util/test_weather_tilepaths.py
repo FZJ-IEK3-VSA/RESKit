@@ -2,17 +2,19 @@ import geokit as gk
 import numpy as np
 import pytest
 
-from reskit import TEST_DATA
+from reskit import data
 from reskit.util.weather_tile import (
     get_tile_xy,
     get_location_specific_weather_paths,
 )
 
+FIXTURES = data.paths("test_suite")
+
 
 def test_weather_tilepaths():
     era5_path = f".../<ZOOM>/<X-TILE>/<Y-TILE>/2015"
 
-    df = gk.vector.extractFeatures(TEST_DATA["turbinePlacements.shp"])
+    df = gk.vector.extractFeatures(FIXTURES["turbine_placements_shp"])
     df["hub_height"] = np.linspace(100, 130, df.shape[0])
     df["capacity"] = 3000
     df["rotor_diam"] = 170
@@ -60,7 +62,7 @@ def test_weather_tilepaths():
 
 
 def test_get_tile_XY():
-    df = gk.vector.extractFeatures(TEST_DATA["turbinePlacements.shp"])
+    df = gk.vector.extractFeatures(FIXTURES["turbine_placements_shp"])
 
     # test geom
     X, Y = get_tile_xy(zoom=4, lon=None, lat=None, geom=df.geom[0])

@@ -3,6 +3,7 @@ from logging import warning
 
 from reskit.csp.data.database_loader import load_dataset
 from reskit.solar.workflows.solar_workflow_manager import SolarWorkflowManager
+from reskit.util.paths import as_path_string, is_path_like
 from reskit.workflow_manager import _any_column_problems
 from ... import weather as rk_weather
 import numpy as np
@@ -272,8 +273,8 @@ class PTRWorkflowManager(SolarWorkflowManager):
 
         Parameters
         ----------
-        elev: str, list
-              If a string is given it must be a path to a rasterfile including the elevations.
+        elev: str, pathlib.Path, list
+              If a string or a Path is given it must be a path to a rasterfile including the elevations.
               If a list is given it has to include the elevations at each location.
 
 
@@ -288,8 +289,8 @@ class PTRWorkflowManager(SolarWorkflowManager):
         if elev == None:
             self.placements["elev"] = 0
 
-        elif isinstance(elev, str):
-            clipped_elev = self.ext.pad(0.5).rasterMosaic(elev)
+        elif is_path_like(elev):
+            clipped_elev = self.ext.pad(0.5).rasterMosaic(as_path_string(elev))
             self.placements["elev"] = gk.raster.interpolateValues(clipped_elev, self.locs)
         else:
             self.placements["elev"] = elev

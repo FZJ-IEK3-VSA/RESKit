@@ -3,7 +3,9 @@ import pandas as pd
 import pytest
 
 import reskit as rk
-from reskit import TEST_DATA
+from reskit import data
+
+FIXTURES = data.paths("test_suite")
 
 
 @pytest.fixture
@@ -29,69 +31,89 @@ def pt_pv_placements() -> pd.DataFrame:
 # %%
 
 
-def test_CSP_PTR_ERA5(pt_pv_placements):
+# with output_variables, the workflow drops interim variables as soon as later steps no
+# longer need them; dropping one too early would raise or change the requested outputs.
+# csp_ptr_era5 needs lon to label the placements of each dataset
+@pytest.mark.parametrize(
+    "output_variables",
+    [
+        None,
+        [
+            "lon",
+            "sm_opt",
+            "tes_opt",
+            "Power_net_total_per_day_Wh",
+            "P_backup_heating_daily_Wh_el",
+            "lcoe_EURct_per_kWh_el",
+        ],
+    ],
+    ids=["all_variables", "release_interim_variables"],
+)
+def test_CSP_PTR_ERA5(pt_pv_placements: pd.DataFrame, output_variables: list[str] | None) -> None:
     out = rk.csp.csp_ptr_era5(
         placements=pt_pv_placements,
-        era5_path=rk.TEST_DATA["csp-era5-like"],
-        global_solar_atlas_dni_path=rk.TEST_DATA["csp-gsa-dni-like.tif"],
-        global_solar_atlas_tamb_path=rk.TEST_DATA["csp-gsa-temp-like.tif"],
+        era5_path=FIXTURES["era5_csp"],
+        global_solar_atlas_dni_path=FIXTURES["csp_gsa_dni"],
+        global_solar_atlas_tamb_path=FIXTURES["csp_gsa_temp"],
         verbose=True,
         cost_year=2030,
         JITaccelerate=False,
         return_self=False,
         debug_vars=True,
         onlynightuse=True,
+        output_variables=output_variables,
     )
 
     print("Simulation done")
-
-    # the workflow gives both areas in the output
-    assert "land_area_m2" in out.variables
-    assert "aperture_area_m2" in out.variables
 
     # datasets
     a = np.array(["Dataset_SolarSalt_2030", "Dataset_Therminol_2030", "Dataset_SolarSalt_2030"])
     assert (out["datasetname"].values == a).all()
 
-    assert np.allclose(
-        out["LRA_factor_direct_normal_irradiance"].values,
-        [0.92240995, 0.85188336, 0.92240995],
-    )
+    if output_variables is None:
+        # the workflow gives both areas in the output
+        assert "land_area_m2" in out.variables
+        assert "aperture_area_m2" in out.variables
 
-    # direct_horizontal_irradiance:
-    assert out["direct_horizontal_irradiance"].values.shape == (8760, 3)
-    assert np.isclose(out["direct_horizontal_irradiance"].values.mean(), 189.95024229234605)
-    assert np.isclose(out["direct_horizontal_irradiance"].values.std(), 268.22838885782073)
-    assert np.isclose(out["direct_horizontal_irradiance"].values.min(), 0.0)
-    assert np.isclose(out["direct_horizontal_irradiance"].values.max(), 966.579790643025)
+        assert np.allclose(
+            out["LRA_factor_direct_normal_irradiance"].values,
+            [0.92240995, 0.85188336, 0.92240995],
+        )
 
-    # direct_horizontal_irradiance:
-    assert out["direct_normal_irradiance"].values.shape == (8760, 3)
-    assert np.isclose(out["direct_normal_irradiance"].values.mean(), 278.73085651103776)
-    assert np.isclose(out["direct_normal_irradiance"].values.std(), 332.3526428406074)
-    assert np.isclose(out["direct_normal_irradiance"].values.min(), 0.0)
-    assert np.isclose(out["direct_normal_irradiance"].values.max(), 982.451222209881)
+        # direct_horizontal_irradiance:
+        assert out["direct_horizontal_irradiance"].values.shape == (8760, 3)
+        assert np.isclose(out["direct_horizontal_irradiance"].values.mean(), 189.95024229234605)
+        assert np.isclose(out["direct_horizontal_irradiance"].values.std(), 268.22838885782073)
+        assert np.isclose(out["direct_horizontal_irradiance"].values.min(), 0.0)
+        assert np.isclose(out["direct_horizontal_irradiance"].values.max(), 966.579790643025)
 
-    # HeattoHTF_W
-    assert out["HeattoHTF_W"].values.shape == (8760, 3)
-    assert np.isclose(out["HeattoHTF_W"].values.mean(), 209780548.79719985)
-    assert np.isclose(out["HeattoHTF_W"].values.std(), 324059983.1510693)
-    assert np.isclose(out["HeattoHTF_W"].values.min(), 0.0)
-    assert np.isclose(out["HeattoHTF_W"].values.max(), 1245394974.4195464)
+        # direct_horizontal_irradiance:
+        assert out["direct_normal_irradiance"].values.shape == (8760, 3)
+        assert np.isclose(out["direct_normal_irradiance"].values.mean(), 278.73085651103776)
+        assert np.isclose(out["direct_normal_irradiance"].values.std(), 332.3526428406074)
+        assert np.isclose(out["direct_normal_irradiance"].values.min(), 0.0)
+        assert np.isclose(out["direct_normal_irradiance"].values.max(), 982.451222209881)
 
-    # HeattoPlant_W
-    assert out["HeattoPlant_W"].values.shape == (8760, 3)
-    assert np.isclose(out["HeattoPlant_W"].values.mean(), 159338864.09594935)
-    assert np.isclose(out["HeattoPlant_W"].values.std(), 276057742.9582942)
-    assert np.isclose(out["HeattoPlant_W"].values.min(), 0.0)
-    assert np.isclose(out["HeattoPlant_W"].values.max(), 1102811547.598732)
+        # HeattoHTF_W
+        assert out["HeattoHTF_W"].values.shape == (8760, 3)
+        assert np.isclose(out["HeattoHTF_W"].values.mean(), 209780548.79719985)
+        assert np.isclose(out["HeattoHTF_W"].values.std(), 324059983.1510693)
+        assert np.isclose(out["HeattoHTF_W"].values.min(), 0.0)
+        assert np.isclose(out["HeattoHTF_W"].values.max(), 1245394974.4195464)
 
-    # P_heating_W
-    assert out["P_heating_W"].values.shape == (8760, 3)
-    assert np.isclose(out["P_heating_W"].values.mean(), 8567187.817746798)
-    assert np.isclose(out["P_heating_W"].values.std(), 20261718.074392248)
-    assert np.isclose(out["P_heating_W"].values.min(), 0.0)
-    assert np.isclose(out["P_heating_W"].values.max(), 70676641.74470554)
+        # HeattoPlant_W
+        assert out["HeattoPlant_W"].values.shape == (8760, 3)
+        assert np.isclose(out["HeattoPlant_W"].values.mean(), 159338864.09594935)
+        assert np.isclose(out["HeattoPlant_W"].values.std(), 276057742.9582942)
+        assert np.isclose(out["HeattoPlant_W"].values.min(), 0.0)
+        assert np.isclose(out["HeattoPlant_W"].values.max(), 1102811547.598732)
+
+        # P_heating_W
+        assert out["P_heating_W"].values.shape == (8760, 3)
+        assert np.isclose(out["P_heating_W"].values.mean(), 8567187.817746798)
+        assert np.isclose(out["P_heating_W"].values.std(), 20261718.074392248)
+        assert np.isclose(out["P_heating_W"].values.min(), 0.0)
+        assert np.isclose(out["P_heating_W"].values.max(), 70676641.74470554)
 
     # sm_opt
     a = np.array([2.0, 2.0, 2.0])

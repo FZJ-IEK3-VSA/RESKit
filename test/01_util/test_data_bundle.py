@@ -1,282 +1,128 @@
-"""RESKit answers from its bundled fixtures first; ``download`` sends a request to the catalogue instead."""
+"""RESKit ships the reskit-test-data fixtures as an ETHOS.Data bundle and reads them from it first."""
 
-import hashlib
-import json
+import shutil
 import urllib.request
-from pathlib import Path
-from types import SimpleNamespace
+import warnings
 
 import pytest
 
 ethos_data = pytest.importorskip("ethos_data")
 
+import reskit
 from reskit import data
 
-LICENCE = b"You may use these bytes.\n"
-FILES = {
-    "value.txt": b"bundled value",
-    "folder/a.txt": b"bundled a",
-    "folder/b.txt": b"bundled b",
-    "other.txt": b"only in the catalogue",
-}
-COLLECTIONS = """\
-catalog: {catalog}
-collections:
-  example:
-    include:
-      - dataset: trial
-        files: ["value.txt", "folder/*"]
-    paths:
-      input: trial/value.txt
-      folder: trial/folder
-  sized:
-    test:
-      include:
-        - dataset: trial
-          files: ["value.txt"]
-      paths:
-        input: trial/value.txt
-    full:
-      include:
-        - dataset: trial
-          files: ["other.txt"]
-      paths:
-        input: trial/other.txt
-  unnamed:
-    include:
-      - dataset: trial
-        files: ["value.txt"]
-"""
-
-
-def _sha(raw: bytes) -> str:
-    return "sha256:" + hashlib.sha256(raw).hexdigest()
-
-
-def _reset():
-    """Forget every per-process cache; a test's monkeypatched stand-in has none to clear."""
-    for name in ("handle", "_definitions", "_bundle", "bundled"):
-        cached = getattr(data, name)
-        if hasattr(cached, "cache_clear"):
-            cached.cache_clear()
-
-
-def _write_catalogue(root: Path) -> Path:
-    """A local, public catalogue with one dataset ``trial`` holding FILES."""
-    dataset = root / "catalogue" / "datasets" / "trial"
-    (dataset / "licenses").mkdir(parents=True)
-    (dataset / "licenses" / "terms.txt").write_bytes(LICENCE)
-    (dataset / "datapackage.json").write_text(
-        json.dumps(
-            {
-                "name": "trial",
-                "ethos:access": "public",
-                "ethos:visibility": "public",
-                "licenses": [
-                    {
-                        "name": "trial-terms",
-                        "path": "https://example.invalid/terms",
-                        "ethos:document": "licenses/terms.txt",
-                        "ethos:document_sha256": hashlib.sha256(LICENCE).hexdigest(),
-                    }
-                ],
-                "resources": [
-                    {
-                        "name": name.replace("/", "-").replace(".", "-"),
-                        "path": name,
-                        "bytes": len(raw),
-                        "hash": _sha(raw),
-                        "mediatype": "text/plain",
-                    }
-                    for name, raw in FILES.items()
-                ],
-            }
-        )
-    )
-    catalogue = root / "catalogue" / "datacatalog.json"
-    catalogue.write_text(
-        json.dumps(
-            {
-                "name": "trial-catalogue",
-                "ethos:catalog_role": "published",
-                "ethos:publication_url": "https://example.invalid/data",
-                "datasets": [
-                    {
-                        "name": "trial",
-                        "path": "datasets/trial/datapackage.json",
-                        "ethos:access": "public",
-                        "ethos:visibility": "public",
-                        "ethos:remote_prefix": "trial",
-                        "ethos:license_status": "resolved",
-                    }
-                ],
-            }
-        )
-    )
-    return catalogue
+BUNDLE = data.BUNDLES[0]
 
 
 @pytest.fixture
-def workspace(tmp_path, monkeypatch):
-    """A bundle of ``example`` beside a catalogue whose files are all already in the shared cache.
-
-    Every route can therefore be answered without the network, and the path a
-    call returns says which route answered: under ``bundle/`` or under ``cache/``.
-    """
-    monkeypatch.setattr(ethos_data.config, "load_config", lambda: ({}, {}))
-    for name in (
-        "ETHOS_DATA_CATALOG",
-        "ETHOS_RESTRICTED_DIR",
-        "ETHOS_STAGING_DIR",
-        "ETHOS_SKIP_UNAVAILABLE",
-        "ETHOS_PUBLICATION_URL",
-        data.DOWNLOAD_ENV,
-    ):
+def isolated(tmp_path, monkeypatch):
+    """A fresh handle with no settings file, a catalogue nobody can read and no network."""
+    settings = tmp_path / "ethos-data.yaml"
+    settings.write_text("{}\n")
+    monkeypatch.setenv("ETHOS_DATA_CONFIG", str(settings))
+    monkeypatch.setenv("ETHOS_DATA_CATALOG", str(tmp_path / "no-catalogue" / "datacatalog.json"))
+    monkeypatch.setenv("ETHOS_DATA_DIR", str(tmp_path / "cache"))
+    for name in (data.CATALOG_ENV, "ETHOS_DATA_DOWNLOAD", "ETHOS_RESTRICTED_DIRS", "ETHOS_STAGING_DIR"):
         monkeypatch.delenv(name, raising=False)
-    cache = tmp_path / "cache"
-    monkeypatch.setenv("ETHOS_DATA_DIR", str(cache))
 
-    source = tmp_path / "source"
-    for name, raw in FILES.items():
-        for base in (source, cache / "trial"):
-            (base / name).parent.mkdir(parents=True, exist_ok=True)
-            (base / name).write_bytes(raw)
-    catalogue = _write_catalogue(tmp_path)
-    collections = tmp_path / "collections.yaml"
-    collections.write_text(COLLECTIONS.format(catalog=catalogue.as_posix()))
-    monkeypatch.setenv(data.CATALOG_ENV, catalogue.as_posix())
+    def refuse(*args, **kwargs):
+        pytest.fail("the bundled fixtures were not read from the bundle")
 
-    bundle = tmp_path / "bundle"
-    ethos_data.export_bundle(
-        collections, ["example"], bundle, catalog=catalogue.as_posix(), dataset_roots={"trial": source}
-    )
-
-    monkeypatch.setattr(data, "COLLECTIONS_FILE", collections)
-    monkeypatch.setattr(data, "BUNDLE", bundle)
-    _reset()
-
-    def no_network(*args, **kwargs):
-        pytest.fail("the data module attempted network access")
-
-    monkeypatch.setattr(urllib.request, "urlopen", no_network)
-    yield SimpleNamespace(root=tmp_path, bundle=bundle, cache=cache)
-    _reset()
+    monkeypatch.setattr(urllib.request, "urlopen", refuse)
+    data.handle.cache_clear()
+    data._legacy_test_data.cache_clear()
+    yield tmp_path
+    data.handle.cache_clear()
+    data._legacy_test_data.cache_clear()
 
 
-def _catalogue_is_off_limits(monkeypatch):
-    monkeypatch.setattr(data, "handle", lambda: pytest.fail("the catalogue was consulted"))
+def test_the_shipped_bundle_verifies_offline(isolated):
+    """Every file, description and licence document matches bundle.json, and nothing is unrecorded."""
+    assert data.main(["bundle", "verify", str(BUNDLE)]) == 0
 
 
-def test_bundled_keys_are_answered_without_the_catalogue(workspace, monkeypatch):
-    _catalogue_is_off_limits(monkeypatch)
-    assert data.path("trial/value.txt") == workspace.bundle / "data" / "trial" / "value.txt"
-    assert data.path("trial/value.txt").read_bytes() == FILES["value.txt"]
-    assert data.directory("trial/folder") == workspace.bundle / "data" / "trial" / "folder"
-    assert data.directory("trial") == workspace.bundle / "data" / "trial"
-    assert sorted(data.bundled()) == ["trial/folder/a.txt", "trial/folder/b.txt", "trial/value.txt"]
+def test_the_bundle_holds_the_whole_fixture_family(isolated):
+    bundle = ethos_data.load_bundle(BUNDLE)
+    assert set(bundle.manifest.families) == {"reskit-test-data"}
+    assert all(name.startswith("reskit-test-data/") for name in bundle.names())
+    assert set(data.fetch("test_suite")) == set(bundle.resources)
 
 
-def test_named_paths_are_answered_without_the_catalogue(workspace, monkeypatch):
-    _catalogue_is_off_limits(monkeypatch)
-    named = data.paths("example")
-    assert named == {
-        "input": workspace.bundle / "data" / "trial" / "value.txt",
-        "folder": workspace.bundle / "data" / "trial" / "folder",
-    }
-    assert named.collection == "example"
-    assert data.paths("sized", test=True)["input"] == workspace.bundle / "data" / "trial" / "value.txt"
+#: The datasets the bundle may hold ahead of the catalogue: placements holds the 2025
+#: Bulawayo tables until the catalogue takes them in. Drop the entry once
+#: `reskit-data bundle update` has recorded the release that holds them.
+AHEAD = {"reskit-test-data/placements"}
 
 
-def test_an_exported_collection_is_fetched_without_the_catalogue(workspace, monkeypatch):
-    _catalogue_is_off_limits(monkeypatch)
-    files = data.fetch("example")
-    assert sorted(files) == ["trial/folder/a.txt", "trial/folder/b.txt", "trial/value.txt"]
-    assert files.one("a.txt") == workspace.bundle / "data" / "trial" / "folder" / "a.txt"
-    assert files.named["folder"] == workspace.bundle / "data" / "trial" / "folder"
+def test_the_bundle_is_ahead_of_the_catalogue_only_where_expected(isolated):
+    """A bundle ahead of the catalogue warns in every process: report all but AHEAD.
+
+    A drift from the catalogue is reported as a warning, not a failure: realign it with
+    `reskit-data propose` or `reskit-data bundle update`.
+    """
+    unexpected = {name: reason for name, reason in ethos_data.load_bundle(BUNDLE).ahead().items() if name not in AHEAD}
+    if unexpected:
+        warnings.warn(
+            f"bundle {BUNDLE} is ahead of the catalogue beyond AHEAD: {unexpected}",
+            stacklevel=1,
+        )
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        data.paths("test_suite")
+    for warning in caught:
+        if issubclass(warning.category, ethos_data.BundleAlignmentWarning):
+            assert all(name in str(warning.message) for name in ethos_data.load_bundle(BUNDLE).ahead())
 
 
-def test_other_collections_are_resolved_in_the_catalogue_and_served_from_the_bundle(workspace):
-    files = data.fetch("sized", test=True)
-    assert dict(files) == {"trial/value.txt": workspace.bundle / "data" / "trial" / "value.txt"}
-    assert files.named["input"] == workspace.bundle / "data" / "trial" / "value.txt"
-    assert dict(data.fetch("unnamed")) == {"trial/value.txt": workspace.bundle / "data" / "trial" / "value.txt"}
-    assert not data.fetch("unnamed").named
+def test_a_changed_fixture_is_an_error_never_a_download(isolated, monkeypatch):
+    copy = isolated / "bundle"
+    shutil.copytree(BUNDLE, copy)
+    edited = copy / "data" / "reskit-test-data" / "placements" / "turbine_placements.csv"
+    edited.write_text("edited by hand\n")
+    monkeypatch.setattr(data, "BUNDLES", (copy,))
+    data.handle.cache_clear()
+
+    with pytest.raises(ethos_data.BundleError, match="bundle update"):
+        data.paths("example_placements")
+    assert edited.read_text() == "edited by hand\n"
 
 
-def test_what_the_bundle_lacks_comes_from_the_catalogue(workspace):
-    assert data.path("trial/other.txt") == workspace.cache / "trial" / "other.txt"
-    assert data.paths("sized")["input"] == workspace.cache / "trial" / "other.txt"
-    assert data.fetch("sized")["trial/other.txt"] == workspace.cache / "trial" / "other.txt"
-    with pytest.raises(ethos_data.CollectionError, match="no named paths"):
-        data.paths("unnamed")
-    with pytest.raises(KeyError):
-        data.path("trial/missing.txt")
+def test_the_download_switch_reads_the_fixtures_through_the_catalogue(isolated, monkeypatch):
+    """$ETHOS_DATA_DOWNLOAD sends the bundled files to the catalogue route -- here one nobody can read."""
+    monkeypatch.setenv("ETHOS_DATA_DOWNLOAD", "1")
+    data.handle.cache_clear()
+    with pytest.raises(ethos_data.CatalogUnavailable):
+        data.paths("test_suite")
 
 
-@pytest.mark.parametrize("how", ["argument", "environment"])
-def test_download_sends_every_request_to_the_catalogue(workspace, monkeypatch, how):
-    kwargs = {}
-    if how == "argument":
-        kwargs = {"download": True}
-    else:
-        monkeypatch.setenv(data.DOWNLOAD_ENV, "yes")
-    trial = workspace.cache / "trial"
-    assert data.path("trial/value.txt", **kwargs) == trial / "value.txt"
-    assert data.directory("trial/folder", **kwargs) == trial / "folder"
-    assert data.paths("example", **kwargs) == {"input": trial / "value.txt", "folder": trial / "folder"}
-    assert data.fetch("example", **kwargs)["trial/folder/a.txt"] == trial / "folder" / "a.txt"
+def test_the_reskit_catalogue_override_wins_over_the_ethos_data_one(isolated, monkeypatch):
+    monkeypatch.setenv(data.CATALOG_ENV, str(isolated / "reskit-catalogue.json"))
+    data.handle.cache_clear()
+    settings = data.handle().settings
+    assert settings.catalog == str(isolated / "reskit-catalogue.json")
+    assert settings.catalog_source == "explicit argument"
 
 
-def test_the_download_argument_wins_over_the_environment(workspace, monkeypatch):
-    monkeypatch.setenv(data.DOWNLOAD_ENV, "1")
-    assert data.path("trial/value.txt", download=False) == workspace.bundle / "data" / "trial" / "value.txt"
-    monkeypatch.setenv(data.DOWNLOAD_ENV, "off")
-    assert data.path("trial/value.txt", download=True) == workspace.cache / "trial" / "value.txt"
+class TestTheDeprecatedTestData:
+    """``reskit.TEST_DATA`` keeps its keys until RESKit 1.0.0, read through the bundle."""
 
+    def test_it_warns(self, isolated):
+        with pytest.warns(DeprecationWarning, match="reskit.data.paths"):
+            reskit.TEST_DATA
 
-def test_an_unreadable_download_setting_is_refused(workspace, monkeypatch):
-    monkeypatch.setenv(data.DOWNLOAD_ENV, "maybe")
-    with pytest.raises(ValueError, match=data.DOWNLOAD_ENV):
-        data.path("trial/value.txt")
+    def test_it_maps_the_old_keys_to_the_bundled_files(self, isolated):
+        fixtures = data.paths("test_suite")
+        with pytest.warns(DeprecationWarning):
+            test_data = reskit.TEST_DATA
+        assert test_data["era5"] == test_data["era5-like"] == str(fixtures["era5"])
+        assert test_data["gwa100-like.tif"] == str(fixtures["gwa_100m"])
+        assert test_data["merra2/merged/merra-like.nc4"] == str(fixtures["merra_merged"])
+        assert test_data["era5/2m_temperature.nc"] == str(fixtures["era5"] / "2m_temperature.nc")
 
-
-def test_an_altered_bundled_file_is_an_error_not_a_download(workspace):
-    edited = workspace.bundle / "data" / "trial" / "value.txt"
-    edited.write_bytes(b"edited by hand")
-    _reset()
-    with pytest.raises(ethos_data.BundleError, match="differ"):
-        data.path("trial/folder/a.txt")
-    assert edited.read_bytes() == b"edited by hand"
-
-
-def test_without_a_bundle_everything_comes_from_the_catalogue(workspace, monkeypatch):
-    monkeypatch.setattr(data, "BUNDLE", workspace.root / "nowhere")
-    _reset()
-    assert data.bundled() is None
-    assert data.path("trial/value.txt") == workspace.cache / "trial" / "value.txt"
-    assert data.paths("example")["folder"] == workspace.cache / "trial" / "folder"
-
-
-def test_the_shipped_bundle_is_complete_and_verified(monkeypatch):
-    """The copy in the repository is what the tests and examples run on, so it must verify offline."""
-    monkeypatch.setattr(urllib.request, "urlopen", lambda *a, **k: pytest.fail("the shipped bundle needed the network"))
-    _reset()
-    bundle = data.BUNDLE
-    assert (bundle / "bundle.json").is_file(), (
-        f"{bundle} ships no bundle.json. Export it from the pinned catalogue with "
-        "`reskit-data bundle export`; docs/how_to/get_input_data.md, 'Refresh the bundle', has the steps."
-    )
-    assert data.main(["bundle", "verify", str(bundle), "test_suite"]) == 0
-    files = data.bundled()
-    assert data.directory("reskit-test-data/era5") == bundle / "data" / "reskit-test-data" / "era5"
-    assert data.path("reskit-test-data/placements/turbine_placements.csv").is_file()
-    # Every fixture in the tree is catalogued: a file added by hand and never
-    # described would otherwise pass the tests here and be missing everywhere else.
-    root = bundle / "data"
-    on_disk = {
-        found.relative_to(root).as_posix()
-        for found in root.rglob("*")
-        if found.is_file() and found.name != "__init__.py" and found.suffix != ".pyc"
-    }
-    assert on_disk == set(files), sorted(on_disk ^ set(files))
-    _reset()
+    def test_an_ambiguous_file_name_says_where_it_is(self, isolated):
+        with pytest.warns(DeprecationWarning):
+            test_data = reskit.TEST_DATA
+        with pytest.raises(KeyError, match="era5 and era5-csp"):
+            test_data["2m_temperature.nc"]
+        with pytest.raises(KeyError, match="not a test fixture"):
+            test_data["no-such-fixture.tif"]

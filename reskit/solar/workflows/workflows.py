@@ -1,7 +1,12 @@
 # import primary packages
 import warnings
+from collections.abc import Callable, Iterable
+from os import PathLike
+from typing import Any
 
 import numpy as np
+import pandas as pd
+import xarray
 
 from ... import util as rk_util
 
@@ -9,6 +14,22 @@ from ... import util as rk_util
 from ... import weather as rk_weather
 from .solar_workflow_manager import SolarWorkflowManager
 from reskit.util.input_validation import WeatherInput, declare_inputs
+from reskit.util.provenance import record_provenance
+
+
+# The variables which the steps after the plane of array irradiance read: the irradiance and
+# the solar position are no longer needed then, see WorkflowManager.release_sim_data()
+_NEEDED_AFTER_POA = [
+    "angle_of_incidence",
+    "poa_global",
+    "poa_direct",
+    "poa_diffuse",
+    "poa_sky_diffuse",
+    "poa_ground_diffuse",
+    "system_tilt",
+    "surface_air_temperature",
+    "surface_wind_speed",
+]
 
 
 @declare_inputs(
@@ -27,20 +48,22 @@ from reskit.util.input_validation import WeatherInput, declare_inputs
     },
     files=("global_solar_atlas_ghi_path", "elev"),
 )
+@record_provenance
 def openfield_pv_merra_ryberg2019(
-    placements,
-    merra_path,
-    global_solar_atlas_ghi_path,
-    module="WINAICO WSx-240P6",
-    elev=300,
-    tracking="fixed",
-    inverter=None,
-    inverter_kwargs={},
-    tracking_args={},
-    output_netcdf_path=None,
-    output_variables=None,
-    tech_year=2050,
-):
+    placements: pd.DataFrame,
+    merra_path: str | PathLike,
+    global_solar_atlas_ghi_path: str,
+    module: str | dict[str, Any] = "WINAICO WSx-240P6",
+    elev: float | str | PathLike | Iterable[float] = 300,
+    tracking: str = "fixed",
+    inverter: str | None = None,
+    inverter_kwargs: dict[str, Any] = {},
+    tracking_args: dict[str, Any] = {},
+    output_netcdf_path: str | None = None,
+    output_variables: str | list[str] | None = None,
+    tech_year: int | None = 2050,
+    time_slice: slice | None = None,
+) -> xarray.Dataset | str:
     """
 
     openfield_pv_merra_ryberg2019(placements, merra_path, global_solar_atlas_ghi_path, module="WINAICO WSx-240P6", elev=300, tracking="fixed",
@@ -85,6 +108,7 @@ def openfield_pv_merra_ryberg2019(
 
     output_variables: str
         Output variables of the simulation that you want to save into your NETCDF Outputfile.
+        Interim variables which are not listed are dropped as soon as the workflow no longer needs them, which lowers its memory use.
 
     tech_year : int, optional
                 If given in combination with the projected module str names "WINAICO WSx-240P6" or
@@ -92,6 +116,11 @@ def openfield_pv_merra_ryberg2019(
                 year. Must then be between year of market introduction for that module and 2050.
                 Will be ignored when non-projected existing module names or specific parameters
                 are given, can then be None. By default 2050.
+
+    time_slice : slice, optional
+        Simulate only the time steps between time_slice.start and time_slice.stop, both
+        inclusive, e.g. slice("2015-03-01", "2015-03-31 23:30"). Only these time steps
+        are read from the weather source. By default None, i.e. all time steps.
 
     Returns
     -------
@@ -119,6 +148,7 @@ def openfield_pv_merra_ryberg2019(
         ],
         source_type="MERRA",
         source=merra_path,
+        time_slice=time_slice,
         set_time_index=True,
         verbose=False,
     )
@@ -142,10 +172,12 @@ def openfield_pv_merra_ryberg2019(
 
     wf.determine_angle_of_incidence()
     wf.estimate_plane_of_array_irradiances(transposition_model="perez")
+    wf.release_sim_data(_NEEDED_AFTER_POA, output_variables)
 
     wf.apply_angle_of_incidence_losses_to_poa()
 
     wf.cell_temperature_from_sapm()
+    wf.release_sim_data(["poa_global", "cell_temperature"], output_variables)
 
     wf.simulate_with_interpolated_single_diode_approximation(
         module=module,
@@ -155,10 +187,12 @@ def openfield_pv_merra_ryberg2019(
     if inverter is not None:
         wf.apply_inverter_losses(inverter=inverter, **inverter_kwargs)
 
+    wf.release_sim_data(["capacity_factor", "total_system_generation"], output_variables)
+
     variables = [_var for _var in ["capacity_factor", "total_system_generation"] if _var in wf.sim_data.keys()]
     wf.apply_loss_factor(0.20, variables=variables)
 
-    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
+    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables, release=True)
 
 
 @declare_inputs(
@@ -179,27 +213,28 @@ def openfield_pv_merra_ryberg2019(
     },
     files=("global_solar_atlas_ghi_path", "global_solar_atlas_dni_path", "elev"),
 )
+@record_provenance
 def openfield_pv_era5(
-    placements,
-    era5_path,
-    global_solar_atlas_ghi_path,
-    global_solar_atlas_dni_path,
-    module="WINAICO WSx-240P6",
-    elev=300,
-    tracking="fixed",
-    inverter=None,
-    inverter_kwargs={},
-    tracking_args={},
-    DNI_nodata_fallback=1.0,
-    DNI_nodata_fallback_scaling=1.0,
-    GHI_nodata_fallback=1.0,
-    GHI_nodata_fallback_scaling=1.0,
-    output_netcdf_path=None,
-    output_variables=None,
-    gsa_nodata_fallback="source",
-    tech_year=2050,
-    time_slice=None,
-):
+    placements: pd.DataFrame,
+    era5_path: str | PathLike,
+    global_solar_atlas_ghi_path: str,
+    global_solar_atlas_dni_path: str,
+    module: str | dict[str, Any] = "WINAICO WSx-240P6",
+    elev: float | str | PathLike | Iterable[float] = 300,
+    tracking: str = "fixed",
+    inverter: str | None = None,
+    inverter_kwargs: dict[str, Any] = {},
+    tracking_args: dict[str, Any] = {},
+    DNI_nodata_fallback: float | str | PathLike | Callable | None = 1.0,
+    DNI_nodata_fallback_scaling: float = 1.0,
+    GHI_nodata_fallback: float | str | PathLike | Callable | None = 1.0,
+    GHI_nodata_fallback_scaling: float = 1.0,
+    output_netcdf_path: str | None = None,
+    output_variables: str | list[str] | None = None,
+    gsa_nodata_fallback: str = "source",
+    tech_year: int | None = 2050,
+    time_slice: slice | None = None,
+) -> xarray.Dataset | str:
     """
     Simulation of an openfield  PV openfield system based on ERA5 Data.
 
@@ -273,6 +308,7 @@ def openfield_pv_era5(
 
     output_variables: str
             Output variables of the simulation that you want to save into your NETCDF Outputfile.
+            Interim variables which are not listed are dropped as soon as the workflow no longer needs them, which lowers its memory use.
 
     gsa_nodata_fallback: str, optional
             NOTE: DEPRECATED! Will be removed soon!
@@ -290,10 +326,10 @@ def openfield_pv_era5(
                 are given, can then be None. By default 2050.
 
     time_slice : slice, optional
-            Limit the time span loaded from the ERA5 source. Only supported for
-            Zarr-backed ERA5 sources, where it is strongly recommended to avoid
-            loading whole multi-year cloud stores. Raises for netCDF4-backed ERA5
-            sources; support for those is planned.
+            Simulate only the time steps between time_slice.start and time_slice.stop, both
+            inclusive, e.g. slice("2015-03-01", "2015-03-31 23:30"). Only these time steps
+            are read from the weather source, which is strongly recommended for multi-year
+            Zarr cloud stores. By default None, i.e. all time steps.
 
     Returns
     -------
@@ -391,10 +427,12 @@ def openfield_pv_era5(
 
     wf.determine_angle_of_incidence()
     wf.estimate_plane_of_array_irradiances(transposition_model="perez")
+    wf.release_sim_data(_NEEDED_AFTER_POA, output_variables)
 
     wf.apply_angle_of_incidence_losses_to_poa()
 
     wf.cell_temperature_from_sapm()
+    wf.release_sim_data(["poa_global", "cell_temperature"], output_variables)
 
     wf.simulate_with_interpolated_single_diode_approximation(
         module=module,
@@ -404,11 +442,13 @@ def openfield_pv_era5(
     if inverter is not None:
         wf.apply_inverter_losses(inverter=inverter, **inverter_kwargs)
 
+    wf.release_sim_data(["capacity_factor", "total_system_generation"], output_variables)
+
     loss_factor = 0.115  # validation by d.franzmann, 2022/01/13
     variables = [_var for _var in ["capacity_factor", "total_system_generation"] if _var in wf.sim_data.keys()]
     wf.apply_loss_factor(loss_factor, variables=variables)
 
-    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
+    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables, release=True)
 
 
 @declare_inputs(
@@ -423,20 +463,22 @@ def openfield_pv_era5(
     },
     files=("elev",),
 )
+@record_provenance
 def openfield_pv_sarah_unvalidated(
-    placements,
-    sarah_path,
-    era5_path,
-    module="WINAICO WSx-240P6",
-    elev=300,
-    tracking="fixed",
-    inverter=None,
-    inverter_kwargs={},
-    tracking_args={},
-    output_netcdf_path=None,
-    output_variables=None,
-    tech_year=2050,
-):
+    placements: pd.DataFrame,
+    sarah_path: str | PathLike,
+    era5_path: str | PathLike,
+    module: str | dict[str, Any] = "WINAICO WSx-240P6",
+    elev: float | str | PathLike | Iterable[float] = 300,
+    tracking: str = "fixed",
+    inverter: str | None = None,
+    inverter_kwargs: dict[str, Any] = {},
+    tracking_args: dict[str, Any] = {},
+    output_netcdf_path: str | None = None,
+    output_variables: str | list[str] | None = None,
+    tech_year: int | None = 2050,
+    time_slice: slice | None = None,
+) -> xarray.Dataset | str:
     """
 
     openfield_pv_sarah_unvalidated(placements, sarah_path, era5_path, module="WINAICO WSx-240P6", elev=300, tracking="fixed", inverter=None, inverter_kwargs={}, tracking_args={}, output_netcdf_path=None, output_variables=None)
@@ -482,6 +524,7 @@ def openfield_pv_sarah_unvalidated(
 
     output_variables: str
                         Output variables of the simulation that you want to save into your NETCDF Outputfile.
+                        Interim variables which are not listed are dropped as soon as the workflow no longer needs them, which lowers its memory use.
 
     tech_year : int, optional
                 If given in combination with the projected module str names "WINAICO WSx-240P6" or
@@ -489,6 +532,11 @@ def openfield_pv_sarah_unvalidated(
                 year. Must then be between year of market introduction for that module and 2050.
                 Will be ignored when non-projected existing module names or specific parameters
                 are given, can then be None. By default 2050.
+
+    time_slice : slice, optional
+        Simulate only the time steps between time_slice.start and time_slice.stop, both
+        inclusive, e.g. slice("2015-03-01", "2015-03-31 23:30"). Only these time steps
+        are read from the weather source. By default None, i.e. all time steps.
 
     Returns
     -------
@@ -514,6 +562,7 @@ def openfield_pv_sarah_unvalidated(
         variables=["direct_normal_irradiance", "global_horizontal_irradiance"],
         source_type="SARAH",
         source=sarah_path,
+        time_slice=time_slice,
         set_time_index=True,
         verbose=False,
     )
@@ -527,6 +576,7 @@ def openfield_pv_sarah_unvalidated(
         ],
         source_type="ERA5",
         source=era5_path,
+        time_slice=time_slice,
         set_time_index=False,
         time_index_from="direct_horizontal_irradiance",
         verbose=False,
@@ -544,10 +594,12 @@ def openfield_pv_sarah_unvalidated(
 
     wf.determine_angle_of_incidence()
     wf.estimate_plane_of_array_irradiances(transposition_model="perez")
+    wf.release_sim_data(_NEEDED_AFTER_POA, output_variables)
 
     wf.apply_angle_of_incidence_losses_to_poa()
 
     wf.cell_temperature_from_sapm()
+    wf.release_sim_data(["poa_global", "cell_temperature"], output_variables)
 
     wf.simulate_with_interpolated_single_diode_approximation(
         module=module,
@@ -557,10 +609,12 @@ def openfield_pv_sarah_unvalidated(
     if inverter is not None:
         wf.apply_inverter_losses(inverter=inverter, **inverter_kwargs)
 
+    wf.release_sim_data(["capacity_factor", "total_system_generation"], output_variables)
+
     variables = [_var for _var in ["capacity_factor", "total_system_generation"] if _var in wf.sim_data.keys()]
     wf.apply_loss_factor(0.20, variables=variables)
 
-    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
+    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables, release=True)
 
 
 @declare_inputs(
@@ -581,19 +635,21 @@ def openfield_pv_sarah_unvalidated(
     },
     files=("elev",),
 )
+@record_provenance
 def openfield_pv_iconlam(
-    placements,
-    icon_lam_path,
-    module="WINAICO WSx-240P6",
-    elev=300,
-    tracking="fixed",
-    inverter=None,
-    inverter_kwargs={},
-    tracking_args={},
-    output_netcdf_path=None,
-    output_variables=None,
-    tech_year=2050,
-):
+    placements: pd.DataFrame,
+    icon_lam_path: str | PathLike,
+    module: str | dict[str, Any] = "WINAICO WSx-240P6",
+    elev: float | str | PathLike | Iterable[float] = 300,
+    tracking: str = "fixed",
+    inverter: str | None = None,
+    inverter_kwargs: dict[str, Any] = {},
+    tracking_args: dict[str, Any] = {},
+    output_netcdf_path: str | None = None,
+    output_variables: str | list[str] | None = None,
+    tech_year: int | None = 2050,
+    time_slice: slice | None = None,
+) -> xarray.Dataset | str:
     """
     Simulation of an openfield  PV openfield system based on ICON-LAM Data.
 
@@ -632,6 +688,7 @@ def openfield_pv_iconlam(
 
     output_variables: str
             Output variables of the simulation that you want to save into your NETCDF Outputfile.
+            Interim variables which are not listed are dropped as soon as the workflow no longer needs them, which lowers its memory use.
 
     tech_year : int, optional
                 If given in combination with the projected module str names "WINAICO WSx-240P6" or
@@ -639,6 +696,11 @@ def openfield_pv_iconlam(
                 year. Must then be between year of market introduction for that module and 2050.
                 Will be ignored when non-projected existing module names or specific parameters
                 are given, can then be None. By default 2050.
+
+    time_slice : slice, optional
+        Simulate only the time steps between time_slice.start and time_slice.stop, both
+        inclusive, e.g. slice("2015-03-01", "2015-03-31 23:30"). Only these time steps
+        are read from the weather source. By default None, i.e. all time steps.
 
     Returns
     -------
@@ -667,6 +729,7 @@ def openfield_pv_iconlam(
         ],
         source_type="ICON-LAM",
         source=icon_lam_path,
+        time_slice=time_slice,
         set_time_index=True,
         time_index_from="direct_horizontal_irradiance",
         spatial_interpolation_mode="near",
@@ -688,10 +751,12 @@ def openfield_pv_iconlam(
 
     wf.determine_angle_of_incidence()
     wf.estimate_plane_of_array_irradiances(transposition_model="perez")
+    wf.release_sim_data(_NEEDED_AFTER_POA, output_variables)
 
     wf.apply_angle_of_incidence_losses_to_poa()
 
     wf.cell_temperature_from_sapm()
+    wf.release_sim_data(["poa_global", "cell_temperature"], output_variables)
 
     wf.simulate_with_interpolated_single_diode_approximation(
         module=module,
@@ -700,6 +765,8 @@ def openfield_pv_iconlam(
 
     if inverter is not None:
         wf.apply_inverter_losses(inverter=inverter, **inverter_kwargs)
+
+    wf.release_sim_data(["capacity_factor", "total_system_generation"], output_variables)
 
     # this loss_factor was particularly tuned for ERA5GSA RESKit solar workflow
     # loss_factor = 0.115  # validation by d.franzmann, 2022/01/13
@@ -710,7 +777,7 @@ def openfield_pv_iconlam(
     loss_factor = 0.107  # general loss_factor by s.chen, 2024/05/08
     wf.apply_loss_factor(loss_factor, variables=["capacity_factor", "total_system_generation"])
 
-    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
+    return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables, release=True)
 
 
 ########################
