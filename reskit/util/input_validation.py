@@ -59,25 +59,12 @@ class WeatherInput:
         The workflow argument which gives the source type, instead of `source_type`
     time_index_from : str, optional
         The variable whose time axis the workflow uses, see WorkflowManager.read()
-
-    Raises
-    ------
-    ValueError
-        If source_type is not one of SOURCE_TYPES
     """
 
     source_type: SourceType | None = None
     variables: tuple[str, ...] = ()
     source_type_argument: str | None = None
     time_index_from: str | None = None
-
-    def __post_init__(self) -> None:
-        """Raises a ValueError if source_type is not one of SOURCE_TYPES."""
-        from reskit.workflow_manager import SOURCE_TYPES
-
-        if self.source_type is not None and self.source_type not in SOURCE_TYPES:
-            known_types = ", ".join(repr(known_type) for known_type in SOURCE_TYPES)
-            raise ValueError(f"Unknown source_type {self.source_type!r}, must be one of {known_types}")
 
 
 @dataclass(frozen=True)
@@ -124,7 +111,14 @@ def declare_inputs(
         @functools.wraps(function)
         def workflow(*args: Any, validate: bool = True, **kwargs: Any) -> R:
             if validate:
-                _validate_call(workflow.__name__, signature, inputs, args, kwargs)
+                try:
+                    signature.bind(*args, **kwargs)
+                except TypeError:
+                    return function(*args, **kwargs)  # raises the clearer error of the call itself
+                report = validate_inputs(workflow, *args, **kwargs)
+                report.raise_if_errors()
+                for finding in report.warnings:
+                    warnings.warn(f"{workflow.__name__}: [{finding.check}] {finding.message}", stacklevel=2)
             return function(*args, **kwargs)
 
         workflow.inputs = inputs
@@ -142,22 +136,6 @@ _VALIDATE_DOC = """
     The workflow checks its inputs before it simulates and raises a ResError listing all
     errors, see reskit.validate_inputs. Pass validate=False to skip the check.
 """
-
-
-def _validate_call(
-    name: str, signature: inspect.Signature, inputs: WorkflowInputs, args: tuple[Any, ...], kwargs: dict[str, Any]
-) -> None:
-    """Validates the arguments of a workflow call, see declare_inputs."""
-    try:
-        bound = signature.bind(*args, **kwargs)
-    except TypeError:
-        return  # the call of the workflow itself raises the clearer error
-    bound.apply_defaults()
-    report = ValidationReport(name)
-    _validate(report, inputs, bound.arguments)
-    report.raise_if_errors()
-    for finding in report.warnings:
-        warnings.warn(f"{name}: [{finding.check}] {finding.message}", stacklevel=3)
 
 
 def _with_validate_parameter(signature: inspect.Signature) -> inspect.Signature:
@@ -224,7 +202,7 @@ class ValidationReport:
 
 
 def validate_inputs(
-    workflow: str | Callable[..., Any], placements: pd.DataFrame, **workflow_kwargs: Any
+    workflow: str | Callable[..., Any], placements: pd.DataFrame, *workflow_args: Any, **workflow_kwargs: Any
 ) -> ValidationReport:
     """Checks the inputs of a workflow without running the simulation.
 
@@ -248,7 +226,7 @@ def validate_inputs(
         workflow function itself
     placements : pandas.DataFrame
         The placements, as they would be passed to the workflow
-    **workflow_kwargs
+    *workflow_args, **workflow_kwargs
         The further arguments, as they would be passed to the workflow
 
     Returns
@@ -278,18 +256,17 @@ def validate_inputs(
     report = ValidationReport(function.__name__)
     signature = inspect.signature(function)
     try:
-        bound = signature.bind(placements, **workflow_kwargs)
+        signature.bind(placements, *workflow_args, **workflow_kwargs)
     except TypeError as error:
         report._add("error", "arguments", str(error))
-        defaults = {
-            name: parameter.default
-            for name, parameter in signature.parameters.items()
-            if parameter.default is not inspect.Parameter.empty
-        }
-        arguments = {**defaults, **workflow_kwargs, "placements": placements}
-    else:
-        bound.apply_defaults()
-        arguments = bound.arguments
+    # the arguments as far as given, so that all other inputs are checked also after an error above
+    defaults = {
+        name: parameter.default
+        for name, parameter in signature.parameters.items()
+        if parameter.default is not inspect.Parameter.empty
+    }
+    positional_arguments = dict(zip(signature.parameters, (placements, *workflow_args)))
+    arguments = {**defaults, **positional_arguments, **workflow_kwargs}
     _validate(report, function.inputs, arguments)
     return report
 

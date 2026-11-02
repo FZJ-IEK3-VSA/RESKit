@@ -11,7 +11,7 @@ import pytest
 from reskit import TEST_DATA, data, validate_inputs
 from reskit.util import ResError
 from reskit.wind.workflows.workflows import wind_era5_PenaSanchezDunkelWinklerEtAl2025
-from reskit.util.input_validation import WORKFLOW_FAMILIES, WeatherInput
+from reskit.util.input_validation import WORKFLOW_FAMILIES
 from reskit.workflow_manager import WorkflowManager
 
 WORKFLOW = "wind_era5_PenaSanchezDunkelWinklerEtAl2025"
@@ -72,11 +72,6 @@ def test_validate_inputs_reports_unavailable_weather_variable():
     assert len(weather_errors) == 1 and "cannot provide 'boundary_layer_height'" in weather_errors[0]
 
 
-def test_weather_input_rejects_an_unknown_source_type() -> None:
-    with pytest.raises(ValueError, match="Unknown source_type 'era5', must be one of 'ERA5'"):
-        WeatherInput("era5", ("surface_air_temperature",))  # type: ignore
-
-
 def test_validate_inputs_names_the_known_source_types_for_an_unknown_one() -> None:
     placements = pd.DataFrame(
         {"lon": [6.1], "lat": [50.6], "capacity": [3000], "hub_height": [120], "rotor_diam": [150]}
@@ -98,6 +93,16 @@ def test_workflow_validates_its_inputs_before_running(wind_inputs, tmp_path):
 
     with pytest.raises(ResError, match=r"\[gwa_100m_path\] does not exist"):
         wind_era5_PenaSanchezDunkelWinklerEtAl2025(placements, **arguments)
+
+
+def test_workflow_validates_positional_arguments(wind_inputs, tmp_path):
+    placements, arguments = wind_inputs
+    missing_gwa_path = str(tmp_path / "missing.tif")
+
+    with pytest.raises(ResError, match=r"\[gwa_100m_path\] does not exist"):
+        wind_era5_PenaSanchezDunkelWinklerEtAl2025(
+            placements, arguments["era5_path"], missing_gwa_path, arguments["height_scaling_data"]
+        )
 
 
 @pytest.mark.parametrize("column", ["location", "time", "time_days"])
