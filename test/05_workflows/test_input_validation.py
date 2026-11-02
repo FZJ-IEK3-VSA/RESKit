@@ -12,6 +12,7 @@ from reskit import TEST_DATA, data, validate_inputs
 from reskit.util import ResError
 from reskit.wind.workflows.workflows import wind_era5_PenaSanchezDunkelWinklerEtAl2025
 from reskit.util.input_validation import WORKFLOW_FAMILIES
+from reskit.workflow_manager import WorkflowManager
 
 WORKFLOW = "wind_era5_PenaSanchezDunkelWinklerEtAl2025"
 
@@ -77,6 +78,40 @@ def test_workflow_validates_its_inputs_before_running(wind_inputs, tmp_path):
 
     with pytest.raises(ResError, match=r"\[gwa_100m_path\] does not exist"):
         wind_era5_PenaSanchezDunkelWinklerEtAl2025(placements, **arguments)
+
+
+@pytest.mark.parametrize("column", ["location", "time", "time_days"])
+def test_workflow_manager_rejects_a_column_with_the_name_of_a_result_dimension(column: str) -> None:
+    # issue #387: a 'location' column raised a MergeError in to_xarray(), after the simulation
+    placements = pd.DataFrame({"lon": [13.4, 2.35], "lat": [52.52, 48.86], column: ["Berlin", "Paris"]})
+
+    with pytest.raises(ValueError, match=f"placements column '{column}' must be renamed"):
+        WorkflowManager(placements)
+
+
+def test_placement_problems_names_a_reserved_column_next_to_point_geometries() -> None:
+    points = [gk.geom.point(13.4, 52.52, srs=4326), gk.geom.point(2.35, 48.86, srs=4326)]
+    placements = pd.DataFrame({"geom": points, "location": ["Berlin", "Paris"]})
+
+    problems = WorkflowManager.placement_problems(placements)
+
+    assert len(problems) == 1
+    assert problems[0].startswith("placements column 'location' must be renamed")
+
+
+def test_validate_inputs_checks_the_weather_of_placements_with_a_reserved_column(
+    wind_inputs: tuple[pd.DataFrame, dict],
+) -> None:
+    placements, arguments = wind_inputs
+    placements["location"] = "Aachen"
+
+    report = validate_inputs(WORKFLOW, placements, **arguments)
+
+    error_messages = [finding.message for finding in report.errors]
+    weather_findings = [finding for finding in report.findings if finding.check == "weather 'era5_path'"]
+    assert len(error_messages) == 1, report
+    assert error_messages[0].startswith("placements column 'location' must be renamed")
+    assert weather_findings, report
 
 
 def _read_calls(function):

@@ -274,21 +274,24 @@ def _resolve_workflow(workflow):
 
 def _validate(report, inputs, arguments):
     """Runs all checks of validate_inputs for the bound arguments of a workflow."""
-    from reskit.workflow_manager import WorkflowManager
+    from reskit.workflow_manager import _RESULT_DIMENSIONS, WorkflowManager
 
     placements = arguments["placements"]
     for problem in inputs.manager.placement_problems(placements):
         report._add("error", "placements", problem)
 
     # the locations of the placements, for the checks of the weather sources and rasters,
-    # which a missing column does not prevent
+    # which a missing column or a column with the name of a result dimension does not prevent
+    located_placements = placements
+    if isinstance(placements, pd.DataFrame):
+        located_placements = placements.drop(columns=list(_RESULT_DIMENSIONS), errors="ignore")
     manager = None
-    if not WorkflowManager.placement_problems(placements):
-        if len(placements) == 0:
+    if not WorkflowManager.placement_problems(located_placements):
+        if len(located_placements) == 0:
             report._add("error", "placements", "contain no placements")
         else:
             try:
-                manager = WorkflowManager(placements)
+                manager = WorkflowManager(located_placements)
             except ValueError as error:
                 report._add("error", "placements", str(error))
 

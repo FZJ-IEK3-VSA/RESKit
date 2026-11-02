@@ -28,6 +28,10 @@ from reskit.util.weather_tile import get_location_specific_weather_paths
 # The smallest half width, in SRS units, which is added to a zero-width extent.
 _MIN_EXTENT_HALF_WIDTH = 1e-5
 
+# The dimensions of the results, see WorkflowManager.to_xarray(). No placements column may
+# have one of these names.
+_RESULT_DIMENSIONS = ("location", "time", "time_days")
+
 
 def _coordinate_range_problem(placements, column, minimum, maximum):
     """Check that every coordinate of a placements column is finite and in range.
@@ -90,6 +94,24 @@ def _any_column_problems(placements, *columns):
     if not isinstance(placements, pd.DataFrame) or any(column in placements.columns for column in columns):
         return []
     return [f"placements need one of the columns {', '.join(repr(column) for column in columns)}"]
+
+
+def _reserved_column_problems(placements: pd.DataFrame) -> list[str]:
+    """The problems if placements columns have the name of a dimension of the results.
+
+    to_xarray() exports every placements column along the dimension 'location'. A column
+    named 'location' clashes with the coordinate of that dimension, which raises a MergeError
+    only after the simulation, and a column named 'time' or 'time_days' is lost or clashes
+    with the time axis.
+    """
+    dimension_names = ", ".join(repr(dimension) for dimension in _RESULT_DIMENSIONS)
+    problems = []
+    for column in _RESULT_DIMENSIONS:
+        if column in placements.columns:
+            problems.append(
+                f"placements column '{column}' must be renamed, {dimension_names} are the dimensions of the results"
+            )
+    return problems
 
 
 def _has_point_geometries(placements):
@@ -384,9 +406,10 @@ class WorkflowManager:
     def placement_problems(cls, placements) -> List[str]:
         """Finds the problems which make the placements unusable for this workflow manager.
 
-        The base class checks the locations; a specialized workflow manager adds the columns
-        it needs. The constructor raises a ValueError listing all problems, and
-        reskit.validate_inputs reports them before a workflow runs.
+        The base class checks the locations and that no column has the name of a dimension
+        of the results; a specialized workflow manager adds the columns it needs. The
+        constructor raises a ValueError listing all problems, and reskit.validate_inputs
+        reports them before a workflow runs.
 
         Parameters
         ----------
@@ -400,15 +423,17 @@ class WorkflowManager:
         """
         if not isinstance(placements, pd.DataFrame):
             return [f"placements must be a pandas DataFrame, not {type(placements).__name__}"]
+        problems = _reserved_column_problems(placements)
         if len(placements) > 0 and _has_point_geometries(placements):
-            return []
+            return problems
         if "lon" not in placements.columns or "lat" not in placements.columns:
-            return ["placements need point geometries in the column 'geom', or the columns 'lon' and 'lat'"]
-        problems = [
+            location_problem = "placements need point geometries in the column 'geom', or the columns 'lon' and 'lat'"
+            return problems + [location_problem]
+        coordinate_problems = [
             _coordinate_range_problem(placements, "lon", -180, 180),
             _coordinate_range_problem(placements, "lat", -90, 90),
         ]
-        return [problem for problem in problems if problem is not None]
+        return problems + [problem for problem in coordinate_problems if problem is not None]
 
     # STAGE 2: weather data reading and adjusting
 

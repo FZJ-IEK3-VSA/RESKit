@@ -12,6 +12,8 @@ also for large inputs.
 - **Placements**: valid locations (point geometries, or `lon` and `lat` in range) and the
   columns the workflow needs, e.g. `capacity`, `hub_height`, and `rotor_diam` or
   `powerCurve` for wind. Required numeric columns must have a value for every placement.
+  No column may have the name of a dimension of the results: `location`, `time` or
+  `time_days`.
 - **Weather sources**: each source opens and provides the variables the workflow reads,
   with the time steps of its time axis. It covers every placement and has a regular time
   axis. A `time_slice` lies within the available time span, and a `https://` Zarr store
