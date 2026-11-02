@@ -49,5 +49,7 @@ def test_to_xarray_release_gives_the_same_result(
     releasing_manager = _manager(time_selection)
     result = releasing_manager.to_xarray(output_variables=output_variables, release=True)
 
+    # the provenance records the second each result was created, which can differ
+    del result.attrs["reskit_created"], expected.attrs["reskit_created"]
     assert result.identical(expected)
     assert len(releasing_manager.sim_data) == 0
