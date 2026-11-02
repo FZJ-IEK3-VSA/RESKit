@@ -20,7 +20,7 @@ import netrc
 import os
 import re
 import warnings
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, TypeVar
 from urllib.parse import urlparse
@@ -33,6 +33,7 @@ from reskit.util.errors import ResError
 from reskit.util.paths import as_path_string, is_path_like
 
 if TYPE_CHECKING:
+    from reskit.weather import NCSource
     from reskit.workflow_manager import SourceType, WorkflowManager
 
 # The return type of a workflow, which declare_inputs keeps
@@ -71,6 +72,7 @@ class WeatherInput:
     time_index_from: str | None = None
 
     def __post_init__(self) -> None:
+        """Raises a ValueError if source_type is not one of SOURCE_TYPES."""
         from reskit.workflow_manager import SOURCE_TYPES
 
         if self.source_type is not None and self.source_type not in SOURCE_TYPES:
@@ -142,7 +144,9 @@ _VALIDATE_DOC = """
 """
 
 
-def _validate_call(name, signature, inputs, args, kwargs):
+def _validate_call(
+    name: str, signature: inspect.Signature, inputs: WorkflowInputs, args: tuple[Any, ...], kwargs: dict[str, Any]
+) -> None:
     """Validates the arguments of a workflow call, see declare_inputs."""
     try:
         bound = signature.bind(*args, **kwargs)
@@ -177,7 +181,8 @@ class Finding:
     check: str
     message: str
 
-    def __str__(self):
+    def __str__(self) -> str:
+        """The finding as one line of the report: its level, check and message."""
         return f"{self.level.upper():7} [{self.check}] {self.message}"
 
 
@@ -186,35 +191,41 @@ class ValidationReport:
     """The findings of validate_inputs for one workflow call."""
 
     workflow: str
-    findings: list = field(default_factory=list)
+    findings: list[Finding] = field(default_factory=list)
 
     @property
-    def errors(self):
+    def errors(self) -> list[Finding]:
+        """The findings of level "error"."""
         return [f for f in self.findings if f.level == "error"]
 
     @property
-    def warnings(self):
+    def warnings(self) -> list[Finding]:
+        """The findings of level "warning"."""
         return [f for f in self.findings if f.level == "warning"]
 
     @property
-    def ok(self):
+    def ok(self) -> bool:
         """True if no error was found."""
         return not self.errors
 
-    def raise_if_errors(self):
+    def raise_if_errors(self) -> None:
         """Raises a ResError listing all findings if an error was found."""
         if not self.ok:
             raise ResError(str(self))
 
-    def _add(self, level, check, message):
+    def _add(self, level: str, check: str, message: str) -> None:
+        """Adds a finding; level is "error", "warning" or "info", and check names the checked input."""
         self.findings.append(Finding(level, check, message))
 
-    def __str__(self):
+    def __str__(self) -> str:
+        """The report as text: a header counting the errors and warnings, then one line per finding."""
         header = f"Inputs of {self.workflow}: {len(self.errors)} error(s), {len(self.warnings)} warning(s)"
         return "\n".join([header] + [f"  {finding}" for finding in self.findings])
 
 
-def validate_inputs(workflow, placements, **workflow_kwargs):
+def validate_inputs(
+    workflow: str | Callable[..., Any], placements: pd.DataFrame, **workflow_kwargs: Any
+) -> ValidationReport:
     """Checks the inputs of a workflow without running the simulation.
 
     The following is checked:
@@ -283,7 +294,7 @@ def validate_inputs(workflow, placements, **workflow_kwargs):
     return report
 
 
-def _resolve_workflow(workflow):
+def _resolve_workflow(workflow: str | Callable[..., Any]) -> Callable[..., Any]:
     """The workflow function for a name, or the given function, if it declares its inputs."""
     if callable(workflow):
         function = workflow
@@ -300,7 +311,7 @@ def _resolve_workflow(workflow):
     return function
 
 
-def _validate(report, inputs, arguments):
+def _validate(report: ValidationReport, inputs: WorkflowInputs, arguments: dict[str, Any]) -> None:
     """Runs all checks of validate_inputs for the bound arguments of a workflow."""
     from reskit.workflow_manager import _RESULT_DIMENSIONS, WorkflowManager
 
@@ -329,7 +340,13 @@ def _validate(report, inputs, arguments):
     _check_files(report, manager, inputs, arguments)
 
 
-def _check_weather(report, manager, argument, weather, arguments):
+def _check_weather(
+    report: ValidationReport,
+    manager: WorkflowManager,
+    argument: str,
+    weather: WeatherInput,
+    arguments: dict[str, Any],
+) -> None:
     """Opens a weather source for its metadata only and checks it against the workflow."""
     from reskit.workflow_manager import _source_constructor
 
@@ -358,7 +375,7 @@ def _check_weather(report, manager, argument, weather, arguments):
         report._add("warning", check, f"~/.netrc has no credentials for {url.hostname}")
 
     source_type = arguments.get(weather.source_type_argument) if weather.source_type_argument else weather.source_type
-    options = dict(time_index_from=weather.time_index_from, verbose=False)
+    options: dict[str, Any] = dict(time_index_from=weather.time_index_from, verbose=False)
     time_slice = arguments.get("time_slice")
     if time_slice is not None:
         options["time_slice"] = time_slice
@@ -380,14 +397,18 @@ def _check_weather(report, manager, argument, weather, arguments):
     _check_coverage(report, check, source, manager)
 
 
-def _has_netrc_entry(host):
+def _has_netrc_entry(host: str | None) -> bool:
+    """True if ~/.netrc gives credentials for the host, False also if it is missing or cannot be parsed."""
     try:
         return netrc.netrc().authenticators(host) is not None
     except (FileNotFoundError, netrc.NetrcParseError):
         return False
 
 
-def _check_time_axis(report, check, time_index, time_slice):
+def _check_time_axis(
+    report: ValidationReport, check: str, time_index: pd.DatetimeIndex, time_slice: slice | None
+) -> None:
+    """Reports the time span of a weather source, an empty or irregular time axis, and a 'time_slice' beyond the data."""
     if len(time_index) == 0:
         report._add("error", check, "has no time steps in the requested time span")
         return
@@ -414,7 +435,7 @@ def _check_time_axis(report, check, time_index, time_slice):
             )
 
 
-def _check_coverage(report, check, source, manager):
+def _check_coverage(report: ValidationReport, check: str, source: NCSource, manager: WorkflowManager) -> None:
     """Reports placements which are more than half a grid cell outside the source's grid."""
     lats, lons = np.asarray(source.lats), np.asarray(source.lons)
     half_lat = np.abs(np.diff(lats)).max() / 2 if lats.size > 1 else 0
@@ -438,7 +459,9 @@ def _check_coverage(report, check, source, manager):
         )
 
 
-def _check_files(report, manager, inputs, arguments):
+def _check_files(
+    report: ValidationReport, manager: WorkflowManager | None, inputs: WorkflowInputs, arguments: dict[str, Any]
+) -> None:
     """Checks that input files exist and rasters have values at the placements, and that
     output files can be written.
     """
@@ -458,7 +481,8 @@ def _check_files(report, manager, inputs, arguments):
                 _check_raster_values(report, label, path, manager)
 
 
-def _check_raster_values(report, label, path, manager):
+def _check_raster_values(report: ValidationReport, label: str, path: str, manager: WorkflowManager) -> None:
+    """Warns about placements at which a raster has no value, as they lie outside it or on nodata."""
     try:
         values = gk.raster.interpolateValues(path, points=manager.locs, mode="near")
     except (gk.error.GeoKitError, RuntimeError, OSError, ValueError) as error:
@@ -473,14 +497,15 @@ def _check_raster_values(report, label, path, manager):
         )
 
 
-def _is_raster(path):
+def _is_raster(path: str) -> bool:
+    """True if geokit recognizes the file as a raster."""
     try:
         return gk.util.isRaster(path)
     except (AttributeError, RuntimeError):  # geokit fails on some files, e.g. netCDF4, instead of returning False
         return False
 
 
-def _paths_in(name, value):
+def _paths_in(name: str, value: Any) -> Iterator[tuple[str, str]]:
     """The (label, path) pairs of an argument value, which may be a path, a dict or list of
     paths, or no path at all, e.g. a number.
     """
