@@ -542,6 +542,9 @@ def wind_config(
         A Dataframe object with the parameters needed by the simulation.
     weather_path : str
         Path to the temporally resolved weather data, e.g. ERA-5 or MERRA-2 etc.
+    weather_source_type : str
+        The type of the weather data at weather_path, one of
+        reskit.workflow_manager.SOURCE_TYPES, e.g. "ERA5" or "MERRA".
     weather_lra_ws_path : str
         The path to a raster with the corresponding long-run-average
         windspeeds of the actual weather data (will be corrected to the

@@ -40,19 +40,32 @@ class WeatherInput:
     Parameters
     ----------
     source_type : str, optional
-        The source type, e.g. "ERA5", as WorkflowManager.read() takes it
+        The source type as WorkflowManager.read() takes it, one of
+        reskit.workflow_manager.SOURCE_TYPES, e.g. "ERA5"
     variables : tuple of str
         The standard variables the workflow reads, e.g. "elevated_wind_speed"
     source_type_argument : str, optional
         The workflow argument which gives the source type, instead of `source_type`
     time_index_from : str, optional
         The variable whose time axis the workflow uses, see WorkflowManager.read()
+
+    Raises
+    ------
+    ValueError
+        If source_type is not one of SOURCE_TYPES
     """
 
     source_type: str = None
     variables: tuple = ()
     source_type_argument: str = None
     time_index_from: str = None
+
+    def __post_init__(self) -> None:
+        from reskit.workflow_manager import SOURCE_TYPES
+
+        if self.source_type is not None and self.source_type not in SOURCE_TYPES:
+            known_types = ", ".join(repr(known_type) for known_type in SOURCE_TYPES)
+            raise ValueError(f"Unknown source_type {self.source_type!r}, must be one of {known_types}")
 
 
 @dataclass(frozen=True)

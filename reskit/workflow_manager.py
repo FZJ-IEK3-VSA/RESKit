@@ -118,13 +118,23 @@ def _has_point_geometries(placements):
     return "geom" in placements.columns and placements["geom"].iloc[0].GetGeometryName() == "POINT"
 
 
+# The source types which WorkflowManager.read() reads from a path, and the class of each
+# source. An ERA5 Zarr store is read with Era5ZarrSource instead, see _source_constructor().
+SOURCE_TYPES: dict[str, type[rk_weather.NCSource]] = {
+    "ERA5": rk_weather.Era5Source,
+    "SARAH": rk_weather.SarahSource,
+    "MERRA": rk_weather.MerraSource,
+    "ICON-LAM": rk_weather.IconlamSource,
+}
+
+
 def _source_constructor(source_type: str, path: str, storage_format: str | None) -> type[rk_weather.NCSource]:
     """The class of the weather source which reads the path as a source of the given type.
 
     Parameters
     ----------
     source_type : str
-        "ERA5", "SARAH", "MERRA" or "ICON-LAM", see WorkflowManager.read()
+        One of SOURCE_TYPES, see WorkflowManager.read()
 
     path : str
         The path of the source. ERA5 is read as a Zarr store if the path ends with '.zarr' or
@@ -141,19 +151,15 @@ def _source_constructor(source_type: str, path: str, storage_format: str | None)
     Raises
     ------
     RuntimeError
-        If source_type is unknown
+        If source_type is not one of SOURCE_TYPES
     """
+    if source_type not in SOURCE_TYPES:
+        known_types = ", ".join(repr(known_type) for known_type in SOURCE_TYPES)
+        raise RuntimeError(f"Unknown source_type {source_type!r}, must be one of {known_types}")
     is_zarr = storage_format == "zarr" or path.endswith(".zarr") or path.startswith("gs://")
-    if source_type == "ERA5":
-        return rk_weather.Era5ZarrSource if is_zarr else rk_weather.Era5Source
-    elif source_type == "SARAH":
-        return rk_weather.SarahSource
-    elif source_type == "MERRA":
-        return rk_weather.MerraSource
-    elif source_type == "ICON-LAM":
-        return rk_weather.IconlamSource
-    else:
-        raise RuntimeError("Unknown source_type")
+    if source_type == "ERA5" and is_zarr:
+        return rk_weather.Era5ZarrSource
+    return SOURCE_TYPES[source_type]
 
 
 def _zarr_regions(locs: gk.LocationSet, dataset: xarray.Dataset, index_pad: int) -> list[np.ndarray]:
@@ -494,8 +500,8 @@ class WorkflowManager:
             of initializing the NCSource and loading the data they want
 
         source_type : str
-            The type of weather datasource which is to be loaded. Can be one of:
-            "ERA5", "SARAH", "MERRA", or 'user'
+            The type of weather datasource which is to be loaded, one of
+            reskit.workflow_manager.SOURCE_TYPES: "ERA5", "SARAH", "MERRA" or "ICON-LAM"
             - If a pre-loaded NCSource is given for the `source` object, then the `source_type`
             should be "user"
 

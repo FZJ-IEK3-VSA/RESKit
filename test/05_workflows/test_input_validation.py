@@ -11,7 +11,7 @@ import pytest
 from reskit import TEST_DATA, data, validate_inputs
 from reskit.util import ResError
 from reskit.wind.workflows.workflows import wind_era5_PenaSanchezDunkelWinklerEtAl2025
-from reskit.util.input_validation import WORKFLOW_FAMILIES
+from reskit.util.input_validation import WORKFLOW_FAMILIES, WeatherInput
 from reskit.workflow_manager import WorkflowManager
 
 WORKFLOW = "wind_era5_PenaSanchezDunkelWinklerEtAl2025"
@@ -70,6 +70,26 @@ def test_validate_inputs_reports_unavailable_weather_variable():
 
     weather_errors = [f.message for f in report.errors if f.check == "weather 'weather_path'"]
     assert len(weather_errors) == 1 and "cannot provide 'boundary_layer_height'" in weather_errors[0]
+
+
+def test_weather_input_rejects_an_unknown_source_type() -> None:
+    with pytest.raises(ValueError, match="Unknown source_type 'era5', must be one of 'ERA5'"):
+        WeatherInput("era5", ("surface_air_temperature",))
+
+
+def test_validate_inputs_names_the_known_source_types_for_an_unknown_one() -> None:
+    placements = pd.DataFrame(
+        {"lon": [6.1], "lat": [50.6], "capacity": [3000], "hub_height": [120], "rotor_diam": [150]}
+    )
+
+    # wind_config takes the source type as an argument, so WeatherInput cannot check it
+    report = validate_inputs(
+        "wind_config", placements, weather_path=TEST_DATA["merra-like"], weather_source_type="merra"
+    )
+
+    weather_errors = [f.message for f in report.errors if f.check == "weather 'weather_path'"]
+    assert len(weather_errors) == 1
+    assert "Unknown source_type 'merra', must be one of 'ERA5', 'SARAH', 'MERRA', 'ICON-LAM'" in weather_errors[0]
 
 
 def test_workflow_validates_its_inputs_before_running(wind_inputs, tmp_path):
