@@ -80,21 +80,33 @@ rk.wind.wind_era5_PenaSanchezDunkelWinklerEtAl2025(placements, ..., validate=Fal
 ## Declare the inputs of a new workflow
 
 The check knows what a workflow needs because every workflow declares its inputs with
-`@declare_inputs`:
+`@declare_inputs`. It takes the same arguments for every workflow manager:
+
+```python
+declare_inputs(manager, weather=None, files=(), outputs=("output_netcdf_path",))
+```
+
+Only `manager` is required. Leave out `weather`, `files` or `outputs` if the workflow has
+no such inputs, e.g. a workflow without weather data passes no `weather`. Every string in
+them is the name of a parameter of the workflow, not a path: the check looks up the value
+the caller passes for that parameter.
+
+The wind workflow above declares its inputs as follows:
 
 ```python
 from reskit.util.input_validation import WeatherInput, declare_inputs
 
 
 @declare_inputs(
-    WindWorkflowManager,
+    manager=WindWorkflowManager,
     weather={
         "era5_path": WeatherInput(
-            "ERA5",
-            ("elevated_wind_speed", "surface_pressure", "surface_air_temperature", "boundary_layer_height"),
+            source_type="ERA5",
+            variables=("elevated_wind_speed", "surface_pressure", "surface_air_temperature", "boundary_layer_height"),
         )
     },
     files=("gwa_100m_path", "height_scaling_data"),
+    outputs=("output_netcdf_path",),  # the default, may be left out
 )
 def wind_era5_PenaSanchezDunkelWinklerEtAl2025(placements, era5_path, gwa_100m_path, height_scaling_data, ...):
     wf = WindWorkflowManager(placements)
@@ -106,9 +118,9 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(placements, era5_path, gwa_100m_p
     )
 ```
 
-- **The workflow manager** checks the placements with its `placement_problems()`. A new
-  workflow manager which needs further columns extends it, and its constructor then
-  rejects placements without them:
+- **`manager`** is the workflow manager class. It checks the placements with its
+  `placement_problems()`. A new workflow manager which needs further columns extends it,
+  and its constructor then rejects placements without them:
 
   ```python
   @classmethod
@@ -117,10 +129,11 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(placements, era5_path, gwa_100m_p
   ```
 
 - **`weather`** maps each argument which gives the path of a weather source to a
-  `WeatherInput`. A `WeatherInput` holds the source type and the variables the workflow
-  passes to `read()`, and the `time_index_from` if `read()` gets one. If the caller
-  chooses the source type, name the argument which gives it with `source_type_argument`
-  instead of a source type.
+  `WeatherInput`. A `WeatherInput` holds the `source_type` and the `variables` the
+  workflow passes to `read()`, and the `time_index_from` if `read()` gets one. The source
+  type is one of `reskit.workflow_manager.SOURCE_TYPES`: `"ERA5"`, `"SARAH"`, `"MERRA"` or
+  `"ICON-LAM"`; `WeatherInput` rejects any other. If the caller chooses the source type,
+  name the argument which gives it with `source_type_argument` instead of a source type.
 - **`files`** names the arguments which may give input files. Such an argument may also
   give a dict or a list of files, or a value which is not a path, e.g. a number; the check
   skips the latter.
