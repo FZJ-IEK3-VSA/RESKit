@@ -11,6 +11,8 @@ knows the placement columns it needs, the weather sources it reads, and the argu
 which name input or output files.
 """
 
+from __future__ import annotations
+
 import functools
 import importlib
 import inspect
@@ -18,7 +20,9 @@ import netrc
 import os
 import re
 import warnings
+from collections.abc import Callable
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Any, TypeVar
 from urllib.parse import urlparse
 
 import geokit as gk
@@ -27,6 +31,12 @@ import pandas as pd
 
 from reskit.util.errors import ResError
 from reskit.util.paths import as_path_string, is_path_like
+
+if TYPE_CHECKING:
+    from reskit.workflow_manager import WorkflowManager
+
+# The return type of a workflow, which declare_inputs keeps
+R = TypeVar("R")
 
 WORKFLOW_FAMILIES = ("wind", "solar", "csp", "dac", "cooling_heating", "geothermal")
 
@@ -55,10 +65,10 @@ class WeatherInput:
         If source_type is not one of SOURCE_TYPES
     """
 
-    source_type: str = None
-    variables: tuple = ()
-    source_type_argument: str = None
-    time_index_from: str = None
+    source_type: str | None = None
+    variables: tuple[str, ...] = ()
+    source_type_argument: str | None = None
+    time_index_from: str | None = None
 
     def __post_init__(self) -> None:
         from reskit.workflow_manager import SOURCE_TYPES
@@ -72,13 +82,18 @@ class WeatherInput:
 class WorkflowInputs:
     """The inputs a workflow declares with declare_inputs."""
 
-    manager: type
-    weather: dict
-    files: tuple
-    outputs: tuple
+    manager: type[WorkflowManager]
+    weather: dict[str, WeatherInput]
+    files: tuple[str, ...]
+    outputs: tuple[str, ...]
 
 
-def declare_inputs(manager, weather=None, files=(), outputs=("output_netcdf_path",)):
+def declare_inputs(
+    manager: type[WorkflowManager],
+    weather: dict[str, WeatherInput] | None = None,
+    files: tuple[str, ...] = (),
+    outputs: tuple[str, ...] = ("output_netcdf_path",),
+) -> Callable[[Callable[..., R]], Callable[..., R]]:
     """Declares the inputs of a workflow, which the workflow then validates before it runs.
 
     The decorated workflow takes the additional keyword argument `validate`, by default
@@ -88,9 +103,9 @@ def declare_inputs(manager, weather=None, files=(), outputs=("output_netcdf_path
 
     Parameters
     ----------
-    manager : type
+    manager : type[WorkflowManager]
         The workflow manager class; its placement_problems() checks the placements
-    weather : dict, optional
+    weather : dict[str, WeatherInput], optional
         The weather sources the workflow reads, as {argument: WeatherInput}, where the
         argument gives the path of the source
     files : tuple of str, optional
@@ -100,14 +115,14 @@ def declare_inputs(manager, weather=None, files=(), outputs=("output_netcdf_path
         The arguments which may name an output file or directory
     """
 
-    def decorate(function):
+    def decorate(function: Callable[..., R]) -> Callable[..., R]:
         inputs = WorkflowInputs(manager, dict(weather or {}), tuple(files), tuple(outputs))
         signature = inspect.signature(function)
 
         @functools.wraps(function)
-        def workflow(*args, validate=True, **kwargs):
+        def workflow(*args: Any, validate: bool = True, **kwargs: Any) -> R:
             if validate:
-                _validate_call(function.__name__, signature, inputs, args, kwargs)
+                _validate_call(workflow.__name__, signature, inputs, args, kwargs)
             return function(*args, **kwargs)
 
         workflow.inputs = inputs
@@ -141,10 +156,10 @@ def _validate_call(name, signature, inputs, args, kwargs):
         warnings.warn(f"{name}: [{finding.check}] {finding.message}", stacklevel=3)
 
 
-def _with_validate_parameter(signature):
+def _with_validate_parameter(signature: inspect.Signature) -> inspect.Signature:
     """The signature of a workflow with the keyword argument 'validate' added."""
     parameters = list(signature.parameters.values())
-    validate = inspect.Parameter("validate", inspect.Parameter.KEYWORD_ONLY, default=True)
+    validate = inspect.Parameter("validate", inspect.Parameter.KEYWORD_ONLY, default=True, annotation=bool)
     has_var_keyword = bool(parameters) and parameters[-1].kind == inspect.Parameter.VAR_KEYWORD
     parameters.insert(len(parameters) - has_var_keyword, validate)
     return signature.replace(parameters=parameters)

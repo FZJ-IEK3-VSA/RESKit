@@ -83,7 +83,12 @@ The check knows what a workflow needs because every workflow declares its inputs
 `@declare_inputs`. It takes the same arguments for every workflow manager:
 
 ```python
-declare_inputs(manager, weather=None, files=(), outputs=("output_netcdf_path",))
+declare_inputs(
+    manager: type[WorkflowManager],
+    weather: dict[str, WeatherInput] | None = None,
+    files: tuple[str, ...] = (),
+    outputs: tuple[str, ...] = ("output_netcdf_path",),
+)
 ```
 
 Only `manager` is required. Leave out `weather`, `files` or `outputs` if the workflow has
