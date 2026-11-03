@@ -792,6 +792,32 @@ def test_SolarWorkflowManager_nan_values_tilt_azimuth_elev___init__() -> SolarWo
     assert ~man.placements["elev"].isna().any()
 
 
+def test_SolarWorkflowManager_estimate_missing_params_with_a_repeated_index() -> None:
+    # the same location twice with a repeated index, as pd.concat() gives it in a sensitivity
+    # study (#386): only the missing values are estimated, the given ones stay in their rows
+    placements = pd.DataFrame(
+        {
+            "lon": [6.083, 6.083],
+            "lat": [50.475, 50.475],
+            "capacity": [2000, 2000],
+            "tilt": [20.0, np.nan],
+            "azimuth": [np.nan, 170.0],
+            "elev": [100.0, np.nan],
+        },
+        index=[0, 0],
+    )
+    man = SolarWorkflowManager(placements)
+    unique_index_man = SolarWorkflowManager(placements.reset_index(drop=True))
+
+    man.estimate_missing_params(elev=300)
+    unique_index_man.estimate_missing_params(elev=300)
+
+    assert man.placements["tilt"].iloc[0] == 20
+    assert man.placements["azimuth"].tolist() == [180, 170]
+    assert man.placements["elev"].tolist() == [100, 300]
+    np.testing.assert_array_equal(man.placements["tilt"].to_numpy(), unique_index_man.placements["tilt"].to_numpy())
+
+
 def _irradiance_chain() -> dict[str, np.ndarray]:
     # Runs the steps from the solar position to the angle of incidence losses, returns sim_data.
     manager = _make_SolarWorkflowManager()

@@ -1664,8 +1664,9 @@ def execute_workflow_iteratively(
             )
     else:
         # add, is mandatory for later recombination of placements and results
-        with pd.option_context("mode.chained_assignment", None):
-            placements.loc[placements.index, "RESKit_sim_order"] = range(len(placements))
+        # assigned by position, not by index label: the index of the placements may repeat;
+        # float as before, it becomes the location coordinate of the results
+        placements["RESKit_sim_order"] = np.arange(len(placements), dtype=float)
 
     # REMOVE ARGS WHICH ARE NOT MEANT FOR THE ITERATIVE WORKFLOW EXECUTION
 
