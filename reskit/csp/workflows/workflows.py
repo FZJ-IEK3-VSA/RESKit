@@ -13,10 +13,22 @@ from reskit.util.paths import is_path_like
 
 from ... import weather as rk_weather
 from .csp_workflow_manager import PTRWorkflowManager
+from reskit.util.input_validation import WeatherInput, declare_inputs
 from .dataset_handler import DatasetHandler
 from reskit.util.provenance import record_provenance
 
 
+@declare_inputs(
+    PTRWorkflowManager,
+    weather={
+        "era5_path": WeatherInput(
+            "ERA5",
+            ("direct_horizontal_irradiance", "surface_wind_speed", "surface_air_temperature"),
+            time_index_from="direct_horizontal_irradiance",
+        )
+    },
+    files=("global_solar_atlas_dni_path", "global_solar_atlas_tamb_path", "elev_path"),
+)
 @record_provenance
 def csp_ptr_era5(
     placements: pd.DataFrame,
@@ -237,6 +249,17 @@ def csp_ptr_era5(
         return output
 
 
+@declare_inputs(
+    PTRWorkflowManager,
+    weather={
+        "era5_path": WeatherInput(
+            "ERA5",
+            ("direct_horizontal_irradiance", "surface_wind_speed", "surface_air_temperature"),
+            time_index_from="direct_horizontal_irradiance",
+        )
+    },
+    files=("global_solar_atlas_dni_path", "elev_path"),
+)
 @record_provenance
 def csp_ptr_era5_specific_dataset(
     placements: pd.DataFrame,

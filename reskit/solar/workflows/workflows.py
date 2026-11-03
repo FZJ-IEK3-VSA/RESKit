@@ -13,6 +13,7 @@ from ... import util as rk_util
 # import othert modules
 from ... import weather as rk_weather
 from .solar_workflow_manager import SolarWorkflowManager
+from reskit.util.input_validation import WeatherInput, declare_inputs
 from reskit.util.provenance import record_provenance
 
 
@@ -31,6 +32,22 @@ _NEEDED_AFTER_POA = [
 ]
 
 
+@declare_inputs(
+    SolarWorkflowManager,
+    weather={
+        "merra_path": WeatherInput(
+            "MERRA",
+            (
+                "surface_wind_speed",
+                "surface_pressure",
+                "surface_air_temperature",
+                "surface_dew_temperature",
+                "global_horizontal_irradiance",
+            ),
+        )
+    },
+    files=("global_solar_atlas_ghi_path", "elev"),
+)
 @record_provenance
 def openfield_pv_merra_ryberg2019(
     placements: pd.DataFrame,
@@ -178,6 +195,24 @@ def openfield_pv_merra_ryberg2019(
     return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables, release=True)
 
 
+@declare_inputs(
+    SolarWorkflowManager,
+    weather={
+        "era5_path": WeatherInput(
+            "ERA5",
+            (
+                "global_horizontal_irradiance",
+                "direct_horizontal_irradiance",
+                "surface_wind_speed",
+                "surface_pressure",
+                "surface_air_temperature",
+                "surface_dew_temperature",
+            ),
+            time_index_from="direct_horizontal_irradiance",
+        )
+    },
+    files=("global_solar_atlas_ghi_path", "global_solar_atlas_dni_path", "elev"),
+)
 @record_provenance
 def openfield_pv_era5(
     placements: pd.DataFrame,
@@ -416,6 +451,18 @@ def openfield_pv_era5(
     return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables, release=True)
 
 
+@declare_inputs(
+    SolarWorkflowManager,
+    weather={
+        "sarah_path": WeatherInput("SARAH", ("direct_normal_irradiance", "global_horizontal_irradiance")),
+        "era5_path": WeatherInput(
+            "ERA5",
+            ("surface_wind_speed", "surface_pressure", "surface_air_temperature", "surface_dew_temperature"),
+            time_index_from="direct_horizontal_irradiance",
+        ),
+    },
+    files=("elev",),
+)
 @record_provenance
 def openfield_pv_sarah_unvalidated(
     placements: pd.DataFrame,
@@ -570,6 +617,24 @@ def openfield_pv_sarah_unvalidated(
     return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables, release=True)
 
 
+@declare_inputs(
+    SolarWorkflowManager,
+    weather={
+        "icon_lam_path": WeatherInput(
+            "ICON-LAM",
+            (
+                "global_horizontal_irradiance",
+                "direct_horizontal_irradiance",
+                "surface_wind_speed",
+                "surface_pressure",
+                "surface_air_temperature",
+                "surface_dew_temperature",
+            ),
+            time_index_from="direct_horizontal_irradiance",
+        )
+    },
+    files=("elev",),
+)
 @record_provenance
 def openfield_pv_iconlam(
     placements: pd.DataFrame,

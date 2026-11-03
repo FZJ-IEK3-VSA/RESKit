@@ -8,7 +8,7 @@ from glob import glob
 from itertools import compress
 from os.path import basename, isdir, isfile, join
 from types import FunctionType
-from typing import Any, List, Union
+from typing import Any, List, Literal, Union, assert_never, get_args
 
 # import third party packages
 import geokit as gk
@@ -28,9 +28,13 @@ from reskit.util.weather_tile import get_location_specific_weather_paths
 # The smallest half width, in SRS units, which is added to a zero-width extent.
 _MIN_EXTENT_HALF_WIDTH = 1e-5
 
+# The dimensions of the results, see WorkflowManager.to_xarray(). No placements column may
+# have one of these names.
+_RESULT_DIMENSIONS = ("location", "time", "time_days")
 
-def _check_coordinate_range(placements, column, minimum, maximum):
-    """Check that every coordinate of a placements column is finite and in range.
+
+def _coordinate_range_problem(placements: pd.DataFrame, column: str, minimum: float, maximum: float) -> str | None:
+    """The problem if a coordinate of a placements column is not finite or out of range.
 
     Parameters
     ----------
@@ -43,20 +47,127 @@ def _check_coordinate_range(placements, column, minimum, maximum):
     minimum, maximum : float
         The inclusive limits of the valid range.
 
-    Raises
-    ------
-    ValueError
-        If one or more values are outside the range, or are NaN, or are infinite.
+    Returns
+    -------
+    str or None
+        The problem if one or more values are outside the range, or are NaN, or are
+        infinite, else None.
     """
     values = pd.to_numeric(placements[column], errors="coerce")
     invalid = ~values.between(minimum, maximum, inclusive="both")
-    if invalid.any():
-        offenders = ", ".join(f"{index}: {value}" for index, value in values[invalid].head(10).items())
-        raise ValueError(
-            f"All '{column}' values must be finite and between {minimum} and {maximum}. "
-            f"{int(invalid.sum())} of {len(values)} placements are invalid "
-            f"(index: value): {offenders}"
-        )
+    if not invalid.any():
+        return None
+    offenders = ", ".join(f"{index}: {value}" for index, value in values[invalid].head(10).items())
+    return (
+        f"All '{column}' values must be finite and between {minimum} and {maximum}. "
+        f"{int(invalid.sum())} of {len(values)} placements are invalid "
+        f"(index: value): {offenders}"
+    )
+
+
+def _check_coordinate_range(placements: pd.DataFrame, column: str, minimum: float, maximum: float) -> None:
+    """Raises a ValueError if _coordinate_range_problem() finds a problem."""
+    problem = _coordinate_range_problem(placements, column, minimum, maximum)
+    if problem is not None:
+        raise ValueError(problem)
+
+
+def _numeric_column_problems(placements: Any, *columns: str) -> list[str]:
+    """The problems if the placements lack one of the columns, or if it is not numeric or has
+    missing values. Used by the placement_problems() of the workflow managers. Placements
+    which are not a DataFrame have no problems here, WorkflowManager.placement_problems()
+    reports them.
+    """
+    if not isinstance(placements, pd.DataFrame):
+        return []
+    problems = []
+    for column in columns:
+        if column not in placements.columns:
+            problems.append(f"placements need the column '{column}'")
+        elif not is_numeric_dtype(placements[column]):
+            problems.append(f"placements column '{column}' must be numeric, not {placements[column].dtype}")
+        elif placements[column].isna().any():
+            problems.append(f"{placements[column].isna().sum()} placements have no '{column}'")
+    return problems
+
+
+def _any_column_problems(placements: Any, *columns: str) -> list[str]:
+    """The problem if the placements have none of the columns, see _numeric_column_problems()."""
+    if not isinstance(placements, pd.DataFrame) or any(column in placements.columns for column in columns):
+        return []
+    return [f"placements need one of the columns {', '.join(repr(column) for column in columns)}"]
+
+
+def _reserved_column_problems(placements: pd.DataFrame) -> list[str]:
+    """The problems if placements columns have the name of a dimension of the results.
+
+    to_xarray() exports every placements column along the dimension 'location'. A column
+    named 'location' clashes with the coordinate of that dimension, which raises a MergeError
+    only after the simulation, and a column named 'time' or 'time_days' is lost or clashes
+    with the time axis.
+    """
+    dimension_names = ", ".join(repr(dimension) for dimension in _RESULT_DIMENSIONS)
+    problems = []
+    for column in _RESULT_DIMENSIONS:
+        if column in placements.columns:
+            problems.append(
+                f"placements column '{column}' must be renamed, {dimension_names} are the dimensions of the results"
+            )
+    return problems
+
+
+def _has_point_geometries(placements: pd.DataFrame) -> bool:
+    """True if the column 'geom' holds point geometries, judged by the first one. The
+    placements must not be empty.
+    """
+    return "geom" in placements.columns and placements["geom"].iloc[0].GetGeometryName() == "POINT"
+
+
+# The source types which WorkflowManager.read() reads from a path. SOURCE_TYPES lists them
+# at runtime, and _source_constructor() gives the class of each.
+SourceType = Literal["ERA5", "SARAH", "MERRA", "ICON-LAM"]
+SOURCE_TYPES: tuple[SourceType, ...] = get_args(SourceType)
+
+
+def _source_constructor(source_type: SourceType, path: str, storage_format: str | None) -> type[rk_weather.NCSource]:
+    """The class of the weather source which reads the path as a source of the given type.
+
+    Parameters
+    ----------
+    source_type : str
+        One of SOURCE_TYPES, see WorkflowManager.read()
+
+    path : str
+        The path of the source. ERA5 is read as a Zarr store if the path ends with '.zarr' or
+        starts with 'gs://'.
+
+    storage_format : str or None
+        "zarr" to read ERA5 as a Zarr store whatever its path
+
+    Returns
+    -------
+    type
+        The class of the source, e.g. Era5ZarrSource
+
+    Raises
+    ------
+    RuntimeError
+        If source_type is not one of SOURCE_TYPES
+    """
+    if source_type not in SOURCE_TYPES:
+        known_types = ", ".join(repr(known_type) for known_type in SOURCE_TYPES)
+        raise RuntimeError(f"Unknown source_type {source_type!r}, must be one of {known_types}")
+    is_zarr = storage_format == "zarr" or path.endswith(".zarr") or path.startswith("gs://")
+    if source_type == "ERA5":
+        return rk_weather.Era5ZarrSource if is_zarr else rk_weather.Era5Source
+    elif source_type == "SARAH":
+        return rk_weather.SarahSource
+    elif source_type == "MERRA":
+        return rk_weather.MerraSource
+    elif source_type == "ICON-LAM":
+        return rk_weather.IconlamSource
+    else:
+        assert_never(source_type)  # a type checker reports a SourceType without a class here
 
 
 def _zarr_regions(locs: gk.LocationSet, dataset: xarray.Dataset, index_pad: int) -> list[np.ndarray]:
@@ -255,17 +366,32 @@ class WorkflowManager:
 
     """
 
-    def __init__(self, placements: pd.DataFrame):
+    def __init__(self, placements: pd.DataFrame) -> None:
+        """Arranges the placements, their locations and the extent around them.
+
+        Parameters
+        ----------
+        placements : pandas.DataFrame
+            The placements to simulate, with point geometries in the column 'geom', or the
+            columns 'lon' and 'lat'. A specialized workflow manager needs further columns, see
+            placement_problems().
+
+        Raises
+        ------
+        ValueError
+            If placement_problems() finds a problem, listing all problems found
+        """
+        problems = self.placement_problems(placements)
+        if problems:
+            raise ValueError("Invalid placements:\n" + "\n".join(f"  - {problem}" for problem in problems))
+
         # arrange placements, locs, and extent
-        assert isinstance(placements, pd.DataFrame)
         self.placements = placements.copy()
         self.locs = None
 
         # Check if input file contains a geometry column
-        ispoint = False
+        ispoint = len(placements) > 0 and _has_point_geometries(placements)
         if "geom" in placements.columns:
-            if self.placements["geom"].iloc[0].GetGeometryName() == "POINT":
-                ispoint = True
             _srs = placements.geom.iloc[0].GetSpatialReference()
         else:
             # assume lat/lon values in EPSG:4326
@@ -276,13 +402,6 @@ class WorkflowManager:
             self.placements["lon"] = self.locs.lons
             self.placements["lat"] = self.locs.lats
             del self.placements["geom"]
-        else:
-            assert "lon" in self.placements.columns, (
-                "if geom are not point geometries, dataframe must contain lon columns"
-            )
-            assert "lat" in self.placements.columns, (
-                "if geom are not point geometries, dataframe must contain lat columns"
-            )
 
         if self.locs is None:
             self.locs = gk.LocationSet(self.placements[["lon", "lat"]].values)
@@ -310,6 +429,39 @@ class WorkflowManager:
         # Provenance, see reskit.util.provenance
         self.weather_sources = []
         self.input_files = []
+
+    @classmethod
+    def placement_problems(cls, placements: Any) -> list[str]:
+        """Finds the problems which make the placements unusable for this workflow manager.
+
+        The base class checks the locations and that no column has the name of a dimension
+        of the results; a specialized workflow manager adds the columns it needs. The
+        constructor raises a ValueError listing all problems, and reskit.validate_inputs
+        reports them before a workflow runs.
+
+        Parameters
+        ----------
+        placements : pandas.DataFrame
+            The placements to check. Any other object is reported as a problem.
+
+        Returns
+        -------
+        list of str
+            The problems found, empty if the placements are usable
+        """
+        if not isinstance(placements, pd.DataFrame):
+            return [f"placements must be a pandas DataFrame, not {type(placements).__name__}"]
+        problems = _reserved_column_problems(placements)
+        if len(placements) > 0 and _has_point_geometries(placements):
+            return problems
+        if "lon" not in placements.columns or "lat" not in placements.columns:
+            location_problem = "placements need point geometries in the column 'geom', or the columns 'lon' and 'lat'"
+            return problems + [location_problem]
+        coordinate_problems = [
+            _coordinate_range_problem(placements, "lon", -180, 180),
+            _coordinate_range_problem(placements, "lat", -90, 90),
+        ]
+        return problems + [problem for problem in coordinate_problems if problem is not None]
 
     # STAGE 2: weather data reading and adjusting
 
@@ -341,7 +493,7 @@ class WorkflowManager:
     def read(
         self,
         variables: Union[str, List[str]],
-        source_type: str,
+        source_type: SourceType | Literal["user"],
         source: str | os.PathLike | rk_weather.NCSource,
         set_time_index: bool = False,
         spatial_interpolation_mode: str = "bilinear",
@@ -370,8 +522,8 @@ class WorkflowManager:
             of initializing the NCSource and loading the data they want
 
         source_type : str
-            The type of weather datasource which is to be loaded. Can be one of:
-            "ERA5", "SARAH", "MERRA", or 'user'
+            The type of weather datasource which is to be loaded, one of
+            reskit.workflow_manager.SOURCE_TYPES: "ERA5", "SARAH", "MERRA" or "ICON-LAM"
             - If a pre-loaded NCSource is given for the `source` object, then the `source_type`
             should be "user"
 
@@ -424,51 +576,39 @@ class WorkflowManager:
             source = as_path_string(source)
             self.weather_sources.append(dict(source_type=source_type, path=source, variables=variables))
             storage_format = kwargs.pop("storage_format", None)
-            is_zarr = storage_format == "zarr" or source.endswith(".zarr") or source.startswith("gs://")
-            if source_type == "ERA5":
-                source_constructor = rk_weather.Era5ZarrSource if is_zarr else rk_weather.Era5Source
-            elif source_type == "SARAH":
-                source_constructor = rk_weather.SarahSource
-            elif source_type == "MERRA":
-                source_constructor = rk_weather.MerraSource
-            elif source_type == "ICON-LAM":
-                source_constructor = rk_weather.IconlamSource
-            else:
-                raise RuntimeError("Unknown source_type")
+            source_constructor = _source_constructor(source_type, source, storage_format)
 
-            if source_type == "ERA5":
-                if is_zarr:
-                    # A Zarr source reads the rectangle around all placements: read placements far
-                    # apart (e.g. on other continents) region by region instead, see _read_by_region()
-                    dataset = rk_weather.Era5ZarrSource._open_dataset(
-                        source,
-                        kwargs.get("chunks"),
-                        kwargs.get("consolidated", True),
-                        kwargs.get("storage_options"),
-                    )
-                    # the padding the sources of the regions read with: as passed, or their default
-                    index_pad = kwargs.get("index_pad", rk_weather.Era5ZarrSource.DEFAULT_INDEX_PAD)
-                    regions = _zarr_regions(self.locs, dataset, index_pad)
-                    if len(regions) > 1:
-                        first_cutout_source, frames = self._read_by_region(
-                            source_constructor,
-                            dataset,
-                            regions,
-                            variables,
-                            spatial_interpolation_mode,
-                            time_index_from=time_index_from,
-                            time_slice=time_slice,
-                            **kwargs,
-                        )
-                        return self._store_read_variables(
-                            first_cutout_source, frames, set_time_index, temporal_reindex_method
-                        )
-                    source = dataset  # opened once
-                source = source_constructor(
-                    source, bounds=self.ext, time_index_from=time_index_from, time_slice=time_slice, **kwargs
+            if source_constructor is rk_weather.Era5ZarrSource:
+                # A Zarr source reads the rectangle around all placements: read placements far
+                # apart (e.g. on other continents) region by region instead, see _read_by_region()
+                dataset = rk_weather.Era5ZarrSource._open_dataset(
+                    source,
+                    kwargs.get("chunks"),
+                    kwargs.get("consolidated", True),
+                    kwargs.get("storage_options"),
                 )
-            else:
-                source = source_constructor(source, bounds=self.ext, time_slice=time_slice, **kwargs)
+                # the padding the sources of the regions read with: as passed, or their default
+                index_pad = kwargs.get("index_pad", rk_weather.Era5ZarrSource.DEFAULT_INDEX_PAD)
+                regions = _zarr_regions(self.locs, dataset, index_pad)
+                if len(regions) > 1:
+                    first_cutout_source, frames = self._read_by_region(
+                        source_constructor,
+                        dataset,
+                        regions,
+                        variables,
+                        spatial_interpolation_mode,
+                        time_index_from=time_index_from,
+                        time_slice=time_slice,
+                        **kwargs,
+                    )
+                    return self._store_read_variables(
+                        first_cutout_source, frames, set_time_index, temporal_reindex_method
+                    )
+                source = dataset  # opened once
+
+            source = self._open_source(
+                source_constructor, source, time_index_from=time_index_from, time_slice=time_slice, **kwargs
+            )
 
             # Load the requested variables one by one, freeing each variable's rectangle (and e.g.
             # the u and v of a wind speed) once its values at the placements are extracted
@@ -658,6 +798,25 @@ class WorkflowManager:
         return self
 
         # Stage 3: Weather data adjusting & other intermediate steps
+
+    def _open_source(
+        self,
+        source_constructor: type[rk_weather.NCSource],
+        source: str | xarray.Dataset,
+        time_index_from: str | None = None,
+        time_slice: slice | None = None,
+        **kwargs: Any,
+    ) -> rk_weather.NCSource:
+        """Opens the weather source for the extent of the placements, without loading any
+        variables. `source_constructor` is the class of the source, see _source_constructor(),
+        and `source` its path, or the opened store of an Era5ZarrSource. See read() for the
+        other parameters.
+        """
+        if issubclass(source_constructor, rk_weather.Era5Source):
+            return source_constructor(
+                source, bounds=self.ext, time_index_from=time_index_from, time_slice=time_slice, **kwargs
+            )
+        return source_constructor(source, bounds=self.ext, time_slice=time_slice, **kwargs)
 
     def get_scalar_values_from_raster(self, fp, spatial_interpolation, points=None):
         """
