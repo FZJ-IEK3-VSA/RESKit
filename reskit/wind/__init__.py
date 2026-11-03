@@ -1,7 +1,7 @@
 from importlib import import_module
 
 from .core.air_density_adjustment import apply_air_density_adjustment
-from .core.design_turbine import onshore_turbine_from_avg_wind_speed
+from .core.design_turbine import onshore_turbine_from_avg_wind_speed, turbine_design_from_avg_wind_speed
 from .core.logarithmic_profile import (
     apply_logarithmic_profile_projection,
     roughness_from_clc,
@@ -14,7 +14,6 @@ from .core.power_profile import alpha_from_levels, apply_power_profile_projectio
 
 # TurbineLibrary is the deprecated alias of turbine_library (#226), removed in v1.0.0
 from .core.turbine_library import TurbineLibrary, turbine_library
-from .core.design_turbine import turbine_design_from_avg_wind_speed, onshore_turbine_from_avg_wind_speed
 
 # The two cost models are resolved on first use rather than on import. They pull in
 # WISDEM, which costs ~1.9 s and ~390 MB to load, and nothing in the simulation
