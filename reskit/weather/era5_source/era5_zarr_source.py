@@ -640,6 +640,12 @@ class Era5ZarrSource(Era5Source):
         if data.dims != expected_dims:
             raise ResError(f"Variable '{variable}' is expected to have dimensions {expected_dims}, got {data.dims}")
 
+        if self._probing:
+            # see NCSource.unavailable_variables; the checks above only read metadata, and a
+            # Zarr store has a single time axis, so the time steps need no check
+            self.data[name] = np.zeros((1, 1, 1))
+            return
+
         tmp = np.asarray(data.values)
 
         if variable in self._derived_variables:

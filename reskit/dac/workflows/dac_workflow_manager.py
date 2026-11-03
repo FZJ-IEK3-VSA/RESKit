@@ -8,7 +8,7 @@ from scipy.interpolate import RegularGridInterpolator
 from reskit.dac.data import DATAFOLDER
 from reskit.util.paths import is_path_like
 
-from ...workflow_manager import WorkflowManager
+from ...workflow_manager import WorkflowManager, _numeric_column_problems
 
 """
 
@@ -18,6 +18,11 @@ Importing required packages.
 
 
 class DACWorkflowManager(WorkflowManager):
+    @classmethod
+    def placement_problems(cls, placements):
+        """See WorkflowManager.placement_problems; the plants need a 'capacity'."""
+        return super().placement_problems(placements) + _numeric_column_problems(placements, "capacity")
+
     def __init__(self, placements):
         """
 
@@ -38,9 +43,6 @@ class DACWorkflowManager(WorkflowManager):
 
         """
         # Do basic workflow construction
-        assert all([a in placements.columns for a in ["lon", "lat", "capacity"]]), (
-            "Placements must contain the columns lon,lat and capacity"
-        )
         super().__init__(placements)
 
         units = {

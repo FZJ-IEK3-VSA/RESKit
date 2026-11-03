@@ -232,7 +232,7 @@ def test_WorkflowManager_read_unknown_source_type(
     with pytest.raises(RuntimeError, match="Unknown source_type"):
         pt_WorkflowManager_initialized.read(
             variables=["elevated_wind_speed"],
-            source_type="NOT-A-SOURCE",
+            source_type="NOT-A-SOURCE",  # type: ignore
             source=FIXTURES["era5"],
             set_time_index=True,
         )
