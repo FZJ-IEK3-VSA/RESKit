@@ -64,7 +64,7 @@ class EGSWorkflowManager:
             "eta_plant": eta_plant,  # 1, f(T[Â°C])
             "eta_pump_1": 0.675,  # 1
             "productivity_(l_per_s)/bar": 2,  # l/s/bar
-            "Vdot_total_m3_per_s": 100 * 1e-3,  # m^3/s = 1E-3 l/s
+            "Vdot_total_m3_per_s": 100 * 1e-3,  # m^3/s, flow per production well (summed over all fractures)
             "x_m": 1000,  # m
             "y_m": 1500,  # m
             "z_m": 1000,  # m
@@ -86,7 +86,7 @@ class EGSWorkflowManager:
             "eta_plant": eta_plant,  # 1, f(T[Â°C])
             "eta_pump_1": 0.675,  # 1
             "productivity_(l_per_s)/bar": 2,  # l/s/bar
-            "Vdot_total_m3_per_s": 100 * 1e-3,  # m^3/s = 1E-3 l/s
+            "Vdot_total_m3_per_s": 100 * 1e-3,  # m^3/s, flow per production well (summed over all fractures)
             "x_m": 1000,  # m
             "y_m": 1000,  # m
             "z_m": 1000,  # m
@@ -443,12 +443,27 @@ class EGSWorkflowManager:
         recovery_fac_amb_GR_1, T_Rock_abandon_GR_degC, T_Water_out_GR_degC,
         resourceUseTime_GR_a, temperature_GR_degC.
 
+        Assumption: ``Vdot_total_m3_per_s`` is the water flow of one production
+        well. "Total" means summed over all fractures, not over all wells. The
+        plant flow is this value times the number of production wells
+        (``n_production_wells_1``). The Gringarten model gets the plant flow for
+        the number of fractures, the dimensionless time and the produced heat,
+        so the heated flow equals the pumped flow. For a doublette (one
+        production well) the plant flow equals ``Vdot_total_m3_per_s``. For a
+        triplette (two production wells) the plant flow is twice as large.
+        Under this assumption the reservoir of a triplette (with ``y_m`` = 1500 m)
+        behaves like two half-reservoirs (y = 750 m) with one production well
+        each.
+
         See :func:`reskit.geothermal.workflows.workflows.egs_workflow` for the
         meaning and units of the output variables.
         """
         assert self.data["lifetime_a"] % 1 == 0  # check if its a natural number
 
-        Vdot_total = self.data["Vdot_total_m3_per_s"]  # m^3/s = 1E-3 l/s
+        # Vdot_total_m3_per_s is the flow per production well (summed over all fractures),
+        # the Gringarten model needs the flow of the whole plant
+        Vdot_per_well = self.data["Vdot_total_m3_per_s"]  # m^3/s
+        Vdot_total = Vdot_per_well * self.data["n_production_wells_1"]  # m^3/s
         x = self.data["x_m"]  # m
         y = self.data["y_m"]  # m
         z = self.data["z_m"]  # m
@@ -473,15 +488,17 @@ class EGSWorkflowManager:
         eta = self.data["eta_plant"](ans["T_Water_out"])  # average temperature over lifetime
         P_out = ans["Qdot_water"] * eta
 
-        # water flow:
-        mdot_water_GR_kg_per_s = ans["mdot_water"] * self.data["n_production_wells_1"]
+        # water flow: ans["mdot_water"] is the plant flow (Vdot_total as used by the
+        # Gringarten model above), each production well carries Vdot_per_well
+        mdot_water_GR_kg_per_s = ans["mdot_water"]
+        mdot_water_GR_kg_per_s_per_well = mdot_water_GR_kg_per_s / self.data["n_production_wells_1"]
 
         # save vars
         self.sim_data_GR = {}
         self.sim_data_GR["Qdot_out_GR_MW"] = ans["Qdot_water"] / 1e6
         self.sim_data_GR["P_out_GR_MW"] = P_out / 1e6
         self.sim_data_GR["mdot_water_GR_kg_per_s"] = mdot_water_GR_kg_per_s
-        self.sim_data_GR["mdot_water_GR_kg_per_s_per_well"] = ans["mdot_water"]
+        self.sim_data_GR["mdot_water_GR_kg_per_s_per_well"] = mdot_water_GR_kg_per_s_per_well
 
         self.sim_data_GR["dT_active_res_GR_K"] = -1
         self.sim_data_GR["dT_total_res_GR_K"] = ans["dT_Rock_avrg"]

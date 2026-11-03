@@ -56,6 +56,12 @@ def egs_workflow(
                  `recovery_factor`, extracted evenly over `lifetime_a`.
             GR : Gringarten method. Analytical heat extraction from parallel
                  fractures with a fixed total volume flow `Vdot_total_m3_per_s`.
+                 Assumption: `Vdot_total_m3_per_s` is the flow of one
+                 production well ("total" means summed over all fractures).
+                 The plant flow is this value times the number of production
+                 wells, so a triplette (two production wells) has twice the
+                 flow of a doublette, and the heated flow equals the pumped
+                 flow.
             SU : Sustainable method. Only the heat replenished by the
                  sustainable heat flow through the horizontal reservoir area
                  (reservoir_size_m3 / depth resolution) is extracted.
@@ -76,9 +82,11 @@ def egs_workflow(
                 Qdot_out * eta_plant(T). Nameplate capacity is P_out / CF [MW_el].
             P_Pump_{M}_MW : Pumping power of all production wells [MW_el].
             P_out_net_{M}_MW : Net electric power, P_out - P_Pump [MW_el].
-            mdot_water_{M}_kg_per_s : Total produced water mass flow [kg/s].
+            mdot_water_{M}_kg_per_s : Total produced water mass flow of the
+                plant [kg/s].
             mdot_water_{M}_kg_per_s_per_well : Water mass flow per production
-                well [kg/s].
+                well, the total flow divided by the number of production
+                wells [kg/s].
             T_Water_out_{M}_degC : Production water temperature. VM: mean over
                 the lifetime, T_rock - dT_drawdown / 2. SU: equals the rock
                 temperature [degC].
