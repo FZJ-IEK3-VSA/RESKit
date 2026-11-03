@@ -35,3 +35,6 @@ docs/examples/[0-9]*/
 
 # Example script scratch output
 examples/**/tmp/
+
+# mkdocs build cache
+.cache/

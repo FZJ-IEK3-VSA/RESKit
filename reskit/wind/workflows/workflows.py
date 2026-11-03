@@ -16,9 +16,20 @@ import reskit.weather as rk_weather
 from reskit.wind.core.data import DATAFOLDER
 from reskit.wind.core.windspeed_correction import build_ws_correction_function
 from reskit.wind.workflows.wind_workflow_manager import WindWorkflowManager
+from reskit.util.input_validation import WeatherInput, declare_inputs
 from reskit.util.provenance import record_provenance
+from reskit.workflow_manager import SourceType
 
 
+@declare_inputs(
+    WindWorkflowManager,
+    weather={
+        "era5_path": WeatherInput(
+            "ERA5", ("elevated_wind_speed", "surface_pressure", "surface_air_temperature", "boundary_layer_height")
+        )
+    },
+    files=("gwa_100m_path", "height_scaling_data"),
+)
 @record_provenance
 def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
     placements: pd.DataFrame,
@@ -203,6 +214,13 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
     return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables, release=True)
 
 
+@declare_inputs(
+    WindWorkflowManager,
+    weather={
+        "merra_path": WeatherInput("MERRA", ("elevated_wind_speed", "surface_pressure", "surface_air_temperature"))
+    },
+    files=("gwa_50m_path", "clc2012_path"),
+)
 @record_provenance
 def onshore_wind_merra_ryberg2019_europe(
     placements: pd.DataFrame,
@@ -292,6 +310,10 @@ def onshore_wind_merra_ryberg2019_europe(
     return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables, release=True)
 
 
+@declare_inputs(
+    WindWorkflowManager,
+    weather={"merra_path": WeatherInput("MERRA", ("elevated_wind_speed",))},
+)
 @record_provenance
 def offshore_wind_merra_caglayan2019(
     placements: pd.DataFrame,
@@ -367,6 +389,15 @@ def offshore_wind_merra_caglayan2019(
     return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables, release=True)
 
 
+@declare_inputs(
+    WindWorkflowManager,
+    weather={
+        "icon_lam_path": WeatherInput(
+            "ICON-LAM", ("elevated_wind_speed", "surface_pressure", "surface_air_temperature", "boundary_layer_height")
+        )
+    },
+    files=("esa_cci_path",),
+)
 @record_provenance
 def onshore_wind_iconlam_2023(
     placements: pd.DataFrame,
@@ -462,11 +493,21 @@ def onshore_wind_iconlam_2023(
     return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables, release=True)
 
 
+@declare_inputs(
+    WindWorkflowManager,
+    weather={
+        "weather_path": WeatherInput(
+            variables=("elevated_wind_speed", "surface_pressure", "surface_air_temperature", "boundary_layer_height"),
+            source_type_argument="weather_source_type",
+        )
+    },
+    files=("weather_lra_ws_path", "real_lra_ws_path", "height_scaling_data", "cf_correction_factor"),
+)
 @record_provenance
 def wind_config(
     placements: pd.DataFrame,
     weather_path: str | PathLike,
-    weather_source_type: str,
+    weather_source_type: SourceType,
     weather_lra_ws_path: str | PathLike,
     enable_lra_adjustment: bool,
     real_lra_ws_path: float | str | PathLike,
@@ -502,6 +543,9 @@ def wind_config(
         A Dataframe object with the parameters needed by the simulation.
     weather_path : str
         Path to the temporally resolved weather data, e.g. ERA-5 or MERRA-2 etc.
+    weather_source_type : str
+        The type of the weather data at weather_path, one of
+        reskit.workflow_manager.SOURCE_TYPES, e.g. "ERA5" or "MERRA".
     weather_lra_ws_path : str
         The path to a raster with the corresponding long-run-average
         windspeeds of the actual weather data (will be corrected to the

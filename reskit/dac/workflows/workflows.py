@@ -6,9 +6,14 @@ import pandas as pd
 
 from ...util.relative_humidity import calculate_relative_humidity
 from .dac_workflow_manager import DACWorkflowManager
+from reskit.util.input_validation import WeatherInput, declare_inputs
 from reskit.util.provenance import record_provenance
 
 
+@declare_inputs(
+    DACWorkflowManager,
+    weather={"era5_path": WeatherInput("ERA5", ("surface_air_temperature", "surface_dew_temperature"))},
+)
 @record_provenance
 def lt_dac_era5_wenzel2025(
     placements: pd.DataFrame,
@@ -87,6 +92,10 @@ def lt_dac_era5_wenzel2025(
     )
 
 
+@declare_inputs(
+    DACWorkflowManager,
+    weather={"era5_path": WeatherInput("ERA5", ("surface_air_temperature", "surface_dew_temperature"))},
+)
 @record_provenance
 def ht_dac_era5_wenzel2025(
     placements: pd.DataFrame,
