@@ -68,18 +68,21 @@ def egs_workflow(
 
         All depth-dependent values of method {M} are given at that method's own
         optimal depth `opt_depth_{M}_m`, so depths can differ between methods.
-        Placements without an eligible depth are NaN. A value of -1 means
-        "not defined for this method".
+        Depth-dependent values of placements without an eligible depth are NaN.
+        Constant values (e.g. dT_active_res_VM_K and the -1 placeholders) are
+        given for all placements, eligible or not. A value of -1 means "not
+        defined for this method".
 
             opt_depth_{M}_m : Depth with minimal net LCOE, considering only
                 depths <= maxDepth_m with rock temperature >=
-                minRockTemperature_degC [m].
+                minRockTemperature_degC and positive net power [m].
             temperature_{M}_degC : Undisturbed rock temperature at the optimal
                 depth [degC].
-            Qdot_out_{M}_MW : Thermal power extracted, averaged over the
-                lifetime [MW_th].
-            P_out_{M}_MW : Gross electric power averaged over the lifetime,
-                Qdot_out * eta_plant(T). Nameplate capacity is P_out / CF [MW_el].
+            Qdot_out_{M}_MW : Thermal power extracted. VM, SU: mean over the
+                lifetime. GR: at the end of the lifetime [MW_th].
+            P_out_{M}_MW : Gross electric power, Qdot_out * eta_plant(T_Water_out).
+                VM, SU: mean over the lifetime. GR: at the end of the lifetime.
+                Nameplate capacity is P_out / CF [MW_el].
             P_Pump_{M}_MW : Pumping power of all production wells [MW_el].
             P_out_net_{M}_MW : Net electric power, P_out - P_Pump [MW_el].
             mdot_water_{M}_kg_per_s : Total produced water mass flow of the
@@ -88,7 +91,8 @@ def egs_workflow(
                 well, the total flow divided by the number of production
                 wells [kg/s].
             T_Water_out_{M}_degC : Production water temperature. VM: mean over
-                the lifetime, T_rock - dT_drawdown / 2. SU: equals the rock
+                the lifetime, T_rock - dT_drawdown / 2. GR: at the end of the
+                lifetime (Gringarten solution). SU: equals the rock
                 temperature [degC].
             T_Rock_abandon_{M}_degC : Mean rock temperature at the end of the
                 lifetime [degC].
@@ -97,12 +101,16 @@ def egs_workflow(
             dT_total_res_{M}_K : Mean temperature drawdown of the whole
                 reservoir volume at the end of the lifetime. SU: 0 [K].
             recovery_fac_amb_{M}_1 : Extracted heat divided by the heat in place
-                relative to the surface temperature. SU: -1 [-].
+                relative to the surface temperature. GR: relative to a fixed
+                15 degC. SU: -1 [-].
             resourceUseTime_{M}_a : Years until the rock reaches
-                minRockTemperature_degC at the method's cooling rate. SU: inf [a].
+                minRockTemperature_degC at the method's cooling rate. GR: until
+                the production water temperature reaches it (nearest full year,
+                at most 1000 a). SU: inf [a].
             regeneration_time_{M}_a : Years the sustainable heat flow needs to
-                replenish the heat extracted during the lifetime
-                (SU: equals lifetime_a by construction) [a].
+                replenish the heat extracted during the lifetime, computed as
+                Qdot_out * lifetime_a. GR: based on Qdot_out at the end of the
+                lifetime. SU: equals lifetime_a by construction [a].
             TOTEX_MUSD_{M}_per_a : Annual total cost, annuitized CAPEX
                 (WACC, lifetime_a) plus fixed OPEX [MUSD/a].
             LCOE_gross_{M}_EUR_per_kWh : LCOE based on P_out [EUR/kWh].

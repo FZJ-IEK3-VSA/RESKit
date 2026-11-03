@@ -485,7 +485,7 @@ class EGSWorkflowManager:
         resource_use_time_a = grin.get_resource_use_time(T_abandon=self.data["minRockTemperature_degC"])
 
         # calc eta
-        eta = self.data["eta_plant"](ans["T_Water_out"])  # average temperature over lifetime
+        eta = self.data["eta_plant"](ans["T_Water_out"])  # outlet temperature at the end of the lifetime
         P_out = ans["Qdot_water"] * eta
 
         # water flow: ans["mdot_water"] is the plant flow (Vdot_total as used by the
