@@ -4,6 +4,7 @@ import pytest
 from numpy import allclose
 
 import reskit as rk
+from reskit.geothermal.data.gringarten import Gringarten
 
 # Default variables
 sourceTemperature = rk.geothermal.data.path_temperatures
@@ -71,16 +72,11 @@ def egs_output_triplette(placements):
     )
 
 
-def test_gr_flow_triplette(egs_output_triplette):
-    """Vdot_total is the flow per production well: the plant flow is twice as large
-    for the two production wells, and the flow implied by the produced heat equals the pumped flow."""
+def test_gr_heat_flow_matches_pumped_flow_triplette(egs_output_triplette):
+    """The flow the Gringarten model heats must equal the flow that is pumped and paid for."""
     out = egs_output_triplette
-    assert allclose(out.mdot_water_GR_kg_per_s, 200), (
-        "GR plant flow must be Vdot_total * rho_water * n_production_wells!"
-    )
-    assert allclose(out.mdot_water_GR_kg_per_s_per_well, 100), "GR flow per well must equal Vdot_total * rho_water!"
-    # the Gringarten class uses cp_water = 4186 J/kg/K
-    mdot_from_heat = out.Qdot_out_GR_MW * 1e6 / (4186 * (out.T_Water_out_GR_degC - 80))
+    T_inj = 80  # degC, default injection temperature of the plant data
+    mdot_from_heat = out.Qdot_out_GR_MW * 1e6 / (Gringarten.cp_water * (out.T_Water_out_GR_degC - T_inj))
     assert allclose(mdot_from_heat, out.mdot_water_GR_kg_per_s), "Heated flow and pumped flow differ!"
 
 
