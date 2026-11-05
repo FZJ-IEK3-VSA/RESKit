@@ -10,7 +10,6 @@ ignore = [
     "F401", # imported but unused
     "F405", # Variable is undefined or from star import
     "F403", #  `from test.helpers import *` used; unable to detect undefined names
-    "F811", # Redefinition of unused variable
     "F541", # f-string without any placeholders
     "F841", # variable is assigned to but never used
     "F821", # Undefined name `plt`
