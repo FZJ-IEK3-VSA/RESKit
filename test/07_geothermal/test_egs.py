@@ -44,22 +44,34 @@ def test_output_dimensions(placements, egs_output):
     assert list(placements.columns) == ["lat", "lon", "geom"]
 
 
-def test_lcoe_vm(egs_output):
-    """Validate LCOE_VM_EUR_per_kWh values."""
+def test_variable_names_and_units(egs_output):
+    """The variables are named without units, and the attributes give the unit of each."""
+    for method in ("volume", "gringarten", "sustainable"):
+        for name in ("lcoe", "optimal_depth", "power_output_net", "heat_output"):
+            assert f"{name}_{method}" in egs_output
+    assert "heat_in_place_volume" in egs_output
+    assert egs_output.attrs["lcoe_gringarten"] == "EUR/kWh"
+    assert egs_output.attrs["sustainable_heat_flow"] == "W/m2"
+    for variable in egs_output.data_vars:
+        assert variable in ("lon", "lat") or variable in egs_output.attrs, variable
+
+
+def test_lcoe_volume(egs_output):
+    """Validate lcoe_volume values."""
     expected = [0.83377206, 0.52975674, 0.26825743, 0.50673514]
-    assert allclose(egs_output.LCOE_VM_EUR_per_kWh, expected), "LCOE_VM values do not match!"
+    assert allclose(egs_output.lcoe_volume, expected), "lcoe_volume values do not match!"
 
 
-def test_lcoe_gr(egs_output):
-    """Validate LCOE_GR_EUR_per_kWh values."""
+def test_lcoe_gringarten(egs_output):
+    """Validate lcoe_gringarten values."""
     expected = [0.32707465, 0.12043728, 0.03419219, 0.10778247]
-    assert allclose(egs_output.LCOE_GR_EUR_per_kWh, expected), "LCOE_GR values do not match!"
+    assert allclose(egs_output.lcoe_gringarten, expected), "lcoe_gringarten values do not match!"
 
 
-def test_lcoe_su(egs_output):
-    """Validate LCOE_SU_EUR_per_kWh values."""
+def test_lcoe_sustainable(egs_output):
+    """Validate lcoe_sustainable values."""
     expected = [51.79376029, 28.61874858, 7.62909725, 20.23294058]
-    assert allclose(egs_output.LCOE_SU_EUR_per_kWh, expected), "LCOE_SU values do not match!"
+    assert allclose(egs_output.lcoe_sustainable, expected), "lcoe_sustainable values do not match!"
 
 
 def test_provenance(egs_output):
@@ -80,14 +92,14 @@ def test_output_netcdf_path(placements, egs_output, tmp_path):
     )
     assert returned == str(path)
     written = xr.load_dataset(path)
-    assert allclose(written.LCOE_GR_EUR_per_kWh, egs_output.LCOE_GR_EUR_per_kWh)
+    assert allclose(written.lcoe_gringarten, egs_output.lcoe_gringarten)
     assert str(path) not in [record["path"] for record in read_provenance(written)["input_files"]]
 
 
 def test_output_variables(placements):
     """Only the requested variables are returned."""
-    output = rk.geothermal.egs_workflow(placements=placements, output_variables=["lon", "lat", "LCOE_GR_EUR_per_kWh"])
-    assert set(output.data_vars) == {"lon", "lat", "LCOE_GR_EUR_per_kWh"}
+    output = rk.geothermal.egs_workflow(placements=placements, output_variables=["lon", "lat", "lcoe_gringarten"])
+    assert set(output.data_vars) == {"lon", "lat", "lcoe_gringarten"}
 
 
 def test_location_id(placements):
@@ -100,7 +112,7 @@ def test_geometry_only_placements(placements):
     """Placements with only point geometries are accepted, as in the other workflows."""
     output = rk.geothermal.egs_workflow(placements=placements[["geom"]], manual_values={"x_ED_1": 8})
     assert allclose(output.lat, placements.lat)
-    assert allclose(output.LCOE_GR_EUR_per_kWh, [0.32707465, 0.12043728, 0.03419219, 0.10778247])
+    assert allclose(output.lcoe_gringarten, [0.32707465, 0.12043728, 0.03419219, 0.10778247])
 
 
 @pytest.mark.parametrize("suffix", [".nc4", ".csv"])

@@ -62,7 +62,42 @@ def egs_workflow(
     Returns
     -------
     xarray.Dataset or str
-        The results along the dimension 'location', or the path of the file written
+        The results along the dimension 'location', or the path of the file written. The
+        attributes of the dataset give the unit of each variable. Besides 'lon', 'lat',
+        'surface_temperature' and 'sustainable_heat_flow', the variables are the values at
+        the optimal depth of each method, named with the suffix '_volume', '_gringarten' or
+        '_sustainable':
+
+        - optimal_depth: the depth with the lowest LCOE; NaN, like all other values of the
+          method, where no depth is eligible
+        - lcoe, lcoe_gross: the LCOE from the net and from the gross power output
+        - totex: the annuity of the capital cost plus the fixed operating cost
+        - heat_output: the thermal output; the mean over the lifetime for the volume
+          method, the output in the last year of the lifetime for the Gringarten method
+        - power_output_gross, power_output_net: the electric output before and after
+          subtracting pump_power_per_well
+        - pump_power_per_well: the power of the pump of one production well
+        - water_mass_flow, water_mass_flow_per_well: the water flow of all production wells
+          and of one
+        - rock_temperature: the initial rock temperature at the optimal depth
+        - rock_temperature_abandonment: the mean rock temperature at the end of the lifetime
+        - water_outlet_temperature: the temperature of the produced water; the initial
+          rock temperature for the volume and the sustainable method
+        - temperature_drawdown_reservoir: the mean temperature drop of the reservoir over
+          the lifetime
+        - temperature_drawdown_active: the temperature drop of the rock the water flows
+          through, a parameter of the volume method; -1 for the Gringarten method, which
+          does not calculate it
+        - recovery_factor: the share of the heat in place which is extracted over the
+          lifetime; -1 for the sustainable method, which does not calculate it
+        - resource_use_time: the years until the rock (volume method) or the produced
+          water (Gringarten method) cools to the minimum rock temperature of the
+          configuration; infinite for the sustainable method
+        - regeneration_time: the years the sustainable heat flow needs to replace the heat
+          extracted over the lifetime
+
+        The volume method also gives heat_in_place_volume, the heat in the reservoir above
+        the surface temperature.
 
     Citation
     --------
@@ -89,7 +124,7 @@ def egs_workflow(
     wfm.loadData(
         vars=["heat_flow_sustainable_W_per_m2"],
         source=sourceSustainableHeatflow,
-        newVarNamesDict={"heat_flow_sustainable_W_per_m2": "qdot_sust_W_per_m2"},
+        newVarNamesDict={"heat_flow_sustainable_W_per_m2": "sustainable_heat_flow"},
     )
     wfm.loadPlantData(configuration=configuration, manual_values=manual_values or {})
 
@@ -108,7 +143,9 @@ def egs_workflow(
         wfm.getValuesAtOptDepth(techMethod=techMethod)
 
     if savepath is None:
-        return wfm.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables)
+        return wfm.to_xarray(
+            output_netcdf_path=output_netcdf_path, output_variables=output_variables, custom_attributes=wfm.units
+        )
     return _save_deprecated(wfm, str(savepath), output_variables)
 
 
@@ -120,7 +157,9 @@ def _save_deprecated(wfm, savepath, output_variables):
     if filetype not in (".nc", ".nc4", ".csv"):
         raise ValueError(f"savepath must end in .nc, .nc4 or .csv, not '{filetype}'")
     if filetype in (".nc", ".nc4"):
-        return wfm.to_xarray(output_netcdf_path=savepath, output_variables=output_variables)
+        return wfm.to_xarray(
+            output_netcdf_path=savepath, output_variables=output_variables, custom_attributes=wfm.units
+        )
 
     wfm.to_xarray(output_variables=output_variables).to_dataframe().to_csv(savepath)
     return savepath

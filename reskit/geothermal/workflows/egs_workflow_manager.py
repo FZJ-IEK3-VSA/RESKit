@@ -10,6 +10,45 @@ from ..data import path_gringarten_curve
 from ..data.gringarten import Gringarten
 
 
+# The methods which give the plant output: volume method, Gringarten method, sustainable heat flow
+METHOD_NAMES = {"VM": "volume", "GR": "gringarten", "SU": "sustainable"}
+
+# The results at the optimal depth, as {internal name: (output name, unit)}; {m} stands for
+# the short and {method} for the output name of the method
+_METHOD_OUTPUTS = {
+    "Qdot_out_{m}_MW": ("heat_output_{method}", "MW_th"),
+    "P_out_{m}_MW": ("power_output_gross_{method}", "MW_el"),
+    "P_Pump_{m}_MW": ("pump_power_per_well_{method}", "MW_el"),
+    "P_out_net_{m}_MW": ("power_output_net_{method}", "MW_el"),
+    "mdot_water_{m}_kg_per_s": ("water_mass_flow_{method}", "kg/s"),
+    "mdot_water_{m}_kg_per_s_per_well": ("water_mass_flow_per_well_{method}", "kg/s"),
+    "dT_active_res_{m}_K": ("temperature_drawdown_active_{method}", "K"),
+    "dT_total_res_{m}_K": ("temperature_drawdown_reservoir_{method}", "K"),
+    "recovery_fac_amb_{m}_1": ("recovery_factor_{method}", "-"),
+    "resourceUseTime_{m}_a": ("resource_use_time_{method}", "a"),
+    "temperature_{m}_degC": ("rock_temperature_{method}", "°C"),
+    "T_Rock_abandon_{m}_degC": ("rock_temperature_abandonment_{method}", "°C"),
+    "T_Water_out_{m}_degC": ("water_outlet_temperature_{method}", "°C"),
+    "TOTEX_MUSD_{m}_per_a": ("totex_{method}", "MUSD/a"),
+    "LCOE_gross_{m}_EUR_per_kWh": ("lcoe_gross_{method}", "EUR/kWh"),
+    "LCOE_{m}_EUR_per_kWh": ("lcoe_{method}", "EUR/kWh"),
+    "regeneration_time_{m}_a": ("regeneration_time_{method}", "a"),
+    "opt_depth_{m}_m": ("optimal_depth_{method}", "m"),
+}
+OUTPUT_NAMES = {
+    internal.format(m=short): name.format(method=method)
+    for short, method in METHOD_NAMES.items()
+    for internal, (name, _) in _METHOD_OUTPUTS.items()
+}
+OUTPUT_NAMES["Total_thermal_energy_PJ"] = "heat_in_place_volume"
+UNITS = {
+    "surface_temperature": "°C",
+    "sustainable_heat_flow": "W/m2",
+    "heat_in_place_volume": "PJ",
+    **{name.format(method=method): unit for method in METHOD_NAMES.values() for name, unit in _METHOD_OUTPUTS.values()},
+}
+
+
 class EGSWorkflowManager(WorkflowManager):
     SECONDS_PER_YEAR = 365 * 24 * 3600
     USD2EUR = 0.88  # EUR
@@ -30,6 +69,8 @@ class EGSWorkflowManager(WorkflowManager):
         # one value per placement, at the optimal depth, and have no time series, so
         # WorkflowManager.sim_data stays empty.
         self.depth_data = {}
+        # the units of the results, added to the attributes of the dataset like in the other workflows
+        self.units = dict(UNITS)
 
     def loadPlantData(self, configuration: str, manual_values={}):
         configuration = configuration.lower()
@@ -477,9 +518,9 @@ class EGSWorkflowManager(WorkflowManager):
         self.sim_data_GR["temperature_GR_degC"] = self.depth_data["temperature"]
 
     def SustainableHeat(self):
-        assert "qdot_sust_W_per_m2" in self.placements.columns
+        assert "sustainable_heat_flow" in self.placements.columns
 
-        qdot_sust_W_per_m2 = self.placements["qdot_sust_W_per_m2"].values
+        qdot_sust_W_per_m2 = self.placements["sustainable_heat_flow"].values
 
         # get absolute sustainable heatflow
         delta_depth = self.depths[1] - self.depths[0]  # m
@@ -689,19 +730,20 @@ class EGSWorkflowManager(WorkflowManager):
         for varname in sim_data_techmethod.keys():
             var = sim_data_techmethod[varname]
 
-            assert varname not in self.placements.columns
-
             # irrelevant for storing
             if "argmin_opt_depth" in varname:
                 continue
             if "notEligible" in varname:
                 continue
+
+            output_name = OUTPUT_NAMES[varname]
+            assert output_name not in self.placements.columns
             # if its opt_dept, just write it
             if "opt_depth" in varname:
-                self.placements[varname] = var
+                self.placements[output_name] = var
             # if its a constant value, just write it
             elif isinstance(var, int) or isinstance(var, float):
-                self.placements[varname] = var
+                self.placements[output_name] = var
             # if its an depth depending matrix, select the right depth depending value
             elif isinstance(var, np.ndarray):
                 notEligible = sim_data_techmethod[f"notEligible_{tech_method_short}"]
@@ -717,7 +759,7 @@ class EGSWorkflowManager(WorkflowManager):
                 var[~notEligible] = valEligible
                 var[notEligible] = np.nan
 
-                self.placements[varname] = var
+                self.placements[output_name] = var
 
     def getRegenerationTime(self, techMethod):
         sim_data_techmethod = getattr(self, techMethod)
@@ -728,7 +770,7 @@ class EGSWorkflowManager(WorkflowManager):
         )  # Wa = Watt*year
         delta_depth = self.depths[1] - self.depths[0]  # m
         regeneration_time = Q_out_Wa / (
-            self.data["reservoir_size_m3"] / delta_depth * self.placements["qdot_sust_W_per_m2"].values
+            self.data["reservoir_size_m3"] / delta_depth * self.placements["sustainable_heat_flow"].values
         )  # a
 
         sim_data_techmethod[f"regeneration_time_{tech_method_short}_a"] = regeneration_time
