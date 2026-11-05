@@ -1336,11 +1336,7 @@ class WorkflowManager:
         for k, v in self.workflow_parameters.items():
             xds.attrs[k] = v
 
-        # only the units of the variables in the dataset, output_variables may exclude some
-        for variable, unit in self.units.items():
-            if variable in xds.variables:
-                xds[variable].attrs["units"] = unit
-                xds.attrs[variable] = unit
+        self._add_units(xds)
 
         # Add custom attributes if provided
         if custom_attributes is not None:
@@ -1352,6 +1348,18 @@ class WorkflowManager:
             return output_netcdf_path
         else:
             return xds
+
+    def _add_units(self, xds: xarray.Dataset) -> None:
+        """Writes the `.units` of the variables in the dataset.
+
+        Each unit becomes the attribute 'units' of its variable and a dataset attribute named
+        like the variable. Units of variables not in the dataset, e.g. excluded by
+        output_variables, are left out.
+        """
+        for variable, unit in self.units.items():
+            if variable in xds.variables:
+                xds[variable].attrs["units"] = unit
+                xds.attrs[variable] = unit
 
     def _time_span(self):
         if self.time_index is None or len(self.time_index) == 0:

@@ -9,6 +9,7 @@ from ... import weather as rk_weather
 import numpy as np
 import pandas as pd
 import pvlib
+import xarray as xr
 
 try:
     from numba import jit
@@ -34,6 +35,59 @@ def _warn_deprecated_area_column(column_name: str):
         DeprecationWarning,
         stacklevel=3,
     )
+
+
+# The results under their output names, as {internal name: (output name, unit, factor)}; the
+# factor converts the internal values to the unit. Variables not listed keep their name, e.g.
+# the placements columns, and the interim variables which debug_vars keeps.
+OUTPUTS = {
+    # per placement
+    "datasetname": ("dataset", None, 1),
+    "sm_opt": ("solar_multiple", "-", 1),
+    "tes_opt": ("storage_hours", "h", 1),
+    "capacity_sf_W_th": ("solar_field_capacity", "W_th", 1),
+    "I_DNI_nom_W_per_m2": ("design_dni", "W/m2", 1),
+    "power_plant_capacity_W_el": ("power_plant_capacity", "W_el", 1),
+    "storage_capacity_kWh_th": ("storage_capacity", "kWh_th", 1),
+    "Power_net_total_Wh_per_a": ("annual_net_electricity_output", "Wh_el/a", 1),
+    "Power_net_bound_perc_per_a": ("non_dispatchable_share", "%", 1),
+    "lcoe_EURct_per_kWh_el": ("lcoe", "EUR/kWh_el", 0.01),
+    "LCO_Heat_SF_EURct_per_kWh": ("lcoh_solar_field", "EUR/kWh_th", 0.01),
+    "CAPEX_total_EUR": ("capex", "EUR", 1),
+    "CAPEX_SF_EUR": ("capex_solar_field", "EUR", 1),
+    "Totex_SF_EUR_per_a": ("totex_solar_field", "EUR/a", 1),
+    "annualHeatfromSF_Wh": ("annual_solar_field_heat", "Wh_th/a", 1),
+    "Parasitics_plant_Wh_el_per_a": ("annual_parasitics_plant", "Wh_el/a", 1),
+    "Parasitics_solarfield_Wh_el_per_a": ("annual_parasitics_solar_field", "Wh_el/a", 1),
+    # per time step and placement
+    "HeattoHTF_W": ("heat_to_htf", "W_th", 1),
+    "HeattoPlant_W": ("heat_to_plant", "W_th", 1),
+    "P_heating_W": ("solar_field_heating", "W_th", 1),
+    "Parasitics_W_el": ("parasitics", "W_el", 1),
+    "Parasitics_plant_W_el": ("parasitics_plant", "W_el", 1),
+    "Parasitics_solarfield_W_el": ("parasitics_solar_field", "W_el", 1),
+    "capacity_factor_sf": ("solar_field_capacity_factor", "-", 1),
+    "capacity_factor_heat_FP_sf": ("solar_field_heating_capacity_factor", "-", 1),
+    "solar_zenith_degree": ("solar_zenith", "deg", 1),
+    # per day and placement
+    "Power_net_total_per_day_Wh": ("daily_net_electricity_output", "Wh_el", 1),
+    "Power_net_bound_per_day_Wh": ("daily_non_dispatchable_electricity_output", "Wh_el", 1),
+    "P_backup_heating_daily_Wh_el": ("daily_backup_heating_electricity", "Wh_el", 1),
+    "Parasitics_plant_daily_Wh_el": ("daily_parasitics", "Wh_el", 1),
+    "capacity_factor_plant": ("daily_capacity_factor", "-", 1),
+}
+OUTPUT_NAMES = {internal: name for internal, (name, _, _) in OUTPUTS.items()}
+INTERNAL_NAMES = {name: internal for internal, name in OUTPUT_NAMES.items()}
+UNITS = {
+    "aperture_area_m2": "m2",
+    "land_area_m2": "m2",
+    "elev": "m",
+    "azimuth": "deg",
+    "direct_normal_irradiance": "W/m2",
+    **{name: unit for name, unit, _ in OUTPUTS.values() if unit is not None},
+}
+# interim variables which are not part of the results
+NOT_EXPORTED = ("annuity",)
 
 
 class PTRWorkflowManager(SolarWorkflowManager):
@@ -69,6 +123,52 @@ class PTRWorkflowManager(SolarWorkflowManager):
         self._time_index_ = None
         # self.module = None
         self.sim_data_daily = dict()
+        self.units.update(UNITS)
+
+    @staticmethod
+    def internal_names(output_variables):
+        """Returns the internal names of the given output variables, e.g. for release_sim_data()."""
+        if output_variables is None:
+            return None
+        if isinstance(output_variables, str):
+            output_variables = [output_variables]
+        return [INTERNAL_NAMES.get(name, name) for name in output_variables]
+
+    def to_xarray(
+        self,
+        output_netcdf_path=None,
+        output_variables=None,
+        custom_attributes=None,
+        release=False,
+        _intermediate_dict=False,
+    ):
+        """See WorkflowManager.to_xarray; the results are named and scaled as listed in OUTPUTS.
+
+        `output_variables` takes the output names.
+        """
+        xds = super().to_xarray(
+            output_variables=self.internal_names(output_variables),
+            custom_attributes=custom_attributes,
+            release=release,
+            _intermediate_dict=_intermediate_dict,
+        )
+        if _intermediate_dict:
+            return xds
+
+        xds = xds.drop_vars([name for name in NOT_EXPORTED if name in xds.variables])
+        for internal, (name, _, factor) in OUTPUTS.items():
+            if internal in xds.variables:
+                if factor != 1:
+                    xds[internal] = xds[internal] * factor
+                xds = xds.rename({internal: name})
+        self._add_units(xds)
+
+        if output_netcdf_path is None:
+            return xds
+        # compress the time series, as WorkflowManager.to_xarray() does
+        encoding = {name: dict(zlib=True) for name in xds.data_vars if xds[name].ndim > 1}
+        xds.to_netcdf(output_netcdf_path, encoding=encoding)
+        return output_netcdf_path
 
     def loadPTRdata(self, datasetname: str):
         """Loads the dataset with the name datasetname.
@@ -904,7 +1004,6 @@ class PTRWorkflowManager(SolarWorkflowManager):
                     return temperature, losses, P_heating, HeattoPlant
 
             # NUMBA JIT the simulation
-            tic = time.time()
             simulation_jitted = jit(nopython=True)(simulation)
 
             # Run the simulation
@@ -947,9 +1046,6 @@ class PTRWorkflowManager(SolarWorkflowManager):
                     HeattoPlant=_HeattoPlant,
                     add_losses_coefficient=params["add_losses_coefficient"],
                 )
-
-            toc = time.time()
-            print("Core simulation time: " + str(toc - tic) + "s.")
 
             # store data
             self.sim_data["HTF_mean_temperature_C"] = _temperature

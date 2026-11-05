@@ -41,7 +41,7 @@ def csp_ptr_era5(
     elev_path: str | PathLike | list[float] | None = None,
     output_netcdf_path: str | None = None,
     output_variables: str | list[str] | None = None,
-    return_self: bool = True,
+    return_self: bool | None = None,
     JITaccelerate: bool = False,
     verbose: bool = False,
     debug_vars: bool = False,
@@ -102,14 +102,14 @@ def csp_ptr_era5(
         Defaults to None.
 
     output_variables: list of {str, number}, optional
-        Output variables of the simulation that you want to save.
+        Output variables of the simulation that you want to save, by their output names.
         If None, includes all suitable variables from placements, workflow parameters, simulation data, and time index.
         Interim variables which are not listed are dropped as soon as the workflow no longer needs them, which lowers its memory use.
 
     return_self: bool, optional
-        If True, returns the workflow manager object.
-        If False, returns the output as an XArray dataset.
-        Defaults to True.
+        Deprecated, removed in RESKit v1.0.0. If True, returns the workflow manager object
+        instead of the results. By default the results are returned, like in the other
+        workflows.
 
     JITaccelerate: bool, optional
         If True, enables JIT acceleration for some calculations.
@@ -143,11 +143,13 @@ def csp_ptr_era5(
 
     Returns
     -------
-    if return_self is True, the workflow manager object (PTRWorkflowManager) containing all simulation results and data.
-    if return_self is False, a xarray dataset containing the final simulation results. This dataset is optionally written to disk if output_netcdf_path was specified.
-
-        rest: see csp_ptr_era5_specific_dataset
+    xarray.Dataset or str
+        The results, or the path of the NetCDF file written. With several datasets, each
+        placement is simulated with its optimal dataset, named in the variable 'dataset'.
+        See csp_ptr_era5_specific_dataset for the variables.
     """
+    _warn_return_self(return_self)
+
     # handle inputs for datasets
     single_dataset = False
     if datasets == None:
@@ -171,26 +173,36 @@ def csp_ptr_era5(
         assert is_path_like(global_solar_atlas_tamb_path)
 
     if single_dataset:  # only one dataset given
-        output = csp_ptr_era5_specific_dataset(
-            placements=placements,
-            era5_path=era5_path,
-            global_solar_atlas_dni_path=global_solar_atlas_dni_path,
-            datasetname=datasets,
-            elev_path=elev_path,
-            output_netcdf_path=output_netcdf_path,
-            output_variables=output_variables,
-            return_self=return_self,
-            JITaccelerate=JITaccelerate,
-            verbose=verbose,
-            debug_vars=debug_vars,
-            onlynightuse=onlynightuse,
-            fullvariation=fullvariation,
-            _validation=_validation,
-            time_slice=time_slice,
-        )
+        with warnings.catch_warnings():
+            # the warning about return_self came above already
+            warnings.filterwarnings("ignore", message="The argument return_self", category=DeprecationWarning)
+            output = csp_ptr_era5_specific_dataset(
+                placements=placements,
+                era5_path=era5_path,
+                global_solar_atlas_dni_path=global_solar_atlas_dni_path,
+                datasetname=datasets,
+                elev_path=elev_path,
+                output_netcdf_path=output_netcdf_path,
+                output_variables=output_variables,
+                return_self=return_self,
+                JITaccelerate=JITaccelerate,
+                verbose=verbose,
+                debug_vars=debug_vars,
+                onlynightuse=onlynightuse,
+                fullvariation=fullvariation,
+                _validation=_validation,
+                time_slice=time_slice,
+            )
         return output
 
     else:  # multiple datasets found
+        # number the placements by position; a column location_id becomes the coordinate at the end
+        placements = placements.reset_index(drop=True)
+        location_ids = None
+        if "location_id" in placements.columns:
+            location_ids = placements["location_id"].to_numpy()
+            placements = placements.drop(columns=["location_id"])
+
         # 1) split up placements for each htf (e.g. solar salt or heliosol)
         d = DatasetHandler(datasets)
         placements = d.split_placements(
@@ -210,16 +222,14 @@ def csp_ptr_era5(
             if len(placements_dataset) == 0:
                 continue
 
-            # starting core simulation
+            # starting core simulation; the results are written once, after merging
             output_dataset = csp_ptr_era5_specific_dataset(
                 placements=placements_dataset,
                 era5_path=era5_path,
                 global_solar_atlas_dni_path=global_solar_atlas_dni_path,
                 datasetname=dataset,
                 elev_path=elev_path,
-                output_netcdf_path=output_netcdf_path,
                 output_variables=output_variables,
-                return_self=False,
                 JITaccelerate=JITaccelerate,
                 verbose=verbose,
                 debug_vars=debug_vars,
@@ -229,24 +239,29 @@ def csp_ptr_era5(
                 time_slice=time_slice,
             )
 
-            # add dataset to column (force output this!)
-            if not "datasetname" in output_dataset.variables:
-                output_dataset["datasetname"] = (output_dataset["lon"] * 0).astype(str)
-                output_dataset["datasetname"][:] = dataset
+            # name the dataset of each placement, also if output_variables leaves it out
+            output_dataset["dataset"] = ("location", np.full(len(placements_dataset), dataset))
             if "Dataset_opt" in output_dataset.variables:
                 output_dataset = output_dataset.drop_vars("Dataset_opt")
 
-            # set index from placements
-            output_dataset["location"] = placements_dataset.index
+            # the position in the given placements
+            output_dataset["location"] = placements_dataset.index.to_numpy()
 
             # remember outputs for each dataset
             outputs.append(output_dataset)
             del output_dataset
 
         # 3) merge data
-        # TODO: merge together
         output = xr.concat(outputs, dim="location").sortby("location")
-        return output
+        if location_ids is not None:
+            output["location"] = location_ids
+
+        if output_netcdf_path is None:
+            return output
+        # compress the time series, as WorkflowManager.to_xarray() does
+        encoding = {name: dict(zlib=True) for name in output.data_vars if output[name].ndim > 1}
+        output.to_netcdf(output_netcdf_path, encoding=encoding)
+        return output_netcdf_path
 
 
 @declare_inputs(
@@ -269,7 +284,7 @@ def csp_ptr_era5_specific_dataset(
     elev_path: str | PathLike | list[float] | None = None,
     output_netcdf_path: str | None = None,
     output_variables: str | list[str] | None = None,
-    return_self: bool = True,
+    return_self: bool | None = None,
     JITaccelerate: bool = False,
     verbose: bool = False,
     debug_vars: bool = False,
@@ -321,14 +336,14 @@ def csp_ptr_era5_specific_dataset(
         Defaults to None.
 
     output_variables: list of {str, number}, optional
-        Output variables of the simulation that you want to save.
+        Output variables of the simulation that you want to save, by their output names.
         If None, includes all suitable variables from placements, workflow parameters, simulation data, and time index.
         Interim variables which are not listed are dropped as soon as the workflow no longer needs them, which lowers its memory use.
 
     return_self: bool, optional
-        If True, returns the workflow manager object.
-        If False, returns the output as an XArray dataset.
-        Defaults to True.
+        Deprecated, removed in RESKit v1.0.0. If True, returns the workflow manager object
+        instead of the results. By default the results are returned, like in the other
+        workflows.
 
     JITaccelerate: bool, optional
         If True, enables JIT acceleration for some calculations.
@@ -362,10 +377,51 @@ def csp_ptr_era5_specific_dataset(
 
     Returns
     -------
-    if return_self is True, the workflow manager object (PTRWorkflowManager) containing all simulation results and data.
-    if return_self is False, a xarray dataset containing the final simulation results. This dataset is optionally written to disk if output_netcdf_path was specified.
+    xarray.Dataset or str
+        The results, or the path of the NetCDF file written. The attribute 'units' of each
+        variable gives its unit. Besides the placements columns, the variables are:
 
+        Per placement:
+        - dataset: the CSP technology dataset simulated
+        - solar_multiple, storage_hours: the optimal size of the solar field relative to the
+          power plant, and of the thermal storage in hours of power plant operation
+        - solar_field_capacity, design_dni: the design thermal output of the solar field
+          and the direct normal irradiance it is designed for
+        - power_plant_capacity, storage_capacity: the electric capacity of the power plant
+          and the thermal capacity of the storage
+        - annual_net_electricity_output: the net electricity output over the simulated period
+        - non_dispatchable_share: the share of the net output from heat which bypasses the
+          storage; 0 with onlynightuse
+        - lcoe: the levelized cost of electricity
+        - lcoh_solar_field, capex_solar_field, totex_solar_field: the levelized cost of heat,
+          the capital cost and the annual cost of the solar field alone
+        - capex: the capital cost of the whole plant
+        - annual_solar_field_heat, annual_parasitics_plant, annual_parasitics_solar_field:
+          the heat delivered to the plant and the parasitic electricity demand over the
+          simulated period
+
+        Per time step and placement:
+        - heat_to_htf, heat_to_plant: the heat absorbed by the heat transfer fluid, and the
+          heat delivered to the plant after the heat losses
+        - solar_field_heating: the heat needed to keep the heat transfer fluid above its
+          minimum temperature
+        - parasitics, parasitics_plant, parasitics_solar_field: the parasitic electricity
+          demand in total, of the plant and of the solar field
+        - solar_field_capacity_factor, solar_field_heating_capacity_factor: heat_to_plant
+          and the negative solar_field_heating relative to solar_field_capacity
+        - direct_normal_irradiance, solar_zenith
+
+        Per day and placement:
+        - daily_net_electricity_output, daily_non_dispatchable_electricity_output
+        - daily_backup_heating_electricity: the electricity for solar_field_heating which
+          the storage cannot cover
+        - daily_parasitics: the parasitic electricity demand of the plant and the solar field
+        - daily_capacity_factor: the daily net output relative to power_plant_capacity
+
+        With return_self=True (deprecated), the workflow manager object instead.
     """
+    _warn_return_self(return_self)
+
     # 1) Load input data
     wf = PTRWorkflowManager(placements)
 
@@ -534,7 +590,7 @@ def csp_ptr_era5_specific_dataset(
             "direct_normal_irradiance",
             "annuity",
         ]
-        wf.release_sim_data(still_needed, output_variables)
+        wf.release_sim_data(still_needed, wf.internal_names(output_variables))
 
     if verbose:
         tic_sf_sim = time.time()
@@ -568,10 +624,22 @@ def csp_ptr_era5_specific_dataset(
             flush=True,
         )
 
-    if return_self == True:
+    if return_self:
         return wf
     else:
         return wf.to_xarray(output_netcdf_path=output_netcdf_path, output_variables=output_variables, release=True)
+
+
+def _warn_return_self(return_self):
+    """Warns that the argument return_self of the CSP workflows is deprecated."""
+    if return_self is not None:
+        warnings.warn(
+            "The argument return_self of the CSP workflows is deprecated and will be removed in RESKit v1.0.0. "
+            "The workflows return the results; to get the workflow manager, run its steps yourself.",
+            DeprecationWarning,
+            # past the caller in this module and the wrappers of record_provenance and declare_inputs
+            stacklevel=5,
+        )
 
 
 ##########################

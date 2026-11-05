@@ -25,6 +25,8 @@ class DatasetHandler:
         assert "lat" in placements.columns
         assert "lon" in placements.columns
 
+        # the caller's placements stay unchanged
+        placements = placements.copy()
         placements["geom"] = [
             gk.geom.point(row.lon, row.lat, srs=4326) for row in placements[["lon", "lat"]].itertuples()
         ]
