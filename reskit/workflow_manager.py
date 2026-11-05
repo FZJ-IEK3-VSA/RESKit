@@ -3,7 +3,7 @@ import datetime
 import os
 import warnings
 from collections import OrderedDict
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Iterator
 from glob import glob
 from itertools import compress
 from os.path import basename, isdir, isfile, join
@@ -1424,7 +1424,11 @@ class WorkflowManager:
             return xds
 
 
-def _split_locs(placements, groups):
+def _split_locs(placements: pd.DataFrame, groups: int) -> Iterator[pd.DataFrame]:
+    # placements at the same location always fall into the same cluster, so more groups
+    # than distinct locations would leave groups empty
+    distinct_location_count = placements.index.nunique()
+    groups = min(groups, distinct_location_count)
     if groups == 1:
         yield placements
     else:
@@ -1432,9 +1436,12 @@ def _split_locs(placements, groups):
         for loc_group in locs.splitKMeans(groups=groups):
             # splitKMeans() returns a LocationSet with coordinates very close to placements.index,
             # but not guaranteed to be exact due to floating-point precision.
-            # Therefore, its rounded to 15 decimal to ensure an exact match for use in .loc[].
+            # Therefore, its rounded to 15 decimal to ensure an exact match with placements.index.
             rounded_keys = [(round(loc.lon, 15), round(loc.lat, 15)) for loc in loc_group[:]]
-            yield placements.loc[rounded_keys]
+            # a mask selects each placement once, .loc[] would select a location of n
+            # placements n times, once for each of its n keys
+            in_group = placements.index.isin(rounded_keys)
+            yield placements[in_group]
 
 
 def distribute_workflow(

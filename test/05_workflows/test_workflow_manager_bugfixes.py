@@ -185,3 +185,28 @@ def test_distribute_workflow_does_not_change_the_given_placements():
     pd.testing.assert_frame_equal(placements, before)
     assert "location_id" not in placements.columns
     assert list(placements.index) == [0, 1, 2, 3]
+
+
+# placements which share a location, e.g. several plant designs at one site
+@pytest.mark.parametrize(
+    "lons, lats",
+    [
+        ([6.0, 6.1, 6.2, 6.3] * 2, [50.0, 50.1, 50.2, 50.3] * 2),
+        ([6.0] * 8, [50.0] * 8),
+    ],
+    ids=["four_locations_twice", "one_location"],
+)
+def test_distribute_workflow_simulates_each_placement_once(lons: list[float], lats: list[float]) -> None:
+    # used to give 64 locations for the first case and fail inside KMeans for the second (#394)
+    placements = _placements(lons, lats)
+
+    xds = distribute_workflow(
+        workflow_function=tiny_workflow,
+        placements=placements,
+        jobs=2,
+        factor=0.5,
+    )
+
+    assert xds["location"].values.tolist() == list(range(8))
+    np.testing.assert_array_equal(xds["lon"].values, placements["lon"].values)
+    np.testing.assert_array_equal(xds["lat"].values, placements["lat"].values)
