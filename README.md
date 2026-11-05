@@ -197,7 +197,7 @@ removing `test=True` alone raises `UnknownDataset`. A workflow whose full inputs
 are not catalogued at all has a `test` variant only.
 
 The `reskit-test-data` fixtures ship with RESKit as a verified
-[ETHOS.Data bundle](https://ethos-data.readthedocs.io/en/latest/how-to/package-maintainers/keep-data-in-the-repository/)
+[ETHOS.Data bundle](https://ethosdata.readthedocs.io/en/latest/how-to/package-maintainers/keep-data-in-the-repository/)
 in `reskit/data/test_cache`, so `test=True`, the examples and the test suite read
 them offline, without reading any catalogue. Set `ETHOS_DATA_DOWNLOAD=1` to read
 them through the catalogue's store and the shared cache instead.
