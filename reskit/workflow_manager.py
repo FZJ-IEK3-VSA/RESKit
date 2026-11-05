@@ -425,6 +425,9 @@ class WorkflowManager:
         self.sim_data = OrderedDict()
         self.time_index = None
         self.workflow_parameters = OrderedDict()
+        # The units of the result variables, as {variable: unit}; to_xarray() writes them
+        # into the output, see there
+        self.units = OrderedDict()
 
         # Provenance, see reskit.util.provenance
         self.weather_sources = []
@@ -1197,6 +1200,9 @@ class WorkflowManager:
         - The `.time_index` is automatically added along the dimension 'time'
         - Provenance attributes ("reskit_version", "reskit_workflow", ...) are added, see
           `reskit.util.provenance`
+        - The `.units` of the exported variables are added twice: as the attribute 'units'
+          of each variable, which xarray and NetCDF tools read, and as a dataset attribute
+          named like the variable
 
         Parameters
         ----------
@@ -1329,6 +1335,12 @@ class WorkflowManager:
 
         for k, v in self.workflow_parameters.items():
             xds.attrs[k] = v
+
+        # only the units of the variables in the dataset, output_variables may exclude some
+        for variable, unit in self.units.items():
+            if variable in xds.variables:
+                xds[variable].attrs["units"] = unit
+                xds.attrs[variable] = unit
 
         # Add custom attributes if provided
         if custom_attributes is not None:

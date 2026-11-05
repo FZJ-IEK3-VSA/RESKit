@@ -97,6 +97,20 @@ def test_to_xarray_does_not_change_the_given_output_variables():
     assert output_variables == ["lon", "capacity_factor"]
 
 
+def test_to_xarray_writes_the_units_of_the_exported_variables(tmp_path):
+    man = _loaded_manager()
+    man.placements["capacity"] = [4000, 4000]
+    man.units.update(capacity="kW", capacity_factor="-", not_simulated="MWh")
+
+    path = man.to_xarray(output_netcdf_path=str(tmp_path / "result.nc"), output_variables=["capacity_factor"])
+    xds = xarray.load_dataset(path)
+
+    # on the variable, and on the dataset, only for the exported variables
+    assert xds["capacity_factor"].attrs["units"] == "-"
+    assert xds.attrs["capacity_factor"] == "-"
+    assert "capacity" not in xds.attrs and "not_simulated" not in xds.attrs
+
+
 def test_to_xarray_keeps_the_first_day_of_a_cross_year_simulation():
     man = _loaded_manager(periods=96, start="2019-12-30 00:00")
     days = np.unique(man.time_index.date)
