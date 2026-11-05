@@ -88,7 +88,6 @@ def lt_dac_era5_wenzel2025(
     return wf.to_xarray(
         output_netcdf_path=output_netcdf_path,
         output_variables=output_variables,
-        custom_attributes=wf.units,
     )
 
 
@@ -173,5 +172,4 @@ def ht_dac_era5_wenzel2025(
     return wf.to_xarray(
         output_netcdf_path=output_netcdf_path,
         output_variables=output_variables,
-        custom_attributes=wf.units,
     )

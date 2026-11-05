@@ -246,7 +246,6 @@ def air_cooling_wenzel2025(
     return wf.to_xarray(
         output_netcdf_path=output_netcdf_path,
         output_variables=output_variables,
-        custom_attributes=wf.units,
     )
 
 
@@ -335,7 +334,6 @@ def air_source_heat_pump(
     return wf.to_xarray(
         output_netcdf_path=output_netcdf_path,
         output_variables=output_variables,
-        custom_attributes=wf.units,
     )
 
 
@@ -451,5 +449,4 @@ def evaporative_cooling_wortmann2025(
     return wf.to_xarray(
         output_netcdf_path=output_netcdf_path,
         output_variables=output_variables,
-        custom_attributes=wf.units,
     )
