@@ -162,8 +162,8 @@ def provenance_attributes(
     if workflow is not None:
         attributes["parameters"] = {k: _to_json(v) for k, v in workflow["arguments"].items()}
         for key, value in workflow["arguments"].items():
-            if key.startswith("output"):
-                # e.g. output_netcdf_path, which may still hold an earlier result
+            if key.startswith("output") or key == "savepath":
+                # e.g. output_netcdf_path or the geothermal savepath, which may still hold an earlier result
                 continue
             for path in _paths_in(value):
                 add_file(f"argument:{key}", path)

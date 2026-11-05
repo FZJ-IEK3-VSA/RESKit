@@ -56,3 +56,11 @@ def test_lcoe_su(egs_output):
     """Validate LCOE_SU_EUR_per_kWh values."""
     expected = [51.79376029, 28.61874858, 7.62909725, 20.23294058]
     assert allclose(egs_output.LCOE_SU_EUR_per_kWh, expected), "LCOE_SU values do not match!"
+
+
+def test_provenance(egs_output):
+    """The results name the workflow and list the files it read, including the Gringarten curves."""
+    provenance = rk.util.provenance.read_provenance(egs_output)
+    assert provenance["workflow"] == "reskit.geothermal.workflows.workflows.egs_workflow"
+    roles = {role for record in provenance["input_files"] for role in record["roles"]}
+    assert roles == {"argument:sourceTemperature", "argument:sourceSustainableHeatflow", "gringarten_curve"}

@@ -10,6 +10,7 @@ from datetime import datetime
 
 from .egs_workflow_manager import EGSWorkflowManager
 from reskit.util.input_validation import WeatherInput, declare_inputs
+from reskit.util.provenance import record_provenance
 from ...workflow_manager import WorkflowManager
 
 from ..data import path_temperatures
@@ -21,6 +22,7 @@ from ..data import path_heat_flow_sustainable_W_per_m2
     files=("sourceTemperature", "sourceSustainableHeatflow"),
     outputs=("savepath",),
 )
+@record_provenance
 def egs_workflow(
     placements: pd.DataFrame,
     sourceTemperature=path_temperatures,

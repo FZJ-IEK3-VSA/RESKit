@@ -7,6 +7,9 @@ import geokit as gk
 import time
 from datetime import datetime
 
+from reskit.util.provenance import provenance_attributes
+
+from ..data import path_gringarten_curve
 from ..data.gringarten import Gringarten
 
 
@@ -28,6 +31,8 @@ class EGSWorkflowManager:
         assert "lat" in placements.columns
         assert "lon" in placements.columns
         self.sim_data = {}
+        # files read besides the workflow arguments, as (role, path), for the provenance
+        self.input_files = []
 
     def loadPlantData(self, configuration: str, manual_values={}):
         configuration = configuration.lower()
@@ -443,7 +448,8 @@ class EGSWorkflowManager:
 
         num_of_timesteps = 1000  # self.data['lifetime_a']
         grin.get_dimless_time(np.linspace(1, num_of_timesteps, num_of_timesteps) * self.SECONDS_PER_YEAR)
-        grin.get_gringarten_curve()
+        grin.get_gringarten_curve(path=str(path_gringarten_curve))
+        self.input_files.append(("gringarten_curve", str(path_gringarten_curve)))
         grin.get_water_temp(self.sim_data["temperature"], self.data["T_inj"])
         ans = grin.get_egs_props(timestep=self.data["lifetime_a"])
         resource_use_time_a = grin.get_resource_use_time(T_abandon=self.data["minRockTemperature_degC"])
@@ -764,6 +770,7 @@ class EGSWorkflowManager:
                     timestamp=f" Generated at: {datetime.now()} ",
                 ),
             )
+            ds_out.attrs.update(provenance_attributes(input_files=self.input_files))
             for varname in placements.columns:
                 values = placements[varname].values
                 ds_out[varname] = (["placements"], values)
