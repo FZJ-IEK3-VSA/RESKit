@@ -1,6 +1,7 @@
 import geokit as gk
 import pandas as pd
 import pytest
+import xarray as xr
 from numpy import allclose
 
 import reskit as rk
@@ -56,3 +57,22 @@ def test_lcoe_su(egs_output):
     """Validate LCOE_SU_EUR_per_kWh values."""
     expected = [51.79376029, 28.61874858, 7.62909725, 20.23294058]
     assert allclose(egs_output.LCOE_SU_EUR_per_kWh, expected), "LCOE_SU values do not match!"
+
+
+def test_provenance(placements, egs_output, tmp_path):
+    """The results name the workflow, its arguments and the files it read; the savepath is no input."""
+    provenance = rk.util.provenance.read_provenance(egs_output)
+    assert provenance["workflow"] == "reskit.geothermal.workflows.workflows.egs_workflow"
+    assert provenance["parameters"]["manual_values"] == {"x_ED_1": 8}
+    roles = {role for record in provenance["input_files"] for role in record["roles"]}
+    assert roles == {"argument:sourceTemperature", "argument:sourceSustainableHeatflow", "gringarten_curve"}
+
+    savepath = tmp_path / "egs.nc4"
+    savepath.write_text("an earlier result, which is no input")
+    # without the geometries, which netCDF cannot store
+    rk.geothermal.egs_workflow(
+        placements=placements.drop(columns="geom"), manual_values={"x_ED_1": 8}, savepath=str(savepath)
+    )
+    provenance = rk.util.provenance.read_provenance(xr.load_dataset(savepath))
+    assert provenance["parameters"]["savepath"] == str(savepath)
+    assert str(savepath) not in [record["path"] for record in provenance["input_files"]]
