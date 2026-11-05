@@ -4,16 +4,52 @@ import pandas as pd
 import xarray as xr
 import os
 import geokit as gk
-import time
-from datetime import datetime
 
-from reskit.util.provenance import provenance_attributes
-
+from ...workflow_manager import WorkflowManager
 from ..data import path_gringarten_curve
 from ..data.gringarten import Gringarten
 
 
-class EGSWorkflowManager:
+# The methods which give the plant output: volume method, Gringarten method, sustainable heat flow
+METHOD_NAMES = {"VM": "volume", "GR": "gringarten", "SU": "sustainable"}
+
+# The results at the optimal depth, as {internal name: (output name, unit)}; {m} stands for
+# the short and {method} for the output name of the method
+_METHOD_OUTPUTS = {
+    "Qdot_out_{m}_MW": ("heat_output_{method}", "MW_th"),
+    "P_out_{m}_MW": ("power_output_gross_{method}", "MW_el"),
+    "P_Pump_{m}_MW": ("pump_power_per_well_{method}", "MW_el"),
+    "P_out_net_{m}_MW": ("power_output_net_{method}", "MW_el"),
+    "mdot_water_{m}_kg_per_s": ("water_mass_flow_{method}", "kg/s"),
+    "mdot_water_{m}_kg_per_s_per_well": ("water_mass_flow_per_well_{method}", "kg/s"),
+    "dT_active_res_{m}_K": ("temperature_drawdown_active_{method}", "K"),
+    "dT_total_res_{m}_K": ("temperature_drawdown_reservoir_{method}", "K"),
+    "recovery_fac_amb_{m}_1": ("recovery_factor_{method}", "-"),
+    "resourceUseTime_{m}_a": ("resource_use_time_{method}", "a"),
+    "temperature_{m}_degC": ("rock_temperature_{method}", "°C"),
+    "T_Rock_abandon_{m}_degC": ("rock_temperature_abandonment_{method}", "°C"),
+    "T_Water_out_{m}_degC": ("water_outlet_temperature_{method}", "°C"),
+    "TOTEX_MUSD_{m}_per_a": ("totex_{method}", "MUSD/a"),
+    "LCOE_gross_{m}_EUR_per_kWh": ("lcoe_gross_{method}", "EUR/kWh"),
+    "LCOE_{m}_EUR_per_kWh": ("lcoe_{method}", "EUR/kWh"),
+    "regeneration_time_{m}_a": ("regeneration_time_{method}", "a"),
+    "opt_depth_{m}_m": ("optimal_depth_{method}", "m"),
+}
+OUTPUT_NAMES = {
+    internal.format(m=short): name.format(method=method)
+    for short, method in METHOD_NAMES.items()
+    for internal, (name, _) in _METHOD_OUTPUTS.items()
+}
+OUTPUT_NAMES["Total_thermal_energy_PJ"] = "heat_in_place_volume"
+UNITS = {
+    "surface_temperature": "°C",
+    "sustainable_heat_flow": "W/m2",
+    "heat_in_place_volume": "PJ",
+    **{name.format(method=method): unit for method in METHOD_NAMES.values() for name, unit in _METHOD_OUTPUTS.values()},
+}
+
+
+class EGSWorkflowManager(WorkflowManager):
     SECONDS_PER_YEAR = 365 * 24 * 3600
     USD2EUR = 0.88  # EUR
     rho_water = 1000  # kg/m^3
@@ -25,14 +61,16 @@ class EGSWorkflowManager:
         Parameters
         ----------
         placements : pd.DataFrame
-            placements, contains at least "lat", "lon" columns in EPSG:4326
+            The placements, with point geometries in the column 'geom', or the columns 'lon'
+            and 'lat' in EPSG:4326, see WorkflowManager
         """
-        self.placements = placements
-        assert "lat" in placements.columns
-        assert "lon" in placements.columns
-        self.sim_data = {}
-        # files read besides the workflow arguments, as (role, path), for the provenance
-        self.input_files = []
+        super().__init__(placements)
+        # Values per depth and placement, as arrays (depths x placements). The results are
+        # one value per placement, at the optimal depth, and have no time series, so
+        # WorkflowManager.sim_data stays empty.
+        self.depth_data = {}
+        # the units of the results, added to the attributes of the dataset like in the other workflows
+        self.units = dict(UNITS)
 
     def loadPlantData(self, configuration: str, manual_values={}):
         configuration = configuration.lower()
@@ -176,8 +214,8 @@ class EGSWorkflowManager:
 
         Returns
         -------
-        updates self.sim_data
-            adds the variables to the self.sim_data container as np.ndarray(dtype=np.float66)
+        updates self.depth_data
+            adds the variables to the self.depth_data container as np.ndarray(dtype=np.float64)
         """
         assert os.path.isfile(source)
 
@@ -230,8 +268,8 @@ class EGSWorkflowManager:
                 depth_index = list(depths).index(depth)
                 data_var[depth_index, :] = values
 
-            # save variable to sim_data
-            self.sim_data[var] = data_var
+            # save variable to depth_data
+            self.depth_data[var] = data_var
 
     def _extractPointsFromRaster(self, points, data_var_depth):
         # interpolate Values
@@ -322,18 +360,18 @@ class EGSWorkflowManager:
         self.placements["share_1"] = share
 
     def __calculatePlacementHeat(self):
-        variables = list(self.sim_data.keys())
+        variables = list(self.depth_data.keys())
         if "temperature" in variables:
             variables.remove("temperature")
 
         # variables = []
         for var in variables:
             varname_new = f"{var}_placement"
-            self.sim_data[varname_new] = self.sim_data[var] * self.placements["share_1"].values
+            self.depth_data[varname_new] = self.depth_data[var] * self.placements["share_1"].values
 
     def ___calculatePlantOutput(self):
         # calculation?
-        self.sim_data["P_Plant_nom_UNITHERE"] = self.sim_data["Global_EGS_PowerTech"] * 1 / self.data["CF"]
+        self.depth_data["P_Plant_nom_UNITHERE"] = self.depth_data["Global_EGS_PowerTech"] * 1 / self.data["CF"]
 
     def VolumeMethod(self):
         """Calculate the enthalpy from the temperature"""
@@ -350,28 +388,28 @@ class EGSWorkflowManager:
             rho_rock
             * cp_rock
             * self.data["reservoir_size_m3"]
-            * (self.sim_data["temperature"] - self.placements["surface_temperature"].values)
+            * (self.depth_data["temperature"] - self.placements["surface_temperature"].values)
         )
         self.sim_data_VM["Total_thermal_energy_PJ"] = Enth / 1e15
 
         # usable enthalpy
-        R_TD = dT_drawdown / (self.sim_data["temperature"] - self.placements["surface_temperature"].values)
+        R_TD = dT_drawdown / (self.depth_data["temperature"] - self.placements["surface_temperature"].values)
         Enth_useable = Enth * R_TD * self.data["recovery_factor"]  # J
-        Enth_useable[self.sim_data["temperature"] < T_inj] = 0
+        Enth_useable[self.depth_data["temperature"] < T_inj] = 0
 
         # average heatflow over lifetime
         Qdot_out = Enth_useable / self.data["lifetime_a"] / (self.SECONDS_PER_YEAR)  # W
         self.sim_data_VM["Qdot_out_VM_MW"] = Qdot_out / 1e6
 
         # average power
-        T_out = self.sim_data["temperature"] - dT_drawdown / 2  # water outlet temperature
+        T_out = self.depth_data["temperature"] - dT_drawdown / 2  # water outlet temperature
         eta = eta_plant(T_out)  # average temperature over lifetime
         P_out = Qdot_out * eta
         self.sim_data_VM["P_out_VM_MW"] = P_out / 1e6
 
         # resource usage
         Tdot_K_per_a = dT_drawdown / self.data["lifetime_a"]  # K/a
-        dT_useable = self.sim_data["temperature"] - self.data["minRockTemperature_degC"]  # K
+        dT_useable = self.depth_data["temperature"] - self.data["minRockTemperature_degC"]  # K
         resource_use_time = dT_useable / Tdot_K_per_a  # a
 
         # debugging
@@ -387,9 +425,9 @@ class EGSWorkflowManager:
 
         self.sim_data_VM["resourceUseTime_VM_a"] = resource_use_time
 
-        self.sim_data_VM["temperature_VM_degC"] = self.sim_data["temperature"]
+        self.sim_data_VM["temperature_VM_degC"] = self.depth_data["temperature"]
         self.sim_data_VM["T_Rock_abandon_VM_degC"] = (
-            self.sim_data["temperature"] - self.sim_data_VM["dT_total_res_VM_K"]
+            self.depth_data["temperature"] - self.sim_data_VM["dT_total_res_VM_K"]
         )
         self.sim_data_VM["T_Water_out_VM_degC"] = self.sim_data_VM["temperature_VM_degC"]
         pass
@@ -398,7 +436,7 @@ class EGSWorkflowManager:
         """[summary]"""
         # assumptions
         x_ED = 2  # set, so that the gringarten recovery factor also leads to 14%
-        T_D = self.data["dT_drawdown"] / (self.sim_data["temperature"] - self.data["T_inj"])
+        T_D = self.data["dT_drawdown"] / (self.depth_data["temperature"] - self.data["T_inj"])
         x = y = z = 1000  # m reservoir size
         t = self.data["lifetime_a"] * self.SECONDS_PER_YEAR  # s
         t_D = 0.5  # 10.5 #dimensionless time, see Augustine2016 Fig 2 for TD=0.05, xed=4
@@ -419,7 +457,7 @@ class EGSWorkflowManager:
         #######################################s
         # validated until here
 
-        T_W_out = self.sim_data["temperature"] - self.data["dT_drawdown"]
+        T_W_out = self.depth_data["temperature"] - self.data["dT_drawdown"]
         dT_W = T_W_out - self.data["T_inj"]
 
         Q_dot = Q * self.rho_water * self.cp_water * dT_W
@@ -450,7 +488,7 @@ class EGSWorkflowManager:
         grin.get_dimless_time(np.linspace(1, num_of_timesteps, num_of_timesteps) * self.SECONDS_PER_YEAR)
         grin.get_gringarten_curve(path=str(path_gringarten_curve))
         self.input_files.append(("gringarten_curve", str(path_gringarten_curve)))
-        grin.get_water_temp(self.sim_data["temperature"], self.data["T_inj"])
+        grin.get_water_temp(self.depth_data["temperature"], self.data["T_inj"])
         ans = grin.get_egs_props(timestep=self.data["lifetime_a"])
         resource_use_time_a = grin.get_resource_use_time(T_abandon=self.data["minRockTemperature_degC"])
 
@@ -477,12 +515,12 @@ class EGSWorkflowManager:
 
         self.sim_data_GR["resourceUseTime_GR_a"] = resource_use_time_a
 
-        self.sim_data_GR["temperature_GR_degC"] = self.sim_data["temperature"]
+        self.sim_data_GR["temperature_GR_degC"] = self.depth_data["temperature"]
 
     def SustainableHeat(self):
-        assert "qdot_sust_W_per_m2" in self.placements.columns
+        assert "sustainable_heat_flow" in self.placements.columns
 
-        qdot_sust_W_per_m2 = self.placements["qdot_sust_W_per_m2"].values
+        qdot_sust_W_per_m2 = self.placements["sustainable_heat_flow"].values
 
         # get absolute sustainable heatflow
         delta_depth = self.depths[1] - self.depths[0]  # m
@@ -492,7 +530,7 @@ class EGSWorkflowManager:
         Qdot_sust_W = np.einsum("i,j", np.ones(len(self.depths)), Qdot_sust_W)
 
         # get plant conversion efficiency
-        T_water_out = self.sim_data["temperature"]  # degC
+        T_water_out = self.depth_data["temperature"]  # degC
 
         eta_plant = self.data["eta_plant"](T_water_out)
 
@@ -520,7 +558,7 @@ class EGSWorkflowManager:
 
         self.sim_data_SU["resourceUseTime_SU_a"] = np.inf
 
-        self.sim_data_SU["temperature_SU_degC"] = self.sim_data["temperature"]
+        self.sim_data_SU["temperature_SU_degC"] = self.depth_data["temperature"]
 
     def calculatePumpLosses(self, method="default", techMethod=None):
         """[summary]
@@ -629,7 +667,7 @@ class EGSWorkflowManager:
         sim_data_techmethod = getattr(self, techMethod)
         tech_method_short = self._getTechMethodShort(techMethod)
 
-        # self.sim_data['LCOE_sust_MUSD_per_unkwn'] = self.sim_data['TOTEX_MUSD_per_a'] / (self.sim_data['Global_EGS_PowerSust'] * 8760)
+        # self.depth_data['LCOE_sust_MUSD_per_unkwn'] = self.depth_data['TOTEX_MUSD_per_a'] / (self.depth_data['Global_EGS_PowerSust'] * 8760)
         sim_data_techmethod[f"LCOE_gross_{tech_method_short}_EUR_per_kWh"] = (
             sim_data_techmethod[f"TOTEX_MUSD_{tech_method_short}_per_a"]
             * self.USD2EUR
@@ -650,7 +688,7 @@ class EGSWorkflowManager:
 
         LCOE_considerable = sim_data_techmethod[f"LCOE_{tech_method_short}_EUR_per_kWh"]
         # filter by temperature if using the volume method
-        LCOE_considerable[self.sim_data["temperature"] < self.data["minRockTemperature_degC"]] = np.inf
+        LCOE_considerable[self.depth_data["temperature"] < self.data["minRockTemperature_degC"]] = np.inf
 
         # filter by max depth:
         maxDepth = self.data["maxDepth_m"]
@@ -692,19 +730,20 @@ class EGSWorkflowManager:
         for varname in sim_data_techmethod.keys():
             var = sim_data_techmethod[varname]
 
-            assert varname not in self.placements.columns
-
             # irrelevant for storing
             if "argmin_opt_depth" in varname:
                 continue
             if "notEligible" in varname:
                 continue
+
+            output_name = OUTPUT_NAMES[varname]
+            assert output_name not in self.placements.columns
             # if its opt_dept, just write it
             if "opt_depth" in varname:
-                self.placements[varname] = var
+                self.placements[output_name] = var
             # if its a constant value, just write it
             elif isinstance(var, int) or isinstance(var, float):
-                self.placements[varname] = var
+                self.placements[output_name] = var
             # if its an depth depending matrix, select the right depth depending value
             elif isinstance(var, np.ndarray):
                 notEligible = sim_data_techmethod[f"notEligible_{tech_method_short}"]
@@ -720,7 +759,7 @@ class EGSWorkflowManager:
                 var[~notEligible] = valEligible
                 var[notEligible] = np.nan
 
-                self.placements[varname] = var
+                self.placements[output_name] = var
 
     def getRegenerationTime(self, techMethod):
         sim_data_techmethod = getattr(self, techMethod)
@@ -731,115 +770,14 @@ class EGSWorkflowManager:
         )  # Wa = Watt*year
         delta_depth = self.depths[1] - self.depths[0]  # m
         regeneration_time = Q_out_Wa / (
-            self.data["reservoir_size_m3"] / delta_depth * self.placements["qdot_sust_W_per_m2"].values
+            self.data["reservoir_size_m3"] / delta_depth * self.placements["sustainable_heat_flow"].values
         )  # a
 
         sim_data_techmethod[f"regeneration_time_{tech_method_short}_a"] = regeneration_time
 
-    def saveOutput(self, savepath=None, deepsave=False):
-        """Saved to nc4 or shape file or csv to savepath
-
-        Parameters
-        ----------
-        savepath : str, optional
-            String to a specific file path (folder + filename).
-            Can be shape, nc4, or csv. If None, printing
-        deepsave : bool, optional
-            If True, saves more variables. Defaults to False
-        """
-
-        def _convertToXr(placements):
-            """Convert placements to NC4 xarray obj
-
-            Parameters
-            ----------
-            placements : pd.Dataframe
-                placement file from EGSWorkflowManager
-
-            Returns
-            -------
-            xr.Dataset
-                Dataset with placemnt variables
-            """
-            ds_out = xr.Dataset(
-                coords={
-                    "placements": np.arange(len(placements)),
-                },
-                attrs=dict(
-                    description=f"RESkit simulation results for EGS.",
-                    timestamp=f" Generated at: {datetime.now()} ",
-                ),
-            )
-            ds_out.attrs.update(provenance_attributes(input_files=self.input_files))
-            for varname in placements.columns:
-                values = placements[varname].values
-                ds_out[varname] = (["placements"], values)
-
-            return ds_out
-
-        if savepath is None:
-            # No savepath given
-            print("No valid file type specified. Returning nc4 obj")
-            return _convertToXr(self.placements)
-
-        else:
-            # save the file
-            assert isinstance(savepath, str)
-            folder = os.path.dirname(savepath)
-            file = os.path.basename(savepath)
-            _, filetype = os.path.splitext(savepath)
-
-            os.makedirs(folder, exist_ok=True)
-
-            if filetype.lower() == ".shp":
-                # do shapefile
-
-                self.placements["geom"] = [
-                    gk.geom.point(row.lon, row.lat) for row in self.placements[["lon", "lat"]].itertuples()
-                ]
-
-                gk.vector.createVector(self.placements, savepath)
-            elif filetype.lower() == ".nc4":
-                # do netcdf4
-                placements_nc4 = _convertToXr(self.placements)
-                placements_nc4.to_netcdf(savepath)
-            elif filetype.lower() == ".csv":
-                # saving as excel:
-                self.placements.to_csv(savepath)
-            elif not savepath is None:
-                # saving as excel:
-                savepath = os.path.join(folder, file, "csv")
-                self.placements.to_csv()
-
-            print("Results saved to:", savepath)
-
-            # save all techMethod datasets
-            if deepsave:
-                savepathDeepsave = savepath.replace(filetype, "_<TECHMETHOD>.xlsx")
-                techMethods = self._getTechMethods()
-                techMethods.append("sim_data")
-                for techMethod in techMethods:
-                    savepathDeepsaveFileld = savepathDeepsave.replace("<TECHMETHOD>", str(techMethod))
-                    # save as excel:
-                    techMethodDict = getattr(self, techMethod)
-                    with pd.ExcelWriter(savepathDeepsaveFileld) as writer:
-                        for key in techMethodDict:
-                            var = techMethodDict[key]
-                            if isinstance(var, int) or isinstance(var, float):
-                                df_temp = pd.DataFrame()
-                                df_temp[0] = [var]
-                            else:
-                                df_temp = pd.DataFrame(var)
-                            df_temp.to_excel(writer, sheet_name=key)
-
     def _getTechMethods(self):
-        # get tech_methods
-        techMethods = []
-        for i in self.__dir__():
-            if "sim_data_" in i:
-                techMethods.append(i)
-
-        return techMethods
+        """Returns the names of the result containers of the methods calculated so far"""
+        return [name for name in ("sim_data_VM", "sim_data_GR", "sim_data_SU") if hasattr(self, name)]
 
     def _getTechMethodShort(self, techMethod):
         return techMethod[-2:]

@@ -1195,6 +1195,8 @@ class WorkflowManager:
         - The `workflow_parameters` data is automatically added as dimensionless variables
         - The `.sim_data` is automatically added along the dimensions (time, locations)
         - The `.time_index` is automatically added along the dimension 'time'
+        - Without a time index, e.g. for geothermal results, the dataset has only the dimension
+          'location', and `.sim_data` must be empty
         - Provenance attributes ("reskit_version", "reskit_workflow", ...) are added, see
           `reskit.util.provenance`
 
@@ -1236,9 +1238,15 @@ class WorkflowManager:
             output_variables.append("RESKit_sim_order")
 
         times = self.time_index
-        if times[0].tz is not None:
-            times = [np.datetime64(dt.tz_convert("UTC").tz_convert(None)) for dt in times]
-        times_days = np.unique(pd.DatetimeIndex(times).date).astype("datetime64")
+        if times is None:
+            # results without time series, e.g. geothermal, have only the dimension 'location'
+            has_daily_data = hasattr(self, "sim_data_daily") and len(self.sim_data_daily) > 0
+            if len(self.sim_data) > 0 or has_daily_data:
+                raise ValueError("the time series in .sim_data need a time index, see set_time_index()")
+        else:
+            if times[0].tz is not None:
+                times = [np.datetime64(dt.tz_convert("UTC").tz_convert(None)) for dt in times]
+            times_days = np.unique(pd.DatetimeIndex(times).date).astype("datetime64")
         xds = OrderedDict()
         encoding = dict()
 
@@ -1273,7 +1281,7 @@ class WorkflowManager:
             self.release_sim_data([], output_variables)
 
         # write sim_data
-        time_series_shape = (len(self.time_index), self.locs.count)
+        time_series_shape = (len(self.time_index), self.locs.count) if self.time_index is not None else None
         for variable_name in list(self.sim_data.keys()):
             # check if variable_name in requestet output_variables
             if output_variables is not None:
