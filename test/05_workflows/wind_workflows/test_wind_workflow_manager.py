@@ -405,6 +405,26 @@ def test_WindWorkflowManager_mixed_values___init___():
     assert (man.placements["powerCurve"] == ["SPC:138,25", "SPC:207,25", "SPC:275,25", "V117-3300", "SPC:413,25"]).all()
 
 
+def test_WindWorkflowManager_mixed_values_with_a_repeated_index() -> None:
+    # the same turbine twice with a repeated index, as pd.concat() gives it in a sensitivity
+    # study (#386): only the turbine without a power curve gets a synthetic one
+    placements = pd.DataFrame(
+        {
+            "lon": [6.083, 6.083],
+            "lat": [50.475, 50.475],
+            "hub_height": [140, 140],
+            "capacity": [3600, 3600],
+            "rotor_diam": [116, 116],
+            "powerCurve": ["V117-3300", None],
+        },
+        index=[0, 0],
+    )
+
+    man = WindWorkflowManager(placements, synthetic_power_curve_cut_out=25, synthetic_power_curve_rounding=1)
+
+    assert man.placements["powerCurve"].tolist() == ["V117-3300", "SPC:341,25"]
+
+
 @pytest.mark.parametrize("max_batch_size", [0, -1, -10])
 def test_WindWorkflowManager_simulate_rejects_a_non_positive_batch_size(pt_WindWorkflowManager_loaded, max_batch_size):
     # max_batch_size must be a positive integer. An integer zero passed the old check and

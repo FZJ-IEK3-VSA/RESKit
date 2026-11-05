@@ -1551,39 +1551,43 @@ class SolarWorkflowManager(WorkflowManager):
             self.estimate_tilt_from_latitude(convention=convention)
         else:
             # make sure all placements have not Nan values
-            placements_without_param = self.placements[self.placements.tilt.isna()]
+            # select by mask, not by index label: the index of the placements may repeat
+            without_tilt = self.placements.tilt.isna()
+            placements_without_param = self.placements[without_tilt]
             if not placements_without_param.empty:
                 print(
                     f"Placements dataframe contains 'tilt' column yet not all placements have tilt values. Estimating based on convention={convention}"
                 )
                 _wf = SolarWorkflowManager(placements_without_param)
                 _wf.estimate_tilt_from_latitude(convention=convention)
-                self.placements.loc[_wf.placements.tilt.index, "tilt"] = _wf.placements.tilt.values
+                self.placements.loc[without_tilt, "tilt"] = _wf.placements.tilt.values
 
         if not "azimuth" in self.placements.columns:
             self.estimate_azimuth_from_latitude()
         else:
             # make sure all placements have not Nan values
-            placements_without_param = self.placements[self.placements.azimuth.isna()]
+            without_azimuth = self.placements.azimuth.isna()
+            placements_without_param = self.placements[without_azimuth]
             if not placements_without_param.empty:
                 print(
                     f"Placements dataframe contains 'azimuth' column yet not all placements have azimuth values. Estimating."
                 )
                 _wf = SolarWorkflowManager(placements_without_param)
                 _wf.estimate_azimuth_from_latitude()
-                self.placements.loc[_wf.placements.azimuth.index, "azimuth"] = _wf.placements.azimuth.values
+                self.placements.loc[without_azimuth, "azimuth"] = _wf.placements.azimuth.values
 
         if not "elev" in self.placements.columns:
             self.apply_elevation(elev)
         else:
             # make sure all placements have not Nan values
-            placements_without_param = self.placements[self.placements.elev.isna()]
+            without_elev = self.placements.elev.isna()
+            placements_without_param = self.placements[without_elev]
             if not placements_without_param.empty:
                 print(
                     f"Placements dataframe contains 'elev' column yet not all placements have elev values. Estimating based on elev={elev}"
                 )
                 _wf = SolarWorkflowManager(placements_without_param)
                 _wf.apply_elevation(elev)
-                self.placements.loc[_wf.placements.elev.index, "elev"] = _wf.placements.elev.values
+                self.placements.loc[without_elev, "elev"] = _wf.placements.elev.values
 
         return self

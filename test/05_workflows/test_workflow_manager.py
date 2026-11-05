@@ -713,6 +713,34 @@ def test_execute_workflow_iteratively(pt_wind_placements):
     assert np.isclose(gen.capacity_factor.std(), 0.35040166)
 
 
+def test_execute_workflow_iteratively_with_a_repeated_index(pt_wind_placements: pd.DataFrame) -> None:
+    """A repeated placements index gives the results of a unique one (#386)."""
+    # a sensitivity study simulates the same placements twice, here with higher hubs;
+    # pd.concat() repeats their index
+    placements = pt_wind_placements.iloc[:10]
+    higher_hub_heights = placements["hub_height"] + 20
+    placements_with_higher_hubs = placements.assign(hub_height=higher_hub_heights)
+    repeated_index_placements = pd.concat([placements, placements_with_higher_hubs])
+    unique_index_placements = pd.concat([placements, placements_with_higher_hubs], ignore_index=True)
+    assert repeated_index_placements.index.has_duplicates
+
+    results = {}
+    for name, study_placements in [("repeated", repeated_index_placements), ("unique", unique_index_placements)]:
+        results[name] = execute_workflow_iteratively(
+            workflow=rk.wind.onshore_wind_merra_ryberg2019_europe,
+            weather_path_varname="merra_path",
+            zoom=None,
+            # workflow_args:
+            placements=study_placements,
+            merra_path=FIXTURES["merra"],
+            gwa_50m_path=FIXTURES["gwa_50m"],
+            clc2012_path=FIXTURES["clc"],
+        )
+
+    assert results["repeated"].capacity_factor.shape == (71, 20)
+    xarray.testing.assert_equal(results["repeated"], results["unique"])
+
+
 def _mock_workflow(calls: list):
     """A minimal stand-in for a RESKit workflow: records the arguments it was called
     with and returns a dataset shaped like a real workflow result.
