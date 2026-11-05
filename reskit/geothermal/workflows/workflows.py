@@ -115,6 +115,11 @@ def egs_workflow(
         )
         if output_netcdf_path is not None:
             raise ValueError("Give either savepath or output_netcdf_path, not both")
+        # .shp is no longer accepted: shapefile field names have at most 10 characters, so
+        # writing the results as shapefile always failed
+        filetype = os.path.splitext(str(savepath))[1].lower()
+        if filetype not in (".nc", ".nc4", ".csv"):
+            raise ValueError(f"savepath must end in .nc, .nc4 or .csv, not '{filetype}'")
 
     wfm = EGSWorkflowManager(placements=placements)
 
@@ -151,12 +156,7 @@ def egs_workflow(
 
 def _save_deprecated(wfm, savepath, output_variables):
     """Writes the results to savepath as egs_workflow did before RESKit v0.6.0 and returns the path."""
-    filetype = os.path.splitext(savepath)[1].lower()
-    # .shp is no longer accepted: shapefile field names have at most 10 characters, so
-    # writing the results as shapefile always failed
-    if filetype not in (".nc", ".nc4", ".csv"):
-        raise ValueError(f"savepath must end in .nc, .nc4 or .csv, not '{filetype}'")
-    if filetype in (".nc", ".nc4"):
+    if os.path.splitext(savepath)[1].lower() in (".nc", ".nc4"):
         return wfm.to_xarray(
             output_netcdf_path=savepath, output_variables=output_variables, custom_attributes=wfm.units
         )

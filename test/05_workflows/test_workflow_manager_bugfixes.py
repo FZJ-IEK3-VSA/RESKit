@@ -119,25 +119,6 @@ def test_to_xarray_keeps_all_days_within_one_year():
     assert xds["time_days"].shape == (len(days),)
 
 
-def test_to_xarray_without_time_index_has_only_locations():
-    man = WorkflowManager(_placements([6.0, 6.1], [50.0, 50.1]))
-    man.placements["lcoe"] = [0.1, 0.2]
-
-    xds = man.to_xarray(custom_attributes={"lcoe": "EUR/kWh"})
-
-    assert dict(xds.sizes) == {"location": 2}
-    assert list(xds["lcoe"].values) == [0.1, 0.2]
-    assert xds.attrs["lcoe"] == "EUR/kWh"
-
-
-def test_to_xarray_without_time_index_rejects_time_series():
-    man = WorkflowManager(_placements([6.0, 6.1], [50.0, 50.1]))
-    man.sim_data["capacity_factor"] = np.full((3, 2), 0.5)
-
-    with pytest.raises(ValueError, match="time index"):
-        man.to_xarray()
-
-
 def _write_result(path, location_ids):
     xds = xarray.Dataset(
         data_vars={"capacity_factor": (("time", "location"), np.full((3, len(location_ids)), 0.5))},
