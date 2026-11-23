@@ -315,7 +315,7 @@ class SolarWorkflowManager(WorkflowManager):
                 try:
                     iter_gcrs = gk.raster.interpolateValues(
                         source=conv,
-                        points=self.locs[mask],
+                        points=gk.LocationSet(self.locs[mask]),
                     )
                 except Exception as e:
                     raise RuntimeError(
@@ -448,11 +448,11 @@ class SolarWorkflowManager(WorkflowManager):
             if clipped_elev is None:
                 iter_vals = np.array([np.nan] * len(self.locs[mask]))
             else:
-                iter_vals = gk.raster.interpolateValues(clipped_elev, self.locs[mask])
+                iter_vals = gk.raster.interpolateValues(clipped_elev, gk.LocationSet(self.locs[mask]))
                 if np.isnan(iter_vals).any():
                     # if getting values fails, it could be because of interpolation method
                     # replace only those that failed by 'near' interpolation
-                    iter_vals_near = gk.raster.interpolateValues(clipped_elev, self.locs[mask], mode="near")
+                    iter_vals_near = gk.raster.interpolateValues(clipped_elev, gk.LocationSet(self.locs[mask]), mode="near")
                     iter_vals[np.isnan(iter_vals)] = iter_vals_near[np.isnan(iter_vals)]
             if np.isnan(iter_vals).any():
                 # we still have nans
@@ -2271,7 +2271,7 @@ class SolarWorkflowManager(WorkflowManager):
                 # generate a mask that applies also to the locations
                 mask = filepaths == fp
                 # extract a clipped sub raster covering the affected placements extent only to save time
-                iter_ext = gk.Extent.fromLocationSet(self.locs[mask])
+                iter_ext = gk.Extent.fromLocationSet(gk.LocationSet(self.locs[mask]))
                 clipped_raster = iter_ext.pad(0.5).rasterMosaic(fp)
                 if clipped_raster is None:
                     iter_vals = np.array([np.nan] * len(self.locs[mask]))
@@ -2279,7 +2279,7 @@ class SolarWorkflowManager(WorkflowManager):
                     # use average mode over neighboring cells by default to void overestimating due to very local steep angles
                     iter_vals = gk.raster.interpolateValues(
                         clipped_raster,
-                        self.locs[mask],
+                        gk.LocationSet(self.locs[mask]),
                         mode="average",
                     )
                     if np.isnan(iter_vals).any():
