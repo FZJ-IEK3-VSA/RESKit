@@ -328,6 +328,7 @@ class PowerCurve:
         _min_speed=0.01,
         _max_speed=40,
         _steps=4000,
+        _output_stride=40,
     ):
         """
         Convolutes a turbine power curve by a normal distribution function with wind-speed-dependent standard deviation.
@@ -352,6 +353,11 @@ class PowerCurve:
         _steps : int, optional
             number of steps in between the wind speed range, by default 4000
 
+        _output_stride : int, optional
+            only every _output_stride-th of the _steps wind speeds is convoluted
+            and returned, by default 40. With the default range and steps, this
+            gives a power curve of 100 points spaced ~0.4 m/s apart.
+
         Returns
         -------
         PowerCurve
@@ -362,6 +368,9 @@ class PowerCurve:
         The wind-speed-dependent standard deviation is computed with: std = wind_speed * scaling + base
 
         """
+        if _output_stride < 1:
+            raise ResError("'_output_stride' must be a positive integer")
+
         # Initialize windspeed axis
         ws = np.linspace(_min_speed, _max_speed, _steps)
         dws = ws[1] - ws[0]
@@ -404,8 +413,11 @@ class PowerCurve:
         lower = np.maximum(indices - half_width, 0)
         upper = np.minimum(indices + half_width + 1, _steps)
 
+        # only every _output_stride-th point is returned (see below), so only
+        # those are computed
         convolutedCF = np.zeros(_steps)
-        for i, ws_ in enumerate(ws):
+        for i in range(0, _steps, _output_stride):
+            ws_ = ws[i]
             window = slice(lower[i], upper[i])
             z = (ws[window] - ws_) / std[i]
             pdf = np.exp(-0.5 * z * z) * (_INV_SQRT_2PI / std[i])
@@ -416,8 +428,8 @@ class PowerCurve:
             convolutedCF[ws > self.wind_speed[-1]] = 0
 
         # Done!
-        ws = ws[::40]
-        convolutedCF = convolutedCF[::40]
+        ws = ws[::_output_stride]
+        convolutedCF = convolutedCF[::_output_stride]
         return PowerCurve(ws, convolutedCF)
 
     def apply_loss_factor(self, loss):

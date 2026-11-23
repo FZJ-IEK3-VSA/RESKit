@@ -5,17 +5,20 @@ import shutil
 import tempfile
 import warnings
 import zipfile
+from pathlib import Path
+from typing import Optional
 import cdsapi
 import netCDF4 as nc4
 import numpy as np
 import pandas as pd
 import xarray as xr
 import pytest
-from reskit import TEST_DATA
+from reskit import data
 from reskit.weather.era5_source.era5_prepare import (
     _ERA5_NC_TO_TILE_LABEL,
     _align_longitudes_to_source_convention,
     _era5_download_jobs,
+    _era5_request_problems,
     _get_source_lon_boxes,
     _iter_tile_x_indices,
     _normalize_lon,
@@ -25,8 +28,11 @@ from reskit.weather.era5_source.era5_prepare import (
     _tile_variable_to_file,
     era5_downloader,
     era5_tiler,
+    prepare_era5,
     preprocess_era5_data,
 )
+
+FIXTURES = data.paths("test_suite")
 
 # era5-like test data: lat=[49,52], lon=[5,7.5], year=2015
 # At zoom 4, this falls entirely within tile (x=8, y=5)
@@ -47,7 +53,7 @@ def era5_like_tile_input(tmp_path):
     """Temp dir with era5-like files renamed to match era5_tiler's expected naming.
     Returns (processed_dir, raw_nc_path).
     """
-    era5_like = TEST_DATA["era5-like"]
+    era5_like = FIXTURES["era5"]
     processed_dir = tmp_path / "processed"
     processed_dir.mkdir()
     shutil.copy(
@@ -196,6 +202,54 @@ def test_download_jobs_end_before_start_raises():
         _era5_download_jobs("2000-02-01", "2000-01-01")
 
 
+_BOX = {"north": 1, "south": 0, "west": 0, "east": 1}
+
+
+@pytest.mark.parametrize(
+    "start_date, end_date, boundary_box, problem",
+    [
+        ("2000-01-01", "2000-01-31", _BOX, None),
+        (None, "2000-01-31", _BOX, "start_date: None is not a date"),
+        ("", "2000-01-31", _BOX, "start_date: '' is not a date"),
+        ("2000-01-01T00:00Z", "2000-01-31T00:00+01:00", _BOX, None),
+        ("2000-01-01", "2000-01-31", {"north": 50.5, "south": 50.5, "west": 6.25, "east": 6.25}, None),
+        ("1939-12-31", "2000-01-31", _BOX, "ERA5 starts on 1940-01-01"),
+    ],
+)
+def test_era5_request_problems(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    start_date: Optional[str],
+    end_date: str,
+    boundary_box: dict,
+    problem: Optional[str],
+) -> None:
+    """A valid request has no problems, and an invalid one reports the expected problem."""
+    monkeypatch.setenv("CDSAPI_URL", "https://cds.example")
+    monkeypatch.setenv("CDSAPI_KEY", "key")
+    problems = _era5_request_problems(start_date, end_date, boundary_box, str(tmp_path))
+    assert problems == [] if problem is None else any(problem in p for p in problems), problems
+
+
+def test_era5_request_problems_reports_an_incomplete_cdsapirc(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """A ``.cdsapirc`` with a URL but no key is the only problem of an otherwise valid request."""
+    monkeypatch.delenv("CDSAPI_URL", raising=False)
+    monkeypatch.delenv("CDSAPI_KEY", raising=False)
+    cdsapirc = tmp_path / "cdsapirc"
+    cdsapirc.write_text("url: https://cds.example\n")
+    monkeypatch.setenv("CDSAPI_RC", str(cdsapirc))
+    problems = _era5_request_problems("2000-01-01", "2000-01-31", _BOX, str(tmp_path))
+    assert len(problems) == 1 and "no CDS API key" in problems[0]
+
+
+def test_prepare_era5_checks_the_request_before_writing(tmp_path: Path) -> None:
+    """prepare_era5 rejects an invalid boundary box before it creates ``output_dir``."""
+    output_dir = tmp_path / "out"
+    with pytest.raises(ValueError, match="south <= north"):
+        prepare_era5("2000-01-01", "2000-01-31", {**_BOX, "south": 2}, str(output_dir))
+    assert not output_dir.exists()
+
+
 def test_normalize_lon_wraps_out_of_range_values():
     assert _normalize_lon(-182.0) == pytest.approx(178.0)
     assert _normalize_lon(181.0) == pytest.approx(-179.0)
@@ -267,7 +321,7 @@ def test_preprocess_wind_speed_matches_sqrt_and_sets_attrs(tmp_path):
         assert out["ws100"].long_name == "100 metre wind speed"
 
 
-def test_preprocess_solar_converts_units_shifts_time_and_preserves_encoding(tmp_path):
+def test_preprocess_solar_converts_units_keeps_time_and_preserves_encoding(tmp_path):
     raw = tmp_path / "raw.nc"
     ds = _make_era5_raw(
         raw,
@@ -289,9 +343,9 @@ def test_preprocess_solar_converts_units_shifts_time_and_preserves_encoding(tmp_
         assert out["ssrd_t_adj"].units == "W m**-2"
         # original descriptive attrs carried through the rename
         assert out["ssrd_t_adj"].long_name == "Surface solar radiation downwards"
-        # time shifted +1h, encoding preserved for the netCDF4 consumer
+        # time kept on the timestamps of the accumulations, encoding preserved for the netCDF4 consumer
         times = nc4.num2date(out["time"][:], out["time"].units, out["time"].calendar)
-        assert times[0].isoformat() == "2015-01-01T01:00:00"
+        assert times[0].isoformat() == "2015-01-01T00:00:00"
         # hour granularity + integer dtype preserved (xarray canonicalises the trailing
         # "00:00:00.0", which num2date parses identically)
         assert out["time"].units.startswith("hours since 1900-01-01")

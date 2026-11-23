@@ -1,5 +1,4 @@
 import os
-from pathlib import Path
 
 import geokit as gk
 import numpy as np
@@ -7,7 +6,7 @@ import pandas as pd
 import pytest
 
 import reskit.weather as rk_weather
-from reskit import TEST_DATA, data
+from reskit import data
 from reskit.wind.core.data import DATAFOLDER
 from reskit.wind.workflows.workflows import (
     offshore_wind_merra_caglayan2019,
@@ -17,10 +16,12 @@ from reskit.wind.workflows.workflows import (
     wind_era5_PenaSanchezDunkelWinklerEtAl2025,
 )
 
+FIXTURES = data.paths("test_suite")
+
 
 @pytest.fixture
 def pt_wind_placements() -> pd.DataFrame:
-    df = gk.vector.extractFeatures(TEST_DATA["turbinePlacements.shp"])
+    df = gk.vector.extractFeatures(FIXTURES["turbine_placements_shp"])
     df["hub_height"] = np.linspace(100, 130, df.shape[0])
     df["capacity"] = 3000
     df["rotor_diam"] = 170
@@ -31,8 +32,9 @@ def pt_wind_placements() -> pd.DataFrame:
 @pytest.fixture
 def pt_wind_placements_Zimbabwe() -> pd.DataFrame:
     # Keep numerical regression inputs independent of administrative boundary updates.
-    # See data/bulawayo/README.md for their provenance.
-    df = pd.read_csv(Path(__file__).parents[1] / "data" / "bulawayo" / "wind_placements.csv")
+    # The 2025 tables: their provenance is in the bundled description of
+    # reskit-test-data/placements.
+    df = pd.read_csv(FIXTURES["turbine_placements_bulawayo"])
 
     return df
 
@@ -40,9 +42,9 @@ def pt_wind_placements_Zimbabwe() -> pd.DataFrame:
 def test_onshore_wind_merra_ryberg2019_europe(pt_wind_placements: pd.DataFrame):
     gen = onshore_wind_merra_ryberg2019_europe(
         placements=pt_wind_placements,
-        merra_path=TEST_DATA["merra-like"],
-        gwa_50m_path=TEST_DATA["gwa50-like.tif"],
-        clc2012_path=TEST_DATA["clc-aachen_clipped.tif"],
+        merra_path=FIXTURES["merra"],
+        gwa_50m_path=FIXTURES["gwa_50m"],
+        clc2012_path=FIXTURES["clc"],
     )
 
     assert gen.roughness.shape == (560,)
@@ -68,7 +70,7 @@ def test_offshore_wind_merra_caglayan2019(pt_wind_placements):
     # placements, merra_path, output_netcdf_path=None, output_variables=None):
     gen = offshore_wind_merra_caglayan2019(
         placements=pt_wind_placements,
-        merra_path=TEST_DATA["merra-like"],
+        merra_path=FIXTURES["merra"],
     )
 
     assert gen.roughness.shape == (560,)
@@ -90,7 +92,17 @@ def test_offshore_wind_merra_caglayan2019(pt_wind_placements):
     assert np.isclose(gen.capacity_factor.std(), 0.29063037)
 
 
-def test_wind_era5_PenaSanchezDunkelWinklerEtAl2025(pt_wind_placements: pd.DataFrame):
+# with output_variables, the workflow drops interim variables as soon as later steps no
+# longer need them; dropping one too early would raise or change the requested outputs
+@pytest.mark.parametrize(
+    "output_variables",
+    [None, ["capacity_factor"]],
+    ids=["all_variables", "release_interim_variables"],
+)
+def test_wind_era5_PenaSanchezDunkelWinklerEtAl2025(
+    pt_wind_placements: pd.DataFrame,
+    output_variables: list[str] | None,
+) -> None:
     inputs = data.paths("wind_era5_PenaSanchezDunkelWinklerEtAl2025", test=True)
     gen = wind_era5_PenaSanchezDunkelWinklerEtAl2025(
         placements=pt_wind_placements,
@@ -98,14 +110,16 @@ def test_wind_era5_PenaSanchezDunkelWinklerEtAl2025(pt_wind_placements: pd.DataF
         gwa_100m_path=inputs["gwa_100m"],
         height_scaling_data={50: inputs["gwa_50m"], 200: inputs["gwa_200m"]},
         output_netcdf_path=None,
+        output_variables=output_variables,
         cf_correction=True,
     )
 
-    assert gen.elevated_wind_speed.shape == (140, 560)
-    assert np.isclose(gen.elevated_wind_speed.mean(), 6.41365879)
-    assert np.isclose(gen.elevated_wind_speed.min(), 0.34054053)
-    assert np.isclose(gen.elevated_wind_speed.max(), 14.51362788)
-    assert np.isclose(gen.elevated_wind_speed.std(), 2.39538268)
+    if output_variables is None:
+        assert gen.elevated_wind_speed.shape == (140, 560)
+        assert np.isclose(gen.elevated_wind_speed.mean(), 6.41365879)
+        assert np.isclose(gen.elevated_wind_speed.min(), 0.34054053)
+        assert np.isclose(gen.elevated_wind_speed.max(), 14.51362788)
+        assert np.isclose(gen.elevated_wind_speed.std(), 2.39538268)
 
     assert gen.capacity_factor.shape == (140, 560)
     assert np.isclose(gen.capacity_factor.mean(), 0.35877319)
@@ -114,11 +128,55 @@ def test_wind_era5_PenaSanchezDunkelWinklerEtAl2025(pt_wind_placements: pd.DataF
     assert np.isclose(gen.capacity_factor.std(), 0.29513281)
 
 
+def test_wind_era5_PenaSanchezDunkelWinklerEtAl2025_single_placement(pt_wind_placements: pd.DataFrame):
+    """A single placement simulates as the same placement does within a fleet."""
+    inputs = data.paths("wind_era5_PenaSanchezDunkelWinklerEtAl2025", test=True)
+    arguments = dict(
+        era5_path=inputs["era5"],
+        gwa_100m_path=inputs["gwa_100m"],
+        height_scaling_data={50: inputs["gwa_50m"], 200: inputs["gwa_200m"]},
+        output_netcdf_path=None,
+        cf_correction=True,
+    )
+    fleet = wind_era5_PenaSanchezDunkelWinklerEtAl2025(placements=pt_wind_placements, **arguments)
+    single = wind_era5_PenaSanchezDunkelWinklerEtAl2025(placements=pt_wind_placements.iloc[:1], **arguments)
+
+    assert single.capacity_factor.shape == (140, 1)
+    assert np.allclose(single.capacity_factor[:, 0], fleet.capacity_factor[:, 0])
+
+
+def test_wind_era5_PenaSanchezDunkelWinklerEtAl2025_on_zarr_data(pt_wind_placements: pd.DataFrame):
+    """Real ERA5 data from an online Zarr store gives what the netCDF4 fixtures of the same hours give.
+
+    Not to the bit: the netCDF4 fixtures are packed to 16 bit integers, the Zarr data is
+    bit-rounded. The tolerances are about four times the largest difference measured.
+    """
+    inputs = data.paths("wind_era5_PenaSanchezDunkelWinklerEtAl2025", test=True)
+    arguments = dict(
+        placements=pt_wind_placements,
+        gwa_100m_path=inputs["gwa_100m"],
+        height_scaling_data={50: inputs["gwa_50m"], 200: inputs["gwa_200m"]},
+        output_netcdf_path=None,
+        cf_correction=True,
+    )
+    netcdf = wind_era5_PenaSanchezDunkelWinklerEtAl2025(era5_path=inputs["era5"], **arguments)
+    zarr = wind_era5_PenaSanchezDunkelWinklerEtAl2025(
+        era5_path=os.path.join(FIXTURES["era5_zarr"], "era5.zarr"),
+        time_slice=slice("2014-12-31 23:30", "2015-01-06 18:30"),
+        **arguments,
+    )
+
+    assert zarr.capacity_factor.shape == netcdf.capacity_factor.shape
+    assert (zarr.time.values == netcdf.time.values).all()
+    assert np.abs(zarr.capacity_factor - netcdf.capacity_factor).max() < 0.05
+    assert np.isclose(zarr.capacity_factor.mean(), netcdf.capacity_factor.mean(), rtol=1e-3)
+
+
 def test_onshore_wind_iconlam_2023(pt_wind_placements_Zimbabwe: pd.DataFrame):
     gen = onshore_wind_iconlam_2023(
         placements=pt_wind_placements_Zimbabwe,
-        icon_lam_path=TEST_DATA["iconlam-like"],
-        esa_cci_path=TEST_DATA["ESA_CCI_2015_clip_cityBulawayoInZimbabwa.tif"],
+        icon_lam_path=FIXTURES["icon_lam"],
+        esa_cci_path=FIXTURES["esa_cci_bulawayo"],
         output_netcdf_path=None,
         output_variables=None,
     )
@@ -145,15 +203,15 @@ def test_onshore_wind_iconlam_2023(pt_wind_placements_Zimbabwe: pd.DataFrame):
 def test_wind_config(pt_wind_placements: pd.DataFrame):
     gen = wind_config(
         placements=pt_wind_placements,
-        weather_path=TEST_DATA["era5-like"],
+        weather_path=FIXTURES["era5"],
         weather_source_type="ERA5",
         enable_lra_adjustment=True,
         weather_lra_ws_path=rk_weather.Era5Source.LONG_RUN_AVERAGE_WINDSPEED_2008TO2017,
-        real_lra_ws_path=TEST_DATA["gwa100-like.tif"],
+        real_lra_ws_path=FIXTURES["gwa_100m"],
         real_lra_ws_scaling=1,
         real_lra_ws_spatial_interpolation="average",
         real_lra_ws_nodata_fallback=np.nan,
-        height_scaling_data=TEST_DATA["ESA_CCI_2015_clip.tif"],
+        height_scaling_data=FIXTURES["esa_cci"],
         height_scaling_method=("log", "cci"),
         ws_correction_func=(
             "ws_bins",

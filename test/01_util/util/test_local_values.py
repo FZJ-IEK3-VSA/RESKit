@@ -49,10 +49,10 @@ def test_the_test_variant_is_the_bundled_fixture_pair(fixtures):
 
 
 def test_both_variants_name_the_same_inputs():
-    definitions = data._definitions()
-    assert definitions.variants("offshore_siting") == ("test", "full")
-    assert set(definitions.named_keys("offshore_siting", test=True)) == set(
-        definitions.named_keys("offshore_siting", test=False)
+    collections = data.handle()
+    assert collections.variants("offshore_siting") == ("test", "full")
+    assert set(collections.named_keys("offshore_siting", test=True)) == set(
+        collections.named_keys("offshore_siting", test=False)
     )
 
 
@@ -98,7 +98,7 @@ def test_the_default_is_resolved_once_per_process(monkeypatch, fixtures):
 
 def test_a_default_the_catalogue_cannot_provide_says_so(monkeypatch):
     def paths(collection, **kwargs):
-        raise KeyError("unknown dataset 'gebco-2024'")
+        raise KeyError("the dataset 'gebco-2025-combined' cannot be found")
 
     monkeypatch.setattr(data, "paths", paths)
     catalogued_input.cache_clear()

@@ -27,8 +27,8 @@ def catalogued_input(handle: str) -> str:
     fetches the collection's full variant from the ETHOS.Data catalogue on first
     use -- both rasters, several gigabytes -- and answers from the shared cache
     afterwards. It is resolved once per process. Pass a raster path to the
-    functions instead to read a private copy, or configure one for the dataset
-    with ``ethos-data config set-root``.
+    functions instead to read a private copy, or register a copy already on
+    this machine with ``ethos-data link <dataset> <directory>``.
 
     Parameters
     ----------

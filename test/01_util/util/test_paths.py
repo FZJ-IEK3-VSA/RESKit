@@ -12,8 +12,12 @@ import pandas as pd
 import pytest
 
 import reskit as rk
-from reskit import TEST_DATA
+from reskit import data
 from reskit.util.paths import as_path_string, is_path_like
+
+# The fixtures as reskit.data hands them out, as Path objects. Each test below
+# runs once with their string form and once with the Path itself.
+FIXTURES = data.paths("test_suite")
 
 
 @pytest.mark.parametrize("value", ["a/raster.tif", Path("a/raster.tif")])
@@ -37,21 +41,21 @@ def test_as_path_string_gives_a_string(value):
 
 def test_weather_source_reads_a_path_directory():
     """A directory given as a Path must be scanned like the same string."""
-    from_string = rk.weather.MerraSource(TEST_DATA["merra-like"], bounds=[5, 49, 7, 52], verbose=False)
-    from_path = rk.weather.MerraSource(Path(TEST_DATA["merra-like"]), bounds=[5, 49, 7, 52], verbose=False)
+    from_string = rk.weather.MerraSource(str(FIXTURES["merra"]), bounds=[5, 49, 7, 52], verbose=False)
+    from_path = rk.weather.MerraSource(FIXTURES["merra"], bounds=[5, 49, 7, 52], verbose=False)
 
     assert from_path.variables.equals(from_string.variables)
 
 
 def test_wind_workflow_accepts_path_inputs():
     """The rasters and the weather folder of a workflow may be Path objects."""
-    placements = pd.read_csv(TEST_DATA["turbine_placements.csv"])
+    placements = pd.read_csv(FIXTURES["turbine_placements"])
     arguments = dict(
-        era5_path=TEST_DATA["era5-like"],
-        gwa_100m_path=TEST_DATA["gwa100-like.tif"],
+        era5_path=str(FIXTURES["era5"]),
+        gwa_100m_path=str(FIXTURES["gwa_100m"]),
         height_scaling_data={
-            50: TEST_DATA["gwa50-like.tif"],
-            200: TEST_DATA["gwa200-like.tif"],
+            50: str(FIXTURES["gwa_50m"]),
+            200: str(FIXTURES["gwa_200m"]),
         },
     )
     as_paths = dict(
@@ -68,11 +72,11 @@ def test_wind_workflow_accepts_path_inputs():
 
 def test_solar_workflow_accepts_path_inputs():
     """The long-run-average rasters of a solar workflow may be Path objects."""
-    placements = pd.read_csv(TEST_DATA["module_placements.csv"])
+    placements = pd.read_csv(FIXTURES["module_placements"])
     arguments = dict(
-        era5_path=TEST_DATA["era5-like"],
-        global_solar_atlas_ghi_path=TEST_DATA["gsa-ghi-like.tif"],
-        global_solar_atlas_dni_path=TEST_DATA["gsa-dni-like.tif"],
+        era5_path=str(FIXTURES["era5"]),
+        global_solar_atlas_ghi_path=str(FIXTURES["gsa_ghi"]),
+        global_solar_atlas_dni_path=str(FIXTURES["gsa_dni"]),
     )
 
     from_strings = rk.solar.openfield_pv_era5(placements=placements, **arguments)

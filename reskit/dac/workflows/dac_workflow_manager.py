@@ -6,8 +6,9 @@ import pandas as pd
 from scipy.interpolate import RegularGridInterpolator
 
 from reskit.dac.data import DATAFOLDER
+from reskit.util.paths import is_path_like
 
-from ...workflow_manager import WorkflowManager
+from ...workflow_manager import WorkflowManager, _numeric_column_problems
 
 """
 
@@ -17,6 +18,11 @@ Importing required packages.
 
 
 class DACWorkflowManager(WorkflowManager):
+    @classmethod
+    def placement_problems(cls, placements):
+        """See WorkflowManager.placement_problems; the plants need a 'capacity'."""
+        return super().placement_problems(placements) + _numeric_column_problems(placements, "capacity")
+
     def __init__(self, placements):
         """
 
@@ -37,9 +43,6 @@ class DACWorkflowManager(WorkflowManager):
 
         """
         # Do basic workflow construction
-        assert all([a in placements.columns for a in ["lon", "lat", "capacity"]]), (
-            "Placements must contain the columns lon,lat and capacity"
-        )
         super().__init__(placements)
 
         units = {
@@ -84,7 +87,7 @@ class DACWorkflowManager(WorkflowManager):
         model_path_dict = {"LT_sendi": "LT_sendi.csv", "LT_jajjawi": "LT_jajjawi.csv"}
 
         assert model in model_path_dict.keys() or (
-            isinstance(model, str) and model.endswith(".csv") and os.path.isfile(model)
+            is_path_like(model) and os.fspath(model).endswith(".csv") and os.path.isfile(model)
         ), (
             f"Invalid model: {model}. Not one of the base models (LT_jajjawi or LT_sendi) and no valid path to an existing csv with custom data."
         )

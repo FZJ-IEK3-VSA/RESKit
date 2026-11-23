@@ -1,0 +1,48 @@
+title: RESKit ERA5 Zarr test store, Aachen
+description: ERA5 single-level fields as one Zarr store (format 3, consolidated metadata),
+  over the box and the 140 hourly steps of reskit-test-data/era5 plus the hour before,
+  2014-12-31 23:00 to 2015-01-06 19:00 UTC. What RESKit's Era5ZarrSource tests read as
+  a real online store, in its own layout -- 'valid_time' axis, longitudes on [0, 360),
+  float32 -- rather than the netCDF4 one.
+ethos:exclude:
+- '**/__init__.py'
+ethos:remote_prefix: reskit-test-data/era5-zarr
+ethos:access: public
+ethos:visibility: public
+ethos:origin: derived
+ethos:derivation: 'Cut on 2026-10-05 by scripts/make_era5_zarr_test_data.py from the
+  ERA5 single-levels store of the Earth Data Hub,
+  https://data.earthdatahub.destine.eu/era5/era5-single-levels-atmosphere-v0.zarr: the
+  raw variables RESKit reads, 49-52 N and 5-7.5 E, values bit for bit. The source applies
+  bitround (13 mantissa bits) as a codec; its values arrive rounded, so the store drops
+  that codec. The source is re-ingested from time to time, so the store cannot be rebuilt
+  byte for byte. The source URL and the retrieval date are also in the store''s attributes.
+
+  The store is one fixture: a test opens era5-zarr/era5.zarr, never a file inside it.'
+contributors:
+- title: Philipp Dunkel
+  roles:
+  - modifier
+  organization: Forschungszentrum Julich, ICE-2
+sources:
+- title: ERA5 hourly data on single levels from 1940 to present (Copernicus CDS)
+  path: https://doi.org/10.24381/cds.adbb2d47
+- title: Earth Data Hub, ERA5 single levels (Zarr)
+  path: https://data.earthdatahub.destine.eu/era5/era5-single-levels-atmosphere-v0.zarr
+licenses:
+- name: CC-BY-4.0
+  title: Creative Commons Attribution 4.0 International
+  path: https://creativecommons.org/licenses/by/4.0/
+  ethos:document: licenses/CC-BY-4.0-legalcode.txt
+  ethos:document_sha256: 9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411
+ethos:retrieved: '2026-10-05'
+name: reskit-test-data/era5-zarr
+homepage: https://github.com/FZJ-IEK3-VSA/RESKit
+ethos:contact: ICE-2 RESKit maintainers
+ethos:attribution: 'ALL FILES IN THIS DATASET HAVE BEEN MODIFIED: they are a spatial
+  and temporal subset of ERA5. None is suitable for any purpose other than exercising
+  RESKit''s code paths.
+
+  Contains modified Copernicus Climate Change Service information (ERA5, 2014-2015),
+  retrieved through the Earth Data Hub; neither the European Commission nor ECMWF is
+  responsible for any use of this data.'

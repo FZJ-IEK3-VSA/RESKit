@@ -5,6 +5,7 @@ import os
 import pandas as pd
 
 # other modules
+from reskit.util.paths import is_path_like
 from reskit.wind.core.data import DATAFOLDER
 
 
@@ -40,7 +41,7 @@ class Parameters:
 
         Parameters
         ----------
-        fp : str
+        fp : str or pathlib.Path
             The filepath of a csv file that contains the parameter values
             in a tabular format with the parameter names/units as column
             names and the years as row indices.
@@ -58,7 +59,7 @@ class Parameters:
             None
         """
         # check the input file
-        if not isinstance(fp, str) and os.path.splitext(fp)[-1] == ".csv":
+        if not is_path_like(fp) and os.path.splitext(fp)[-1] == ".csv":
             raise TypeError(f"Parameter filepath must be a str-formatted '.csv' file: {fp}")
         if not os.path.isfile(fp):
             raise FileNotFoundError(f"Parameter filepath does not exist: {fp}")

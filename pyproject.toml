@@ -21,10 +21,10 @@ maintainers = [
 license = { file = "MIT.txt" }
 
 # The `reskit-data` command: ETHOS.Data's collection commands (show, fetch,
-# verify), bundles and staging use reskit/data/collections.yaml,
-# which package-data ships (see "*.*" below). Nothing is registered with ETHOS.Data; reskit.data finds
-# the file beside itself. Console scripts live in the installed metadata, so a new
-# checkout needs one reinstall: pip install -e . --no-deps
+# verify), bundles and staging use reskit/data/collections.yaml and the bundle
+# reskit/data/test_cache, which package-data ships (see below). Nothing is registered
+# with ETHOS.Data; reskit.data finds both beside itself. Console scripts live in the
+# installed metadata, so a new checkout needs one reinstall: pip install -e . --no-deps
 [project.scripts]
 reskit-data = "reskit.data:main"
 
@@ -35,6 +35,9 @@ exclude = ["test", "examples"]
 
 [tool.setuptools.package-data]
 "*" = ["*.*"]
+# The test fixture bundle is a data directory, not a package: bundle.json, the files
+# under data/ and the descriptions and licences under datasets/.
+"reskit.data" = ["test_cache/**/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["test"] # Sets the path where to look for tests

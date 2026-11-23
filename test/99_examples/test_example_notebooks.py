@@ -25,16 +25,12 @@ NOTEBOOKS = sorted(
 )
 
 # The documentation build excludes the same notebooks, see DEFAULT_EXCLUDED and its
-# comment in docs/scripts/execute_notebooks.py. They need credentials, a large download
-# or a purchased dataset, or they are recipes with placeholder paths. The CI workflows
+# comment in docs/scripts/execute_notebooks.py. They need a purchased dataset, or they
+# are recipes with placeholder paths. The CI workflows
 # leave out the same set, see the "examples_to_execute" input of the workflows in
 # .github/workflows/.
 DOCS_NOTEBOOK_SCRIPT = TEST_DIR.parent.parent / "docs" / "scripts" / "execute_notebooks.py"
 NOTEBOOKS_WITHOUT_LOCAL_DATA = {
-    "1_1_1_how_to_download_era5_data",
-    "1_1_2_wind_speed_from_vectors_in_era5",
-    "1_1_3_prepare_era5_for_wind_workflow",
-    "1_1_4_prepare_era5_for_solar_workflow",
     "1_3_1_process_power_curves_from_thewindpower_net",
     "1_4_1_how_to_create_LRA_datasets",
 }

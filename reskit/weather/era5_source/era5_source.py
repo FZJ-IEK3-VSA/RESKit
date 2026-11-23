@@ -202,7 +202,15 @@ class Era5Source(NCSource):
             if cds_name in cls.CDS_TO_NC_NAME and cls.CDS_TO_NC_NAME[cds_name] not in cls.PREPROCESSED_NC_NAMES
         ]
 
-    def __init__(self, source, bounds=None, index_pad=5, time_index_from=None, **kwargs):
+    def __init__(
+        self,
+        source,
+        bounds=None,
+        index_pad=5,
+        time_index_from=None,
+        time_slice: slice | None = None,
+        **kwargs,
+    ):
         """Initialize a ERA5 style netCDF4 file source
 
         Compared to the generic NCSource object, the following parameters are automatically set:
@@ -244,6 +252,11 @@ class Era5Source(NCSource):
             * Generally, there should be no missing data at all. This option is only intended to
                 catch the rare scenarios where one or two timesteps are missing
 
+        time_slice : slice, optional
+            Restricts the source to the time steps between `time_slice.start` and
+            `time_slice.stop`, both inclusive. Only these time steps are read from disk
+            * See NCSource for details
+
         See Also
         --------
         MerraSource
@@ -281,6 +294,7 @@ class Era5Source(NCSource):
             flip_lat=True,
             time_offset_minutes=-30,  # time convention -30
             time_index_from=time_index_from,
+            time_slice=time_slice,
             **kwargs,
         )
 
