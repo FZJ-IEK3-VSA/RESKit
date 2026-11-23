@@ -43,6 +43,7 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
     output_variables: str | list[str] | None = None,
     max_batch_size: int = 15000,
     time_slice: slice | None = None,
+    wake_curve: str | None = "dena_mean",
     **simulate_kwargs: Any,
 ) -> xarray.Dataset | str:
     """
@@ -120,6 +121,11 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
         inclusive, e.g. slice("2015-03-01", "2015-03-31 23:30"). Only these time steps
         are read from the weather source, which is strongly recommended for multi-year
         Zarr cloud stores. By default None, i.e. all time steps.
+    wake_curve : str, optional
+        The wake reduction curve applied to all placements, see
+        WindWorkflowManager.apply_wake_correction_of_wind_speeds(). None takes the curve of
+        each placement from its 'wake_curve' column, or applies no wake reduction if the
+        placements have no such column. By default "dena_mean", as in [3].
     simulate_kwargs : optional
         Will be passed on to simulate().
 
@@ -141,7 +147,6 @@ def wind_era5_PenaSanchezDunkelWinklerEtAl2025(
         os.path.join(DATAFOLDER, f"ws_correction_factors_PSDW2025.yaml"),
     )
     cf_correction_factor = os.path.join(DATAFOLDER, f"cf_correction_factors_PSDW2025.tif")
-    wake_curve = "dena_mean"
     availability_factor = 0.98
     era5_lra_path = rk_weather.Era5Source.LONG_RUN_AVERAGE_WINDSPEED_2008TO2017
 

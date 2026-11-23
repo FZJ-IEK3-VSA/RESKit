@@ -519,6 +519,7 @@ def pv_era5_WinklerUnpublished(
     output_netcdf_path: str = None,
     output_variables: list | None = None,
     new_style: bool = True,  # TODO remove
+    time_slice: slice | None = None,
 ):
     """
     Simulation of an openfield PV system based on ERA-5 Data, geospatially disaggregated based
@@ -724,6 +725,12 @@ def pv_era5_WinklerUnpublished(
     new_style : bool, optional #TODO remove
         Defaults to True
 
+    time_slice : slice, optional
+            Simulate only the time steps between time_slice.start and time_slice.stop, both
+            inclusive, e.g. slice("2015-03-01", "2015-03-31 23:30"). Only these time steps
+            are read from the weather source, which is strongly recommended for multi-year
+            Zarr stores. By default None, i.e. all time steps.
+
     Returns
     -------
     A xarray dataset including all the output variables you defined as your output_variables.
@@ -757,6 +764,7 @@ def pv_era5_WinklerUnpublished(
         source=era5_path,
         set_time_index=True,
         time_index_from="direct_horizontal_irradiance",
+        time_slice=time_slice,
         verbose=False,
     )
 
