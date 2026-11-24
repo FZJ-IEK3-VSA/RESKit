@@ -104,6 +104,19 @@ def _solar_position(times, lat, lon, elev, pressure, temperature, block_size=256
     return azimuth, zenith
 
 
+def _padded_extent(locs, pad: float) -> gk.Extent:
+    """
+    The EPSG:4326 extent around the given locations, widened by `pad` degrees on each side.
+
+    geokit's Extent.fromLocationSet() refuses an extent of zero width or height, which
+    the locations of one placement, or of placements on one meridian or parallel, give.
+    Padding the bounds before building the extent avoids that and gives the same extent
+    as Extent.fromLocationSet(...).pad(pad) otherwise.
+    """
+    lon_min, lat_min, lon_max, lat_max = gk.LocationSet(locs).getBounds()
+    return gk.Extent(lon_min - pad, lat_min - pad, lon_max + pad, lat_max + pad, srs=gk.srs.EPSG4326)
+
+
 class SolarWorkflowManager(WorkflowManager):
     def __init__(self, placements):
         """
@@ -441,10 +454,7 @@ class SolarWorkflowManager(WorkflowManager):
             # generate a mask that applies also to the locations
             mask = filepaths == fp
             # extract a clipped sub raster covering the affected placements extent only to save time
-            iter_ext = gk.Extent.fromLocationSet(
-                gk.LocationSet(self.locs[mask])
-            )  # LocationSet can only be in EPSG:4326 as per geokit implementation
-            clipped_elev = iter_ext.pad(0.5).rasterMosaic(fp)
+            clipped_elev = _padded_extent(self.locs[mask], pad=0.5).rasterMosaic(fp)
             if clipped_elev is None:
                 iter_vals = np.array([np.nan] * len(self.locs[mask]))
             else:
@@ -2271,8 +2281,7 @@ class SolarWorkflowManager(WorkflowManager):
                 # generate a mask that applies also to the locations
                 mask = filepaths == fp
                 # extract a clipped sub raster covering the affected placements extent only to save time
-                iter_ext = gk.Extent.fromLocationSet(gk.LocationSet(self.locs[mask]))
-                clipped_raster = iter_ext.pad(0.5).rasterMosaic(fp)
+                clipped_raster = _padded_extent(self.locs[mask], pad=0.5).rasterMosaic(fp)
                 if clipped_raster is None:
                     iter_vals = np.array([np.nan] * len(self.locs[mask]))
                 else:

@@ -766,3 +766,29 @@ def test_SolarWorkflowManager_nan_values_tilt_azimuth_elev___init__() -> SolarWo
     assert ~man.placements["modtilt"].isna().any()
     assert ~man.placements["modazimuth"].isna().any()
     assert ~man.placements["elev"].isna().any()
+
+
+@pytest.mark.parametrize(
+    "lons, lats",
+    [([6.083], [50.475]), ([6.083, 6.083], [50.475, 50.575])],
+    ids=["one placement", "placements on one meridian"],
+)
+def test_SolarWorkflowManager_preprocess_elevation_from_raster_without_extent_width(tmp_path, lons, lats):
+    # the clipping extent around these placements has zero width, which geokit refuses
+    # unless it is padded before it is built
+    dem = str(tmp_path / "dem.tif")
+    gk.raster.createRaster(
+        bounds=(5.0, 49.0, 7.0, 52.0),
+        pixelWidth=0.05,
+        pixelHeight=0.05,
+        srs=gk.srs.EPSG4326,
+        dtype="Float32",
+        data=np.full((60, 40), 123.0),
+        output=dem,
+    )
+    placements = pd.DataFrame({"lon": lons, "lat": lats, "capacity": 1000.0, "tilt": 30, "azimuth": 180})
+    man = SolarWorkflowManager(placements)
+
+    man.preprocess_elevation(elevation=dem, fallback=None)
+
+    assert np.allclose(man.plant_parameters_processed["elevation"], 123.0)
