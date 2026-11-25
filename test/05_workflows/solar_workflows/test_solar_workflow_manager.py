@@ -792,3 +792,22 @@ def test_SolarWorkflowManager_preprocess_elevation_from_raster_without_extent_wi
     man.preprocess_elevation(elevation=dem, fallback=None)
 
     assert np.allclose(man.plant_parameters_processed["elevation"], 123.0)
+
+
+def test_SolarWorkflowManager_pvfactors_input_from_placements():
+    # pvfactors takes n_pvrows and index_observed_pvrow from the placements, else its defaults
+    placements = pd.DataFrame(
+        {"lon": [6.08, 6.09], "lat": [50.47, 50.48], "capacity": 1000.0, "tilt": 30, "azimuth": 180,
+         "n_pvrows": [1.0, 5.0], "index_observed_pvrow": [0, 2]}
+    )
+    man = SolarWorkflowManager(placements)
+    assert man._pvfactors_input(0, "n_pvrows", time_invariant=True) == 1
+    assert man._pvfactors_input(1, "n_pvrows", time_invariant=True) == 5
+    assert man._pvfactors_input(1, "index_observed_pvrow", time_invariant=True) == 2
+    assert isinstance(man._pvfactors_input(0, "n_pvrows", time_invariant=True), int)
+
+    man = SolarWorkflowManager(placements.drop(columns=["n_pvrows", "index_observed_pvrow"]))
+    assert man._pvfactors_input(0, "n_pvrows", time_invariant=True) == 3
+    assert man._pvfactors_input(0, "index_observed_pvrow", time_invariant=True) == 1
+    with pytest.raises(KeyError):
+        man._pvfactors_input(0, "no_such_input", time_invariant=True)

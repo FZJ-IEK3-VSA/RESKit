@@ -3196,6 +3196,42 @@ class SolarWorkflowManager(WorkflowManager):
 
         return self
 
+    # pvfactors inputs that are not workflow arguments, if the placements give no column of the name
+    PVFACTORS_DEFAULTS = {"n_pvrows": 3, "index_observed_pvrow": 1}
+
+    def _pvfactors_input(self, iloc, var, sim_var=None, fallback=None, time_invariant=False):
+        """
+        The value of a pvfactors input at location `iloc`, from the first source that has it:
+        the location- and time-variable sim_data[`sim_var`], the processed plant parameter
+        `var`, the placements column `var` (e.g. n_pvrows and index_observed_pvrow), the
+        `fallback`, or PVFACTORS_DEFAULTS.
+
+        Time-invariant values are returned as a scalar, else as an array over the time steps.
+        """
+        if self.sim_data.get(sim_var) is not None:
+            # get only the timeseries for the representative location
+            return np.asarray(self.sim_data.get(sim_var)[:, iloc], dtype=float).copy()
+        elif var is not None and var in self.plant_parameters_processed:
+            # value is not time-variable but in plant_parameters_processed
+            val = self.plant_parameters_processed[var]
+            assert np.asarray(val).ndim == 1  # make sure, needed for below logic
+            return val[iloc] if time_invariant else np.full(self._sim_shape_[0], val[iloc])
+        elif var is not None and var in self.placements.columns and not pd.isna(self.placements[var].iloc[iloc]):
+            # a column of the placements, one value per location (placements are in the order of self.locs)
+            val = self.placements[var].iloc[iloc]
+            if var in self.PVFACTORS_DEFAULTS:
+                val = int(val)  # counts and indices of PV rows, maybe stored as float (1.0)
+            return val if time_invariant else np.full(self._sim_shape_[0], val)
+        elif fallback is not None:
+            # set to variable fallback value
+            return np.full(self._sim_shape_[0], fallback)
+        elif var in self.PVFACTORS_DEFAULTS:
+            return self.PVFACTORS_DEFAULTS[var]
+        raise KeyError(
+            f"Variable '{var}' is neither a sim_data system variable, a processed plant parameter, "
+            f"a column of the placements nor has a default value."
+        )
+
     def estimate_absorbed_plane_of_array_irradiances(self, **kwargs):
         """
         Estimates the incoming and absorbed plane of array irradiance using the
@@ -3222,7 +3258,9 @@ class SolarWorkflowManager(WorkflowManager):
         has non-zero entries in the invoking class instance.
 
         Unless otherwise specified in kwargs, the following argument values will
-        be extracted from module data: 'gcr', 'pvrow_height', 'pv_row_width.
+        be extracted from module data: 'gcr', 'pvrow_height', 'pv_row_width. The number of
+        PV rows and the observed row are taken from the placements columns 'n_pvrows' and
+        'index_observed_pvrow' if given, else 3 rows of which the middle one is observed.
 
         References
         ----------
@@ -3264,36 +3302,8 @@ class SolarWorkflowManager(WorkflowManager):
             "dhi",
         }
 
-        # helper function to extract and preprocess shape for variables either from sim data or placements or defaults
-        def _extract_var(iloc, var, sim_var=None, fallback=None, time_invariant=False):
-            """First tries to get location- and time-variable sim_data, then location-variable placements column, else default."""
-            if self.sim_data.get(sim_var) is not None:
-                # get only the timeseries for the representative location
-                return np.asarray(self.sim_data.get(sim_var)[:, iloc], dtype=float).copy()
-            elif var is not None and var in self.plant_parameters_processed:
-                # value is not time-variable but in plant_parameters_processed
-                val = self.plant_parameters_processed[var]
-                assert np.asarray(val).ndim == 1  # make sure, needed for below logic
-                if time_invariant:
-                    # if parameter is time-invariant, return only the iloc-th value
-                    return val[iloc]
-                else:
-                    # if time-variant parameter is expected, duplicate for T timesteps
-                    return np.full(self._sim_shape_[0], val[iloc])
-            elif fallback is not None:
-                # set to variable fallback value
-                return np.full(self._sim_shape_[0], fallback)
-            else:
-                # fall back to defaults
-                defaults = {
-                    "n_pvrows": 3,
-                    "index_observed_pvrow": 1,
-                }  # default width for 2P orientation of large commercial module
-                if var not in defaults:
-                    raise KeyError(
-                        f"Variable '{var}' is neither a sim_data system variable, nor a column in placements dataframe nor has a default value."
-                    )
-                return defaults[var]
+        # location values from sim data, the processed plant parameters, the placements or defaults
+        _extract_var = self._pvfactors_input
 
         # iterate over all locs
         for iloc in range(n_locations):
