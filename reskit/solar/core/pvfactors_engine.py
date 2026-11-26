@@ -15,6 +15,8 @@ reflectivities), and the sky row is empty. Both follow from how pvfactors builds
 factor matrix, not from the data. The sky radiosity is therefore a division, the ground
 radiosities follow from the PV row ones, and only the Schur complement
 A_PP - F_PG D_G^-1 F_GP of the PV row surfaces (12 x 12 for 3 rows) needs a dense solve.
+Building that complement over the non-zero pairs, and solving it by Gaussian elimination at
+every time step, is one compiled loop (numba, _pv_row_solve()).
 
 Building the view factor matrix is the other large cost, mostly the view factors between the
 PV row and ground surfaces. pvfactors computes them for the ground on both sides of every PV
@@ -86,23 +88,10 @@ def _block_solve_engine():
             # right-hand sides with the sky term moved over
             r_g = irradiance_mat[g] + f_sky[g] * q0_s
             r_p = irradiance_mat[p] + f_sky[n_gnd:] * q0_s
-            # ground radiosities in terms of the PV row ones: q0_G = (r_G + F_GP q0_P) / invrho_G
-            f_pg_scaled = f_pg / invrho_mat[g][None]  # F_PG D_G^-1, (P, G, t)
-            # the PV row system: (diag(invrho_P) - F_PP - F_PG D_G^-1 F_GP) q0_P = r_P + F_PG D_G^-1 r_G
-            schur = -f_pp
-            # Each ground surface is seen by only a few PV row surfaces and sees only a few, so
-            # F_PG D_G^-1 F_GP is summed over the non-zero pairs only, ground surface by ground
-            # surface: about an eighth of the dense product for 3 rows, same summation order.
-            seen_by, sees = f_pg_scaled.any(axis=2), f_gp.any(axis=2)  # (P, G), (G, P)
-            for j in range(n_gnd):
-                rows, cols = np.flatnonzero(seen_by[:, j]), np.flatnonzero(sees[j])
-                if rows.size and cols.size:
-                    schur[rows[:, None], cols[None, :]] -= f_pg_scaled[rows, j][:, None, :] * f_gp[j, cols][None, :, :]
-            n_pv = schur.shape[0]
-            schur[np.arange(n_pv), np.arange(n_pv)] += invrho_mat[p]
-            rhs = r_p + np.einsum("pgt,gt->pt", f_pg_scaled, r_g)
-            q0_p = np.linalg.solve(np.moveaxis(schur, -1, 0), rhs.T[..., None])[..., 0].T
-            q0_g = (r_g + np.einsum("gpt,pt->gt", f_gp, q0_p)) / invrho_mat[g]
+            # the PV row and ground radiosities (see _pv_row_solve())
+            q0_p, q0_g = _pv_row_solve()(
+                f_pg, f_gp, f_pp, invrho_mat[g], invrho_mat[p], np.ascontiguousarray(r_g), np.ascontiguousarray(r_p)
+            )
 
             q0 = np.empty_like(irradiance_mat)
             q0[g], q0[p], q0[s] = q0_g, q0_p, q0_s
@@ -397,6 +386,114 @@ def _compiled_kernels():
                     out_gp[j, i, t] = vf * w / gnd_length if gnd_length > tol else 0.0
 
     return pvrow_gnd_view_factors
+
+
+@functools.cache
+def _pv_row_solve():
+    """The radiosity solve of BlockSolvePVEngine, compiled on first use (and cached on disk)."""
+    import numba
+
+    @numba.njit(cache=True)
+    def pv_row_solve(f_pg, f_gp, f_pp, invrho_g, invrho_p, r_g, r_p):
+        """The PV row and ground radiosities q0_P (n_pv, n_steps) and q0_G (n_gnd, n_steps).
+
+        Solves, at every time step, the PV row system
+            (diag(invrho_P) - F_PP - F_PG D_G^-1 F_GP) q0_P = r_P + F_PG D_G^-1 r_G
+        with D_G = diag(invrho_G), and then q0_G = (r_G + F_GP q0_P) / invrho_G.
+        Each ground surface is seen by only a few PV row surfaces and sees only a few, so
+        F_PG D_G^-1 F_GP is summed over the pairs that are non-zero at some time step, ground
+        surface by ground surface. The system is solved by Gaussian elimination with partial
+        pivoting; it is diagonally dominant (inverse reflectivities of 20 and more on the
+        diagonal, view factors of at most 1 elsewhere).
+        """
+        n_pv, n_gnd, n_steps = f_pg.shape
+        # F_PG D_G^-1 and which of its rows and F_GP's columns are non-zero at some step
+        f_pg_scaled = np.empty((n_pv, n_gnd, n_steps))
+        seen_by = np.zeros((n_pv, n_gnd), dtype=np.bool_)
+        for a in range(n_pv):
+            for j in range(n_gnd):
+                for t in range(n_steps):
+                    v = f_pg[a, j, t] / invrho_g[j, t]
+                    f_pg_scaled[a, j, t] = v
+                    if v != 0.0:
+                        seen_by[a, j] = True
+        sees = np.zeros((n_gnd, n_pv), dtype=np.bool_)
+        for j in range(n_gnd):
+            for c in range(n_pv):
+                for t in range(n_steps):
+                    if f_gp[j, c, t] != 0.0:
+                        sees[j, c] = True
+                        break
+        # the Schur complement of the PV row surfaces
+        schur = np.empty((n_pv, n_pv, n_steps))
+        for a in range(n_pv):
+            for c in range(n_pv):
+                for t in range(n_steps):
+                    schur[a, c, t] = -f_pp[a, c, t]
+        for j in range(n_gnd):
+            for a in range(n_pv):
+                if not seen_by[a, j]:
+                    continue
+                for c in range(n_pv):
+                    if not sees[j, c]:
+                        continue
+                    for t in range(n_steps):
+                        schur[a, c, t] -= f_pg_scaled[a, j, t] * f_gp[j, c, t]
+        for a in range(n_pv):
+            for t in range(n_steps):
+                schur[a, a, t] += invrho_p[a, t]
+        # right-hand side r_P + F_PG D_G^-1 r_G
+        rhs = r_p.copy()
+        for a in range(n_pv):
+            for j in range(n_gnd):
+                if not seen_by[a, j]:
+                    continue
+                for t in range(n_steps):
+                    rhs[a, t] += f_pg_scaled[a, j, t] * r_g[j, t]
+        # one small dense solve per time step
+        q0_p = np.empty((n_pv, n_steps))
+        m = np.empty((n_pv, n_pv))
+        b = np.empty(n_pv)
+        for t in range(n_steps):
+            for a in range(n_pv):
+                b[a] = rhs[a, t]
+                for c in range(n_pv):
+                    m[a, c] = schur[a, c, t]
+            for k in range(n_pv):
+                piv = k
+                for a in range(k + 1, n_pv):
+                    if abs(m[a, k]) > abs(m[piv, k]):
+                        piv = a
+                if piv != k:
+                    for c in range(k, n_pv):
+                        m[k, c], m[piv, c] = m[piv, c], m[k, c]
+                    b[k], b[piv] = b[piv], b[k]
+                for a in range(k + 1, n_pv):
+                    factor = m[a, k] / m[k, k]
+                    if factor != 0.0:
+                        for c in range(k + 1, n_pv):
+                            m[a, c] -= factor * m[k, c]
+                        b[a] -= factor * b[k]
+            for k in range(n_pv - 1, -1, -1):
+                acc = b[k]
+                for c in range(k + 1, n_pv):
+                    acc -= m[k, c] * b[c]
+                b[k] = acc / m[k, k]
+            for a in range(n_pv):
+                q0_p[a, t] = b[a]
+        # the ground radiosities
+        q0_g = r_g.copy()
+        for j in range(n_gnd):
+            for c in range(n_pv):
+                if not sees[j, c]:
+                    continue
+                for t in range(n_steps):
+                    q0_g[j, t] += f_gp[j, c, t] * q0_p[c, t]
+            for t in range(n_steps):
+                q0_g[j, t] /= invrho_g[j, t]
+        return q0_p, q0_g
+
+    return pv_row_solve
 
 
 def pvfactors_timeseries(
