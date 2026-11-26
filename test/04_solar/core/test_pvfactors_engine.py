@@ -99,3 +99,31 @@ def test_vf_calculator_matches_pvfactors(tracking, n_pvrows, kwargs):
     expected = VFCalculator().build_ts_vf_matrix(pvarray)
     result = _vf_calculator()().build_ts_vf_matrix(pvarray)
     np.testing.assert_allclose(result, expected, rtol=1e-12, atol=1e-14)
+
+
+@pytest.mark.parametrize("tracking, n_pvrows, kwargs", CASES)
+def test_vf_blocks_match_full_matrix(tracking, n_pvrows, kwargs):
+    from pvfactors.geometry.pvarray import OrderedPVArray
+
+    args = _inputs(tracking, n_pvrows, **kwargs)
+    n_steps = len(args["solar_zenith"])
+    pvarray = OrderedPVArray.init_from_dict(
+        {key: args[key] for key in ("n_pvrows", "axis_azimuth", "pvrow_height", "pvrow_width", "gcr")}
+    )
+    pvarray.fit(
+        args["solar_zenith"],
+        args["solar_azimuth"],
+        np.full(n_steps, args["surface_tilt"], dtype=float),
+        np.full(n_steps, args["surface_azimuth"], dtype=float),
+    )
+    full = _vf_calculator()().build_ts_vf_matrix(pvarray)
+    f_pg, f_gp, f_pp, f_sky = _vf_calculator()().build_ts_vf_blocks(pvarray)
+
+    n_gnd = pvarray.ts_ground.n_ts_surfaces
+    g, p = slice(0, n_gnd), slice(n_gnd, -1)
+    # the blocks left out are zero in the full matrix
+    assert not full[g, g].any() and not full[-1].any()
+    np.testing.assert_array_equal(f_pg, full[p, g])
+    np.testing.assert_array_equal(f_gp, full[g, p])
+    np.testing.assert_array_equal(f_pp, full[p, p])
+    np.testing.assert_array_equal(f_sky, full[:-1, -1])
