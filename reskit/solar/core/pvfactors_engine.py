@@ -15,14 +15,28 @@ reflectivities), and the sky row is empty. Both follow from how pvfactors builds
 factor matrix, not from the data. The sky radiosity is therefore a division, the ground
 radiosities follow from the PV row ones, and only the Schur complement
 A_PP - F_PG D_G^-1 F_GP of the PV row surfaces (12 x 12 for 3 rows) needs a dense solve.
+Building that complement over the non-zero pairs, and solving it by Gaussian elimination at
+every time step, is one compiled loop (numba, _pv_row_solve()).
 
 Building the view factor matrix is the other large cost, mostly the view factors between the
 PV row and ground surfaces. pvfactors computes them for the ground on both sides of every PV
 row surface and then zeroes one side wherever the rows are tilted the other way; for a fixed
 tilt that is the same side at every time step, so about half of that work is discarded
-whole. The view factor calculator below skips it, and computes the rest for all ground surfaces
-on one side of a PV row at once, sharing what depends only on the ground between the PV row
-surfaces; the view factor matrix stays bit-identical to pvfactors'.
+whole. pvfactors also computes each pair of surfaces through some 40 numpy operations, each
+making a temporary array over all time steps, and decides whether the neighbouring row blocks
+a view by comparing two arctan2 angles. The view factor calculator below computes all pairs on
+one side of a PV row in one compiled loop (numba), skips the values pvfactors zeroes, and makes
+the blocking decision by the sign of a cross product. The view factor matrix agrees with
+pvfactors' to floating point rounding; entries can differ in the last bits where a ground
+point lies exactly on the line through a PV row edge and the neighbouring row's lowest point
+(pvfactors places the shadow edges there): the two angles are then equal and the decision
+depends on rounding, but both string lengths are the same up to rounding.
+
+The solve needs only the blocks F_PG, F_GP, F_PP and the sky column F_S of the view factor
+matrix; the rest is zero by construction. The calculator therefore builds just these blocks
+(build_ts_vf_blocks()), with the same values, instead of the (n_surfaces + 1)^2 x n_steps
+matrix (68 MB for 3 PV rows and a year of daylight hours), whose allocation, first writes and
+row sums cost as much as the PV row to ground view factors themselves.
 
 pvfactors_timeseries() below is pvlib's function of the same name with this engine and view
 factor calculator plugged in; the results agree with pvlib's to floating point rounding.
@@ -51,47 +65,40 @@ def _block_solve_engine():
             pvarray = self.pvarray
             # shape = n_surfaces + 1, n_timesteps
             irradiance_mat, rho_mat, invrho_mat, _ = self.irradiance.get_full_ts_modeling_vectors(pvarray)
-            # shape = n_surfaces + 1, n_surfaces + 1, n_timesteps
-            vf = self.vf_calculator.build_ts_vf_matrix(pvarray)
-            pvarray.ts_vf_matrix = vf
 
             # pvarray.all_ts_surfaces lists the ground surfaces first, then the PV rows; the sky is last
             n_gnd = pvarray.ts_ground.n_ts_surfaces
             g, p, s = slice(0, n_gnd), slice(n_gnd, -1), -1
-            if vf[g, g].any() or vf[s].any():
-                # not the structure pvfactors builds: fall back rather than solve the wrong system
-                return super().run_full_mode(fn_build_report=fn_build_report)
+            if hasattr(self.vf_calculator, "build_ts_vf_blocks"):
+                # only the blocks of the view factor matrix the solve uses (see the module docstring)
+                f_pg, f_gp, f_pp, f_sky = self.vf_calculator.build_ts_vf_blocks(pvarray)
+                # pvarray.ts_vf_matrix, which PVEngine sets, stays unset (None): nothing
+                # downstream of the report reads it
+            else:
+                # shape = n_surfaces + 1, n_surfaces + 1, n_timesteps
+                vf = self.vf_calculator.build_ts_vf_matrix(pvarray)
+                pvarray.ts_vf_matrix = vf
+                if vf[g, g].any() or vf[s].any():
+                    # not the structure pvfactors builds: fall back rather than solve the wrong system
+                    return super().run_full_mode(fn_build_report=fn_build_report)
+                f_pg, f_gp, f_pp, f_sky = vf[p, g], vf[g, p], vf[p, p], vf[:-1, -1]
 
             # the sky radiosity: its row of A holds only the (dummy) inverse sky reflectivity
             q0_s = irradiance_mat[s] / invrho_mat[s]
             # right-hand sides with the sky term moved over
-            r_g = irradiance_mat[g] + vf[g, s] * q0_s
-            r_p = irradiance_mat[p] + vf[p, s] * q0_s
-            # ground radiosities in terms of the PV row ones: q0_G = (r_G + F_GP q0_P) / invrho_G
-            f_pg_scaled = vf[p, g] / invrho_mat[g][None]  # F_PG D_G^-1, (P, G, t)
-            # the PV row system: (diag(invrho_P) - F_PP - F_PG D_G^-1 F_GP) q0_P = r_P + F_PG D_G^-1 r_G
-            schur = -vf[p, p]
-            # Each ground surface is seen by only a few PV row surfaces and sees only a few, so
-            # F_PG D_G^-1 F_GP is summed over the non-zero pairs only, ground surface by ground
-            # surface: about an eighth of the dense product for 3 rows, same summation order.
-            f_gp = vf[g, p]
-            seen_by, sees = f_pg_scaled.any(axis=2), f_gp.any(axis=2)  # (P, G), (G, P)
-            for j in range(n_gnd):
-                rows, cols = np.flatnonzero(seen_by[:, j]), np.flatnonzero(sees[j])
-                if rows.size and cols.size:
-                    schur[rows[:, None], cols[None, :]] -= f_pg_scaled[rows, j][:, None, :] * f_gp[j, cols][None, :, :]
-            n_pv = schur.shape[0]
-            schur[np.arange(n_pv), np.arange(n_pv)] += invrho_mat[p]
-            rhs = r_p + np.einsum("pgt,gt->pt", f_pg_scaled, r_g)
-            q0_p = np.linalg.solve(np.moveaxis(schur, -1, 0), rhs.T[..., None])[..., 0].T
-            q0_g = (r_g + np.einsum("gpt,pt->gt", f_gp, q0_p)) / invrho_mat[g]
+            r_g = irradiance_mat[g] + f_sky[g] * q0_s
+            r_p = irradiance_mat[p] + f_sky[n_gnd:] * q0_s
+            # the PV row and ground radiosities (see _pv_row_solve())
+            q0_p, q0_g = _pv_row_solve()(
+                f_pg, f_gp, f_pp, invrho_mat[g], invrho_mat[p], np.ascontiguousarray(r_g), np.ascontiguousarray(r_p)
+            )
 
             q0 = np.empty_like(irradiance_mat)
             q0[g], q0[p], q0[s] = q0_g, q0_p, q0_s
 
             # the rest as in PVEngine.run_full_mode(), with its diagonal matrices as vectors
             qinc = invrho_mat * q0
-            isotropic_mat = vf[:-1, -1, :] * irradiance_mat[-1, :]
+            isotropic_mat = f_sky * irradiance_mat[-1, :]
             reflection_mat = qinc[:-1, :] - irradiance_mat[:-1, :] - isotropic_mat
             # without AOI methods the absorption matrix is (1 - rho_i) * vf_ik, row by row, and
             # F q0 needs no product: A q0 = irradiance with A = diag(invrho) - F gives F q0 = qinc - irradiance
@@ -118,135 +125,375 @@ def _block_solve_engine():
 @functools.cache
 def _vf_calculator():
     """The view factor calculator class, built on first use like the engine."""
+    from pvfactors.config import DISTANCE_TOLERANCE
     from pvfactors.viewfactors.calculator import VFCalculator
     from pvfactors.viewfactors.vfmethods import VFTsMethods
 
-    from pvfactors.config import DISTANCE_TOLERANCE
+    def _stack(points, n_steps):
+        # x and y of timeseries points as two contiguous (n_points, n_steps) arrays
+        xy = [(np.asarray(p.x, dtype=float), np.asarray(p.y, dtype=float)) for p in points]
+        return tuple(np.ascontiguousarray(np.stack([np.broadcast_to(c[k], (n_steps,)) for c in xy])) for k in (0, 1))
 
-    def _distance(pt_1, pt_2):
-        # VFTsMethods._distance(), on arrays that broadcast
-        return np.sqrt((pt_2[1] - pt_1[1]) ** 2 + (pt_2[0] - pt_1[0]) ** 2)
-
-    def _angle_with_x_axis(pt_1, pt_2):
-        # VFTsMethods._angle_with_x_axis()
-        return np.arctan2(pt_2[1] - pt_1[1], pt_2[0] - pt_1[0])
-
-    def _xy(ts_point):
-        return np.asarray(ts_point.x, dtype=float), np.asarray(ts_point.y, dtype=float)
-
-    class VectorisedVFTsMethods(VFTsMethods):
-        """VFTsMethods with the PV row to ground view factors computed for all ground surfaces at once."""
+    class CompiledVFTsMethods(VFTsMethods):
+        """VFTsMethods with the PV row to ground view factors computed by a compiled kernel."""
 
         def vf_pvrow_gnd_surf(self, ts_pvrows, ts_ground, tilted_to_left, vf_matrix):
+            self.pvrow_gnd_surf_into(ts_pvrows, ts_ground, tilted_to_left, vf_matrix, vf_matrix, 0)
+
+        def pvrow_gnd_surf_into(self, ts_pvrows, ts_ground, tilted_to_left, out_pg, out_gp, pv_offset):
+            # Writes the PV row to ground view factors into out_pg[i - pv_offset, j] and the ground
+            # to PV row ones into out_gp[j, i - pv_offset] (i: PV row, j: ground surface index):
+            # the full matrix with pv_offset 0, or the blocks of build_ts_vf_blocks().
+            #
             # As VFTsMethods.vf_pvrow_gnd_surf() with vf_pvrow_surf_to_gnd_surf_obstruction_hottel(),
-            # _vf_surface_to_surface() and _vf_hottel_gnd_surf(), with the same arithmetic in the
-            # same order, so the matrix is bit-identical. pvfactors calls those once per pair of
-            # PV row and ground surface; here the ground surfaces on one side of a PV row are
-            # stacked into (n_ground, n_steps) arrays, and what depends only on the ground and
-            # the obstructing row -- angles and distances to its lowest point -- is computed once
-            # for all PV row surfaces instead of once per pair and string.
+            # _vf_surface_to_surface() and _vf_hottel_gnd_surf(). pvfactors calls those once per
+            # pair of PV row and ground surface, on arrays over all time steps; here the PV row and
+            # ground surfaces on one side of a PV row go to _pvrow_gnd_view_factors() together,
+            # which computes each value in one pass, with the same arithmetic in the same order.
             #
             # pvfactors keeps the front's view to the left ground and the back's to the right only
             # where the rows are tilted to the left, and vice versa; a side kept at no time step
             # would only write zeros over the zeros already there and is skipped.
             n_pvrows = len(ts_pvrows)
             n_steps = len(tilted_to_left)
+            tilted_to_left = np.ascontiguousarray(tilted_to_left, dtype=np.bool_)
             any_left, any_right = bool(np.any(tilted_to_left)), bool(not np.all(tilted_to_left))
             for idx_pvrow, ts_pvrow in enumerate(ts_pvrows):
                 for is_left, side_name in ((True, "left"), (False, "right")):
-                    pvrow_sides = [
-                        (is_back, pvrow_side)
+                    pv_surfaces = [
+                        (is_back, surf)
                         for is_back, pvrow_side in ((False, ts_pvrow.front), (True, ts_pvrow.back))
                         # the front sees the left ground when tilted to the left, the back the right
                         if (any_left if is_left != is_back else any_right)
+                        for surf in pvrow_side.all_ts_surfaces
+                        if not surf.is_empty
                     ]
                     gnd_surfaces = [
                         surf
                         for surf in ts_ground.ts_surfaces_side_of_cut_point(side_name, idx_pvrow)
                         if not surf.is_empty
                     ]
-                    if not pvrow_sides or not gnd_surfaces:
+                    if not pv_surfaces or not gnd_surfaces:
                         continue
-                    j = np.array([surf.index for surf in gnd_surfaces])
-                    # the ground surfaces' boundary points as (n_ground, n_steps) arrays
-                    gnd_b1, gnd_b2 = (
-                        tuple(
-                            np.stack([np.broadcast_to(c, (n_steps,)) for c in coords])
-                            for coords in zip(*(_xy(getattr(surf.coords, b)) for surf in gnd_surfaces))
-                        )
-                        for b in ("b1", "b2")
-                    )
-                    gnd_length = _distance(gnd_b1, gnd_b2)  # TsLineCoords.length
+                    pvs = [surf for _, surf in pv_surfaces]
                     no_obstruction = (is_left and idx_pvrow == 0) or (not is_left and idx_pvrow == n_pvrows - 1)
-                    if not no_obstruction:
-                        # the neighbouring row's lowest point may block the view; per ground point
+                    if no_obstruction:
+                        obstr = (np.zeros(n_steps), np.zeros(n_steps))
+                    else:
+                        # the neighbouring row's lowest point may block the view
                         idx_obstr = idx_pvrow - 1 if is_left else idx_pvrow + 1
-                        obstr = _xy(ts_pvrows[idx_obstr].full_pvrow_coords.lowest_point)
-                        alpha_obstr = {b: _angle_with_x_axis(pt, obstr) for b, pt in (("b1", gnd_b1), ("b2", gnd_b2))}
-                        dist_gnd_obstr = {b: _distance(pt, obstr) for b, pt in (("b1", gnd_b1), ("b2", gnd_b2))}
+                        ox, oy = _stack([ts_pvrows[idx_obstr].full_pvrow_coords.lowest_point], n_steps)
+                        obstr = (ox[0], oy[0])
+                    width = np.ascontiguousarray(
+                        np.stack([np.broadcast_to(np.asarray(s.length, dtype=float), (n_steps,)) for s in pvs])
+                    )
+                    _compiled_kernels()(
+                        out_pg,
+                        out_gp,
+                        np.array([surf.index for surf in pvs]) - pv_offset,
+                        np.array([surf.index for surf in gnd_surfaces]),
+                        *_stack([s.coords.b1 for s in pvs], n_steps),
+                        *_stack([s.coords.b2 for s in pvs], n_steps),
+                        *_stack([s.highest_point for s in pvs], n_steps),
+                        *_stack([s.lowest_point for s in pvs], n_steps),
+                        width,
+                        *_stack([s.coords.b1 for s in gnd_surfaces], n_steps),
+                        *_stack([s.coords.b2 for s in gnd_surfaces], n_steps),
+                        *obstr,
+                        no_obstruction,
+                        is_left,
+                        # pvfactors keeps a view where the rows tilt towards this ground side
+                        np.array([is_left != is_back for is_back, _ in pv_surfaces]),
+                        tilted_to_left,
+                        DISTANCE_TOLERANCE,
+                    )
 
-                    for is_back, pvrow_side in pvrow_sides:
-                        for pvrow_surf in pvrow_side.all_ts_surfaces:
-                            if pvrow_surf.is_empty:
-                                continue
-                            i = pvrow_surf.index
-                            width = pvrow_surf.length
-                            if no_obstruction:
-                                # _vf_surface_to_surface(pvrow_surf.coords, gnd_surf, width)
-                                pv_b1, pv_b2 = _xy(pvrow_surf.coords.b1), _xy(pvrow_surf.coords.b2)
-                                sum_1 = _distance(pv_b1, gnd_b1) + _distance(pv_b2, gnd_b2)
-                                sum_2 = _distance(pv_b1, gnd_b2) + _distance(pv_b2, gnd_b1)
-                                numerator = np.abs(sum_2 - sum_1)
-                            else:
-                                # _vf_hottel_gnd_surf(highest, lowest, gnd b1, gnd b2, obstr, width, is_left)
-                                high, low = _xy(pvrow_surf.highest_point), _xy(pvrow_surf.lowest_point)
-                                dist_obstr_pv = {"high": _distance(obstr, high), "low": _distance(obstr, low)}
+    class _OffsetIndices:
+        # A block of the view factor matrix that takes the matrix's surface indices, so that
+        # VFTsMethods.vf_pvrow_to_pvrow(), which writes vf_matrix[i, j, :], can fill it
+        def __init__(self, block, offset):
+            self.block, self.offset = block, offset
 
-                                def hottel_string_length(pv_name, pv, gnd_name, gnd):
-                                    l_pv = _distance(pv, gnd)
-                                    alpha_pv = _angle_with_x_axis(gnd, pv)
-                                    if is_left:
-                                        is_obstructing = alpha_pv > alpha_obstr[gnd_name]
-                                    else:
-                                        is_obstructing = alpha_pv < alpha_obstr[gnd_name]
-                                    l_obstr = dist_gnd_obstr[gnd_name] + dist_obstr_pv[pv_name]
-                                    return np.where(is_obstructing, l_obstr, l_pv)
+        def __setitem__(self, key, value):
+            i, j, rest = key
+            self.block[i - self.offset, j - self.offset, rest] = value
 
-                                near, far = (
-                                    (("b1", gnd_b1), ("b2", gnd_b2)) if is_left else (("b2", gnd_b2), ("b1", gnd_b1))
-                                )
-                                l1 = hottel_string_length("high", high, *near)
-                                l2 = hottel_string_length("low", low, *far)
-                                d1 = hottel_string_length("high", high, *far)
-                                d2 = hottel_string_length("low", low, *near)
-                                numerator = d1 + d2 - l1 - l2
-                            vf_pvrow_to_gnd = np.divide(
-                                numerator,
-                                2.0 * width,
-                                where=width > DISTANCE_TOLERANCE,
-                                out=np.zeros(numerator.shape),
-                            )
-                            if is_left != is_back:
-                                vf_pvrow_to_gnd = np.where(tilted_to_left, vf_pvrow_to_gnd, 0.0)
-                            else:
-                                vf_pvrow_to_gnd = np.where(tilted_to_left, 0.0, vf_pvrow_to_gnd)
-                            vf_gnd_to_pvrow = np.divide(
-                                vf_pvrow_to_gnd * width,
-                                gnd_length,
-                                where=gnd_length > DISTANCE_TOLERANCE,
-                                out=np.zeros_like(gnd_length),
-                            )
-                            vf_matrix[i, j, :] = vf_pvrow_to_gnd
-                            vf_matrix[j, i, :] = vf_gnd_to_pvrow
-
-    class VectorisedVFCalculator(VFCalculator):
-        """VFCalculator with VectorisedVFTsMethods."""
+    class CompiledVFCalculator(VFCalculator):
+        """VFCalculator with CompiledVFTsMethods, which can also build the matrix in blocks."""
 
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
-            self.vf_ts_methods = VectorisedVFTsMethods()
+            self.vf_ts_methods = CompiledVFTsMethods()
 
-    return VectorisedVFCalculator
+        def build_ts_vf_blocks(self, pvarray):
+            """The blocks of build_ts_vf_matrix() that are not zero by construction.
+
+            Returns F_PG (n_pv, n_gnd, n_steps), F_GP (n_gnd, n_pv, n_steps), F_PP
+            (n_pv, n_pv, n_steps) and the sky column F_S (n_gnd + n_pv, n_steps), with the same
+            values as the full matrix, whose ground to ground block and sky row are all zeros.
+            The full matrix is (n_surfaces + 1)^2 x n_steps, 68 MB for 3 PV rows and 4843 steps.
+            """
+            tilted_to_left = pvarray.rotation_vec > 0
+            n_steps = len(tilted_to_left)
+            n_gnd = pvarray.ts_ground.n_ts_surfaces
+            n_pv = pvarray.n_ts_surfaces - n_gnd
+            f_pg = np.zeros((n_pv, n_gnd, n_steps))
+            f_gp = np.zeros((n_gnd, n_pv, n_steps))
+            f_pp = np.zeros((n_pv, n_pv, n_steps))
+            self.vf_ts_methods.pvrow_gnd_surf_into(
+                pvarray.ts_pvrows, pvarray.ts_ground, tilted_to_left, f_pg, f_gp, n_gnd
+            )
+            self.vf_ts_methods.vf_pvrow_to_pvrow(pvarray.ts_pvrows, tilted_to_left, _OffsetIndices(f_pp, n_gnd))
+            # the sky column as in build_ts_vf_matrix(): one minus the row sums, added column by
+            # column in the matrix's column order (ground, then PV rows; the zeros add nothing)
+            row_sum = np.empty((n_gnd + n_pv, n_steps))
+            row_sum[:n_gnd] = np.sum(f_gp, axis=1)
+            pv_sum = np.sum(f_pg, axis=1)
+            for k in range(n_pv):
+                pv_sum += f_pp[:, k]
+            row_sum[n_gnd:] = pv_sum
+            f_sky = 1.0 - row_sum
+            # zero for surfaces without length
+            for i, ts_surf in enumerate(pvarray.all_ts_surfaces):
+                f_sky[i] = np.where(ts_surf.length > DISTANCE_TOLERANCE, f_sky[i], 0.0)
+            return f_pg, f_gp, f_pp, f_sky
+
+    return CompiledVFCalculator
+
+
+@functools.cache
+def _compiled_kernels():
+    """The PV row to ground view factor kernel, compiled on first use (and cached on disk)."""
+    import math
+
+    import numba
+
+    @numba.njit(cache=True, inline="always")
+    def distance(x1, y1, x2, y2):
+        # VFTsMethods._distance(pt_1, pt_2), with the same operations in the same order
+        return math.sqrt((y2 - y1) ** 2 + (x2 - x1) ** 2)
+
+    @numba.njit(cache=True, inline="always")
+    def string_length(px, py, gx, gy, ox, oy, dist_gnd_obstr, dist_obstr_pv, is_left):
+        # The length of the string from ground point g to PV row point p in
+        # VFTsMethods._hottel_string_length(): around the obstruction point o where the
+        # neighbouring row blocks the straight line, else straight.
+        # pvfactors decides that by comparing the angles of g -> p and g -> o with the x axis.
+        # Where both points lie above the ground point, that comparison is the sign of the
+        # cross product of the two vectors, which needs no arctan2; the two can only differ for
+        # (nearly) collinear points, where both string lengths are the same. Otherwise (rows
+        # reaching below the ground) the angles are compared as pvfactors does.
+        l_pv = distance(px, py, gx, gy)
+        if py > gy and oy > gy:
+            cross = (ox - gx) * (py - gy) - (oy - gy) * (px - gx)
+            is_obstructing = cross > 0.0 if is_left else cross < 0.0
+        else:
+            alpha_pv = math.atan2(py - gy, px - gx)
+            alpha_obstr = math.atan2(oy - gy, ox - gx)
+            is_obstructing = alpha_pv > alpha_obstr if is_left else alpha_pv < alpha_obstr
+        return dist_gnd_obstr + dist_obstr_pv if is_obstructing else l_pv
+
+    @numba.njit(cache=True)
+    def pvrow_gnd_view_factors(
+        out_pg,
+        out_gp,
+        idx_pv,
+        idx_gnd,
+        b1x, b1y, b2x, b2y, hx, hy, lx, ly, width,
+        g1x, g1y, g2x, g2y,
+        ox, oy,
+        no_obstruction, is_left, keep_if_left, tilted_to_left, tol,
+    ):  # fmt: skip
+        """Writes the view factors from PV row to ground surfaces into out_pg[idx_pv, idx_gnd]
+        and from ground to PV row surfaces into out_gp[idx_gnd, idx_pv].
+
+        idx_pv, idx_gnd: indices of the PV row and ground surfaces in these arrays. b1, b2, h(ighest),
+        l(owest): points of the PV row surfaces and width their lengths, (n_pv, n_steps);
+        g1, g2: boundary points of the ground surfaces, (n_gnd, n_steps); o: lowest point of
+        the obstructing row, (n_steps,); keep_if_left: per PV row surface, whether its view is
+        kept where the rows tilt to the left (else where they tilt to the right).
+
+        The arithmetic is that of _vf_surface_to_surface() (no obstruction) and
+        _vf_hottel_gnd_surf() (Hottel's crossed strings around the obstructing row), in the
+        same order.
+        """
+        n_pv, n_steps = width.shape
+        n_gnd = g1x.shape[0]
+        # what depends only on a ground surface, or only on a PV row surface, and the
+        # obstructing row, computed once
+        gnd_len = np.empty((n_gnd, n_steps))
+        d1os, d2os = np.zeros((n_gnd, n_steps)), np.zeros((n_gnd, n_steps))
+        for g in range(n_gnd):
+            for t in range(n_steps):
+                gnd_len[g, t] = distance(g1x[g, t], g1y[g, t], g2x[g, t], g2y[g, t])
+                if not no_obstruction:
+                    d1os[g, t] = distance(g1x[g, t], g1y[g, t], ox[t], oy[t])
+                    d2os[g, t] = distance(g2x[g, t], g2y[g, t], ox[t], oy[t])
+        dhs, dls = np.zeros((n_pv, n_steps)), np.zeros((n_pv, n_steps))
+        if not no_obstruction:
+            for s in range(n_pv):
+                for t in range(n_steps):
+                    dhs[s, t] = distance(ox[t], oy[t], hx[s, t], hy[s, t])
+                    dls[s, t] = distance(ox[t], oy[t], lx[s, t], ly[s, t])
+        for s in range(n_pv):
+            i = idx_pv[s]
+            for g in range(n_gnd):
+                j = idx_gnd[g]
+                for t in range(n_steps):
+                    w = width[s, t]
+                    if tilted_to_left[t] != keep_if_left[s] or not w > tol:
+                        # pvfactors zeroes this side at this step, or the surface has no length
+                        out_pg[i, j, t] = 0.0
+                        out_gp[j, i, t] = 0.0
+                        continue
+                    if no_obstruction:
+                        sum_1 = distance(b1x[s, t], b1y[s, t], g1x[g, t], g1y[g, t]) + distance(
+                            b2x[s, t], b2y[s, t], g2x[g, t], g2y[g, t]
+                        )
+                        sum_2 = distance(b1x[s, t], b1y[s, t], g2x[g, t], g2y[g, t]) + distance(
+                            b2x[s, t], b2y[s, t], g1x[g, t], g1y[g, t]
+                        )
+                        numerator = abs(sum_2 - sum_1)
+                    else:
+                        # near and far ground point: b1 and b2 on the left side, b2 and b1 on the right
+                        if is_left:
+                            nx, ny, d_near, fx, fy, d_far = (
+                                g1x[g, t],
+                                g1y[g, t],
+                                d1os[g, t],
+                                g2x[g, t],
+                                g2y[g, t],
+                                d2os[g, t],
+                            )
+                        else:
+                            nx, ny, d_near, fx, fy, d_far = (
+                                g2x[g, t],
+                                g2y[g, t],
+                                d2os[g, t],
+                                g1x[g, t],
+                                g1y[g, t],
+                                d1os[g, t],
+                            )
+                        high_x, high_y, low_x, low_y = hx[s, t], hy[s, t], lx[s, t], ly[s, t]
+                        l1 = string_length(high_x, high_y, nx, ny, ox[t], oy[t], d_near, dhs[s, t], is_left)
+                        l2 = string_length(low_x, low_y, fx, fy, ox[t], oy[t], d_far, dls[s, t], is_left)
+                        d1 = string_length(high_x, high_y, fx, fy, ox[t], oy[t], d_far, dhs[s, t], is_left)
+                        d2 = string_length(low_x, low_y, nx, ny, ox[t], oy[t], d_near, dls[s, t], is_left)
+                        numerator = d1 + d2 - l1 - l2
+                    vf = numerator / (2.0 * w)
+                    out_pg[i, j, t] = vf
+                    gnd_length = gnd_len[g, t]
+                    out_gp[j, i, t] = vf * w / gnd_length if gnd_length > tol else 0.0
+
+    return pvrow_gnd_view_factors
+
+
+@functools.cache
+def _pv_row_solve():
+    """The radiosity solve of BlockSolvePVEngine, compiled on first use (and cached on disk)."""
+    import numba
+
+    @numba.njit(cache=True)
+    def pv_row_solve(f_pg, f_gp, f_pp, invrho_g, invrho_p, r_g, r_p):
+        """The PV row and ground radiosities q0_P (n_pv, n_steps) and q0_G (n_gnd, n_steps).
+
+        Solves, at every time step, the PV row system
+            (diag(invrho_P) - F_PP - F_PG D_G^-1 F_GP) q0_P = r_P + F_PG D_G^-1 r_G
+        with D_G = diag(invrho_G), and then q0_G = (r_G + F_GP q0_P) / invrho_G.
+        Each ground surface is seen by only a few PV row surfaces and sees only a few, so
+        F_PG D_G^-1 F_GP is summed over the pairs that are non-zero at some time step, ground
+        surface by ground surface. The system is solved by Gaussian elimination with partial
+        pivoting; it is diagonally dominant (inverse reflectivities of 20 and more on the
+        diagonal, view factors of at most 1 elsewhere).
+        """
+        n_pv, n_gnd, n_steps = f_pg.shape
+        # F_PG D_G^-1 and which of its rows and F_GP's columns are non-zero at some step
+        f_pg_scaled = np.empty((n_pv, n_gnd, n_steps))
+        seen_by = np.zeros((n_pv, n_gnd), dtype=np.bool_)
+        for a in range(n_pv):
+            for j in range(n_gnd):
+                for t in range(n_steps):
+                    v = f_pg[a, j, t] / invrho_g[j, t]
+                    f_pg_scaled[a, j, t] = v
+                    if v != 0.0:
+                        seen_by[a, j] = True
+        sees = np.zeros((n_gnd, n_pv), dtype=np.bool_)
+        for j in range(n_gnd):
+            for c in range(n_pv):
+                for t in range(n_steps):
+                    if f_gp[j, c, t] != 0.0:
+                        sees[j, c] = True
+                        break
+        # the Schur complement of the PV row surfaces
+        schur = np.empty((n_pv, n_pv, n_steps))
+        for a in range(n_pv):
+            for c in range(n_pv):
+                for t in range(n_steps):
+                    schur[a, c, t] = -f_pp[a, c, t]
+        for j in range(n_gnd):
+            for a in range(n_pv):
+                if not seen_by[a, j]:
+                    continue
+                for c in range(n_pv):
+                    if not sees[j, c]:
+                        continue
+                    for t in range(n_steps):
+                        schur[a, c, t] -= f_pg_scaled[a, j, t] * f_gp[j, c, t]
+        for a in range(n_pv):
+            for t in range(n_steps):
+                schur[a, a, t] += invrho_p[a, t]
+        # right-hand side r_P + F_PG D_G^-1 r_G
+        rhs = r_p.copy()
+        for a in range(n_pv):
+            for j in range(n_gnd):
+                if not seen_by[a, j]:
+                    continue
+                for t in range(n_steps):
+                    rhs[a, t] += f_pg_scaled[a, j, t] * r_g[j, t]
+        # one small dense solve per time step
+        q0_p = np.empty((n_pv, n_steps))
+        m = np.empty((n_pv, n_pv))
+        b = np.empty(n_pv)
+        for t in range(n_steps):
+            for a in range(n_pv):
+                b[a] = rhs[a, t]
+                for c in range(n_pv):
+                    m[a, c] = schur[a, c, t]
+            for k in range(n_pv):
+                piv = k
+                for a in range(k + 1, n_pv):
+                    if abs(m[a, k]) > abs(m[piv, k]):
+                        piv = a
+                if piv != k:
+                    for c in range(k, n_pv):
+                        m[k, c], m[piv, c] = m[piv, c], m[k, c]
+                    b[k], b[piv] = b[piv], b[k]
+                for a in range(k + 1, n_pv):
+                    factor = m[a, k] / m[k, k]
+                    if factor != 0.0:
+                        for c in range(k + 1, n_pv):
+                            m[a, c] -= factor * m[k, c]
+                        b[a] -= factor * b[k]
+            for k in range(n_pv - 1, -1, -1):
+                acc = b[k]
+                for c in range(k + 1, n_pv):
+                    acc -= m[k, c] * b[c]
+                b[k] = acc / m[k, k]
+            for a in range(n_pv):
+                q0_p[a, t] = b[a]
+        # the ground radiosities
+        q0_g = r_g.copy()
+        for j in range(n_gnd):
+            for c in range(n_pv):
+                if not sees[j, c]:
+                    continue
+                for t in range(n_steps):
+                    q0_g[j, t] += f_gp[j, c, t] * q0_p[c, t]
+            for t in range(n_steps):
+                q0_g[j, t] /= invrho_g[j, t]
+        return q0_p, q0_g
+
+    return pv_row_solve
 
 
 def pvfactors_timeseries(
