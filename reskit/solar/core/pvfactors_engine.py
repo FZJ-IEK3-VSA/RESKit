@@ -30,6 +30,12 @@ point lies exactly on the line through a PV row edge and the neighbouring row's 
 (pvfactors places the shadow edges there): the two angles are then equal and the decision
 depends on rounding, but both string lengths are the same up to rounding.
 
+The solve needs only the blocks F_PG, F_GP, F_PP and the sky column F_S of the view factor
+matrix; the rest is zero by construction. The calculator therefore builds just these blocks
+(build_ts_vf_blocks()), with the same values, instead of the (n_surfaces + 1)^2 x n_steps
+matrix (68 MB for 3 PV rows and a year of daylight hours), whose allocation, first writes and
+row sums cost as much as the PV row to ground view factors themselves.
+
 pvfactors_timeseries() below is pvlib's function of the same name with this engine and view
 factor calculator plugged in; the results agree with pvlib's to floating point rounding.
 """
@@ -57,30 +63,36 @@ def _block_solve_engine():
             pvarray = self.pvarray
             # shape = n_surfaces + 1, n_timesteps
             irradiance_mat, rho_mat, invrho_mat, _ = self.irradiance.get_full_ts_modeling_vectors(pvarray)
-            # shape = n_surfaces + 1, n_surfaces + 1, n_timesteps
-            vf = self.vf_calculator.build_ts_vf_matrix(pvarray)
-            pvarray.ts_vf_matrix = vf
 
             # pvarray.all_ts_surfaces lists the ground surfaces first, then the PV rows; the sky is last
             n_gnd = pvarray.ts_ground.n_ts_surfaces
             g, p, s = slice(0, n_gnd), slice(n_gnd, -1), -1
-            if vf[g, g].any() or vf[s].any():
-                # not the structure pvfactors builds: fall back rather than solve the wrong system
-                return super().run_full_mode(fn_build_report=fn_build_report)
+            if hasattr(self.vf_calculator, "build_ts_vf_blocks"):
+                # only the blocks of the view factor matrix the solve uses (see the module docstring)
+                f_pg, f_gp, f_pp, f_sky = self.vf_calculator.build_ts_vf_blocks(pvarray)
+                # pvarray.ts_vf_matrix, which PVEngine sets, stays unset (None): nothing
+                # downstream of the report reads it
+            else:
+                # shape = n_surfaces + 1, n_surfaces + 1, n_timesteps
+                vf = self.vf_calculator.build_ts_vf_matrix(pvarray)
+                pvarray.ts_vf_matrix = vf
+                if vf[g, g].any() or vf[s].any():
+                    # not the structure pvfactors builds: fall back rather than solve the wrong system
+                    return super().run_full_mode(fn_build_report=fn_build_report)
+                f_pg, f_gp, f_pp, f_sky = vf[p, g], vf[g, p], vf[p, p], vf[:-1, -1]
 
             # the sky radiosity: its row of A holds only the (dummy) inverse sky reflectivity
             q0_s = irradiance_mat[s] / invrho_mat[s]
             # right-hand sides with the sky term moved over
-            r_g = irradiance_mat[g] + vf[g, s] * q0_s
-            r_p = irradiance_mat[p] + vf[p, s] * q0_s
+            r_g = irradiance_mat[g] + f_sky[g] * q0_s
+            r_p = irradiance_mat[p] + f_sky[n_gnd:] * q0_s
             # ground radiosities in terms of the PV row ones: q0_G = (r_G + F_GP q0_P) / invrho_G
-            f_pg_scaled = vf[p, g] / invrho_mat[g][None]  # F_PG D_G^-1, (P, G, t)
+            f_pg_scaled = f_pg / invrho_mat[g][None]  # F_PG D_G^-1, (P, G, t)
             # the PV row system: (diag(invrho_P) - F_PP - F_PG D_G^-1 F_GP) q0_P = r_P + F_PG D_G^-1 r_G
-            schur = -vf[p, p]
+            schur = -f_pp
             # Each ground surface is seen by only a few PV row surfaces and sees only a few, so
             # F_PG D_G^-1 F_GP is summed over the non-zero pairs only, ground surface by ground
             # surface: about an eighth of the dense product for 3 rows, same summation order.
-            f_gp = vf[g, p]
             seen_by, sees = f_pg_scaled.any(axis=2), f_gp.any(axis=2)  # (P, G), (G, P)
             for j in range(n_gnd):
                 rows, cols = np.flatnonzero(seen_by[:, j]), np.flatnonzero(sees[j])
@@ -97,7 +109,7 @@ def _block_solve_engine():
 
             # the rest as in PVEngine.run_full_mode(), with its diagonal matrices as vectors
             qinc = invrho_mat * q0
-            isotropic_mat = vf[:-1, -1, :] * irradiance_mat[-1, :]
+            isotropic_mat = f_sky * irradiance_mat[-1, :]
             reflection_mat = qinc[:-1, :] - irradiance_mat[:-1, :] - isotropic_mat
             # without AOI methods the absorption matrix is (1 - rho_i) * vf_ik, row by row, and
             # F q0 needs no product: A q0 = irradiance with A = diag(invrho) - F gives F q0 = qinc - irradiance
@@ -137,6 +149,13 @@ def _vf_calculator():
         """VFTsMethods with the PV row to ground view factors computed by a compiled kernel."""
 
         def vf_pvrow_gnd_surf(self, ts_pvrows, ts_ground, tilted_to_left, vf_matrix):
+            self.pvrow_gnd_surf_into(ts_pvrows, ts_ground, tilted_to_left, vf_matrix, vf_matrix, 0)
+
+        def pvrow_gnd_surf_into(self, ts_pvrows, ts_ground, tilted_to_left, out_pg, out_gp, pv_offset):
+            # Writes the PV row to ground view factors into out_pg[i - pv_offset, j] and the ground
+            # to PV row ones into out_gp[j, i - pv_offset] (i: PV row, j: ground surface index):
+            # the full matrix with pv_offset 0, or the blocks of build_ts_vf_blocks().
+            #
             # As VFTsMethods.vf_pvrow_gnd_surf() with vf_pvrow_surf_to_gnd_surf_obstruction_hottel(),
             # _vf_surface_to_surface() and _vf_hottel_gnd_surf(). pvfactors calls those once per
             # pair of PV row and ground surface, on arrays over all time steps; here the PV row and
@@ -180,8 +199,9 @@ def _vf_calculator():
                         np.stack([np.broadcast_to(np.asarray(s.length, dtype=float), (n_steps,)) for s in pvs])
                     )
                     _compiled_kernels()(
-                        vf_matrix,
-                        np.array([surf.index for surf in pvs]),
+                        out_pg,
+                        out_gp,
+                        np.array([surf.index for surf in pvs]) - pv_offset,
                         np.array([surf.index for surf in gnd_surfaces]),
                         *_stack([s.coords.b1 for s in pvs], n_steps),
                         *_stack([s.coords.b2 for s in pvs], n_steps),
@@ -199,12 +219,55 @@ def _vf_calculator():
                         DISTANCE_TOLERANCE,
                     )
 
+    class _OffsetIndices:
+        # A block of the view factor matrix that takes the matrix's surface indices, so that
+        # VFTsMethods.vf_pvrow_to_pvrow(), which writes vf_matrix[i, j, :], can fill it
+        def __init__(self, block, offset):
+            self.block, self.offset = block, offset
+
+        def __setitem__(self, key, value):
+            i, j, rest = key
+            self.block[i - self.offset, j - self.offset, rest] = value
+
     class CompiledVFCalculator(VFCalculator):
-        """VFCalculator with CompiledVFTsMethods."""
+        """VFCalculator with CompiledVFTsMethods, which can also build the matrix in blocks."""
 
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
             self.vf_ts_methods = CompiledVFTsMethods()
+
+        def build_ts_vf_blocks(self, pvarray):
+            """The blocks of build_ts_vf_matrix() that are not zero by construction.
+
+            Returns F_PG (n_pv, n_gnd, n_steps), F_GP (n_gnd, n_pv, n_steps), F_PP
+            (n_pv, n_pv, n_steps) and the sky column F_S (n_gnd + n_pv, n_steps), with the same
+            values as the full matrix, whose ground to ground block and sky row are all zeros.
+            The full matrix is (n_surfaces + 1)^2 x n_steps, 68 MB for 3 PV rows and 4843 steps.
+            """
+            tilted_to_left = pvarray.rotation_vec > 0
+            n_steps = len(tilted_to_left)
+            n_gnd = pvarray.ts_ground.n_ts_surfaces
+            n_pv = pvarray.n_ts_surfaces - n_gnd
+            f_pg = np.zeros((n_pv, n_gnd, n_steps))
+            f_gp = np.zeros((n_gnd, n_pv, n_steps))
+            f_pp = np.zeros((n_pv, n_pv, n_steps))
+            self.vf_ts_methods.pvrow_gnd_surf_into(
+                pvarray.ts_pvrows, pvarray.ts_ground, tilted_to_left, f_pg, f_gp, n_gnd
+            )
+            self.vf_ts_methods.vf_pvrow_to_pvrow(pvarray.ts_pvrows, tilted_to_left, _OffsetIndices(f_pp, n_gnd))
+            # the sky column as in build_ts_vf_matrix(): one minus the row sums, added column by
+            # column in the matrix's column order (ground, then PV rows; the zeros add nothing)
+            row_sum = np.empty((n_gnd + n_pv, n_steps))
+            row_sum[:n_gnd] = np.sum(f_gp, axis=1)
+            pv_sum = np.sum(f_pg, axis=1)
+            for k in range(n_pv):
+                pv_sum += f_pp[:, k]
+            row_sum[n_gnd:] = pv_sum
+            f_sky = 1.0 - row_sum
+            # zero for surfaces without length
+            for i, ts_surf in enumerate(pvarray.all_ts_surfaces):
+                f_sky[i] = np.where(ts_surf.length > DISTANCE_TOLERANCE, f_sky[i], 0.0)
+            return f_pg, f_gp, f_pp, f_sky
 
     return CompiledVFCalculator
 
@@ -243,7 +306,8 @@ def _compiled_kernels():
 
     @numba.njit(cache=True)
     def pvrow_gnd_view_factors(
-        vf_matrix,
+        out_pg,
+        out_gp,
         idx_pv,
         idx_gnd,
         b1x, b1y, b2x, b2y, hx, hy, lx, ly, width,
@@ -251,9 +315,10 @@ def _compiled_kernels():
         ox, oy,
         no_obstruction, is_left, keep_if_left, tilted_to_left, tol,
     ):  # fmt: skip
-        """Writes the view factors between the PV row and ground surfaces into vf_matrix.
+        """Writes the view factors from PV row to ground surfaces into out_pg[idx_pv, idx_gnd]
+        and from ground to PV row surfaces into out_gp[idx_gnd, idx_pv].
 
-        idx_pv, idx_gnd: matrix indices of the PV row and ground surfaces. b1, b2, h(ighest),
+        idx_pv, idx_gnd: indices of the PV row and ground surfaces in these arrays. b1, b2, h(ighest),
         l(owest): points of the PV row surfaces and width their lengths, (n_pv, n_steps);
         g1, g2: boundary points of the ground surfaces, (n_gnd, n_steps); o: lowest point of
         the obstructing row, (n_steps,); keep_if_left: per PV row surface, whether its view is
@@ -289,8 +354,8 @@ def _compiled_kernels():
                     w = width[s, t]
                     if tilted_to_left[t] != keep_if_left[s] or not w > tol:
                         # pvfactors zeroes this side at this step, or the surface has no length
-                        vf_matrix[i, j, t] = 0.0
-                        vf_matrix[j, i, t] = 0.0
+                        out_pg[i, j, t] = 0.0
+                        out_gp[j, i, t] = 0.0
                         continue
                     if no_obstruction:
                         sum_1 = distance(b1x[s, t], b1y[s, t], g1x[g, t], g1y[g, t]) + distance(
@@ -327,9 +392,9 @@ def _compiled_kernels():
                         d2 = string_length(low_x, low_y, nx, ny, ox[t], oy[t], d_near, dls[s, t], is_left)
                         numerator = d1 + d2 - l1 - l2
                     vf = numerator / (2.0 * w)
-                    vf_matrix[i, j, t] = vf
+                    out_pg[i, j, t] = vf
                     gnd_length = gnd_len[g, t]
-                    vf_matrix[j, i, t] = vf * w / gnd_length if gnd_length > tol else 0.0
+                    out_gp[j, i, t] = vf * w / gnd_length if gnd_length > tol else 0.0
 
     return pvrow_gnd_view_factors
 
